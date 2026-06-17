@@ -85,7 +85,12 @@ const emit = defineEmits<{
 
       <div class="plugin-main">
         <div class="plugin-icon">
-          <img v-if="iconUrl" :src="iconUrl" alt="plugin icon" class="plugin-icon-img" />
+          <img
+            v-if="iconUrl"
+            :src="iconUrl"
+            :alt="i18n.t('plugins.icon_alt')"
+            class="plugin-icon-img"
+          />
           <Layers v-else :size="32" :stroke-width="1.5" class="plugin-icon-default" />
         </div>
         <div class="plugin-info">
@@ -96,7 +101,7 @@ const emit = defineEmits<{
             </div>
             <div class="plugin-author-row">
               <span v-if="plugin.manifest.author" class="plugin-author">
-                by {{ plugin.manifest.author.name }}
+                {{ i18n.t("common.by_author", { author: plugin.manifest.author.name }) }}
               </span>
               <SLButton
                 v-if="plugin.manifest.repository"

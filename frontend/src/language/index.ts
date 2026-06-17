@@ -1,26 +1,60 @@
 import { ref, type Ref } from "vue";
-import enUS from "./en-US.json";
-import zhCN from "./zh-CN.json";
+
+type TranslationValue = string | TranslationNode;
 
 type TranslationNode = {
-  [key: string]: string | TranslationNode;
+  [key: string]: TranslationValue;
 };
 
-// 语言文件类型，包含语言名称字段
-type LanguageFile = TranslationNode & {
-  languageName?: string;
+export type LanguageFile = TranslationNode;
+
+type LocaleAuthor = {
+  name: string;
+  email?: string;
 };
 
-type LocaleModule = { default: LanguageFile };
-
-const localeLoaders = import.meta.glob<LocaleModule>("./*.json");
-const translations: Record<string, LanguageFile> = {
-  "zh-CN": zhCN as LanguageFile,
-  "en-US": enUS as LanguageFile,
+export type LocaleMetadata = {
+  language: string;
+  isBuiltin?: boolean;
+  authors?: LocaleAuthor[];
 };
-const supportedLocales: string[] = Object.keys(localeLoaders)
-  .map((path) => path.match(/\.\/(.*)\.json$/)?.[1])
-  .filter((locale): locale is string => Boolean(locale));
+
+type LocaleModule = { default: unknown };
+type LocaleMetadataModule = { default: LocaleMetadata };
+
+const localeModules = import.meta.glob<LocaleModule>("./*/*.json", { eager: true });
+const builtInLocaleMetadata: Record<string, LocaleMetadata> = {};
+const builtInLocaleGroups: Record<string, Record<string, TranslationValue>> = {};
+
+for (const [path, module] of Object.entries(localeModules)) {
+  const match = path.match(/^\.\/([^/]+)\/([^/]+)\.json$/);
+  if (!match) {
+    continue;
+  }
+
+  const [, locale, group] = match;
+  if (group === "language") {
+    builtInLocaleMetadata[locale] = (module as LocaleMetadataModule).default;
+    continue;
+  }
+
+  if (!builtInLocaleGroups[locale]) {
+    builtInLocaleGroups[locale] = {};
+  }
+  builtInLocaleGroups[locale][group] = normalizeGroupValue(module.default);
+}
+
+const translations: Record<string, LanguageFile> = {};
+const supportedLocales: string[] = Array.from(
+  new Set([...Object.keys(builtInLocaleGroups), ...Object.keys(builtInLocaleMetadata)]),
+).sort((a, b) => a.localeCompare(b));
+
+for (const locale of Object.keys(builtInLocaleGroups)) {
+  const localeTranslations = buildLocaleTranslations(locale);
+  if (localeTranslations) {
+    translations[locale] = localeTranslations;
+  }
+}
 
 const backendFlatTranslations: Record<string, Record<string, string>> = {};
 
@@ -31,8 +65,9 @@ export const SUPPORTED_LOCALES: readonly string[] = supportedLocales;
 export type LocaleCode = string;
 
 export function setTranslations(locale: LocaleCode, data: LanguageFile) {
-  if (isSupportedLocale(locale)) {
-    translations[locale] = data;
+  translations[locale] = normalizeLanguageFile(data);
+  if (!supportedLocales.includes(locale)) {
+    supportedLocales.push(locale);
   }
 }
 
@@ -41,13 +76,12 @@ export async function ensureLocaleLoaded(locale: LocaleCode): Promise<boolean> {
     return true;
   }
 
-  const loader = localeLoaders[`./${locale}.json`];
-  if (!loader) {
+  const localeTranslations = buildLocaleTranslations(locale);
+  if (!localeTranslations) {
     return false;
   }
 
-  const module = await loader();
-  translations[locale] = module.default;
+  translations[locale] = localeTranslations;
   if (!supportedLocales.includes(locale)) {
     supportedLocales.push(locale);
   }
@@ -60,9 +94,6 @@ export function setLocaleBundle(
   locales?: readonly string[],
 ) {
   backendFlatTranslations[locale] = entries;
-  if (!translations[locale]) {
-    translations[locale] = {};
-  }
   if (locales) {
     for (const localeCode of locales) {
       if (!supportedLocales.includes(localeCode)) {
@@ -105,8 +136,103 @@ function isSupportedLocale(locale: string): locale is LocaleCode {
   return supportedLocales.includes(locale);
 }
 
-function resolveNestedValue(source: TranslationNode, keys: string[]): string | undefined {
-  let current: string | TranslationNode | undefined = source;
+function isTranslationNode(value: unknown): value is TranslationNode {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function cloneTranslationValue(value: TranslationValue): TranslationValue {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  const cloned: TranslationNode = {};
+  for (const [key, child] of Object.entries(value)) {
+    cloned[key] = cloneTranslationValue(child);
+  }
+  return cloned;
+}
+
+function normalizeGroupValue(value: unknown): TranslationValue {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (!isTranslationNode(value)) {
+    return {};
+  }
+
+  const normalized: TranslationNode = {};
+  for (const [key, child] of Object.entries(value)) {
+    normalized[key] = normalizeGroupValue(child);
+  }
+  return normalized;
+}
+
+function mergeTranslationValues(
+  base: TranslationValue | undefined,
+  override: TranslationValue | undefined,
+): TranslationValue | undefined {
+  if (override === undefined) {
+    return base === undefined ? undefined : cloneTranslationValue(base);
+  }
+
+  if (base === undefined) {
+    return cloneTranslationValue(override);
+  }
+
+  if (typeof base === "string" || typeof override === "string") {
+    return cloneTranslationValue(override);
+  }
+
+  const merged: TranslationNode = {};
+  const keys = new Set([...Object.keys(base), ...Object.keys(override)]);
+  for (const key of keys) {
+    const value = mergeTranslationValues(base[key], override[key]);
+    if (value !== undefined) {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+function normalizeLanguageFile(data: LanguageFile): LanguageFile {
+  const source = isTranslationNode(data.sealantern) ? data.sealantern : data;
+  const normalized: TranslationNode = {};
+
+  for (const [key, value] of Object.entries(source)) {
+    normalized[key] = normalizeGroupValue(value);
+  }
+
+  if (isTranslationNode(data.sealantern)) {
+    for (const [key, value] of Object.entries(data)) {
+      if (key === "sealantern") {
+        continue;
+      }
+      const merged = mergeTranslationValues(normalized[key], normalizeGroupValue(value));
+      if (merged !== undefined) {
+        normalized[key] = merged;
+      }
+    }
+  }
+
+  return normalized;
+}
+
+function buildLocaleTranslations(locale: string): LanguageFile | undefined {
+  const groups = builtInLocaleGroups[locale];
+  if (!groups) {
+    return undefined;
+  }
+
+  const localeTranslations: LanguageFile = {};
+  for (const [group, value] of Object.entries(groups)) {
+    localeTranslations[group] = cloneTranslationValue(value);
+  }
+  return localeTranslations;
+}
+
+function resolveNestedValue(source: TranslationNode | undefined, keys: string[]): string | undefined {
+  let current: TranslationValue | undefined = source;
   for (const key of keys) {
     if (!current || typeof current === "string") {
       return undefined;
@@ -121,8 +247,21 @@ function resolveBackendFlatValue(locale: string, key: string): string | undefine
   return backendFlatTranslations[locale]?.[key];
 }
 
+function getLocaleFallbackChain(locale: string): LocaleCode[] {
+  return Array.from(new Set([locale, "en-US", "zh-CN"]));
+}
+
+function resolveLocaleValue(locale: string, key: string): string | undefined {
+  const keys = key.split(".");
+  return (
+    resolveBackendFlatValue(locale, key) ??
+    resolveBackendFlatValue(locale, `sealantern.${key}`) ??
+    resolveNestedValue(translations[locale], keys) ??
+    resolveNestedValue(translations[locale], ["sealantern"].concat(keys))
+  );
+}
+
 function interpolateVariables(template: string, options: Record<string, unknown>): string {
-  // 同时支持 {{variable}} 和 {variable} 两种格式的占位符
   return template
     .replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
       const value = options[varName.trim()];
@@ -136,7 +275,6 @@ function interpolateVariables(template: string, options: Record<string, unknown>
 
 class I18n {
   private currentLocale: Ref<LocaleCode> = ref("zh-CN");
-  private fallbackLocale: LocaleCode = "en-US";
 
   setLocale(locale: string) {
     if (isSupportedLocale(locale) || pluginLocaleNames[locale] !== undefined) {
@@ -149,22 +287,19 @@ class I18n {
   }
 
   t(key: string, options: Record<string, unknown> = {}): string {
-    const keys = key.split(".");
-    const currentLocaleValue = this.currentLocale.value;
-
-    let resolved: string | undefined =
-      resolveBackendFlatValue(currentLocaleValue, key) ??
-      resolveBackendFlatValue(currentLocaleValue, `sealantern.${key}`) ??
-      resolveNestedValue(translations[currentLocaleValue], ["sealantern"].concat(keys)) ??
-      resolveNestedValue(translations[currentLocaleValue], keys) ??
-      resolveBackendFlatValue(this.fallbackLocale, key) ??
-      resolveBackendFlatValue(this.fallbackLocale, `sealantern.${key}`) ??
-      resolveNestedValue(translations[this.fallbackLocale], ["sealantern"].concat(keys)) ??
-      resolveNestedValue(translations[this.fallbackLocale], keys);
+    let resolved: string | undefined;
+    for (const locale of getLocaleFallbackChain(this.currentLocale.value)) {
+      resolved = resolveLocaleValue(locale, key);
+      if (resolved !== undefined) {
+        break;
+      }
+    }
 
     if (resolved === undefined) {
       for (const pluginMap of Object.values(pluginFlatTranslations)) {
-        const val = pluginMap[currentLocaleValue]?.[key] ?? pluginMap[this.fallbackLocale]?.[key];
+        const currentLocaleValue = this.currentLocale.value;
+        const val =
+          pluginMap[currentLocaleValue]?.[key] ?? pluginMap["en-US"]?.[key] ?? pluginMap["zh-CN"]?.[key];
         if (val !== undefined) {
           resolved = val;
           break;
@@ -180,22 +315,32 @@ class I18n {
   }
 
   te(key: string): boolean {
-    const keys = key.split(".");
-    const currentLocaleValue = this.currentLocale.value;
-    const resolved =
-      resolveBackendFlatValue(currentLocaleValue, key) ??
-      resolveBackendFlatValue(currentLocaleValue, `sealantern.${key}`) ??
-      resolveNestedValue(translations[currentLocaleValue], ["sealantern"].concat(keys)) ??
-      resolveNestedValue(translations[currentLocaleValue], keys) ??
-      resolveBackendFlatValue(this.fallbackLocale, key) ??
-      resolveBackendFlatValue(this.fallbackLocale, `sealantern.${key}`) ??
-      resolveNestedValue(translations[this.fallbackLocale], ["sealantern"].concat(keys)) ??
-      resolveNestedValue(translations[this.fallbackLocale], keys);
-    return resolved !== undefined;
+    for (const locale of getLocaleFallbackChain(this.currentLocale.value)) {
+      if (resolveLocaleValue(locale, key) !== undefined) {
+        return true;
+      }
+    }
+
+    return Object.values(pluginFlatTranslations).some((pluginMap) => {
+      const currentLocaleValue = this.currentLocale.value;
+      return (
+        pluginMap[currentLocaleValue]?.[key] !== undefined ||
+        pluginMap["en-US"]?.[key] !== undefined ||
+        pluginMap["zh-CN"]?.[key] !== undefined
+      );
+    });
   }
 
   getTranslations() {
     return translations as Record<string, LanguageFile>;
+  }
+
+  getLocaleMetadata(locale: string): LocaleMetadata | undefined {
+    return builtInLocaleMetadata[locale] ?? (pluginLocaleNames[locale] ? { language: pluginLocaleNames[locale] } : undefined);
+  }
+
+  getLocaleDisplayName(locale: string): string | undefined {
+    return this.getLocaleMetadata(locale)?.language;
   }
 
   getLocaleRef() {
@@ -207,7 +352,7 @@ class I18n {
   }
 
   isSupportedLocale(locale: string): boolean {
-    return (SUPPORTED_LOCALES as readonly string[]).includes(locale);
+    return isSupportedLocale(locale) || pluginLocaleNames[locale] !== undefined;
   }
 }
 

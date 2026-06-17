@@ -1,0 +1,22 @@
+{
+  "title": "自訂下載",
+  "url": "下載位址",
+  "url_placeholder": "請輸入下載位址（http/https）",
+  "save_folder": "儲存到",
+  "save_path": "儲存路徑",
+  "select_folder": "請選擇資料夾",
+  "pick_folder": "選擇資料夾",
+  "filename": "檔案名稱",
+  "thread_count": "線程數",
+  "thread_count_empty": "線程數不能為空",
+  "thread_count_invalid": "字符不合法",
+  "thread_count_positive": "線程數必須是一個正整數",
+  "thread_count_too_big": "執行緒數不能超過 256",
+  "cancel": "取消",
+  "download": "下載",
+  "browse": "瀏覽",
+  "downloading": "正在下載資源...",
+  "status-finished": "下載已完成",
+  "failed": "下載失敗",
+  "completed": "已完成"
+}

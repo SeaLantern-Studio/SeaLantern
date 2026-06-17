@@ -1,0 +1,8 @@
+{
+  "placeholder": "파일을 여기에 끌어다 놓거나 클릭하여 선택",
+  "support_both": "파일 및 폴더 지원",
+  "support_files": "파일 지원",
+  "support_folders": "폴더 지원",
+  "error_no_path": "드래그한 파일 경로를 가져올 수 없습니다",
+  "error_unsupported_type": "지원하지 않는 파일 형식입니다"
+}

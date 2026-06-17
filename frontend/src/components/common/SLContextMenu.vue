@@ -2,6 +2,7 @@
 import { ref, computed, type Component } from "vue";
 import SLMenuBase from "./SLMenuBase.vue";
 import { useContextMenuStore, type ContextMenuItem } from "@stores/contextMenuStore";
+import { i18n } from "@language";
 
 const contextMenuStore = useContextMenuStore();
 
@@ -75,7 +76,7 @@ function hideContextMenu() {
             :header="contextMenuStore.targetData || undefined"
             @select="handleItemClick"
           >
-            <template #empty>No menu items</template>
+            <template #empty>{{ i18n.t("common.no_menu_items") }}</template>
           </SLMenuBase>
         </div>
       </div>

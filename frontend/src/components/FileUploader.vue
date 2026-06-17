@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { uploadFile, uploadFromDropEvent, isUploadSupported } from "@api/upload";
+import { i18n } from "@language";
 
 const props = defineProps<{
   /** 是否显示拖拽区域 */
@@ -42,7 +43,7 @@ const dropZoneClass = computed(() => ({
 // 点击上传按钮
 const handleClick = () => {
   if (!canUpload.value) {
-    emit("error", "当前环境不支持文件上传");
+    emit("error", i18n.t("upload.unsupported"));
     return;
   }
   fileInput.value?.click();
@@ -74,7 +75,7 @@ const handleDrop = async (event: DragEvent) => {
   if (!canUpload.value) {
     event.preventDefault();
     event.stopPropagation();
-    emit("error", "当前环境不支持文件上传");
+    emit("error", i18n.t("upload.unsupported"));
     return;
   }
 
@@ -86,7 +87,7 @@ const handleDrop = async (event: DragEvent) => {
       emit("uploaded", file);
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "上传失败";
+    const message = error instanceof Error ? error.message : i18n.t("upload.failed");
     emit("error", message);
   }
 };
@@ -94,7 +95,7 @@ const handleDrop = async (event: DragEvent) => {
 // 上传选中的文件
 const uploadSelectedFiles = async (files: File[]) => {
   if (!canUpload.value) {
-    emit("error", "当前环境不支持文件上传");
+    emit("error", i18n.t("upload.unsupported"));
     return;
   }
 
@@ -104,7 +105,10 @@ const uploadSelectedFiles = async (files: File[]) => {
   const acceptedTypes = props.accept?.split(",").map((type) => type.trim()) ?? [];
   const validFiles = files.filter((file) => {
     if (props.maxSize && file.size > props.maxSize) {
-      emit("error", `文件 ${file.name} 超过大小限制 (${props.maxSize} 字节)`);
+      emit(
+        "error",
+        i18n.t("upload.file_too_large", { file: file.name, size: String(props.maxSize) }),
+      );
       return false;
     }
 
@@ -114,7 +118,7 @@ const uploadSelectedFiles = async (files: File[]) => {
         (type) => file.name.includes(type) || fileExtension === type,
       );
       if (!isAccepted) {
-        emit("error", `文件类型不支持: ${file.name}`);
+        emit("error", i18n.t("upload.file_type_unsupported", { file: file.name }));
         return false;
       }
     }
@@ -129,7 +133,7 @@ const uploadSelectedFiles = async (files: File[]) => {
     });
     uploadProgress.value = validFiles.length > 0 ? 100 : 0;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "上传失败";
+    const message = error instanceof Error ? error.message : i18n.t("upload.failed");
     emit("error", message);
   } finally {
     isUploading.value = false;
@@ -180,11 +184,11 @@ defineExpose({
           />
         </svg>
         <p class="text-gray-600">
-          {{ isDragging ? "释放文件以上传" : "拖拽文件到此处，或点击选择文件" }}
+          {{ isDragging ? i18n.t("upload.drop_to_upload") : i18n.t("upload.drag_or_click") }}
         </p>
-        <p v-if="accept" class="text-sm text-gray-400">支持的格式: {{ accept }}</p>
+        <p v-if="accept" class="text-sm text-gray-400">{{ i18n.t("upload.supported_formats", { formats: accept }) }}</p>
         <p v-if="maxSize" class="text-sm text-gray-400">
-          最大大小: {{ (maxSize / 1024 / 1024).toFixed(2) }} MB
+          {{ i18n.t("upload.max_size_mb", { size: (maxSize / 1024 / 1024).toFixed(2) }) }}
         </p>
       </div>
     </div>
@@ -192,7 +196,7 @@ defineExpose({
     <!-- 上传进度 -->
     <div v-if="isUploading" class="mt-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-sm text-gray-600">上传中...</span>
+        <span class="text-sm text-gray-600">{{ i18n.t("upload.uploading") }}</span>
         <span class="text-sm text-gray-600">{{ uploadProgress }}%</span>
       </div>
       <div class="w-full bg-gray-200 rounded-full h-2">
@@ -206,7 +210,7 @@ defineExpose({
     <!-- 不支持上传的提示 -->
     <div v-if="!canUpload" class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
       <p class="text-yellow-700 text-sm">
-        当前环境不支持文件上传。请使用桌面版应用或确保在浏览器/Docker模式下运行。
+        {{ i18n.t("upload.unsupported_detail") }}
       </p>
     </div>
   </div>

@@ -38,7 +38,7 @@ const emit = defineEmits<{
           <span class="card-name">{{ resolveI18n(plugin.name) }}</span>
           <span class="card-version">{{ plugin.version ? "v" + plugin.version : "" }}</span>
         </div>
-        <span class="card-author">by {{ plugin.author?.name || "Unknown" }}</span>
+        <span class="card-author">{{ i18n.t("common.by_author", { author: plugin.author?.name || i18n.t("market.author_unknown") }) }}</span>
         <p class="card-desc">{{ resolveI18n(plugin.description) }}</p>
 
         <div v-if="plugin.dependencies?.length" class="card-deps">

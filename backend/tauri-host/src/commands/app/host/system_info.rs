@@ -193,7 +193,11 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
                 tasks.abort_all();
                 return Ok(serde_json::json!({
                     "supported": true,
+                    "message_key": "app.host.ipv6_connected_via",
+                    "message_args": { "0": name },
                     "message": app_t1("app.host.ipv6_connected_via", name),
+                    "detail_key": "app.host.ipv6_connected_detail",
+                    "detail_args": { "0": name, "1": addr },
                     "detail": app_t2("app.host.ipv6_connected_detail", name, addr)
                 }));
             }
@@ -201,6 +205,8 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
                 tested_targets.push(serde_json::json!({
                     "target": name,
                     "address": addr,
+                    "error_key": "",
+                    "error_args": {},
                     "error": format!("{}", error),
                     "kind": format!("{:?}", error.kind())
                 }));
@@ -211,6 +217,8 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
                 tested_targets.push(serde_json::json!({
                     "target": name,
                     "address": addr,
+                    "error_key": "app.host.ipv6_timeout",
+                    "error_args": {},
                     "error": app_t("app.host.ipv6_timeout"),
                     "kind": "TimedOut"
                 }));
@@ -220,18 +228,40 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
         }
     }
 
-    let summary = match last_error_kind {
-        Some(ErrorKind::AddrNotAvailable) => app_t("app.host.ipv6_addr_not_available"),
-        Some(ErrorKind::NetworkUnreachable) => app_t("app.host.ipv6_network_unreachable"),
-        Some(ErrorKind::TimedOut) => app_t("app.host.ipv6_connection_timed_out"),
-        Some(ErrorKind::ConnectionRefused) => app_t("app.host.ipv6_connection_refused"),
-        _ => app_t1("app.host.ipv6_connection_failed", last_error.clone()),
+    let (summary_key, summary, summary_args) = match last_error_kind {
+        Some(ErrorKind::AddrNotAvailable) => (
+            "app.host.ipv6_addr_not_available",
+            app_t("app.host.ipv6_addr_not_available"),
+            serde_json::json!({}),
+        ),
+        Some(ErrorKind::NetworkUnreachable) => (
+            "app.host.ipv6_network_unreachable",
+            app_t("app.host.ipv6_network_unreachable"),
+            serde_json::json!({}),
+        ),
+        Some(ErrorKind::TimedOut) => (
+            "app.host.ipv6_connection_timed_out",
+            app_t("app.host.ipv6_connection_timed_out"),
+            serde_json::json!({}),
+        ),
+        Some(ErrorKind::ConnectionRefused) => (
+            "app.host.ipv6_connection_refused",
+            app_t("app.host.ipv6_connection_refused"),
+            serde_json::json!({}),
+        ),
+        _ => (
+            "app.host.ipv6_connection_failed",
+            app_t1("app.host.ipv6_connection_failed", last_error.clone()),
+            serde_json::json!({ "0": last_error.clone() }),
+        ),
     };
 
     let error_kind = last_error_kind.map(|kind| format!("{:?}", kind));
 
     Ok(serde_json::json!({
         "supported": false,
+        "message_key": summary_key,
+        "message_args": summary_args,
         "message": summary,
         "detail": last_error,
         "error_kind": error_kind,

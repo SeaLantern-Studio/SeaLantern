@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:check": "vue-tsc --noEmit && vite build",
+    "i18n:check": "node ./scripts/check-i18n.mjs",
     "preview": "vite preview",
     "tauri": "node ../scripts/tauri.mjs",
     "tauri:dev": "pnpm run tauri dev",

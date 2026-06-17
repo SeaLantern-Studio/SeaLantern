@@ -25,6 +25,7 @@ export const useHomeServerActionsStore = defineStore("homeServerActions", () => 
   const changePathValidationResult = ref<{
     valid: boolean;
     message: string;
+    messageKey: string | null;
     jarPath: string | null;
     startupMode: string | null;
   } | null>(null);
@@ -173,6 +174,7 @@ export const useHomeServerActionsStore = defineStore("homeServerActions", () => 
       changePathValidationResult.value = {
         valid: false,
         message: String(e),
+        messageKey: null,
         jarPath: null,
         startupMode: null,
       };

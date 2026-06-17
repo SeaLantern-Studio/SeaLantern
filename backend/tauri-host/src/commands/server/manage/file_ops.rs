@@ -47,6 +47,7 @@ pub(super) fn validate_server_path(new_path: String) -> Result<ValidateServerPat
         return Ok(ValidateServerPathResult {
             valid: false,
             message: server_t("server.manage.server_dir_write_denied"),
+            message_key: Some("server.manage.server_dir_write_denied".to_string()),
             jar_path: None,
             startup_mode: None,
         });
@@ -65,7 +66,20 @@ pub(super) fn validate_server_path(new_path: String) -> Result<ValidateServerPat
         server_t("server.manage.validate_executable_missing")
     };
 
-    Ok(ValidateServerPathResult { valid, message, jar_path, startup_mode })
+    Ok(ValidateServerPathResult {
+        valid,
+        message,
+        message_key: Some(
+            if valid {
+                "server.manage.validate_path_success"
+            } else {
+                "server.manage.validate_executable_missing"
+            }
+            .to_string(),
+        ),
+        jar_path,
+        startup_mode,
+    })
 }
 
 fn collect_copy_conflicts_recursive(

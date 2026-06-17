@@ -28,6 +28,17 @@ const validationStatus = computed(() => {
   if (!homeServerActionsStore.changePathValidationResult) return null;
   return homeServerActionsStore.changePathValidationResult.valid ? "success" : "error";
 });
+
+const validationMessage = computed(() => {
+  const result = homeServerActionsStore.changePathValidationResult;
+  if (!result) {
+    return "";
+  }
+
+  return result.messageKey && i18n.te(result.messageKey)
+    ? i18n.t(result.messageKey)
+    : result.message;
+});
 </script>
 
 <template>
@@ -97,7 +108,7 @@ const validationStatus = computed(() => {
           </span>
         </div>
         <p class="validation-message">
-          {{ homeServerActionsStore.changePathValidationResult.message }}
+          {{ validationMessage }}
         </p>
 
         <!-- 检测到的启动文件信息 -->
@@ -109,13 +120,13 @@ const validationStatus = computed(() => {
           class="detected-info"
         >
           <div class="detected-item">
-            <span class="detected-label">启动文件:</span>
+            <span class="detected-label">{{ i18n.t("home.change_path_detected_startup_file") }}</span>
             <code class="detected-value">{{
               homeServerActionsStore.changePathValidationResult.jarPath
             }}</code>
           </div>
           <div class="detected-item">
-            <span class="detected-label">启动方式:</span>
+            <span class="detected-label">{{ i18n.t("home.change_path_detected_startup_mode") }}</span>
             <span class="detected-value">{{
               homeServerActionsStore.changePathValidationResult.startupMode?.toUpperCase() || "JAR"
             }}</span>

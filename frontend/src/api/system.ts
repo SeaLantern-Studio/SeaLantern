@@ -1,6 +1,8 @@
 import { tauriInvoke } from "@api/tauri";
+import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 import type { JavaInfo } from "@api/java";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
+import { i18n } from "@language";
 
 export interface CreateServerDefaults {
   default_run_path: string;
@@ -14,7 +16,6 @@ export interface CreateServerDefaults {
   default_cpu_policy: CpuPolicyConfig;
   default_jvm_preset: JvmPresetConfig;
 }
-import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 
 export interface CpuInfo {
   name: string;
@@ -99,13 +100,19 @@ export interface IPv6TestTarget {
   target: string;
   address: string;
   error: string;
+  error_key?: string;
+  error_args?: Record<string, string>;
   kind: string;
 }
 
 export interface IPv6TestResult {
   supported: boolean;
   message: string;
+  message_key?: string;
+  message_args?: Record<string, string>;
   detail?: string;
+  detail_key?: string;
+  detail_args?: Record<string, string>;
   error_kind?: string;
   targets?: IPv6TestTarget[];
 }
@@ -113,7 +120,7 @@ export interface IPv6TestResult {
 export const systemApi = {
   async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
     if (!isUploadSupported()) {
-      throw new Error("仅在Docker/浏览器环境中支持该方法");
+      throw new Error(i18n.t("system.browser_only_method"));
     }
 
     const input = document.createElement("input");
@@ -212,28 +219,28 @@ export const systemApi = {
 
   async pickSaveFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+      throw new Error(i18n.t("system.docker_native_picker_unsupported"));
     }
     return tauriInvoke("pick_save_file");
   },
 
   async pickPersonalizationExportFile(suggestedName: string): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持个性化包导出，请在桌面端使用此功能");
+      throw new Error(i18n.t("system.docker_personalization_export_unsupported"));
     }
     return tauriInvoke("pick_personalization_export_file", { suggestedName });
   },
 
   async pickPersonalizationImportFile(): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持个性化包导入，请在桌面端使用此功能");
+      throw new Error(i18n.t("system.docker_personalization_import_unsupported"));
     }
     return tauriInvoke("pick_personalization_import_file");
   },
 
   async pickFolder(): Promise<string | null> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
+      throw new Error(i18n.t("system.docker_native_picker_unsupported"));
     }
     return tauriInvoke("pick_folder");
   },
@@ -252,14 +259,14 @@ export const systemApi = {
 
   async openFile(path: string): Promise<void> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持从浏览器直接打开本地文件");
+      throw new Error(i18n.t("system.docker_open_file_unsupported"));
     }
     return tauriInvoke("open_file", { path });
   },
 
   async openFolder(path: string): Promise<void> {
     if (isUploadSupported()) {
-      throw new Error("Docker环境不支持从浏览器直接打开本地文件夹");
+      throw new Error(i18n.t("system.docker_open_folder_unsupported"));
     }
     return tauriInvoke("open_folder", { path });
   },

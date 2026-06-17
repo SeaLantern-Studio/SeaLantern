@@ -55,7 +55,7 @@
               size="sm"
               variant="ghost"
               class="cancel-button"
-              title="Cancel"
+              :title="i18n.t('common.cancel')"
               @click="cancelDownload"
             >
               <X :size="16" :stroke-width="2" />
@@ -70,7 +70,7 @@
               <CheckCircle :size="16" />
               <span>{{ i18n.t("settings.java_install_success").replace(":", "") }}</span>
             </div>
-            <SLButton size="sm" variant="ghost" @click="resetState">OK</SLButton>
+            <SLButton size="sm" variant="ghost" @click="resetState">{{ i18n.t("common.ok") }}</SLButton>
           </div>
         </template>
       </div>
@@ -112,10 +112,10 @@ const installedPath = ref("");
 const unlistenProgress = ref<UnlistenFn | null>(null);
 
 const versionOptions = computed(() => [
-  { label: "Java 8 (LTS)", value: "8" },
-  { label: "Java 17 (LTS)", value: "17" },
-  { label: "Java 21 (LTS)", value: "21" },
-  { label: "Java 25 (LTS)", value: "25" },
+  { label: i18n.t("settings.java_download_btn", { version: "8" }), value: "8" },
+  { label: i18n.t("settings.java_download_btn", { version: "17" }), value: "17" },
+  { label: i18n.t("settings.java_download_btn", { version: "21" }), value: "21" },
+  { label: i18n.t("settings.java_download_btn", { version: "25" }), value: "25" },
 ]);
 
 const downloadButtonText = computed(() => {

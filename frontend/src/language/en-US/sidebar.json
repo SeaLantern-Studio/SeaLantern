@@ -1,0 +1,8 @@
+{
+  "groups": {
+    "main": "Main",
+    "server": "Server",
+    "system": "System"
+  },
+  "collapse_btn": "Collapse Sidebar"
+}

@@ -8,6 +8,30 @@ const testing = ref(false);
 const showDetail = ref(false);
 const result = ref<IPv6TestResult | null>(null);
 
+function translateByKey(
+  key?: string,
+  args?: Record<string, string>,
+  fallback = "",
+): string {
+  if (!key) {
+    return fallback;
+  }
+
+  return i18n.te(key) ? i18n.t(key, args ?? {}) : fallback;
+}
+
+function getResultMessage(value: IPv6TestResult): string {
+  return translateByKey(value.message_key, value.message_args, value.message);
+}
+
+function getResultDetail(value: IPv6TestResult): string {
+  return translateByKey(value.detail_key, value.detail_args, value.detail || "");
+}
+
+function getTargetError(target: NonNullable<IPv6TestResult["targets"]>[number]): string {
+  return translateByKey(target.error_key, target.error_args, target.error);
+}
+
 async function testIPv6() {
   testing.value = true;
   result.value = null;
@@ -15,7 +39,7 @@ async function testIPv6() {
   try {
     result.value = await systemApi.testIPv6Connectivity();
   } catch (e) {
-    result.value = { supported: false, message: String(e) };
+    result.value = { supported: false, message: String(e), message_key: undefined };
   } finally {
     testing.value = false;
   }
@@ -50,7 +74,7 @@ async function testIPv6() {
               ? i18n.t("settings.ipv6_supported")
               : i18n.t("settings.ipv6_not_supported")
           }}</span>
-          <span v-if="result.message" class="result-message">{{ result.message }}</span>
+          <span v-if="result.message" class="result-message">{{ getResultMessage(result) }}</span>
           <button
             v-if="!result.supported && (result.detail || result.targets)"
             class="detail-toggle"
@@ -67,7 +91,7 @@ async function testIPv6() {
             </div>
             <div v-if="result.detail" class="detail-row">
               <span class="detail-label">{{ i18n.t("settings.ipv6_raw_error_label") }}</span>
-              <span class="detail-value">{{ result.detail }}</span>
+              <span class="detail-value">{{ getResultDetail(result) }}</span>
             </div>
             <div v-if="result.targets && result.targets.length" class="detail-targets">
               <div class="detail-targets-title">
@@ -76,7 +100,7 @@ async function testIPv6() {
               <div v-for="t in result.targets" :key="t.address" class="detail-target">
                 <span class="target-name">{{ t.target }}</span>
                 <span class="target-addr">{{ t.address }}</span>
-                <span class="target-error">{{ t.error }} ({{ t.kind }})</span>
+                <span class="target-error">{{ getTargetError(t) }} ({{ t.kind }})</span>
               </div>
             </div>
           </div>

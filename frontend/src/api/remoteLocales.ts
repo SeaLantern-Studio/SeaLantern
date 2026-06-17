@@ -7,11 +7,13 @@ export async function fetchLocale(locale: LocaleCode) {
     return bundle.entries;
   } catch {
     await ensureLocaleLoaded(locale);
-    const translations = i18n.getTranslations();
-    const data = translations[locale];
-    if (!data) {
+    const translations = i18n.getTranslations()[locale];
+    if (!translations) {
       throw new Error(`Locale ${locale} not found in loaded translations`);
     }
-    return data;
+
+    return {
+      sealantern: translations,
+    };
   }
 }

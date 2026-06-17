@@ -267,6 +267,8 @@ pub struct ValidateServerPathResult {
     pub valid: bool,
     pub message: String,
     #[serde(default)]
+    pub message_key: Option<String>,
+    #[serde(default)]
     pub jar_path: Option<String>,
     #[serde(default)]
     pub startup_mode: Option<String>,

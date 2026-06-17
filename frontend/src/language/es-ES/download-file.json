@@ -1,0 +1,22 @@
+{
+  "title": "Descarga personalizada",
+  "url": "URL de descarga",
+  "url_placeholder": "Introduce la URL de descarga (http/https)",
+  "save_folder": "Guardar en",
+  "save_path": "Ruta de guardado",
+  "select_folder": "Selecciona una carpeta",
+  "pick_folder": "Elegir carpeta",
+  "filename": "Nombre del archivo",
+  "thread_count": "Número de hilos",
+  "thread_count_empty": "El número de hilos no puede estar vacío",
+  "thread_count_invalid": "Carácter no válido",
+  "thread_count_positive": "El número de hilos debe ser un número entero positivo",
+  "thread_count_too_big": "El número de hilos no puede superar 256",
+  "cancel": "Cancelar",
+  "download": "Descargar",
+  "browse": "Examinar",
+  "downloading": "Descargando recurso...",
+  "status-finished": "Descarga finalizada",
+  "failed": "Descarga fallida",
+  "completed": "Completado"
+}

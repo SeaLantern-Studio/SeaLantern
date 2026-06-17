@@ -3,6 +3,7 @@ import { ensureLocaleLoaded, setLocaleBundle } from "@language";
 import { normalizeAppError } from "@utils/appError";
 
 export async function loadLocaleBundle(locale: string): Promise<void> {
+  await ensureLocaleLoaded(locale);
   const bundle = await getLocaleBundle(locale);
   setLocaleBundle(bundle.locale, bundle.entries, bundle.available_locales);
 }

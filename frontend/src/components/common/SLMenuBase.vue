@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
+import { i18n } from "@language";
 
 interface MenuItem {
   id: string | number;
@@ -62,7 +63,7 @@ const handleItemClick = (item: MenuItem) => {
         </div>
       </template>
       <div v-if="items.length === 0" class="sl-menu-base-empty">
-        <slot name="empty">No menu items</slot>
+        <slot name="empty">{{ i18n.t("common.no_menu_items") }}</slot>
       </div>
     </div>
   </div>

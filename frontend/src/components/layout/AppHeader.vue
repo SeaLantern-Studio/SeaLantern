@@ -44,9 +44,7 @@ const primaryLanguages = computed(() => {
   const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
 
   return primaryCodes.map((code) => {
-    // 尝试从语言文件中获取 languageName
-    const translations = i18n.getTranslations();
-    const languageName = translations[code as keyof typeof translations]?.languageName;
+    const languageName = i18n.getLocaleDisplayName(code);
 
     // 如果有 languageName，直接使用；否则使用原来的标签键
     let label = "";
@@ -76,9 +74,7 @@ const otherLanguages = computed(() => {
   return allLocales
     .filter((code) => !primaryCodes.has(code))
     .map((code) => {
-      // 尝试从语言文件中获取 languageName
-      const translations = i18n.getTranslations();
-      const languageName = translations[code as keyof typeof translations]?.languageName;
+      const languageName = i18n.getLocaleDisplayName(code);
 
       // 如果有 languageName，直接使用；否则使用原来的标签键
       let label = "";

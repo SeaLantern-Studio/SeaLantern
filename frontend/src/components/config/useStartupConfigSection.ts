@@ -95,7 +95,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
         }
       }
     } catch (e: any) {
-      error.value = e?.toString() || "加载启动配置失败";
+      error.value = e?.toString() || i18n.t("config.startup_config_load_failed");
     } finally {
       loading.value = false;
     }
@@ -110,7 +110,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
         selectedJava.value = defaults.preferred_java_path || "";
       }
     } catch (e: any) {
-      error.value = e?.toString() || "加载 Java 列表失败";
+      error.value = e?.toString() || i18n.t("config.java_list_load_failed");
     } finally {
       javaLoading.value = false;
     }
@@ -128,7 +128,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
         selectedJava.value = preferredJava ? preferredJava.path : detected[0].path;
       }
     } catch (e: any) {
-      error.value = e?.toString() || "扫描 Java 失败";
+      error.value = e?.toString() || i18n.t("config.java_scan_failed");
     } finally {
       javaLoading.value = false;
     }
@@ -171,7 +171,7 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
         return;
       }
       launchDetail.value = null;
-      launchDetailError.value = e?.toString() || "加载真实启动详情失败";
+      launchDetailError.value = e?.toString() || i18n.t("config.startup_launch_detail_load_failed");
     } finally {
       if (currentToken === launchDetailRequestToken) {
         launchDetailLoading.value = false;
@@ -182,15 +182,15 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
   async function saveConfig() {
     if (!options.serverPath.value || saving.value) return;
     if (maxMemory.value < 128) {
-      error.value = "最大内存不能小于 128MB";
+      error.value = i18n.t("config.max_memory_too_small");
       return;
     }
     if (minMemory.value < 128) {
-      error.value = "最小内存不能小于 128MB";
+      error.value = i18n.t("config.min_memory_too_small");
       return;
     }
     if (minMemory.value > maxMemory.value) {
-      error.value = "最小内存不能大于最大内存";
+      error.value = i18n.t("config.min_memory_gt_max_memory");
       return;
     }
 
@@ -218,14 +218,14 @@ export function useStartupConfigSection(options: UseStartupConfigSectionOptions)
       if (options.runtimeKind.value === "local") {
         const serverId = options.serverId.value;
         if (!serverId) {
-          throw new Error("当前服务器缺少 ID，无法保存 Java 路径");
+          throw new Error(i18n.t("config.server_id_missing_for_java_path_save"));
         }
         await serverApi.updateServerJavaPath(serverId, selectedJava.value.trim());
       }
       options.onSaved?.(maxMemory.value, minMemory.value);
       void loadLaunchDetail();
     } catch (e: any) {
-      error.value = e?.toString() || "保存启动配置失败";
+      error.value = e?.toString() || i18n.t("config.startup_config_save_failed");
     } finally {
       saving.value = false;
     }

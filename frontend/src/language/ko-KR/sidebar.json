@@ -1,0 +1,8 @@
+{
+  "groups": {
+    "main": "일반",
+    "server": "서버",
+    "system": "시스템"
+  },
+  "collapse_btn": "사이드바 접기"
+}
