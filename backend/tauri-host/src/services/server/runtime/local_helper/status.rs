@@ -155,11 +155,13 @@ mod tests {
     use crate::services::server::runtime::i18n::runtime_t;
     use crate::services::server::runtime::local_helper::LocalRuntimeState;
 
+    const INVALID_PID: u32 = u32::MAX;
+
     fn sample_state() -> LocalRuntimeState {
         LocalRuntimeState {
             server_id: "local-status".to_string(),
             helper_pid: u32::MAX,
-            child_pid: Some(42),
+            child_pid: Some(INVALID_PID),
             control_port: Some(25570),
             auth_token: "token".to_string(),
             running: true,
@@ -172,11 +174,14 @@ mod tests {
 
     #[test]
     fn fallback_snapshot_from_state_file_reports_running_child_when_helper_is_unavailable() {
-        let snapshot =
-            fallback_snapshot_from_state_file_with(&sample_state(), |pid| pid == 42, false);
+        let snapshot = fallback_snapshot_from_state_file_with(
+            &sample_state(),
+            |pid| pid == INVALID_PID,
+            false,
+        );
 
         assert!(snapshot.running);
-        assert_eq!(snapshot.pid, Some(42));
+        assert_eq!(snapshot.pid, Some(INVALID_PID));
         assert_eq!(snapshot.exit_code, None);
         assert_eq!(
             snapshot.detail_message,
