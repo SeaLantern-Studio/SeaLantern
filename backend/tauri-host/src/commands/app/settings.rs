@@ -1,6 +1,7 @@
 use crate::models::settings::{AppSettings, PartialSettings, TextColorOverrides};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use crate::models::settings::{WINDOW_EFFECT_AUTO, WINDOW_EFFECT_OFF};
+use crate::services::data_dir::{DataDirChangeResult, DataDirStatus};
 use crate::services::global;
 use font_kit::source::SystemSource;
 use serde::Deserialize;
@@ -393,10 +394,35 @@ pub struct PluginCommands {
     pub blocked: Vec<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChangeDataDirRequest {
+    pub path: String,
+    #[serde(default)]
+    pub migrate_existing: bool,
+}
+
 #[tauri::command]
 /// 读取当前设置
 pub fn get_settings() -> AppSettings {
     global::settings_manager().get()
+}
+
+#[tauri::command]
+pub fn get_data_dir_status() -> DataDirStatus {
+    crate::services::data_dir::current_status()
+}
+
+#[tauri::command]
+pub fn initialize_data_dir(path: String) -> Result<DataDirChangeResult, String> {
+    crate::services::data_dir::initialize_data_dir_selection(std::path::Path::new(path.trim()))
+}
+
+#[tauri::command]
+pub fn change_data_dir(request: ChangeDataDirRequest) -> Result<DataDirChangeResult, String> {
+    crate::services::data_dir::switch_data_dir(
+        std::path::Path::new(request.path.trim()),
+        request.migrate_existing,
+    )
 }
 
 #[tauri::command]

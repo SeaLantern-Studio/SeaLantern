@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import AppLayout from "@components/layout/AppLayout.vue";
 import SplashScreen from "@components/splash/SplashScreen.vue";
+import DataDirectorySetupModal from "@components/common/DataDirectorySetupModal.vue";
 import UpdateModal from "@components/common/UpdateModal.vue";
 import TermsDialog from "@components/common/TermsDialog.vue";
 import SLContextMenu from "@components/common/SLContextMenu.vue";
@@ -15,21 +16,39 @@ const {
   showSplash,
   isInitializing,
   showTermsDialog,
+  showDataDirDialog,
   updateStore,
+  dataDirectory,
   initializeApp,
   handleAgreeTerms,
+  handleBrowseDataDir,
+  handleInitializeDataDir,
   handleSplashReady,
 } = useAppBootstrap();
+
+const bootstrapDataDirPath = ref("");
 
 useGlobalContextMenu();
 useTauriGlobalEvents();
 
 onMounted(async () => {
   await initializeApp();
+  bootstrapDataDirPath.value = dataDirectory.status.value?.recommended_data_dir || "";
 });
 
 function handleUpdateModalClose() {
   updateStore.hideUpdateModal();
+}
+
+async function handleBootstrapBrowse() {
+  const selected = await handleBrowseDataDir();
+  if (selected) {
+    bootstrapDataDirPath.value = selected;
+  }
+}
+
+async function handleBootstrapConfirm(path: string) {
+  await handleInitializeDataDir(path || bootstrapDataDirPath.value);
 }
 </script>
 
@@ -50,6 +69,16 @@ function handleUpdateModalClose() {
       :visible="showTermsDialog"
       @agree="handleAgreeTerms"
       @close="showTermsDialog = false"
+    />
+
+    <DataDirectorySetupModal
+      :visible="showDataDirDialog"
+      :recommended-path="bootstrapDataDirPath || dataDirectory.status.value?.recommended_data_dir || ''"
+      :busy="dataDirectory.isBusy.value"
+      :error="dataDirectory.error.value"
+      @browse="handleBootstrapBrowse"
+      @confirm="handleBootstrapConfirm"
+      @close="showDataDirDialog = false"
     />
 
     <PluginComponentRenderer />

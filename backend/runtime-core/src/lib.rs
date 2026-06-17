@@ -34,6 +34,7 @@ pub use logging::{
 };
 pub use panic_report::init_panic_hook;
 pub use path_utils::{
+    default_data_dir_base, describe_app_data_resolution, get_app_data_locator_path,
     find_executable_in_path, find_root_startup_file, find_root_startup_file_checked,
     get_app_data_dir, get_or_create_app_data_dir, get_or_create_app_data_dir_checked,
     is_windows_absolute_path, strip_path_prefix_for_compare, validate_file_name_only,

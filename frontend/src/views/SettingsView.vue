@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
+import DataDirectoryCard from "@components/views/settings/DataDirectoryCard.vue";
 import ServerDefaultsCard from "@components/views/settings/ServerDefaultsCard.vue";
 import NetworkSettingsCard from "@components/views/settings/NetworkSettingsCard.vue";
 import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue";
@@ -12,6 +13,7 @@ import { javaApi, type JavaInfo } from "@api/java";
 import { systemApi } from "@api/system";
 import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 import { i18n } from "@language";
+import { useDataDirectory } from "@composables/useDataDirectory";
 import { useGlobalMessage } from "@composables/useMessage";
 import { useSettingsStore } from "@stores/settingsStore";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
@@ -27,11 +29,13 @@ import {
 
 const { success: globalSuccess } = useGlobalMessage();
 const settingsStore = useSettingsStore();
+const dataDirectory = useDataDirectory();
 
 const maxMem = ref("2048");
 const minMem = ref("512");
 const port = ref("25565");
 const defaultRunPath = ref("");
+const dataDirDraft = ref("");
 const defaultJvmArgsText = ref("");
 const defaultJvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
 const defaultCpuPolicy = ref<CpuPolicyConfig>(createDefaultCpuPolicy());
@@ -77,6 +81,24 @@ const showResetConfirm = settingsDraft.showResetConfirm;
 const clearError = settingsDraft.clearError;
 const markChanged = settingsDraft.markChanged;
 const resetSettings = settingsDraft.resetSettings;
+
+let lastResolvedDataDir = "";
+
+watch(
+  () => settingsStore.dataDirStatus?.current_data_dir || "",
+  (currentPath) => {
+    if (!currentPath) {
+      return;
+    }
+
+    if (!dataDirDraft.value || dataDirDraft.value === lastResolvedDataDir) {
+      dataDirDraft.value = currentPath;
+    }
+
+    lastResolvedDataDir = currentPath;
+  },
+  { immediate: true },
+);
 
 type CloseAction = "ask" | "minimize" | "close";
 
@@ -138,6 +160,27 @@ async function handleBrowseRunPath() {
     markChanged();
   }
 }
+
+async function handleBrowseDataDir() {
+  const selected = await dataDirectory.browseFolder();
+  if (selected) {
+    dataDirDraft.value = selected;
+  }
+}
+
+async function handleChangeDataDir(path: string) {
+  await dataDirectory.change(path, true);
+  dataDirDraft.value = settingsStore.dataDirStatus?.current_data_dir || path;
+}
+
+function handleDataDirDraftUpdate(value: string) {
+  dataDirDraft.value = value;
+}
+
+async function handleRefreshDataDir() {
+  const status = await dataDirectory.refreshStatus();
+  dataDirDraft.value = status.current_data_dir;
+}
 </script>
 
 <template>
@@ -159,6 +202,18 @@ async function handleBrowseRunPath() {
         v-model:autoAcceptEula="settings.auto_accept_eula"
         v-model:closeAction="settings.close_action as CloseAction"
         @change="markChanged"
+      />
+
+      <DataDirectoryCard
+        :status="settingsStore.dataDirStatus"
+        :path-draft="dataDirDraft"
+        :busy="dataDirectory.isBusy.value"
+        :error="dataDirectory.error.value"
+        :info-message="dataDirectory.infoMessage.value"
+        @update:path-draft="handleDataDirDraftUpdate"
+        @browse="handleBrowseDataDir"
+        @refresh="handleRefreshDataDir"
+        @change="handleChangeDataDir"
       />
 
       <ServerDefaultsCard

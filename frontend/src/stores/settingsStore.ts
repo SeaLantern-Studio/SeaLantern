@@ -3,6 +3,8 @@ import { ref, computed, toRaw } from "vue";
 import {
   settingsApi,
   type AppSettings,
+  type DataDirChangeResult,
+  type DataDirStatus,
   type ImportPersonalizationResult,
   type PartialSettings,
   type SettingsGroup,
@@ -133,6 +135,7 @@ const defaultSettings: AppSettings = {
 
 export const useSettingsStore = defineStore("settings", () => {
   const settings = ref<AppSettings>(defaultSettings);
+  const dataDirStatus = ref<DataDirStatus | null>(null);
   const isLoaded = ref(false);
   const isLoading = ref(false);
   const loadError = ref<string | null>(null);
@@ -227,7 +230,11 @@ export const useSettingsStore = defineStore("settings", () => {
     await loadSettings();
   }
 
-  async function loadSettings(): Promise<void> {
+  async function loadSettings(forceReload = false): Promise<void> {
+    if (isLoaded.value && !forceReload) {
+      return;
+    }
+
     if (loadPromise) {
       return loadPromise;
     }
@@ -239,6 +246,7 @@ export const useSettingsStore = defineStore("settings", () => {
       try {
         const loadedSettings = await settingsApi.get();
         syncSettings(loadedSettings);
+        dataDirStatus.value = await settingsApi.getDataDirStatus();
       } catch (e) {
         console.error("Failed to load settings:", e);
         loadError.value = e instanceof Error ? e.message : String(e);
@@ -250,6 +258,29 @@ export const useSettingsStore = defineStore("settings", () => {
     })();
 
     return loadPromise;
+  }
+
+  async function refreshDataDirStatus(): Promise<DataDirStatus> {
+    const status = await settingsApi.getDataDirStatus();
+    dataDirStatus.value = status;
+    return status;
+  }
+
+  async function initializeDataDir(path: string): Promise<DataDirChangeResult> {
+    const result = await settingsApi.initializeDataDir(path);
+    dataDirStatus.value = result.status;
+    await loadSettings(true);
+    return result;
+  }
+
+  async function changeDataDir(
+    path: string,
+    migrateExisting = true,
+  ): Promise<DataDirChangeResult> {
+    const result = await settingsApi.changeDataDir(path, migrateExisting);
+    dataDirStatus.value = result.status;
+    await loadSettings(true);
+    return result;
   }
 
   async function saveSettings(newSettings: AppSettings): Promise<void> {
@@ -326,6 +357,7 @@ export const useSettingsStore = defineStore("settings", () => {
 
   return {
     settings,
+    dataDirStatus,
     isLoaded,
     isLoading,
     loadError,
@@ -344,6 +376,9 @@ export const useSettingsStore = defineStore("settings", () => {
     saveSettings,
     saveSettingsWithDiff,
     updatePartial,
+    refreshDataDirStatus,
+    initializeDataDir,
+    changeDataDir,
     setLanguage,
     setCloseAction,
     resetSettings,

@@ -305,6 +305,22 @@ impl ServerManager {
             .map_err(|_| "data_dir lock poisoned".to_string())
     }
 
+    pub fn reload_from_data_dir(&self, data_dir: &str) -> Result<Vec<ServerInstance>, String> {
+        let servers = load_servers_for_bootstrap(data_dir)?;
+        {
+            let mut current = self.lock_servers()?;
+            *current = servers.clone();
+        }
+        {
+            let mut dir = self
+                .data_dir
+                .lock()
+                .map_err(|_| "data_dir lock poisoned".to_string())?;
+            *dir = data_dir.to_string();
+        }
+        Ok(servers)
+    }
+
     /// 新建一个服务器记录
     ///
     /// # Parameters
