@@ -37,7 +37,10 @@ impl SettingsManager {
             "new_checked",
             &format!("loaded settings agreed_to_terms={}", settings.agreed_to_terms),
         );
-        Ok(SettingsManager { settings: Mutex::new(settings), data_dir: Mutex::new(data_dir) })
+        Ok(SettingsManager {
+            settings: Mutex::new(settings),
+            data_dir: Mutex::new(data_dir),
+        })
     }
 
     /// 读取当前完整设置

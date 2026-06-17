@@ -273,10 +273,7 @@ export const useSettingsStore = defineStore("settings", () => {
     return result;
   }
 
-  async function changeDataDir(
-    path: string,
-    migrateExisting = true,
-  ): Promise<DataDirChangeResult> {
+  async function changeDataDir(path: string, migrateExisting = true): Promise<DataDirChangeResult> {
     const result = await settingsApi.changeDataDir(path, migrateExisting);
     dataDirStatus.value = result.status;
     await loadSettings(true);

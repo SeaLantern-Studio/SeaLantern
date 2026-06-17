@@ -57,7 +57,7 @@ pub fn default_data_dir_base() -> PathBuf {
         if let Some(home_dir) = dirs_next::home_dir() {
             return home_dir.join(APP_HIDDEN_DIRECTORY_NAME);
         }
-        return PathBuf::from(".");
+        PathBuf::from(".")
     }
 
     #[cfg(target_os = "macos")]
@@ -71,7 +71,7 @@ pub fn default_data_dir_base() -> PathBuf {
                 .join("Application Support")
                 .join(APP_DIRECTORY_NAME);
         }
-        return PathBuf::from(".");
+        PathBuf::from(".")
     }
 
     #[cfg(target_os = "linux")]
@@ -82,7 +82,7 @@ pub fn default_data_dir_base() -> PathBuf {
         if let Some(home_dir) = dirs_next::home_dir() {
             return home_dir.join(APP_HIDDEN_DIRECTORY_NAME);
         }
-        return PathBuf::from(".");
+        PathBuf::from(".")
     }
 }
 
@@ -96,10 +96,7 @@ fn resolve_portable_exe_dir() -> Option<PathBuf> {
     crate::log_trace_ctx(
         "runtime.path",
         "resolve_portable_exe_dir",
-        &format!(
-            "[utils.path] action=resolve_portable_exe_dir path={}",
-            exe_dir.display()
-        ),
+        &format!("[utils.path] action=resolve_portable_exe_dir path={}", exe_dir.display()),
     );
     Some(exe_dir)
 }
@@ -164,10 +161,7 @@ fn resolve_app_data_dir_internal() -> AppDataResolution {
                 path.display()
             ),
         );
-        return AppDataResolution {
-            path,
-            source: "docker".to_string(),
-        };
+        return AppDataResolution { path, source: "docker".to_string() };
     }
 
     let locator_path = get_app_data_locator_path();

@@ -30,7 +30,10 @@ export function useDataDirectory() {
   }
 
   async function refreshDependentViews() {
-    const results = await Promise.allSettled([pluginStore.loadPlugins(), serverStore.refreshList()]);
+    const results = await Promise.allSettled([
+      pluginStore.loadPlugins(),
+      serverStore.refreshList(),
+    ]);
     for (const result of results) {
       if (result.status === "rejected") {
         console.warn("Failed to refresh state after data directory change:", result.reason);

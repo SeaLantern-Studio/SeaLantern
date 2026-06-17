@@ -2,8 +2,8 @@
 //!
 //! - 按领域导出子模块：`server` / `download` / `online`；
 //! - 顶层仅保留少量横切模块：`global`、`i18n`、`panic_report` 等。
-pub mod download;
 pub mod data_dir;
+pub mod download;
 pub mod global;
 pub mod i18n;
 pub mod java_detector;

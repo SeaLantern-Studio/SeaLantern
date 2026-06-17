@@ -64,8 +64,9 @@ pub fn current_status() -> DataDirStatus {
 pub fn persist_locator(target_dir: &Path) -> Result<(), String> {
     let locator = locator_path();
     if let Some(parent) = locator.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create locator directory '{}': {}", parent.display(), e))?;
+        std::fs::create_dir_all(parent).map_err(|e| {
+            format!("Failed to create locator directory '{}': {}", parent.display(), e)
+        })?;
     }
 
     let record = DataDirLocatorRecord {
@@ -74,8 +75,9 @@ pub fn persist_locator(target_dir: &Path) -> Result<(), String> {
     };
     let json = serde_json::to_string_pretty(&record)
         .map_err(|e| format!("Failed to serialize data directory locator: {}", e))?;
-    std::fs::write(&locator, json)
-        .map_err(|e| format!("Failed to write data directory locator '{}': {}", locator.display(), e))
+    std::fs::write(&locator, json).map_err(|e| {
+        format!("Failed to write data directory locator '{}': {}", locator.display(), e)
+    })
 }
 
 fn validate_target_dir(target_dir: &Path) -> Result<(), String> {
@@ -90,8 +92,9 @@ fn validate_target_dir(target_dir: &Path) -> Result<(), String> {
         ));
     }
 
-    std::fs::create_dir_all(target_dir)
-        .map_err(|e| format!("Failed to create data directory '{}': {}", target_dir.display(), e))?;
+    std::fs::create_dir_all(target_dir).map_err(|e| {
+        format!("Failed to create data directory '{}': {}", target_dir.display(), e)
+    })?;
     Ok(())
 }
 
@@ -116,12 +119,7 @@ fn copy_entry_if_exists(
             })?;
         }
         std::fs::copy(&source, &target).map_err(|e| {
-            format!(
-                "Failed to copy '{}' to '{}': {}",
-                source.display(),
-                target.display(),
-                e
-            )
+            format!("Failed to copy '{}' to '{}': {}", source.display(), target.display(), e)
         })?;
     }
 
@@ -164,16 +162,16 @@ fn copy_dir_recursive(source: &Path, target: &Path) -> Result<(), String> {
 fn reload_plugin_manager(target_dir: &Path) -> Result<(), String> {
     let manager = global::plugin_manager();
     let mut plugin_manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-    plugin_manager.reload_roots(
-        target_dir.join("plugins"),
-        target_dir.join("plugin_data"),
-    )?;
+    plugin_manager.reload_roots(target_dir.join("plugins"), target_dir.join("plugin_data"))?;
     plugin_manager.scan_plugins()?;
     plugin_manager.auto_enable_plugins_checked()?;
     Ok(())
 }
 
-pub fn switch_data_dir(target_dir: &Path, migrate_existing: bool) -> Result<DataDirChangeResult, String> {
+pub fn switch_data_dir(
+    target_dir: &Path,
+    migrate_existing: bool,
+) -> Result<DataDirChangeResult, String> {
     validate_target_dir(target_dir)?;
 
     let source_dir = current_data_dir();
@@ -209,10 +207,7 @@ pub fn switch_data_dir(target_dir: &Path, migrate_existing: bool) -> Result<Data
             migrated_entries.join(",")
         ),
     );
-    Ok(DataDirChangeResult {
-        status,
-        migrated_entries,
-    })
+    Ok(DataDirChangeResult { status, migrated_entries })
 }
 
 pub fn initialize_data_dir_selection(target_dir: &Path) -> Result<DataDirChangeResult, String> {
@@ -230,7 +225,7 @@ pub fn ensure_locator_for_current_data_dir() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{copy_entry_if_exists, copy_dir_recursive};
+    use super::{copy_dir_recursive, copy_entry_if_exists};
 
     #[test]
     fn copy_entry_if_exists_copies_files_and_records_migration() {
@@ -276,8 +271,13 @@ mod tests {
 
         assert_eq!(migrated_entries, vec!["plugin_data".to_string()]);
         assert_eq!(
-            std::fs::read_to_string(target_root.join("plugin_data").join("demo-plugin").join("storage.json"))
-                .expect("nested target file should be readable"),
+            std::fs::read_to_string(
+                target_root
+                    .join("plugin_data")
+                    .join("demo-plugin")
+                    .join("storage.json")
+            )
+            .expect("nested target file should be readable"),
             "{\"ok\":true}"
         );
     }

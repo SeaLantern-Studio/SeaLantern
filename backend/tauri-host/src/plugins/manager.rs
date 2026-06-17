@@ -307,10 +307,7 @@ mod tests {
         let api_registry = manager.get_api_registry();
 
         manager
-            .reload_roots(
-                temp_dir.path().join("plugins-b"),
-                temp_dir.path().join("plugin-data-b"),
-            )
+            .reload_roots(temp_dir.path().join("plugins-b"), temp_dir.path().join("plugin-data-b"))
             .expect("reload_roots should succeed");
 
         assert!(Arc::ptr_eq(&shared_runtimes, &manager.get_shared_runtimes()));
