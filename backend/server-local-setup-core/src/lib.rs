@@ -165,7 +165,12 @@ pub fn resolve_existing_server_requested_startup(
     custom_command: Option<&str>,
     executable_path: Option<&str>,
 ) -> Result<Option<ExistingServerStartupSelection>, ResolveExistingServerStartupError> {
-    if requested_startup_mode.eq_ignore_ascii_case("custom") {
+    let normalized_startup_mode = trim_optional_text(Some(requested_startup_mode));
+
+    if normalized_startup_mode
+        .as_deref()
+        .is_some_and(|mode| mode.eq_ignore_ascii_case("custom"))
+    {
         let command = trim_optional_text(custom_command)
             .ok_or(ResolveExistingServerStartupError::CustomCommandEmpty)?;
         return Ok(Some(ExistingServerStartupSelection {
@@ -1642,7 +1647,7 @@ mod tests {
     #[test]
     fn resolve_existing_server_requested_startup_handles_custom_and_explicit_executable() {
         let custom =
-            resolve_existing_server_requested_startup("custom", Some("  launch-paper  "), None)
+            resolve_existing_server_requested_startup(" custom ", Some("  launch-paper  "), None)
                 .expect("custom startup should resolve");
 
         assert_eq!(
