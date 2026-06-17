@@ -58,11 +58,14 @@ fn collect_descendant_pids_unix(root_pid: u32) -> Vec<u32> {
 
 #[cfg(unix)]
 fn is_process_alive_unix(pid: u32) -> bool {
-    Command::new("kill")
-        .args(["-0", &pid.to_string()])
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
+    if pid == 0 || pid > libc::pid_t::MAX as u32 {
+        return false;
+    }
+
+    // Use libc directly so out-of-range values are rejected instead of being
+    // reinterpreted by a shell command as special negative-PID process groups.
+    let result = unsafe { libc::kill(pid as libc::pid_t, 0) };
+    result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
 }
 
 #[cfg(unix)]
@@ -181,4 +184,17 @@ pub(super) fn force_kill_process_tree(child: &mut Child) -> Result<(), String> {
         .wait()
         .map(|_| ())
         .map_err(|e| manager_t1("server.manager.process_wait_failed", e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(unix)]
+    use super::is_process_alive_unix;
+
+    #[cfg(unix)]
+    #[test]
+    fn unix_process_probe_rejects_out_of_range_pid_values() {
+        assert!(!is_process_alive_unix(u32::MAX));
+        assert!(!is_process_alive_unix(0));
+    }
 }
