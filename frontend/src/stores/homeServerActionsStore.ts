@@ -7,6 +7,21 @@ import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import type { ServerInstance } from "@type/server";
 
+function getHomeServerStatusText(status: string | undefined): string {
+  switch (status) {
+    case "Running":
+      return i18n.t("home.running");
+    case "Starting":
+      return i18n.t("home.starting");
+    case "Stopping":
+      return i18n.t("home.stopping");
+    case "Error":
+      return i18n.t("home.error");
+    default:
+      return i18n.t("home.stopped");
+  }
+}
+
 export const useHomeServerActionsStore = defineStore("homeServerActions", () => {
   const actionLoading = ref<Record<string, boolean>>({});
   const actionError = ref<string | null>(null);
@@ -224,21 +239,6 @@ export const useHomeServerActionsStore = defineStore("homeServerActions", () => 
     }
   }
 
-  function getStatusText(status: string | undefined): string {
-    switch (status) {
-      case "Running":
-        return i18n.t("home.running");
-      case "Starting":
-        return i18n.t("home.starting");
-      case "Stopping":
-        return i18n.t("home.stopping");
-      case "Error":
-        return i18n.t("home.error");
-      default:
-        return i18n.t("home.stopped");
-    }
-  }
-
   return {
     actionLoading,
     actionError,
@@ -268,6 +268,6 @@ export const useHomeServerActionsStore = defineStore("homeServerActions", () => 
     selectNewPath,
     validateNewPath,
     confirmChangePath,
-    getStatusText,
+    getStatusText: getHomeServerStatusText,
   };
 });

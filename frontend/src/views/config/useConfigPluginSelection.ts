@@ -14,6 +14,10 @@ function shouldLoadConfigFiles(plugin: m_PluginInfo) {
 export function useConfigPluginSelection(options: UseConfigPluginSelectionOptions) {
   const selectedPlugin = ref<m_PluginInfo | null>(null);
 
+  function clearSelection() {
+    selectedPlugin.value = null;
+  }
+
   function clearSelectedPlugin(pluginFileName: string) {
     if (selectedPlugin.value?.file_name === pluginFileName) {
       selectedPlugin.value = null;
@@ -75,6 +79,7 @@ export function useConfigPluginSelection(options: UseConfigPluginSelectionOption
 
   return {
     selectedPlugin,
+    clearSelection,
     clearSelectedPlugin,
     handlePluginClick,
   };

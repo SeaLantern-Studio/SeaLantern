@@ -39,6 +39,12 @@ interface UseConfigPropertiesEditorOptions {
   updateCurrentServerPort: (port: string) => void;
 }
 
+function getTranslatedPropertyDescription(key: string) {
+  const translationKey = `config.properties.${key}`;
+  const translated = i18n.t(translationKey);
+  return translated === translationKey ? "" : translated;
+}
+
 export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOptions) {
   const entries = ref<ConfigEntryType[]>([]);
   const editValues = ref<Record<string, string>>({});
@@ -136,12 +142,6 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
   function bindCompareContext(context: CompareContext) {
     compareContext.value = context;
-  }
-
-  function getTranslatedPropertyDescription(key: string) {
-    const translationKey = `config.properties.${key}`;
-    const translated = i18n.t(translationKey);
-    return translated === translationKey ? "" : translated;
   }
 
   async function applyParsedSourceState(

@@ -88,7 +88,7 @@ function getLocaleDirs() {
   return fs
     .readdirSync(rootDir)
     .filter((entry) => fs.statSync(path.join(rootDir, entry)).isDirectory())
-    .sort((a, b) => a.localeCompare(b));
+    .toSorted((a, b) => a.localeCompare(b));
 }
 
 function getGroupFiles(locale) {
@@ -96,13 +96,15 @@ function getGroupFiles(locale) {
   return fs
     .readdirSync(localeDir)
     .filter((file) => file.endsWith(".json") && file !== "language.json")
-    .sort((a, b) => a.localeCompare(b));
+    .toSorted((a, b) => a.localeCompare(b));
 }
 
 const locales = getLocaleDirs();
 const baseFiles = getGroupFiles(baseLocale);
 const zhFiles = new Set(getGroupFiles(fallbackLocale));
-const groupFiles = Array.from(new Set([...baseFiles, ...zhFiles])).sort((a, b) => a.localeCompare(b));
+const groupFiles = Array.from(new Set([...baseFiles, ...zhFiles])).toSorted((a, b) =>
+  a.localeCompare(b),
+);
 
 for (const locale of locales) {
   const localeDir = path.join(rootDir, locale);

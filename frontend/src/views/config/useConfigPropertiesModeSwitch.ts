@@ -22,6 +22,10 @@ interface UseConfigPropertiesModeSwitchOptions {
   getCompareContext: () => ModeSwitchCompareContext | null;
 }
 
+function parseSourceToVisualState(sourceText: string) {
+  return configApi.parseServerPropertiesSource(sourceText);
+}
+
 export function useConfigPropertiesModeSwitch(options: UseConfigPropertiesModeSwitchOptions) {
   const modeSwitching = ref(false);
   const visualDraftDirty = ref(false);
@@ -32,11 +36,6 @@ export function useConfigPropertiesModeSwitch(options: UseConfigPropertiesModeSw
 
   function clearSourceParseError() {
     options.sourceParseError.value = null;
-  }
-
-  function applyParsedSourceToVisualState(sourceText: string) {
-    const parsed = configApi.parseServerPropertiesSource(sourceText);
-    return parsed;
   }
 
   async function handleEditorModeChange(mode: string | null) {
@@ -69,7 +68,7 @@ export function useConfigPropertiesModeSwitch(options: UseConfigPropertiesModeSw
         return null;
       }
 
-      const parsed = await applyParsedSourceToVisualState(options.sourceDraftText.value);
+      const parsed = await parseSourceToVisualState(options.sourceDraftText.value);
       const compareContext = options.getCompareContext();
       if (compareContext?.compareMode.value) {
         await compareContext.applyCompareTargetSourceDraftToVisualState(

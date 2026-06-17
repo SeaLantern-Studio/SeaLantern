@@ -24,6 +24,22 @@ interface LogFilterOption {
 const ALL_LOG_LEVELS = "__all_levels__";
 const ALL_LOG_MODULES = "__all_modules__";
 
+function formatUptime(totalSeconds: number): string {
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const parts: string[] = [];
+
+  if (days > 0) {
+    parts.push(`${days}d`);
+  }
+  if (hours > 0 || days > 0) {
+    parts.push(`${hours}h`);
+  }
+  parts.push(`${minutes}m`);
+  return parts.join(" ");
+}
+
 export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const globalMessage = useGlobalMessage();
   const settingsStore = useSettingsStore();
@@ -44,14 +60,14 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const selectedLogModule = ref(ALL_LOG_MODULES);
 
   const logLevelOptions = computed<LogFilterOption[]>(() => {
-    const levels = Array.from(new Set(logs.value.map((entry) => entry.level))).sort();
+    const levels = Array.from(new Set(logs.value.map((entry) => entry.level))).toSorted();
     return [
       { label: i18n.t("developer.all_log_levels"), value: ALL_LOG_LEVELS },
       ...levels.map((level) => ({ label: level, value: level })),
     ];
   });
   const logModuleOptions = computed<LogFilterOption[]>(() => {
-    const modules = Array.from(new Set(logs.value.map((entry) => entry.module))).sort();
+    const modules = Array.from(new Set(logs.value.map((entry) => entry.module))).toSorted();
     return [
       { label: i18n.t("developer.all_log_modules"), value: ALL_LOG_MODULES },
       ...modules.map((module) => ({ label: module, value: module })),
@@ -91,22 +107,6 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     const unitIndex = Math.min(Math.floor(Math.log(value) / Math.log(base)), units.length - 1);
     const scaled = value / Math.pow(base, unitIndex);
     return `${scaled.toFixed(memoryDisplayPrecision.value)} ${units[unitIndex]}`;
-  }
-
-  function formatUptime(totalSeconds: number): string {
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const parts: string[] = [];
-
-    if (days > 0) {
-      parts.push(`${days}d`);
-    }
-    if (hours > 0 || days > 0) {
-      parts.push(`${hours}h`);
-    }
-    parts.push(`${minutes}m`);
-    return parts.join(" ");
   }
 
   const systemSummary = computed(() => {

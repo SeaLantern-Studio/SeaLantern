@@ -8,11 +8,7 @@ const testing = ref(false);
 const showDetail = ref(false);
 const result = ref<IPv6TestResult | null>(null);
 
-function translateByKey(
-  key?: string,
-  args?: Record<string, string>,
-  fallback = "",
-): string {
+function translateByKey(key?: string, args?: Record<string, string>, fallback = ""): string {
   if (!key) {
     return fallback;
   }

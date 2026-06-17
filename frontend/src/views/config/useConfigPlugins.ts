@@ -3,6 +3,10 @@ import { m_pluginApi, type m_PluginConfigFile, type m_PluginInfo } from "@api/mc
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import type { ServerInstance } from "@type/server";
+import {
+  getPluginUnsupportedReason,
+  serverSupportsPluginExtensions,
+} from "@utils/serverExtensionSupport";
 import { useConfigPluginSelection } from "@views/config/useConfigPluginSelection";
 
 interface UseConfigPluginsOptions {
@@ -20,6 +24,8 @@ function formatFileSize(bytes: number) {
 export function useConfigPlugins(options: UseConfigPluginsOptions) {
   const plugins = ref<m_PluginInfo[]>([]);
   const pluginsLoading = ref(false);
+  const pluginsSupported = ref(true);
+  const pluginsUnsupportedReason = ref<string | null>(null);
   const pluginRowElements = ref<Map<string, HTMLElement>>(new Map());
   const selection = useConfigPluginSelection({
     currentServerId: options.currentServerId,
@@ -33,8 +39,30 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     pluginRowElements.value.delete(pluginFileName);
   }
 
+  function syncPluginSupportState() {
+    const server = options.getCurrentServer();
+    if (!server) {
+      pluginsSupported.value = true;
+      pluginsUnsupportedReason.value = null;
+      return true;
+    }
+
+    const supported = serverSupportsPluginExtensions(server);
+    pluginsSupported.value = supported;
+    pluginsUnsupportedReason.value = supported ? null : getPluginUnsupportedReason(server);
+    if (!supported) {
+      plugins.value = [];
+      selection.clearSelection();
+    }
+    return supported;
+  }
+
   async function loadPlugins() {
     if (!options.currentServerId.value) return;
+    if (!syncPluginSupportState()) {
+      options.setError(null);
+      return;
+    }
 
     pluginsLoading.value = true;
     options.setError(null);
@@ -62,6 +90,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
 
   async function togglePlugin(plugin: m_PluginInfo) {
     if (!options.currentServerId.value) return;
+    if (!syncPluginSupportState()) return;
 
     if (!plugin.file_name.endsWith(".jar") && !plugin.file_name.endsWith(".jar.disabled")) {
       alert(i18n.t("config.not_jar_file", { file: plugin.file_name }));
@@ -83,6 +112,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
   async function deletePlugin(plugin: m_PluginInfo) {
     const activeServerId = options.currentServerId.value;
     if (!activeServerId) return;
+    if (!syncPluginSupportState()) return;
 
     try {
       const pluginElement = pluginRowElements.value.get(plugin.file_name);
@@ -109,6 +139,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
 
   async function reloadPlugins() {
     if (!options.currentServerId.value) return;
+    if (!syncPluginSupportState()) return;
     try {
       await m_pluginApi.m_reloadPlugins(options.currentServerId.value);
       await loadPlugins();
@@ -120,6 +151,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
   async function openPluginFolder(plugin: m_PluginInfo) {
     const server = options.getCurrentServer();
     if (!server) return;
+    if (!syncPluginSupportState()) return;
 
     const basePath = server.path.replace(/[/\\]$/, "");
     const separator = basePath.includes("\\") ? "\\" : "/";
@@ -143,6 +175,8 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
   return {
     plugins,
     pluginsLoading,
+    pluginsSupported,
+    pluginsUnsupportedReason,
     selectedPlugin: selection.selectedPlugin,
     loadPlugins,
     reloadPlugins,

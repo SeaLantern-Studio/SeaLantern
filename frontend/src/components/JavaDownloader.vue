@@ -70,7 +70,9 @@
               <CheckCircle :size="16" />
               <span>{{ i18n.t("settings.java_install_success").replace(":", "") }}</span>
             </div>
-            <SLButton size="sm" variant="ghost" @click="resetState">{{ i18n.t("common.ok") }}</SLButton>
+            <SLButton size="sm" variant="ghost" @click="resetState">{{
+              i18n.t("common.ok")
+            }}</SLButton>
           </div>
         </template>
       </div>

@@ -21,12 +21,32 @@ export type LocaleMetadata = {
 
 type LocaleModule = { default: unknown };
 type LocaleMetadataModule = { default: LocaleMetadata };
+type LocaleModuleLoader = () => Promise<LocaleModule>;
 
-const localeModules = import.meta.glob<LocaleModule>("./*/*.json", { eager: true });
+const DEFAULT_SYNC_LOCALE = "zh-CN";
+const localeMetadataModules = import.meta.glob<LocaleMetadataModule>("./*/language.json", {
+  eager: true,
+});
+const localeGroupModuleLoaders = import.meta.glob<LocaleModule>("./*/*.json");
+const defaultLocaleModules = import.meta.glob<LocaleModule>("./zh-CN/*.json", {
+  eager: true,
+});
 const builtInLocaleMetadata: Record<string, LocaleMetadata> = {};
 const builtInLocaleGroups: Record<string, Record<string, TranslationValue>> = {};
+const builtInLocaleGroupLoaders: Record<string, Record<string, LocaleModuleLoader>> = {};
+const localeLoadPromises: Record<string, Promise<boolean> | undefined> = {};
 
-for (const [path, module] of Object.entries(localeModules)) {
+for (const [path, module] of Object.entries(localeMetadataModules)) {
+  const match = path.match(/^\.\/([^/]+)\/language\.json$/);
+  if (!match) {
+    continue;
+  }
+
+  const [, locale] = match;
+  builtInLocaleMetadata[locale] = module.default;
+}
+
+for (const [path, loader] of Object.entries(localeGroupModuleLoaders)) {
   const match = path.match(/^\.\/([^/]+)\/([^/]+)\.json$/);
   if (!match) {
     continue;
@@ -34,7 +54,23 @@ for (const [path, module] of Object.entries(localeModules)) {
 
   const [, locale, group] = match;
   if (group === "language") {
-    builtInLocaleMetadata[locale] = (module as LocaleMetadataModule).default;
+    continue;
+  }
+
+  if (!builtInLocaleGroupLoaders[locale]) {
+    builtInLocaleGroupLoaders[locale] = {};
+  }
+  builtInLocaleGroupLoaders[locale][group] = loader;
+}
+
+for (const [path, module] of Object.entries(defaultLocaleModules)) {
+  const match = path.match(/^\.\/([^/]+)\/([^/]+)\.json$/);
+  if (!match) {
+    continue;
+  }
+
+  const [, locale, group] = match;
+  if (group === "language") {
     continue;
   }
 
@@ -46,14 +82,16 @@ for (const [path, module] of Object.entries(localeModules)) {
 
 const translations: Record<string, LanguageFile> = {};
 const supportedLocales: string[] = Array.from(
-  new Set([...Object.keys(builtInLocaleGroups), ...Object.keys(builtInLocaleMetadata)]),
-).sort((a, b) => a.localeCompare(b));
+  new Set([
+    ...Object.keys(builtInLocaleGroupLoaders),
+    ...Object.keys(builtInLocaleGroups),
+    ...Object.keys(builtInLocaleMetadata),
+  ]),
+).toSorted((a, b) => a.localeCompare(b));
 
-for (const locale of Object.keys(builtInLocaleGroups)) {
-  const localeTranslations = buildLocaleTranslations(locale);
-  if (localeTranslations) {
-    translations[locale] = localeTranslations;
-  }
+const defaultLocaleTranslations = buildLocaleTranslations(DEFAULT_SYNC_LOCALE);
+if (defaultLocaleTranslations) {
+  translations[DEFAULT_SYNC_LOCALE] = defaultLocaleTranslations;
 }
 
 const backendFlatTranslations: Record<string, Record<string, string>> = {};
@@ -76,16 +114,27 @@ export async function ensureLocaleLoaded(locale: LocaleCode): Promise<boolean> {
     return true;
   }
 
-  const localeTranslations = buildLocaleTranslations(locale);
-  if (!localeTranslations) {
-    return false;
+  if (localeLoadPromises[locale]) {
+    return localeLoadPromises[locale];
   }
 
-  translations[locale] = localeTranslations;
-  if (!supportedLocales.includes(locale)) {
-    supportedLocales.push(locale);
-  }
-  return true;
+  localeLoadPromises[locale] = loadBuiltInLocaleTranslations(locale)
+    .then((localeTranslations) => {
+      if (!localeTranslations) {
+        return false;
+      }
+
+      translations[locale] = localeTranslations;
+      if (!supportedLocales.includes(locale)) {
+        supportedLocales.push(locale);
+      }
+      return true;
+    })
+    .finally(() => {
+      delete localeLoadPromises[locale];
+    });
+
+  return localeLoadPromises[locale]!;
 }
 
 export function setLocaleBundle(
@@ -231,7 +280,38 @@ function buildLocaleTranslations(locale: string): LanguageFile | undefined {
   return localeTranslations;
 }
 
-function resolveNestedValue(source: TranslationNode | undefined, keys: string[]): string | undefined {
+async function loadBuiltInLocaleTranslations(locale: string): Promise<LanguageFile | undefined> {
+  const loaders = builtInLocaleGroupLoaders[locale];
+  if (!loaders && !builtInLocaleGroups[locale]) {
+    return undefined;
+  }
+
+  const localeGroups = builtInLocaleGroups[locale] ?? (builtInLocaleGroups[locale] = {});
+  const missingGroups = Object.entries(loaders ?? {}).filter(([group]) => !(group in localeGroups));
+
+  if (missingGroups.length > 0) {
+    const loadedGroups = await Promise.all(
+      missingGroups.map(async ([group, loader]) => {
+        const module = await loader();
+        return {
+          group,
+          value: normalizeGroupValue(module.default),
+        };
+      }),
+    );
+
+    for (const { group, value } of loadedGroups) {
+      localeGroups[group] = value;
+    }
+  }
+
+  return buildLocaleTranslations(locale);
+}
+
+function resolveNestedValue(
+  source: TranslationNode | undefined,
+  keys: string[],
+): string | undefined {
   let current: TranslationValue | undefined = source;
   for (const key of keys) {
     if (!current || typeof current === "string") {
@@ -299,7 +379,9 @@ class I18n {
       for (const pluginMap of Object.values(pluginFlatTranslations)) {
         const currentLocaleValue = this.currentLocale.value;
         const val =
-          pluginMap[currentLocaleValue]?.[key] ?? pluginMap["en-US"]?.[key] ?? pluginMap["zh-CN"]?.[key];
+          pluginMap[currentLocaleValue]?.[key] ??
+          pluginMap["en-US"]?.[key] ??
+          pluginMap["zh-CN"]?.[key];
         if (val !== undefined) {
           resolved = val;
           break;
@@ -336,7 +418,10 @@ class I18n {
   }
 
   getLocaleMetadata(locale: string): LocaleMetadata | undefined {
-    return builtInLocaleMetadata[locale] ?? (pluginLocaleNames[locale] ? { language: pluginLocaleNames[locale] } : undefined);
+    return (
+      builtInLocaleMetadata[locale] ??
+      (pluginLocaleNames[locale] ? { language: pluginLocaleNames[locale] } : undefined)
+    );
   }
 
   getLocaleDisplayName(locale: string): string | undefined {

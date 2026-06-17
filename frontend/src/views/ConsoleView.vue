@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  defineAsyncComponent,
   ref,
   onMounted,
   onUnmounted,
@@ -15,7 +16,6 @@ import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
-import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useConsoleDisplaySettings } from "@composables/useConsoleDisplaySettings";
 import { useConsoleLogStream } from "@views/useConsoleLogStream";
 import { useConsoleServerStats } from "@views/useConsoleServerStats";
@@ -36,6 +36,8 @@ interface ConsoleOutputExpose {
   clear: () => void;
   getAllPlainText: () => string;
 }
+
+const ConsoleOutput = defineAsyncComponent(() => import("@components/console/ConsoleOutput.vue"));
 
 const commandInput = ref("");
 const consoleOutputRef = ref<ConsoleOutputExpose | null>(null);

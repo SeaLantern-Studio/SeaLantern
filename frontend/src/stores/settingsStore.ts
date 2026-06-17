@@ -41,6 +41,31 @@ function saveThemeCache(theme: string, fontSize: number): void {
   } catch (e) {}
 }
 
+function cloneSettingsSnapshot(source: AppSettings): AppSettings {
+  const plainSource = toRaw(source) as AppSettings;
+
+  if (typeof structuredClone === "function") {
+    try {
+      return structuredClone(plainSource);
+    } catch (error) {
+      console.warn("Failed to structuredClone settings, falling back to JSON clone.", error);
+    }
+  }
+  return JSON.parse(JSON.stringify(plainSource)) as AppSettings;
+}
+
+async function exportSettingsJson(): Promise<string> {
+  return settingsApi.exportJson();
+}
+
+async function getPersonalizationPackageSuggestedName(): Promise<string> {
+  return settingsApi.getPersonalizationPackageSuggestedName();
+}
+
+async function exportPersonalizationPackage(path: string): Promise<void> {
+  return settingsApi.exportPersonalizationPackage(path);
+}
+
 export function getInitialTheme(): string {
   const cache = getThemeCache();
   if (cache && cache.theme) {
@@ -133,16 +158,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const backgroundSize = computed(() => settings.value.background_size);
 
   function cloneSettings(source: AppSettings = settings.value): AppSettings {
-    const plainSource = toRaw(source) as AppSettings;
-
-    if (typeof structuredClone === "function") {
-      try {
-        return structuredClone(plainSource);
-      } catch (error) {
-        console.warn("Failed to structuredClone settings, falling back to JSON clone.", error);
-      }
-    }
-    return JSON.parse(JSON.stringify(plainSource)) as AppSettings;
+    return cloneSettingsSnapshot(source);
   }
 
   function syncSettings(nextSettings: AppSettings): void {
@@ -284,18 +300,6 @@ export const useSettingsStore = defineStore("settings", () => {
   ): Promise<AppSettings> {
     const importedSettings = await settingsApi.importJson(json);
     return replaceSettings(importedSettings, changedGroups);
-  }
-
-  async function exportSettingsJson(): Promise<string> {
-    return settingsApi.exportJson();
-  }
-
-  async function getPersonalizationPackageSuggestedName(): Promise<string> {
-    return settingsApi.getPersonalizationPackageSuggestedName();
-  }
-
-  async function exportPersonalizationPackage(path: string): Promise<void> {
-    return settingsApi.exportPersonalizationPackage(path);
   }
 
   async function importPersonalizationPackage(path: string): Promise<ImportPersonalizationResult> {

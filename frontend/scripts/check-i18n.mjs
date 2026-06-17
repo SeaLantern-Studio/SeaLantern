@@ -28,7 +28,10 @@ function flattenKeys(value, prefix = "") {
 
 function readLocale(locale) {
   const localeDir = path.join(rootDir, locale);
-  const files = fs.readdirSync(localeDir).filter((file) => file.endsWith(".json")).sort();
+  const files = fs
+    .readdirSync(localeDir)
+    .filter((file) => file.endsWith(".json"))
+    .toSorted();
   const groups = {};
 
   for (const file of files) {
@@ -45,11 +48,11 @@ function readLocale(locale) {
 const locales = fs
   .readdirSync(rootDir)
   .filter((entry) => fs.statSync(path.join(rootDir, entry)).isDirectory())
-  .sort((a, b) => a.localeCompare(b));
+  .toSorted((a, b) => a.localeCompare(b));
 
 const baseGroups = readLocale(baseLocale);
 const fallbackGroups = readLocale(fallbackLocale);
-const groupNames = Object.keys(baseGroups).sort((a, b) => a.localeCompare(b));
+const groupNames = Object.keys(baseGroups).toSorted((a, b) => a.localeCompare(b));
 
 let hasMissing = false;
 
@@ -73,7 +76,9 @@ for (const locale of locales) {
       continue;
     }
 
-    const missingKeys = [...expectedKeys].filter((key) => !currentKeys.has(key)).sort((a, b) => a.localeCompare(b));
+    const missingKeys = [...expectedKeys]
+      .filter((key) => !currentKeys.has(key))
+      .toSorted((a, b) => a.localeCompare(b));
     if (missingKeys.length > 0) {
       incompleteGroups.push(`${group} (${currentKeys.size}/${expectedKeys.size})`);
     }

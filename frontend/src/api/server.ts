@@ -81,6 +81,47 @@ function formatForceStopError(error: unknown): string {
   }
 }
 
+async function readSseStream(
+  reader: ReadableStreamDefaultReader<string>,
+  callback: (payload: ServerLogLineEvent) => void,
+  isDisposed: () => boolean,
+  buffer: string = "",
+): Promise<void> {
+  const { value, done } = await reader.read();
+  if (done || isDisposed()) {
+    return;
+  }
+
+  let nextBuffer = `${buffer}${value}`;
+  const frames = nextBuffer.split("\n\n");
+  nextBuffer = frames.pop() || "";
+
+  for (const frame of frames) {
+    const dataLines = frame
+      .split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trim());
+
+    if (dataLines.length === 0) {
+      continue;
+    }
+
+    const raw = dataLines.join("\n");
+    if (raw === "ping") {
+      continue;
+    }
+
+    try {
+      const data = JSON.parse(raw) as ServerLogLineEvent;
+      callback(data);
+    } catch (error) {
+      console.warn("[SSE] Failed to parse log event:", error);
+    }
+  }
+
+  await readSseStream(reader, callback, isDisposed, nextBuffer);
+}
+
 export interface StartupCandidateItem {
   id: string;
   mode: "starter" | "jar" | "bat" | "sh" | "ps1" | "custom";
@@ -466,9 +507,7 @@ export const serverApi = {
     });
   },
 
-  onStructuredLogEvent(
-    callback: (payload: ServerLogStructuredEvent) => void,
-  ): Promise<UnlistenFn> {
+  onStructuredLogEvent(callback: (payload: ServerLogStructuredEvent) => void): Promise<UnlistenFn> {
     if (isBrowserEnv()) {
       return Promise.reject(new Error("Structured log events are only available in Tauri mode"));
     }
@@ -531,47 +570,13 @@ export const serverApi = {
               }
 
               const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-              let buffer = "";
-
-              while (!disposed) {
-                const { value, done } = await reader.read();
-                if (done) {
-                  break;
-                }
-
-                buffer += value;
-                const frames = buffer.split("\n\n");
-                buffer = frames.pop() || "";
-
-                for (const frame of frames) {
-                  const dataLines = frame
-                    .split("\n")
-                    .filter((line) => line.startsWith("data:"))
-                    .map((line) => line.slice(5).trim());
-
-                  if (dataLines.length === 0) {
-                    continue;
-                  }
-
-                  const raw = dataLines.join("\n");
-                  if (raw === "ping") {
-                    continue;
-                  }
-
-                  try {
-                    const data = JSON.parse(raw) as ServerLogLineEvent;
-                    callback(data);
-                  } catch (e) {
-                    console.warn("[SSE] Failed to parse log event:", e);
-                  }
-                }
-              }
-            } catch (e) {
+              await readSseStream(reader, callback, () => disposed);
+            } catch (error) {
               if (disposed) {
                 return;
               }
 
-              console.warn("[SSE] Connection error, reconnecting...", e);
+              console.warn("[SSE] Connection error, reconnecting...", error);
               abortController?.abort();
               abortController = null;
               clearReconnectTimer();

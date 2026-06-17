@@ -45,6 +45,12 @@ export default defineConfig({
             if (id.includes("@tauri-apps")) {
               return "tauri-vendor";
             }
+            if (id.includes("@xterm/") || id.includes("xterm")) {
+              return "xterm-vendor";
+            }
+            if (id.includes("@codemirror/") || id.includes("@lezer/")) {
+              return "codemirror-vendor";
+            }
             if (id.includes("echarts") || id.includes("vue-echarts")) {
               return "echarts-vendor";
             }

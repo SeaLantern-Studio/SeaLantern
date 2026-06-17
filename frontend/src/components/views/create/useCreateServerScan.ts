@@ -12,6 +12,36 @@ interface UseCreateServerScanOptions {
   showError: (message: string) => void;
 }
 
+function prioritizeDetectedOption(values: string[], detected: string): string[] {
+  const unique = [...new Set(values.filter((value) => value.trim().length > 0))];
+  if (!detected.trim()) {
+    return unique;
+  }
+
+  return [detected, ...unique.filter((value) => value !== detected)];
+}
+
+function resolveDetectedMcVersion(
+  path: string,
+  discoveredOptions: string[],
+  apiDetectedVersion: string,
+  candidates: StartupCandidate[],
+): { detected: string; failed: boolean } {
+  if (apiDetectedVersion.trim()) {
+    return { detected: apiDetectedVersion.trim(), failed: false };
+  }
+
+  const fallbackInputs = [path, ...candidates.map((candidate) => candidate.path)];
+  for (const input of fallbackInputs) {
+    const matches = detectVersionCandidatesFromText(input, discoveredOptions);
+    if (matches.length > 0) {
+      return { detected: matches[0], failed: false };
+    }
+  }
+
+  return { detected: "", failed: true };
+}
+
 export function useCreateServerScan(options: UseCreateServerScanOptions) {
   const coreDetecting = ref(false);
   const detectedCoreTypeKey = ref("");
@@ -32,36 +62,6 @@ export function useCreateServerScan(options: UseCreateServerScanOptions) {
   let startupDetectRequestId = 0;
   const AUTO_SCAN_DEBOUNCE_MS = 120;
   let startupDetectTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function prioritizeDetectedOption(options: string[], detected: string): string[] {
-    const unique = [...new Set(options.filter((value) => value.trim().length > 0))];
-    if (!detected.trim()) {
-      return unique;
-    }
-
-    return [detected, ...unique.filter((value) => value !== detected)];
-  }
-
-  function resolveDetectedMcVersion(
-    path: string,
-    discoveredOptions: string[],
-    apiDetectedVersion: string,
-    candidates: StartupCandidate[],
-  ): { detected: string; failed: boolean } {
-    if (apiDetectedVersion.trim()) {
-      return { detected: apiDetectedVersion.trim(), failed: false };
-    }
-
-    const fallbackInputs = [path, ...candidates.map((candidate) => candidate.path)];
-    for (const input of fallbackInputs) {
-      const matches = detectVersionCandidatesFromText(input, discoveredOptions);
-      if (matches.length > 0) {
-        return { detected: matches[0], failed: false };
-      }
-    }
-
-    return { detected: "", failed: true };
-  }
 
   function resetScanState() {
     coreDetecting.value = false;

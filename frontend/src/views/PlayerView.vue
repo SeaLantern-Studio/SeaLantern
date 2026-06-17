@@ -5,7 +5,13 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { useRoute } from "vue-router";
 import { useConsoleStore } from "@stores/consoleStore";
 import { serverApi } from "@api/server";
-import { playerApi, type PlayerEntry, type BanEntry, type OpEntry, type ParsedPlayerLogEvent } from "@api/player";
+import {
+  playerApi,
+  type PlayerEntry,
+  type BanEntry,
+  type OpEntry,
+  type ParsedPlayerLogEvent,
+} from "@api/player";
 import { TIME, MESSAGES, getMessage } from "@utils/constants";
 import { validatePlayerName, handleError } from "@utils/errorHandler";
 import { i18n } from "@language";
@@ -54,9 +60,7 @@ const isRunning = computed(() => {
   return store.statuses[selectedServerId.value]?.status === "Running";
 });
 
-const onlinePlayers = computed(() =>
-  resolveOnlinePlayers(selectedServerId.value),
-);
+const onlinePlayers = computed(() => resolveOnlinePlayers(selectedServerId.value));
 
 function getAddLabel(): string {
   switch (activeTab.value) {
@@ -151,10 +155,13 @@ async function hydrateStructuredOnlinePlayers(serverId: string) {
     const events = await playerApi.parsePlayerLogEvents(logs);
     structuredOnlinePlayers.value[serverId] = replayOnlinePlayers(events);
     structuredPlayerEventSupport.value[serverId] = hasStructuredPlayerEvents(events);
-  } catch (error) {
+  } catch (caughtError) {
     structuredOnlinePlayers.value[serverId] = [];
     structuredPlayerEventSupport.value[serverId] = false;
-    console.warn("[PlayerView] structured player log hydration unavailable, falling back to legacy parsing", error);
+    console.warn(
+      "[PlayerView] structured player log hydration unavailable, falling back to legacy parsing",
+      caughtError,
+    );
   }
 }
 
@@ -172,8 +179,11 @@ async function startPlayerLogSubscription() {
     unlistenStructuredLog = await serverApi.onStructuredLogEvent((event) => {
       applyStructuredPlayerEvent(event);
     });
-  } catch (error) {
-    console.warn("[PlayerView] structured log stream unavailable, falling back to legacy parsing", error);
+  } catch (caughtError) {
+    console.warn(
+      "[PlayerView] structured log stream unavailable, falling back to legacy parsing",
+      caughtError,
+    );
   }
 }
 
@@ -204,7 +214,9 @@ function resolveOnlinePlayers(serverId: string): string[] {
 function isStructuredPlayerEventKind(
   eventKind: ParsedPlayerLogEvent["event_kind"] | ServerLogStructuredEvent["event_kind"],
 ): eventKind is "server_ready" | "player_join" | "player_leave" {
-  return eventKind === "server_ready" || eventKind === "player_join" || eventKind === "player_leave";
+  return (
+    eventKind === "server_ready" || eventKind === "player_join" || eventKind === "player_leave"
+  );
 }
 
 function hasStructuredPlayerEvents(events: ParsedPlayerLogEvent[]): boolean {

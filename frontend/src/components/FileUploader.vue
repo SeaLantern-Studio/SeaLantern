@@ -186,7 +186,9 @@ defineExpose({
         <p class="text-gray-600">
           {{ isDragging ? i18n.t("upload.drop_to_upload") : i18n.t("upload.drag_or_click") }}
         </p>
-        <p v-if="accept" class="text-sm text-gray-400">{{ i18n.t("upload.supported_formats", { formats: accept }) }}</p>
+        <p v-if="accept" class="text-sm text-gray-400">
+          {{ i18n.t("upload.supported_formats", { formats: accept }) }}
+        </p>
         <p v-if="maxSize" class="text-sm text-gray-400">
           {{ i18n.t("upload.max_size_mb", { size: (maxSize / 1024 / 1024).toFixed(2) }) }}
         </p>

@@ -13,6 +13,33 @@ import { tryLoadLocaleBundle } from "@composables/useI18nBundles";
 import { useSettingsStore } from "@stores/settingsStore";
 import { normalizeAppError, resolveErrorMessage } from "@utils/appError";
 
+async function ensureLocaleReady(nextLocale: string): Promise<boolean> {
+  if (!i18n.isSupportedLocale(nextLocale)) {
+    return false;
+  }
+
+  const bundleLoaded = await tryLoadLocaleBundle(nextLocale);
+  if (bundleLoaded) {
+    return true;
+  }
+
+  return ensureLocaleLoaded(nextLocale as LocaleCode);
+}
+
+async function downloadLocale(localeCode: string) {
+  if (!i18n.isSupportedLocale(localeCode)) return;
+  try {
+    const data = await fetchLocale(localeCode as LocaleCode);
+    if (data && typeof data === "object" && !("sealantern" in data)) {
+      setLocaleBundle(localeCode, data as Record<string, string>);
+    } else {
+      setTranslations(localeCode as LocaleCode, data as any);
+    }
+  } catch (error) {
+    console.error("Failed to load locale:", localeCode, error);
+  }
+}
+
 export const useI18nStore = defineStore("i18n", () => {
   const localeRef = i18n.getLocaleRef();
   const supportedLocales = i18n.getAvailableLocales();
@@ -30,19 +57,6 @@ export const useI18nStore = defineStore("i18n", () => {
       label: i18n.getLocaleDisplayName(code) ?? code,
     })),
   );
-  async function ensureLocaleReady(nextLocale: string): Promise<boolean> {
-    if (!i18n.isSupportedLocale(nextLocale)) {
-      return false;
-    }
-
-    const bundleLoaded = await tryLoadLocaleBundle(nextLocale);
-    if (bundleLoaded) {
-      return true;
-    }
-
-    return ensureLocaleLoaded(nextLocale as LocaleCode);
-  }
-
   async function setLocale(nextLocale: string) {
     const localeReady = await ensureLocaleReady(nextLocale);
     if (!localeReady) {
@@ -64,20 +78,6 @@ export const useI18nStore = defineStore("i18n", () => {
     }
 
     return true;
-  }
-
-  async function downloadLocale(localeCode: string) {
-    if (!i18n.isSupportedLocale(localeCode)) return;
-    try {
-      const data = await fetchLocale(localeCode as LocaleCode);
-      if (data && typeof data === "object" && !("sealantern" in data)) {
-        setLocaleBundle(localeCode, data as Record<string, string>);
-      } else {
-        setTranslations(localeCode as LocaleCode, data as any);
-      }
-    } catch (e) {
-      console.error("Failed to load locale:", localeCode, e);
-    }
   }
 
   function toggleLocale() {

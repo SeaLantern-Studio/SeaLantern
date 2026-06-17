@@ -114,6 +114,15 @@ function shouldCacheQuote(quote: Quote): boolean {
   return !isCurrentQuote(quote) && !isQuoteInCache(quote);
 }
 
+async function requestUniqueHitokoto(remainingRetries: number): Promise<Quote> {
+  const quote = await requestHitokoto();
+  if (!isCurrentQuote(quote) || remainingRetries <= 0) {
+    return quote;
+  }
+
+  return requestUniqueHitokoto(remainingRetries - 1);
+}
+
 /**
  * 获取一句名言/引用
  * @returns 名言/引用对象
@@ -146,12 +155,7 @@ async function fetchHitokoto(): Promise<Quote> {
   }
 
   try {
-    let quote = await requestHitokoto();
-    let retryCount = 0;
-    while (isCurrentQuote(quote) && retryCount < 3) {
-      quote = await requestHitokoto();
-      retryCount++;
-    }
+    const quote = await requestUniqueHitokoto(3);
     void replenishCache();
     return quote;
   } catch (error) {

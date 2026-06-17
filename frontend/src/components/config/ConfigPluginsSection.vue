@@ -10,6 +10,8 @@ import { Trash2, RefreshCw, Settings, FileText, RotateCcw, FolderOpen, Edit } fr
 interface Props {
   plugins: m_PluginInfo[];
   pluginsLoading: boolean;
+  pluginsSupported: boolean;
+  pluginsUnsupportedReason: string | null;
   selectedPlugin: m_PluginInfo | null;
 }
 
@@ -49,6 +51,7 @@ function setPluginRowRef(pluginFileName: string) {
       <SLButton
         @click="emit('refreshList')"
         :loading="pluginsLoading"
+        :disabled="!pluginsSupported"
         variant="secondary"
         size="sm"
       >
@@ -58,6 +61,7 @@ function setPluginRowRef(pluginFileName: string) {
       <SLButton
         @click="emit('reloadPlugins')"
         :loading="pluginsLoading"
+        :disabled="!pluginsSupported"
         variant="danger"
         size="sm"
         class="reload-btn"
@@ -75,7 +79,11 @@ function setPluginRowRef(pluginFileName: string) {
   </div>
 
   <div v-else class="plugins-container">
-    <div v-if="plugins.length === 0" class="empty-state">
+    <div v-if="!pluginsSupported" class="empty-state">
+      <p class="text-caption">{{ pluginsUnsupportedReason }}</p>
+    </div>
+
+    <div v-else-if="plugins.length === 0" class="empty-state">
       <p class="text-caption">{{ i18n.t("config.no_plugins") }}</p>
     </div>
 

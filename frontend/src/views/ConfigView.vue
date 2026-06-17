@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from "vue";
 import { useRoute } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
@@ -7,14 +8,16 @@ import SLTooltip from "@components/common/SLTooltip.vue";
 import { SLTabBar } from "@components/common";
 import { i18n } from "@language";
 import { FileDiff } from "@lucide/vue";
-
-import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
 import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
 import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.vue";
 import ConfigStartupSection from "@components/config/ConfigStartupSection.vue";
 import { useConfigViewModel } from "@views/config/useConfigViewModel";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
+
+const ConfigSourceDiffView = defineAsyncComponent(
+  () => import("@components/config/ConfigSourceDiffView.vue"),
+);
 
 const route = useRoute();
 const viewModel = useConfigViewModel({ route });
@@ -112,6 +115,8 @@ const setError = viewModel.setError;
         <ConfigPluginsSection
           :plugins="pluginsState.plugins.value"
           :pluginsLoading="pluginsState.pluginsLoading.value"
+          :pluginsSupported="pluginsState.pluginsSupported.value"
+          :pluginsUnsupportedReason="pluginsState.pluginsUnsupportedReason.value"
           :selectedPlugin="pluginsState.selectedPlugin.value"
           @refreshList="pluginsState.loadPlugins"
           @reloadPlugins="pluginsState.reloadPlugins"

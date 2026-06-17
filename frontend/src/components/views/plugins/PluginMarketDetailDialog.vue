@@ -48,7 +48,11 @@ const emit = defineEmits<{
           <div class="detail-title">
             <h2>{{ resolveI18n(plugin.name) }}</h2>
             <span class="detail-version">{{ plugin.version ? "v" + plugin.version : "" }}</span>
-            <span class="detail-author">{{ i18n.t("common.by_author", { author: plugin.author?.name || i18n.t("market.author_unknown") }) }}</span>
+            <span class="detail-author">{{
+              i18n.t("common.by_author", {
+                author: plugin.author?.name || i18n.t("market.author_unknown"),
+              })
+            }}</span>
           </div>
         </div>
         <div v-if="detailLoading" class="detail-loading">

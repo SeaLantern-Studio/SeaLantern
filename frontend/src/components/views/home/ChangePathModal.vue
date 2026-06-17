@@ -120,13 +120,17 @@ const validationMessage = computed(() => {
           class="detected-info"
         >
           <div class="detected-item">
-            <span class="detected-label">{{ i18n.t("home.change_path_detected_startup_file") }}</span>
+            <span class="detected-label">{{
+              i18n.t("home.change_path_detected_startup_file")
+            }}</span>
             <code class="detected-value">{{
               homeServerActionsStore.changePathValidationResult.jarPath
             }}</code>
           </div>
           <div class="detected-item">
-            <span class="detected-label">{{ i18n.t("home.change_path_detected_startup_mode") }}</span>
+            <span class="detected-label">{{
+              i18n.t("home.change_path_detected_startup_mode")
+            }}</span>
             <span class="detected-value">{{
               homeServerActionsStore.changePathValidationResult.startupMode?.toUpperCase() || "JAR"
             }}</span>
