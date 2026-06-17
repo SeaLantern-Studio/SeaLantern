@@ -196,9 +196,9 @@ fn build_ps1_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        build_custom_command, build_ps1_command, build_sh_command, build_starter_install_command,
-    };
+    #[cfg(target_os = "windows")]
+    use super::build_ps1_command;
+    use super::{build_custom_command, build_sh_command, build_starter_install_command};
     use crate::models::server::{
         CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };

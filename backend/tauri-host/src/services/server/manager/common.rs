@@ -1,3 +1,4 @@
+#[cfg(target_os = "windows")]
 use std::process::Command;
 
 use crate::models::server::{ServerInstance, ServerRuntimeConfig};
@@ -218,6 +219,7 @@ mod tests {
     use super::*;
     use crate::test_support::{lock_env, EnvGuard};
     use sea_lantern_server_local_setup_core::preview_command;
+    use std::process::Command;
     #[cfg(target_os = "windows")]
     use tempfile::TempDir;
 

@@ -240,7 +240,10 @@ fn endpoint_matches_from_lsof(token: &str, port: u16, kind: PortUsageKind) -> bo
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve_port_probe_results, split_host_port, PortUsageKind};
+    use super::{
+        parse_windows_netstat_for_tcp_port, resolve_port_probe_results, split_host_port,
+        PortUsageKind,
+    };
 
     #[test]
     fn split_host_port_supports_ipv6_bracket_notation() {
@@ -286,6 +289,20 @@ mod tests {
         assert!(error.contains("ss: missing"));
         assert!(error.contains("netstat: missing"));
         assert!(error.contains("lsof: blocked"));
+    }
+
+    #[test]
+    fn parse_windows_netstat_for_tcp_port_matches_loopback_listener() {
+        let output = "  TCP    127.0.0.1:25565     0.0.0.0:0      LISTENING       1234\r\n";
+
+        assert!(parse_windows_netstat_for_tcp_port(output, 25565, PortUsageKind::LoopbackOnly,));
+    }
+
+    #[test]
+    fn parse_windows_netstat_for_tcp_port_rejects_non_loopback_for_loopback_kind() {
+        let output = "  TCP    0.0.0.0:25565       0.0.0.0:0      LISTENING       1234\r\n";
+
+        assert!(!parse_windows_netstat_for_tcp_port(output, 25565, PortUsageKind::LoopbackOnly,));
     }
 
     #[test]

@@ -1020,7 +1020,7 @@ pub fn windows_script_prefers_utf8(startup_mode: &str, startup_path: &Path) -> b
 
 pub fn resolve_managed_console_encoding(
     startup_mode: &str,
-    startup_path: &Path,
+    _startup_path: &Path,
 ) -> ManagedConsoleEncoding {
     if startup_mode_is_custom(startup_mode) {
         return ManagedConsoleEncoding::Utf8;
@@ -1029,7 +1029,7 @@ pub fn resolve_managed_console_encoding(
     #[cfg(target_os = "windows")]
     {
         if startup_mode_uses_windows_script_encoding_detection(startup_mode) {
-            return if windows_script_prefers_utf8(startup_mode, startup_path) {
+            return if windows_script_prefers_utf8(startup_mode, _startup_path) {
                 ManagedConsoleEncoding::Utf8
             } else {
                 ManagedConsoleEncoding::Gbk
