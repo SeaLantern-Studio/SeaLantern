@@ -1166,7 +1166,7 @@ fn normalize_path_for_compare(path: &Path) -> String {
         .trim_end_matches('/')
         .to_string();
 
-    if cfg!(windows) {
+    if cfg!(windows) || is_windows_absolute_path(&normalized) {
         normalized.to_ascii_lowercase()
     } else {
         normalized
