@@ -1,5 +1,7 @@
 use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, ServerInstance};
 use crate::services::server::manager::common::StartupMode;
+#[cfg(any(target_os = "macos", not(any(unix, target_os = "windows"))))]
+use crate::services::server::manager::i18n::manager_t;
 use crate::services::server::manager::i18n::manager_t1;
 use crate::services::server::manager::startup_support::resolve_effective_startup_config_checked;
 use sea_lantern_server_config_core::{

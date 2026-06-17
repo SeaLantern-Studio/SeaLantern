@@ -4,6 +4,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 const APP_DOCKER_DATA_DIR: &str = "./data";
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 const APP_HIDDEN_DIRECTORY_NAME: &str = ".SeaLantern";
 const APP_DATA_LOCATOR_FILE_NAME: &str = "data_dir.json";
 const APP_DATA_LOCATOR_ENV: &str = "SEALANTERN_DATA_DIR";
