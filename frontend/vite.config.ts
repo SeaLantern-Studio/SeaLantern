@@ -21,6 +21,7 @@ export default defineConfig({
       "@data": path.resolve(frontendDir, "src/data"),
       "@language": path.resolve(frontendDir, "src/language"),
       "@router": path.resolve(frontendDir, "src/router"),
+      "@shared": path.resolve(rootDir, "shared"),
       "@stores": path.resolve(frontendDir, "src/stores"),
       "@styles": path.resolve(frontendDir, "src/styles"),
       "@themes": path.resolve(frontendDir, "src/themes"),

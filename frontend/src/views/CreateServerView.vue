@@ -18,6 +18,7 @@ import ServerStartupConfigStep from "@components/views/create/ServerStartupConfi
 import SourceIntakeField from "@components/views/create/SourceIntakeField.vue";
 import StartupSelectionStep from "@components/views/create/StartupSelectionStep.vue";
 import { useCreateServerWindowDrop } from "@components/views/create/useCreateServerWindowDrop";
+import { startupModeRequiresJava } from "@components/views/create/startupUtils";
 import { i18n } from "@language";
 import { useCreateServerPage } from "@components/views/create/useCreateServerPage";
 
@@ -158,7 +159,7 @@ const { isDragging } = useCreateServerWindowDrop();
                 <JavaEnvironmentStep
                   :java-list="javaList"
                   :loading="javaLoading"
-                  :required="selectedStartup?.mode !== 'custom'"
+                  :required="startupModeRequiresJava(selectedStartup?.mode)"
                   :selected-java="selectedJava"
                   @detect="detectJava"
                   @update:selected-java="selectedJava = $event"

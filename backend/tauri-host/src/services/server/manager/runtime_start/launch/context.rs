@@ -9,10 +9,18 @@ pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a>
     pub settings: &'a crate::models::settings::AppSettings,
     pub startup_mode: StartupMode,
     pub managed_console_encoding: ManagedConsoleEncoding,
-    pub java_bin_dir_str: String,
-    pub java_home_dir_str: String,
+    pub java_bin_dir_str: Option<String>,
+    pub java_home_dir_str: Option<String>,
     pub startup_filename: String,
     pub starter_core_key: String,
+}
+
+impl LaunchContext<'_> {
+    pub(in crate::services::server::manager::runtime_start) fn java_env(
+        &self,
+    ) -> Option<(&str, &str)> {
+        Some((self.java_home_dir_str.as_deref()?, self.java_bin_dir_str.as_deref()?))
+    }
 }
 
 pub(in crate::services::server::manager::runtime_start) fn resolve_starter_core_key(

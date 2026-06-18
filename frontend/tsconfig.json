@@ -31,6 +31,7 @@
       "@router/*": ["./src/router/*"],
       "@stores/*": ["./src/stores/*"],
       "@styles/*": ["./src/styles/*"],
+      "@shared/*": ["../shared/*"],
       "@themes": ["./src/themes"],
       "@themes/*": ["./src/themes/*"],
       "@tauri-host": ["../backend/tauri-host"],

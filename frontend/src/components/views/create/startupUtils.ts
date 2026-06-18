@@ -1,6 +1,10 @@
 import type { StartupCandidate, StartupMode } from "@components/views/create/startupTypes";
+import startupModeMetadataRaw from "@shared/startup-modes.json";
 
 const STARTER_MAIN_CLASS_PREFIX = "net.neoforged.serverstarterjar";
+type StartupModeMetadata = Record<StartupMode, { requiresJava: boolean }>;
+
+const startupModeMetadata = startupModeMetadataRaw as StartupModeMetadata;
 
 export function isStarterMainClass(mainClass: string | null): boolean {
   return !!mainClass?.startsWith(STARTER_MAIN_CLASS_PREFIX);
@@ -104,6 +108,10 @@ export function mapStartupModeForModpack(
     return "custom";
   }
   return mapStartupModeForApi(mode);
+}
+
+export function startupModeRequiresJava(mode: StartupMode | null | undefined): boolean {
+  return mode ? startupModeMetadata[mode].requiresJava : false;
 }
 
 export function resolveExecutablePathForTarget(

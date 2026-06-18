@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -8,10 +9,22 @@ use sea_lantern_server_installer_core::{
     detect_core_key, detect_core_key_checked, find_server_jar, find_server_jar_checked,
     parse_server_core_key, CoreType,
 };
+use serde::Deserialize;
 
 static MC_VERSION_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)(1\.\d{1,2}(?:\.\d{1,2})?)").expect("mc version regex should compile")
 });
+
+static STARTUP_MODE_METADATA: Lazy<HashMap<String, StartupModeMetadata>> = Lazy::new(|| {
+    serde_json::from_str(include_str!("../../../shared/startup-modes.json"))
+        .expect("shared startup mode metadata should be valid json")
+});
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct StartupModeMetadata {
+    requires_java: bool,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LocalFolderInspection {
@@ -996,6 +1009,17 @@ pub fn startup_mode_is_starter(startup_mode: &str) -> bool {
         == "starter"
 }
 
+pub fn startup_mode_requires_java(startup_mode: &str) -> bool {
+    let normalized_mode =
+        normalize_cli_startup_mode(Some(startup_mode)).unwrap_or_else(|_| "jar".to_string());
+
+    STARTUP_MODE_METADATA
+        .get(normalized_mode.as_str())
+        .or_else(|| STARTUP_MODE_METADATA.get("jar"))
+        .map(|metadata| metadata.requires_java)
+        .unwrap_or(true)
+}
+
 pub fn startup_mode_uses_windows_script_encoding_detection(startup_mode: &str) -> bool {
     matches!(
         normalize_cli_startup_mode(Some(startup_mode))
@@ -1372,6 +1396,18 @@ pub fn build_windows_java_env_prefix(java_home_dir_str: &str, java_bin_dir_str: 
 }
 
 #[cfg(target_os = "windows")]
+pub fn build_windows_bat_command_text_without_java(
+    startup_filename: &str,
+    cmd_code_page: &str,
+) -> String {
+    format!(
+        "chcp {}>nul & call \"{}\" nogui",
+        cmd_code_page,
+        escape_windows_cmd_arg(startup_filename)
+    )
+}
+
+#[cfg(target_os = "windows")]
 pub fn build_windows_bat_command_text(
     startup_filename: &str,
     cmd_code_page: &str,
@@ -1505,7 +1541,7 @@ mod tests {
         resolve_local_startup_entry_checked, resolve_modpack_run_dir_startup_selection,
         resolve_modpack_startup_selection, resolve_run_dir_startup_file_path,
         resolve_starter_install_launch_selection, script_bytes_prefer_utf8, startup_filename,
-        startup_mode_is_custom, startup_mode_is_starter,
+        startup_mode_is_custom, startup_mode_is_starter, startup_mode_requires_java,
         startup_mode_uses_windows_script_encoding_detection, trim_optional_text,
         validate_local_create_folder, validate_local_create_startup_exists,
         validate_local_create_startup_path_binding, windows_script_prefers_utf8,
@@ -1891,6 +1927,10 @@ mod tests {
         assert!(startup_mode_is_starter("starter"));
         assert!(startup_mode_is_starter("STARTER"));
         assert!(!startup_mode_is_starter("sh"));
+        assert!(startup_mode_requires_java("jar"));
+        assert!(startup_mode_requires_java("STARTER"));
+        assert!(!startup_mode_requires_java("bat"));
+        assert!(!startup_mode_requires_java("custom"));
         assert!(startup_mode_uses_windows_script_encoding_detection("bat"));
         assert!(startup_mode_uses_windows_script_encoding_detection("PS1"));
         assert!(!startup_mode_uses_windows_script_encoding_detection("sh"));

@@ -6221,6 +6221,8 @@ dependencies = [
  "regex",
  "sea-lantern-runtime",
  "sea-lantern-server-installer-core",
+ "serde",
+ "serde_json",
  "shlex",
  "sl-server-core-taxonomy",
  "tempfile",

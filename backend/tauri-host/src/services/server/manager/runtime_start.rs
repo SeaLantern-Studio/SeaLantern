@@ -14,6 +14,7 @@ use crate::services::server::runtime::{
 };
 use sea_lantern_server_local_setup_core::{
     resolve_java_paths, resolve_managed_console_encoding, startup_filename,
+    startup_mode_requires_java,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -35,6 +36,18 @@ pub(crate) fn get_local_launch_detail(
     settings: &crate::models::settings::AppSettings,
 ) -> Result<LocalLaunchDetail, String> {
     local_launch_detail::build_local_launch_detail(server, settings)
+}
+
+pub(in crate::services::server::manager::runtime_start) fn resolve_launch_java_dirs(
+    startup_mode: StartupMode,
+    java_path: &str,
+) -> Result<(Option<String>, Option<String>), String> {
+    if startup_mode_requires_java(startup_mode.as_str()) || !java_path.trim().is_empty() {
+        let (java_bin_dir_str, java_home_dir_str) = resolve_java_paths(java_path)?;
+        Ok((Some(java_bin_dir_str), Some(java_home_dir_str)))
+    } else {
+        Ok((None, None))
+    }
 }
 
 pub(crate) fn start_local_runtime(
@@ -91,7 +104,8 @@ pub(crate) fn start_local_runtime(
     let startup_path_obj = std::path::Path::new(startup_path.as_str());
     let managed_console_encoding =
         resolve_managed_console_encoding(startup_mode.as_str(), startup_path_obj);
-    let (java_bin_dir_str, java_home_dir_str) = resolve_java_paths(java_path.as_str())?;
+    let (java_bin_dir_str, java_home_dir_str) =
+        resolve_launch_java_dirs(startup_mode, java_path.as_str())?;
     let startup_filename = startup_filename(startup_path.as_str());
     let starter_core_key = launch::context::resolve_starter_core_key(server)?;
     let launch_context = launch::context::LaunchContext {

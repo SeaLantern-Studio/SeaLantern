@@ -2,7 +2,7 @@ use crate::models::server::ServerInstance;
 use crate::services::server::manager::i18n::manager_t1;
 use crate::services::server::manager::startup_support::resolve_effective_startup_config_checked;
 use sea_lantern_server_local_setup_core::{
-    preview_command as preview_shared_command, resolve_java_paths, resolve_local_launch_target,
+    preview_command as preview_shared_command, resolve_local_launch_target,
     resolve_managed_console_encoding, startup_filename, startup_mode_is_starter,
 };
 
@@ -13,6 +13,7 @@ use super::launch::command_builder::{
     find_preferred_jar_path,
 };
 use super::launch::context::{resolve_starter_core_key, LaunchContext};
+use super::resolve_launch_java_dirs;
 use super::LocalLaunchDetail;
 
 pub(crate) fn build_local_launch_detail(
@@ -28,7 +29,8 @@ pub(crate) fn build_local_launch_detail(
     let startup_path_obj = std::path::Path::new(startup_path);
     let managed_console_encoding =
         resolve_managed_console_encoding(startup_mode.as_str(), startup_path_obj);
-    let (java_bin_dir_str, java_home_dir_str) = resolve_java_paths(runtime.java_path.as_str())?;
+    let (java_bin_dir_str, java_home_dir_str) =
+        resolve_launch_java_dirs(startup_mode, runtime.java_path.as_str())?;
     let starter_core_key = resolve_starter_core_key(server)?;
 
     let context = LaunchContext {
@@ -264,6 +266,25 @@ mod tests {
         assert_eq!(detail.launch_target, "java -jar custom.jar nogui");
         assert!(detail.effective_jvm_args.is_empty());
         assert!(detail.command_preview.contains("custom.jar"));
+    }
+
+    #[test]
+    fn build_local_launch_detail_allows_script_mode_without_java_path() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let mut server = test_server(temp_dir.path().to_string_lossy().to_string(), "sh");
+        let script_path = temp_dir.path().join("start.sh");
+        std::fs::write(&script_path, b"#!/bin/sh\nexit 0\n").expect("script fixture should exist");
+        if let ServerRuntimeConfig::Local(runtime) = &mut server.runtime {
+            runtime.jar_path = script_path.to_string_lossy().to_string();
+            runtime.java_path.clear();
+        }
+
+        let detail = build_local_launch_detail(&server, &test_settings())
+            .expect("script launch detail should build without java path");
+
+        assert_eq!(detail.startup_mode, "sh");
+        assert_eq!(detail.java_path, "");
+        assert!(detail.command_preview.contains("start.sh"));
     }
 
     #[test]
