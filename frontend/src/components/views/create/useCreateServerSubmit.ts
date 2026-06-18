@@ -7,6 +7,7 @@ import {
   containsIoRedirection,
   isStrictChildPath,
   mapStartupModeForModpack,
+  startupModeRequiresJava,
 } from "@components/views/create/startupUtils";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
@@ -105,7 +106,7 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
       options.selectedMcVersion.value.trim().length === 0
     );
   });
-  const requiresJava = computed(() => selectedStartup.value?.mode !== "custom");
+  const requiresJava = computed(() => startupModeRequiresJava(selectedStartup.value?.mode));
   const hasJava = computed(
     () => !requiresJava.value || options.selectedJava.value.trim().length > 0,
   );

@@ -8,12 +8,17 @@ use sea_lantern_server_local_setup_core::build_windows_bat_command_text as build
 use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
 use sea_lantern_server_local_setup_core::{
     build_java_launch_path_value as build_shared_java_launch_path_value,
+    build_windows_bat_command_text_without_java as build_shared_windows_bat_command_text_without_java,
     detect_java_major_version as detect_shared_java_major_version,
-    ensure_supported_script_java_major_version,
+    ensure_supported_script_java_major_version, startup_mode_requires_java,
 };
 use std::process::Command;
 
 pub(super) fn prepare_script_startup(context: &LaunchContext<'_>) -> Result<(), String> {
+    if !startup_mode_requires_java(context.startup_mode.as_str()) {
+        return Ok(());
+    }
+
     let java_path = context
         .server
         .java_path()
@@ -27,6 +32,10 @@ pub(super) fn prepare_script_startup(context: &LaunchContext<'_>) -> Result<(), 
 }
 
 pub(super) fn apply_script_process_env(cmd: &mut Command, context: &LaunchContext<'_>) {
+    if context.java_bin_dir_str.trim().is_empty() || context.java_home_dir_str.trim().is_empty() {
+        return;
+    }
+
     apply_java_process_env(cmd, &context.java_home_dir_str, &context.java_bin_dir_str);
 }
 
@@ -34,15 +43,27 @@ pub(super) fn apply_script_process_env(cmd: &mut Command, context: &LaunchContex
 pub(super) fn build_windows_bat_command(
     startup_filename: &str,
     managed_console_encoding: ManagedConsoleEncoding,
-    java_home_dir_str: &str,
-    java_bin_dir_str: &str,
+    java_home_dir_str: Option<&str>,
+    java_bin_dir_str: Option<&str>,
 ) -> Command {
-    build_windows_cmd_command(&build_shared_windows_bat_command_text(
-        startup_filename,
-        managed_console_encoding.cmd_code_page(),
-        java_home_dir_str,
-        java_bin_dir_str,
-    ))
+    let command_text = match (java_home_dir_str, java_bin_dir_str) {
+        (Some(java_home), Some(java_bin))
+            if !java_home.trim().is_empty() && !java_bin.trim().is_empty() =>
+        {
+            build_shared_windows_bat_command_text(
+                startup_filename,
+                managed_console_encoding.cmd_code_page(),
+                java_home,
+                java_bin,
+            )
+        }
+        _ => build_shared_windows_bat_command_text_without_java(
+            startup_filename,
+            managed_console_encoding.cmd_code_page(),
+        ),
+    };
+
+    build_windows_cmd_command(&command_text)
 }
 
 pub(super) fn apply_java_process_env(
@@ -62,16 +83,16 @@ pub(super) fn apply_java_process_env(
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_java_process_env, ensure_supported_script_java_major_version};
+    use super::{
+        apply_java_process_env, build_windows_bat_command,
+        ensure_supported_script_java_major_version,
+    };
     use sea_lantern_server_local_setup_core::prepend_path_entry;
     #[cfg(target_os = "windows")]
     use sea_lantern_server_local_setup_core::{
         build_windows_java_env_prefix, ManagedConsoleEncoding,
     };
     use std::process::Command;
-
-    #[cfg(target_os = "windows")]
-    use super::build_windows_bat_command;
 
     fn collect_envs(command: &Command) -> Vec<(String, Option<String>)> {
         command
@@ -152,8 +173,8 @@ mod tests {
         let cmd = build_windows_bat_command(
             "start &(1)%2.bat",
             ManagedConsoleEncoding::Utf8,
-            "C:/Java/JDK 21",
-            "C:/Java/JDK 21/bin",
+            Some("C:/Java/JDK 21"),
+            Some("C:/Java/JDK 21/bin"),
         );
 
         let args = cmd
@@ -178,8 +199,8 @@ mod tests {
         let cmd = build_windows_bat_command(
             "launch.bat",
             ManagedConsoleEncoding::Gbk,
-            java_home,
-            java_bin,
+            Some(java_home),
+            Some(java_bin),
         );
 
         let args = cmd
@@ -206,8 +227,8 @@ mod tests {
         let cmd = build_windows_bat_command(
             "launch.bat",
             ManagedConsoleEncoding::Gbk,
-            java_home,
-            java_bin,
+            Some(java_home),
+            Some(java_bin),
         );
 
         let args = cmd
@@ -220,5 +241,27 @@ mod tests {
         );
 
         assert_eq!(args, vec!["/d".to_string(), "/c".to_string(), expected]);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_bat_command_can_skip_java_env_injection() {
+        let cmd = build_windows_bat_command("launch.bat", ManagedConsoleEncoding::Utf8, None, None);
+
+        let args = cmd
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        let envs = collect_envs(&cmd);
+
+        assert!(envs.is_empty());
+        assert_eq!(
+            args,
+            vec![
+                "/d".to_string(),
+                "/c".to_string(),
+                "chcp 65001>nul & call \"launch.bat\" nogui".to_string(),
+            ]
+        );
     }
 }

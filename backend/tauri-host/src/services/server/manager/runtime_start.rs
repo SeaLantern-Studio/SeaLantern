@@ -14,6 +14,7 @@ use crate::services::server::runtime::{
 };
 use sea_lantern_server_local_setup_core::{
     resolve_java_paths, resolve_managed_console_encoding, startup_filename,
+    startup_mode_requires_java,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -91,7 +92,12 @@ pub(crate) fn start_local_runtime(
     let startup_path_obj = std::path::Path::new(startup_path.as_str());
     let managed_console_encoding =
         resolve_managed_console_encoding(startup_mode.as_str(), startup_path_obj);
-    let (java_bin_dir_str, java_home_dir_str) = resolve_java_paths(java_path.as_str())?;
+    let (java_bin_dir_str, java_home_dir_str) = if startup_mode_requires_java(startup_mode.as_str())
+    {
+        resolve_java_paths(java_path.as_str())?
+    } else {
+        (String::new(), String::new())
+    };
     let startup_filename = startup_filename(startup_path.as_str());
     let starter_core_key = launch::context::resolve_starter_core_key(server)?;
     let launch_context = launch::context::LaunchContext {

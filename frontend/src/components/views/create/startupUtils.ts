@@ -106,6 +106,10 @@ export function mapStartupModeForModpack(
   return mapStartupModeForApi(mode);
 }
 
+export function startupModeRequiresJava(mode: StartupMode | null | undefined): boolean {
+  return mode === "jar" || mode === "starter";
+}
+
 export function resolveExecutablePathForTarget(
   executablePath: string,
   sourceDir: string,

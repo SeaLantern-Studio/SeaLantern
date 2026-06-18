@@ -187,8 +187,8 @@ fn install_and_launch_starter(
                 super::script_launch_support::build_windows_bat_command(
                     &startup_filename,
                     context.managed_console_encoding,
-                    &context.java_home_dir_str,
-                    &context.java_bin_dir_str,
+                    Some(context.java_home_dir_str.as_str()),
+                    Some(context.java_bin_dir_str.as_str()),
                 )
             }
             #[cfg(not(target_os = "windows"))]

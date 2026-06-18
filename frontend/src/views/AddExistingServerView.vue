@@ -19,6 +19,7 @@ import { javaApi, type JavaInfo } from "@api/java";
 import { serverApi } from "@api/server";
 import { systemApi } from "@api/system";
 import type { StartupCandidate, StartupMode } from "@components/views/create/startupTypes";
+import { startupModeRequiresJava } from "@components/views/create/startupUtils";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 import { useLoading } from "@composables/useAsync";
 import { useMessage } from "@composables/useMessage";
@@ -132,6 +133,8 @@ const selectedStartupTarget = computed(() => {
   return startup.path;
 });
 
+const requiresJava = computed(() => startupModeRequiresJava(selectedStartup.value?.mode));
+
 const stepItems = computed(() => [
   {
     step: 1,
@@ -149,7 +152,9 @@ const stepItems = computed(() => [
     step: 3,
     title: i18n.t("add_existing.step_config_title"),
     description: i18n.t("add_existing.step_config_desc"),
-    completed: selectedJava.value.trim().length > 0 && serverName.value.trim().length > 0,
+    completed:
+      (!requiresJava.value || selectedJava.value.trim().length > 0) &&
+      serverName.value.trim().length > 0,
   },
   {
     step: 4,
@@ -166,7 +171,10 @@ const activeStep = computed(() => {
   if (!selectedStartup.value) {
     return 2;
   }
-  if (selectedJava.value.trim().length === 0 || serverName.value.trim().length === 0) {
+  if (
+    (requiresJava.value && selectedJava.value.trim().length === 0) ||
+    serverName.value.trim().length === 0
+  ) {
     return 3;
   }
   return 4;
@@ -176,7 +184,7 @@ const canSubmit = computed(
   () =>
     serverPath.value.trim().length > 0 &&
     selectedStartup.value !== null &&
-    selectedJava.value.trim().length > 0 &&
+    (!requiresJava.value || selectedJava.value.trim().length > 0) &&
     serverName.value.trim().length > 0 &&
     !startupDetecting.value,
 );
@@ -245,7 +253,7 @@ function validateBeforeSubmit(): boolean {
     showError(i18n.t("create.startup_required"));
     return false;
   }
-  if (!selectedJava.value.trim()) {
+  if (requiresJava.value && !selectedJava.value.trim()) {
     showError(i18n.t("common.select_java_path"));
     return false;
   }
@@ -282,7 +290,7 @@ async function handleSubmit() {
     const addedServer = await serverApi.addExistingServer({
       name: serverName.value.trim(),
       serverPath: serverPath.value.trim(),
-      javaPath: selectedJava.value.trim(),
+      javaPath: requiresJava.value ? selectedJava.value.trim() : "",
       maxMemory: parseNumber(maxMemory.value, 2048),
       minMemory: parseNumber(minMemory.value, 512),
       port: parseNumber(port.value, 25565),
@@ -395,7 +403,7 @@ watch(
                 <JavaEnvironmentStep
                   :java-list="javaList"
                   :loading="javaLoading"
-                  :required="true"
+                  :required="requiresJava"
                   :selected-java="selectedJava"
                   @detect="detectJava"
                   @update:selected-java="selectedJava = $event"

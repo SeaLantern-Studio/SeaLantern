@@ -6,7 +6,7 @@ use super::script_launch_support;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::i18n::manager_t;
 use sea_lantern_server_local_setup_core::{
-    resolve_direct_jar_launch_target, resolve_local_preferred_jar_path,
+    resolve_direct_jar_launch_target, resolve_local_preferred_jar_path, startup_mode_requires_java,
 };
 use std::path::Path;
 use std::process::Command;
@@ -151,8 +151,16 @@ fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
         let bat_cmd = script_launch_support::build_windows_bat_command(
             &context.startup_filename,
             context.managed_console_encoding,
-            &context.java_home_dir_str,
-            &context.java_bin_dir_str,
+            if startup_mode_requires_java(context.startup_mode.as_str()) {
+                Some(context.java_home_dir_str.as_str())
+            } else {
+                None
+            },
+            if startup_mode_requires_java(context.startup_mode.as_str()) {
+                Some(context.java_bin_dir_str.as_str())
+            } else {
+                None
+            },
         );
         Ok(bat_cmd)
     }
