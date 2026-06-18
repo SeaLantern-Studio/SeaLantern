@@ -5,10 +5,11 @@ use super::context::LaunchContext;
 #[cfg(target_os = "windows")]
 use sea_lantern_server_local_setup_core::build_windows_bat_command_text as build_shared_windows_bat_command_text;
 #[cfg(target_os = "windows")]
+use sea_lantern_server_local_setup_core::build_windows_bat_command_text_without_java as build_shared_windows_bat_command_text_without_java;
+#[cfg(target_os = "windows")]
 use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
 use sea_lantern_server_local_setup_core::{
     build_java_launch_path_value as build_shared_java_launch_path_value,
-    build_windows_bat_command_text_without_java as build_shared_windows_bat_command_text_without_java,
     detect_java_major_version as detect_shared_java_major_version,
     ensure_supported_script_java_major_version, startup_mode_requires_java,
 };
@@ -81,10 +82,9 @@ pub(super) fn apply_java_process_env(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        apply_java_process_env, build_windows_bat_command,
-        ensure_supported_script_java_major_version,
-    };
+    use super::{apply_java_process_env, ensure_supported_script_java_major_version};
+    #[cfg(target_os = "windows")]
+    use super::build_windows_bat_command;
     use sea_lantern_server_local_setup_core::prepend_path_entry;
     #[cfg(target_os = "windows")]
     use sea_lantern_server_local_setup_core::{
