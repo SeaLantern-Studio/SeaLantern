@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -8,10 +9,22 @@ use sea_lantern_server_installer_core::{
     detect_core_key, detect_core_key_checked, find_server_jar, find_server_jar_checked,
     parse_server_core_key, CoreType,
 };
+use serde::Deserialize;
 
 static MC_VERSION_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)(1\.\d{1,2}(?:\.\d{1,2})?)").expect("mc version regex should compile")
 });
+
+static STARTUP_MODE_METADATA: Lazy<HashMap<String, StartupModeMetadata>> = Lazy::new(|| {
+    serde_json::from_str(include_str!("../../../shared/startup-modes.json"))
+        .expect("shared startup mode metadata should be valid json")
+});
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct StartupModeMetadata {
+    requires_java: bool,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LocalFolderInspection {
@@ -997,12 +1010,14 @@ pub fn startup_mode_is_starter(startup_mode: &str) -> bool {
 }
 
 pub fn startup_mode_requires_java(startup_mode: &str) -> bool {
-    matches!(
-        normalize_cli_startup_mode(Some(startup_mode))
-            .unwrap_or_else(|_| "jar".to_string())
-            .as_str(),
-        "jar" | "starter"
-    )
+    let normalized_mode =
+        normalize_cli_startup_mode(Some(startup_mode)).unwrap_or_else(|_| "jar".to_string());
+
+    STARTUP_MODE_METADATA
+        .get(normalized_mode.as_str())
+        .or_else(|| STARTUP_MODE_METADATA.get("jar"))
+        .map(|metadata| metadata.requires_java)
+        .unwrap_or(true)
 }
 
 pub fn startup_mode_uses_windows_script_encoding_detection(startup_mode: &str) -> bool {

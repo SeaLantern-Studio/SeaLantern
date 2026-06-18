@@ -1,0 +1,20 @@
+{
+  "starter": {
+    "requiresJava": true
+  },
+  "jar": {
+    "requiresJava": true
+  },
+  "bat": {
+    "requiresJava": false
+  },
+  "sh": {
+    "requiresJava": false
+  },
+  "ps1": {
+    "requiresJava": false
+  },
+  "custom": {
+    "requiresJava": false
+  }
+}

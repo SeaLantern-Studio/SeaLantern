@@ -32,11 +32,9 @@ pub(super) fn prepare_script_startup(context: &LaunchContext<'_>) -> Result<(), 
 }
 
 pub(super) fn apply_script_process_env(cmd: &mut Command, context: &LaunchContext<'_>) {
-    if context.java_bin_dir_str.trim().is_empty() || context.java_home_dir_str.trim().is_empty() {
-        return;
+    if let Some((java_home_dir_str, java_bin_dir_str)) = context.java_env() {
+        apply_java_process_env(cmd, java_home_dir_str, java_bin_dir_str);
     }
-
-    apply_java_process_env(cmd, &context.java_home_dir_str, &context.java_bin_dir_str);
 }
 
 #[cfg(target_os = "windows")]

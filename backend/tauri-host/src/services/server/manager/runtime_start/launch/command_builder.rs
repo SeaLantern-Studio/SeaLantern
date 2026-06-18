@@ -6,7 +6,7 @@ use super::script_launch_support;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::i18n::manager_t;
 use sea_lantern_server_local_setup_core::{
-    resolve_direct_jar_launch_target, resolve_local_preferred_jar_path, startup_mode_requires_java,
+    resolve_direct_jar_launch_target, resolve_local_preferred_jar_path,
 };
 use std::path::Path;
 use std::process::Command;
@@ -118,11 +118,13 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
     {
         let mut custom_cmd = build_windows_cmd_command(custom_command);
         if has_java_path {
-            script_launch_support::apply_java_process_env(
-                &mut custom_cmd,
-                &context.java_home_dir_str,
-                &context.java_bin_dir_str,
-            );
+            if let Some((java_home_dir_str, java_bin_dir_str)) = context.java_env() {
+                script_launch_support::apply_java_process_env(
+                    &mut custom_cmd,
+                    java_home_dir_str,
+                    java_bin_dir_str,
+                );
+            }
         }
         Ok(custom_cmd)
     }
@@ -132,11 +134,13 @@ fn build_custom_command(context: &LaunchContext<'_>) -> Result<Command, String> 
         custom_cmd.arg("-c");
         custom_cmd.arg(custom_command);
         if has_java_path {
-            script_launch_support::apply_java_process_env(
-                &mut custom_cmd,
-                &context.java_home_dir_str,
-                &context.java_bin_dir_str,
-            );
+            if let Some((java_home_dir_str, java_bin_dir_str)) = context.java_env() {
+                script_launch_support::apply_java_process_env(
+                    &mut custom_cmd,
+                    java_home_dir_str,
+                    java_bin_dir_str,
+                );
+            }
         }
         Ok(custom_cmd)
     }
@@ -148,19 +152,12 @@ fn build_bat_command(context: &LaunchContext<'_>) -> Result<Command, String> {
 
     #[cfg(target_os = "windows")]
     {
+        let java_env = context.java_env();
         let bat_cmd = script_launch_support::build_windows_bat_command(
             &context.startup_filename,
             context.managed_console_encoding,
-            if startup_mode_requires_java(context.startup_mode.as_str()) {
-                Some(context.java_home_dir_str.as_str())
-            } else {
-                None
-            },
-            if startup_mode_requires_java(context.startup_mode.as_str()) {
-                Some(context.java_bin_dir_str.as_str())
-            } else {
-                None
-            },
+            java_env.map(|(java_home_dir_str, _)| java_home_dir_str),
+            java_env.map(|(_, java_bin_dir_str)| java_bin_dir_str),
         );
         Ok(bat_cmd)
     }
@@ -295,8 +292,8 @@ mod tests {
             settings,
             startup_mode,
             managed_console_encoding: ManagedConsoleEncoding::Utf8,
-            java_bin_dir_str: "C:/Java/JDK 21/bin".to_string(),
-            java_home_dir_str: "C:/Java/JDK 21".to_string(),
+            java_bin_dir_str: Some("C:/Java/JDK 21/bin".to_string()),
+            java_home_dir_str: Some("C:/Java/JDK 21".to_string()),
             startup_filename: startup_filename.to_string(),
             starter_core_key: String::new(),
         }

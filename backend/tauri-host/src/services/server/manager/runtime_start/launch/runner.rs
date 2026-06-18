@@ -178,6 +178,9 @@ fn install_and_launch_starter(
             })?;
     let startup_mode = StartupMode::from_raw(&selection.startup_mode);
     let startup_filename = selection.startup_filename;
+    let (java_home_dir_str, java_bin_dir_str) = context
+        .java_env()
+        .expect("starter install launch script requires java env");
 
     let launch_phase = manager_t("server.manager.launch_phase_starter_script");
     let command = match startup_mode {
@@ -187,8 +190,8 @@ fn install_and_launch_starter(
                 super::script_launch_support::build_windows_bat_command(
                     &startup_filename,
                     context.managed_console_encoding,
-                    Some(context.java_home_dir_str.as_str()),
-                    Some(context.java_bin_dir_str.as_str()),
+                    Some(java_home_dir_str),
+                    Some(java_bin_dir_str),
                 )
             }
             #[cfg(not(target_os = "windows"))]
@@ -202,8 +205,8 @@ fn install_and_launch_starter(
             sh_cmd.arg("nogui");
             super::script_launch_support::apply_java_process_env(
                 &mut sh_cmd,
-                &context.java_home_dir_str,
-                &context.java_bin_dir_str,
+                java_home_dir_str,
+                java_bin_dir_str,
             );
             sh_cmd
         }
@@ -220,8 +223,8 @@ fn install_and_launch_starter(
                 ps_cmd.arg("nogui");
                 super::script_launch_support::apply_java_process_env(
                     &mut ps_cmd,
-                    &context.java_home_dir_str,
-                    &context.java_bin_dir_str,
+                    java_home_dir_str,
+                    java_bin_dir_str,
                 );
                 ps_cmd
             }
