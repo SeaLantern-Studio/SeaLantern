@@ -1,8 +1,8 @@
-name: "代码质量检查"
+name: "代码检查"
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, beta]
   push:
     branches: [main]
 

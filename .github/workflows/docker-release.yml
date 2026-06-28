@@ -1,10 +1,10 @@
-name: Docker Image Publish
+name: "Docker镜像发布"
 
 on:
   workflow_run:
     workflows:
-      - 发布
-      - Nightly 发布
+      - 正式发布
+      - 夜间发布
     types:
       - completed
 

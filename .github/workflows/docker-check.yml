@@ -1,8 +1,8 @@
-name: "Docker 构建检查"
+name: "Docker构建检查"
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, beta]
     paths:
       - "docker/Dockerfile"
       - "docker/docker-compose.yml"
