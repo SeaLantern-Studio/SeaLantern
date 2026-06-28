@@ -80,11 +80,11 @@
 
 ## Process API
 
-`sl.process` 命名空间需要 `execute_program` 权限。前台执行与后台执行共用同一个入口 `sl.process.exec()`，但只有前台执行会直接返回完整输出内容。
+`sl.process` 命名空间需要 `execute_program` 权限。前台执行与后台执行共用同一个入口 `sl.process.exec()`，但只有前台执行会直接返回完整输出内容。除此之外，插件还必须在 `manifest.json` 的 `programs` 字段中显式声明允许执行的程序。
 
 | 方法名                                      | 参数                                                        | 返回值                | 描述                       |
 | ------------------------------------------- | ----------------------------------------------------------- | --------------------- | -------------------------- |
-| `sl.process.exec(program, args?, options?)` | `program: string`<br>`args?: string[]`<br>`options?: table` | `table`               | 执行插件目录内的程序       |
+| `sl.process.exec(program, args?, options?)` | `program: string`<br>`args?: string[]`<br>`options?: table` | `table`               | 执行 manifest 已声明的插件目录内程序 |
 | `sl.process.get(pid)`                       | `pid: number`                                               | `table?`              | 查询后台进程状态           |
 | `sl.process.list()`                         | 无                                                          | `table`               | 列出当前插件拥有的后台进程 |
 | `sl.process.read_output(pid, options?)`     | `pid: number`<br>`options?: table`                          | `string?` 或 `table?` | 读取后台进程输出缓冲       |
@@ -100,6 +100,8 @@
 
 ### `sl.process.exec()` 其他行为
 
+- `manifest.json` 需要声明 `programs`，例如：`"programs": [{ "path": "bin/helper.exe" }]`
+- `program` 必须命中 `manifest.json` 的 `programs[].path` 声明，否则运行时会直接拒绝执行
 - `program` 与 `options.cwd` 都必须通过插件目录沙箱路径校验，不能越出插件目录
 - `options.timeout_ms` 只能用于前台执行，且必须大于 0；实际超时上限不会超过运行时内置的 30 秒限制
 - `options.background = true` 时，不会返回 `stdout` / `stderr`，而是返回后台进程 `pid`

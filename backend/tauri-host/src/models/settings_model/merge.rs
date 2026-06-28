@@ -161,11 +161,11 @@ impl AppSettings {
         if let Some(v) = partial.minimal_mode {
             self.minimal_mode = v;
         }
-        if let Some(ref v) = partial.plugin_allowed_commands {
-            self.plugin_allowed_commands = v.clone();
+        if let Some(ref v) = partial.plugin_console_allowed_commands {
+            self.plugin_console_allowed_commands = v.clone();
         }
-        if let Some(ref v) = partial.plugin_blocked_commands {
-            self.plugin_blocked_commands = v.clone();
+        if let Some(ref v) = partial.plugin_console_blocked_commands {
+            self.plugin_console_blocked_commands = v.clone();
         }
         if let Some(v) = partial.agreed_to_terms {
             self.agreed_to_terms = v;

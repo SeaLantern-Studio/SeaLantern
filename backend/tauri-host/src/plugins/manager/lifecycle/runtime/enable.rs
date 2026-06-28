@@ -57,6 +57,12 @@ pub(in crate::plugins::manager) fn enable_plugin(
     }
 
     let permissions = plugin_info.manifest.permissions.clone();
+    let allowed_programs = plugin_info
+        .manifest
+        .programs
+        .iter()
+        .map(|program| program.path.clone())
+        .collect::<Vec<_>>();
     println!("[PluginManager] 插件权限: {:?}", permissions);
 
     let app_data_dir = std::path::PathBuf::from(
@@ -75,6 +81,7 @@ pub(in crate::plugins::manager) fn enable_plugin(
         &global_dir,
         Arc::clone(&manager.api_registry),
         permissions,
+        allowed_programs,
     )?;
 
     let main_file = plugin_dir.join(&plugin_info.manifest.main);
@@ -165,6 +172,7 @@ mod tests {
                 ui: None,
                 events: Vec::new(),
                 commands: Vec::new(),
+                programs: Vec::new(),
                 dependencies: Vec::new(),
                 optional_dependencies: Vec::new(),
                 icon: None,

@@ -186,6 +186,7 @@ export function useCreateServerPage() {
         return;
       }
       runPathOverwriteRisk.value = false;
+      showError(String(error));
       console.error("Failed to check run path conflict:", error);
     }
   }

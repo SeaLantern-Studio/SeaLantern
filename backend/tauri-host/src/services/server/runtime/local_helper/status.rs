@@ -162,8 +162,6 @@ mod tests {
             server_id: "local-status".to_string(),
             helper_pid: u32::MAX,
             child_pid: Some(INVALID_PID),
-            control_port: Some(25570),
-            auth_token: "token".to_string(),
             running: true,
             exit_code: None,
             detail_message: "runtime=local running=true source=helper".to_string(),

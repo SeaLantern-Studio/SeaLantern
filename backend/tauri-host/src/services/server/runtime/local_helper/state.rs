@@ -1,11 +1,19 @@
-use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
+use super::{LocalHelperControlState, LocalHelperStatusSnapshot, LocalRuntimeState};
 use crate::models::server::ServerInstance;
 use crate::services::server::runtime::i18n::{runtime_t1, runtime_t2};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 pub fn remove_state_file(server: &ServerInstance) {
     let path = super::state_file_path(server);
+    let _ = std::fs::remove_file(path);
+}
+
+pub fn remove_control_state_file(server: &ServerInstance) {
+    let path = super::control_state_file_path(server);
     let _ = std::fs::remove_file(path);
 }
 
@@ -29,7 +37,47 @@ pub(super) fn persist_terminal_state(
     error_message: Option<String>,
 ) -> Result<(), String> {
     let next = terminal_state_from_exit(state, exit_code, error_message, current_timestamp_secs());
+    remove_control_state_file(server);
     write_state_file(&super::state_file_path(server), &next)
+}
+
+pub(super) fn write_control_state_file(
+    server: &ServerInstance,
+    state: &LocalHelperControlState,
+) -> Result<(), String> {
+    let path = super::control_state_file_path(server);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| {
+            runtime_t2(
+                "server.runtime.local_helper.state_write_failed",
+                parent.display().to_string(),
+                e.to_string(),
+            )
+        })?;
+
+        #[cfg(unix)]
+        {
+            let _ = std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700));
+        }
+    }
+
+    let content = serde_json::to_string_pretty(state).map_err(|e| {
+        runtime_t1("server.runtime.local_helper.state_serialize_failed", e.to_string())
+    })?;
+    std::fs::write(&path, content).map_err(|e| {
+        runtime_t2(
+            "server.runtime.local_helper.state_write_failed",
+            path.display().to_string(),
+            e.to_string(),
+        )
+    })?;
+
+    #[cfg(unix)]
+    {
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+
+    Ok(())
 }
 
 pub(super) fn started_state(
@@ -37,15 +85,12 @@ pub(super) fn started_state(
     helper_pid: u32,
     child_pid: Option<u32>,
     control_port: u16,
-    auth_token: String,
     updated_at: u64,
 ) -> LocalRuntimeState {
     LocalRuntimeState {
         server_id: server_id.to_string(),
         helper_pid,
         child_pid,
-        control_port: Some(control_port),
-        auth_token,
         running: true,
         exit_code: None,
         detail_message: format!(
@@ -64,15 +109,12 @@ pub(super) fn helper_ready_state(
     server_id: &str,
     helper_pid: u32,
     control_port: u16,
-    auth_token: String,
     updated_at: u64,
 ) -> LocalRuntimeState {
     LocalRuntimeState {
         server_id: server_id.to_string(),
         helper_pid,
         child_pid: None,
-        control_port: Some(control_port),
-        auth_token,
         running: true,
         exit_code: None,
         detail_message: format!(
@@ -93,8 +135,6 @@ pub(super) fn start_failed_state(
         server_id: state.server_id.clone(),
         helper_pid: state.helper_pid,
         child_pid: None,
-        control_port: None,
-        auth_token: state.auth_token.clone(),
         running: false,
         exit_code: None,
         detail_message: "runtime=local running=false source=helper startup=failed".to_string(),
@@ -112,8 +152,6 @@ pub(super) fn state_from_terminal_snapshot(
         server_id: state.server_id.clone(),
         helper_pid: state.helper_pid,
         child_pid: state.child_pid,
-        control_port: None,
-        auth_token: state.auth_token.clone(),
         running: false,
         exit_code: snapshot.exit_code,
         detail_message: snapshot.detail_message.clone(),
@@ -130,8 +168,6 @@ pub(super) fn state_from_requested_stop(
         server_id: state.server_id.clone(),
         helper_pid: state.helper_pid,
         child_pid: None,
-        control_port: None,
-        auth_token: state.auth_token.clone(),
         running: false,
         exit_code: state.exit_code,
         detail_message: if state.exit_code == Some(0) {
@@ -154,8 +190,6 @@ pub(super) fn terminal_state_from_exit(
         server_id: state.server_id.clone(),
         helper_pid: state.helper_pid,
         child_pid: state.child_pid,
-        control_port: None,
-        auth_token: state.auth_token.clone(),
         running: false,
         exit_code,
         detail_message: format!(
@@ -180,8 +214,8 @@ pub(super) fn current_timestamp_secs() -> u64 {
 mod tests {
     use super::{
         helper_ready_state, start_failed_state, started_state, state_from_requested_stop,
-        state_from_terminal_snapshot, terminal_state_from_exit, write_state_file,
-        LocalHelperStatusSnapshot, LocalRuntimeState,
+        state_from_terminal_snapshot, terminal_state_from_exit, write_control_state_file,
+        write_state_file, LocalHelperControlState, LocalHelperStatusSnapshot, LocalRuntimeState,
     };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use crate::services::server::runtime::i18n::runtime_t1;
@@ -220,8 +254,6 @@ mod tests {
             server_id: "local-state".to_string(),
             helper_pid: 11,
             child_pid: Some(22),
-            control_port: Some(25570),
-            auth_token: "token".to_string(),
             running: true,
             exit_code: None,
             detail_message: "runtime=local running=true source=helper pid=22".to_string(),
@@ -248,13 +280,11 @@ mod tests {
 
     #[test]
     fn started_state_populates_initial_helper_control_plane_fields() {
-        let state = started_state("local-state", 11, Some(22), 25570, "token".to_string(), 456);
+        let state = started_state("local-state", 11, Some(22), 25570, 456);
 
         assert_eq!(state.server_id, "local-state");
         assert_eq!(state.helper_pid, 11);
         assert_eq!(state.child_pid, Some(22));
-        assert_eq!(state.control_port, Some(25570));
-        assert_eq!(state.auth_token, "token");
         assert!(state.running);
         assert_eq!(state.exit_code, None);
         assert_eq!(state.error_message, None);
@@ -267,13 +297,11 @@ mod tests {
 
     #[test]
     fn helper_ready_state_marks_control_plane_ready_before_child_spawn() {
-        let state = helper_ready_state("local-state", 11, 25570, "token".to_string(), 456);
+        let state = helper_ready_state("local-state", 11, 25570, 456);
 
         assert_eq!(state.server_id, "local-state");
         assert_eq!(state.helper_pid, 11);
         assert_eq!(state.child_pid, None);
-        assert_eq!(state.control_port, Some(25570));
-        assert_eq!(state.auth_token, "token");
         assert!(state.running);
         assert_eq!(state.exit_code, None);
         assert_eq!(state.error_message, None);
@@ -285,12 +313,11 @@ mod tests {
 
     #[test]
     fn start_failed_state_clears_control_port_and_persists_error() {
-        let ready = helper_ready_state("local-state", 11, 25570, "token".to_string(), 456);
+        let ready = helper_ready_state("local-state", 11, 25570, 456);
         let failed = start_failed_state(&ready, "start failed".to_string(), 789);
 
         assert!(!failed.running);
         assert_eq!(failed.child_pid, None);
-        assert_eq!(failed.control_port, None);
         assert_eq!(failed.exit_code, None);
         assert_eq!(failed.updated_at, 789);
         assert_eq!(failed.error_message.as_deref(), Some("start failed"));
@@ -310,7 +337,6 @@ mod tests {
         );
 
         assert!(!next.running);
-        assert_eq!(next.control_port, None);
         assert_eq!(next.child_pid, Some(22));
         assert_eq!(next.exit_code, Some(7));
         assert_eq!(next.error_message.as_deref(), Some("helper unavailable"));
@@ -328,8 +354,6 @@ mod tests {
         assert_eq!(next.server_id, "local-state");
         assert_eq!(next.helper_pid, 11);
         assert_eq!(next.child_pid, Some(22));
-        assert_eq!(next.control_port, None);
-        assert_eq!(next.auth_token, "token");
         assert!(!next.running);
         assert_eq!(next.exit_code, Some(7));
         assert_eq!(next.updated_at, 789);
@@ -347,8 +371,6 @@ mod tests {
         assert_eq!(next.server_id, "local-state");
         assert_eq!(next.helper_pid, 11);
         assert_eq!(next.child_pid, None);
-        assert_eq!(next.control_port, None);
-        assert_eq!(next.auth_token, "token");
         assert!(!next.running);
         assert_eq!(next.exit_code, None);
         assert_eq!(next.error_message, None);
@@ -378,5 +400,44 @@ mod tests {
 
         let actual = read_state(&server).expect("state file should deserialize");
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn control_state_round_trips_written_private_file() {
+        let _guard = crate::services::server::runtime::local_helper::TEST_ENV_LOCK
+            .lock()
+            .expect("env lock should work");
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let app_data_dir = temp_dir.path().join("app-data");
+        std::fs::create_dir_all(&app_data_dir).expect("app data dir should exist");
+        unsafe {
+            std::env::set_var("SEALANTERN_DATA_DIR", &app_data_dir);
+        }
+        let server = test_server(temp_dir.path().join("server").to_string_lossy().to_string());
+        let expected = LocalHelperControlState {
+            server_id: server.id.clone(),
+            helper_pid: 11,
+            control_port: 25570,
+            auth_token: "token".to_string(),
+            updated_at: 123,
+        };
+
+        write_control_state_file(&server, &expected).expect("control state should be written");
+        let control_path =
+            crate::services::server::runtime::local_helper::control_state_file_path(&server);
+        assert!(control_path.starts_with(&app_data_dir));
+        assert!(control_path.exists());
+        let raw = std::fs::read_to_string(&control_path).expect("control file should be readable");
+        assert!(raw.contains("auth_token"));
+
+        let actual =
+            crate::services::server::runtime::local_helper::read_control_state_checked(&server)
+                .expect("control state should deserialize")
+                .expect("control state should exist");
+        assert_eq!(actual, expected);
+
+        unsafe {
+            std::env::remove_var("SEALANTERN_DATA_DIR");
+        }
     }
 }

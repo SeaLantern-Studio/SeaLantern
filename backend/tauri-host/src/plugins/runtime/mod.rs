@@ -49,6 +49,7 @@ mod tests {
             &global_dir,
             api_registry,
             vec![],
+            vec![],
         );
         assert!(runtime.is_ok());
 
@@ -73,6 +74,7 @@ mod tests {
             &server_dir,
             &global_dir,
             api_registry,
+            vec![],
             vec![],
         )
         .unwrap();

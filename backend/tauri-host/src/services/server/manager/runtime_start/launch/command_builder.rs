@@ -28,12 +28,7 @@ pub(crate) fn build_direct_jar_command(
 ) -> Result<Command, String> {
     let launch_target = resolve_direct_jar_launch_target(&context.server.path, jar_path);
 
-    let mut java_cmd = Command::new(
-        context
-            .server
-            .java_path()
-            .expect("local runtime launch requires java_path"),
-    );
+    let mut java_cmd = Command::new(context.java_path_required()?);
     for arg in startup_support::build_managed_jvm_args(
         context.server,
         context.settings,
@@ -54,21 +49,13 @@ pub(crate) fn build_direct_jar_command(
 pub(crate) fn build_starter_install_command(
     context: &LaunchContext<'_>,
 ) -> Result<Command, String> {
-    let jar_path = context
-        .server
-        .jar_path()
-        .expect("starter launch requires jar_path");
+    let jar_path = context.jar_path_required()?;
     let core_key = context.starter_core_key.trim();
     if core_key.is_empty() {
         return Err(manager_t("server.manager.starter_core_type_unrecognized"));
     }
 
-    let mut java_cmd = Command::new(
-        context
-            .server
-            .java_path()
-            .expect("local runtime launch requires java_path"),
-    );
+    let mut java_cmd = Command::new(context.java_path_required()?);
     java_cmd.arg("-jar");
     java_cmd.arg(resolve_direct_jar_launch_target(&context.server.path, jar_path));
 
@@ -89,14 +76,7 @@ pub(crate) fn build_configured_command(context: &LaunchContext<'_>) -> Result<Co
         StartupMode::Sh => build_sh_command(context),
         StartupMode::Ps1 => build_ps1_command(context),
         StartupMode::Starter => build_starter_install_command(context),
-        StartupMode::Jar => build_direct_jar_command(
-            context,
-            context
-                .server
-                .jar_path()
-                .expect("jar launch requires jar_path"),
-            None,
-        ),
+        StartupMode::Jar => build_direct_jar_command(context, context.jar_path_required()?, None),
     }
 }
 
@@ -356,7 +336,7 @@ mod tests {
     }
 
     #[test]
-    fn sh_command_prepares_user_jvm_args_and_injects_java_via_process_envs() {
+    fn sh_command_injects_java_via_process_envs_without_writing_managed_jvm_args_file() {
         let temp_dir = TempDir::new().expect("temp dir should exist");
         let settings = test_settings();
         let server = test_server(temp_dir.path(), "sh", None);
@@ -372,7 +352,7 @@ mod tests {
         assert_eq!(command.get_program().to_string_lossy(), "sh");
         assert_eq!(args, vec!["start.sh", "nogui"]);
         assert_java_process_env_is_injected(&command);
-        assert!(user_jvm_args_path.exists());
+        assert!(!user_jvm_args_path.exists());
     }
 
     #[test]

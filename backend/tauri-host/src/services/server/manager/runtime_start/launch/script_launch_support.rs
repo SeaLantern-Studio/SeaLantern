@@ -20,10 +20,7 @@ pub(super) fn prepare_script_startup(context: &LaunchContext<'_>) -> Result<(), 
         return Ok(());
     }
 
-    let java_path = context
-        .server
-        .java_path()
-        .expect("script launch requires java_path");
+    let java_path = context.java_path_required()?;
     ensure_supported_script_java_major_version(detect_shared_java_major_version(java_path))?;
     startup_support::write_user_jvm_args(
         context.server,
@@ -82,9 +79,9 @@ pub(super) fn apply_java_process_env(
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_java_process_env, ensure_supported_script_java_major_version};
     #[cfg(target_os = "windows")]
     use super::build_windows_bat_command;
+    use super::{apply_java_process_env, ensure_supported_script_java_major_version};
     use sea_lantern_server_local_setup_core::prepend_path_entry;
     #[cfg(target_os = "windows")]
     use sea_lantern_server_local_setup_core::{

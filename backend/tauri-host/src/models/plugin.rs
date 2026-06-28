@@ -23,8 +23,8 @@ pub use market::{MarketAuthorInfo, MarketPluginInfo, PluginUpdateInfo};
 /// 插件清单相关的公开类型
 pub use manifest::{
     PluginAuthor, PluginCommand, PluginContextMenu, PluginEngines, PluginLocaleEntry,
-    PluginManifest, PluginPage, PluginSettingField, PluginSettingOption, PluginSidebarConfig,
-    PluginUiConfig, SidebarCategoryConfig, SidebarMode,
+    PluginManifest, PluginPage, PluginProgram, PluginSettingField, PluginSettingOption,
+    PluginSidebarConfig, PluginUiConfig, SidebarCategoryConfig, SidebarMode,
 };
 
 #[allow(unused_imports)] // 对外类型导出

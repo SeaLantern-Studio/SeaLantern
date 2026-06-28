@@ -43,6 +43,7 @@ pub(crate) fn build_local_launch_detail(
         startup_filename: startup_filename(startup_path),
         starter_core_key,
     };
+    context.validate_for_launch()?;
     let effective = resolve_effective_startup_config_checked(server, settings)?;
 
     let effective_jvm_args = if matches!(startup_mode, StartupMode::Jar)

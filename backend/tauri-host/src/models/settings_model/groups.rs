@@ -64,10 +64,10 @@ impl AppSettings {
             changed.push(SettingsGroup::Developer);
         }
 
-        if self.plugin_allowed_commands != other.plugin_allowed_commands
-            || self.plugin_blocked_commands != other.plugin_blocked_commands
+        if self.plugin_console_allowed_commands != other.plugin_console_allowed_commands
+            || self.plugin_console_blocked_commands != other.plugin_console_blocked_commands
         {
-            changed.push(SettingsGroup::PluginCommands);
+            changed.push(SettingsGroup::PluginConsoleCommands);
         }
 
         changed

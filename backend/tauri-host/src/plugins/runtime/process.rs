@@ -41,6 +41,7 @@ impl PluginRuntime {
             &self.plugin_dir,
             &self.plugin_id,
             &self.permissions,
+            &self.allowed_programs,
             &process_registry,
         )?;
         lifecycle::register(&self.lua, &process_table, &self.plugin_id, &process_registry)?;

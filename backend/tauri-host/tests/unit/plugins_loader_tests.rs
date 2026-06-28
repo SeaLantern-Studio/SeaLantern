@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::plugin::PluginAuthor;
+use crate::models::plugin::{PluginAuthor, PluginProgram};
 use std::fs;
 
 fn make_temp_dir(name: &str) -> PathBuf {
@@ -43,6 +43,7 @@ fn make_manifest(permissions: Vec<&str>) -> PluginManifest {
         ui: None,
         events: vec![],
         commands: vec![],
+        programs: vec![],
         dependencies: Default::default(),
         optional_dependencies: Default::default(),
         icon: None,
@@ -136,4 +137,25 @@ fn test_validate_manifest_allows_both_plugin_folder_permission_names() {
 
     assert!(PluginLoader::validate_manifest(&legacy_manifest).is_ok());
     assert!(PluginLoader::validate_manifest(&canonical_manifest).is_ok());
+}
+
+#[test]
+fn test_validate_manifest_rejects_duplicate_program_paths() {
+    let mut manifest = make_manifest(vec!["execute_program"]);
+    manifest.programs = vec![
+        PluginProgram { path: "bin/helper.exe".into() },
+        PluginProgram { path: "bin\\helper.exe".into() },
+    ];
+
+    let error = PluginLoader::validate_manifest(&manifest).unwrap_err();
+    assert!(error.contains("duplicates declared program path"), "{}", error);
+}
+
+#[test]
+fn test_validate_manifest_rejects_unsafe_program_path() {
+    let mut manifest = make_manifest(vec!["execute_program"]);
+    manifest.programs = vec![PluginProgram { path: "../helper.exe".into() }];
+
+    let error = PluginLoader::validate_manifest(&manifest).unwrap_err();
+    assert!(error.contains("must not contain '..'"), "{}", error);
 }

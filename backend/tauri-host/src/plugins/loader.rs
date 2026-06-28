@@ -6,6 +6,42 @@ use crate::plugins::runtime::permissions::{
 use std::fs;
 use std::path::{Path, PathBuf};
 
+fn validate_safe_relative_file_path(path: &str, field: &str) -> Result<(), String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err(format!("Manifest field '{}' must not be empty", field));
+    }
+
+    let candidate = Path::new(trimmed);
+    if candidate.is_absolute() {
+        return Err(format!("Manifest field '{}' must be a relative path", field));
+    }
+
+    if trimmed.contains("..") {
+        return Err(format!("Manifest field '{}' must not contain '..' segments", field));
+    }
+
+    if candidate
+        .components()
+        .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        return Err(format!(
+            "Manifest field '{}' must not contain parent directory segments",
+            field
+        ));
+    }
+
+    if trimmed.ends_with('/') || trimmed.ends_with('\\') {
+        return Err(format!("Manifest field '{}' must point to a file", field));
+    }
+
+    Ok(())
+}
+
+fn normalize_manifest_program_path(path: &str) -> String {
+    path.trim().replace('\\', "/")
+}
+
 /// 插件加载器
 ///
 /// 负责发现插件目录、读取清单和做基础校验
@@ -108,6 +144,20 @@ impl PluginLoader {
                 "Plugin main file '{}' must be a safe relative path without '..'",
                 manifest.main
             ));
+        }
+
+        let mut seen_programs = std::collections::HashSet::new();
+        for (index, program) in manifest.programs.iter().enumerate() {
+            let field = format!("programs[{}].path", index);
+            validate_safe_relative_file_path(&program.path, &field)?;
+
+            let normalized = normalize_manifest_program_path(&program.path);
+            if !seen_programs.insert(normalized.clone()) {
+                return Err(format!(
+                    "Manifest field '{}' duplicates declared program path '{}'",
+                    field, normalized
+                ));
+            }
         }
 
         for perm in &manifest.permissions {
