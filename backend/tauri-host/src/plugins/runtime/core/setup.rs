@@ -5,8 +5,8 @@ use crate::plugins::runtime::permissions::{
 };
 use crate::services::global::i18n_service;
 use mlua::Table;
-use std::collections::HashMap;
-use std::path::Path;
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 fn core_t1(key: &str, a: impl Into<String>) -> String {
@@ -16,6 +16,23 @@ fn core_t1(key: &str, a: impl Into<String>) -> String {
 }
 
 impl PluginRuntime {
+    fn normalize_declared_programs(
+        plugin_dir: &Path,
+        allowed_programs: Vec<String>,
+    ) -> Result<HashSet<PathBuf>, String> {
+        let mut normalized = HashSet::new();
+
+        for program in allowed_programs {
+            let path = crate::plugins::runtime::shared::safe_canonicalize_check(
+                plugin_dir,
+                &plugin_dir.join(&program),
+            )?;
+            normalized.insert(path);
+        }
+
+        Ok(normalized)
+    }
+
     pub fn new(
         plugin_id: &str,
         plugin_dir: &Path,
@@ -26,6 +43,7 @@ impl PluginRuntime {
             Mutex<std::collections::HashMap<String, std::collections::HashMap<String, String>>>,
         >,
         permissions: Vec<String>,
+        allowed_programs: Vec<String>,
     ) -> Result<Self, String> {
         let lua = mlua::Lua::new_with(
             mlua::StdLib::TABLE
@@ -41,6 +59,8 @@ impl PluginRuntime {
             .map_err(|e| core_t1("plugins.runtime.core.create_data_dir_failed", e.to_string()))?;
 
         let normalized_permissions = normalize_permissions(permissions);
+        let normalized_allowed_programs =
+            Self::normalize_declared_programs(plugin_dir, allowed_programs)?;
 
         let runtime = Self {
             lua,
@@ -51,6 +71,7 @@ impl PluginRuntime {
             global_dir: global_dir.to_path_buf(),
             loaded: std::sync::atomic::AtomicBool::new(false),
             permissions: normalized_permissions,
+            allowed_programs: normalized_allowed_programs,
             api_registry,
             storage_lock: std::sync::Arc::new(std::sync::Mutex::new(())),
             process_registry: crate::plugins::runtime::process::new_process_registry(),

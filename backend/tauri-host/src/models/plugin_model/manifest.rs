@@ -30,6 +30,8 @@ pub struct PluginManifest {
     #[serde(default)]
     pub commands: Vec<PluginCommand>,
     #[serde(default)]
+    pub programs: Vec<PluginProgram>,
+    #[serde(default)]
     pub dependencies: Vec<PluginDependency>,
     #[serde(default)]
     pub optional_dependencies: Vec<PluginDependency>,
@@ -181,6 +183,12 @@ pub struct PluginCommand {
     pub title: String,
     #[serde(default)]
     pub shortcut: Option<String>,
+}
+
+/// 插件可执行程序声明
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginProgram {
+    pub path: String,
 }
 
 fn default_show_dependents() -> bool {

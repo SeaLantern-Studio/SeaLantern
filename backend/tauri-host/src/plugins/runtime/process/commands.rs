@@ -4,7 +4,8 @@ mod read_output;
 mod shared;
 
 use mlua::{Lua, Table};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use super::common::process_msg2;
@@ -29,10 +30,21 @@ pub(super) fn register(
     plugin_dir: &std::path::Path,
     plugin_id: &str,
     permissions: &[String],
+    allowed_programs: &HashSet<PathBuf>,
     process_registry: &Arc<Mutex<HashMap<u32, super::common::ProcessEntry>>>,
 ) -> Result<(), String> {
     process_table
-        .set("exec", exec::exec(lua, plugin_dir, plugin_id, permissions, process_registry)?)
+        .set(
+            "exec",
+            exec::exec(
+                lua,
+                plugin_dir,
+                plugin_id,
+                permissions,
+                allowed_programs,
+                process_registry,
+            )?,
+        )
         .map_err(|e| {
             process_msg2("plugins.runtime.process.set_api_failed", "process.exec", e.to_string())
         })?;

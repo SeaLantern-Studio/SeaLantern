@@ -2,6 +2,10 @@ pub(super) fn emit_process_log(plugin_id: &str, action: &str, detail: &str) {
     let _ = crate::plugins::api::emit_permission_log(plugin_id, "api_call", action, detail);
 }
 
+pub(super) fn emit_process_denied_log(plugin_id: &str, action: &str, detail: &str) {
+    let _ = crate::plugins::api::emit_permission_log(plugin_id, "program_denied", action, detail);
+}
+
 use crate::plugins::runtime::process::common::process_err1;
 
 pub(super) fn mask_args_for_log(args: &[String]) -> String {

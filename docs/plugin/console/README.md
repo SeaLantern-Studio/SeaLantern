@@ -44,6 +44,8 @@ author: Codex
 - 命令命中阻止列表
 - 后端写入服务器 stdin 失败
 
+> 这里的允许/阻止名单只作用于 `sl.console.send()` 的控制台命令首词，不作用于 `sl.process.exec()`。后者使用 `execute_program` 权限 + `manifest.json` 中 `programs` 声明的独立边界。
+
 相关错误映射辅助函数：
 
 - [`map_console_err()`](../../../backend/tauri-host/src/plugins/runtime/console/common.rs:30)

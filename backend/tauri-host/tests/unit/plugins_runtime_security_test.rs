@@ -28,6 +28,11 @@ fn create_test_runtime_with_root(permissions: Vec<&str>) -> (PluginRuntime, Path
     let server_dir = temp_dir.join("servers");
     let global_dir = temp_dir.join("global");
     let api_registry = new_api_registry();
+    let allowed_programs = if permissions.contains(&"execute_program") {
+        vec![default_test_program_name().to_string()]
+    } else {
+        Vec::new()
+    };
 
     fs::create_dir_all(&temp_dir).unwrap();
 
@@ -39,6 +44,7 @@ fn create_test_runtime_with_root(permissions: Vec<&str>) -> (PluginRuntime, Path
         &global_dir,
         api_registry,
         permissions.into_iter().map(|p| p.to_string()).collect(),
+        allowed_programs,
     )
     .unwrap();
 
@@ -47,6 +53,16 @@ fn create_test_runtime_with_root(permissions: Vec<&str>) -> (PluginRuntime, Path
 
 fn cleanup_test_root(path: &Path) {
     let _ = fs::remove_dir_all(path);
+}
+
+#[cfg(windows)]
+fn default_test_program_name() -> &'static str {
+    "powershell.exe"
+}
+
+#[cfg(not(windows))]
+fn default_test_program_name() -> &'static str {
+    "sh"
 }
 
 #[test]
@@ -240,6 +256,72 @@ fn test_process_exec_timeout_kills_and_reaps_foreground_process() {
         !process_exists(child_pid),
         "timed out child process {} should have been terminated",
         child_pid
+    );
+
+    cleanup_test_root(&temp_dir);
+}
+
+#[test]
+fn test_process_exec_requires_manifest_programs_declaration() {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("time went backwards")
+        .as_nanos();
+    let temp_dir =
+        env::temp_dir().join(format!("sl_test_runtime_exec_missing_{}_{}", std::process::id(), now));
+    let data_dir = temp_dir.join("data");
+    let server_dir = temp_dir.join("servers");
+    let global_dir = temp_dir.join("global");
+    let api_registry = new_api_registry();
+
+    fs::create_dir_all(&temp_dir).unwrap();
+    let runtime = PluginRuntime::new(
+        "test-runtime-security",
+        &temp_dir,
+        &data_dir,
+        &server_dir,
+        &global_dir,
+        api_registry,
+        vec!["execute_program".to_string()],
+        vec![],
+    )
+    .unwrap();
+
+    let (program, args) = prepare_stderr_process_fixture(&temp_dir);
+    let sl: Table = runtime.lua().globals().get("sl").unwrap();
+    let process: Table = sl.get("process").unwrap();
+    let exec: Function = process.get("exec").unwrap();
+
+    let result: mlua::Result<Table> = exec.call((program, args, Option::<Table>::None));
+    let error = result.expect_err("exec should reject undeclared programs").to_string();
+
+    assert!(
+        error.contains("manifest") || error.contains("声明") || error.contains("programs"),
+        "unexpected error: {}",
+        error
+    );
+
+    cleanup_test_root(&temp_dir);
+}
+
+#[test]
+fn test_process_exec_rejects_program_not_declared_in_manifest() {
+    let (runtime, temp_dir) = create_test_runtime_with_root(vec!["execute_program"]);
+    let undeclared_program = temp_dir.join("undeclared.exe");
+    fs::write(&undeclared_program, b"not a real executable").unwrap();
+
+    let sl: Table = runtime.lua().globals().get("sl").unwrap();
+    let process: Table = sl.get("process").unwrap();
+    let exec: Function = process.get("exec").unwrap();
+
+    let result: mlua::Result<Table> =
+        exec.call(("undeclared.exe".to_string(), Vec::<String>::new(), Option::<Table>::None));
+    let error = result.expect_err("exec should reject undeclared path").to_string();
+
+    assert!(
+        error.contains("not declared") || error.contains("未声明") || error.contains("manifest"),
+        "unexpected error: {}",
+        error
     );
 
     cleanup_test_root(&temp_dir);

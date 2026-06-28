@@ -117,6 +117,8 @@ pub(crate) fn desktop_handler(
         settings_commands::import_personalization_package,
         settings_commands::get_personalization_package_suggested_name,
         settings_commands::get_system_fonts,
+        settings_commands::get_plugin_console_commands,
+        settings_commands::update_plugin_console_commands,
         settings_commands::get_plugin_commands,
         settings_commands::update_plugin_commands,
         settings_commands::apply_acrylic,

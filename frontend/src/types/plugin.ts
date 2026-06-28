@@ -55,6 +55,10 @@ export interface PluginUiConfig {
   sidebar?: PluginSidebarConfig;
 }
 
+export interface PluginProgram {
+  path: string;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -66,6 +70,7 @@ export interface PluginManifest {
   repository?: string;
   permissions?: string[];
   events?: string[];
+  programs?: PluginProgram[];
   settings?: PluginSettingField[];
   ui?: PluginUiConfig;
   dependencies?: PluginDependency[];

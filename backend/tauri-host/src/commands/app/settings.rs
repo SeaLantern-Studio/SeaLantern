@@ -387,9 +387,9 @@ pub struct UpdateSettingsResult {
     pub changed_groups: Vec<String>,
 }
 
-/// 插件命令名单设置
+/// 插件控制台命令名单设置
 #[derive(serde::Serialize, Deserialize)]
-pub struct PluginCommands {
+pub struct PluginConsoleCommands {
     pub allowed: Vec<String>,
     pub blocked: Vec<String>,
 }
@@ -673,17 +673,17 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-/// 读取插件命令名单设置
-pub fn get_plugin_commands() -> PluginCommands {
+/// 读取插件控制台命令名单设置
+pub fn get_plugin_console_commands() -> PluginConsoleCommands {
     let settings = global::settings_manager().get();
-    PluginCommands {
-        allowed: settings.plugin_allowed_commands,
-        blocked: settings.plugin_blocked_commands,
+    PluginConsoleCommands {
+        allowed: settings.plugin_console_allowed_commands,
+        blocked: settings.plugin_console_blocked_commands,
     }
 }
 
 #[tauri::command]
-/// 更新插件命令名单设置
+/// 更新插件控制台命令名单设置
 ///
 /// # Parameters
 ///
@@ -692,10 +692,12 @@ pub fn get_plugin_commands() -> PluginCommands {
 /// # Returns
 ///
 /// 返回更新后的完整设置和变化分组
-pub fn update_plugin_commands(commands: PluginCommands) -> Result<UpdateSettingsResult, String> {
+pub fn update_plugin_console_commands(
+    commands: PluginConsoleCommands,
+) -> Result<UpdateSettingsResult, String> {
     let partial = PartialSettings {
-        plugin_allowed_commands: Some(commands.allowed),
-        plugin_blocked_commands: Some(commands.blocked),
+        plugin_console_allowed_commands: Some(commands.allowed),
+        plugin_console_blocked_commands: Some(commands.blocked),
         ..Default::default()
     };
     let result = global::settings_manager().update_partial(partial)?;
@@ -705,8 +707,20 @@ pub fn update_plugin_commands(commands: PluginCommands) -> Result<UpdateSettings
             .changed_groups
             .into_iter()
             .map(|g| format!("{:?}", g))
-            .collect(),
+        .collect(),
     })
+}
+
+#[tauri::command]
+pub fn get_plugin_commands() -> PluginConsoleCommands {
+    get_plugin_console_commands()
+}
+
+#[tauri::command]
+pub fn update_plugin_commands(
+    commands: PluginConsoleCommands,
+) -> Result<UpdateSettingsResult, String> {
+    update_plugin_console_commands(commands)
 }
 
 #[tauri::command]

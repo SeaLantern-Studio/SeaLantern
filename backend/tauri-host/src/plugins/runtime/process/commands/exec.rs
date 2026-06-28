@@ -1,5 +1,6 @@
 use super::shared::{
-    collect_env_vars, emit_process_log, mask_args_for_log, validate_args, validate_program_path,
+    collect_env_vars, emit_process_denied_log, emit_process_log, mask_args_for_log,
+    validate_args, validate_program_path,
 };
 use crate::plugins::runtime::process::common::{
     collect_finished_processes, new_process_output, plugin_process_count, process_err,
@@ -10,8 +11,9 @@ use crate::plugins::runtime::process::common::{
 };
 use crate::plugins::runtime::shared::validate_path_static;
 use mlua::{Function, Lua, Table};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -46,11 +48,13 @@ pub(super) fn exec(
     plugin_dir: &std::path::Path,
     plugin_id: &str,
     permissions: &[String],
+    allowed_programs: &HashSet<PathBuf>,
     process_registry: &Arc<Mutex<HashMap<u32, ProcessEntry>>>,
 ) -> Result<Function, String> {
     let dir = plugin_dir.to_path_buf();
     let pid = plugin_id.to_string();
     let perms = permissions.to_vec();
+    let declared_programs = allowed_programs.clone();
     let registry = Arc::clone(process_registry);
 
     lua.create_function(
@@ -63,6 +67,29 @@ pub(super) fn exec(
 
             let program_path = validate_path_static(&dir, &program)?;
             validate_program_path(&program_path, &program)?;
+
+            if declared_programs.is_empty() {
+                emit_process_denied_log(
+                    &pid,
+                    "sl.process.exec",
+                    &format!("program={} reason=manifest_missing_programs", program),
+                );
+                return Err(process_err(
+                    "plugins.runtime.process.manifest_programs_required",
+                ));
+            }
+
+            if !declared_programs.contains(&program_path) {
+                emit_process_denied_log(
+                    &pid,
+                    "sl.process.exec",
+                    &format!("program={} reason=program_not_declared", program),
+                );
+                return Err(process_err1(
+                    "plugins.runtime.process.program_not_declared",
+                    program,
+                ));
+            }
 
             let args = args.unwrap_or_default();
             validate_args(&args, MAX_ARGS_COUNT, MAX_ARG_LENGTH)?;

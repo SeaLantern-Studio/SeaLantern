@@ -125,7 +125,7 @@
     "ui_component_create": "创建 UI 组件",
     "ui_component_create_desc": "允许插件动态创建新的 UI 组件并渲染到应用中。",
     "execute_program": "执行程序",
-    "execute_program_desc": "允许插件运行其目录内的可执行程序。这是极度危险的权限，恶意插件可能利用此权限执行任意代码。",
+    "execute_program_desc": "允许插件运行其目录内、且已在 manifest.json 中声明的可执行程序。这是极度危险的权限，恶意插件可能利用此权限执行任意代码。",
     "plugin_folder_access": "插件文件夹访问",
     "plugin_folder_access_desc": "允许插件访问用户的插件文件夹。这是极度危险的权限，恶意插件可能读取或修改其他插件的数据。",
     "warning_title": "权限警告",

@@ -1,7 +1,7 @@
 use crate::plugins::runtime::process::ProcessEntry;
 use crate::services::global::i18n_service;
 use mlua::{Function, Table, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{
@@ -32,6 +32,8 @@ pub struct PluginRuntime {
     pub(crate) loaded: AtomicBool,
 
     pub(crate) permissions: Vec<String>,
+
+    pub(crate) allowed_programs: HashSet<PathBuf>,
 
     pub(crate) api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
 

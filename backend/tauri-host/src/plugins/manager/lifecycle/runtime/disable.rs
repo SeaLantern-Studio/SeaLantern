@@ -82,6 +82,7 @@ mod tests {
                 ui: None,
                 events: Vec::new(),
                 commands: Vec::new(),
+                programs: Vec::new(),
                 dependencies: Vec::new(),
                 optional_dependencies: Vec::new(),
                 icon: None,

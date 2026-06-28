@@ -707,6 +707,8 @@
   "plugins.runtime.process.create_api_failed": "Failed to create {0}: {1}",
   "plugins.runtime.process.program_not_found": "Program not found: {0}",
   "plugins.runtime.process.program_path_not_file": "Program path is not a file: {0}",
+  "plugins.runtime.process.manifest_programs_required": "Program execution is denied because this plugin does not declare any allowed programs in manifest.json",
+  "plugins.runtime.process.program_not_declared": "Program execution is denied because '{0}' is not declared in manifest.json",
   "plugins.runtime.process.too_many_arguments": "Too many arguments: maximum {0} allowed",
   "plugins.runtime.process.argument_too_long": "Argument too long: maximum {0} characters allowed",
   "plugins.runtime.process.too_many_env_vars": "Too many environment variables: maximum {0} allowed",

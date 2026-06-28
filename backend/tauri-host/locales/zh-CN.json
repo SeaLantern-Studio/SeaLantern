@@ -707,6 +707,8 @@
   "plugins.runtime.process.create_api_failed": "创建 {0} 失败: {1}",
   "plugins.runtime.process.program_not_found": "未找到程序: {0}",
   "plugins.runtime.process.program_path_not_file": "程序路径不是文件: {0}",
+  "plugins.runtime.process.manifest_programs_required": "程序执行已被拒绝：此插件未在 manifest.json 中声明任何允许执行的程序",
+  "plugins.runtime.process.program_not_declared": "程序执行已被拒绝：'{0}' 未在 manifest.json 中声明",
   "plugins.runtime.process.too_many_arguments": "参数过多，最多允许 {0} 个",
   "plugins.runtime.process.argument_too_long": "参数过长，最多允许 {0} 个字符",
   "plugins.runtime.process.too_many_env_vars": "环境变量过多，最多允许 {0} 个",

@@ -43,6 +43,7 @@ fn create_test_runtime_with_permissions(
         &global_dir,
         api_registry,
         perms,
+        vec![],
     )
     .unwrap();
 

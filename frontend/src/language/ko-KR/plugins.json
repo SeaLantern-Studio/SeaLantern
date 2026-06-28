@@ -125,7 +125,7 @@
     "ui_component_create": "Create UI Components",
     "ui_component_create_desc": "Allows the plugin to dynamically create new UI components and render them in the app.",
     "execute_program": "Execute Program",
-    "execute_program_desc": "Allows the plugin to run executable programs within its directory. This is an extremely dangerous permission, malicious plugins may use it to execute arbitrary code.",
+    "execute_program_desc": "Allows the plugin to run executable programs declared in manifest.json within its directory. This is an extremely dangerous permission, malicious plugins may use it to execute arbitrary code.",
     "plugin_folder_access": "Plugin Folder Access",
     "plugin_folder_access_desc": "Allows the plugin to access the user's plugin folder. This is an extremely dangerous permission, malicious plugins may read or modify other plugins' data.",
     "warning_title": "Permission Warning",

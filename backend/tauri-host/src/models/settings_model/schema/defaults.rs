@@ -44,8 +44,8 @@ impl Default for AppSettings {
             close_action: "ask".to_string(),
             last_run_path: String::new(),
             minimal_mode: false,
-            plugin_allowed_commands: default_allowed_commands(),
-            plugin_blocked_commands: default_blocked_commands(),
+            plugin_console_allowed_commands: default_allowed_commands(),
+            plugin_console_blocked_commands: default_blocked_commands(),
             agreed_to_terms: false,
         }
     }

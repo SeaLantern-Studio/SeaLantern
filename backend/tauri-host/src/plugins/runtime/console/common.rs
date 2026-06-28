@@ -117,8 +117,8 @@ pub(super) fn is_command_allowed(command: &str) -> Result<String, String> {
     let cmd_first = command_first_token(&sanitized).to_ascii_lowercase();
 
     let settings = settings_manager().get();
-    let allowed = normalized_command_list(&settings.plugin_allowed_commands);
-    let blocked = normalized_command_list(&settings.plugin_blocked_commands);
+    let allowed = normalized_command_list(&settings.plugin_console_allowed_commands);
+    let blocked = normalized_command_list(&settings.plugin_console_blocked_commands);
 
     if blocked.iter().any(|cmd| cmd == &cmd_first) {
         return Err(
@@ -132,7 +132,7 @@ pub(super) fn is_command_allowed(command: &str) -> Result<String, String> {
 
     Err(i18n_service().t_with_options(
         "console.command_not_allowed",
-        &i18n_args(&[("0", &sanitized), ("1", &settings.plugin_allowed_commands.join(", "))]),
+        &i18n_args(&[("0", &sanitized), ("1", &settings.plugin_console_allowed_commands.join(", "))]),
     ))
 }
 
