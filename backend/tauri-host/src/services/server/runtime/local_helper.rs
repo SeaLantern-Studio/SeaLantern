@@ -4,6 +4,7 @@ mod snapshot;
 mod state;
 mod status;
 
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::{Deserialize, Serialize};
 use sl_server_info::log::LogStream;
 use std::path::{Path, PathBuf};
@@ -13,13 +14,34 @@ pub struct LocalRuntimeState {
     pub server_id: String,
     pub helper_pid: u32,
     pub child_pid: Option<u32>,
-    pub control_port: Option<u16>,
-    pub auth_token: String,
     pub running: bool,
     pub exit_code: Option<i32>,
     pub detail_message: String,
     pub error_message: Option<String>,
     pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LocalHelperControlState {
+    pub server_id: String,
+    pub helper_pid: u32,
+    pub control_port: u16,
+    pub auth_token: String,
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LegacyLocalRuntimeState {
+    server_id: String,
+    helper_pid: u32,
+    child_pid: Option<u32>,
+    control_port: Option<u16>,
+    auth_token: Option<String>,
+    running: bool,
+    exit_code: Option<i32>,
+    detail_message: String,
+    error_message: Option<String>,
+    updated_at: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -39,7 +61,8 @@ use self::dispatch::handle_connection;
 use self::protocol::{send_request, LocalHelperRequest};
 use self::snapshot::detect_terminal_snapshot;
 use self::state::{
-    current_timestamp_secs, helper_ready_state, persist_terminal_state, remove_state_file,
+    current_timestamp_secs, helper_ready_state, persist_terminal_state,
+    remove_control_state_file, remove_state_file,
     start_failed_state, started_state, state_from_requested_stop, state_from_terminal_snapshot,
     write_state_file,
 };
@@ -57,8 +80,20 @@ use std::process::Command;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
+#[cfg(test)]
+static TEST_ENV_LOCK: once_cell::sync::Lazy<std::sync::Mutex<()>> =
+    once_cell::sync::Lazy::new(|| std::sync::Mutex::new(()));
+
 pub fn state_file_path(server: &ServerInstance) -> PathBuf {
     Path::new(&server.path).join(crate::utils::constants::LOCAL_RUNTIME_STATE_FILE)
+}
+
+pub fn control_state_file_path(server: &ServerInstance) -> PathBuf {
+    let encoded_server_id = URL_SAFE_NO_PAD.encode(server.id.as_bytes());
+    crate::utils::path::get_app_data_dir()
+        .join("runtime")
+        .join("local_helper_control")
+        .join(format!("{}.json", encoded_server_id))
 }
 
 pub fn read_state_checked(server: &ServerInstance) -> Result<Option<LocalRuntimeState>, String> {
@@ -75,7 +110,61 @@ pub fn read_state_checked(server: &ServerInstance) -> Result<Option<LocalRuntime
         }
     };
 
-    let state = serde_json::from_str::<LocalRuntimeState>(&content).map_err(|error| {
+    let legacy = serde_json::from_str::<LegacyLocalRuntimeState>(&content).map_err(|error| {
+        runtime_t2(
+            "server.runtime.local_helper.state_parse_failed",
+            path.display().to_string(),
+            error.to_string(),
+        )
+    })?;
+
+    let had_legacy_control_fields = legacy.control_port.is_some() || legacy.auth_token.is_some();
+    let state = LocalRuntimeState {
+        server_id: legacy.server_id,
+        helper_pid: legacy.helper_pid,
+        child_pid: legacy.child_pid,
+        running: legacy.running,
+        exit_code: legacy.exit_code,
+        detail_message: legacy.detail_message,
+        error_message: legacy.error_message,
+        updated_at: legacy.updated_at,
+    };
+
+    if had_legacy_control_fields {
+        if let Err(error) = write_state_file(&path, &state) {
+            logger::log_warn_ctx(
+                "server.runtime.local_helper",
+                "read_state_checked",
+                &format!(
+                    "failed to sanitize legacy control fields from state file: server_id={} path={} error={}",
+                    server.id,
+                    path.display(),
+                    error
+                ),
+            );
+        }
+    }
+
+    Ok(Some(state))
+}
+
+pub fn read_control_state_checked(
+    server: &ServerInstance,
+) -> Result<Option<LocalHelperControlState>, String> {
+    let path = control_state_file_path(server);
+    let content = match std::fs::read_to_string(&path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(runtime_t2(
+                "server.runtime.local_helper.state_read_failed",
+                path.display().to_string(),
+                error.to_string(),
+            ));
+        }
+    };
+
+    let state = serde_json::from_str::<LocalHelperControlState>(&content).map_err(|error| {
         runtime_t2(
             "server.runtime.local_helper.state_parse_failed",
             path.display().to_string(),
@@ -84,6 +173,40 @@ pub fn read_state_checked(server: &ServerInstance) -> Result<Option<LocalRuntime
     })?;
 
     Ok(Some(state))
+}
+
+fn read_live_control_state_checked(
+    server: &ServerInstance,
+    runtime_state: &LocalRuntimeState,
+) -> Result<Option<LocalHelperControlState>, String> {
+    if !runtime_state.running {
+        remove_control_state_file(server);
+        return Ok(None);
+    }
+
+    let Some(control_state) = read_control_state_checked(server)? else {
+        return Ok(None);
+    };
+
+    if control_state.server_id != runtime_state.server_id
+        || control_state.helper_pid != runtime_state.helper_pid
+    {
+        logger::log_warn_ctx(
+            "server.runtime.local_helper",
+            "read_live_control_state_checked",
+            &format!(
+                "discarding stale helper control file: server_id={} runtime_helper_pid={} control_helper_pid={} path={}",
+                server.id,
+                runtime_state.helper_pid,
+                control_state.helper_pid,
+                control_state_file_path(server).display()
+            ),
+        );
+        remove_control_state_file(server);
+        return Ok(None);
+    }
+
+    Ok(Some(control_state))
 }
 
 #[allow(dead_code)]
@@ -132,6 +255,7 @@ pub fn cleanup_for_new_start(server: &ServerInstance) {
     cleanup_orphan_helper_processes(server, current_exe.as_deref());
 
     remove_state_file(server);
+    remove_control_state_file(server);
 }
 
 fn cleanup_runtime_processes_from_state(
@@ -323,9 +447,15 @@ pub fn status_snapshot(
     };
 
     if helper_process_matches_server(server, state.helper_pid) {
+        let Some(control_state) = read_live_control_state_checked(server, &state)? else {
+            let snapshot = fallback_snapshot_from_unreachable_helper(&state);
+            reconcile_terminal_state_after_fallback(server, &state, &snapshot);
+            return Ok(Some(snapshot));
+        };
+
         match send_request(
-            &state,
-            LocalHelperRequest::Status { auth_token: state.auth_token.clone() },
+            &control_state,
+            LocalHelperRequest::Status { auth_token: control_state.auth_token.clone() },
         ) {
             Ok(response) => return Ok(response.snapshot),
             Err(error) => {
@@ -394,10 +524,13 @@ pub fn send_command(server: &ServerInstance, command: &str) -> Result<(), String
         return Err(runtime_t("server.runtime.local_helper.send_unavailable"));
     }
 
+    let control_state = read_live_control_state_checked(server, &state)?
+        .ok_or_else(|| runtime_t("server.runtime.local_helper.send_unavailable"))?;
+
     let response = send_request(
-        &state,
+        &control_state,
         LocalHelperRequest::Send {
-            auth_token: state.auth_token.clone(),
+            auth_token: control_state.auth_token.clone(),
             command: command.to_string(),
         },
     )?;
@@ -419,9 +552,11 @@ pub fn request_stop(server: &ServerInstance) -> Result<(), String> {
     })?;
 
     if helper_process_matches_server(server, state.helper_pid) {
+        let control_state = read_live_control_state_checked(server, &state)?
+            .ok_or_else(|| runtime_t("server.runtime.local_helper.send_unavailable"))?;
         let response = match send_request(
-            &state,
-            LocalHelperRequest::Stop { auth_token: state.auth_token.clone() },
+            &control_state,
+            LocalHelperRequest::Stop { auth_token: control_state.auth_token.clone() },
         ) {
             Ok(response) => response,
             Err(error) => {
@@ -466,9 +601,11 @@ pub fn force_stop(server: &ServerInstance) -> Result<(), String> {
     })?;
 
     if helper_process_matches_server(server, state.helper_pid) {
+        let control_state = read_live_control_state_checked(server, &state)?
+            .ok_or_else(|| runtime_t("server.runtime.local_helper.send_unavailable"))?;
         let response = match send_request(
-            &state,
-            LocalHelperRequest::ForceStop { auth_token: state.auth_token.clone() },
+            &control_state,
+            LocalHelperRequest::ForceStop { auth_token: control_state.auth_token.clone() },
         ) {
             Ok(response) => response,
             Err(error) => {
@@ -557,13 +694,15 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         .port();
 
     let state_path = state_file_path(&server);
-    let mut state = helper_ready_state(
-        server_id,
+    let control_state = LocalHelperControlState {
+        server_id: server_id.to_string(),
         helper_pid,
         control_port,
-        auth_token.clone(),
-        current_timestamp_secs(),
-    );
+        auth_token: auth_token.clone(),
+        updated_at: current_timestamp_secs(),
+    };
+    state::write_control_state_file(&server, &control_state)?;
+    let mut state = helper_ready_state(server_id, helper_pid, control_port, current_timestamp_secs());
     write_state_file(&state_path, &state)?;
 
     let start_result =
@@ -572,6 +711,7 @@ fn run_helper(server_id: &str) -> Result<(), String> {
             Err(error) => {
                 state = start_failed_state(&state, error.clone(), current_timestamp_secs());
                 write_state_file(&state_path, &state)?;
+                remove_control_state_file(&server);
                 return Err(error);
             }
         };
@@ -610,7 +750,6 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         helper_pid,
         child_pid,
         control_port,
-        auth_token,
         current_timestamp_secs(),
     );
     write_state_file(&state_path, &state)?;
@@ -632,15 +771,18 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         if let Some(snapshot) = detect_terminal_snapshot(manager, &server)? {
             state = state_from_terminal_snapshot(&state, &snapshot, current_timestamp_secs());
             write_state_file(&state_path, &state)?;
+            remove_control_state_file(&server);
             break;
         }
 
         match listener.accept() {
             Ok((stream, _)) => {
-                let should_exit = handle_connection(manager, &server, &state, stream)?;
+                let should_exit =
+                    handle_connection(manager, &server, &control_state, &state, stream)?;
                 if should_exit {
                     state = state_from_requested_stop(&state, current_timestamp_secs());
                     write_state_file(&state_path, &state)?;
+                    remove_control_state_file(&server);
                     break;
                 }
             }
@@ -663,11 +805,13 @@ fn run_helper(server_id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    use super::state::{remove_control_state_file, write_control_state_file};
     use super::state::write_state_file;
     use super::status_snapshot;
     use super::{
-        looks_like_local_runtime_helper_command, process_matches_server_helper_identity,
-        read_state_checked, send_command, state_file_path,
+        control_state_file_path, looks_like_local_runtime_helper_command,
+        process_matches_server_helper_identity, read_control_state_checked, read_state_checked,
+        send_command, state_file_path, LocalHelperControlState,
     };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use crate::services::server::runtime::i18n::runtime_t;
@@ -713,8 +857,6 @@ mod tests {
                 server_id: server.id.clone(),
                 helper_pid: 999_999,
                 child_pid: None,
-                control_port: Some(25570),
-                auth_token: "token".to_string(),
                 running: true,
                 exit_code: None,
                 detail_message:
@@ -743,7 +885,6 @@ mod tests {
             .expect("reconciled state should read")
             .expect("reconciled state should exist");
         assert!(!reconciled.running);
-        assert_eq!(reconciled.control_port, None);
         assert_eq!(reconciled.child_pid, None);
         assert_eq!(
             reconciled.detail_message,
@@ -764,8 +905,6 @@ mod tests {
                 server_id: server.id.clone(),
                 helper_pid: 999_999,
                 child_pid: Some(u32::MAX),
-                control_port: Some(25570),
-                auth_token: "token".to_string(),
                 running: true,
                 exit_code: None,
                 detail_message:
@@ -789,7 +928,6 @@ mod tests {
             .expect("reconciled state should read")
             .expect("reconciled state should exist");
         assert!(!reconciled.running);
-        assert_eq!(reconciled.control_port, None);
         assert_eq!(reconciled.child_pid, Some(u32::MAX));
         assert_eq!(
             reconciled.detail_message,
@@ -881,5 +1019,163 @@ mod tests {
             .expect_err("invalid local helper state should abort send command");
 
         assert!(error.contains(&runtime_t("server.runtime.local_helper.state_parse_failed_prefix")));
+    }
+
+    #[test]
+    fn read_state_checked_sanitizes_legacy_control_fields_from_state_file() {
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let path = state_file_path(&server);
+
+        std::fs::write(
+            &path,
+            r#"{
+  "server_id": "local-helper",
+  "helper_pid": 42,
+  "child_pid": 24,
+  "control_port": 25570,
+  "auth_token": "secret",
+  "running": true,
+  "exit_code": null,
+  "detail_message": "runtime=local running=true source=helper",
+  "error_message": null,
+  "updated_at": 123
+}"#,
+        )
+        .expect("legacy state file should be written");
+
+        let state = read_state_checked(&server)
+            .expect("legacy state should read")
+            .expect("legacy state should exist");
+
+        assert_eq!(state.server_id, server.id);
+        assert_eq!(state.helper_pid, 42);
+        assert_eq!(state.child_pid, Some(24));
+        assert!(state.running);
+
+        let sanitized = std::fs::read_to_string(&path).expect("sanitized state should be readable");
+        assert!(!sanitized.contains("control_port"));
+        assert!(!sanitized.contains("auth_token"));
+    }
+
+    #[test]
+    fn read_live_control_state_rejects_stale_helper_pid_and_deletes_file() {
+        let _guard = super::TEST_ENV_LOCK.lock().expect("env lock should work");
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let app_data_dir = temp_dir.path().join("app-data");
+        std::fs::create_dir_all(&app_data_dir).expect("app data dir should exist");
+        unsafe {
+            std::env::set_var("SEALANTERN_DATA_DIR", &app_data_dir);
+        }
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let runtime_state = super::LocalRuntimeState {
+            server_id: server.id.clone(),
+            helper_pid: 100,
+            child_pid: None,
+            running: true,
+            exit_code: None,
+            detail_message: "runtime=local running=true source=helper".to_string(),
+            error_message: None,
+            updated_at: 123,
+        };
+        let control_path = control_state_file_path(&server);
+        write_control_state_file(
+            &server,
+            &LocalHelperControlState {
+                server_id: server.id.clone(),
+                helper_pid: 101,
+                control_port: 25570,
+                auth_token: "secret".to_string(),
+                updated_at: 123,
+            },
+        )
+        .expect("control state should be written");
+
+        let control = super::read_live_control_state_checked(&server, &runtime_state)
+            .expect("stale control state should not error");
+
+        assert_eq!(control, None);
+        assert!(!control_path.exists());
+
+        unsafe {
+            std::env::remove_var("SEALANTERN_DATA_DIR");
+        }
+    }
+
+    #[test]
+    fn read_live_control_state_drops_terminal_runtime_control_file() {
+        let _guard = super::TEST_ENV_LOCK.lock().expect("env lock should work");
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let app_data_dir = temp_dir.path().join("app-data");
+        std::fs::create_dir_all(&app_data_dir).expect("app data dir should exist");
+        unsafe {
+            std::env::set_var("SEALANTERN_DATA_DIR", &app_data_dir);
+        }
+        let server = test_server(temp_dir.path().to_string_lossy().to_string());
+        let runtime_state = super::LocalRuntimeState {
+            server_id: server.id.clone(),
+            helper_pid: 100,
+            child_pid: None,
+            running: false,
+            exit_code: Some(0),
+            detail_message: "runtime=local running=false source=state_file exit_code=0".to_string(),
+            error_message: None,
+            updated_at: 123,
+        };
+        let control_path = control_state_file_path(&server);
+        write_control_state_file(
+            &server,
+            &LocalHelperControlState {
+                server_id: server.id.clone(),
+                helper_pid: 100,
+                control_port: 25570,
+                auth_token: "secret".to_string(),
+                updated_at: 123,
+            },
+        )
+        .expect("control state should be written");
+
+        let control = super::read_live_control_state_checked(&server, &runtime_state)
+            .expect("terminal runtime control cleanup should not error");
+
+        assert_eq!(control, None);
+        assert!(!control_path.exists());
+
+        unsafe {
+            std::env::remove_var("SEALANTERN_DATA_DIR");
+        }
+    }
+
+    #[test]
+    fn control_state_round_trips_in_private_app_data_file() {
+        let _guard = super::TEST_ENV_LOCK.lock().expect("env lock should work");
+        let temp_dir = tempdir().expect("temp dir should exist");
+        let app_data_dir = temp_dir.path().join("app-data");
+        std::fs::create_dir_all(&app_data_dir).expect("app data dir should exist");
+        unsafe {
+            std::env::set_var("SEALANTERN_DATA_DIR", &app_data_dir);
+        }
+
+        let server = test_server(temp_dir.path().join("server").to_string_lossy().to_string());
+        let expected = LocalHelperControlState {
+            server_id: server.id.clone(),
+            helper_pid: 42,
+            control_port: 25570,
+            auth_token: "secret".to_string(),
+            updated_at: 123,
+        };
+
+        write_control_state_file(&server, &expected).expect("control state should be written");
+        let actual = read_control_state_checked(&server)
+            .expect("control state should read")
+            .expect("control state should exist");
+
+        assert_eq!(actual, expected);
+        assert!(control_state_file_path(&server).starts_with(&app_data_dir));
+
+        remove_control_state_file(&server);
+        unsafe {
+            std::env::remove_var("SEALANTERN_DATA_DIR");
+        }
     }
 }

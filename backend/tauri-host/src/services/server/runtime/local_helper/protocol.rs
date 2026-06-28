@@ -1,5 +1,5 @@
-use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
-use crate::services::server::runtime::i18n::{runtime_t, runtime_t1, runtime_t2};
+use super::{LocalHelperControlState, LocalHelperStatusSnapshot};
+use crate::services::server::runtime::i18n::{runtime_t1, runtime_t2};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
@@ -55,12 +55,10 @@ pub(in super::super) fn write_response(
 }
 
 pub(super) fn send_request(
-    state: &LocalRuntimeState,
+    state: &LocalHelperControlState,
     request: LocalHelperRequest,
 ) -> Result<LocalHelperResponse, String> {
-    let control_port = state
-        .control_port
-        .ok_or_else(|| runtime_t("server.runtime.local_helper.control_port_missing"))?;
+    let control_port = state.control_port;
     let mut stream = TcpStream::connect(("127.0.0.1", control_port)).map_err(|e| {
         runtime_t2(
             "server.runtime.local_helper.connect_failed",

@@ -1,6 +1,6 @@
 use super::protocol::{read_request, write_response, LocalHelperRequest, LocalHelperResponse};
 use super::snapshot::snapshot_from_manager;
-use super::{LocalHelperStatusSnapshot, LocalRuntimeState};
+use super::{LocalHelperControlState, LocalHelperStatusSnapshot, LocalRuntimeState};
 use crate::models::server::ServerInstance;
 use crate::services::server::manager::ServerManager;
 use crate::services::server::runtime::i18n::runtime_t;
@@ -12,12 +12,13 @@ use std::net::TcpStream;
 pub(super) fn handle_connection(
     manager: &ServerManager,
     server: &ServerInstance,
+    control_state: &LocalHelperControlState,
     state: &LocalRuntimeState,
     mut stream: TcpStream,
 ) -> Result<bool, String> {
     let request = read_request(&stream)?;
 
-    if request.auth_token() != state.auth_token.as_str() {
+    if request.auth_token() != control_state.auth_token.as_str() {
         write_response(&mut stream, &auth_failed_response())?;
         return Ok(false);
     }
