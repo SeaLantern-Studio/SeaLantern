@@ -31,6 +31,8 @@ pub(in crate::services::server::manager::runtime_start) fn launch_server_process
     id: &str,
     context: LaunchContext<'_>,
 ) -> Result<LaunchPlan, String> {
+    context.validate_for_launch()?;
+
     if startup_mode_is_starter(context.startup_mode.as_str()) {
         let child = install_and_launch_starter(id, &context)?;
         return Ok(LaunchPlan { child, fallback_info: None });
@@ -178,9 +180,7 @@ fn install_and_launch_starter(
             })?;
     let startup_mode = StartupMode::from_raw(&selection.startup_mode);
     let startup_filename = selection.startup_filename;
-    let (java_home_dir_str, java_bin_dir_str) = context
-        .java_env()
-        .expect("starter install launch script requires java env");
+    let (java_home_dir_str, java_bin_dir_str) = context.java_env_required()?;
 
     let launch_phase = manager_t("server.manager.launch_phase_starter_script");
     let command = match startup_mode {

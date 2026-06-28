@@ -1,7 +1,8 @@
 use super::super::super::common::StartupMode;
 use crate::models::server::ServerInstance;
-use crate::services::server::manager::i18n::manager_t1;
+use crate::services::server::manager::i18n::{manager_t1, manager_t2};
 use sea_lantern_server_installer_core::resolve_starter_core_key_checked as resolve_shared_starter_core_key;
+use sea_lantern_server_local_setup_core::startup_mode_requires_java;
 use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
 
 pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a> {
@@ -20,6 +21,70 @@ impl LaunchContext<'_> {
         &self,
     ) -> Option<(&str, &str)> {
         Some((self.java_home_dir_str.as_deref()?, self.java_bin_dir_str.as_deref()?))
+    }
+
+    pub(in crate::services::server::manager::runtime_start) fn jar_path_required(
+        &self,
+    ) -> Result<&str, String> {
+        self.server
+            .jar_path()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                manager_t1(
+                    "server.manager.launch_startup_path_missing",
+                    self.startup_mode.as_str().to_string(),
+                )
+            })
+    }
+
+    pub(in crate::services::server::manager::runtime_start) fn java_path_required(
+        &self,
+    ) -> Result<&str, String> {
+        self.server
+            .java_path()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                manager_t1(
+                    "server.manager.launch_java_path_missing",
+                    self.startup_mode.as_str().to_string(),
+                )
+            })
+    }
+
+    pub(in crate::services::server::manager::runtime_start) fn java_env_required(
+        &self,
+    ) -> Result<(&str, &str), String> {
+        self.java_env().ok_or_else(|| {
+            manager_t1(
+                "server.manager.launch_java_env_missing",
+                self.startup_mode.as_str().to_string(),
+            )
+        })
+    }
+
+    pub(in crate::services::server::manager::runtime_start) fn validate_for_launch(
+        &self,
+    ) -> Result<(), String> {
+        if self.server.local_runtime().is_none() {
+            return Err(manager_t2(
+                "server.runtime.config_mismatch",
+                self.server.runtime_kind.clone(),
+                "local",
+            ));
+        }
+
+        if matches!(self.startup_mode, StartupMode::Jar | StartupMode::Starter) {
+            self.jar_path_required()?;
+        }
+
+        if startup_mode_requires_java(self.startup_mode.as_str()) {
+            self.java_path_required()?;
+            self.java_env_required()?;
+        }
+
+        Ok(())
     }
 }
 
@@ -43,10 +108,15 @@ pub(in crate::services::server::manager::runtime_start) fn resolve_starter_core_
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_starter_core_key;
+    use super::{resolve_starter_core_key, LaunchContext};
     use crate::models::server::{
-        CpuPolicyConfig, JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
+        CpuPolicyConfig, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
+        JvmPresetConfig, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
     };
+    use crate::models::settings::AppSettings;
+    use crate::services::server::manager::common::StartupMode;
+    use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
+    use std::collections::BTreeMap;
 
     fn test_server(startup_mode: &str, core_type: &str, jar_path: &str) -> ServerInstance {
         ServerInstance {
@@ -72,6 +142,46 @@ mod tests {
                 cpu_policy: CpuPolicyConfig::default(),
                 jvm_preset: JvmPresetConfig::default(),
             }),
+        }
+    }
+
+    fn test_context<'a>(
+        server: &'a ServerInstance,
+        settings: &'a AppSettings,
+        startup_mode: StartupMode,
+        java_home_dir_str: Option<&str>,
+        java_bin_dir_str: Option<&str>,
+    ) -> LaunchContext<'a> {
+        LaunchContext {
+            server,
+            settings,
+            startup_mode,
+            managed_console_encoding: ManagedConsoleEncoding::Utf8,
+            java_bin_dir_str: java_bin_dir_str.map(str::to_string),
+            java_home_dir_str: java_home_dir_str.map(str::to_string),
+            startup_filename: "server.jar".to_string(),
+            starter_core_key: String::new(),
+        }
+    }
+
+    fn docker_runtime() -> DockerItzgRuntimeConfig {
+        DockerItzgRuntimeConfig {
+            image: "itzg/minecraft-server".to_string(),
+            image_tag: "java21".to_string(),
+            container_name: "sea-test".to_string(),
+            type_value: "PAPER".to_string(),
+            version: "1.21.1".to_string(),
+            data_dir_mount: "E:/servers/docker-runtime".to_string(),
+            published_game_port: 25565,
+            env: BTreeMap::new(),
+            extra_ports: Vec::new(),
+            volume_mounts: Vec::new(),
+            docker_backend_kind: DockerBackendKind::Cli,
+            command_mode: DockerCommandMode::Rcon,
+            rcon: None,
+            jvm_args: Vec::new(),
+            cpu_policy: CpuPolicyConfig::default(),
+            jvm_preset: JvmPresetConfig::default(),
         }
     }
 
@@ -109,5 +219,72 @@ mod tests {
             .expect("starter core type should fall back to detected launch target");
 
         assert_eq!(core_key, "neoforge");
+    }
+
+    #[test]
+    fn validate_for_launch_rejects_non_local_runtime() {
+        let settings = AppSettings::default();
+        let server = ServerInstance {
+            id: "docker-runtime".to_string(),
+            name: "Docker Runtime".to_string(),
+            aliases: Vec::new(),
+            core_type: "paper".to_string(),
+            core_version: "paper".to_string(),
+            mc_version: "1.21.1".to_string(),
+            path: "E:/servers/docker-runtime".to_string(),
+            port: 25565,
+            max_memory: 2048,
+            min_memory: 1024,
+            created_at: 0,
+            last_started_at: None,
+            runtime_kind: "docker_itzg".to_string(),
+            runtime: ServerRuntimeConfig::DockerItzg(docker_runtime()),
+        };
+        let context = test_context(
+            &server,
+            &settings,
+            StartupMode::Jar,
+            Some("C:/Java"),
+            Some("C:/Java/bin"),
+        );
+
+        let err = context
+            .validate_for_launch()
+            .expect_err("non-local runtime should not pass local launch validation");
+
+        assert!(err.contains("runtime_kind=docker_itzg"));
+        assert!(err.contains("runtime.kind=local"));
+    }
+
+    #[test]
+    fn validate_for_launch_rejects_missing_startup_path_for_jar_mode() {
+        let settings = AppSettings::default();
+        let server = test_server("jar", "paper", "   ");
+        let context = test_context(
+            &server,
+            &settings,
+            StartupMode::Jar,
+            Some("C:/Java"),
+            Some("C:/Java/bin"),
+        );
+
+        let err = context
+            .validate_for_launch()
+            .expect_err("jar mode should require a startup path");
+
+        assert!(err.contains("jar"));
+    }
+
+    #[test]
+    fn validate_for_launch_rejects_missing_java_env_for_java_modes() {
+        let settings = AppSettings::default();
+        let server = test_server("starter", "forge", "installer.jar");
+        let context = test_context(&server, &settings, StartupMode::Starter, None, None);
+
+        let err = context
+            .validate_for_launch()
+            .expect_err("starter mode should require resolved java env");
+
+        assert!(err.contains("starter"));
     }
 }
