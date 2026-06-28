@@ -375,6 +375,7 @@
   "server.manager.update_startup_mode_unsupported": "当前运行时不支持修改启动方式",
   "server.manager.user_jvm_args_write_failed": "写入 user_jvm_args.txt 失败: {0}",
   "server.manage.copy_directory_failed": "复制目录失败: {0}",
+  "server.manage.copy_symlink_forbidden": "源目录中的符号链接或重解析点不允许复制: {0}",
   "server.manage.parse_core_type_task_failed": "解析核心类型任务失败: {0}",
   "server.manage.read_dir_failed": "读取目录失败: {0}",
   "server.manage.scan_startup_task_failed": "扫描启动项任务失败: {0}",

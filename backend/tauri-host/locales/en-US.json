@@ -375,6 +375,7 @@
   "server.manager.update_startup_mode_unsupported": "The current runtime does not support changing the startup mode",
   "server.manager.user_jvm_args_write_failed": "Failed to write user_jvm_args.txt: {0}",
   "server.manage.copy_directory_failed": "Failed to copy directory: {0}",
+  "server.manage.copy_symlink_forbidden": "Symlinks and reparse points cannot be copied from the source directory: {0}",
   "server.manage.parse_core_type_task_failed": "The parse-core-type task failed: {0}",
   "server.manage.read_dir_failed": "Failed to read directory: {0}",
   "server.manage.scan_startup_task_failed": "The startup scan task failed: {0}",

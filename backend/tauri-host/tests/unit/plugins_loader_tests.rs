@@ -143,12 +143,8 @@ fn test_validate_manifest_allows_both_plugin_folder_permission_names() {
 fn test_validate_manifest_rejects_duplicate_program_paths() {
     let mut manifest = make_manifest(vec!["execute_program"]);
     manifest.programs = vec![
-        PluginProgram {
-            path: "bin/helper.exe".into(),
-        },
-        PluginProgram {
-            path: "bin\\helper.exe".into(),
-        },
+        PluginProgram { path: "bin/helper.exe".into() },
+        PluginProgram { path: "bin\\helper.exe".into() },
     ];
 
     let error = PluginLoader::validate_manifest(&manifest).unwrap_err();
@@ -158,9 +154,7 @@ fn test_validate_manifest_rejects_duplicate_program_paths() {
 #[test]
 fn test_validate_manifest_rejects_unsafe_program_path() {
     let mut manifest = make_manifest(vec!["execute_program"]);
-    manifest.programs = vec![PluginProgram {
-        path: "../helper.exe".into(),
-    }];
+    manifest.programs = vec![PluginProgram { path: "../helper.exe".into() }];
 
     let error = PluginLoader::validate_manifest(&manifest).unwrap_err();
     assert!(error.contains("must not contain '..'"), "{}", error);

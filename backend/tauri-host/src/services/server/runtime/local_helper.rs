@@ -61,10 +61,9 @@ use self::dispatch::handle_connection;
 use self::protocol::{send_request, LocalHelperRequest};
 use self::snapshot::detect_terminal_snapshot;
 use self::state::{
-    current_timestamp_secs, helper_ready_state, persist_terminal_state,
-    remove_control_state_file, remove_state_file,
-    start_failed_state, started_state, state_from_requested_stop, state_from_terminal_snapshot,
-    write_state_file,
+    current_timestamp_secs, helper_ready_state, persist_terminal_state, remove_control_state_file,
+    remove_state_file, start_failed_state, started_state, state_from_requested_stop,
+    state_from_terminal_snapshot, write_state_file,
 };
 use self::status::{fallback_snapshot_from_state_file, fallback_snapshot_from_unreachable_helper};
 use crate::models::server::ServerInstance;
@@ -455,7 +454,9 @@ pub fn status_snapshot(
 
         match send_request(
             &control_state,
-            LocalHelperRequest::Status { auth_token: control_state.auth_token.clone() },
+            LocalHelperRequest::Status {
+                auth_token: control_state.auth_token.clone(),
+            },
         ) {
             Ok(response) => return Ok(response.snapshot),
             Err(error) => {
@@ -556,7 +557,9 @@ pub fn request_stop(server: &ServerInstance) -> Result<(), String> {
             .ok_or_else(|| runtime_t("server.runtime.local_helper.send_unavailable"))?;
         let response = match send_request(
             &control_state,
-            LocalHelperRequest::Stop { auth_token: control_state.auth_token.clone() },
+            LocalHelperRequest::Stop {
+                auth_token: control_state.auth_token.clone(),
+            },
         ) {
             Ok(response) => response,
             Err(error) => {
@@ -605,7 +608,9 @@ pub fn force_stop(server: &ServerInstance) -> Result<(), String> {
             .ok_or_else(|| runtime_t("server.runtime.local_helper.send_unavailable"))?;
         let response = match send_request(
             &control_state,
-            LocalHelperRequest::ForceStop { auth_token: control_state.auth_token.clone() },
+            LocalHelperRequest::ForceStop {
+                auth_token: control_state.auth_token.clone(),
+            },
         ) {
             Ok(response) => response,
             Err(error) => {
@@ -702,7 +707,8 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         updated_at: current_timestamp_secs(),
     };
     state::write_control_state_file(&server, &control_state)?;
-    let mut state = helper_ready_state(server_id, helper_pid, control_port, current_timestamp_secs());
+    let mut state =
+        helper_ready_state(server_id, helper_pid, control_port, current_timestamp_secs());
     write_state_file(&state_path, &state)?;
 
     let start_result =
@@ -745,13 +751,7 @@ fn run_helper(server_id: &str) -> Result<(), String> {
         );
     }
 
-    state = started_state(
-        server_id,
-        helper_pid,
-        child_pid,
-        control_port,
-        current_timestamp_secs(),
-    );
+    state = started_state(server_id, helper_pid, child_pid, control_port, current_timestamp_secs());
     write_state_file(&state_path, &state)?;
     logger::log_user_action(
         "server.runtime.local.helper",
@@ -805,8 +805,8 @@ fn run_helper(server_id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::state::{remove_control_state_file, write_control_state_file};
     use super::state::write_state_file;
+    use super::state::{remove_control_state_file, write_control_state_file};
     use super::status_snapshot;
     use super::{
         control_state_file_path, looks_like_local_runtime_helper_command,

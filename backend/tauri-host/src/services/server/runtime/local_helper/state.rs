@@ -219,9 +219,7 @@ mod tests {
     };
     use crate::models::server::{LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig};
     use crate::services::server::runtime::i18n::runtime_t1;
-    use crate::services::server::runtime::local_helper::{
-        read_state, state_file_path,
-    };
+    use crate::services::server::runtime::local_helper::{read_state, state_file_path};
     use tempfile::tempdir;
 
     fn test_server(path: String) -> ServerInstance {
@@ -432,9 +430,10 @@ mod tests {
         let raw = std::fs::read_to_string(&control_path).expect("control file should be readable");
         assert!(raw.contains("auth_token"));
 
-        let actual = crate::services::server::runtime::local_helper::read_control_state_checked(&server)
-            .expect("control state should deserialize")
-            .expect("control state should exist");
+        let actual =
+            crate::services::server::runtime::local_helper::read_control_state_checked(&server)
+                .expect("control state should deserialize")
+                .expect("control state should exist");
         assert_eq!(actual, expected);
 
         unsafe {

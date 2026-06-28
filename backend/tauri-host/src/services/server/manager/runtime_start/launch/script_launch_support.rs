@@ -82,9 +82,9 @@ pub(super) fn apply_java_process_env(
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_java_process_env, ensure_supported_script_java_major_version};
     #[cfg(target_os = "windows")]
     use super::build_windows_bat_command;
+    use super::{apply_java_process_env, ensure_supported_script_java_major_version};
     use sea_lantern_server_local_setup_core::prepend_path_entry;
     #[cfg(target_os = "windows")]
     use sea_lantern_server_local_setup_core::{

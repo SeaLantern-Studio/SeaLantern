@@ -203,10 +203,16 @@ pub struct AppSettings {
     #[serde(default)]
     pub minimal_mode: bool,
 
-    #[serde(default = "default_allowed_commands", alias = "plugin_allowed_commands")]
+    #[serde(
+        default = "default_allowed_commands",
+        alias = "plugin_allowed_commands"
+    )]
     pub plugin_console_allowed_commands: Vec<String>,
 
-    #[serde(default = "default_blocked_commands", alias = "plugin_blocked_commands")]
+    #[serde(
+        default = "default_blocked_commands",
+        alias = "plugin_blocked_commands"
+    )]
     pub plugin_console_blocked_commands: Vec<String>,
 
     #[serde(default = "default_false")]
@@ -300,9 +306,15 @@ pub struct PartialSettings {
     pub last_run_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimal_mode: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "plugin_allowed_commands")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        alias = "plugin_allowed_commands"
+    )]
     pub plugin_console_allowed_commands: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none", alias = "plugin_blocked_commands")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        alias = "plugin_blocked_commands"
+    )]
     pub plugin_console_blocked_commands: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agreed_to_terms: Option<bool>,

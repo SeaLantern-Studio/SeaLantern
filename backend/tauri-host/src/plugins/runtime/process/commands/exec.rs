@@ -1,6 +1,6 @@
 use super::shared::{
-    collect_env_vars, emit_process_denied_log, emit_process_log, mask_args_for_log,
-    validate_args, validate_program_path,
+    collect_env_vars, emit_process_denied_log, emit_process_log, mask_args_for_log, validate_args,
+    validate_program_path,
 };
 use crate::plugins::runtime::process::common::{
     collect_finished_processes, new_process_output, plugin_process_count, process_err,

@@ -18,10 +18,7 @@ fn validate_safe_relative_file_path(path: &str, field: &str) -> Result<(), Strin
     }
 
     if trimmed.contains("..") {
-        return Err(format!(
-            "Manifest field '{}' must not contain '..' segments",
-            field
-        ));
+        return Err(format!("Manifest field '{}' must not contain '..' segments", field));
     }
 
     if candidate

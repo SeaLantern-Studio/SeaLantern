@@ -267,8 +267,11 @@ fn test_process_exec_requires_manifest_programs_declaration() {
         .duration_since(UNIX_EPOCH)
         .expect("time went backwards")
         .as_nanos();
-    let temp_dir =
-        env::temp_dir().join(format!("sl_test_runtime_exec_missing_{}_{}", std::process::id(), now));
+    let temp_dir = env::temp_dir().join(format!(
+        "sl_test_runtime_exec_missing_{}_{}",
+        std::process::id(),
+        now
+    ));
     let data_dir = temp_dir.join("data");
     let server_dir = temp_dir.join("servers");
     let global_dir = temp_dir.join("global");
@@ -293,7 +296,9 @@ fn test_process_exec_requires_manifest_programs_declaration() {
     let exec: Function = process.get("exec").unwrap();
 
     let result: mlua::Result<Table> = exec.call((program, args, Option::<Table>::None));
-    let error = result.expect_err("exec should reject undeclared programs").to_string();
+    let error = result
+        .expect_err("exec should reject undeclared programs")
+        .to_string();
 
     assert!(
         error.contains("manifest") || error.contains("声明") || error.contains("programs"),
@@ -316,7 +321,9 @@ fn test_process_exec_rejects_program_not_declared_in_manifest() {
 
     let result: mlua::Result<Table> =
         exec.call(("undeclared.exe".to_string(), Vec::<String>::new(), Option::<Table>::None));
-    let error = result.expect_err("exec should reject undeclared path").to_string();
+    let error = result
+        .expect_err("exec should reject undeclared path")
+        .to_string();
 
     assert!(
         error.contains("not declared") || error.contains("未声明") || error.contains("manifest"),

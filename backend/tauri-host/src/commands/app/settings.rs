@@ -707,7 +707,7 @@ pub fn update_plugin_console_commands(
             .changed_groups
             .into_iter()
             .map(|g| format!("{:?}", g))
-        .collect(),
+            .collect(),
     })
 }
 

@@ -132,7 +132,10 @@ pub(super) fn is_command_allowed(command: &str) -> Result<String, String> {
 
     Err(i18n_service().t_with_options(
         "console.command_not_allowed",
-        &i18n_args(&[("0", &sanitized), ("1", &settings.plugin_console_allowed_commands.join(", "))]),
+        &i18n_args(&[
+            ("0", &sanitized),
+            ("1", &settings.plugin_console_allowed_commands.join(", ")),
+        ]),
     ))
 }
 
