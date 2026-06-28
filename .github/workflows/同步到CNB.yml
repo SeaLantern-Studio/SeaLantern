@@ -1,4 +1,4 @@
-name: 同步 Release 到 CNB
+name: "同步到CNB"
 
 # 两个触发条件：
 # 1. 当有新的 Release 发布时自动触发同步

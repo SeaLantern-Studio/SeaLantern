@@ -1,8 +1,8 @@
-name: "代码质量检查"
+name: "代码检查"
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, beta]
   push:
     branches: [main]
 
@@ -29,7 +29,7 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
-              - '.github/workflows/check.yml'
+              - '.github/workflows/代码检查.yml'
             frontend:
               - 'frontend/**'
               - 'scripts/**'
@@ -41,7 +41,7 @@ jobs:
               - 'frontend/index.html'
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
-              - '.github/workflows/check.yml'
+              - '.github/workflows/代码检查.yml'
 
   backend:
     name: 后端检查 (Rust)

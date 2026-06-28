@@ -1,4 +1,4 @@
-name: "Nightly 发布"
+name: "夜间发布"
 
 on:
   schedule:

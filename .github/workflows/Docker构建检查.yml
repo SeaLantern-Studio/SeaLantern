@@ -1,8 +1,8 @@
-name: "Docker 构建检查"
+name: "Docker构建检查"
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, beta]
     paths:
       - "docker/Dockerfile"
       - "docker/docker-compose.yml"
@@ -13,7 +13,7 @@ on:
       - "frontend/pnpm-workspace.yaml"
       - "Cargo.toml"
       - "Cargo.lock"
-      - ".github/workflows/docker-check.yml"
+      - ".github/workflows/Docker构建检查.yml"
   push:
     branches: [main]
     paths:
@@ -26,7 +26,7 @@ on:
       - "frontend/pnpm-workspace.yaml"
       - "Cargo.toml"
       - "Cargo.lock"
-      - ".github/workflows/docker-check.yml"
+      - ".github/workflows/Docker构建检查.yml"
 
 concurrency:
   group: docker-check-${{ github.event.pull_request.number || github.ref }}

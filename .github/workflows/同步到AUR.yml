@@ -1,4 +1,4 @@
-name: "推送 AUR"
+name: "同步到AUR"
 
 on:
   release:

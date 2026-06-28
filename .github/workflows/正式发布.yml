@@ -1,4 +1,4 @@
-name: "发布"
+name: "正式发布"
 
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const headSha = process.env.GITHUB_SHA;
-            const requiredWorkflowName = '代码质量检查';
+            const requiredWorkflowName = '代码检查';
 
             const response = await github.rest.actions.listWorkflowRunsForRepo({
               owner,
