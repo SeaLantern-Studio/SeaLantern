@@ -29,7 +29,7 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
-              - '.github/workflows/代码检查.yml'
+              - '.github/workflows/check.yml'
             frontend:
               - 'frontend/**'
               - 'scripts/**'
@@ -41,7 +41,7 @@ jobs:
               - 'frontend/index.html'
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
-              - '.github/workflows/代码检查.yml'
+              - '.github/workflows/check.yml'
 
   backend:
     name: 后端检查 (Rust)
