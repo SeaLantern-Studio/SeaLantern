@@ -1,10 +1,12 @@
 use crate::plugins;
 use crate::plugins::runtime::PluginRuntime;
 use crate::services;
+use crate::services::events::{
+    AppEventKind, AppEventPayload, AppEventSubscription, EventConsumer, EventConsumerKind,
+    EventConsumerMetadata, ServerEventKind, ServerEventPayload,
+};
 use crate::services::global::i18n_service;
-use crate::services::server::log_pipeline::map_domain_event;
 use crate::utils::logger::{log_debug_ctx, log_warn_ctx};
-use sl_server_info::log::{parse_log_line, LogLineInput, LogStream};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -290,40 +292,157 @@ pub(crate) fn install_plugin_bridge(
             message: Option<String>,
         }
 
-        let app_handle = app.handle().clone();
-        let _ = services::server::log_pipeline::set_server_log_event_handler(Arc::new(
-            move |server_id, line, stream| {
-                let event = ServerLogLineEvent {
-                    server_id: server_id.to_string(),
-                    line: line.to_string(),
-                };
-                app_handle.emit("server-log-line", event).map_err(|e| {
-                    plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
-                })?;
+        #[derive(Serialize, Clone)]
+        #[serde(rename_all = "camelCase")]
+        struct ServerStartFallbackEvent {
+            server_id: String,
+            server_name: String,
+            from_mode: String,
+            to_mode: String,
+            reason: String,
+        }
 
-                let parsed = parse_log_line(None, LogLineInput { raw: line.to_string(), stream });
-                let mapped = map_domain_event(parsed.event);
+        let server_app_handle = app.handle().clone();
+        let app_app_handle = app.handle().clone();
+        services::global::event_manager().register_named_consumer_with_metadata(
+            "runtime.plugin_bridge.frontend_runtime_events",
+            EventConsumer::both(
+                Arc::new(move |event| {
+                    server_app_handle
+                        .emit("server-runtime-event", event.clone())
+                        .map_err(|e| {
+                            plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
+                        })?;
 
-                let structured_event = StructuredServerLogEvent {
-                    server_id: server_id.to_string(),
-                    line: line.to_string(),
-                    stream: match stream {
-                        LogStream::Stdout => "stdout".to_string(),
-                        LogStream::Stderr => "stderr".to_string(),
-                        LogStream::Unknown => "unknown".to_string(),
-                    },
-                    event_kind: mapped.event_kind,
-                    player: mapped.player,
-                    message: mapped.message,
-                };
+                    match (&event.kind, &event.payload) {
+                        (ServerEventKind::OutputRawLine, ServerEventPayload::RawLine { line, .. }) => {
+                            server_app_handle
+                                .emit(
+                                    "server-log-line",
+                                    ServerLogLineEvent {
+                                        server_id: event.server_id.clone(),
+                                        line: line.clone(),
+                                    },
+                                )
+                                .map_err(|e| {
+                                    plugin_bridge_t1(
+                                        "plugin.bridge.emit_server_log_line_failed",
+                                        e.to_string(),
+                                    )
+                                })?;
+                        }
+                        (
+                            ServerEventKind::OutputStructuredLog,
+                            ServerEventPayload::StructuredLog {
+                                line,
+                                stream,
+                                event_kind,
+                                player,
+                                message,
+                            },
+                        ) => {
+                            server_app_handle
+                                .emit(
+                                    "server-log-structured",
+                                    StructuredServerLogEvent {
+                                        server_id: event.server_id.clone(),
+                                        line: line.clone(),
+                                        stream: stream.clone(),
+                                        event_kind: event_kind.clone(),
+                                        player: player.clone(),
+                                        message: message.clone(),
+                                    },
+                                )
+                                .map_err(|e| {
+                                    plugin_bridge_t1(
+                                        "plugin.bridge.emit_server_log_line_failed",
+                                        e.to_string(),
+                                    )
+                                })?;
+                        }
+                        (
+                            ServerEventKind::LifecycleStartFallback,
+                            ServerEventPayload::Lifecycle {
+                                detail,
+                                from_mode,
+                                to_mode,
+                                ..
+                            },
+                        ) => {
+                            server_app_handle
+                                .emit(
+                                    "server-start-fallback",
+                                    ServerStartFallbackEvent {
+                                        server_id: event.server_id.clone(),
+                                        server_name: event.server_id.clone(),
+                                        from_mode: from_mode.clone().unwrap_or_default(),
+                                        to_mode: to_mode.clone().unwrap_or_default(),
+                                        reason: detail.clone().unwrap_or_default(),
+                                    },
+                                )
+                                .map_err(|e| {
+                                    plugin_bridge_t1(
+                                        "plugin.bridge.emit_server_log_line_failed",
+                                        e.to_string(),
+                                    )
+                                })?;
+                        }
+                        (ServerEventKind::LifecycleRuntimeError, ServerEventPayload::Lifecycle { .. }) => {
+                            server_app_handle.emit("server-error", ()).map_err(|e| {
+                                plugin_bridge_t1(
+                                    "plugin.bridge.emit_server_log_line_failed",
+                                    e.to_string(),
+                                )
+                            })?;
+                        }
+                        _ => {}
+                    }
 
-                app_handle
-                    .emit("server-log-structured", structured_event)
-                    .map_err(|e| {
-                        plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
-                    })
-            },
-        ));
+                    Ok(())
+                }),
+                Arc::new(move |event| {
+                    app_app_handle
+                        .emit("app-runtime-event", event.clone())
+                        .map_err(|e| {
+                            plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
+                        })?;
+
+                    match (&event.kind, &event.payload) {
+                        (
+                            AppEventKind::OperationRequested
+                            | AppEventKind::OperationSucceeded
+                            | AppEventKind::OperationFailed,
+                            AppEventPayload::Operation { .. },
+                        ) => {
+                            app_app_handle
+                                .emit("app-operation-event", event.clone())
+                                .map_err(|e| {
+                                    plugin_bridge_t1(
+                                        "plugin.bridge.emit_server_log_line_failed",
+                                        e.to_string(),
+                                    )
+                                })?;
+                        }
+                    }
+
+                    Ok(())
+                }),
+            )
+            .with_app_filter(AppEventSubscription {
+                actions: Vec::new(),
+                kinds: vec![
+                    "operation_requested".to_string(),
+                    "operation_succeeded".to_string(),
+                    "operation_failed".to_string(),
+                ],
+                sources: Vec::new(),
+            }),
+            EventConsumerMetadata::new(
+                EventConsumerKind::FrontendBridge,
+                "runtime.plugin_bridge",
+                "Forward runtime server/app events to the Tauri frontend bridge.",
+            ),
+        );
     }
 }
 

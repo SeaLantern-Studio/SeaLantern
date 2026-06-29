@@ -52,6 +52,7 @@ fn make_manifest(permissions: Vec<&str>) -> PluginManifest {
         locales: None,
         include: vec![],
         capabilities: vec![],
+        server_events: Default::default(),
         theme_var_map: Default::default(),
         presets: Default::default(),
     }

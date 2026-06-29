@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::dependencies::PluginDependency;
+use crate::services::events::PluginServerEventSubscription;
 
 /// 插件清单
 ///
@@ -51,6 +52,8 @@ pub struct PluginManifest {
     pub theme_var_map: std::collections::HashMap<String, String>,
     #[serde(default)]
     pub presets: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
+    #[serde(default)]
+    pub server_events: std::collections::HashMap<String, PluginServerEventSubscription>,
 }
 
 /// 插件语言条目

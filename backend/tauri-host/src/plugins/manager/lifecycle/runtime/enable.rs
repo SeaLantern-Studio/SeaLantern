@@ -5,6 +5,7 @@ use crate::plugins::manager::lifecycle::dependencies::{
 };
 use crate::plugins::manager::lifecycle::persistence::save_enabled_plugins_checked;
 use crate::plugins::runtime::{kill_all_processes, PluginRuntime};
+use crate::services::events::plugin_server_event_subscriptions_map;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -82,6 +83,7 @@ pub(in crate::plugins::manager) fn enable_plugin(
         Arc::clone(&manager.api_registry),
         permissions,
         allowed_programs,
+        plugin_server_event_subscriptions_map(&plugin_info.manifest.server_events),
     )?;
 
     let main_file = plugin_dir.join(&plugin_info.manifest.main);
@@ -183,6 +185,7 @@ mod tests {
                 capabilities: Vec::new(),
                 theme_var_map: std::collections::HashMap::new(),
                 presets: std::collections::HashMap::new(),
+                server_events: std::collections::HashMap::new(),
             },
             state: PluginState::Disabled,
             path: plugin_root.to_string_lossy().to_string(),

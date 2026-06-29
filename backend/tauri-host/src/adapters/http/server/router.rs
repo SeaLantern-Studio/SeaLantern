@@ -1,8 +1,9 @@
 use super::{
     api::{handle_api_command, list_api_endpoints},
     auth::{build_cors_layer, require_bearer_auth},
+    event_stream::handle_runtime_event_stream,
     log_stream::handle_log_stream,
-    state::AppState,
+    state::{ensure_runtime_event_bridge, AppState},
     upload::handle_file_upload,
 };
 use axum::{
@@ -24,6 +25,7 @@ use sea_lantern_runtime::HeadlessHttpConfig;
 use std::{path::PathBuf, sync::Arc};
 
 pub(super) fn build_http_app(state: AppState, static_dir: Option<String>) -> Router {
+    ensure_runtime_event_bridge();
     let auth_config = state.config.clone();
     let upload_limit = state.config.max_upload_bytes;
 
@@ -31,6 +33,7 @@ pub(super) fn build_http_app(state: AppState, static_dir: Option<String>) -> Rou
         .route("/api/{command}", post(handle_api_command))
         .route("/api/list", get(list_api_endpoints))
         .route("/upload", post(handle_file_upload).layer(DefaultBodyLimit::max(upload_limit)))
+        .route("/api/events/stream", get(handle_runtime_event_stream))
         .route("/api/logs/stream", get(handle_log_stream))
         .route_layer(middleware::from_fn_with_state(auth_config, require_bearer_auth));
 

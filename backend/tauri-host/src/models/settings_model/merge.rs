@@ -170,6 +170,9 @@ impl AppSettings {
         if let Some(v) = partial.agreed_to_terms {
             self.agreed_to_terms = v;
         }
+        if let Some(ref v) = partial.onebot_11 {
+            self.onebot_11 = v.clone();
+        }
 
         self.normalize_window_effect();
         self.normalize_memory_display_precision();

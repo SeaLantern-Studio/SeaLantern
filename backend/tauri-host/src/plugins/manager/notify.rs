@@ -1,5 +1,6 @@
 use super::{PluginManager, PluginState};
 use crate::plugins::api::emit_log_event;
+use crate::services::events::ServerEventEnvelope;
 use crate::utils::logger::{log_error_ctx, log_warn_ctx};
 
 fn recover_runtimes_read_lock<'a>(
@@ -60,6 +61,39 @@ pub(super) fn notify_locale_changed(manager: &PluginManager, locale: &str) {
                     &format!(
                         "plugin locale change error log emit failed: plugin_id={} error={}",
                         id, error
+                    ),
+                );
+            }
+        }
+    }
+}
+
+pub(super) fn notify_server_event(manager: &PluginManager, event: &ServerEventEnvelope) {
+    let runtimes = recover_runtimes_read_lock(manager, "notify_server_event");
+
+    for (id, runtime) in runtimes.iter() {
+        if !plugin_is_enabled(manager, id) {
+            continue;
+        }
+
+        if let Err(error) = runtime.notify_server_event(event) {
+            log_warn_ctx(
+                "plugins.manager.notify",
+                "notify_server_event",
+                &format!(
+                    "failed to call onServerEvent for plugin '{}': {}",
+                    id, error
+                ),
+            );
+            if let Err(log_error) =
+                emit_log_event(id, "error", &format!("Failed to call onServerEvent: {}", error))
+            {
+                log_error_ctx(
+                    "plugins.manager.notify",
+                    "notify_server_event",
+                    &format!(
+                        "plugin server event error log emit failed: plugin_id={} error={}",
+                        id, log_error
                     ),
                 );
             }

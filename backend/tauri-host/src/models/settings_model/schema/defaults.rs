@@ -1,4 +1,4 @@
-use super::AppSettings;
+use super::{AppSettings, OneBot11Settings};
 use crate::models::server::{CpuPolicyConfig, JvmPresetConfig};
 
 /// 创建默认设置
@@ -47,6 +47,28 @@ impl Default for AppSettings {
             plugin_console_allowed_commands: default_allowed_commands(),
             plugin_console_blocked_commands: default_blocked_commands(),
             agreed_to_terms: false,
+            onebot_11: OneBot11Settings::default(),
+        }
+    }
+}
+
+impl Default for OneBot11Settings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            api_base_url: String::new(),
+            access_token: String::new(),
+            event_classes: vec!["output".to_string(), "lifecycle".to_string()],
+            structured_event_kinds: vec![
+                "server_ready".to_string(),
+                "player_join".to_string(),
+                "player_leave".to_string(),
+                "chat".to_string(),
+                "error".to_string(),
+            ],
+            server_ids: Vec::new(),
+            targets: Vec::new(),
+            message_template: "[{server_id}] {kind}: {summary}".to_string(),
         }
     }
 }

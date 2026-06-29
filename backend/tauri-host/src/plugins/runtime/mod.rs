@@ -50,6 +50,7 @@ mod tests {
             api_registry,
             vec![],
             vec![],
+            std::collections::HashMap::new(),
         );
         assert!(runtime.is_ok());
 
@@ -76,6 +77,7 @@ mod tests {
             api_registry,
             vec![],
             vec![],
+            std::collections::HashMap::new(),
         )
         .unwrap();
 

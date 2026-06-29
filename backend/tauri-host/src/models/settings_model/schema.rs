@@ -71,6 +71,40 @@ pub struct TextColorOverrides {
     pub description: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum OneBotTargetType {
+    Group,
+    Private,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OneBotTarget {
+    #[serde(rename = "type")]
+    pub target_type: OneBotTargetType,
+    pub id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OneBot11Settings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub api_base_url: String,
+    #[serde(default)]
+    pub access_token: String,
+    #[serde(default)]
+    pub event_classes: Vec<String>,
+    #[serde(default)]
+    pub structured_event_kinds: Vec<String>,
+    #[serde(default)]
+    pub server_ids: Vec<String>,
+    #[serde(default)]
+    pub targets: Vec<OneBotTarget>,
+    #[serde(default)]
+    pub message_template: String,
+}
+
 /// 设置变更分组
 ///
 /// 用来标记一次设置更新影响了哪一块功能
@@ -83,6 +117,7 @@ pub enum SettingsGroup {
     Window,
     Developer,
     PluginConsoleCommands,
+    Online,
 }
 
 /// 完整应用设置
@@ -217,6 +252,9 @@ pub struct AppSettings {
 
     #[serde(default = "default_false")]
     pub agreed_to_terms: bool,
+
+    #[serde(default)]
+    pub onebot_11: OneBot11Settings,
 }
 
 /// 局部设置更新结构
@@ -318,4 +356,7 @@ pub struct PartialSettings {
     pub plugin_console_blocked_commands: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agreed_to_terms: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub onebot_11: Option<OneBot11Settings>,
 }

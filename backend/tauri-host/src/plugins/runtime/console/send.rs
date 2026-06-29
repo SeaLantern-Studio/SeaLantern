@@ -1,3 +1,4 @@
+use crate::services::events::ServerEventSource;
 use crate::{models::server::ServerStatus, services::global::server_manager};
 use mlua::Lua;
 
@@ -34,7 +35,12 @@ pub(super) fn send(lua: &Lua, ctx: &ConsoleContext) -> Result<mlua::Function, St
         };
 
         let sanitized_audit_detail = send_audit_detail(&server_id, &sanitized_cmd);
-        match server_manager().send_command(&server_id, &sanitized_cmd) {
+        match server_manager().send_command_from(
+            &server_id,
+            &sanitized_cmd,
+            ServerEventSource::Plugin,
+            Some(&ctx.plugin_id),
+        ) {
             Ok(_) => {
                 emit_console_log(
                     &ctx.plugin_id,

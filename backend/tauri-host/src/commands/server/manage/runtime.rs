@@ -6,18 +6,6 @@ use crate::services::server::manager::ServerManager;
 use crate::services::server::runtime::docker_itzg::DockerLaunchDetail;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
-use tauri::Emitter;
-
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ServerStartFallbackEvent {
-    server_id: String,
-    server_name: String,
-    from_mode: String,
-    to_mode: String,
-    reason: String,
-}
-
 fn server_error_cache() -> &'static Mutex<HashMap<String, String>> {
     static CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
@@ -61,19 +49,8 @@ pub(super) fn force_stop_server(id: String, confirmation_token: String) -> Resul
 
 /// 启动服务器，并在需要时向前端发送启动回退事件
 pub(super) fn start_server(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    let report = manager().start_server(&id)?;
-    if let Some(fallback) = report.fallback {
-        let _ = app.emit(
-            "server-start-fallback",
-            ServerStartFallbackEvent {
-                server_id: report.server_id,
-                server_name: report.server_name,
-                from_mode: fallback.from_mode,
-                to_mode: fallback.to_mode,
-                reason: fallback.reason,
-            },
-        );
-    }
+    let _ = app;
+    manager().start_server(&id)?;
     Ok(())
 }
 
@@ -128,7 +105,6 @@ pub(super) fn get_server_status(app: tauri::AppHandle, id: String) -> ServerStat
             .body(format!("服务器「{}」{}", server_name, error_msg))
             .show();
 
-        let _ = app.emit("server-error", ());
     }
 
     status

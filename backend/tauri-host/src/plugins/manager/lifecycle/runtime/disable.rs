@@ -93,6 +93,7 @@ mod tests {
                 capabilities: Vec::new(),
                 theme_var_map: std::collections::HashMap::new(),
                 presets: std::collections::HashMap::new(),
+                server_events: std::collections::HashMap::new(),
             },
             state: PluginState::Enabled,
             path: plugin_root.to_string_lossy().to_string(),

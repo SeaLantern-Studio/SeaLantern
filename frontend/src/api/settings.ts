@@ -16,7 +16,26 @@ export type SettingsGroup =
   | "Console"
   | "Appearance"
   | "Window"
-  | "Developer";
+  | "Developer"
+  | "Online";
+
+export type OneBotTargetType = "group" | "private";
+
+export interface OneBotTarget {
+  type: OneBotTargetType;
+  id: string;
+}
+
+export interface OneBot11Settings {
+  enabled: boolean;
+  api_base_url: string;
+  access_token: string;
+  event_classes: string[];
+  structured_event_kinds: string[];
+  server_ids: string[];
+  targets: OneBotTarget[];
+  message_template: string;
+}
 
 export interface AppSettings {
   close_servers_on_exit: boolean;
@@ -60,6 +79,7 @@ export interface AppSettings {
   last_run_path: string;
   minimal_mode: boolean;
   agreed_to_terms: boolean;
+  onebot_11: OneBot11Settings;
 }
 
 export interface PartialSettings {
@@ -103,6 +123,7 @@ export interface PartialSettings {
   last_run_path?: string;
   minimal_mode?: boolean;
   agreed_to_terms?: boolean;
+  onebot_11?: OneBot11Settings;
 }
 
 export interface UpdateSettingsResult {

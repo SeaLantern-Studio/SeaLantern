@@ -12,6 +12,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::utils::constants::{LOG_BATCH_SIZE, LOG_FLUSH_INTERVAL_MS};
 
+#[allow(dead_code)] // compatibility path for alternative bridges
 pub fn set_server_log_event_handler(handler: Arc<ServerLogEventHandler>) -> Result<(), String> {
     SERVER_LOG_EVENT_HANDLER
         .set(handler)

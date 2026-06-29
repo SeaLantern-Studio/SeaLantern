@@ -1,4 +1,5 @@
 use super::runtime::PluginRuntime;
+use crate::services::events::ServerEventEnvelope;
 use mlua::Value;
 use std::path::Path;
 
@@ -38,6 +39,30 @@ impl PluginRuntime {
 
         let _ = self.call_global_function1(event, arg)?;
         Ok(())
+    }
+
+    pub fn call_lifecycle_with_json_arg(&self, event: &str, arg_json: &str) -> Result<(), String> {
+        if let Ok(plugin_table) = self.plugin_table() {
+            if self.call_table_function_json(&plugin_table, event, arg_json)? {
+                return Ok(());
+            }
+        }
+
+        let _ = self.call_global_function_json(event, arg_json)?;
+        Ok(())
+    }
+
+    pub fn notify_server_event(&self, event: &ServerEventEnvelope) -> Result<(), String> {
+        if let Some(subscription) = self.server_event_subscriptions.get("default") {
+            if !subscription.matches(event) {
+                return Ok(());
+            }
+        } else {
+            return Ok(());
+        }
+
+        let payload = serde_json::to_string(event).map_err(|e| e.to_string())?;
+        self.call_lifecycle_with_json_arg("onServerEvent", &payload)
     }
 
     pub fn cleanup(&self) {

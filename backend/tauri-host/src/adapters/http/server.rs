@@ -4,6 +4,7 @@
 
 mod api;
 mod auth;
+mod event_stream;
 mod log_stream;
 mod router;
 mod state;
@@ -226,6 +227,7 @@ mod tests {
         assert_eq!(upload.status(), StatusCode::UNAUTHORIZED);
 
         let logs = app
+            .clone()
             .oneshot(
                 Request::builder()
                     .uri("/api/logs/stream")
@@ -235,6 +237,17 @@ mod tests {
             .await
             .expect("logs response");
         assert_eq!(logs.status(), StatusCode::UNAUTHORIZED);
+
+        let runtime_events = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/events/stream")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .expect("runtime events response");
+        assert_eq!(runtime_events.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -270,6 +283,23 @@ mod tests {
         let error_detail = payload.error_detail.expect("structured error detail");
         assert_eq!(error_detail.code, "common.message_server_not_found");
         assert_eq!(error_detail.error_kind.as_deref(), Some("not_found"));
+    }
+
+    #[tokio::test]
+    async fn authenticated_runtime_event_stream_is_exposed() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let app = test_app(upload_dir.path().to_path_buf());
+
+        let response = app
+            .oneshot(
+                bearer_request(Request::builder().uri("/api/events/stream"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .expect("runtime event stream response");
+
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[test]

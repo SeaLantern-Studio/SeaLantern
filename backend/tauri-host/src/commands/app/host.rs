@@ -4,6 +4,10 @@ mod host_io;
 mod resources;
 mod system_info;
 
+use crate::services::event_consumer_registry::{
+    EventConsumerRegistryEntryDto, EventConsumerRegistryFilterUpdateRequest,
+    EventConsumerRegistryMetadataUpdateRequest,
+};
 use crate::utils::app_version;
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -66,6 +70,40 @@ pub fn get_system_info() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub fn get_server_resource_usage(server_id: String) -> Result<serde_json::Value, String> {
     resources::get_server_resource_usage(server_id)
+}
+
+#[tauri::command]
+pub fn list_event_consumers() -> Result<Vec<EventConsumerRegistryEntryDto>, String> {
+    Ok(crate::services::global::event_consumer_registry_service().list())
+}
+
+#[tauri::command]
+pub fn get_event_consumer(name: String) -> Result<Option<EventConsumerRegistryEntryDto>, String> {
+    Ok(crate::services::global::event_consumer_registry_service().get(&name))
+}
+
+#[tauri::command]
+pub fn set_event_consumer_enabled(
+    name: String,
+    enabled: bool,
+) -> Result<EventConsumerRegistryEntryDto, String> {
+    crate::services::global::event_consumer_registry_service().set_enabled(&name, enabled)
+}
+
+#[tauri::command]
+pub fn update_event_consumer_filters(
+    name: String,
+    request: EventConsumerRegistryFilterUpdateRequest,
+) -> Result<EventConsumerRegistryEntryDto, String> {
+    crate::services::global::event_consumer_registry_service().update_filters(&name, request)
+}
+
+#[tauri::command]
+pub fn update_event_consumer_metadata(
+    name: String,
+    request: EventConsumerRegistryMetadataUpdateRequest,
+) -> Result<EventConsumerRegistryEntryDto, String> {
+    crate::services::global::event_consumer_registry_service().update_metadata(&name, request)
 }
 
 #[tauri::command]

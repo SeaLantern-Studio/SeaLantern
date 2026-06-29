@@ -45,6 +45,7 @@ fn create_test_runtime_with_root(permissions: Vec<&str>) -> (PluginRuntime, Path
         api_registry,
         permissions.into_iter().map(|p| p.to_string()).collect(),
         allowed_programs,
+        HashMap::new(),
     )
     .unwrap();
 
@@ -287,6 +288,7 @@ fn test_process_exec_requires_manifest_programs_declaration() {
         api_registry,
         vec!["execute_program".to_string()],
         vec![],
+        HashMap::new(),
     )
     .unwrap();
 

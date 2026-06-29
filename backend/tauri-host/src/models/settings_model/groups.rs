@@ -70,6 +70,10 @@ impl AppSettings {
             changed.push(SettingsGroup::PluginConsoleCommands);
         }
 
+        if self.onebot_11 != other.onebot_11 {
+            changed.push(SettingsGroup::Online);
+        }
+
         changed
     }
 }

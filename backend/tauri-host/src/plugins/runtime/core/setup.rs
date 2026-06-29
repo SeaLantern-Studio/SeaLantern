@@ -3,6 +3,7 @@ use crate::plugins::runtime::filesystem::has_any_fs_permission;
 use crate::plugins::runtime::permissions::{
     has_plugin_folder_access_permission, normalize_permissions, PLUGIN_FOLDER_ACCESS_PERMISSION,
 };
+use crate::services::events::ServerEventSubscription;
 use crate::services::global::i18n_service;
 use mlua::Table;
 use std::collections::{HashMap, HashSet};
@@ -44,6 +45,7 @@ impl PluginRuntime {
         >,
         permissions: Vec<String>,
         allowed_programs: Vec<String>,
+        server_event_subscriptions: HashMap<String, ServerEventSubscription>,
     ) -> Result<Self, String> {
         let lua = mlua::Lua::new_with(
             mlua::StdLib::TABLE
@@ -75,6 +77,7 @@ impl PluginRuntime {
             api_registry,
             storage_lock: std::sync::Arc::new(std::sync::Mutex::new(())),
             process_registry: crate::plugins::runtime::process::new_process_registry(),
+            server_event_subscriptions,
             element_callbacks: std::sync::Arc::new(std::sync::Mutex::new(
                 std::collections::HashMap::new(),
             )),

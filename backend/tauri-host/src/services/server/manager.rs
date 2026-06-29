@@ -18,6 +18,10 @@ use std::process::Child;
 use std::sync::Mutex;
 
 use crate::models::server::*;
+use crate::services::events::{
+    publish_server_command_requested, publish_server_command_result, publish_server_lifecycle,
+    ServerEventKind, ServerEventSource,
+};
 use crate::services::server::runtime;
 use crate::utils::logger;
 use crate::utils::server_status::status_blocks_start;
@@ -221,6 +225,14 @@ impl ServerManager {
     pub fn request_stop_server(&self, id: &str) -> Result<(), String> {
         let detail = format!("server_id={}", id);
         logger::log_user_action("server.manager", "request_stop", &detail);
+        let _ = publish_server_lifecycle(
+            id,
+            ServerEventKind::LifecycleStopRequestedAsync,
+            Some("request_stop".to_string()),
+            None,
+            None,
+            None,
+        );
         log_manager_result("request_stop", &detail, runtime_control::request_stop_server(self, id))
     }
 
@@ -409,6 +421,14 @@ impl ServerManager {
     pub fn start_server(&self, id: &str) -> Result<StartServerReport, String> {
         let detail = format!("server_id={}", id);
         logger::log_user_action("server.manager", "start", &detail);
+        let _ = publish_server_lifecycle(
+            id,
+            ServerEventKind::LifecycleStartRequested,
+            Some("start_requested".to_string()),
+            None,
+            None,
+            None,
+        );
         let result = (|| {
             let server = self.find_server_clone(id)?;
 
@@ -424,6 +444,14 @@ impl ServerManager {
                         status.detail_message.as_deref().unwrap_or(""),
                         status.error_message.as_deref().unwrap_or("")
                     ),
+                );
+                let _ = publish_server_lifecycle(
+                    id,
+                    ServerEventKind::LifecycleStartSkippedExistingState,
+                    status.detail_message.clone(),
+                    status.error_message.clone(),
+                    None,
+                    None,
                 );
                 return Ok(StartServerReport {
                     server_id: server.id.clone(),
@@ -482,6 +510,26 @@ impl ServerManager {
             self.save()?;
             let _ = server_log_pipeline::append_sealantern_log(id, "[Sea Lantern] 服务器启动中...");
 
+            let _ = publish_server_lifecycle(
+                id,
+                ServerEventKind::LifecycleStarted,
+                Some("start_dispatched".to_string()),
+                None,
+                None,
+                None,
+            );
+
+            if let Some(fallback) = &start_result.fallback {
+                let _ = publish_server_lifecycle(
+                    id,
+                    ServerEventKind::LifecycleStartFallback,
+                    Some(fallback.reason.clone()),
+                    None,
+                    Some(fallback.from_mode.clone()),
+                    Some(fallback.to_mode.clone()),
+                );
+            }
+
             Ok(StartServerReport {
                 server_id: server.id.clone(),
                 server_name: server.name.clone(),
@@ -508,7 +556,35 @@ impl ServerManager {
     pub fn stop_server(&self, id: &str) -> Result<(), String> {
         let detail = format!("server_id={}", id);
         logger::log_user_action("server.manager", "stop", &detail);
-        log_manager_result("stop", &detail, runtime_control::stop_server(self, id))
+        let _ = publish_server_lifecycle(
+            id,
+            ServerEventKind::LifecycleStopRequested,
+            Some("stop_requested".to_string()),
+            None,
+            None,
+            None,
+        );
+        let result = runtime_control::stop_server(self, id);
+        if let Err(error) = &result {
+            let _ = publish_server_lifecycle(
+                id,
+                ServerEventKind::LifecycleRuntimeError,
+                Some("stop_failed".to_string()),
+                Some(error.clone()),
+                None,
+                None,
+            );
+        } else {
+            let _ = publish_server_lifecycle(
+                id,
+                ServerEventKind::LifecycleStopped,
+                Some("stop_dispatched".to_string()),
+                None,
+                None,
+                None,
+            );
+        }
+        log_manager_result("stop", &detail, result)
     }
 
     /// 向运行中的服务器发送控制台命令
@@ -518,13 +594,55 @@ impl ServerManager {
     /// - `id`: 服务器 ID
     /// - `command`: 要发送的控制台命令
     pub fn send_command(&self, id: &str, command: &str) -> Result<(), String> {
+        self.send_command_from(id, command, ServerEventSource::FrontendUser, None)
+    }
+
+    pub fn send_command_from(
+        &self,
+        id: &str,
+        command: &str,
+        source: ServerEventSource,
+        plugin_id: Option<&str>,
+    ) -> Result<(), String> {
         let detail = format!("server_id={} command={}", id, command);
         logger::log_user_action("server.manager", "send_command", &detail);
+        let _ = publish_server_command_requested(id, source.clone(), plugin_id, command);
         let result = (|| {
             let server = self.find_server_clone(id)?;
             let resolved_runtime = runtime::resolve_runtime(&server)?;
             resolved_runtime.send_command_with_manager(self, &server, command)
         })();
+
+        match &result {
+            Ok(_) => {
+                let _ = publish_server_command_result(
+                    id,
+                    source.clone(),
+                    plugin_id,
+                    command,
+                    true,
+                    None,
+                );
+            }
+            Err(error) => {
+                let _ = publish_server_command_result(
+                    id,
+                    source,
+                    plugin_id,
+                    command,
+                    false,
+                    Some(error.clone()),
+                );
+                let _ = publish_server_lifecycle(
+                    id,
+                    ServerEventKind::LifecycleRuntimeError,
+                    Some("send_command_failed".to_string()),
+                    Some(error.clone()),
+                    None,
+                    None,
+                );
+            }
+        }
 
         log_manager_result("send_command", &detail, result)
     }

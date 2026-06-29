@@ -45,6 +45,66 @@ export interface ServerLogStructuredEvent {
   message: string | null;
 }
 
+export interface ServerRuntimeEventPayloadRawLine {
+  type: "raw_line";
+  line: string;
+  stream: string;
+}
+
+export interface ServerRuntimeEventPayloadStructuredLog {
+  type: "structured_log";
+  line: string;
+  stream: string;
+  event_kind: string | null;
+  player: string | null;
+  message: string | null;
+}
+
+export interface ServerRuntimeEventPayloadCommand {
+  type: "command";
+  command: string;
+  success: boolean | null;
+  error: string | null;
+  actor: string;
+}
+
+export interface ServerRuntimeEventPayloadLifecycle {
+  type: "lifecycle";
+  detail: string | null;
+  error: string | null;
+  from_mode: string | null;
+  to_mode: string | null;
+}
+
+export interface ServerRuntimeEvent {
+  event_id: string;
+  occurred_at: number;
+  scope: "server";
+  server_id: string;
+  source: string;
+  kind: string;
+  payload:
+    | ServerRuntimeEventPayloadRawLine
+    | ServerRuntimeEventPayloadStructuredLog
+    | ServerRuntimeEventPayloadCommand
+    | ServerRuntimeEventPayloadLifecycle;
+}
+
+export interface AppOperationEvent {
+  event_id: string;
+  occurred_at: number;
+  scope: "app";
+  action: string;
+  source: string;
+  kind: "operation_requested" | "operation_succeeded" | "operation_failed";
+  payload: {
+    type: "operation";
+    action: string;
+    detail: string | null;
+    error: string | null;
+  };
+}
+
 export interface ForceStopPreparation {
   token: string;
   expiresAt: number;
@@ -514,6 +574,24 @@ export const serverApi = {
       return Promise.reject(new Error("Structured log events are only available in Tauri mode"));
     }
     return listen<ServerLogStructuredEvent>("server-log-structured", (event) => {
+      callback(event.payload);
+    });
+  },
+
+  onRuntimeEvent(callback: (payload: ServerRuntimeEvent) => void): Promise<UnlistenFn> {
+    if (isBrowserEnv()) {
+      return Promise.reject(new Error("Runtime events are only available in Tauri mode"));
+    }
+    return listen<ServerRuntimeEvent>("server-runtime-event", (event) => {
+      callback(event.payload);
+    });
+  },
+
+  onAppOperationEvent(callback: (payload: AppOperationEvent) => void): Promise<UnlistenFn> {
+    if (isBrowserEnv()) {
+      return Promise.reject(new Error("App operation events are only available in Tauri mode"));
+    }
+    return listen<AppOperationEvent>("app-operation-event", (event) => {
       callback(event.payload);
     });
   },

@@ -49,6 +49,7 @@ pub(crate) fn map_domain_event(event: Option<DomainEvent>) -> StructuredLogEvent
     }
 }
 
+#[allow(dead_code)] // compatibility path for alternative bridges
 pub fn set_server_log_event_handler(handler: Arc<ServerLogEventHandler>) -> Result<(), String> {
     writer::set_server_log_event_handler(handler)
 }

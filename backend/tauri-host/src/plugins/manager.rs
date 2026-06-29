@@ -25,6 +25,7 @@ pub struct PluginManager {
     plugins_dir: PathBuf,
     data_dir: PathBuf,
     api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
+    server_event_subscription_id: Option<u64>,
 }
 
 impl PluginManager {
@@ -58,6 +59,7 @@ impl PluginManager {
             plugins_dir,
             data_dir,
             api_registry: new_api_registry(),
+            server_event_subscription_id: None,
         })
     }
 
@@ -267,6 +269,14 @@ impl PluginManager {
     /// 通知插件当前语言已切换
     pub fn notify_locale_changed(&self, locale: &str) {
         notify::notify_locale_changed(self, locale);
+    }
+
+    pub fn notify_server_event(&self, event: &crate::services::events::ServerEventEnvelope) {
+        notify::notify_server_event(self, event);
+    }
+
+    pub fn set_server_event_subscription_id(&mut self, subscriber_id: u64) {
+        self.server_event_subscription_id = Some(subscriber_id);
     }
 }
 
