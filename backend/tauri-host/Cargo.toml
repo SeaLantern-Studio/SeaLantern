@@ -82,7 +82,7 @@ lazy_static = "1.4"
 shlex = "1.3.0"
 rcon = { version = "0.6", features = ["rt-tokio"] }
 sculk = { version = "0.3.0-rc.1", features = ["persist", "clipboard"] }
-java-manager = "0.2.0"
+java-manager = "0.3.0"
 
 [features]
 default = ["docker"]

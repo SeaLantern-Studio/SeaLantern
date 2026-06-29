@@ -3388,9 +3388,9 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "java-manager"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbd8f7342580c3746964a3f1d2ada44e5a53e385275dedf8e3865d6336990671"
+checksum = "5a194a8b62b33fd6536e5f53c7827da819235a5dba669d43ae24c9bba34137fb"
 dependencies = [
  "everything-sdk",
  "glob",
