@@ -30,20 +30,13 @@ fn runtime_event_to_sse(event: RuntimeEventEnvelope) -> Result<Event, String> {
 }
 
 fn map_broadcast_result(
-    result: Result<
-        RuntimeEventEnvelope,
-        tokio_stream::wrappers::errors::BroadcastStreamRecvError,
-    >,
+    result: Result<RuntimeEventEnvelope, tokio_stream::wrappers::errors::BroadcastStreamRecvError>,
 ) -> Result<Event, String> {
     match result {
         Ok(event) => runtime_event_to_sse(event),
         Err(error) => {
             let message = format!("[SSE] Runtime event broadcast error: {}", error);
-            log_warn_ctx(
-                "http.server.event_stream",
-                "map_broadcast_result",
-                &message,
-            );
+            log_warn_ctx("http.server.event_stream", "map_broadcast_result", &message);
             Err(message)
         }
     }
@@ -95,10 +88,7 @@ mod tests {
             },
         });
 
-        assert!(
-            runtime_event_to_sse(event).is_ok(),
-            "server runtime SSE event should serialize"
-        );
+        assert!(runtime_event_to_sse(event).is_ok(), "server runtime SSE event should serialize");
     }
 
     #[test]

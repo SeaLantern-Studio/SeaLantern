@@ -153,6 +153,20 @@ export interface DataDirChangeResult {
   migrated_entries: string[];
 }
 
+export interface PluginDirStatus {
+  current_plugin_dir: string;
+  default_plugin_dir: string;
+  locator_path: string;
+  resolution_source: string;
+  locator_exists: boolean;
+  recommended_plugin_dir: string;
+}
+
+export interface PluginDirChangeResult {
+  status: PluginDirStatus;
+  migrated_entries: string[];
+}
+
 export const settingsApi = {
   async get(): Promise<AppSettings> {
     return tauriInvoke("get_settings");
@@ -165,6 +179,17 @@ export const settingsApi = {
   },
   async changeDataDir(path: string, migrateExisting = true): Promise<DataDirChangeResult> {
     return tauriInvoke("change_data_dir", {
+      request: {
+        path,
+        migrate_existing: migrateExisting,
+      },
+    });
+  },
+  async getPluginDirStatus(): Promise<PluginDirStatus> {
+    return tauriInvoke("get_plugin_dir_status");
+  },
+  async changePluginDir(path: string, migrateExisting = true): Promise<PluginDirChangeResult> {
+    return tauriInvoke("change_plugin_dir", {
       request: {
         path,
         migrate_existing: migrateExisting,

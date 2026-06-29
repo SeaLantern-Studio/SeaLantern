@@ -2,7 +2,7 @@ use crate::plugins::manager::lifecycle::runtime::{disable_plugin_internal, enabl
 use crate::plugins::manager::PluginManager;
 use std::collections::HashSet;
 
-pub(in crate::plugins::manager::lifecycle) fn save_enabled_plugins_checked(
+pub(in crate::plugins::manager) fn save_enabled_plugins_checked(
     manager: &PluginManager,
 ) -> Result<(), String> {
     let enabled: Vec<&str> = manager
@@ -19,7 +19,7 @@ pub(in crate::plugins::manager::lifecycle) fn save_enabled_plugins_checked(
 }
 
 #[allow(dead_code)]
-pub(in crate::plugins::manager::lifecycle) fn save_enabled_plugins(manager: &PluginManager) {
+pub(in crate::plugins::manager) fn save_enabled_plugins(manager: &PluginManager) {
     if let Err(error) = save_enabled_plugins_checked(manager) {
         eprintln!("[WARN] {}", error);
     }

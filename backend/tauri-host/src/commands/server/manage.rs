@@ -8,8 +8,8 @@ mod provisioning;
 mod runtime;
 mod startup_scan;
 
-use serde::Serialize;
 use crate::services::events::{publish_app_operation_requested, publish_app_operation_result};
+use serde::Serialize;
 
 /// 强制停止前给前端展示的确认信息
 #[derive(Debug, Clone, Serialize)]
@@ -71,11 +71,7 @@ pub fn create_server(
     );
     match &result {
         Ok(server) => {
-            let _ = publish_app_operation_result(
-                "create_server",
-                Some(server.id.clone()),
-                None,
-            );
+            let _ = publish_app_operation_result("create_server", Some(server.id.clone()), None);
         }
         Err(error) => {
             let _ = publish_app_operation_result("create_server", None, Some(error.clone()));
@@ -116,11 +112,7 @@ pub fn import_server(
     );
     match &result {
         Ok(server) => {
-            let _ = publish_app_operation_result(
-                "import_server",
-                Some(server.id.clone()),
-                None,
-            );
+            let _ = publish_app_operation_result("import_server", Some(server.id.clone()), None);
         }
         Err(error) => {
             let _ = publish_app_operation_result("import_server", None, Some(error.clone()));
@@ -167,18 +159,11 @@ pub fn add_existing_server(
     );
     match &result {
         Ok(server) => {
-            let _ = publish_app_operation_result(
-                "add_existing_server",
-                Some(server.id.clone()),
-                None,
-            );
+            let _ =
+                publish_app_operation_result("add_existing_server", Some(server.id.clone()), None);
         }
         Err(error) => {
-            let _ = publish_app_operation_result(
-                "add_existing_server",
-                None,
-                Some(error.clone()),
-            );
+            let _ = publish_app_operation_result("add_existing_server", None, Some(error.clone()));
         }
     }
     result
@@ -226,11 +211,7 @@ pub fn import_modpack(
     );
     match &result {
         Ok(server) => {
-            let _ = publish_app_operation_result(
-                "import_modpack",
-                Some(server.id.clone()),
-                None,
-            );
+            let _ = publish_app_operation_result("import_modpack", Some(server.id.clone()), None);
         }
         Err(error) => {
             let _ = publish_app_operation_result("import_modpack", None, Some(error.clone()));
@@ -252,7 +233,8 @@ pub async fn parse_server_core_key(
             let _ = publish_app_operation_result("parse_server_core_key", Some(detail), None);
         }
         Err(error) => {
-            let _ = publish_app_operation_result("parse_server_core_key", None, Some(error.clone()));
+            let _ =
+                publish_app_operation_result("parse_server_core_key", None, Some(error.clone()));
         }
     }
     result
@@ -271,7 +253,8 @@ pub async fn parse_server_core_type(
             let _ = publish_app_operation_result("parse_server_core_type", Some(detail), None);
         }
         Err(error) => {
-            let _ = publish_app_operation_result("parse_server_core_type", None, Some(error.clone()));
+            let _ =
+                publish_app_operation_result("parse_server_core_type", None, Some(error.clone()));
         }
     }
     result
@@ -291,11 +274,8 @@ pub async fn scan_startup_candidates(
             let _ = publish_app_operation_result("scan_startup_candidates", Some(detail), None);
         }
         Err(error) => {
-            let _ = publish_app_operation_result(
-                "scan_startup_candidates",
-                None,
-                Some(error.clone()),
-            );
+            let _ =
+                publish_app_operation_result("scan_startup_candidates", None, Some(error.clone()));
         }
     }
     result

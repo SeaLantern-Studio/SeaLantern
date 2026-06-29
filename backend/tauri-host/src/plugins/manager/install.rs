@@ -13,10 +13,10 @@ use crate::plugins::loader::PluginLoader;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 
-/// 按输入来源安装插件
+/// 安装本地插件
 ///
 /// 支持目录、`manifest.json` 和 ZIP 压缩包
-pub(super) fn install_plugin(
+pub(super) fn install_local_plugin(
     manager: &mut PluginManager,
     path: &Path,
 ) -> Result<PluginInstallResult, String> {
@@ -67,15 +67,11 @@ pub(super) fn install_plugin_from_dir(
     PluginLoader::validate_manifest(&manifest)?;
 
     let plugin_id = manifest.id.clone();
-
-    if let Some(existing) = manager.plugins.get(&plugin_id) {
-        if matches!(existing.state, PluginState::Enabled) {
-            return Err(plugin_t1(
-                "plugin.install.already_running_replace",
-                existing.manifest.name.clone(),
-            ));
-        }
-    }
+    super::source::validate_replace_target(
+        manager,
+        crate::models::plugin::PluginSource::Local,
+        &plugin_id,
+    )?;
 
     let target_dir = manager.plugins_dir.join(&plugin_id);
 
@@ -97,12 +93,12 @@ pub(super) fn install_plugin_from_dir(
 
         let missing_deps = manager.get_missing_dependencies(&loaded_manifest);
 
-        let plugin_info = PluginInfo {
-            manifest: loaded_manifest,
-            state: PluginState::Loaded,
-            path: target_dir.to_string_lossy().to_string(),
-            missing_dependencies: missing_deps,
-        };
+        let plugin_info = manager.make_local_plugin_info(
+            loaded_manifest,
+            PluginState::Loaded,
+            target_dir.to_string_lossy().to_string(),
+            missing_deps,
+        );
 
         manager.plugins.insert(plugin_id, plugin_info.clone());
         return Ok(plugin_info);
@@ -120,12 +116,12 @@ pub(super) fn install_plugin_from_dir(
 
     let missing_deps = manager.get_missing_dependencies(&loaded_manifest);
 
-    let plugin_info = PluginInfo {
-        manifest: loaded_manifest,
-        state: PluginState::Loaded,
-        path: target_dir.to_string_lossy().to_string(),
-        missing_dependencies: missing_deps,
-    };
+    let plugin_info = manager.make_local_plugin_info(
+        loaded_manifest,
+        PluginState::Loaded,
+        target_dir.to_string_lossy().to_string(),
+        missing_deps,
+    );
 
     manager.plugins.insert(plugin_id, plugin_info.clone());
 
@@ -145,6 +141,9 @@ pub(super) fn delete_plugin(
     delete_data: bool,
 ) -> Result<(), String> {
     if let Some(plugin_info) = manager.plugins.get(plugin_id) {
+        if matches!(plugin_info.source, crate::models::plugin::PluginSource::Builtin) {
+            return Err(format!("Builtin plugin '{}' cannot be deleted", plugin_id));
+        }
         if matches!(plugin_info.state, PluginState::Enabled) {
             return Err(plugin_t1(
                 "plugin.delete.already_running",

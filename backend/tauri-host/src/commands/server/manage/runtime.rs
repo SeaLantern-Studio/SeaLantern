@@ -104,7 +104,6 @@ pub(super) fn get_server_status(app: tauri::AppHandle, id: String) -> ServerStat
             .title("Sea Lantern - 服务器错误")
             .body(format!("服务器「{}」{}", server_name, error_msg))
             .show();
-
     }
 
     status

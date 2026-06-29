@@ -17,6 +17,7 @@ defineProps<{
   getStatusColor: (state: PluginState) => string;
   getStatusLabel: (state: PluginState) => string;
   hasSettings: (plugin: PluginInfo) => boolean;
+  canTogglePlugin: (plugin: PluginInfo) => boolean;
   hasMissingRequiredDependencies: (plugin: PluginInfo) => boolean;
   hasMissingOptionalDependencies: (plugin: PluginInfo) => boolean;
   getDependencyTooltip: (plugin: PluginInfo) => string;
@@ -72,6 +73,7 @@ function handleTogglePlugin(pluginId: string, nextEnabled: boolean) {
         :get-status-color="getStatusColor"
         :get-status-label="getStatusLabel"
         :has-settings="hasSettings"
+        :can-toggle-plugin="canTogglePlugin"
         :has-missing-required-dependencies="hasMissingRequiredDependencies"
         :has-missing-optional-dependencies="hasMissingOptionalDependencies"
         :get-dependency-tooltip="getDependencyTooltip"

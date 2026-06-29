@@ -3,6 +3,7 @@ use crate::models::settings::{AppSettings, PartialSettings, TextColorOverrides};
 use crate::models::settings::{WINDOW_EFFECT_AUTO, WINDOW_EFFECT_OFF};
 use crate::services::data_dir::{DataDirChangeResult, DataDirStatus};
 use crate::services::global;
+use crate::services::plugin_dir::{PluginDirChangeResult, PluginDirStatus};
 use font_kit::source::SystemSource;
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -401,6 +402,13 @@ pub struct ChangeDataDirRequest {
     pub migrate_existing: bool,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChangePluginDirRequest {
+    pub path: String,
+    #[serde(default)]
+    pub migrate_existing: bool,
+}
+
 #[tauri::command]
 /// 读取当前设置
 pub fn get_settings() -> AppSettings {
@@ -420,6 +428,19 @@ pub fn initialize_data_dir(path: String) -> Result<DataDirChangeResult, String> 
 #[tauri::command]
 pub fn change_data_dir(request: ChangeDataDirRequest) -> Result<DataDirChangeResult, String> {
     crate::services::data_dir::switch_data_dir(
+        std::path::Path::new(request.path.trim()),
+        request.migrate_existing,
+    )
+}
+
+#[tauri::command]
+pub fn get_plugin_dir_status() -> PluginDirStatus {
+    crate::services::plugin_dir::current_status()
+}
+
+#[tauri::command]
+pub fn change_plugin_dir(request: ChangePluginDirRequest) -> Result<PluginDirChangeResult, String> {
+    crate::services::plugin_dir::switch_plugin_dir(
         std::path::Path::new(request.path.trim()),
         request.migrate_existing,
     )

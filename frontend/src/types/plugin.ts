@@ -59,6 +59,16 @@ export interface PluginProgram {
   path: string;
 }
 
+export type PluginSource = "local" | "builtin";
+
+export type PluginRuntimeKind = "lua" | "rust";
+
+export interface PluginActions {
+  can_toggle: boolean;
+  can_delete: boolean;
+  can_check_update: boolean;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -95,8 +105,15 @@ export interface PluginInfo {
   manifest: PluginManifest;
   state: PluginState;
   path: string;
+  source: PluginSource;
+  runtime: PluginRuntimeKind;
+  actions: PluginActions;
 
   missing_dependencies?: MissingDependency[];
+}
+
+export function isBuiltinPlugin(plugin: PluginInfo): boolean {
+  return plugin.source === "builtin";
 }
 
 export interface PluginNavItem {

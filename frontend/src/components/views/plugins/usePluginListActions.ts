@@ -58,6 +58,10 @@ function hasSettings(plugin: PluginInfo): boolean {
   return !!(plugin.manifest.settings && plugin.manifest.settings.length > 0);
 }
 
+function canTogglePlugin(plugin: PluginInfo): boolean {
+  return plugin.actions.can_toggle;
+}
+
 function getPluginStatusLabel(state: PluginState): string {
   if (typeof state === "object" && "error" in state) {
     return i18n.t("plugins.status.error");
@@ -135,6 +139,10 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
 
   async function handleDelete(pluginId: string) {
     const plugin = options.plugins().find((item) => item.manifest.id === pluginId);
+    if (plugin && !plugin.actions.can_delete) {
+      options.showAlert(i18n.t("common.message_unknown_error"), `Plugin '${plugin.manifest.name}' cannot be deleted.`);
+      return;
+    }
     if (plugin?.state === "enabled") {
       options.showAlert(i18n.t("plugins.cannot_delete_enabled"), plugin.manifest.name);
       return;
@@ -216,21 +224,42 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
   }
 
   function getPluginMenuItems(pluginId: string) {
-    return [
-      {
+    const plugin = options.plugins().find((item) => item.manifest.id === pluginId);
+    if (!plugin) {
+      return [];
+    }
+
+    const items = [] as Array<{
+      id: string;
+      label: string;
+      icon?: typeof RefreshCw | typeof Trash2;
+      disabled?: boolean;
+      divider?: boolean;
+      danger?: boolean;
+    }>;
+
+    if (plugin.actions.can_check_update) {
+      items.push({
         id: "check_update",
         label: i18n.t("plugins.menu.check_update"),
         icon: RefreshCw,
         disabled: checkingUpdate.value === pluginId,
-      },
-      { id: "divider", label: "", divider: true },
-      {
+      });
+    }
+
+    if (plugin.actions.can_delete) {
+      if (items.length > 0) {
+        items.push({ id: "divider", label: "", divider: true });
+      }
+      items.push({
         id: "delete",
         label: i18n.t("plugins.menu.delete"),
         icon: Trash2,
         danger: true,
-      },
-    ];
+      });
+    }
+
+    return items;
   }
 
   async function handleMenuSelect(item: { id: string | number }, pluginId: string) {
@@ -263,6 +292,7 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
     getStatusLabel: getPluginStatusLabel,
     isPluginEnabled,
     hasSettings,
+    canTogglePlugin,
     getPluginMenuItems,
     handleMenuSelect,
     goToMarket,

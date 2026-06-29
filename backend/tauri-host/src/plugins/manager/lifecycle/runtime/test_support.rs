@@ -1,0 +1,50 @@
+#[cfg(test)]
+pub(crate) fn example_local_plugin_info(
+    plugin_root: &std::path::Path,
+    state: crate::plugins::manager::PluginState,
+) -> crate::models::plugin::PluginInfo {
+    crate::models::plugin::PluginInfo {
+        manifest: crate::models::plugin::PluginManifest {
+            id: "example-plugin".to_string(),
+            name: "Example Plugin".to_string(),
+            version: "1.0.0".to_string(),
+            description: "test plugin".to_string(),
+            author: crate::models::plugin::PluginAuthor {
+                name: "tester".to_string(),
+                email: None,
+                url: None,
+            },
+            main: "main.lua".to_string(),
+            license: None,
+            homepage: None,
+            repository: None,
+            engines: None,
+            permissions: Vec::new(),
+            ui: None,
+            events: Vec::new(),
+            commands: Vec::new(),
+            programs: Vec::new(),
+            dependencies: Vec::new(),
+            optional_dependencies: Vec::new(),
+            icon: None,
+            settings: None,
+            sidebar: None,
+            locales: None,
+            include: Vec::new(),
+            capabilities: Vec::new(),
+            theme_var_map: std::collections::HashMap::new(),
+            presets: std::collections::HashMap::new(),
+            server_events: std::collections::HashMap::new(),
+        },
+        state,
+        path: plugin_root.to_string_lossy().to_string(),
+        source: crate::models::plugin::PluginSource::Local,
+        runtime: crate::models::plugin::PluginRuntimeKind::Lua,
+        actions: crate::models::plugin::PluginActions {
+            can_toggle: true,
+            can_delete: true,
+            can_check_update: true,
+        },
+        missing_dependencies: Vec::new(),
+    }
+}

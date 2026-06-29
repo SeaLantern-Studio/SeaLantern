@@ -1,6 +1,6 @@
 use super::common::{CommandHandler, RegistryBuilder};
 use crate::commands::app::settings as settings_commands;
-use crate::commands::app::settings::ChangeDataDirRequest;
+use crate::commands::app::settings::{ChangeDataDirRequest, ChangePluginDirRequest};
 use crate::models::settings::{AppSettings, PartialSettings};
 use serde_json::Value;
 
@@ -9,6 +9,8 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_data_dir_status", handle_get_data_dir_status as CommandHandler);
     builder.register("initialize_data_dir", handle_initialize_data_dir as CommandHandler);
     builder.register("change_data_dir", handle_change_data_dir as CommandHandler);
+    builder.register("get_plugin_dir_status", handle_get_plugin_dir_status as CommandHandler);
+    builder.register("change_plugin_dir", handle_change_plugin_dir as CommandHandler);
     builder.register("save_settings", handle_save_settings as CommandHandler);
     builder.register("save_settings_with_diff", handle_save_settings_with_diff as CommandHandler);
     builder.register("update_settings_partial", handle_update_settings_partial as CommandHandler);
@@ -69,6 +71,26 @@ fn handle_change_data_dir(
         let request: ChangeDataDirRequest =
             serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
         let result = settings_commands::change_data_dir(request)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_get_plugin_dir_status(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = settings_commands::get_plugin_dir_status();
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_change_plugin_dir(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let request: ChangePluginDirRequest =
+            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let result = settings_commands::change_plugin_dir(request)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }

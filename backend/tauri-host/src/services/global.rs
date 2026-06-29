@@ -2,16 +2,15 @@
 //!
 //! 所有函数都基于 OnceLock 懒初始化，在进程生命周期内保持 `&'static` 引用
 use super::event_consumer_registry::EventConsumerRegistryService;
+use super::events::{EventConsumer, EventConsumerKind, EventConsumerMetadata, EventManager};
 use super::i18n::I18nService;
 use super::mod_manager::ModManager;
-use super::events::{EventConsumer, EventConsumerKind, EventConsumerMetadata, EventManager};
 use super::server::id_manager::ServerIdManager;
 use super::server::join::JoinManager;
 use super::server::manager::ServerManager;
 use super::settings_manager::SettingsManager;
 use crate::plugins::manager::PluginManager;
 use crate::utils::logger::{log_error_ctx, log_fatal_ctx, log_warn_ctx};
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::sync::{Arc, Mutex};
@@ -37,11 +36,8 @@ fn init_server_manager_or_exit() -> ServerManager {
 }
 
 fn init_plugin_manager_or_exit() -> Arc<Mutex<PluginManager>> {
-    let app_data_dir = crate::utils::path::get_or_create_app_data_dir_checked()
-        .map(PathBuf::from)
-        .unwrap_or_else(|error| exit_with_global_init_error("plugin app data directory", error));
-    let plugins_dir = app_data_dir.join("plugins");
-    let data_dir = app_data_dir.join("plugin_data");
+    let plugins_dir = crate::services::plugin_dir::current_plugin_dir();
+    let data_dir = crate::services::plugin_dir::current_plugin_data_dir();
 
     let mut plugin_manager = PluginManager::new_checked(plugins_dir, data_dir)
         .unwrap_or_else(|error| exit_with_global_init_error("PluginManager", error));

@@ -1,14 +1,22 @@
 mod assets;
 mod dependency_state;
+mod driver;
+mod driver_builtin;
+mod driver_local;
 pub(crate) mod i18n;
 mod install;
 mod lifecycle;
 mod notify;
 mod resource_copy;
+mod source;
+mod source_builtin;
+mod source_local;
 mod versioning;
 
 pub(crate) use crate::models::plugin::PluginState;
-use crate::models::plugin::{PluginInfo, PluginInstallResult};
+use crate::models::plugin::{
+    PluginActions, PluginInfo, PluginInstallResult, PluginManifest, PluginSource,
+};
 use crate::plugins::api::new_api_registry;
 use crate::plugins::runtime::PluginRuntime;
 use std::collections::HashMap;
@@ -114,7 +122,12 @@ impl PluginManager {
     ///
     /// 启用成功时返回 `Ok(())`
     pub fn enable_plugin(&mut self, plugin_id: &str) -> Result<(), String> {
-        lifecycle::runtime::enable_plugin(self, plugin_id)
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .cloned()
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        self.driver_for(&plugin).enable(self, plugin_id)
     }
 
     /// 禁用一个插件
@@ -127,7 +140,12 @@ impl PluginManager {
     ///
     /// 返回本次连带被禁用的插件 ID 列表
     pub fn disable_plugin(&mut self, plugin_id: &str) -> Result<Vec<String>, String> {
-        lifecycle::runtime::disable_plugin(self, plugin_id)
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .cloned()
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        self.driver_for(&plugin).disable(self, plugin_id)
     }
 
     fn copy_included_resources(
@@ -166,6 +184,43 @@ impl PluginManager {
         lifecycle::dependencies::get_plugin_list(self)
     }
 
+    pub(crate) fn normalize_plugin_info(&self, plugin: PluginInfo) -> PluginInfo {
+        let plugin = crate::plugins::manager::source::apply_source_capabilities(
+            plugin.clone(),
+            self.source_driver_for_source(plugin.source.clone())
+                .capabilities(),
+        );
+        self.apply_runtime_capabilities(plugin)
+    }
+
+    pub(crate) fn make_local_plugin_info(
+        &self,
+        manifest: PluginManifest,
+        state: PluginState,
+        path: String,
+        missing_dependencies: Vec<crate::models::plugin::MissingDependency>,
+    ) -> PluginInfo {
+        self.normalize_plugin_info(PluginInfo {
+            manifest,
+            state,
+            path,
+            source: PluginSource::Local,
+            runtime: crate::models::plugin::PluginRuntimeKind::Lua,
+            actions: PluginActions {
+                can_toggle: true,
+                can_delete: true,
+                can_check_update: true,
+            },
+            missing_dependencies,
+        })
+    }
+
+    pub(crate) fn apply_runtime_capabilities(&self, mut plugin: PluginInfo) -> PluginInfo {
+        let capabilities = self.driver_for(&plugin).capabilities();
+        plugin.actions.can_toggle = capabilities.can_toggle;
+        plugin
+    }
+
     /// 读取插件侧边栏导航项
     ///
     /// # Returns
@@ -185,7 +240,8 @@ impl PluginManager {
     ///
     /// 返回安装结果和缺失依赖信息
     pub fn install_plugin(&mut self, path: &Path) -> Result<PluginInstallResult, String> {
-        install::install_plugin(self, path)
+        self.source_driver_for_install_path(path)?
+            .install(self, path)
     }
 
     fn get_missing_dependencies(
@@ -197,7 +253,14 @@ impl PluginManager {
 
     /// 读取插件设置
     pub fn get_plugin_settings(&self, plugin_id: &str) -> Result<serde_json::Value, String> {
-        assets::get_plugin_settings(self, plugin_id)
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        if !self.driver_for(plugin).capabilities().has_settings {
+            return Ok(serde_json::json!({}));
+        }
+        self.driver_for(plugin).get_settings(self, plugin)
     }
 
     /// 写入插件设置
@@ -206,17 +269,38 @@ impl PluginManager {
         plugin_id: &str,
         settings: serde_json::Value,
     ) -> Result<(), String> {
-        assets::set_plugin_settings(self, plugin_id, settings)
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        if !self.driver_for(plugin).capabilities().has_settings {
+            return Err(format!("Plugin '{}' does not support settings", plugin_id));
+        }
+        self.driver_for(plugin).set_settings(self, plugin, settings)
     }
 
     /// 读取插件图标
     pub fn get_plugin_icon(&self, plugin_id: &str) -> Result<String, String> {
-        assets::get_plugin_icon(self, plugin_id)
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        if !self.driver_for(plugin).capabilities().has_icon {
+            return Ok(String::new());
+        }
+        self.driver_for(plugin).get_icon(self, plugin)
     }
 
     /// 读取插件样式
     pub fn get_plugin_css(&self, plugin_id: &str) -> Result<String, String> {
-        assets::get_plugin_css(self, plugin_id)
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        if !self.driver_for(plugin).capabilities().has_css {
+            return Ok(String::new());
+        }
+        self.driver_for(plugin).get_css(self, plugin)
     }
 
     /// 读取全部启用插件样式
@@ -235,7 +319,65 @@ impl PluginManager {
     ///
     /// 删除成功时返回 `Ok(())`
     pub fn delete_plugin(&mut self, plugin_id: &str, delete_data: bool) -> Result<(), String> {
-        install::delete_plugin(self, plugin_id, delete_data)
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .cloned()
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        self.driver_for(&plugin)
+            .delete(self, plugin_id, delete_data)
+    }
+
+    pub fn check_plugin_update(&self, plugin_id: &str) -> Result<Option<(String, String)>, String> {
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        Ok(self.driver_for(plugin).collect_update_version(plugin))
+    }
+
+    pub fn collect_update_versions(&self) -> Vec<(String, String)> {
+        self.plugins
+            .values()
+            .filter_map(|plugin| self.driver_for(plugin).collect_update_version(plugin))
+            .collect()
+    }
+
+    pub(crate) fn driver_for(
+        &self,
+        plugin: &PluginInfo,
+    ) -> &'static dyn crate::plugins::manager::driver::PluginDriver {
+        match crate::plugins::manager::driver::driver_kind_for(plugin) {
+            crate::plugins::manager::driver::PluginDriverKind::LuaLocal => {
+                &crate::plugins::manager::driver_local::LuaLocalPluginDriver
+            }
+            crate::plugins::manager::driver::PluginDriverKind::BuiltinRust => {
+                &crate::plugins::manager::driver_builtin::BuiltinRustPluginDriver
+            }
+        }
+    }
+
+    pub(crate) fn source_driver_for_source(
+        &self,
+        source: PluginSource,
+    ) -> &'static dyn crate::plugins::manager::source::PluginSourceDriver {
+        match source {
+            PluginSource::Local => {
+                &crate::plugins::manager::source_local::LocalFilesystemPluginSourceDriver
+            }
+            PluginSource::Builtin => {
+                &crate::plugins::manager::source_builtin::BuiltinPluginSourceDriver
+            }
+        }
+    }
+
+    pub(crate) fn source_driver_for_install_path(
+        &self,
+        path: &Path,
+    ) -> Result<&'static dyn crate::plugins::manager::source::PluginSourceDriver, String> {
+        let source = crate::plugins::manager::source::source_kind_for_install_path(path)
+            .ok_or_else(crate::hardcode_data::plugin_manifest::unsupported_plugin_source_message)?;
+        Ok(self.source_driver_for_source(source))
     }
 
     /// 判断远端版本是否比本地版本新
@@ -273,6 +415,43 @@ impl PluginManager {
 
     pub fn notify_server_event(&self, event: &crate::services::events::ServerEventEnvelope) {
         notify::notify_server_event(self, event);
+    }
+
+    pub fn notify_context_menu_show(
+        &self,
+        context: &str,
+        target_data: &serde_json::Value,
+        x: f64,
+        y: f64,
+    ) {
+        notify::notify_context_menu_show(self, context, target_data, x, y);
+    }
+
+    pub fn notify_context_menu_hide(&self) {
+        notify::notify_context_menu_hide(self);
+    }
+
+    pub fn dispatch_context_menu_callback(
+        &self,
+        plugin_id: &str,
+        context: &str,
+        item_id: &str,
+        target_data: serde_json::Value,
+    ) -> Result<(), String> {
+        let plugin = self
+            .plugins
+            .get(plugin_id)
+            .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+        if !self.driver_for(plugin).capabilities().supports_context_menu {
+            return Err(format!("Plugin '{}' does not support context menu callbacks", plugin_id));
+        }
+        self.driver_for(plugin).dispatch_context_menu_callback(
+            self,
+            plugin_id,
+            context,
+            item_id,
+            target_data,
+        )
     }
 
     pub fn set_server_event_subscription_id(&mut self, subscriber_id: u64) {

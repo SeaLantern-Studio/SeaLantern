@@ -8,13 +8,7 @@ pub(super) fn context_menu_hide_notify(
     manager: tauri::State<'_, Arc<Mutex<PluginManager>>>,
 ) -> Result<(), String> {
     let manager = lock_manager(&manager);
-    let runtimes = manager.get_shared_runtimes();
-    let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-
-    for runtime in runtimes_guard.values() {
-        let _ = runtime.call_context_menu_hide_callback();
-    }
-
+    manager.notify_context_menu_hide();
     Ok(())
 }
 
@@ -27,13 +21,7 @@ pub(super) fn context_menu_show_notify(
     manager: tauri::State<'_, Arc<Mutex<PluginManager>>>,
 ) -> Result<(), String> {
     let manager = lock_manager(&manager);
-    let runtimes = manager.get_shared_runtimes();
-    let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-
-    for runtime in runtimes_guard.values() {
-        let _ = runtime.call_context_menu_show_callback(&context, target_data.clone(), x, y);
-    }
-
+    manager.notify_context_menu_show(&context, &target_data, x, y);
     Ok(())
 }
 
@@ -48,14 +36,7 @@ pub(super) fn context_menu_callback(
     validate_plugin_id(&plugin_id)?;
 
     let manager = lock_manager(&manager);
-    let runtimes = manager.get_shared_runtimes();
-    let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-
-    let runtime = runtimes_guard
-        .get(&plugin_id)
-        .ok_or_else(|| format!("插件 '{}' 的运行时不存在", plugin_id))?;
-
-    runtime.call_context_menu_callback(&context, &item_id, target_data)
+    manager.dispatch_context_menu_callback(&plugin_id, &context, &item_id, target_data)
 }
 
 /// 通知插件当前语言已切换

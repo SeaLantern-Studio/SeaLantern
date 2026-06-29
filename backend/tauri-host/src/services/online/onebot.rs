@@ -9,30 +9,33 @@ fn class_matches(settings: &OneBot11Settings, event: &ServerEventEnvelope) -> bo
         return true;
     }
 
-    settings.event_classes.iter().any(|class| match class.as_str() {
-        "output" => matches!(
-            event.kind,
-            ServerEventKind::OutputRawLine | ServerEventKind::OutputStructuredLog
-        ),
-        "command" => matches!(
-            event.kind,
-            ServerEventKind::CommandSendRequested
-                | ServerEventKind::CommandSendSucceeded
-                | ServerEventKind::CommandSendFailed
-        ),
-        "lifecycle" => matches!(
-            event.kind,
-            ServerEventKind::LifecycleStartRequested
-                | ServerEventKind::LifecycleStartSkippedExistingState
-                | ServerEventKind::LifecycleStartFallback
-                | ServerEventKind::LifecycleStarted
-                | ServerEventKind::LifecycleStopRequested
-                | ServerEventKind::LifecycleStopRequestedAsync
-                | ServerEventKind::LifecycleStopped
-                | ServerEventKind::LifecycleRuntimeError
-        ),
-        _ => false,
-    })
+    settings
+        .event_classes
+        .iter()
+        .any(|class| match class.as_str() {
+            "output" => matches!(
+                event.kind,
+                ServerEventKind::OutputRawLine | ServerEventKind::OutputStructuredLog
+            ),
+            "command" => matches!(
+                event.kind,
+                ServerEventKind::CommandSendRequested
+                    | ServerEventKind::CommandSendSucceeded
+                    | ServerEventKind::CommandSendFailed
+            ),
+            "lifecycle" => matches!(
+                event.kind,
+                ServerEventKind::LifecycleStartRequested
+                    | ServerEventKind::LifecycleStartSkippedExistingState
+                    | ServerEventKind::LifecycleStartFallback
+                    | ServerEventKind::LifecycleStarted
+                    | ServerEventKind::LifecycleStopRequested
+                    | ServerEventKind::LifecycleStopRequestedAsync
+                    | ServerEventKind::LifecycleStopped
+                    | ServerEventKind::LifecycleRuntimeError
+            ),
+            _ => false,
+        })
 }
 
 fn structured_kind_matches(settings: &OneBot11Settings, event: &ServerEventEnvelope) -> bool {
@@ -41,9 +44,14 @@ fn structured_kind_matches(settings: &OneBot11Settings, event: &ServerEventEnvel
     }
 
     match &event.payload {
-        ServerEventPayload::StructuredLog { event_kind, .. } => event_kind
-            .as_ref()
-            .is_some_and(|kind| settings.structured_event_kinds.iter().any(|item| item == kind)),
+        ServerEventPayload::StructuredLog { event_kind, .. } => {
+            event_kind.as_ref().is_some_and(|kind| {
+                settings
+                    .structured_event_kinds
+                    .iter()
+                    .any(|item| item == kind)
+            })
+        }
         _ => true,
     }
 }
@@ -64,40 +72,31 @@ fn should_send(settings: &OneBot11Settings, event: &ServerEventEnvelope) -> bool
 fn event_summary(event: &ServerEventEnvelope) -> String {
     match &event.payload {
         ServerEventPayload::RawLine { line, .. } => line.clone(),
-        ServerEventPayload::StructuredLog {
-            event_kind,
-            player,
-            message,
-            line,
-            ..
-        } => match event_kind.as_deref() {
-            Some("player_join") => format!("{} joined", player.as_deref().unwrap_or("player")),
-            Some("player_leave") => format!("{} left", player.as_deref().unwrap_or("player")),
-            Some("chat") => format!(
-                "{}: {}",
-                player.as_deref().unwrap_or("player"),
-                message.as_deref().unwrap_or("")
-            ),
-            Some("server_ready") => "server ready".to_string(),
-            Some("error") => message.clone().unwrap_or_else(|| line.clone()),
-            _ => line.clone(),
-        },
-        ServerEventPayload::Command {
-            command,
-            success,
-            error,
-            actor,
-        } => match success {
+        ServerEventPayload::StructuredLog { event_kind, player, message, line, .. } => {
+            match event_kind.as_deref() {
+                Some("player_join") => format!("{} joined", player.as_deref().unwrap_or("player")),
+                Some("player_leave") => format!("{} left", player.as_deref().unwrap_or("player")),
+                Some("chat") => format!(
+                    "{}: {}",
+                    player.as_deref().unwrap_or("player"),
+                    message.as_deref().unwrap_or("")
+                ),
+                Some("server_ready") => "server ready".to_string(),
+                Some("error") => message.clone().unwrap_or_else(|| line.clone()),
+                _ => line.clone(),
+            }
+        }
+        ServerEventPayload::Command { command, success, error, actor } => match success {
             Some(true) => format!("{} sent command: {}", actor, command),
-            Some(false) => format!("{} command failed: {} ({})", actor, command, error.clone().unwrap_or_default()),
+            Some(false) => format!(
+                "{} command failed: {} ({})",
+                actor,
+                command,
+                error.clone().unwrap_or_default()
+            ),
             None => format!("{} requested command: {}", actor, command),
         },
-        ServerEventPayload::Lifecycle {
-            detail,
-            error,
-            from_mode,
-            to_mode,
-        } => {
+        ServerEventPayload::Lifecycle { detail, error, from_mode, to_mode } => {
             if let (Some(from_mode), Some(to_mode)) = (from_mode, to_mode) {
                 return format!(
                     "{} ({})",
@@ -179,10 +178,8 @@ fn send_via_http(settings: OneBot11Settings, event: ServerEventEnvelope) {
 
         let mut builder = client.post(&url).header(CONTENT_TYPE, "application/json");
         if !settings.access_token.trim().is_empty() {
-            builder = builder.header(
-                AUTHORIZATION,
-                format!("Bearer {}", settings.access_token.trim()),
-            );
+            builder =
+                builder.header(AUTHORIZATION, format!("Bearer {}", settings.access_token.trim()));
         }
 
         match builder.json(&request).send() {
@@ -190,7 +187,10 @@ fn send_via_http(settings: OneBot11Settings, event: ServerEventEnvelope) {
                 log_info_ctx(
                     "services.online.onebot",
                     "send_via_http",
-                    &format!("sent kind={:?} server_id={} target={}", event.kind, event.server_id, target.id),
+                    &format!(
+                        "sent kind={:?} server_id={} target={}",
+                        event.kind, event.server_id, target.id
+                    ),
                 );
             }
             Ok(response) => {
@@ -212,10 +212,7 @@ fn send_via_http(settings: OneBot11Settings, event: ServerEventEnvelope) {
                     "send_via_http",
                     &format!(
                         "send errored kind={:?} server_id={} target={} error={}",
-                        event.kind,
-                        event.server_id,
-                        target.id,
-                        error
+                        event.kind, event.server_id, target.id, error
                     ),
                 );
             }

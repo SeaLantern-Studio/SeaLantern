@@ -311,11 +311,17 @@ pub(crate) fn install_plugin_bridge(
                     server_app_handle
                         .emit("server-runtime-event", event.clone())
                         .map_err(|e| {
-                            plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
+                            plugin_bridge_t1(
+                                "plugin.bridge.emit_server_log_line_failed",
+                                e.to_string(),
+                            )
                         })?;
 
                     match (&event.kind, &event.payload) {
-                        (ServerEventKind::OutputRawLine, ServerEventPayload::RawLine { line, .. }) => {
+                        (
+                            ServerEventKind::OutputRawLine,
+                            ServerEventPayload::RawLine { line, .. },
+                        ) => {
                             server_app_handle
                                 .emit(
                                     "server-log-line",
@@ -362,12 +368,7 @@ pub(crate) fn install_plugin_bridge(
                         }
                         (
                             ServerEventKind::LifecycleStartFallback,
-                            ServerEventPayload::Lifecycle {
-                                detail,
-                                from_mode,
-                                to_mode,
-                                ..
-                            },
+                            ServerEventPayload::Lifecycle { detail, from_mode, to_mode, .. },
                         ) => {
                             server_app_handle
                                 .emit(
@@ -387,7 +388,10 @@ pub(crate) fn install_plugin_bridge(
                                     )
                                 })?;
                         }
-                        (ServerEventKind::LifecycleRuntimeError, ServerEventPayload::Lifecycle { .. }) => {
+                        (
+                            ServerEventKind::LifecycleRuntimeError,
+                            ServerEventPayload::Lifecycle { .. },
+                        ) => {
                             server_app_handle.emit("server-error", ()).map_err(|e| {
                                 plugin_bridge_t1(
                                     "plugin.bridge.emit_server_log_line_failed",
@@ -404,7 +408,10 @@ pub(crate) fn install_plugin_bridge(
                     app_app_handle
                         .emit("app-runtime-event", event.clone())
                         .map_err(|e| {
-                            plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
+                            plugin_bridge_t1(
+                                "plugin.bridge.emit_server_log_line_failed",
+                                e.to_string(),
+                            )
                         })?;
 
                     match (&event.kind, &event.payload) {

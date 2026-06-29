@@ -159,10 +159,12 @@ fn copy_dir_recursive(source: &Path, target: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn reload_plugin_manager(target_dir: &Path) -> Result<(), String> {
+fn reload_plugin_manager(_target_dir: &Path) -> Result<(), String> {
     let manager = global::plugin_manager();
     let mut plugin_manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-    plugin_manager.reload_roots(target_dir.join("plugins"), target_dir.join("plugin_data"))?;
+    let plugins_dir = crate::services::plugin_dir::current_plugin_dir();
+    let plugin_data_dir = crate::services::plugin_dir::current_plugin_data_dir();
+    plugin_manager.reload_roots(plugins_dir, plugin_data_dir)?;
     plugin_manager.scan_plugins()?;
     plugin_manager.auto_enable_plugins_checked()?;
     Ok(())

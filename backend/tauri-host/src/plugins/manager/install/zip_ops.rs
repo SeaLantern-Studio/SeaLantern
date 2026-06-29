@@ -3,6 +3,7 @@ use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 use crate::hardcode_data::plugin_manifest::{
     manifest_not_found_in_zip_message, parse_manifest_failed_message, read_manifest_failed_message,
 };
+use crate::models::plugin::PluginSource;
 use crate::plugins::loader::PluginLoader;
 use crate::plugins::manager::i18n::{plugin_t1, plugin_t2};
 use std::fs::{self, File};
@@ -32,15 +33,7 @@ pub(super) fn install_plugin_from_zip(
     PluginLoader::validate_manifest(&manifest)?;
 
     let plugin_id = manifest.id.clone();
-
-    if let Some(existing) = manager.plugins.get(&plugin_id) {
-        if matches!(existing.state, PluginState::Enabled) {
-            return Err(plugin_t1(
-                "plugin.install.already_running_replace",
-                existing.manifest.name.clone(),
-            ));
-        }
-    }
+    super::super::source::validate_replace_target(manager, PluginSource::Local, &plugin_id)?;
 
     let target_dir = manager.plugins_dir.join(&plugin_id);
     if target_dir.exists() {
@@ -57,12 +50,12 @@ pub(super) fn install_plugin_from_zip(
 
     let missing_deps = manager.get_missing_dependencies(&loaded_manifest);
 
-    let plugin_info = PluginInfo {
-        manifest: loaded_manifest,
-        state: PluginState::Loaded,
-        path: target_dir.to_string_lossy().to_string(),
-        missing_dependencies: missing_deps,
-    };
+    let plugin_info = manager.make_local_plugin_info(
+        loaded_manifest,
+        PluginState::Loaded,
+        target_dir.to_string_lossy().to_string(),
+        missing_deps,
+    );
 
     manager.plugins.insert(plugin_id, plugin_info.clone());
 

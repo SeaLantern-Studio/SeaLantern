@@ -1,7 +1,7 @@
 use crate::adapters::http::command_registry::CommandRegistry;
 use crate::services::events::{
-    AppEventEnvelope, EventConsumer, EventConsumerKind, EventConsumerMetadata,
-    ServerEventEnvelope, ServerEventSubscription,
+    AppEventEnvelope, EventConsumer, EventConsumerKind, EventConsumerMetadata, ServerEventEnvelope,
+    ServerEventSubscription,
 };
 use axum::http::StatusCode;
 use sea_lantern_runtime::HeadlessHttpConfig;
@@ -81,11 +81,7 @@ pub(super) fn ensure_runtime_event_bridge() {
                 }),
             )
             .with_server_filter(ServerEventSubscription {
-                classes: vec![
-                    "output".to_string(),
-                    "command".to_string(),
-                    "lifecycle".to_string(),
-                ],
+                classes: vec!["output".to_string(), "command".to_string(), "lifecycle".to_string()],
                 event_kinds: Vec::new(),
                 server_ids: Vec::new(),
             }),
@@ -230,36 +226,41 @@ mod tests {
     #[test]
     fn runtime_event_envelope_serializes_with_explicit_scope() {
         let server_event = RuntimeEventEnvelope::Server(ServerEventEnvelope {
-                event_id: "server-event-1".to_string(),
-                occurred_at: 1,
-                scope: EventScope::Server,
-                server_id: "alpha".to_string(),
-                source: "runtime_stdout".to_string(),
-                kind: ServerEventKind::OutputRawLine,
-                payload: ServerEventPayload::RawLine {
-                    line: "hello".to_string(),
-                    stream: "stdout".to_string(),
-                },
-            });
+            event_id: "server-event-1".to_string(),
+            occurred_at: 1,
+            scope: EventScope::Server,
+            server_id: "alpha".to_string(),
+            source: "runtime_stdout".to_string(),
+            kind: ServerEventKind::OutputRawLine,
+            payload: ServerEventPayload::RawLine {
+                line: "hello".to_string(),
+                stream: "stdout".to_string(),
+            },
+        });
 
         let app_event = RuntimeEventEnvelope::App(AppEventEnvelope {
-                event_id: "app-event-1".to_string(),
-                occurred_at: 2,
-                scope: EventScope::App,
+            event_id: "app-event-1".to_string(),
+            occurred_at: 2,
+            scope: EventScope::App,
+            action: "create_server".to_string(),
+            source: "frontend_user".to_string(),
+            kind: AppEventKind::OperationRequested,
+            payload: AppEventPayload::Operation {
                 action: "create_server".to_string(),
-                source: "frontend_user".to_string(),
-                kind: AppEventKind::OperationRequested,
-                payload: AppEventPayload::Operation {
-                    action: "create_server".to_string(),
-                    detail: Some("requested".to_string()),
-                    error: None,
-                },
-            });
+                detail: Some("requested".to_string()),
+                error: None,
+            },
+        });
 
         let server_json = serde_json::to_value(server_event).expect("serialize server event");
         let app_json = serde_json::to_value(app_event).expect("serialize app event");
 
-        assert_eq!(server_json.get("event_scope").and_then(|value| value.as_str()), Some("server"));
+        assert_eq!(
+            server_json
+                .get("event_scope")
+                .and_then(|value| value.as_str()),
+            Some("server")
+        );
         assert_eq!(app_json.get("event_scope").and_then(|value| value.as_str()), Some("app"));
         assert!(server_json.get("event").is_some());
         assert!(app_json.get("event").is_some());

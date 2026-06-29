@@ -30,6 +30,6 @@ pub use manifest::{
 #[allow(unused_imports)] // 对外类型导出
 /// 插件运行状态和安装结果相关的公开类型
 pub use runtime::{
-    BatchInstallError, BatchInstallResult, MissingDependency, PluginInfo, PluginInstallResult,
-    PluginState,
+    BatchInstallError, BatchInstallResult, MissingDependency, PluginActions, PluginInfo,
+    PluginInstallResult, PluginRuntimeKind, PluginSource, PluginState,
 };

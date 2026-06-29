@@ -112,6 +112,8 @@ pub(crate) fn desktop_handler(
         settings_commands::get_data_dir_status,
         settings_commands::initialize_data_dir,
         settings_commands::change_data_dir,
+        settings_commands::get_plugin_dir_status,
+        settings_commands::change_plugin_dir,
         settings_commands::save_settings,
         settings_commands::save_settings_with_diff,
         settings_commands::update_settings_partial,

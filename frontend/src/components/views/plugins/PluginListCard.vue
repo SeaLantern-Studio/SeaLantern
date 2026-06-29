@@ -6,7 +6,7 @@ import SLMenu from "@components/common/SLMenu.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import { i18n } from "@language";
-import type { PluginInfo, PluginState, PluginUpdateInfo } from "@type/plugin";
+import { isBuiltinPlugin, type PluginInfo, type PluginState, type PluginUpdateInfo } from "@type/plugin";
 import { GitBranch, Layers, MoreVertical, Settings, ShieldAlert } from "@lucide/vue";
 import type { PluginMenuItem } from "./pluginListShared";
 
@@ -23,6 +23,7 @@ defineProps<{
   getStatusColor: (state: PluginState) => string;
   getStatusLabel: (state: PluginState) => string;
   hasSettings: (plugin: PluginInfo) => boolean;
+  canTogglePlugin: (plugin: PluginInfo) => boolean;
   hasMissingRequiredDependencies: (plugin: PluginInfo) => boolean;
   hasMissingOptionalDependencies: (plugin: PluginInfo) => boolean;
   getDependencyTooltip: (plugin: PluginInfo) => string;
@@ -73,6 +74,7 @@ const emit = defineEmits<{
         />
 
         <SLMenu
+          v-if="menuItems.length > 0"
           :items="menuItems"
           position="bottom-end"
           @select="emit('menu-select', $event, plugin.manifest.id)"
@@ -97,6 +99,7 @@ const emit = defineEmits<{
           <div class="plugin-header">
             <div class="plugin-title-row">
               <h3 class="plugin-name">{{ getPluginName(plugin) }}</h3>
+              <span v-if="isBuiltinPlugin(plugin)" class="plugin-badge">builtin</span>
               <span class="plugin-version">v{{ plugin.manifest.version }}</span>
             </div>
             <div class="plugin-author-row">
@@ -151,7 +154,7 @@ const emit = defineEmits<{
             <Settings :size="16" />
           </SLButton>
           <SLSwitch
-            v-if="!safeMode"
+            v-if="!safeMode && canTogglePlugin(plugin)"
             :modelValue="isPluginEnabled(plugin.state)"
             :disabled="hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)"
             :title="
@@ -293,6 +296,17 @@ const emit = defineEmits<{
   margin: 0;
   font-size: 16px;
   color: var(--sl-text-primary);
+}
+
+.plugin-badge {
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  color: var(--sl-text-secondary);
+  text-transform: uppercase;
 }
 
 .plugin-version,

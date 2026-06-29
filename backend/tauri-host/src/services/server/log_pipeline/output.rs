@@ -1,14 +1,14 @@
+use super::map_domain_event;
 use super::state::{
     decode_console_bytes, server_log_processors, ServerLogProcessor, SERVER_LOG_EVENT_HANDLER,
 };
-use super::map_domain_event;
 use std::io::{BufRead, BufReader, Read};
 use std::sync::Arc;
 
-use crate::utils::logger;
 use crate::services::events::{
     publish_server_output_raw, publish_server_output_structured, ServerEventSource,
 };
+use crate::utils::logger;
 use sl_server_info::log::{parse_log_line, DomainEvent, LogLineInput, LogStream};
 
 pub fn add_server_log_processor(processor: Arc<ServerLogProcessor>) -> Result<(), String> {
@@ -91,13 +91,7 @@ pub fn emit_server_log_line_with_stream(server_id: &str, line: &str, stream: Log
         LogStream::Unknown => ServerEventSource::RuntimeUnknown,
     };
 
-    let parsed = parse_log_line(
-        None,
-        LogLineInput {
-            raw: processed_line.clone(),
-            stream,
-        },
-    );
+    let parsed = parse_log_line(None, LogLineInput { raw: processed_line.clone(), stream });
     let mapped = map_domain_event(parsed.event);
     let stream_name = match stream {
         LogStream::Stdout => "stdout",

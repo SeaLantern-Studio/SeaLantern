@@ -36,6 +36,7 @@ export function usePluginListBindings(options: UsePluginListBindingsOptions) {
     getStatusColor: options.listActions.getStatusColor,
     getStatusLabel: options.listActions.getStatusLabel,
     hasSettings: options.listActions.hasSettings,
+    canTogglePlugin: options.listActions.canTogglePlugin,
     hasMissingRequiredDependencies: options.dependencies.hasMissingRequiredDependencies,
     hasMissingOptionalDependencies: options.dependencies.hasMissingOptionalDependencies,
     getDependencyTooltip: options.dependencies.getDependencyTooltip,

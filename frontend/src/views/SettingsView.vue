@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
 import DataDirectoryCard from "@components/views/settings/DataDirectoryCard.vue";
+import PluginDirectoryCard from "@components/views/settings/PluginDirectoryCard.vue";
 import ServerDefaultsCard from "@components/views/settings/ServerDefaultsCard.vue";
 import NetworkSettingsCard from "@components/views/settings/NetworkSettingsCard.vue";
 import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue";
@@ -14,6 +15,7 @@ import { systemApi } from "@api/system";
 import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 import { i18n } from "@language";
 import { useDataDirectory } from "@composables/useDataDirectory";
+import { usePluginDirectory } from "@composables/usePluginDirectory";
 import { useGlobalMessage } from "@composables/useMessage";
 import { useSettingsStore } from "@stores/settingsStore";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
@@ -30,12 +32,14 @@ import {
 const { success: globalSuccess } = useGlobalMessage();
 const settingsStore = useSettingsStore();
 const dataDirectory = useDataDirectory();
+const pluginDirectory = usePluginDirectory();
 
 const maxMem = ref("2048");
 const minMem = ref("512");
 const port = ref("25565");
 const defaultRunPath = ref("");
 const dataDirDraft = ref("");
+const pluginDirDraft = ref("");
 const defaultJvmArgsText = ref("");
 const defaultJvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
 const defaultCpuPolicy = ref<CpuPolicyConfig>(createDefaultCpuPolicy());
@@ -83,6 +87,7 @@ const markChanged = settingsDraft.markChanged;
 const resetSettings = settingsDraft.resetSettings;
 
 let lastResolvedDataDir = "";
+let lastResolvedPluginDir = "";
 
 watch(
   () => settingsStore.dataDirStatus?.current_data_dir || "",
@@ -96,6 +101,22 @@ watch(
     }
 
     lastResolvedDataDir = currentPath;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => settingsStore.pluginDirStatus?.current_plugin_dir || "",
+  (currentPath) => {
+    if (!currentPath) {
+      return;
+    }
+
+    if (!pluginDirDraft.value || pluginDirDraft.value === lastResolvedPluginDir) {
+      pluginDirDraft.value = currentPath;
+    }
+
+    lastResolvedPluginDir = currentPath;
   },
   { immediate: true },
 );
@@ -177,6 +198,27 @@ function handleDataDirDraftUpdate(value: string) {
   dataDirDraft.value = value;
 }
 
+async function handleBrowsePluginDir() {
+  const selected = await pluginDirectory.browseFolder();
+  if (selected) {
+    pluginDirDraft.value = selected;
+  }
+}
+
+async function handleChangePluginDir(path: string) {
+  await pluginDirectory.change(path, true);
+  pluginDirDraft.value = settingsStore.pluginDirStatus?.current_plugin_dir || path;
+}
+
+function handlePluginDirDraftUpdate(value: string) {
+  pluginDirDraft.value = value;
+}
+
+async function handleRefreshPluginDir() {
+  const status = await pluginDirectory.refreshStatus();
+  pluginDirDraft.value = status.current_plugin_dir;
+}
+
 async function handleRefreshDataDir() {
   const status = await dataDirectory.refreshStatus();
   dataDirDraft.value = status.current_data_dir;
@@ -214,6 +256,18 @@ async function handleRefreshDataDir() {
         @browse="handleBrowseDataDir"
         @refresh="handleRefreshDataDir"
         @change="handleChangeDataDir"
+      />
+
+      <PluginDirectoryCard
+        :status="settingsStore.pluginDirStatus"
+        :path-draft="pluginDirDraft"
+        :busy="pluginDirectory.isBusy.value"
+        :error="pluginDirectory.error.value"
+        :info-message="pluginDirectory.infoMessage.value"
+        @update:path-draft="handlePluginDirDraftUpdate"
+        @browse="handleBrowsePluginDir"
+        @refresh="handleRefreshPluginDir"
+        @change="handleChangePluginDir"
       />
 
       <ServerDefaultsCard

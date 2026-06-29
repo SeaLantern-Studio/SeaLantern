@@ -1,6 +1,6 @@
-use crate::plugins::loader::PluginLoader;
+use crate::models::plugin::PluginSource;
 use crate::plugins::manager::lifecycle::dependencies::update_all_missing_dependencies;
-use crate::plugins::manager::{PluginInfo, PluginManager, PluginState};
+use crate::plugins::manager::{PluginInfo, PluginManager};
 use crate::plugins::runtime::kill_all_processes;
 
 pub(in crate::plugins::manager) fn scan_plugins(
@@ -33,43 +33,28 @@ pub(in crate::plugins::manager) fn scan_plugins(
     }
 
     manager.plugins.clear();
+    for source in [PluginSource::Builtin, PluginSource::Local] {
+        let scanned_plugins = manager
+            .source_driver_for_source(source.clone())
+            .scan(manager)?;
+        println!(
+            "[PluginManager] 来源 {:?} 扫描完成，得到 {} 个插件",
+            source,
+            scanned_plugins.len()
+        );
 
-    let plugin_dirs = PluginLoader::discover_plugins(&manager.plugins_dir)?;
-    println!("[PluginManager] 发现 {} 个插件目录", plugin_dirs.len());
-
-    for plugin_dir in &plugin_dirs {
-        println!("[PluginManager] 正在加载插件: {}", plugin_dir.display());
-        match PluginLoader::load_manifest(plugin_dir) {
-            Ok(manifest) => {
+        for plugin_info in scanned_plugins {
+            let plugin_id = plugin_info.manifest.id.clone();
+            if let Some(existing) = manager.plugins.get(&plugin_id) {
                 println!(
-                    "[PluginManager] 插件 '{}' (ID: {}) 版本 {}",
-                    manifest.name, manifest.id, manifest.version
+                    "[PluginManager] 跳过重复插件 '{}'：保留来源 {:?}，忽略来源 {:?}",
+                    plugin_id, existing.source, plugin_info.source
                 );
-
-                let state = match PluginLoader::validate_manifest(&manifest) {
-                    Ok(()) => {
-                        println!("[PluginManager] 插件 '{}' 验证通过", manifest.id);
-                        PluginState::Loaded
-                    }
-                    Err(e) => {
-                        println!("[PluginManager] 插件 '{}' 验证失败: {}", manifest.id, e);
-                        PluginState::Error(e)
-                    }
-                };
-
-                let plugin_info = PluginInfo {
-                    manifest: manifest.clone(),
-                    state,
-                    path: plugin_dir.to_string_lossy().to_string(),
-                    missing_dependencies: Vec::new(),
-                };
-
-                manager.plugins.insert(manifest.id.clone(), plugin_info);
-                println!("[PluginManager] 插件 '{}' 已添加到管理器", manifest.id);
+                continue;
             }
-            Err(e) => {
-                println!("[PluginManager] 从 {} 加载 manifest 失败: {}", plugin_dir.display(), e);
-            }
+
+            println!("[PluginManager] 插件 '{}' 已添加到管理器", plugin_id);
+            manager.plugins.insert(plugin_id, plugin_info);
         }
     }
 

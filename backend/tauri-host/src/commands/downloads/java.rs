@@ -1,5 +1,5 @@
-use crate::services::java_detector;
 use crate::services::events::{publish_app_operation_requested, publish_app_operation_result};
+use crate::services::java_detector;
 use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -10,7 +10,10 @@ static JAVA_INSTALL_CANCEL_FLAG: Lazy<Mutex<Option<Arc<AtomicBool>>>> =
 
 #[tauri::command]
 pub async fn detect_java() -> Result<Vec<java_detector::JavaInfo>, String> {
-    let _ = publish_app_operation_requested("detect_java", Some("detect_java_installations".to_string()));
+    let _ = publish_app_operation_requested(
+        "detect_java",
+        Some("detect_java_installations".to_string()),
+    );
     let result = tauri::async_runtime::spawn_blocking(java_detector::detect_java_installations)
         .await
         .map_err(|e| format!("Java 检测任务失败: {}", e));
@@ -33,19 +36,21 @@ pub async fn detect_java() -> Result<Vec<java_detector::JavaInfo>, String> {
 pub async fn validate_java_path(path: String) -> Result<java_detector::JavaInfo, String> {
     let detail = path.clone();
     let _ = publish_app_operation_requested("validate_java_path", Some(detail.clone()));
-    let result = tauri::async_runtime::spawn_blocking(move || java_detector::validate_java(path.as_str()))
-        .await
-        .map_err(|e| format!("Java 路径验证任务失败: {}", e))?;
+    let result =
+        tauri::async_runtime::spawn_blocking(move || java_detector::validate_java(path.as_str()))
+            .await
+            .map_err(|e| format!("Java 路径验证任务失败: {}", e))?;
     match &result {
         Ok(info) => {
-            let _ = publish_app_operation_result(
-                "validate_java_path",
-                Some(info.path.clone()),
-                None,
-            );
+            let _ =
+                publish_app_operation_result("validate_java_path", Some(info.path.clone()), None);
         }
         Err(error) => {
-            let _ = publish_app_operation_result("validate_java_path", Some(detail), Some(error.clone()));
+            let _ = publish_app_operation_result(
+                "validate_java_path",
+                Some(detail),
+                Some(error.clone()),
+            );
         }
     }
     result

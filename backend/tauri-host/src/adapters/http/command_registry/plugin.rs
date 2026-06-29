@@ -1,6 +1,5 @@
 use super::common::{parse_params, CommandHandler, RegistryBuilder};
 use crate::commands::plugins::manage as plugin_commands;
-use crate::plugins::manager::i18n::plugin_t1;
 use crate::services::global;
 use serde::Deserialize;
 use serde_json::Value;
@@ -329,21 +328,21 @@ fn handle_check_plugin_update(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: PluginIdRequest = parse_params(params)?;
-        let current_version = {
+        let update_target = {
             let manager = global::plugin_manager();
             let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-            let plugin_info = manager
-                .plugins()
-                .get(&req.plugin_id)
-                .ok_or_else(|| plugin_t1("plugin.common.not_found", req.plugin_id.clone()))?;
-            plugin_info.manifest.version.clone()
+            manager.check_plugin_update(&req.plugin_id)?
         };
-
-        let result = plugin_commands::market::check_plugin_update_without_manager(
-            current_version,
-            req.plugin_id,
-        )
-        .await?;
+        let result = match update_target {
+            Some((plugin_id, current_version)) => {
+                plugin_commands::market::check_plugin_update_without_manager(
+                    current_version,
+                    plugin_id,
+                )
+                .await?
+            }
+            None => None,
+        };
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -355,11 +354,7 @@ fn handle_check_all_plugin_updates(
         let plugin_versions = {
             let manager = global::plugin_manager();
             let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-            manager
-                .plugins()
-                .iter()
-                .map(|(id, info)| (id.clone(), info.manifest.version.clone()))
-                .collect::<Vec<_>>()
+            manager.collect_update_versions()
         };
 
         let result =
@@ -446,12 +441,12 @@ fn handle_context_menu_callback(
         let req: ContextMenuCallbackRequest = parse_params(params)?;
         let manager = global::plugin_manager();
         let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        let runtimes = manager.get_shared_runtimes();
-        let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-        let runtime = runtimes_guard
-            .get(&req.plugin_id)
-            .ok_or_else(|| format!("插件 '{}' 的运行时不存在", req.plugin_id))?;
-        runtime.call_context_menu_callback(&req.context, &req.item_id, req.target_data)?;
+        manager.dispatch_context_menu_callback(
+            &req.plugin_id,
+            &req.context,
+            &req.item_id,
+            req.target_data,
+        )?;
         Ok(Value::Null)
     })
 }
@@ -463,18 +458,7 @@ fn handle_context_menu_show_notify(
         let req: ContextMenuShowRequest = parse_params(params)?;
         let manager = global::plugin_manager();
         let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        let runtimes = manager.get_shared_runtimes();
-        let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-
-        for runtime in runtimes_guard.values() {
-            let _ = runtime.call_context_menu_show_callback(
-                &req.context,
-                req.target_data.clone(),
-                req.x,
-                req.y,
-            );
-        }
-
+        manager.notify_context_menu_show(&req.context, &req.target_data, req.x, req.y);
         Ok(Value::Null)
     })
 }
@@ -485,13 +469,7 @@ fn handle_context_menu_hide_notify(
     Box::pin(async move {
         let manager = global::plugin_manager();
         let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        let runtimes = manager.get_shared_runtimes();
-        let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-
-        for runtime in runtimes_guard.values() {
-            let _ = runtime.call_context_menu_hide_callback();
-        }
-
+        manager.notify_context_menu_hide();
         Ok(Value::Null)
     })
 }

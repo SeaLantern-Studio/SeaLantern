@@ -842,12 +842,7 @@ pub fn publish_server_lifecycle(
         ServerEventSource::RuntimeManager,
         None,
         kind,
-        ServerEventPayload::Lifecycle {
-            detail,
-            error,
-            from_mode,
-            to_mode,
-        },
+        ServerEventPayload::Lifecycle { detail, error, from_mode, to_mode },
     )
 }
 
