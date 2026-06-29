@@ -2,6 +2,7 @@ use super::shared::{
     collect_env_vars, emit_process_denied_log, emit_process_log, mask_args_for_log, validate_args,
     validate_program_path,
 };
+use crate::plugins::runtime::permissions::{EXECUTE_PROGRAM_PERMISSION, PROCESS_EXEC_PERMISSION};
 use crate::plugins::runtime::process::common::{
     collect_finished_processes, new_process_output, plugin_process_count, process_err,
     process_err1, process_err2, process_msg1, process_msg2, spawn_background_pipe_reader,
@@ -59,7 +60,9 @@ pub(super) fn exec(
 
     lua.create_function(
         move |lua, (program, args, options): (String, Option<Vec<String>>, Option<Table>)| {
-            if !perms.iter().any(|p| p == "execute_program") {
+            if !(perms.iter().any(|p| p == EXECUTE_PROGRAM_PERMISSION)
+                || perms.iter().any(|p| p == PROCESS_EXEC_PERMISSION))
+            {
                 return Err(process_err(
                     "plugins.runtime.process.execute_permission_required",
                 ));

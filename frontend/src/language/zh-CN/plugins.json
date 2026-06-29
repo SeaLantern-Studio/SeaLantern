@@ -62,6 +62,9 @@
   "batch_result_title": "批量安装结果",
   "batch_success": "成功安装 {{count}} 个插件：",
   "batch_failed": "安装失败 {{count}} 个：",
+  "install_issue_incompatible_sealantern_version": "当前 SeaLantern 版本不满足插件要求。需要 {{requiredVersion}}，当前为 {{currentVersion}}。",
+  "install_issue_requests_trusted_capabilities": "该插件申请了 Trusted 专属能力，当前不会进入普通标准沙箱路径：{{permissions}}。",
+  "install_issue_exceeds_standard_sandbox": "该插件权限已超出标准沙箱范围，后续启用时会按更高风险路径处理：{{permissions}}。",
   "installing": "正在安装插件...",
   "enable_failed": "启用失败",
   "plugin_disabled": "插件已禁用",
@@ -100,6 +103,12 @@
     "network_desc": "允许插件发送 HTTP 请求，访问外部网络。恶意插件可能利用此权限外泄数据。",
     "fs": "文件系统",
     "fs_desc": "允许插件读写其目录内的文件。",
+    "fs_data": "文件系统 - 私有数据目录",
+    "fs_data_desc": "允许插件在自己的私有数据目录内读写文件。",
+    "fs_server": "文件系统 - 服务器目录",
+    "fs_server_desc": "允许插件在 SeaLantern 管理的服务器目录内读写文件。",
+    "fs_global": "文件系统 - 全局应用目录",
+    "fs_global_desc": "允许插件在 SeaLantern 的全局应用目录内读写文件。",
     "server": "服务器操作",
     "server_desc": "允许插件读写服务器文件、获取服务器列表和信息。",
     "console": "控制台命令",
@@ -156,6 +165,23 @@
     "panel_no_commands": "暂无命令记录",
     "panel_api_stats": "API 调用统计",
     "panel_no_api_calls": "暂无 API 调用",
-    "panel_call_count": "{count} 次"
+    "panel_call_count": "{count} 次",
+    "semantic": {
+      "section_title": "权限语义",
+      "requires_explicit_consent": "需确认",
+      "risk_group": {
+        "standard_sandbox_allowed": "标准沙箱内",
+        "escalated_sandbox": "升级沙箱",
+        "trusted_only": "仅 Trusted",
+        "unknown": "未分类"
+      },
+      "boundary": {
+        "within_standard_ceiling": "标准上限内",
+        "outside_standard_ceiling": "超出标准上限"
+      },
+      "card": {
+        "outside_standard_sandbox": "超出标准沙箱"
+      }
+    }
   }
 }

@@ -5,12 +5,27 @@ use super::{
     },
     fs, MAX_FILE_SIZE,
 };
+use crate::plugins::runtime::permissions::{
+    PLUGINS_READ_PERMISSION, PLUGIN_FOLDER_ACCESS_PERMISSION,
+};
 use crate::utils::logger::log_warn_ctx;
 use mlua::{Lua, Value};
+
+fn require_plugins_read(ctx: &PluginsContext) -> mlua::Result<()> {
+    if ctx.has_any_permission(&[PLUGINS_READ_PERMISSION, PLUGIN_FOLDER_ACCESS_PERMISSION]) {
+        Ok(())
+    } else {
+        Err(mlua::Error::runtime(plugins_t1(
+            "plugins.runtime.permissions.permission_required",
+            format!("{} | {}", PLUGINS_READ_PERMISSION, PLUGIN_FOLDER_ACCESS_PERMISSION),
+        )))
+    }
+}
 
 pub(super) fn list(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, ()| {
+        require_plugins_read(&ctx)?;
         emit_plugins_log(&ctx.plugin_id, "sl.plugins.list", "");
 
         let result = lua.create_table()?;
@@ -85,6 +100,7 @@ pub(super) fn list(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, St
 pub(super) fn get_manifest(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, target_id: String| {
+        require_plugins_read(&ctx)?;
         emit_plugins_log(&ctx.plugin_id, "sl.plugins.get_manifest", &target_id);
 
         let target_dir = plugin_dir(&ctx.plugins_root, &target_id)?;
@@ -106,6 +122,7 @@ pub(super) fn get_manifest(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Func
 pub(super) fn read_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |_, (target_id, relative_path): (String, String)| {
+        require_plugins_read(&ctx)?;
         emit_plugins_log(
             &ctx.plugin_id,
             "sl.plugins.read_file",
@@ -152,6 +169,7 @@ pub(super) fn read_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Functio
 pub(super) fn file_exists(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |_, (target_id, relative_path): (String, String)| {
+        require_plugins_read(&ctx)?;
         emit_plugins_log(
             &ctx.plugin_id,
             "sl.plugins.file_exists",
@@ -175,6 +193,7 @@ pub(super) fn file_exists(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Funct
 pub(super) fn list_files(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |lua, (target_id, relative_path): (String, String)| {
+        require_plugins_read(&ctx)?;
         emit_plugins_log(
             &ctx.plugin_id,
             "sl.plugins.list_files",

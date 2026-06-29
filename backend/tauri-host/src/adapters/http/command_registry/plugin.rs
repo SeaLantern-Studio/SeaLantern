@@ -1,5 +1,6 @@
 use super::common::{parse_params, CommandHandler, RegistryBuilder};
 use crate::commands::plugins::manage as plugin_commands;
+use crate::plugins::loader::PluginLoader;
 use crate::services::global;
 use serde::Deserialize;
 use serde_json::Value;
@@ -8,6 +9,7 @@ use serde_json::Value;
 struct PluginIdRequest {
     #[serde(alias = "pluginId")]
     plugin_id: String,
+    confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
 }
 
 #[derive(Deserialize)]
@@ -197,8 +199,8 @@ fn handle_enable_plugin(
         let req: PluginIdRequest = parse_params(params)?;
         let manager = global::plugin_manager();
         let mut manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        manager.enable_plugin(&req.plugin_id)?;
-        Ok(Value::Null)
+        let result = manager.enable_plugin(&req.plugin_id, req.confirmation)?;
+        serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
 
@@ -235,7 +237,14 @@ fn handle_install_plugin(
             .to_string();
         let manager = global::plugin_manager();
         let mut manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        let result = manager.install_plugin(std::path::Path::new(&path))?;
+        let result = manager
+            .install_plugin(std::path::Path::new(&path))
+            .map_err(|error| {
+                if let Some(issue) = PluginLoader::classify_install_error(&error) {
+                    return issue.into_command_error(error).to_json_string();
+                }
+                error
+            })?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -254,9 +263,11 @@ fn handle_install_plugins_batch(
             let path = std::path::PathBuf::from(&path_str);
             match manager.install_plugin(&path) {
                 Ok(install_result) => success.push(install_result),
-                Err(error) => {
-                    failed.push(crate::models::plugin::BatchInstallError { path: path_str, error })
-                }
+                Err(error) => failed.push(crate::models::plugin::BatchInstallError {
+                    path: path_str,
+                    issue: PluginLoader::classify_install_error(&error),
+                    error,
+                }),
             }
         }
 

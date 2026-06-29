@@ -10,11 +10,18 @@ use std::collections::HashMap;
 pub(super) struct PluginsContext {
     pub(super) plugins_root: PathBuf,
     pub(super) plugin_id: String,
+    pub(super) permissions: Vec<String>,
 }
 
 impl PluginsContext {
-    pub(super) fn new(plugins_root: PathBuf, plugin_id: String) -> Self {
-        Self { plugins_root, plugin_id }
+    pub(super) fn new(plugins_root: PathBuf, plugin_id: String, permissions: Vec<String>) -> Self {
+        Self { plugins_root, plugin_id, permissions }
+    }
+
+    pub(super) fn has_any_permission(&self, permissions: &[&str]) -> bool {
+        permissions
+            .iter()
+            .any(|permission| self.permissions.iter().any(|owned| owned == permission))
     }
 }
 

@@ -41,8 +41,17 @@ impl PluginDriver for LuaLocalPluginDriver {
         }
     }
 
-    fn enable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<(), String> {
-        super::lifecycle::runtime::enable_plugin(manager, plugin_id)
+    fn enable(
+        &self,
+        manager: &mut PluginManager,
+        plugin_id: &str,
+        confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
+    ) -> Result<crate::models::plugin::PluginEnableResult, String> {
+        super::lifecycle::runtime::enable_plugin_with_confirmation(
+            manager,
+            plugin_id,
+            confirmation,
+        )
     }
 
     fn disable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<Vec<String>, String> {

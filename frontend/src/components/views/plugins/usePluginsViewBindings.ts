@@ -20,6 +20,7 @@ export function usePluginsViewBindings(options: UsePluginsViewBindingsOptions) {
       pluginStore.error = null;
     },
     togglePlugin: pluginStore.togglePlugin,
+    confirmEnablePlugin: pluginStore.confirmEnablePlugin,
     checkUpdate: pluginStore.checkUpdate,
     checkAllUpdates: pluginStore.checkAllUpdates,
     deletePlugin: pluginStore.deletePlugin,
@@ -29,6 +30,7 @@ export function usePluginsViewBindings(options: UsePluginsViewBindingsOptions) {
     openPermissionWarning: feedback.openPermissionWarning,
     closePermissionWarning: feedback.closePermissionWarning,
     pendingPermissionPluginId: () => feedback.permissionWarning.value.pluginId,
+    pendingPermissionGrantScope: () => feedback.permissionWarning.value.grantScope,
     prepareSingleDelete: selection.prepareSingleDelete,
     clearSingleDeleteState: selection.clearSingleDeleteState,
     pendingDeletePluginId: () => selection.pendingDeletePluginId.value,

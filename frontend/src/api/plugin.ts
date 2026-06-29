@@ -1,6 +1,8 @@
 import { tauriInvoke } from "@api/tauri";
 import { isUploadSupported, pickFileFromBrowser, uploadFile, uploadFiles } from "@api/upload";
 import type {
+  PluginEnableConfirmation,
+  PluginEnableResult,
   PluginInfo,
   PluginNavItem,
   PluginInstallResult,
@@ -39,8 +41,11 @@ export async function scanPlugins(): Promise<PluginInfo[]> {
   return tauriInvoke("scan_plugins");
 }
 
-export async function enablePlugin(pluginId: string): Promise<void> {
-  return tauriInvoke("enable_plugin", { pluginId });
+export async function enablePlugin(
+  pluginId: string,
+  confirmation?: PluginEnableConfirmation,
+): Promise<PluginEnableResult> {
+  return tauriInvoke("enable_plugin", { pluginId, confirmation });
 }
 
 export async function disablePlugin(pluginId: string): Promise<string[]> {

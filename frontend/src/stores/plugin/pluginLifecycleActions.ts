@@ -30,6 +30,7 @@ export function createPluginLifecycleActions(options: CreatePluginLifecycleActio
     refreshPlugins: loaders.refreshPlugins,
     loadNavItems: loaders.loadNavItems,
     togglePlugin: toggle.togglePlugin,
+    confirmEnablePlugin: toggle.confirmEnablePlugin,
     installFromZip: mutations.installFromZip,
     installBatch: mutations.installBatch,
     deletePlugin: mutations.deletePlugin,

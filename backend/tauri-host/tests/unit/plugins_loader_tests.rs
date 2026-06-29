@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::plugin::{PluginAuthor, PluginProgram};
+use crate::models::plugin::{PluginAuthor, PluginEngines, PluginProgram};
 use std::fs;
 
 fn make_temp_dir(name: &str) -> PathBuf {
@@ -159,4 +159,66 @@ fn test_validate_manifest_rejects_unsafe_program_path() {
 
     let error = PluginLoader::validate_manifest(&manifest).unwrap_err();
     assert!(error.contains("must not contain '..'"), "{}", error);
+}
+
+#[test]
+fn test_validate_manifest_allows_missing_sealantern_engine_requirement() {
+    let manifest = make_manifest(vec![]);
+
+    assert!(PluginLoader::validate_manifest_against_version(&manifest, "1.2.3").is_ok());
+}
+
+#[test]
+fn test_validate_manifest_accepts_satisfied_sealantern_engine_requirement() {
+    let mut manifest = make_manifest(vec![]);
+    manifest.engines = Some(PluginEngines {
+        sealantern: Some("^1.2.0".into()),
+    });
+
+    assert!(PluginLoader::validate_manifest_against_version(&manifest, "1.2.3").is_ok());
+}
+
+#[test]
+fn test_validate_manifest_rejects_unsatisfied_sealantern_engine_requirement() {
+    let mut manifest = make_manifest(vec![]);
+    manifest.engines = Some(PluginEngines {
+        sealantern: Some(">=9.0.0".into()),
+    });
+
+    let error = PluginLoader::validate_manifest_against_version(&manifest, "1.2.3")
+        .expect_err("manifest should be rejected when engines.sealantern is not satisfied");
+
+    assert!(error.contains("requires SeaLantern version '>=9.0.0'"), "{}", error);
+    assert!(error.contains("current version is '1.2.3'"), "{}", error);
+}
+
+#[test]
+fn test_classify_install_error_extracts_sealantern_compatibility_issue() {
+    let issue = PluginLoader::classify_install_error(
+        "Plugin 'com.example.test' requires SeaLantern version '>=9.0.0' but current version is '1.2.3'",
+    )
+    .expect("compatibility issue should be classified");
+
+    assert_eq!(
+        issue.code,
+        "plugins.install.issue.incompatible_sealantern_version"
+    );
+    assert_eq!(
+        issue.args.get("plugin_id").and_then(|value| value.as_str()),
+        Some("com.example.test")
+    );
+    assert_eq!(
+        issue
+            .args
+            .get("required_version")
+            .and_then(|value| value.as_str()),
+        Some(">=9.0.0")
+    );
+    assert_eq!(
+        issue
+            .args
+            .get("current_version")
+            .and_then(|value| value.as_str()),
+        Some("1.2.3")
+    );
 }

@@ -1,10 +1,14 @@
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
-use crate::models::plugin::PluginManifest;
+use crate::models::plugin::{PluginInstallIssue, PluginManifest, SemVer};
 use crate::plugins::runtime::permissions::{
     is_valid_declared_permission, valid_permission_summary,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
+
+const INCOMPATIBLE_SEALANTERN_VERSION_PREFIX: &str = "Plugin '";
+const INCOMPATIBLE_SEALANTERN_VERSION_MIDDLE: &str = "' requires SeaLantern version '";
+const INCOMPATIBLE_SEALANTERN_VERSION_SUFFIX: &str = "' but current version is '";
 
 fn validate_safe_relative_file_path(path: &str, field: &str) -> Result<(), String> {
     let trimmed = path.trim();
@@ -48,6 +52,21 @@ fn normalize_manifest_program_path(path: &str) -> String {
 pub struct PluginLoader;
 
 impl PluginLoader {
+    pub fn classify_install_error(error: &str) -> Option<PluginInstallIssue> {
+        let plugin_start = error.strip_prefix(INCOMPATIBLE_SEALANTERN_VERSION_PREFIX)?;
+        let (plugin_id, remaining) =
+            plugin_start.split_once(INCOMPATIBLE_SEALANTERN_VERSION_MIDDLE)?;
+        let (required_version, current_with_quote) =
+            remaining.split_once(INCOMPATIBLE_SEALANTERN_VERSION_SUFFIX)?;
+        let current_version = current_with_quote.strip_suffix('\'')?;
+
+        Some(PluginInstallIssue::incompatible_sealantern_version(
+            plugin_id,
+            required_version,
+            current_version,
+        ))
+    }
+
     /// 扫描插件目录下的可用插件文件夹
     ///
     /// # Parameters
@@ -112,6 +131,13 @@ impl PluginLoader {
     ///
     /// 校验通过时返回 `Ok(())`
     pub fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
+        Self::validate_manifest_against_version(manifest, crate::utils::app_version::base_version())
+    }
+
+    pub fn validate_manifest_against_version(
+        manifest: &PluginManifest,
+        current_sealantern_version: &str,
+    ) -> Result<(), String> {
         if manifest.id.trim().is_empty() {
             return Err("Manifest field 'id' is required".into());
         }
@@ -167,6 +193,28 @@ impl PluginLoader {
                     manifest.id,
                     perm,
                     valid_permission_summary()
+                ));
+            }
+        }
+
+        if let Some(requirement) = manifest
+            .engines
+            .as_ref()
+            .and_then(|engines| engines.sealantern.as_deref())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            let current = SemVer::parse(current_sealantern_version).ok_or_else(|| {
+                format!(
+                    "Current SeaLantern version '{}' is not a valid semantic version for engines.sealantern compatibility check",
+                    current_sealantern_version
+                )
+            })?;
+
+            if !current.satisfies(requirement) {
+                return Err(format!(
+                    "Plugin '{}' requires SeaLantern version '{}' but current version is '{}'",
+                    manifest.id, requirement, current_sealantern_version
                 ));
             }
         }

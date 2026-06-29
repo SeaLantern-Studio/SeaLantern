@@ -115,6 +115,10 @@ const page = viewModel.page;
       :show="permissionWarning.show"
       :plugin-name="permissionWarning.pluginName"
       :permissions="permissionWarning.permissions"
+      :title="permissionWarning.title"
+      :message="permissionWarning.message"
+      :confirm-text="permissionWarning.confirmText"
+      :confirm-variant="permissionWarning.confirmVariant"
       @confirm="listActions.confirmPermissionWarning"
       @cancel="listActions.cancelPermissionWarning"
     />

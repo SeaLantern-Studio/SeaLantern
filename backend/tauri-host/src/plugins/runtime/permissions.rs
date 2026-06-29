@@ -1,40 +1,22 @@
-use std::collections::HashSet;
-
 pub(crate) const PLUGIN_FOLDER_ACCESS_PERMISSION: &str = "plugin_folder_access";
-pub(crate) const LEGACY_PLUGINS_PERMISSION: &str = "plugins";
+pub(crate) const EXECUTE_PROGRAM_PERMISSION: &str = "execute_program";
+pub(crate) const PROCESS_EXEC_PERMISSION: &str = "process.exec";
+pub(crate) const UI_PERMISSION: &str = "ui";
+pub(crate) const NETWORK_PERMISSION: &str = "network";
 
-const BASE_PERMISSIONS: &[&str] = &[
-    "log",
-    "fs",
-    "fs.data",
-    "fs.server",
-    "fs.global",
-    "api",
-    "storage",
-    "network",
-    "system",
-    "server",
-    "console",
-    "ui",
-    "element",
-    "execute_program",
-    PLUGIN_FOLDER_ACCESS_PERMISSION,
-    LEGACY_PLUGINS_PERMISSION,
-    "ui.component.read",
-    "ui.component.write",
-    "ui.component.proxy",
-    "ui.component.create",
-];
+pub(crate) const PROCESS_INSPECT_PERMISSION: &str = "process.inspect";
+pub(crate) const PROCESS_OUTPUT_READ_PERMISSION: &str = "process.output.read";
+pub(crate) const PROCESS_KILL_PERMISSION: &str = "process.kill";
+pub(crate) const PLUGINS_READ_PERMISSION: &str = "plugins.read";
+pub(crate) const PLUGINS_WRITE_PERMISSION: &str = "plugins.write";
+
+use std::collections::HashSet;
 
 const FS_SCOPES: &[&str] = &["data", "server", "global"];
 const FS_ACTIONS: &[&str] = &["read", "write", "list", "meta", "delete", "transfer"];
 
 pub(crate) fn normalize_permission(permission: &str) -> String {
-    match permission {
-        "fs" => "fs.data".to_string(),
-        LEGACY_PLUGINS_PERMISSION => PLUGIN_FOLDER_ACCESS_PERMISSION.to_string(),
-        _ => permission.to_string(),
-    }
+    crate::hardcode_data::plugin_permissions::normalize_permission_id(permission)
 }
 
 pub(crate) fn normalize_permissions<I>(permissions: I) -> Vec<String>
@@ -55,7 +37,7 @@ where
 }
 
 pub(crate) fn is_valid_declared_permission(permission: &str) -> bool {
-    BASE_PERMISSIONS.contains(&permission) || is_valid_fs_action_permission(permission)
+    crate::hardcode_data::plugin_permissions::is_known_permission_or_alias(permission)
 }
 
 pub(crate) fn is_any_fs_permission(permission: &str) -> bool {
@@ -63,14 +45,30 @@ pub(crate) fn is_any_fs_permission(permission: &str) -> bool {
         || is_valid_fs_action_permission(permission)
 }
 
-pub(crate) fn has_plugin_folder_access_permission(permissions: &[String]) -> bool {
-    permissions
-        .iter()
-        .any(|permission| normalize_permission(permission) == PLUGIN_FOLDER_ACCESS_PERMISSION)
+pub(crate) fn has_any_process_permission(permissions: &[String]) -> bool {
+    permissions.iter().any(|permission| {
+        matches!(
+            normalize_permission(permission).as_str(),
+            EXECUTE_PROGRAM_PERMISSION
+                | PROCESS_EXEC_PERMISSION
+                | PROCESS_INSPECT_PERMISSION
+                | PROCESS_OUTPUT_READ_PERMISSION
+                | PROCESS_KILL_PERMISSION
+        )
+    })
+}
+
+pub(crate) fn has_any_plugins_permission(permissions: &[String]) -> bool {
+    permissions.iter().any(|permission| {
+        matches!(
+            normalize_permission(permission).as_str(),
+            PLUGIN_FOLDER_ACCESS_PERMISSION | PLUGINS_READ_PERMISSION | PLUGINS_WRITE_PERMISSION
+        )
+    })
 }
 
 pub(crate) fn valid_permission_summary() -> &'static str {
-    "log, fs, fs.data, fs.server, fs.global, fs.{scope}.{action}, api, storage, network, system, server, console, ui, element, execute_program, plugin_folder_access/plugins, ui.component.{read,write,proxy,create}"
+    "log, fs, fs.data, fs.server, fs.global, fs.{scope}.{action}, api, storage, network, system, server, console, ui, element, execute_program, process.exec, process.inspect, process.output.read, process.kill, plugin_folder_access/plugins, plugins.read, plugins.write, ui.component.{read,write,proxy,create}"
 }
 
 fn is_valid_fs_action_permission(permission: &str) -> bool {

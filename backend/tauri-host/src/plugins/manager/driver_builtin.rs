@@ -1,4 +1,6 @@
-use crate::models::plugin::{PluginInfo, PluginState};
+use crate::models::plugin::{
+    PluginEnableConfirmation, PluginEnableResult, PluginInfo, PluginState,
+};
 use crate::plugins::builtin;
 use crate::services::events::ServerEventEnvelope;
 use crate::utils::logger::log_trace_ctx;
@@ -30,7 +32,12 @@ impl PluginDriver for BuiltinRustPluginDriver {
         }
     }
 
-    fn enable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<(), String> {
+    fn enable(
+        &self,
+        manager: &mut PluginManager,
+        plugin_id: &str,
+        _confirmation: Option<PluginEnableConfirmation>,
+    ) -> Result<PluginEnableResult, String> {
         log_builtin_driver_trace("enable", plugin_id, "begin");
 
         let plugin_info = manager
@@ -45,7 +52,15 @@ impl PluginDriver for BuiltinRustPluginDriver {
 
         if matches!(plugin_info.state, PluginState::Enabled) {
             log_builtin_driver_trace("enable", plugin_id, "skip already_enabled");
-            return Ok(());
+            return Ok(PluginEnableResult {
+                success: true,
+                disabled_plugins: Vec::new(),
+                confirmation_required: false,
+                block_reason: None,
+                plugin: manager.plugins.get(plugin_id).cloned(),
+                grant_scope: None,
+                message: None,
+            });
         }
 
         if let Some(info) = manager.plugins.get_mut(plugin_id) {
@@ -55,7 +70,15 @@ impl PluginDriver for BuiltinRustPluginDriver {
         super::lifecycle::dependencies::update_all_missing_dependencies(manager);
         super::lifecycle::persistence::save_enabled_plugins_checked(manager)?;
         log_builtin_driver_trace("enable", plugin_id, "completed state=enabled");
-        Ok(())
+        Ok(PluginEnableResult {
+            success: true,
+            disabled_plugins: Vec::new(),
+            confirmation_required: false,
+            block_reason: None,
+            plugin: manager.plugins.get(plugin_id).cloned(),
+            grant_scope: None,
+            message: None,
+        })
     }
 
     fn disable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<Vec<String>, String> {

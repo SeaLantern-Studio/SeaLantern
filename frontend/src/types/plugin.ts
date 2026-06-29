@@ -1,3 +1,5 @@
+import permissionCatalog from "@shared/plugin-permissions.json";
+
 export interface PluginSettingOption {
   value: string;
   label: string;
@@ -63,6 +65,55 @@ export type PluginSource = "local" | "builtin";
 
 export type PluginRuntimeKind = "lua" | "rust";
 
+export type PluginTrustLevelDisplay = "builtin" | "trusted" | "standard_sandbox" | "unreviewed";
+
+export type PluginExecutionClass = "builtin_full" | "trusted_full" | "sandboxed" | "restricted";
+
+export type PluginReviewStatus =
+  | "builtin"
+  | "sealantern_reviewed"
+  | "unreviewed"
+  | "revoked";
+
+export type PluginIntegrityStatus =
+  | "bundled"
+  | "verified_hash"
+  | "verified_signature"
+  | "unsigned"
+  | "mismatch"
+  | "unknown";
+
+export type PluginTrustedPolicySource =
+  | "builtin"
+  | "bundled_snapshot"
+  | "remote_signed_catalog"
+  | "local_attestation"
+  | "none";
+
+export type PluginDistributionClass =
+  | "builtin"
+  | "market"
+  | "standard_package"
+  | "manual_import"
+  | "local_directory"
+  | "trusted_catalog"
+  | "unknown";
+
+export type PluginPermissionProfile =
+  | "builtin_full"
+  | "trusted_full"
+  | "sandboxed_normal"
+  | "sandboxed_extended"
+  | "unreviewed";
+
+export type PluginEnableGrantScope = "once" | "version" | "hash";
+
+export interface PluginEnableConfirmation {
+  grant_scope: PluginEnableGrantScope;
+}
+
+export type PluginEnableBlockReason = "user_confirmation_required" | "revoked";
+
 export interface PluginActions {
   can_toggle: boolean;
   can_delete: boolean;
@@ -78,6 +129,9 @@ export interface PluginManifest {
   main: string;
   icon?: string;
   repository?: string;
+  engines?: {
+    sealantern?: string;
+  };
   permissions?: string[];
   events?: string[];
   programs?: PluginProgram[];
@@ -110,6 +164,22 @@ export interface PluginInfo {
   actions: PluginActions;
 
   missing_dependencies?: MissingDependency[];
+  trust_level_display: PluginTrustLevelDisplay;
+  execution_class: PluginExecutionClass;
+  review_status: PluginReviewStatus;
+  integrity_status: PluginIntegrityStatus;
+  trusted_policy_source: PluginTrustedPolicySource;
+  permission_profile: PluginPermissionProfile;
+  publisher_id?: string | null;
+  distribution_class: PluginDistributionClass;
+  trusted_catalog_matched: boolean;
+  hash_matched: boolean;
+  verified_hash?: string | null;
+  verified_signature: boolean;
+  reviewed_at?: string | null;
+  revoked: boolean;
+  exceeds_standard_sandbox: boolean;
+  requires_explicit_consent: boolean;
 }
 
 export function isBuiltinPlugin(plugin: PluginInfo): boolean {
@@ -148,11 +218,36 @@ export interface PluginInstallResult {
   plugin: PluginInfo;
   missing_dependencies: MissingDependency[];
   untrusted_url?: boolean;
+  suggested_trust_level?: PluginTrustLevelDisplay | null;
+  integrity_status?: PluginIntegrityStatus | null;
+  review_status?: PluginReviewStatus | null;
+  distribution_class?: PluginDistributionClass | null;
+  permission_profile?: PluginPermissionProfile | null;
+  trusted_catalog_matched?: boolean;
+  hash_matched?: boolean;
+  exceeds_standard_sandbox?: boolean;
+  install_notices?: PluginInstallIssue[];
+}
+
+export interface PluginInstallIssue {
+  code: string;
+  args?: Record<string, unknown>;
+}
+
+export interface PluginEnableResult {
+  success: boolean;
+  disabled_plugins: string[];
+  confirmation_required: boolean;
+  block_reason?: PluginEnableBlockReason | null;
+  plugin?: PluginInfo | null;
+  grant_scope?: PluginEnableGrantScope | null;
+  message?: string | null;
 }
 
 export interface BatchInstallError {
   path: string;
   error: string;
+  issue?: PluginInstallIssue | null;
 }
 
 export interface BatchInstallResult {
@@ -234,128 +329,43 @@ export interface PluginLogEvent {
 
 export type PermissionDangerLevel = "normal" | "dangerous" | "critical";
 
+export type PermissionRiskGroup =
+  | "standard_sandbox_allowed"
+  | "escalated_sandbox"
+  | "trusted_only"
+  | "unknown";
+
 export interface PermissionMetadata {
   id: string;
   name: string;
   description: string;
   danger_level: PermissionDangerLevel;
+  category: string;
   icon: string;
+  aliases: string[];
+  risk_group: PermissionRiskGroup;
+  trusted_only: boolean;
+  within_standard_ceiling: boolean;
+  requires_explicit_consent: boolean;
 }
 
-export const PERMISSION_METADATA: Record<string, PermissionMetadata> = {
-  network: {
-    id: "network",
-    name: "plugins.permission.network",
-    description: "plugins.permission.network_desc",
-    danger_level: "dangerous",
-    icon: "Globe",
-  },
-  fs: {
-    id: "fs",
-    name: "plugins.permission.fs",
-    description: "plugins.permission.fs_desc",
-    danger_level: "normal",
-    icon: "Folder",
-  },
-  server: {
-    id: "server",
-    name: "plugins.permission.server",
-    description: "plugins.permission.server_desc",
-    danger_level: "dangerous",
-    icon: "Server",
-  },
-  console: {
-    id: "console",
-    name: "plugins.permission.console",
-    description: "plugins.permission.console_desc",
-    danger_level: "dangerous",
-    icon: "Terminal",
-  },
-  element: {
-    id: "element",
-    name: "plugins.permission.element",
-    description: "plugins.permission.element_desc",
-    danger_level: "dangerous",
-    icon: "MousePointer",
-  },
-  system: {
-    id: "system",
-    name: "plugins.permission.system",
-    description: "plugins.permission.system_desc",
-    danger_level: "dangerous",
-    icon: "Monitor",
-  },
-  log: {
-    id: "log",
-    name: "plugins.permission.log",
-    description: "plugins.permission.log_desc",
-    danger_level: "normal",
-    icon: "FileText",
-  },
-  storage: {
-    id: "storage",
-    name: "plugins.permission.storage",
-    description: "plugins.permission.storage_desc",
-    danger_level: "normal",
-    icon: "HardDrive",
-  },
-  api: {
-    id: "api",
-    name: "plugins.permission.api",
-    description: "plugins.permission.api_desc",
-    danger_level: "normal",
-    icon: "Plug",
-  },
-  ui: {
-    id: "ui",
-    name: "plugins.permission.ui",
-    description: "plugins.permission.ui_desc",
-    danger_level: "normal",
-    icon: "Palette",
-  },
-  "ui.component.read": {
-    id: "ui.component.read",
-    name: "plugins.permission.ui_component_read",
-    description: "plugins.permission.ui_component_read_desc",
-    danger_level: "normal",
-    icon: "FileText",
-  },
-  "ui.component.write": {
-    id: "ui.component.write",
-    name: "plugins.permission.ui_component_write",
-    description: "plugins.permission.ui_component_write_desc",
-    danger_level: "dangerous",
-    icon: "FileText",
-  },
-  "ui.component.proxy": {
-    id: "ui.component.proxy",
-    name: "plugins.permission.ui_component_proxy",
-    description: "plugins.permission.ui_component_proxy_desc",
-    danger_level: "dangerous",
-    icon: "AlertTriangle",
-  },
-  "ui.component.create": {
-    id: "ui.component.create",
-    name: "plugins.permission.ui_component_create",
-    description: "plugins.permission.ui_component_create_desc",
-    danger_level: "dangerous",
-    icon: "LayoutGrid",
-  },
-  execute_program: {
-    id: "execute_program",
-    name: "plugins.permission.execute_program",
-    description: "plugins.permission.execute_program_desc",
-    danger_level: "critical",
-    icon: "AlertTriangle",
-  },
-  plugin_folder_access: {
-    id: "plugin_folder_access",
-    name: "plugins.permission.plugin_folder_access",
-    description: "plugins.permission.plugin_folder_access_desc",
-    danger_level: "critical",
-    icon: "LockOpen",
-  },
-};
+export interface PermissionSemanticsSummary {
+  standardCount: number;
+  escalatedCount: number;
+  trustedOnlyCount: number;
+  outsideStandardCount: number;
+  requiresConsentCount: number;
+}
+
+export const PERMISSION_METADATA: Record<string, PermissionMetadata> = Object.fromEntries(
+  (permissionCatalog as PermissionMetadata[]).flatMap((permission) => {
+    const entries: Array<[string, PermissionMetadata]> = [[permission.id, permission]];
+    for (const alias of permission.aliases) {
+      entries.push([alias, permission]);
+    }
+    return entries;
+  }),
+);
 
 export function getPermissionMetadata(permissionId: string): PermissionMetadata {
   return (
@@ -364,9 +374,29 @@ export function getPermissionMetadata(permissionId: string): PermissionMetadata 
       name: permissionId,
       description: "",
       danger_level: "normal",
+      category: "custom",
       icon: "HelpCircle",
+      aliases: [],
+      risk_group: "unknown",
+      trusted_only: false,
+      within_standard_ceiling: false,
+      requires_explicit_consent: false,
     }
   );
+}
+
+export function getPluginTrustLabel(plugin: PluginInfo): string {
+  switch (plugin.trust_level_display) {
+    case "builtin":
+      return "builtin";
+    case "trusted":
+      return "trusted";
+    case "unreviewed":
+      return "unreviewed";
+    case "standard_sandbox":
+    default:
+      return "sandboxed";
+  }
 }
 
 export function groupPermissionsByDangerLevel(permissions: string[]): {
@@ -393,6 +423,40 @@ export function hasDangerousPermissions(permissions: string[]): boolean {
     const metadata = getPermissionMetadata(perm);
     return metadata.danger_level === "dangerous" || metadata.danger_level === "critical";
   });
+}
+
+export function summarizePermissionSemantics(permissions: string[]): PermissionSemanticsSummary {
+  const summary: PermissionSemanticsSummary = {
+    standardCount: 0,
+    escalatedCount: 0,
+    trustedOnlyCount: 0,
+    outsideStandardCount: 0,
+    requiresConsentCount: 0,
+  };
+
+  for (const permission of permissions) {
+    const metadata = getPermissionMetadata(permission);
+    switch (metadata.risk_group) {
+      case "standard_sandbox_allowed":
+        summary.standardCount += 1;
+        break;
+      case "escalated_sandbox":
+        summary.escalatedCount += 1;
+        break;
+      case "trusted_only":
+        summary.trustedOnlyCount += 1;
+        break;
+    }
+
+    if (!metadata.within_standard_ceiling) {
+      summary.outsideStandardCount += 1;
+    }
+    if (metadata.requires_explicit_consent) {
+      summary.requiresConsentCount += 1;
+    }
+  }
+
+  return summary;
 }
 
 export function getLocalizedPluginName(manifest: PluginManifest, locale: string): string {

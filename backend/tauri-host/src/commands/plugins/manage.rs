@@ -34,12 +34,13 @@ pub fn scan_plugins(
 /// 启用插件
 pub fn enable_plugin(
     plugin_id: String,
+    confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
     manager: tauri::State<
         '_,
         std::sync::Arc<std::sync::Mutex<crate::plugins::manager::PluginManager>>,
     >,
-) -> Result<(), String> {
-    basic::enable_plugin(plugin_id, manager)
+) -> Result<crate::models::plugin::PluginEnableResult, String> {
+    basic::enable_plugin(plugin_id, confirmation, manager)
 }
 
 #[tauri::command]

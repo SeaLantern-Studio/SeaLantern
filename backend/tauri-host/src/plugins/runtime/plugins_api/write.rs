@@ -6,12 +6,27 @@ use super::{
 };
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 use crate::hardcode_data::plugin_manifest::writing_manifest_not_allowed_message;
+use crate::plugins::runtime::permissions::{
+    PLUGINS_WRITE_PERMISSION, PLUGIN_FOLDER_ACCESS_PERMISSION,
+};
 use crate::utils::logger::log_warn_ctx;
 use mlua::Lua;
+
+fn require_plugins_write(ctx: &PluginsContext) -> mlua::Result<()> {
+    if ctx.has_any_permission(&[PLUGINS_WRITE_PERMISSION, PLUGIN_FOLDER_ACCESS_PERMISSION]) {
+        Ok(())
+    } else {
+        Err(mlua::Error::runtime(plugins_t1(
+            "plugins.runtime.permissions.permission_required",
+            format!("{} | {}", PLUGINS_WRITE_PERMISSION, PLUGIN_FOLDER_ACCESS_PERMISSION),
+        )))
+    }
+}
 
 pub(super) fn write_file(lua: &Lua, ctx: &PluginsContext) -> Result<mlua::Function, String> {
     let ctx = ctx.clone();
     lua.create_function(move |_, (target_id, relative_path, content): (String, String, String)| {
+        require_plugins_write(&ctx)?;
         emit_plugins_log(
             &ctx.plugin_id,
             "sl.plugins.write_file",

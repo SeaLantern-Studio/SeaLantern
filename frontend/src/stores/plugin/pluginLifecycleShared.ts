@@ -1,4 +1,11 @@
-import type { MissingDependency, PluginInfo, PluginNavItem, PluginUpdateInfo } from "@type/plugin";
+import type {
+  MissingDependency,
+  PluginEnableBlockReason,
+  PluginEnableGrantScope,
+  PluginInfo,
+  PluginNavItem,
+  PluginUpdateInfo,
+} from "@type/plugin";
 import type { Ref } from "vue";
 
 export interface CreatePluginLifecycleActionsOptions {
@@ -26,6 +33,11 @@ export interface TogglePluginResult {
   success: boolean;
   error?: string;
   disabledPlugins?: string[];
+  confirmationRequired?: boolean;
+  blockReason?: PluginEnableBlockReason;
+  grantScope?: PluginEnableGrantScope;
+  plugin?: PluginInfo | null;
+  message?: string | null;
 }
 
 export type SetStoreError = (message: string, errorCause: unknown) => string;

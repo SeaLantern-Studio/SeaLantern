@@ -15,7 +15,8 @@ mod versioning;
 
 pub(crate) use crate::models::plugin::PluginState;
 use crate::models::plugin::{
-    PluginActions, PluginInfo, PluginInstallResult, PluginManifest, PluginSource,
+    PluginActions, PluginDistributionClass, PluginInfo, PluginInstallResult, PluginManifest,
+    PluginSource,
 };
 use crate::plugins::api::new_api_registry;
 use crate::plugins::runtime::PluginRuntime;
@@ -121,13 +122,17 @@ impl PluginManager {
     /// # Returns
     ///
     /// 启用成功时返回 `Ok(())`
-    pub fn enable_plugin(&mut self, plugin_id: &str) -> Result<(), String> {
+    pub fn enable_plugin(
+        &mut self,
+        plugin_id: &str,
+        confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
+    ) -> Result<crate::models::plugin::PluginEnableResult, String> {
         let plugin = self
             .plugins
             .get(plugin_id)
             .cloned()
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        self.driver_for(&plugin).enable(self, plugin_id)
+        self.driver_for(&plugin).enable(self, plugin_id, confirmation)
     }
 
     /// 禁用一个插件
@@ -198,8 +203,17 @@ impl PluginManager {
         manifest: PluginManifest,
         state: PluginState,
         path: String,
+        distribution_class: PluginDistributionClass,
+        archive_sha256: Option<&str>,
         missing_dependencies: Vec<crate::models::plugin::MissingDependency>,
     ) -> PluginInfo {
+        let trust_assessment =
+            crate::services::plugin_trusted_catalog::assess_plugin(
+                &manifest,
+                distribution_class.clone(),
+                archive_sha256,
+            );
+
         self.normalize_plugin_info(PluginInfo {
             manifest,
             state,
@@ -212,6 +226,22 @@ impl PluginManager {
                 can_check_update: true,
             },
             missing_dependencies,
+            trust_level_display: trust_assessment.trust_level_display,
+            execution_class: trust_assessment.execution_class,
+            review_status: trust_assessment.review_status,
+            integrity_status: trust_assessment.integrity_status,
+            trusted_policy_source: trust_assessment.trusted_policy_source,
+            permission_profile: trust_assessment.permission_profile,
+            publisher_id: trust_assessment.publisher_id,
+            distribution_class,
+            trusted_catalog_matched: trust_assessment.trusted_catalog_matched,
+            hash_matched: trust_assessment.hash_matched,
+            verified_hash: trust_assessment.verified_hash,
+            verified_signature: trust_assessment.verified_signature,
+            reviewed_at: trust_assessment.reviewed_at,
+            revoked: trust_assessment.revoked,
+            exceeds_standard_sandbox: trust_assessment.exceeds_standard_sandbox,
+            requires_explicit_consent: trust_assessment.requires_explicit_consent,
         })
     }
 
@@ -240,8 +270,18 @@ impl PluginManager {
     ///
     /// 返回安装结果和缺失依赖信息
     pub fn install_plugin(&mut self, path: &Path) -> Result<PluginInstallResult, String> {
-        self.source_driver_for_install_path(path)?
-            .install(self, path)
+        self.install_plugin_with_metadata(
+            path,
+            crate::services::plugin_trusted_catalog::PluginInstallMetadata::default(),
+        )
+    }
+
+    pub fn install_plugin_with_metadata(
+        &mut self,
+        path: &Path,
+        metadata: crate::services::plugin_trusted_catalog::PluginInstallMetadata,
+    ) -> Result<PluginInstallResult, String> {
+        self.source_driver_for_install_path(path)?.install(self, path, &metadata)
     }
 
     fn get_missing_dependencies(

@@ -62,6 +62,9 @@
   "batch_result_title": "Batch Install Results",
   "batch_success": "Successfully installed {{count}} plugins:",
   "batch_failed": "Failed to install {{count}} plugins:",
+  "install_issue_incompatible_sealantern_version": "The current SeaLantern version does not satisfy this plugin. Required {{requiredVersion}}, current {{currentVersion}}.",
+  "install_issue_requests_trusted_capabilities": "This plugin requests Trusted-only capabilities and will not enter the normal standard-sandbox path: {{permissions}}.",
+  "install_issue_exceeds_standard_sandbox": "This plugin exceeds the standard sandbox permission ceiling and will use a higher-risk enable flow later: {{permissions}}.",
   "installing": "Installing plugins...",
   "enable_failed": "Enable Failed",
   "plugin_disabled": "Plugin Disabled",
@@ -100,6 +103,12 @@
     "network_desc": "Allows the plugin to send HTTP requests and access external networks. Malicious plugins may exploit this to exfiltrate data.",
     "fs": "File System",
     "fs_desc": "Allows the plugin to read and write files within its directory.",
+    "fs_data": "File System - Private Data Directory",
+    "fs_data_desc": "Allows the plugin to access files within its own private data directory.",
+    "fs_server": "File System - Server Directories",
+    "fs_server_desc": "Allows the plugin to access files within SeaLantern-managed server directories.",
+    "fs_global": "File System - Global App Directories",
+    "fs_global_desc": "Allows the plugin to access files within SeaLantern global application directories.",
     "server": "Server Operations",
     "server_desc": "Allows the plugin to read/write server files and retrieve server information.",
     "console": "Console Commands",
@@ -156,6 +165,23 @@
     "panel_no_commands": "No command records",
     "panel_api_stats": "API Call Statistics",
     "panel_no_api_calls": "No API calls",
-    "panel_call_count": "{count} calls"
+    "panel_call_count": "{count} calls",
+    "semantic": {
+      "section_title": "Permission Semantics",
+      "requires_explicit_consent": "Confirmation Required",
+      "risk_group": {
+        "standard_sandbox_allowed": "Within Standard Sandbox",
+        "escalated_sandbox": "Escalated Sandbox",
+        "trusted_only": "Trusted Only",
+        "unknown": "Unclassified"
+      },
+      "boundary": {
+        "within_standard_ceiling": "Within Standard Ceiling",
+        "outside_standard_ceiling": "Outside Standard Ceiling"
+      },
+      "card": {
+        "outside_standard_sandbox": "Outside Standard Sandbox"
+      }
+    }
   }
 }

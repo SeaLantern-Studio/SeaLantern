@@ -6,7 +6,14 @@ import SLMenu from "@components/common/SLMenu.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import { i18n } from "@language";
-import { isBuiltinPlugin, type PluginInfo, type PluginState, type PluginUpdateInfo } from "@type/plugin";
+import {
+  getPluginTrustLabel,
+  summarizePermissionSemantics,
+  isBuiltinPlugin,
+  type PluginInfo,
+  type PluginState,
+  type PluginUpdateInfo,
+} from "@type/plugin";
 import { GitBranch, Layers, MoreVertical, Settings, ShieldAlert } from "@lucide/vue";
 import type { PluginMenuItem } from "./pluginListShared";
 
@@ -38,6 +45,26 @@ const emit = defineEmits<{
   (e: "open-settings", plugin: PluginInfo): void;
   (e: "toggle-plugin", pluginId: string, nextEnabled: boolean): void;
 }>();
+
+function getPermissionSemanticBadges(plugin: PluginInfo) {
+  const permissions = plugin.manifest.permissions || [];
+  const summary = summarizePermissionSemantics(permissions);
+  const badges: string[] = [];
+
+  if (summary.trustedOnlyCount > 0) {
+    badges.push(i18n.t("plugins.permission.semantic.risk_group.trusted_only"));
+  } else if (summary.outsideStandardCount > 0) {
+    badges.push(i18n.t("plugins.permission.semantic.card.outside_standard_sandbox"));
+  } else if (summary.standardCount > 0) {
+    badges.push(i18n.t("plugins.permission.semantic.risk_group.standard_sandbox_allowed"));
+  }
+
+  if (summary.requiresConsentCount > 0) {
+    badges.push(i18n.t("plugins.permission.semantic.requires_explicit_consent"));
+  }
+
+  return badges;
+}
 </script>
 
 <template>
@@ -99,7 +126,15 @@ const emit = defineEmits<{
           <div class="plugin-header">
             <div class="plugin-title-row">
               <h3 class="plugin-name">{{ getPluginName(plugin) }}</h3>
-              <span v-if="isBuiltinPlugin(plugin)" class="plugin-badge">builtin</span>
+              <span
+                class="plugin-badge"
+                :class="{
+                  'plugin-badge--builtin': isBuiltinPlugin(plugin),
+                  'plugin-badge--unreviewed': plugin.trust_level_display === 'unreviewed',
+                }"
+              >
+                {{ getPluginTrustLabel(plugin) }}
+              </span>
               <span class="plugin-version">v{{ plugin.manifest.version }}</span>
             </div>
             <div class="plugin-author-row">
@@ -121,6 +156,18 @@ const emit = defineEmits<{
           <p v-if="plugin.manifest.description" class="plugin-description">
             {{ getPluginDescription(plugin) }}
           </p>
+          <div
+            v-if="getPermissionSemanticBadges(plugin).length > 0"
+            class="plugin-semantic-badges"
+          >
+            <span
+              v-for="badge in getPermissionSemanticBadges(plugin)"
+              :key="badge"
+              class="plugin-semantic-badge"
+            >
+              {{ badge }}
+            </span>
+          </div>
           <p
             v-if="typeof plugin.state === 'object' && 'error' in plugin.state"
             class="plugin-error-message"
@@ -309,6 +356,16 @@ const emit = defineEmits<{
   text-transform: uppercase;
 }
 
+.plugin-badge--builtin {
+  border-color: rgba(96, 165, 250, 0.35);
+  color: var(--sl-primary);
+}
+
+.plugin-badge--unreviewed {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--sl-error);
+}
+
 .plugin-version,
 .plugin-author {
   font-size: 12px;
@@ -320,6 +377,23 @@ const emit = defineEmits<{
   margin: 10px 0 0;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.plugin-semantic-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.plugin-semantic-badge {
+  font-size: 11px;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border-light);
+  color: var(--sl-text-secondary);
 }
 
 .plugin-description {

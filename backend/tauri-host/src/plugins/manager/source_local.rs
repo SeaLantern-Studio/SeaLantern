@@ -1,5 +1,6 @@
 use crate::models::plugin::{PluginInfo, PluginInstallResult, PluginState};
 use crate::plugins::loader::PluginLoader;
+use crate::services::plugin_trusted_catalog::PluginInstallMetadata;
 use std::path::Path;
 
 use super::source::{PluginReplacePolicy, PluginSourceCapabilities, PluginSourceDriver};
@@ -42,12 +43,29 @@ impl PluginSourceDriver for LocalFilesystemPluginSourceDriver {
                         }
                     };
 
+                    let install_metadata =
+                        crate::services::plugin_trusted_catalog::read_install_metadata(plugin_dir)
+                            .unwrap_or_default();
+                    let distribution_class = install_metadata
+                        .distribution_class
+                        .clone()
+                        .unwrap_or(crate::models::plugin::PluginDistributionClass::LocalDirectory);
+
                     let plugin_info = manager.make_local_plugin_info(
                         manifest,
                         state,
                         plugin_dir.to_string_lossy().to_string(),
+                        distribution_class,
+                        install_metadata.archive_sha256.as_deref(),
                         Vec::new(),
                     );
+
+                    let plugin_info =
+                        crate::services::plugin_trusted_catalog::apply_runtime_integrity_state(
+                            plugin_info,
+                            plugin_dir,
+                            &install_metadata,
+                        )?;
 
                     plugins.push(plugin_info);
                 }
@@ -68,7 +86,8 @@ impl PluginSourceDriver for LocalFilesystemPluginSourceDriver {
         &self,
         manager: &mut PluginManager,
         path: &Path,
+        metadata: &PluginInstallMetadata,
     ) -> Result<PluginInstallResult, String> {
-        super::install::install_local_plugin(manager, path)
+        super::install::install_local_plugin(manager, path, metadata)
     }
 }

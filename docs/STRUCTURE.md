@@ -303,6 +303,7 @@ backend/tauri-host/src/plugins/runtime/
 - `Agents.md`
 - `CONTRIBUTING.md`
 - `design/` # 设计方案与设计草案目录
+- `plugin-check/` # 插件 Trusted 审查、校验与相关流程文档
 - `STRUCTURE.md`
 - `language-system.md` # 前端 i18n 系统使用说明（原 src/language/README.md）
 - `plugin_api.md`

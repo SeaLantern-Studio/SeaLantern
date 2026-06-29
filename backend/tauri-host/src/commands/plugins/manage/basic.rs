@@ -5,8 +5,10 @@ use crate::hardcode_data::plugin_manifest::{
     unsupported_plugin_source_message,
 };
 use crate::models::plugin::{
-    BatchInstallError, BatchInstallResult, PluginInfo, PluginInstallResult,
+    BatchInstallError, BatchInstallResult, PluginEnableConfirmation, PluginEnableResult,
+    PluginInfo, PluginInstallResult,
 };
+use crate::plugins::loader::PluginLoader;
 use crate::plugins::manager::i18n::plugin_t1;
 use crate::plugins::manager::PluginManager;
 use std::sync::{Arc, Mutex};
@@ -30,11 +32,12 @@ pub(super) fn scan_plugins(
 /// 启用插件
 pub(super) fn enable_plugin(
     plugin_id: String,
+    confirmation: Option<PluginEnableConfirmation>,
     manager: tauri::State<'_, Arc<Mutex<PluginManager>>>,
-) -> Result<(), String> {
+) -> Result<PluginEnableResult, String> {
     validate_plugin_id(&plugin_id)?;
     let mut manager = lock_manager(&manager);
-    manager.enable_plugin(&plugin_id)
+    manager.enable_plugin(&plugin_id, confirmation)
 }
 
 /// 禁用插件
@@ -75,7 +78,12 @@ pub(super) fn install_plugin(
     }
 
     let mut manager = lock_manager(&manager);
-    manager.install_plugin(&file_path)
+    manager.install_plugin(&file_path).map_err(|error| {
+        if let Some(issue) = PluginLoader::classify_install_error(&error) {
+            return issue.into_command_error(error).to_json_string();
+        }
+        error
+    })
 }
 
 /// 读取插件图标
@@ -195,7 +203,11 @@ pub(super) fn install_plugins_batch(
 
         match result {
             Ok(install_result) => success.push(install_result),
-            Err(error) => failed.push(BatchInstallError { path: path_str, error }),
+            Err(error) => failed.push(BatchInstallError {
+                path: path_str,
+                issue: PluginLoader::classify_install_error(&error),
+                error,
+            }),
         }
     }
 

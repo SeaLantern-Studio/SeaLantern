@@ -101,7 +101,7 @@ fn event_summary(event: &ServerEventEnvelope) -> String {
                 return format!(
                     "{} ({})",
                     detail.clone().unwrap_or_else(|| "lifecycle".to_string()),
-                    format!("{} -> {}", from_mode, to_mode)
+                    [from_mode.as_str(), to_mode.as_str()].join(" -> ")
                 );
             }
             error

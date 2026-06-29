@@ -45,6 +45,14 @@ function isStructuredAppError(error: unknown): error is StructuredAppError {
   return error instanceof StructuredAppError;
 }
 
+function toStructuredPayloadError(error: unknown): StructuredAppError | null {
+  const normalized = normalizeAppError(error);
+  if (normalized.code !== "common.message_unknown_error") {
+    return new StructuredAppError(normalized.code, normalized.message, normalized.args, error);
+  }
+  return null;
+}
+
 export async function ensureBrowserSession(): Promise<void> {
   if (!isBrowserEnv()) {
     return;
@@ -175,6 +183,22 @@ export async function tauriInvoke<T>(
 
       if (!options.silent) {
         throw error;
+      }
+
+      return options.defaultValue as T;
+    }
+
+    const structuredError = toStructuredPayloadError(error);
+    if (structuredError) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" failed:`,
+          structuredError,
+        );
+      }
+
+      if (!options.silent) {
+        throw structuredError;
       }
 
       return options.defaultValue as T;

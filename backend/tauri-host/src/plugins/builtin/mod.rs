@@ -1,6 +1,8 @@
 use crate::models::plugin::{
-    PluginActions, PluginAuthor, PluginInfo, PluginManifest, PluginRuntimeKind, PluginSettingField,
-    PluginSource, PluginState,
+    PluginActions, PluginAuthor, PluginDistributionClass, PluginExecutionClass, PluginInfo,
+    PluginIntegrityStatus, PluginManifest, PluginPermissionProfile, PluginReviewStatus,
+    PluginRuntimeKind, PluginSettingField, PluginSource, PluginState, PluginTrustLevelDisplay,
+    PluginTrustedPolicySource,
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -94,6 +96,22 @@ pub(crate) fn builtin_plugin_infos() -> Vec<PluginInfo> {
             can_check_update: false,
         },
         missing_dependencies: Vec::new(),
+        trust_level_display: PluginTrustLevelDisplay::Builtin,
+        execution_class: PluginExecutionClass::BuiltinFull,
+        review_status: PluginReviewStatus::Builtin,
+        integrity_status: PluginIntegrityStatus::Bundled,
+        trusted_policy_source: PluginTrustedPolicySource::Builtin,
+        permission_profile: PluginPermissionProfile::BuiltinFull,
+        publisher_id: Some("sealantern".to_string()),
+        distribution_class: PluginDistributionClass::Builtin,
+        trusted_catalog_matched: false,
+        hash_matched: false,
+        verified_hash: None,
+        verified_signature: false,
+        reviewed_at: None,
+        revoked: false,
+        exceeds_standard_sandbox: false,
+        requires_explicit_consent: false,
     }]
 }
 

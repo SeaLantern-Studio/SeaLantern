@@ -13,5 +13,6 @@ pub(crate) mod locale_json;
 pub mod mod_manager;
 pub mod online;
 pub mod plugin_dir;
+pub mod plugin_trusted_catalog;
 pub mod server;
 pub mod settings_manager;

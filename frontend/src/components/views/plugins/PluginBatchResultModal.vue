@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
 import SLModal from "@components/common/SLModal.vue";
+import { formatPluginInstallIssue } from "@components/views/plugins/pluginInstallErrorMessage";
 import { i18n } from "@language";
-import type { BatchInstallResult } from "@type/plugin";
+import type { BatchInstallError, BatchInstallResult, PluginInstallResult } from "@type/plugin";
 
 defineProps<{
   visible: boolean;
@@ -12,6 +13,16 @@ defineProps<{
 const emit = defineEmits<{
   (e: "close"): void;
 }>();
+
+function getErrorMessage(item: BatchInstallError): string {
+  return formatPluginInstallIssue(item.issue) || item.error;
+}
+
+function getSuccessNoticeMessages(item: PluginInstallResult): string[] {
+  return (item.install_notices || [])
+    .map((notice) => formatPluginInstallIssue(notice))
+    .filter((message): message is string => Boolean(message));
+}
 </script>
 
 <template>
@@ -29,6 +40,11 @@ const emit = defineEmits<{
           >
             <span class="batch-item-name">{{ item.plugin.manifest.name }}</span>
             <span class="batch-item-version">v{{ item.plugin.manifest.version }}</span>
+            <ul v-if="getSuccessNoticeMessages(item).length > 0" class="batch-notice-list">
+              <li v-for="message in getSuccessNoticeMessages(item)" :key="message" class="batch-item-notice">
+                {{ message }}
+              </li>
+            </ul>
           </li>
         </ul>
       </div>
@@ -39,7 +55,7 @@ const emit = defineEmits<{
         <ul class="batch-list">
           <li v-for="item in batchInstallResult.failed" :key="item.path" class="batch-item failed">
             <span class="batch-item-path">{{ item.path.split(/[/\\]/).pop() }}</span>
-            <span class="batch-item-error">{{ item.error }}</span>
+            <span class="batch-item-error">{{ getErrorMessage(item) }}</span>
           </li>
         </ul>
       </div>
@@ -86,6 +102,8 @@ const emit = defineEmits<{
 .batch-item.success {
   background: var(--sl-success-bg);
   border: 1px solid var(--sl-success);
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .batch-item.failed {
@@ -102,6 +120,16 @@ const emit = defineEmits<{
 
 .batch-item-version {
   color: var(--sl-text-tertiary);
+  font-size: 12px;
+}
+
+.batch-notice-list {
+  margin: 4px 0 0 0;
+  padding-left: 16px;
+}
+
+.batch-item-notice {
+  color: var(--sl-text-secondary);
   font-size: 12px;
 }
 

@@ -133,6 +133,16 @@ const defaultSettings: AppSettings = {
   last_run_path: "",
   minimal_mode: false,
   agreed_to_terms: false,
+  onebot_11: {
+    enabled: false,
+    api_base_url: "",
+    access_token: "",
+    event_classes: ["output", "lifecycle"],
+    structured_event_kinds: ["server_ready", "player_join", "player_leave", "chat", "error"],
+    server_ids: [],
+    targets: [],
+    message_template: "[{server_id}] {kind}: {summary}",
+  },
 };
 
 export const useSettingsStore = defineStore("settings", () => {

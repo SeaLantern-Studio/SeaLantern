@@ -1,8 +1,12 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { i18n } from "@language";
-import type { PluginInfo, PluginState } from "@type/plugin";
-import { hasDangerousPermissions } from "@type/plugin";
+import type {
+  PluginEnableBlockReason,
+  PluginEnableGrantScope,
+  PluginInfo,
+  PluginState,
+} from "@type/plugin";
 import { RefreshCw, Trash2 } from "@lucide/vue";
 
 interface UsePluginListActionsOptions {
@@ -11,7 +15,29 @@ interface UsePluginListActionsOptions {
   togglePlugin: (
     pluginId: string,
     enable: boolean,
-  ) => Promise<{ success: boolean; error?: string; disabledPlugins?: string[] }>;
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    disabledPlugins?: string[];
+    confirmationRequired?: boolean;
+    blockReason?: PluginEnableBlockReason;
+    grantScope?: PluginEnableGrantScope;
+    plugin?: PluginInfo | null;
+    message?: string | null;
+  }>;
+  confirmEnablePlugin: (
+    pluginId: string,
+    confirmation: { grant_scope: PluginEnableGrantScope },
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    disabledPlugins?: string[];
+    confirmationRequired?: boolean;
+    blockReason?: PluginEnableBlockReason;
+    grantScope?: PluginEnableGrantScope;
+    plugin?: PluginInfo | null;
+    message?: string | null;
+  }>;
   checkUpdate: (pluginId: string) => Promise<{
     latest_version: string;
     current_version: string;
@@ -21,9 +47,17 @@ interface UsePluginListActionsOptions {
   deletePlugins: (pluginIds: string[], deleteData?: boolean) => Promise<void>;
   showAlert: (title: string, message: string) => void;
   getErrorMessage: (error: unknown) => string;
-  openPermissionWarning: (pluginId: string, pluginName: string, permissions: string[]) => void;
+  openPermissionWarning: (
+    pluginId: string,
+    pluginName: string,
+    permissions: string[],
+    grantScope?: PluginEnableGrantScope,
+    plugin?: PluginInfo | null,
+    blockReason?: PluginEnableBlockReason,
+  ) => void;
   closePermissionWarning: () => void;
   pendingPermissionPluginId: () => string;
+  pendingPermissionGrantScope: () => PluginEnableGrantScope;
   prepareSingleDelete: (plugin: PluginInfo | undefined, pluginId: string) => void;
   clearSingleDeleteState: () => void;
   pendingDeletePluginId: () => string | null;
@@ -62,6 +96,20 @@ function canTogglePlugin(plugin: PluginInfo): boolean {
   return plugin.actions.can_toggle;
 }
 
+function inferGrantScope(plugin: PluginInfo): PluginEnableGrantScope {
+  switch (plugin.trust_level_display) {
+    case "trusted":
+      return "hash";
+    case "unreviewed":
+      return "version";
+    case "standard_sandbox":
+      return plugin.requires_explicit_consent ? "version" : "version";
+    case "builtin":
+    default:
+      return "version";
+  }
+}
+
 function getPluginStatusLabel(state: PluginState): string {
   if (typeof state === "object" && "error" in state) {
     return i18n.t("plugins.status.error");
@@ -86,15 +134,6 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
   async function handleToggle(id: string, nextEnabled: boolean) {
     options.clearError();
 
-    if (nextEnabled) {
-      const plugin = options.plugins().find((item) => item.manifest.id === id);
-      const permissions = plugin?.manifest.permissions || [];
-      if (hasDangerousPermissions(permissions)) {
-        options.openPermissionWarning(id, plugin?.manifest.name || id, permissions);
-        return;
-      }
-    }
-
     await doTogglePlugin(id, nextEnabled);
   }
 
@@ -105,7 +144,12 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
       return;
     }
 
-    await doTogglePlugin(pluginId, true);
+    const result = await options.confirmEnablePlugin(pluginId, {
+      grant_scope: options.pendingPermissionGrantScope(),
+    });
+    if (!result.success && result.error) {
+      options.showAlert(i18n.t("plugins.enable_failed"), result.error);
+    }
   }
 
   function cancelPermissionWarning() {
@@ -117,6 +161,20 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
 
     if (!result.success && result.error) {
       options.showAlert(i18n.t("plugins.enable_failed"), result.error);
+      return;
+    }
+
+    if (!result.success && result.confirmationRequired) {
+      const plugin = result.plugin ?? options.plugins().find((item) => item.manifest.id === id);
+      const permissions = plugin?.manifest.permissions || [];
+      options.openPermissionWarning(
+        id,
+        plugin?.manifest.name || id,
+        permissions,
+        result.grantScope || (plugin ? inferGrantScope(plugin) : "version"),
+        plugin,
+        result.blockReason,
+      );
       return;
     }
 

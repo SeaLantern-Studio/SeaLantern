@@ -32,7 +32,32 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function tryParseStructuredPayload(error: unknown): BackendErrorPayload | null {
+  if (typeof error !== "string") {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(error) as unknown;
+    if (!isObject(parsed)) {
+      return null;
+    }
+    const hasStructuredField =
+      typeof parsed.code === "string" ||
+      typeof parsed.message === "string" ||
+      typeof parsed.error_kind === "string";
+    return hasStructuredField ? (parsed as BackendErrorPayload) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeAppError(error: unknown): NormalizedAppError {
+  const parsedPayload = tryParseStructuredPayload(error);
+  if (parsedPayload) {
+    return normalizeAppError(parsedPayload);
+  }
+
   if (isObject(error)) {
     const payload = error as BackendErrorPayload;
     const code = payload.code || payload.error_kind || DEFAULT_ERROR_CODE;

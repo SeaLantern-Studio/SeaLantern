@@ -1,6 +1,7 @@
 use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 use crate::hardcode_data::plugin_manifest::unsupported_plugin_source_message;
 use crate::models::plugin::{PluginInfo, PluginInstallResult, PluginSource, PluginState};
+use crate::services::plugin_trusted_catalog::PluginInstallMetadata;
 use std::path::Path;
 
 use super::PluginManager;
@@ -28,6 +29,7 @@ pub(crate) trait PluginSourceDriver {
         &self,
         _manager: &mut PluginManager,
         _path: &Path,
+        _metadata: &PluginInstallMetadata,
     ) -> Result<PluginInstallResult, String> {
         Err(unsupported_plugin_source_message())
     }

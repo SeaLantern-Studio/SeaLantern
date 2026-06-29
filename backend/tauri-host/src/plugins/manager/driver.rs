@@ -1,4 +1,4 @@
-use crate::models::plugin::PluginInfo;
+use crate::models::plugin::{PluginEnableConfirmation, PluginEnableResult, PluginInfo};
 use crate::services::events::ServerEventEnvelope;
 
 use super::PluginManager;
@@ -24,7 +24,12 @@ pub(crate) enum PluginDriverKind {
 pub(crate) trait PluginDriver {
     fn capabilities(&self) -> PluginRuntimeCapabilities;
 
-    fn enable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<(), String>;
+    fn enable(
+        &self,
+        manager: &mut PluginManager,
+        plugin_id: &str,
+        confirmation: Option<PluginEnableConfirmation>,
+    ) -> Result<PluginEnableResult, String>;
     fn disable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<Vec<String>, String>;
     fn delete(
         &self,

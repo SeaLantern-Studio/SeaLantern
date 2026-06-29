@@ -5,6 +5,7 @@ import {
   installFromMarket,
   type MarketPluginInfo,
 } from "@api/plugin";
+import { formatPluginInstallIssue } from "@components/views/plugins/pluginInstallErrorMessage";
 import { MARKET_BASE_URL, type MarketPlugin } from "./pluginMarketShared";
 import { i18n } from "@language";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
@@ -30,7 +31,11 @@ interface UsePluginMarketActionsOptions {
 
 function normalizeErrorMessage(err: unknown): string {
   const normalized = normalizeAppError(err);
-  return normalized.message;
+  const issueMessage = formatPluginInstallIssue({
+    code: normalized.code,
+    args: normalized.args,
+  });
+  return issueMessage || normalized.message;
 }
 
 export function usePluginMarketActions(options: UsePluginMarketActionsOptions) {
@@ -106,8 +111,14 @@ export function usePluginMarketActions(options: UsePluginMarketActionsOptions) {
       });
       await options.loadPlugins();
 
+      const noticeMessages = (result?.install_notices || [])
+        .map((notice) => formatPluginInstallIssue(notice))
+        .filter((message): message is string => Boolean(message));
+
       if (result?.untrusted_url) {
         options.showFeedback("warning", i18n.t("market.untrusted_download_warning"));
+      } else if (noticeMessages.length > 0) {
+        options.showFeedback("warning", noticeMessages.join("\n"), 0);
       } else {
         options.showFeedback("success", i18n.t("market.install_success"));
       }

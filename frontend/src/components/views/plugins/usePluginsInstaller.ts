@@ -4,6 +4,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { systemApi } from "@api/system";
 import { isUploadSupported } from "@api/upload";
 import { pickAndInstallPluginFiles, pickAndInstallPluginFolderLikeFile } from "@api/plugin";
+import { formatPluginInstallIssue } from "@components/views/plugins/pluginInstallErrorMessage";
 import { usePluginStore } from "@stores/pluginStore";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { normalizeAppError } from "@utils/appError";
@@ -35,7 +36,11 @@ export function usePluginsInstaller() {
       }
     } catch (error) {
       const normalized = normalizeAppError(error);
-      installErrorMessage.value = normalized.message;
+      const issueMessage = formatPluginInstallIssue({
+        code: normalized.code,
+        args: normalized.args,
+      });
+      installErrorMessage.value = issueMessage || normalized.message;
       pluginLogger.error("Installer", `插件安装失败: ${filePath}`, normalized);
     } finally {
       isInstalling.value = false;
@@ -87,7 +92,11 @@ export function usePluginsInstaller() {
         }
       } catch (error) {
         const normalized = normalizeAppError(error);
-        installErrorMessage.value = normalized.message;
+        const issueMessage = formatPluginInstallIssue({
+          code: normalized.code,
+          args: normalized.args,
+        });
+        installErrorMessage.value = issueMessage || normalized.message;
         pluginLogger.error("Installer", "浏览器环境插件文件安装失败", normalized);
       }
       return;
@@ -120,7 +129,11 @@ export function usePluginsInstaller() {
         }
       } catch (error) {
         const normalized = normalizeAppError(error);
-        installErrorMessage.value = normalized.message;
+        const issueMessage = formatPluginInstallIssue({
+          code: normalized.code,
+          args: normalized.args,
+        });
+        installErrorMessage.value = issueMessage || normalized.message;
         pluginLogger.error("Installer", "浏览器环境插件目录安装失败", normalized);
       }
       return;
