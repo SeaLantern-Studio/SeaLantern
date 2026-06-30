@@ -6,6 +6,7 @@
 import {
   ensureBrowserSession,
   HTTP_API_BASE,
+  notifyBrowserUnauthorized,
   parseHttpEnvelope,
   readBrowserAuthToken,
   toStructuredHttpError,
@@ -41,6 +42,9 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
   const result = await parseHttpEnvelope<{ files: UploadedFile[] }>(response);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
     throw toStructuredHttpError(result, `Upload failed: HTTP ${response.status}`);
   }
 
@@ -70,6 +74,9 @@ export async function uploadFiles(files: File[]): Promise<UploadResult> {
   const result = await parseHttpEnvelope<UploadResult>(response);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
     throw toStructuredHttpError(result, `Upload failed: HTTP ${response.status}`);
   }
 

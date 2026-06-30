@@ -28,6 +28,8 @@ const emit = defineEmits<{
   "update:modelValue": [value: string];
 }>();
 
+const inputRef = ref<HTMLInputElement | null>(null);
+
 const handleInput = (e: Event) => {
   emit("update:modelValue", (e.target as HTMLInputElement).value);
 };
@@ -44,6 +46,10 @@ useRegisterComponent(id, {
   on: () => () => {},
   el: () => elRef.value,
 });
+
+defineExpose({
+  focus: () => inputRef.value?.focus(),
+});
 </script>
 
 <template>
@@ -54,6 +60,7 @@ useRegisterComponent(id, {
         <slot name="prefix" />
       </div>
       <input
+        ref="inputRef"
         class="sl-input"
         :class="{ 'sl-input--hide-number-controls': hideNumberControls }"
         :type="type"

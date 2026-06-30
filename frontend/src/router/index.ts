@@ -100,6 +100,7 @@ const routes = [
     meta: { titleKey: "common.download", icon: "download" },
   },
 ];
+
 const router = createRouter({
   history: createWebHistory(),
   routes,

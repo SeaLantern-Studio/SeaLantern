@@ -3,6 +3,7 @@ import {
   isBrowserEnv,
   HTTP_API_BASE,
   ensureBrowserSession,
+  notifyBrowserUnauthorized,
   readBrowserAuthToken,
 } from "@api/tauri";
 import type { ServerStatus } from "@type/common";
@@ -644,6 +645,11 @@ export const serverApi = {
                 },
                 signal: abortController?.signal,
               });
+
+              if (response.status === 401) {
+                notifyBrowserUnauthorized("auth.message_session_expired");
+                throw new Error("SSE unauthorized");
+              }
 
               if (!response.ok || !response.body) {
                 throw new Error(`SSE stream failed with HTTP ${response.status}`);

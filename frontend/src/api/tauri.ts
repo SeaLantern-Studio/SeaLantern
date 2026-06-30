@@ -1,5 +1,6 @@
 import { AppError as StructuredAppError, normalizeAppError } from "@utils/appError";
 import { handleError, AppError, ErrorType } from "@utils/errorHandler";
+import { getBrowserRuntimeToken, notifyBrowserUnauthorized } from "@stores/authRuntime";
 
 // Tauri 全局类型声明
 declare global {
@@ -36,10 +37,16 @@ interface HttpApiEnvelope<T> {
   error_detail?: HttpApiErrorDetail;
 }
 
-export function readBrowserAuthToken(): string | null {
+export function readBrowserEnvAuthToken(): string | null {
   const token = HTTP_AUTH_TOKEN.trim();
   return token ? token : null;
 }
+
+export function readBrowserAuthToken(): string | null {
+  return getBrowserRuntimeToken() ?? readBrowserEnvAuthToken();
+}
+
+export { notifyBrowserUnauthorized };
 
 function isStructuredAppError(error: unknown): error is StructuredAppError {
   return error instanceof StructuredAppError;
@@ -113,6 +120,9 @@ async function performHttpInvoke<T>(command: string, args?: Record<string, unkno
   const result = await parseHttpEnvelope<T>(response);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
     throw toStructuredHttpError(result, `HTTP ${response.status}: request failed`);
   }
 

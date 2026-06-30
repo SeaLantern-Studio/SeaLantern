@@ -7,11 +7,18 @@ const props = defineProps<{
 }>();
 
 const normalizedValues = computed(() => {
-  if (props.values.length === 0) return [0];
-  return props.values.map((value) => {
+  const values = props.values.length === 0 ? [0] : props.values;
+
+  const normalized = values.map((value) => {
     if (!Number.isFinite(value)) return 0;
     return Math.min(100, Math.max(0, value));
   });
+
+  if (normalized.length === 1) {
+    return [normalized[0], normalized[0]];
+  }
+
+  return normalized;
 });
 
 const linePoints = computed(() => {

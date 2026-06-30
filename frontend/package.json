@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node ./scripts/dev.mjs",
     "build": "vite build",
     "build:check": "vue-tsc --noEmit && vite build",
     "i18n:sync": "node ./scripts/sync-i18n.mjs",
