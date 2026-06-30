@@ -5,6 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "node ./scripts/dev.mjs",
+    "next": "node ./scripts/dev.mjs next",
+    "next:auth": "node ./scripts/dev.mjs next:auth",
+    "next:home": "node ./scripts/dev.mjs next:home",
+    "next:servers": "node ./scripts/dev.mjs next:servers",
+    "next:plugins": "node ./scripts/dev.mjs next:plugins",
+    "next:settings": "node ./scripts/dev.mjs next:settings",
     "build": "vite build",
     "build:check": "vue-tsc --noEmit && vite build",
     "i18n:sync": "node ./scripts/sync-i18n.mjs",

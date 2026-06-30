@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { NextHostSlotId } from "../../host/slotIds";
+import type { NextHostSlotId, NextHostSlotScope } from "../../contracts/slots";
 
 interface Props {
   slotId: NextHostSlotId;
-  scope: "shell" | "page" | "overlay";
+  scope: NextHostSlotScope;
 }
 
 defineProps<Props>();
@@ -12,10 +12,7 @@ defineProps<Props>();
 <template>
   <div
     class="next-host-slot"
-    :class="[
-      `next-host-slot--${scope}`,
-      `next-host-slot--${slotId.replace(/\./g, '-')}`,
-    ]"
+    :class="[`next-host-slot--${scope}`, `next-host-slot--${slotId.replace(/\./g, '-')}`]"
     :data-next-host-slot="slotId"
     :data-next-host-scope="scope"
   >

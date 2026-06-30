@@ -1,0 +1,176 @@
+<script setup lang="ts">
+import SLButton from "@components/common/SLButton.vue";
+import SLCard from "@components/common/SLCard.vue";
+import ServerListCard from "../../components/servers/ServerListCard.vue";
+import ServersEmptyState from "../../components/servers/ServersEmptyState.vue";
+import ServersSummaryBar from "../../components/servers/ServersSummaryBar.vue";
+import { useServersPage, type ServersPageTarget } from "./useServersPage";
+
+const {
+  serverStore,
+  serverItems,
+  totalCount,
+  runningCount,
+  hasServers,
+  isBootstrapping,
+  isRefreshing,
+  errorMessage,
+  loadData,
+  selectServer,
+  navigateToServerTarget,
+  navigateToCreate,
+  navigateToImport,
+} = useServersPage();
+
+function handleNavigate(payload: { serverId: string; target: ServersPageTarget }): void {
+  navigateToServerTarget(payload.serverId, payload.target);
+}
+</script>
+
+<template>
+  <div class="servers-page">
+    <ServersSummaryBar
+      :total-count="totalCount"
+      :running-count="runningCount"
+      :refreshing="isRefreshing"
+      @create="navigateToCreate"
+      @import-existing="navigateToImport"
+      @refresh="loadData(true)"
+    />
+
+    <section v-if="errorMessage" class="servers-page__error-banner" role="alert" aria-live="polite">
+      <div class="servers-page__error-copy">
+        <strong>读取服务器列表失败</strong>
+        <span>{{ errorMessage }}</span>
+      </div>
+
+      <div class="servers-page__error-actions">
+        <SLButton variant="ghost" size="sm" @click="serverStore.clearError()">关闭</SLButton>
+        <SLButton variant="secondary" size="sm" :loading="isRefreshing" @click="loadData(true)">
+          重试
+        </SLButton>
+      </div>
+    </section>
+
+    <SLCard
+      v-if="isBootstrapping && !hasServers"
+      variant="outline"
+      class="servers-page__loading-card"
+    >
+      <div class="servers-page__loading-state">
+        <div class="servers-page__spinner" aria-hidden="true"></div>
+        <div>
+          <strong class="servers-page__loading-title">正在加载服务器列表</strong>
+          <p class="servers-page__loading-description">会先拉取列表，再补全当前状态信息。</p>
+        </div>
+      </div>
+    </SLCard>
+
+    <ServersEmptyState
+      v-else-if="!hasServers"
+      :error-message="errorMessage"
+      @create="navigateToCreate"
+      @import-existing="navigateToImport"
+    />
+
+    <section v-else class="servers-page__list">
+      <ServerListCard
+        v-for="server in serverItems"
+        :key="server.id"
+        :server="server"
+        @select="selectServer"
+        @navigate="handleNavigate"
+      />
+    </section>
+  </div>
+</template>
+
+<style scoped>
+.servers-page {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.servers-page__error-banner {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--sl-error);
+}
+
+.servers-page__error-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.servers-page__error-copy strong {
+  font-size: 0.95rem;
+}
+
+.servers-page__error-copy span {
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.servers-page__error-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.servers-page__loading-card {
+  padding: 4px;
+}
+
+.servers-page__loading-state {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 20px;
+}
+
+.servers-page__spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 3px solid color-mix(in srgb, var(--sl-primary) 18%, transparent);
+  border-top-color: var(--sl-primary);
+  animation: servers-page-spin 0.9s linear infinite;
+}
+
+.servers-page__loading-title {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--sl-text-primary);
+}
+
+.servers-page__loading-description {
+  margin: 0;
+  color: var(--sl-text-secondary);
+}
+
+.servers-page__list {
+  display: grid;
+  gap: 16px;
+}
+
+@keyframes servers-page-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .servers-page__error-banner {
+    flex-direction: column;
+  }
+}
+</style>

@@ -45,6 +45,10 @@ export function readRememberedToken(): string | null {
   return safeRead(window.localStorage, LOCAL_TOKEN_KEY);
 }
 
+export function readPersistedBrowserToken(): string | null {
+  return readSessionToken() ?? readRememberedToken();
+}
+
 export function writeSessionToken(token: string): void {
   safeWrite(window.sessionStorage, SESSION_TOKEN_KEY, token);
 }

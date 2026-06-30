@@ -184,7 +184,7 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     return result;
   }, {}));
 
-  const sortedInstances = computed(() => [...instances.value].sort((left, right) => {
+  const sortedInstances = computed(() => [...instances.value].toSorted((left, right) => {
     const isLeftSelected = left.instanceId === selectedInstanceId.value;
     const isRightSelected = right.instanceId === selectedInstanceId.value;
     if (isLeftSelected !== isRightSelected) return isLeftSelected ? 1 : -1;
@@ -194,7 +194,7 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
   }));
 
   const paletteEntries = computed<NextHomeCardPaletteEntry[]>(() => Object.values(registry.value)
-    .sort((left, right) => {
+    .toSorted((left, right) => {
       const leftSection = SECTION_ORDER.indexOf(left.section);
       const rightSection = SECTION_ORDER.indexOf(right.section);
       if (leftSection !== rightSection) return leftSection - rightSection;

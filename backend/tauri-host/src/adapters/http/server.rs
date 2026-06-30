@@ -6,6 +6,7 @@ mod api;
 mod auth;
 mod event_stream;
 mod log_stream;
+mod next_bridge;
 mod router;
 mod state;
 mod upload;
@@ -174,6 +175,13 @@ mod tests {
             .unwrap_or(Value::Null)
     }
 
+    async fn response_payload(response: axum::response::Response) -> ApiResponse {
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("response body");
+        serde_json::from_slice(&body).expect("json payload")
+    }
+
     #[tokio::test]
     async fn protected_routes_require_token_but_health_is_public() {
         let upload_dir = tempfile::tempdir().expect("tempdir");
@@ -300,6 +308,85 @@ mod tests {
             .expect("runtime event stream response");
 
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn next_bridge_issue_and_exchange_grant_one_time_browser_session() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let app = test_app(upload_dir.path().to_path_buf());
+
+        let issue_response = app
+            .clone()
+            .oneshot(
+                bearer_request(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/auth/next-bridge/issue")
+                        .header(header::CONTENT_TYPE, "application/json"),
+                )
+                .body(Body::from(r#"{"target_path":"/settings"}"#))
+                .unwrap(),
+            )
+            .await
+            .expect("issue response");
+
+        assert_eq!(issue_response.status(), StatusCode::OK);
+        let issue_payload = response_payload(issue_response).await;
+        let issued = issue_payload.data.expect("issue data");
+        let bridge_token = issued
+            .get("bridge_token")
+            .and_then(|value| value.as_str())
+            .expect("bridge token");
+
+        let exchange_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/next-bridge/exchange")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(format!(r#"{{"bridge_token":"{}"}}"#, bridge_token)))
+                    .unwrap(),
+            )
+            .await
+            .expect("exchange response");
+
+        assert_eq!(exchange_response.status(), StatusCode::OK);
+        let exchange_payload = response_payload(exchange_response).await;
+        let exchanged = exchange_payload.data.expect("exchange data");
+        let session_token = exchanged
+            .get("token")
+            .and_then(|value| value.as_str())
+            .expect("session token");
+
+        let list_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/list")
+                    .header(header::AUTHORIZATION, format!("Bearer {}", session_token))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .expect("list response");
+
+        assert_eq!(list_response.status(), StatusCode::OK);
+
+        let replay_response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/next-bridge/exchange")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(format!(r#"{{"bridge_token":"{}"}}"#, bridge_token)))
+                    .unwrap(),
+            )
+            .await
+            .expect("replay response");
+
+        assert_eq!(replay_response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[test]

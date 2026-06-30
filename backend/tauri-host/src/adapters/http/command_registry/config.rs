@@ -60,13 +60,12 @@ fn handle_read_server_config_source(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: ReadServerConfigSourceRequest = parse_params(params)?;
-        let result =
-            config_commands::read_server_config_source(
-                req.server_path,
-                req.relative_path,
-                req.locator,
-                req.discovery_options,
-            )?;
+        let result = config_commands::read_server_config_source(
+            req.server_path,
+            req.relative_path,
+            req.locator,
+            req.discovery_options,
+        )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -92,13 +91,12 @@ fn handle_read_server_config_document(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: ReadServerConfigDocumentRequest = parse_params(params)?;
-        let result =
-            config_commands::read_server_config_document(
-                req.server_path,
-                req.relative_path,
-                req.locator,
-                req.discovery_options,
-            )?;
+        let result = config_commands::read_server_config_document(
+            req.server_path,
+            req.relative_path,
+            req.locator,
+            req.discovery_options,
+        )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }
@@ -124,7 +122,8 @@ fn handle_list_server_config_files(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: ListServerConfigFilesRequest = parse_params(params)?;
-        let result = config_commands::list_server_config_files(req.server_path, req.discovery_options)?;
+        let result =
+            config_commands::list_server_config_files(req.server_path, req.discovery_options)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }

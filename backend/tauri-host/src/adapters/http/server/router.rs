@@ -3,6 +3,7 @@ use super::{
     auth::{build_cors_layer, require_bearer_auth},
     event_stream::handle_runtime_event_stream,
     log_stream::handle_log_stream,
+    next_bridge::{exchange_next_bridge_token, issue_next_bridge_token},
     state::{ensure_runtime_event_bridge, AppState},
     upload::handle_file_upload,
 };
@@ -30,6 +31,7 @@ pub(super) fn build_http_app(state: AppState, static_dir: Option<String>) -> Rou
     let upload_limit = state.config.max_upload_bytes;
 
     let protected_routes = Router::new()
+        .route("/api/auth/next-bridge/issue", post(issue_next_bridge_token))
         .route("/api/{command}", post(handle_api_command))
         .route("/api/list", get(list_api_endpoints))
         .route("/upload", post(handle_file_upload).layer(DefaultBodyLimit::max(upload_limit)))
@@ -39,6 +41,7 @@ pub(super) fn build_http_app(state: AppState, static_dir: Option<String>) -> Rou
 
     let mut app = Router::new()
         .route("/health", get(|| async { "OK" }))
+        .route("/api/auth/next-bridge/exchange", post(exchange_next_bridge_token))
         .merge(protected_routes)
         .layer(build_cors_layer(&state.config.cors_allowed_origins))
         .with_state(state);

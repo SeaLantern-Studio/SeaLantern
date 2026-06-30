@@ -249,7 +249,8 @@ pub(super) struct ReadServerConfigSourceRequest {
     #[serde(default)]
     pub locator: Option<String>,
     #[serde(default)]
-    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -260,7 +261,8 @@ pub(super) struct WriteServerConfigSourceRequest {
     #[serde(default)]
     pub locator: Option<String>,
     #[serde(default)]
-    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
     pub source: String,
 }
 
@@ -272,7 +274,8 @@ pub(super) struct ReadServerConfigDocumentRequest {
     #[serde(default)]
     pub locator: Option<String>,
     #[serde(default)]
-    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -283,7 +286,8 @@ pub(super) struct WriteServerConfigDocumentRequest {
     #[serde(default)]
     pub locator: Option<String>,
     #[serde(default)]
-    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
     pub content: serde_json::Value,
 }
 
@@ -352,7 +356,8 @@ pub(super) struct ServerPathRequest {
 pub(super) struct ListServerConfigFilesRequest {
     pub server_path: String,
     #[serde(default)]
-    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -364,7 +369,8 @@ pub(super) struct SearchServerConfigFilesRequest {
     #[serde(default)]
     pub scope: Option<sea_lantern_server_config_core::types::ServerConfigSearchScope>,
     #[serde(default)]
-    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
     #[serde(default)]
     pub limit: Option<usize>,
     #[serde(default)]

@@ -3,12 +3,14 @@ import { inject, provide, shallowRef, watch, onBeforeUnmount, onMounted } from "
 import { useRoute } from "vue-router";
 import { getPluginSidebarSnapshot, type BufferedSidebarEvent } from "@api/plugin";
 import { notifyPluginPageLifecycle } from "@router/pluginPageLifecycle";
+import type { NextHomeCardRendererRegistry } from "../pages/home/cardRendererContract";
+import { resolveNextPageKind, type NextShellPageKind } from "../contracts/page";
 
 export type NextHostLifecycleEventName = "shell.ready" | "route.enter" | "route.leave";
 
 export interface NextHostLifecyclePayload {
   route_key: string;
-  page_kind: string;
+  page_kind: NextShellPageKind;
   shell_id: "next";
   path: string;
 }
@@ -21,6 +23,10 @@ export interface NextSidebarHostItem {
 
 export interface NextHostRuntimeContext {
   sidebarItems: ShallowRef<NextSidebarHostItem[]>;
+  home: {
+    cardRenderers: ShallowRef<NextHomeCardRendererRegistry>;
+    registerCardRenderers: (registry: NextHomeCardRendererRegistry) => void;
+  };
   lifecycleEvent: ShallowRef<{
     name: NextHostLifecycleEventName;
     payload: NextHostLifecyclePayload;
@@ -29,8 +35,8 @@ export interface NextHostRuntimeContext {
 
 const NEXT_HOST_RUNTIME_KEY: InjectionKey<NextHostRuntimeContext> = Symbol("next-host-runtime");
 
-function getPageKind(route: ReturnType<typeof useRoute>): string {
-  return typeof route.meta.pageKind === "string" ? route.meta.pageKind : "unknown";
+function getPageKind(route: ReturnType<typeof useRoute>): NextShellPageKind {
+  return resolveNextPageKind(route.meta.pageKind);
 }
 
 function dispatchLifecycleEvent(
@@ -70,12 +76,13 @@ function buildSidebarItems(snapshot: BufferedSidebarEvent[]): NextSidebarHostIte
     });
   }
 
-  return Array.from(items.values()).sort((a, b) => a.label.localeCompare(b.label));
+  return Array.from(items.values()).toSorted((a, b) => a.label.localeCompare(b.label));
 }
 
 export function provideNextHostRuntime(): NextHostRuntimeContext {
   const route = useRoute();
   const sidebarItems = shallowRef<NextSidebarHostItem[]>([]);
+  const homeCardRenderers = shallowRef<NextHomeCardRendererRegistry>({});
   const lifecycleEvent = shallowRef<{
     name: NextHostLifecycleEventName;
     payload: NextHostLifecyclePayload;
@@ -100,6 +107,13 @@ export function provideNextHostRuntime(): NextHostRuntimeContext {
     } catch {
       sidebarItems.value = [];
     }
+  }
+
+  function registerHomeCardRenderers(registry: NextHomeCardRendererRegistry): void {
+    homeCardRenderers.value = {
+      ...homeCardRenderers.value,
+      ...registry,
+    };
   }
 
   onMounted(async () => {
@@ -137,6 +151,10 @@ export function provideNextHostRuntime(): NextHostRuntimeContext {
 
   const context: NextHostRuntimeContext = {
     sidebarItems,
+    home: {
+      cardRenderers: homeCardRenderers,
+      registerCardRenderers: registerHomeCardRenderers,
+    },
     lifecycleEvent,
   };
 

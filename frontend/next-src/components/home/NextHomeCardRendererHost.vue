@@ -1,16 +1,33 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { NextHomePluginCardRenderer } from "../../pages/home/builtinCardRenderers";
-import type { NextHomeCardRendererProps, NextHomeCardRendererRegistry } from "../../pages/home/cardRendererContract";
+import { resolveNextHomeCardRenderer } from "../../pages/home/cardRendererRegistry";
+import type { NextHomeCardRendererProps, NextHomeCardRendererRegistry, NextHomeResolvedCardRenderer } from "../../pages/home/cardRendererContract";
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 const props = defineProps<NextHomeCardRendererProps & {
   registry: NextHomeCardRendererRegistry;
 }>();
 
-const resolvedRenderer = computed(() => props.registry[props.instance.kind] ?? NextHomePluginCardRenderer);
+const resolvedRenderer = computed<NextHomeResolvedCardRenderer>(() => resolveNextHomeCardRenderer(props.instance.kind, props.registry));
 </script>
 
 <template>
-  <component :is="resolvedRenderer" :instance="instance" :meta="meta" :context="context" />
+  <component
+    v-if="resolvedRenderer.status === 'registered'"
+    :is="resolvedRenderer.component"
+    :instance="instance"
+    :meta="meta"
+    :context="context"
+  />
+  <component
+    v-else
+    :is="resolvedRenderer.component"
+    :instance="instance"
+    :meta="meta"
+    :context="context"
+    :resolution="resolvedRenderer"
+  />
 </template>
-

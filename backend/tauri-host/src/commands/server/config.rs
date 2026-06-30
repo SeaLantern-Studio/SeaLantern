@@ -111,18 +111,24 @@ pub fn read_server_config_source(
     discovery_options: Option<ServerConfigDiscoveryOptions>,
 ) -> Result<String, String> {
     let path = match (locator.as_deref(), discovery_options.as_ref()) {
-        (Some(locator), Some(options)) => {
-            resolve_discovered_config_path_with_options(&server_path, &relative_path, Some(locator), options)?
-        }
+        (Some(locator), Some(options)) => resolve_discovered_config_path_with_options(
+            &server_path,
+            &relative_path,
+            Some(locator),
+            options,
+        )?,
         (Some(locator), None) => resolve_discovered_config_path_with_options(
             &server_path,
             &relative_path,
             Some(locator),
             &ServerConfigDiscoveryOptions::default(),
         )?,
-        (None, Some(options)) => {
-            resolve_discovered_config_path_with_options(&server_path, &relative_path, None, options)?
-        }
+        (None, Some(options)) => resolve_discovered_config_path_with_options(
+            &server_path,
+            &relative_path,
+            None,
+            options,
+        )?,
         (None, None) => resolve_discovered_config_path(&server_path, &relative_path)?,
     };
     read_raw_text(&path.to_string_lossy()).map_err(|error| {
@@ -139,18 +145,24 @@ pub fn write_server_config_source(
     source: String,
 ) -> Result<(), String> {
     let path = match (locator.as_deref(), discovery_options.as_ref()) {
-        (Some(locator), Some(options)) => {
-            resolve_discovered_config_path_with_options(&server_path, &relative_path, Some(locator), options)?
-        }
+        (Some(locator), Some(options)) => resolve_discovered_config_path_with_options(
+            &server_path,
+            &relative_path,
+            Some(locator),
+            options,
+        )?,
         (Some(locator), None) => resolve_discovered_config_path_with_options(
             &server_path,
             &relative_path,
             Some(locator),
             &ServerConfigDiscoveryOptions::default(),
         )?,
-        (None, Some(options)) => {
-            resolve_discovered_config_path_with_options(&server_path, &relative_path, None, options)?
-        }
+        (None, Some(options)) => resolve_discovered_config_path_with_options(
+            &server_path,
+            &relative_path,
+            None,
+            options,
+        )?,
         (None, None) => resolve_discovered_config_path(&server_path, &relative_path)?,
     };
     write_raw_text(&path.to_string_lossy(), &source).map_err(|error| {
@@ -370,8 +382,8 @@ mod tests {
     use super::{
         list_server_config_files, read_server_config_document, read_server_config_source,
         read_server_properties, read_server_properties_source, read_sl_config,
-        search_server_config_files,
-        write_server_config_document, write_server_config_source, write_sl_config,
+        search_server_config_files, write_server_config_document, write_server_config_source,
+        write_sl_config,
     };
     use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId};
     use sea_lantern_server_config_core::types::{
@@ -407,7 +419,8 @@ mod tests {
             .unwrap();
         std::fs::write(dir.path().join("config").join("paper.yml"), "motd: test\n").unwrap();
 
-        let files = list_server_config_files(dir.path().to_string_lossy().to_string(), None).unwrap();
+        let files =
+            list_server_config_files(dir.path().to_string_lossy().to_string(), None).unwrap();
 
         assert!(files
             .iter()

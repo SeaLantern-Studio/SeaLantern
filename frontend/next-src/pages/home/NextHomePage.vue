@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, toRef } from "vue";
+import { useNextHostRuntime } from "../../host/runtime";
 import type { NextHomeCardKind } from "./layoutContract";
 import NextHomeCardPalette from "../../components/home/NextHomeCardPalette.vue";
 import NextHomeCardRendererHost from "../../components/home/NextHomeCardRendererHost.vue";
 import NextHomeLayoutBoard from "../../components/home/NextHomeLayoutBoard.vue";
-import { NEXT_HOME_BUILTIN_CARD_RENDERERS } from "./builtinCardRenderers";
+import { mergeNextHomeCardRendererRegistries, NEXT_HOME_BUILTIN_CARD_RENDERERS } from "./cardRendererRegistry";
 import type { NextHomeCardRendererRegistry, NextHomeCardRuntimeContext } from "./cardRendererContract";
 import { useNextHomeLayoutEditor } from "./useNextHomeLayoutEditor";
 import { useNextHomePage } from "./useNextHomePage";
@@ -19,6 +20,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const nextHostRuntime = useNextHostRuntime();
 
 const homePage = useNextHomePage({
   previewMode: props.previewMode,
@@ -61,10 +63,11 @@ const {
   isRefreshing,
 } = homePage;
 
-const cardRenderers = computed<NextHomeCardRendererRegistry>(() => ({
-  ...NEXT_HOME_BUILTIN_CARD_RENDERERS,
-  ...(props.additionalCardRenderers ?? {}),
-}));
+const cardRenderers = computed<NextHomeCardRendererRegistry>(() => mergeNextHomeCardRendererRegistries(
+  NEXT_HOME_BUILTIN_CARD_RENDERERS,
+  nextHostRuntime.home.cardRenderers.value,
+  props.additionalCardRenderers,
+));
 
 const cardRuntimeContext = computed<NextHomeCardRuntimeContext>(() => ({
   previewMode: props.previewMode,

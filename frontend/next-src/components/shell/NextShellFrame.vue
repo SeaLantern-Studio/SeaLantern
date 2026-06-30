@@ -1,14 +1,7 @@
 <script setup lang="ts">
-import type { Component } from "vue";
 import { LayoutGrid, LogOut } from "@lucide/vue";
-
-export interface NextShellNavItem {
-  id: string;
-  label: string;
-  icon: Component;
-  active?: boolean;
-  disabled?: boolean;
-}
+import { RouterLink } from "vue-router";
+import type { NextShellNavItem } from "../../contracts/shell";
 
 interface Props {
   brand: string;
@@ -43,21 +36,35 @@ const emit = defineEmits<{
         </div>
 
         <nav class="next-shell-frame__nav" :aria-label="railLabel">
-          <button
-            v-for="item in navItems"
-            :key="item.id"
-            class="next-shell-frame__nav-item"
-            :class="{
-              'next-shell-frame__nav-item--active': item.active,
-              'next-shell-frame__nav-item--disabled': item.disabled,
-            }"
-            type="button"
-            :disabled="item.disabled"
-            :aria-current="item.active ? 'page' : undefined"
-          >
-            <component :is="item.icon" :size="18" class="next-shell-frame__nav-icon" />
-            <span class="next-shell-frame__nav-label">{{ item.label }}</span>
-          </button>
+          <template v-for="item in navItems" :key="item.id">
+            <RouterLink
+              v-if="!item.disabled && item.to"
+              class="next-shell-frame__nav-item"
+              :class="{
+                'next-shell-frame__nav-item--active': item.active,
+              }"
+              :to="item.to"
+              :aria-current="item.active ? 'page' : undefined"
+            >
+              <component :is="item.icon" :size="18" class="next-shell-frame__nav-icon" />
+              <span class="next-shell-frame__nav-label">{{ item.label }}</span>
+            </RouterLink>
+
+            <button
+              v-else
+              class="next-shell-frame__nav-item next-shell-frame__nav-item--disabled"
+              :class="{
+                'next-shell-frame__nav-item--active': item.active,
+              }"
+              type="button"
+              disabled
+              :aria-current="item.active ? 'page' : undefined"
+              :aria-disabled="true"
+            >
+              <component :is="item.icon" :size="18" class="next-shell-frame__nav-icon" />
+              <span class="next-shell-frame__nav-label">{{ item.label }}</span>
+            </button>
+          </template>
         </nav>
 
         <div class="next-shell-frame__sidebar-slot">
@@ -103,7 +110,11 @@ const emit = defineEmits<{
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
   background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--sl-primary) 12%, transparent), transparent 24%),
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--sl-primary) 12%, transparent),
+      transparent 24%
+    ),
     linear-gradient(180deg, color-mix(in srgb, var(--sl-surface) 88%, transparent), var(--sl-bg));
 }
 
@@ -248,10 +259,11 @@ const emit = defineEmits<{
   background: transparent;
   color: var(--sl-text-secondary);
   font: inherit;
+  text-decoration: none;
 }
 
 .next-shell-frame__nav-item {
-  cursor: default;
+  cursor: pointer;
   justify-content: flex-start;
   padding-left: calc(50% - 9px);
   transition:
@@ -259,7 +271,8 @@ const emit = defineEmits<{
     padding-right var(--sl-transition-normal),
     gap var(--sl-transition-fast),
     background-color var(--sl-transition-fast),
-    color var(--sl-transition-fast);
+    color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast);
 }
 
 .next-shell-frame__nav-item--active {
@@ -269,6 +282,22 @@ const emit = defineEmits<{
 
 .next-shell-frame__nav-item--disabled {
   opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.next-shell-frame__nav-item:focus-visible,
+.next-shell-frame__logout:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sl-primary) 40%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .next-shell-frame__nav-item:not(.next-shell-frame__nav-item--active):not(
+      .next-shell-frame__nav-item--disabled
+    ):hover {
+    background: color-mix(in srgb, var(--sl-primary) 8%, transparent);
+    color: var(--sl-text-primary);
+  }
 }
 
 .next-shell-frame__nav-icon {
@@ -360,8 +389,10 @@ const emit = defineEmits<{
 
   .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__brand-copy,
   .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__nav-label,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within .next-shell-frame__brand-copy,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within .next-shell-frame__nav-label {
+  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+    .next-shell-frame__brand-copy,
+  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+    .next-shell-frame__nav-label {
     max-width: 160px;
     opacity: 1;
     transform: translateX(0);
@@ -369,23 +400,33 @@ const emit = defineEmits<{
   }
 
   .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__brand,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within .next-shell-frame__brand,
+  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+    .next-shell-frame__brand,
   .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__nav-item,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within .next-shell-frame__nav-item {
+  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+    .next-shell-frame__nav-item {
     padding-left: 12px;
     padding-right: 12px;
     gap: 12px;
   }
 
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__sidebar-slot :deep(.next-sidebar-host-items__item),
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within .next-shell-frame__sidebar-slot :deep(.next-sidebar-host-items__item) {
+  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover
+    .next-shell-frame__sidebar-slot
+    :deep(.next-sidebar-host-items__item),
+  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+    .next-shell-frame__sidebar-slot
+    :deep(.next-sidebar-host-items__item) {
     padding-left: 12px;
     padding-right: 12px;
     gap: 10px;
   }
 
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__sidebar-slot :deep(.next-sidebar-host-items__label),
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within .next-shell-frame__sidebar-slot :deep(.next-sidebar-host-items__label) {
+  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover
+    .next-shell-frame__sidebar-slot
+    :deep(.next-sidebar-host-items__label),
+  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+    .next-shell-frame__sidebar-slot
+    :deep(.next-sidebar-host-items__label) {
     max-width: 160px;
     opacity: 1;
   }

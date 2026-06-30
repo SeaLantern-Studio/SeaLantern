@@ -1,6 +1,7 @@
 import { AppError as StructuredAppError, normalizeAppError } from "@utils/appError";
 import { handleError, AppError, ErrorType } from "@utils/errorHandler";
 import { getBrowserRuntimeToken, notifyBrowserUnauthorized } from "@stores/authRuntime";
+import { readPersistedBrowserToken } from "@src/services/authStorage";
 
 // Tauri 全局类型声明
 declare global {
@@ -37,13 +38,26 @@ interface HttpApiEnvelope<T> {
   error_detail?: HttpApiErrorDetail;
 }
 
+export interface NextBridgeIssueResponse {
+  bridge_token: string;
+  expires_at: number;
+  purpose: "next_bridge";
+  target_path: string;
+}
+
+export interface NextBridgeExchangeResponse {
+  token: string;
+  expires_at: number;
+  purpose: "next_browser_session";
+}
+
 export function readBrowserEnvAuthToken(): string | null {
   const token = HTTP_AUTH_TOKEN.trim();
   return token ? token : null;
 }
 
 export function readBrowserAuthToken(): string | null {
-  return getBrowserRuntimeToken() ?? readBrowserEnvAuthToken();
+  return getBrowserRuntimeToken() ?? readPersistedBrowserToken() ?? readBrowserEnvAuthToken();
 }
 
 export { notifyBrowserUnauthorized };
@@ -131,6 +145,49 @@ async function performHttpInvoke<T>(command: string, args?: Record<string, unkno
   }
 
   return result.data as T;
+}
+
+export async function issueNextBridgeToken(targetPath: string): Promise<NextBridgeIssueResponse> {
+  await ensureBrowserSession();
+
+  const token = readBrowserAuthToken();
+  const response = await fetch(`${HTTP_API_BASE}/api/auth/next-bridge/issue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ target_path: targetPath }),
+  });
+
+  const result = await parseHttpEnvelope<NextBridgeIssueResponse>(response);
+  if (!response.ok || !result?.success || !result.data) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
+    throw toStructuredHttpError(result, `HTTP ${response.status}: next bridge issue failed`);
+  }
+
+  return result.data;
+}
+
+export async function exchangeNextBridgeToken(
+  bridgeToken: string,
+): Promise<NextBridgeExchangeResponse> {
+  const response = await fetch(`${HTTP_API_BASE}/api/auth/next-bridge/exchange`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ bridge_token: bridgeToken }),
+  });
+
+  const result = await parseHttpEnvelope<NextBridgeExchangeResponse>(response);
+  if (!response.ok || !result?.success || !result.data) {
+    throw toStructuredHttpError(result, `HTTP ${response.status}: next bridge exchange failed`);
+  }
+
+  return result.data;
 }
 
 /**

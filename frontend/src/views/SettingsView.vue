@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { shallowRef, ref, watch } from "vue";
+import SLButton from "@components/common/SLButton.vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
 import DataDirectoryCard from "@components/views/settings/DataDirectoryCard.vue";
@@ -12,12 +13,14 @@ import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.
 import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue";
 import { javaApi, type JavaInfo } from "@api/java";
 import { systemApi } from "@api/system";
+import { issueNextBridgeToken } from "@api/tauri";
 import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 import { i18n } from "@language";
 import { useDataDirectory } from "@composables/useDataDirectory";
 import { usePluginDirectory } from "@composables/usePluginDirectory";
 import { useGlobalMessage } from "@composables/useMessage";
 import { useSettingsStore } from "@stores/settingsStore";
+import { normalizeAppError } from "@utils/appError";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 import {
   createDefaultCpuPolicy,
@@ -45,6 +48,8 @@ const defaultJvmPreset = ref<JvmPresetConfig>(createDefaultJvmPreset());
 const defaultCpuPolicy = ref<CpuPolicyConfig>(createDefaultCpuPolicy());
 const javaList = ref<JavaInfo[]>([]);
 const javaLoading = ref(false);
+const openingNextSettings = shallowRef(false);
+const nextSettingsBridgeError = shallowRef<string | null>(null);
 
 const settingsDraft = useSettingsPageDraft({
   changedGroups: ["Appearance", "General", "ServerDefaults", "Console"],
@@ -223,10 +228,48 @@ async function handleRefreshDataDir() {
   const status = await dataDirectory.refreshStatus();
   dataDirDraft.value = status.current_data_dir;
 }
+
+async function handleOpenNextSettings() {
+  if (openingNextSettings.value) {
+    return;
+  }
+
+  openingNextSettings.value = true;
+  nextSettingsBridgeError.value = null;
+
+  try {
+    const issued = await issueNextBridgeToken("/settings");
+    const url = new URL(issued.target_path, window.location.origin);
+    url.searchParams.set("next_bridge_token", issued.bridge_token);
+    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+  } catch (error) {
+    nextSettingsBridgeError.value = normalizeAppError(error).message;
+  } finally {
+    openingNextSettings.value = false;
+  }
+}
 </script>
 
 <template>
   <div class="settings-view animate-fade-in-up">
+    <div class="next-settings-bridge">
+      <div class="next-settings-bridge__copy">
+        <strong>切换到 next 设置</strong>
+        <span>会先签发一次性 bridge token，再无感接力到 next `/settings`。</span>
+      </div>
+
+      <div class="next-settings-bridge__actions">
+        <SLButton variant="secondary" :loading="openingNextSettings" @click="handleOpenNextSettings">
+          打开 next 设置
+        </SLButton>
+      </div>
+    </div>
+
+    <div v-if="nextSettingsBridgeError" class="msg-banner error-banner">
+      <span>{{ nextSettingsBridgeError }}</span>
+      <button @click="nextSettingsBridgeError = null">x</button>
+    </div>
+
     <div v-if="error" class="msg-banner error-banner">
       <span>{{ error }}</span>
       <button @click="clearError()">x</button>
@@ -315,6 +358,37 @@ async function handleRefreshDataDir() {
   padding-bottom: var(--sl-space-2xl);
 }
 
+.next-settings-bridge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--sl-radius-lg);
+  border: 1px solid var(--sl-border);
+  background: color-mix(in srgb, var(--sl-surface) 94%, transparent);
+}
+
+.next-settings-bridge__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.next-settings-bridge__copy strong {
+  color: var(--sl-text-primary);
+}
+
+.next-settings-bridge__copy span {
+  color: var(--sl-text-secondary);
+  line-height: 1.5;
+}
+
+.next-settings-bridge__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .msg-banner {
   display: flex;
   align-items: center;
@@ -342,5 +416,17 @@ async function handleRefreshDataDir() {
   gap: var(--sl-space-sm);
   padding: var(--sl-space-2xl);
   color: var(--sl-text-tertiary);
+}
+
+@media (max-width: 720px) {
+  .next-settings-bridge {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .next-settings-bridge__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 </style>

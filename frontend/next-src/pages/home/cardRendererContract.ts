@@ -32,5 +32,13 @@ export interface NextHomeCardRendererProps {
   context: NextHomeCardRuntimeContext;
 }
 
-export type NextHomeCardRendererRegistry = Partial<Record<NextHomeCardKind, Component>>;
+export type NextHomeCardRendererComponent = Component;
 
+export type NextHomeCardRendererRegistry = Partial<Record<NextHomeCardKind, NextHomeCardRendererComponent>>;
+
+export type NextHomeCardRendererResolveStatus = "registered" | "plugin-pending" | "missing";
+
+export interface NextHomeResolvedCardRenderer {
+  component: NextHomeCardRendererComponent;
+  status: NextHomeCardRendererResolveStatus;
+}

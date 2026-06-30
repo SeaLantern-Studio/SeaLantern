@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { NextShellNavItem } from "../components/shell/NextShellFrame.vue";
+import type { NextShellPage } from "../contracts/page";
+import type { NextShellNavItem } from "../contracts/shell";
 import { NEXT_HOST_SLOT_IDS } from "../host/slotIds";
 import NextHostSlot from "../components/host/NextHostSlot.vue";
 import NextShellFrame from "../components/shell/NextShellFrame.vue";
@@ -7,8 +8,7 @@ import NextShellFrame from "../components/shell/NextShellFrame.vue";
 interface Props {
   brand: string;
   railLabel: string;
-  pageTitle: string;
-  pageSubtitle: string;
+  page: NextShellPage;
   logoutLabel: string;
   navItems: NextShellNavItem[];
   railLocked?: boolean;
@@ -25,27 +25,21 @@ const emit = defineEmits<{
   <NextShellFrame
     :brand="brand"
     :rail-label="railLabel"
-    :page-title="pageTitle"
-    :page-subtitle="pageSubtitle"
+    :page-title="page.title"
+    :page-subtitle="page.subtitle || ''"
     :logout-label="logoutLabel"
     :nav-items="navItems"
     :rail-locked="railLocked"
     @logout="emit('logout')"
   >
     <template #sidebar-primary>
-      <NextHostSlot
-        :slot-id="NEXT_HOST_SLOT_IDS.shellSidebarPrimary"
-        scope="shell"
-      >
+      <NextHostSlot :slot-id="NEXT_HOST_SLOT_IDS.sidebarPrimary" scope="shell">
         <slot name="sidebar-primary" />
       </NextHostSlot>
     </template>
 
     <template #header-primary-actions>
-      <NextHostSlot
-        :slot-id="NEXT_HOST_SLOT_IDS.shellHeaderPrimaryActions"
-        scope="shell"
-      >
+      <NextHostSlot :slot-id="NEXT_HOST_SLOT_IDS.headerPrimaryActions" scope="shell">
         <slot name="header-primary-actions" />
       </NextHostSlot>
     </template>
@@ -56,18 +50,12 @@ const emit = defineEmits<{
           <slot name="page-header" />
         </div>
 
-        <NextHostSlot
-          :slot-id="NEXT_HOST_SLOT_IDS.pageHeaderActions"
-          scope="page"
-        >
+        <NextHostSlot :slot-id="NEXT_HOST_SLOT_IDS.pageHeaderActions" scope="page">
           <slot name="page-header-actions" />
         </NextHostSlot>
       </header>
 
-      <NextHostSlot
-        :slot-id="NEXT_HOST_SLOT_IDS.pageContentBefore"
-        scope="page"
-      >
+      <NextHostSlot :slot-id="NEXT_HOST_SLOT_IDS.pageContentBefore" scope="page">
         <slot name="page-content-before" />
       </NextHostSlot>
 
@@ -75,19 +63,13 @@ const emit = defineEmits<{
         <slot />
       </div>
 
-      <NextHostSlot
-        :slot-id="NEXT_HOST_SLOT_IDS.pageContentAfter"
-        scope="page"
-      >
+      <NextHostSlot :slot-id="NEXT_HOST_SLOT_IDS.pageContentAfter" scope="page">
         <slot name="page-content-after" />
       </NextHostSlot>
     </section>
 
     <template #overlay>
-      <NextHostSlot
-        :slot-id="NEXT_HOST_SLOT_IDS.overlayGlobal"
-        scope="overlay"
-      >
+      <NextHostSlot :slot-id="NEXT_HOST_SLOT_IDS.overlayGlobal" scope="overlay">
         <slot name="overlay" />
       </NextHostSlot>
     </template>

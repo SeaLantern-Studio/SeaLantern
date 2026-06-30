@@ -50,7 +50,7 @@ const compactMode = shallowRef(typeof window !== "undefined" ? window.innerWidth
 const dragPreview = shallowRef<DragPreview | null>(null);
 const dragActiveId = shallowRef<string | null>(null);
 
-const orderedInstances = computed(() => [...props.instances].sort((left, right) => {
+const orderedInstances = computed(() => [...props.instances].toSorted((left, right) => {
   if (left.zIndex !== right.zIndex) return left.zIndex - right.zIndex;
   return left.instanceId.localeCompare(right.instanceId);
 }));

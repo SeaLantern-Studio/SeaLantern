@@ -7,8 +7,8 @@ use crate::startup::canonical_server_dir;
 use crate::types::{
     DiscoveredServerConfigFile, KnownServerConfigRole, ServerConfigContentMatch,
     ServerConfigDiscoveryOptions, ServerConfigFileKind, ServerConfigJsonMode,
-    ServerConfigOwnership, ServerConfigSearchHit, ServerConfigSearchMode,
-    ServerConfigSearchScope, ServerConfigSourceKind,
+    ServerConfigOwnership, ServerConfigSearchHit, ServerConfigSearchMode, ServerConfigSearchScope,
+    ServerConfigSourceKind,
 };
 
 const CONFIG_DISCOVERY_MAX_DEPTH: usize = 4;
@@ -56,7 +56,10 @@ pub fn discover_server_config_files_with_options(
 pub fn discover_server_config_files_in_dir(
     server_dir: &Path,
 ) -> Result<Vec<DiscoveredServerConfigFile>, String> {
-    discover_server_config_files_in_dir_with_options(server_dir, &ServerConfigDiscoveryOptions::default())
+    discover_server_config_files_in_dir_with_options(
+        server_dir,
+        &ServerConfigDiscoveryOptions::default(),
+    )
 }
 
 pub fn discover_server_config_files_in_dir_with_options(
@@ -67,8 +70,8 @@ pub fn discover_server_config_files_in_dir_with_options(
         return Err("服务器目录无效".to_string());
     }
 
-    let canonical_server = std::fs::canonicalize(server_dir)
-        .map_err(|e| format!("解析服务器目录失败: {}", e))?;
+    let canonical_server =
+        std::fs::canonicalize(server_dir).map_err(|e| format!("解析服务器目录失败: {}", e))?;
     let mut seen = HashSet::new();
     let mut discovered = Vec::new();
 
@@ -126,14 +129,7 @@ pub fn search_server_config_files_with_options(
 ) -> Result<Vec<ServerConfigSearchHit>, String> {
     let canonical_server = canonical_server_dir(server_path)?;
     let discovered = discover_server_config_files_in_dir_with_options(&canonical_server, options)?;
-    search_server_config_files_in_entries(
-        &discovered,
-        query,
-        mode,
-        scope,
-        limit,
-        case_sensitive,
-    )
+    search_server_config_files_in_entries(&discovered, query, mode, scope, limit, case_sensitive)
 }
 
 pub fn search_server_config_files_in_entries(
@@ -170,10 +166,15 @@ pub fn search_server_config_files_in_entries(
     }
 
     let mut hits = match scope {
-        ServerConfigSearchScope::Path => search_path_hits(discovered, trimmed, mode, case_sensitive)?,
-        ServerConfigSearchScope::Content => search_content_hits(discovered, trimmed, mode, case_sensitive)?,
+        ServerConfigSearchScope::Path => {
+            search_path_hits(discovered, trimmed, mode, case_sensitive)?
+        }
+        ServerConfigSearchScope::Content => {
+            search_content_hits(discovered, trimmed, mode, case_sensitive)?
+        }
         ServerConfigSearchScope::All => {
-            let mut path_hits = search_path_hits(discovered, trimmed, mode.clone(), case_sensitive)?;
+            let mut path_hits =
+                search_path_hits(discovered, trimmed, mode.clone(), case_sensitive)?;
             let content_hits = search_content_hits(discovered, trimmed, mode, case_sensitive)?;
             merge_search_hits(&mut path_hits, content_hits);
             path_hits
@@ -469,7 +470,10 @@ fn looks_like_uuid(value: &str) -> bool {
 }
 
 fn looks_like_hash_like(value: &str) -> bool {
-    let compact: String = value.chars().filter(|ch| *ch != '-' && *ch != '_').collect();
+    let compact: String = value
+        .chars()
+        .filter(|ch| *ch != '-' && *ch != '_')
+        .collect();
     let len = compact.len();
     len >= 16 && compact.chars().all(|ch| ch.is_ascii_hexdigit())
 }
@@ -481,7 +485,9 @@ fn build_display_relative_path(
 ) -> String {
     match source.source_kind {
         ServerConfigSourceKind::ServerRoot => relative_under_root.to_string(),
-        ServerConfigSourceKind::ManualRoot => format!("{}/{}", source.display_prefix, relative_under_root),
+        ServerConfigSourceKind::ManualRoot => {
+            format!("{}/{}", source.display_prefix, relative_under_root)
+        }
         ServerConfigSourceKind::ManualFile => format!("{}/{}", source.display_prefix, file_name),
     }
 }
@@ -567,9 +573,13 @@ fn search_path_hits(
     case_sensitive: bool,
 ) -> Result<Vec<ServerConfigSearchHit>, String> {
     match mode {
-        ServerConfigSearchMode::Keyword => Ok(search_path_by_keyword(discovered, query, case_sensitive)),
+        ServerConfigSearchMode::Keyword => {
+            Ok(search_path_by_keyword(discovered, query, case_sensitive))
+        }
         ServerConfigSearchMode::Regex => search_path_by_regex(discovered, query, case_sensitive),
-        ServerConfigSearchMode::Similarity => Ok(search_path_by_similarity(discovered, query, case_sensitive)),
+        ServerConfigSearchMode::Similarity => {
+            Ok(search_path_by_similarity(discovered, query, case_sensitive))
+        }
     }
 }
 
@@ -580,9 +590,13 @@ fn search_content_hits(
     case_sensitive: bool,
 ) -> Result<Vec<ServerConfigSearchHit>, String> {
     match mode {
-        ServerConfigSearchMode::Keyword => Ok(search_content_by_keyword(discovered, query, case_sensitive)),
+        ServerConfigSearchMode::Keyword => {
+            Ok(search_content_by_keyword(discovered, query, case_sensitive))
+        }
         ServerConfigSearchMode::Regex => search_content_by_regex(discovered, query, case_sensitive),
-        ServerConfigSearchMode::Similarity => Ok(search_content_by_similarity(discovered, query, case_sensitive)),
+        ServerConfigSearchMode::Similarity => {
+            Ok(search_content_by_similarity(discovered, query, case_sensitive))
+        }
     }
 }
 
@@ -885,7 +899,11 @@ fn similarity_score(candidate: &str, query: &str, query_tokens: &[&str]) -> u32 
     let candidate_tokens = tokenize(candidate);
     let overlap = query_tokens
         .iter()
-        .filter(|token| candidate_tokens.iter().any(|candidate| candidate.contains(**token)))
+        .filter(|token| {
+            candidate_tokens
+                .iter()
+                .any(|candidate| candidate.contains(**token))
+        })
         .count() as u32;
     if overlap > 0 {
         return 500 + overlap * 60;
@@ -963,7 +981,9 @@ mod tests {
             .unwrap();
         std::fs::write(manual.path().join("custom.yml"), "motd: hi\n").unwrap();
         std::fs::write(
-            manual.path().join("123e4567-e89b-12d3-a456-426614174000.json"),
+            manual
+                .path()
+                .join("123e4567-e89b-12d3-a456-426614174000.json"),
             "{\"ignored\":true}\n",
         )
         .unwrap();
@@ -979,9 +999,12 @@ mod tests {
         .unwrap();
 
         assert!(discovered.iter().any(|entry| {
-            entry.source_kind == ServerConfigSourceKind::ManualRoot && entry.file_name == "custom.yml"
+            entry.source_kind == ServerConfigSourceKind::ManualRoot
+                && entry.file_name == "custom.yml"
         }));
-        assert!(!discovered.iter().any(|entry| entry.file_name.ends_with(".json") && entry.known_role.is_none()));
+        assert!(!discovered
+            .iter()
+            .any(|entry| entry.file_name.ends_with(".json") && entry.known_role.is_none()));
     }
 
     #[test]

@@ -1,4 +1,7 @@
-use super::state::{ApiErrorDetail, ApiResponse};
+use super::{
+    next_bridge::is_valid_browser_session_token,
+    state::{ApiErrorDetail, ApiResponse},
+};
 use axum::{
     extract::{Request, State},
     http::{
@@ -47,7 +50,14 @@ fn extract_bearer_token_for_config<'a>(
     config: &'a HeadlessHttpConfig,
     headers: &'a HeaderMap,
 ) -> Option<&'a str> {
-    extract_bearer_token(headers).filter(|token| *token == config.auth_token.as_str())
+    let token = extract_bearer_token(headers)?;
+    if token == config.auth_token.as_str()
+        || is_valid_browser_session_token(token, config.auth_token.as_str())
+    {
+        Some(token)
+    } else {
+        None
+    }
 }
 
 fn unauthorized_response() -> Response {
