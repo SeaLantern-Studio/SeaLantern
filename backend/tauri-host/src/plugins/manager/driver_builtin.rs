@@ -28,7 +28,7 @@ impl PluginDriver for BuiltinRustPluginDriver {
             supports_context_menu: false,
             supports_page_events: false,
             supports_locale_events: false,
-            supports_server_events: false,
+            supports_server_events: true,
         }
     }
 
@@ -67,6 +67,13 @@ impl PluginDriver for BuiltinRustPluginDriver {
             info.state = PluginState::Enabled;
         }
 
+        if let Err(error) = crate::plugins::builtin::obv11_client::enable(manager, plugin_id) {
+            if let Some(info) = manager.plugins.get_mut(plugin_id) {
+                info.state = PluginState::Disabled;
+            }
+            return Err(error);
+        }
+
         super::lifecycle::dependencies::update_all_missing_dependencies(manager);
         super::lifecycle::persistence::save_enabled_plugins_checked(manager)?;
         log_builtin_driver_trace("enable", plugin_id, "completed state=enabled");
@@ -97,6 +104,8 @@ impl PluginDriver for BuiltinRustPluginDriver {
         if let Some(info) = manager.plugins.get_mut(plugin_id) {
             info.state = PluginState::Disabled;
         }
+
+        crate::plugins::builtin::obv11_client::disable(plugin_id);
 
         super::lifecycle::dependencies::update_all_missing_dependencies(manager);
         super::lifecycle::persistence::save_enabled_plugins_checked(manager)?;
@@ -146,6 +155,13 @@ impl PluginDriver for BuiltinRustPluginDriver {
             .map_err(|e| format!("Failed to serialize settings: {}", e))?;
         std::fs::write(&settings_path, content)
             .map_err(|e| format!("Failed to write settings file: {}", e))?;
+        let is_enabled = manager
+            .plugins()
+            .get(&plugin.manifest.id)
+            .is_some_and(|info| matches!(info.state, PluginState::Enabled));
+        if is_enabled {
+            crate::plugins::builtin::obv11_client::reload(manager, &plugin.manifest.id)?;
+        }
         Ok(())
     }
 
@@ -168,9 +184,10 @@ impl PluginDriver for BuiltinRustPluginDriver {
     fn notify_server_event(
         &self,
         _manager: &PluginManager,
-        _plugin_id: &str,
-        _event: &ServerEventEnvelope,
+        plugin_id: &str,
+        event: &ServerEventEnvelope,
     ) {
+        crate::plugins::builtin::obv11_client::notify_server_event(plugin_id, event);
     }
 
     fn notify_context_menu_show(

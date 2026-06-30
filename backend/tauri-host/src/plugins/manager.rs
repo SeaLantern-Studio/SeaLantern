@@ -95,6 +95,10 @@ impl PluginManager {
         Arc::clone(&self.runtimes)
     }
 
+    pub(crate) fn data_dir_path(&self) -> &Path {
+        &self.data_dir
+    }
+
     /// 读取 API 注册表
     ///
     /// # Returns

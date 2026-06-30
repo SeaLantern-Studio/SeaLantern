@@ -1,14 +1,16 @@
+#[path = "obv11-client/mod.rs"]
+pub(crate) mod obv11_client;
+
 use crate::models::plugin::{
     PluginActions, PluginAuthor, PluginDistributionClass, PluginExecutionClass, PluginInfo,
     PluginIntegrityStatus, PluginManifest, PluginPermissionProfile, PluginReviewStatus,
-    PluginRuntimeKind, PluginSettingField, PluginSource, PluginState, PluginTrustLevelDisplay,
+    PluginRuntimeKind, PluginSource, PluginState, PluginTrustLevelDisplay,
     PluginTrustedPolicySource,
 };
-use serde_json::json;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-const BUILTIN_PLUGIN_ID: &str = "sea-lantern-builtin-demo";
+pub(crate) const BUILTIN_PLUGIN_ID: &str = obv11_client::PLUGIN_ID;
 
 pub(crate) fn builtin_plugins_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -26,9 +28,9 @@ pub(crate) fn builtin_plugin_infos() -> Vec<PluginInfo> {
     vec![PluginInfo {
         manifest: PluginManifest {
             id: BUILTIN_PLUGIN_ID.to_string(),
-            name: "SeaLantern Builtin Demo".to_string(),
+            name: "SeaLantern OneBot v11 Client".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
-            description: "内置 Rust 插件接入骨架示例，用于验证内置插件可见、可启停、可保存设置。"
+            description: "内置 Rust OneBot v11 协议端，可通过 HTTP 或 WebSocket 暴露 SeaLantern 状态与控制 API，也可将事件直连转发到 QQ OneBot 端。"
                 .to_string(),
             author: PluginAuthor {
                 name: "SeaLantern".to_string(),
@@ -48,34 +50,26 @@ pub(crate) fn builtin_plugin_infos() -> Vec<PluginInfo> {
             dependencies: Vec::new(),
             optional_dependencies: Vec::new(),
             icon: None,
-            settings: Some(vec![PluginSettingField {
-                key: "banner_text".to_string(),
-                label: "Banner Text".to_string(),
-                field_type: "string".to_string(),
-                display: None,
-                default: Some(json!("Hello from builtin Rust plugin")),
-                description: Some("用于验证内置插件设置写入流程。".to_string()),
-                options: None,
-                rows: None,
-                maxlength: Some(120),
-            }]),
+            settings: Some(obv11_client::manifest_settings()),
             sidebar: None,
             locales: Some(HashMap::from([
                 (
                     "zh-CN".to_string(),
                     crate::models::plugin::PluginLocaleEntry {
-                        name: Some("SeaLantern 内置示例插件".to_string()),
+                        name: Some("SeaLantern OneBot v11 协议端".to_string()),
                         description: Some(
-                            "用于验证内置 Rust 插件接入插件管理页的第一版实现。".to_string(),
+                            "提供 SeaLantern 的 OneBot v11 HTTP / WebSocket API 与 QQ 事件转发能力。"
+                                .to_string(),
                         ),
                     },
                 ),
                 (
                     "en-US".to_string(),
                     crate::models::plugin::PluginLocaleEntry {
-                        name: Some("SeaLantern Builtin Demo Plugin".to_string()),
+                        name: Some("SeaLantern OneBot v11 Client".to_string()),
                         description: Some(
-                            "First-pass builtin Rust plugin integration skeleton.".to_string(),
+                            "Builtin Rust OneBot v11 endpoint for SeaLantern status, control APIs, and QQ event forwarding."
+                                .to_string(),
                         ),
                     },
                 ),
@@ -87,7 +81,7 @@ pub(crate) fn builtin_plugin_infos() -> Vec<PluginInfo> {
             server_events: HashMap::new(),
         },
         state: PluginState::Disabled,
-        path: root.join(BUILTIN_PLUGIN_ID).to_string_lossy().to_string(),
+        path: root.join("obv11-client").to_string_lossy().to_string(),
         source: PluginSource::Builtin,
         runtime: PluginRuntimeKind::Rust,
         actions: PluginActions {
@@ -117,9 +111,7 @@ pub(crate) fn builtin_plugin_infos() -> Vec<PluginInfo> {
 
 pub(crate) fn default_settings(plugin_id: &str) -> Option<serde_json::Value> {
     match plugin_id {
-        BUILTIN_PLUGIN_ID => Some(json!({
-            "banner_text": "Hello from builtin Rust plugin"
-        })),
+        BUILTIN_PLUGIN_ID => Some(obv11_client::default_settings_json()),
         _ => None,
     }
 }
