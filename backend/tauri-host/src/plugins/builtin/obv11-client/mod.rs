@@ -11,6 +11,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use futures::{SinkExt, StreamExt};
+use sea_lantern_server_config_core::discovery::discover_server_config_files;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -170,7 +171,10 @@ pub(crate) fn manifest_settings() -> Vec<PluginSettingField> {
             field_type: "select".to_string(),
             display: None,
             default: Some(json!("api_only")),
-            description: Some("api_only 仅开放 API；qq_http_forward 额外把事件转发到 QQ OneBot HTTP API。".to_string()),
+            description: Some(
+                "api_only 仅开放 API；qq_http_forward 额外把事件转发到 QQ OneBot HTTP API。"
+                    .to_string(),
+            ),
             options: Some(vec![
                 PluginSettingOption {
                     value: "api_only".to_string(),
@@ -287,7 +291,9 @@ pub(crate) fn reload(manager: &PluginManager, plugin_id: &str) -> Result<(), Str
 pub(crate) fn notify_server_event(plugin_id: &str, event: &ServerEventEnvelope) {
     let runtime = {
         let registry = runtime_registry().lock().unwrap_or_else(|e| e.into_inner());
-        registry.get(plugin_id).map(|handle| Arc::clone(&handle.snapshot))
+        registry
+            .get(plugin_id)
+            .map(|handle| Arc::clone(&handle.snapshot))
     };
     let Some(runtime) = runtime else {
         return;
@@ -328,13 +334,20 @@ fn settings_file_path(data_dir: &Path, plugin_id: &str) -> PathBuf {
 }
 
 fn parse_settings(value: Value) -> Result<RuntimeSettings, String> {
-    let mode = match value.get("mode").and_then(Value::as_str).unwrap_or("api_only") {
+    let mode = match value
+        .get("mode")
+        .and_then(Value::as_str)
+        .unwrap_or("api_only")
+    {
         "qq_http_forward" => Obv11Mode::QqHttpForward,
         _ => Obv11Mode::ApiOnly,
     };
 
     Ok(RuntimeSettings {
-        enabled: value.get("enabled").and_then(Value::as_bool).unwrap_or(true),
+        enabled: value
+            .get("enabled")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
         mode,
         listen_addr: value
             .get("listen_addr")
@@ -361,7 +374,12 @@ fn parse_settings(value: Value) -> Result<RuntimeSettings, String> {
             .get("enable_http_post")
             .and_then(Value::as_bool)
             .unwrap_or(false),
-        http_post_urls: parse_lines(value.get("http_post_urls").and_then(Value::as_str).unwrap_or("")),
+        http_post_urls: parse_lines(
+            value
+                .get("http_post_urls")
+                .and_then(Value::as_str)
+                .unwrap_or(""),
+        ),
         http_post_secret: value
             .get("http_post_secret")
             .and_then(Value::as_str)
@@ -380,7 +398,12 @@ fn parse_settings(value: Value) -> Result<RuntimeSettings, String> {
             .unwrap_or("")
             .trim()
             .to_string(),
-        qq_targets: parse_targets(value.get("qq_targets").and_then(Value::as_str).unwrap_or("")),
+        qq_targets: parse_targets(
+            value
+                .get("qq_targets")
+                .and_then(Value::as_str)
+                .unwrap_or(""),
+        ),
     })
 }
 
@@ -410,11 +433,10 @@ fn parse_targets(raw: &str) -> Vec<QqTarget> {
 }
 
 fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, String> {
-    let addr: SocketAddr = runtime
-        .settings
-        .listen_addr
-        .parse()
-        .map_err(|e| format!("Invalid listen_addr '{}': {}", runtime.settings.listen_addr, e))?;
+    let addr: SocketAddr =
+        runtime.settings.listen_addr.parse().map_err(|e| {
+            format!("Invalid listen_addr '{}': {}", runtime.settings.listen_addr, e)
+        })?;
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let snapshot = Arc::clone(&runtime);
     let thread = std::thread::spawn(move || {
@@ -423,9 +445,7 @@ fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, 
             .build()
             .expect("obv11-client tokio runtime should build");
         rt.block_on(async move {
-            let state = HttpAppState {
-                runtime: Arc::clone(&snapshot),
-            };
+            let state = HttpAppState { runtime: Arc::clone(&snapshot) };
             let app = Router::new()
                 .route("/health", get(|| async { "OK" }))
                 .route("/api/:action", get(handle_http_action).post(handle_http_action))
@@ -488,12 +508,26 @@ fn build_config_fingerprint() -> ConfigFingerprint {
     let mut entries = HashMap::new();
     for server in global::server_manager().get_server_list() {
         let mut files = HashMap::new();
-        for relative in ["server.properties", "SeaLantern/config.toml", "SL.json"] {
-            let path = Path::new(&server.path).join(relative);
+        let discovered = match discover_server_config_files(&server.path) {
+            Ok(discovered) => discovered,
+            Err(error) => {
+                log_plugin_warn(
+                    "build_config_fingerprint",
+                    &format!(
+                        "discover config files failed server_id={} error={}",
+                        server.id, error
+                    ),
+                );
+                Vec::new()
+            }
+        };
+        for entry in discovered {
+            let relative = entry.relative_path;
+            let path = Path::new(&server.path).join(&relative);
             if let Ok(metadata) = std::fs::metadata(&path) {
                 if let Ok(modified) = metadata.modified() {
                     if let Ok(duration) = modified.duration_since(UNIX_EPOCH) {
-                        files.insert(relative.to_string(), duration.as_secs());
+                        files.insert(relative, duration.as_secs());
                     }
                 }
             }
@@ -538,7 +572,9 @@ async fn handle_http_action(
         );
     }
 
-    let params = body.map(|Json(value)| value).unwrap_or_else(|| json!(query));
+    let params = body
+        .map(|Json(value)| value)
+        .unwrap_or_else(|| json!(query));
     handle_action_response(&state.runtime, ApiEnvelope { action, params, echo: None }).await
 }
 
@@ -594,22 +630,33 @@ fn authorized(access_token: &str, headers: &HeaderMap, query: &HashMap<String, S
     if access_token.trim().is_empty() {
         return true;
     }
-    if let Some(value) = headers.get("authorization").and_then(|item| item.to_str().ok()) {
+    if let Some(value) = headers
+        .get("authorization")
+        .and_then(|item| item.to_str().ok())
+    {
         if value.trim() == format!("Bearer {}", access_token) {
             return true;
         }
     }
-    query.get("access_token").is_some_and(|value| value == access_token)
+    query
+        .get("access_token")
+        .is_some_and(|value| value == access_token)
 }
 
 async fn handle_api_socket(runtime: Arc<RuntimeSnapshot>, mut socket: WebSocket) {
     while let Some(Ok(message)) = socket.recv().await {
-        let Message::Text(text) = message else { continue };
+        let Message::Text(text) = message else {
+            continue;
+        };
         let response = match serde_json::from_str::<ApiEnvelope>(&text) {
             Ok(envelope) => handle_action_value(&runtime, envelope).await,
-            Err(error) => action_response("failed", 1400, json!({ "error": error.to_string() }), None),
+            Err(error) => {
+                action_response("failed", 1400, json!({ "error": error.to_string() }), None)
+            }
         };
-        let _ = socket.send(Message::Text(serde_json::to_string(&response).unwrap_or_default().into())).await;
+        let _ = socket
+            .send(Message::Text(serde_json::to_string(&response).unwrap_or_default().into()))
+            .await;
     }
 }
 
@@ -622,7 +669,9 @@ async fn handle_event_socket(runtime: Arc<RuntimeSnapshot>, socket: WebSocket, u
             if !universal {
                 continue;
             }
-            let Message::Text(text) = message else { continue };
+            let Message::Text(text) = message else {
+                continue;
+            };
             if let Ok(envelope) = serde_json::from_str::<ApiEnvelope>(&text) {
                 let response = handle_action_value(&api_runtime, envelope).await;
                 let _ = api_runtime
@@ -645,7 +694,10 @@ async fn handle_action_response(runtime: &Arc<RuntimeSnapshot>, envelope: ApiEnv
     json_response(StatusCode::OK, handle_action_value(runtime, envelope).await)
 }
 
-async fn handle_action_value(runtime: &Arc<RuntimeSnapshot>, envelope: ApiEnvelope) -> ActionResponse {
+async fn handle_action_value(
+    runtime: &Arc<RuntimeSnapshot>,
+    envelope: ApiEnvelope,
+) -> ActionResponse {
     let result = match envelope.action.as_str() {
         "get_status" | "get_sealantern_status" => Ok(build_app_status(runtime)),
         "get_version_info" => Ok(json!({
@@ -714,12 +766,20 @@ fn prepare_confirmation(action: &str, params: &Value) -> Result<Value, String> {
         payload: params.clone(),
         expires_at: now_secs() + CONFIRM_TTL_SECS,
     };
-    confirmation_registry().lock().unwrap_or_else(|e| e.into_inner()).insert(token.clone(), ticket.clone());
-    Ok(json!({ "token": token, "expires_at": ticket.expires_at, "action": action, "server_id": server_id }))
+    confirmation_registry()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(token.clone(), ticket.clone());
+    Ok(
+        json!({ "token": token, "expires_at": ticket.expires_at, "action": action, "server_id": server_id }),
+    )
 }
 
 fn apply_confirmation(expected_action: &str, params: &Value) -> Result<Value, String> {
-    let token = params.get("token").and_then(Value::as_str).ok_or_else(|| "token is required".to_string())?;
+    let token = params
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "token is required".to_string())?;
     let ticket = confirmation_registry()
         .lock()
         .unwrap_or_else(|e| e.into_inner())
@@ -729,7 +789,10 @@ fn apply_confirmation(expected_action: &str, params: &Value) -> Result<Value, St
         return Err("confirmation token expired".to_string());
     }
     if ticket.action != expected_action {
-        return Err(format!("confirmation token action mismatch: expected {} got {}", expected_action, ticket.action));
+        return Err(format!(
+            "confirmation token action mismatch: expected {} got {}",
+            expected_action, ticket.action
+        ));
     }
     match expected_action {
         "start_server" => {
@@ -741,10 +804,16 @@ fn apply_confirmation(expected_action: &str, params: &Value) -> Result<Value, St
             Ok(json!({ "ok": true }))
         }
         "write_sl_config" => {
-            let config = ticket.payload.get("config").cloned().ok_or_else(|| "config is required".to_string())?;
+            let config = ticket
+                .payload
+                .get("config")
+                .cloned()
+                .ok_or_else(|| "config is required".to_string())?;
             let server = global::server_manager().find_server_clone(&ticket.server_id)?;
-            let parsed = serde_json::from_value::<sea_lantern_server_config_core::types::SLStartupConfig>(config)
-                .map_err(|e| format!("invalid startup config: {}", e))?;
+            let parsed = serde_json::from_value::<
+                sea_lantern_server_config_core::types::SLStartupConfig,
+            >(config)
+            .map_err(|e| format!("invalid startup config: {}", e))?;
             crate::commands::server::config::write_sl_config(server.path.clone(), parsed)?;
             Ok(json!({ "ok": true }))
         }
@@ -753,7 +822,9 @@ fn apply_confirmation(expected_action: &str, params: &Value) -> Result<Value, St
 }
 
 fn dispatch_event(runtime: &Arc<RuntimeSnapshot>, event: Value) {
-    let Ok(text) = serde_json::to_string(&event) else { return; };
+    let Ok(text) = serde_json::to_string(&event) else {
+        return;
+    };
     let _ = runtime.event_sender.send(text.clone());
     maybe_forward_http_post(runtime, &text);
     maybe_forward_qq(runtime, &text);
@@ -777,13 +848,16 @@ fn emit_debug(runtime: &Arc<RuntimeSnapshot>, tag: &str, message: &str) {
 }
 
 fn send_meta_event(runtime: &Arc<RuntimeSnapshot>, sub_type: &str) {
-    dispatch_event(runtime, json!({
-        "time": now_secs(),
-        "self_id": runtime.settings.self_id,
-        "post_type": "meta_event",
-        "meta_event_type": "lifecycle",
-        "sub_type": sub_type,
-    }));
+    dispatch_event(
+        runtime,
+        json!({
+            "time": now_secs(),
+            "self_id": runtime.settings.self_id,
+            "post_type": "meta_event",
+            "meta_event_type": "lifecycle",
+            "sub_type": sub_type,
+        }),
+    );
 }
 
 fn maybe_forward_http_post(runtime: &Arc<RuntimeSnapshot>, body: &str) {
@@ -795,7 +869,12 @@ fn maybe_forward_http_post(runtime: &Arc<RuntimeSnapshot>, body: &str) {
     std::thread::spawn(move || {
         let client = reqwest::blocking::Client::new();
         for url in urls {
-            if let Err(error) = client.post(&url).header(reqwest::header::CONTENT_TYPE, "application/json").body(body.clone()).send() {
+            if let Err(error) = client
+                .post(&url)
+                .header(reqwest::header::CONTENT_TYPE, "application/json")
+                .body(body.clone())
+                .send()
+            {
                 log_plugin_warn("maybe_forward_http_post", &format!("url={} error={}", url, error));
             }
         }
@@ -809,7 +888,11 @@ fn maybe_forward_qq(runtime: &Arc<RuntimeSnapshot>, body: &str) {
     {
         return;
     }
-    let base = runtime.settings.qq_api_base_url.trim_end_matches('/').to_string();
+    let base = runtime
+        .settings
+        .qq_api_base_url
+        .trim_end_matches('/')
+        .to_string();
     let token = runtime.settings.qq_access_token.clone();
     let targets = runtime.settings.qq_targets.clone();
     let body = body.to_string();
@@ -826,13 +909,19 @@ fn maybe_forward_qq(runtime: &Arc<RuntimeSnapshot>, body: &str) {
                 request = request.bearer_auth(token.as_str());
             }
             if let Err(error) = request.send() {
-                log_plugin_warn("maybe_forward_qq", &format!("target={} error={}", target.id, error));
+                log_plugin_warn(
+                    "maybe_forward_qq",
+                    &format!("target={} error={}", target.id, error),
+                );
             }
         }
     });
 }
 
-fn map_server_event_to_onebot(runtime: &Arc<RuntimeSnapshot>, event: &ServerEventEnvelope) -> Value {
+fn map_server_event_to_onebot(
+    runtime: &Arc<RuntimeSnapshot>,
+    event: &ServerEventEnvelope,
+) -> Value {
     match &event.payload {
         ServerEventPayload::Lifecycle { detail, error, from_mode, to_mode } => json!({
             "time": now_secs(),
@@ -881,7 +970,12 @@ fn map_server_event_to_onebot(runtime: &Arc<RuntimeSnapshot>, event: &ServerEven
     }
 }
 
-fn action_response(status: &'static str, retcode: i32, data: Value, echo: Option<Value>) -> ActionResponse {
+fn action_response(
+    status: &'static str,
+    retcode: i32,
+    data: Value,
+    echo: Option<Value>,
+) -> ActionResponse {
     ActionResponse { status, retcode, data, echo }
 }
 
@@ -912,7 +1006,8 @@ mod tests {
 
     #[test]
     fn default_settings_parse() {
-        let settings = parse_settings(default_settings_json()).expect("default settings should parse");
+        let settings =
+            parse_settings(default_settings_json()).expect("default settings should parse");
         assert_eq!(settings.listen_addr, "127.0.0.1:5710");
         assert!(settings.enable_http_api);
         assert!(settings.enable_ws_api);

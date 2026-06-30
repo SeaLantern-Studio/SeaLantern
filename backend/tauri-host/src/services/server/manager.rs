@@ -25,7 +25,7 @@ use crate::services::events::{
 use crate::services::server::runtime;
 use crate::utils::logger;
 use crate::utils::server_status::status_blocks_start;
-use sea_lantern_server_config_core::properties::read_properties;
+use sea_lantern_server_config_core::startup::read_server_port;
 use sea_lantern_server_local_setup_core::{
     normalize_cli_startup_mode, refresh_local_server_core_type,
 };
@@ -843,19 +843,7 @@ impl ServerManager {
                 server.jar_path(),
             );
 
-            // 尝试从 server.properties 读取端口
-            let server_properties_path = std::path::Path::new(new_path).join("server.properties");
-            if server_properties_path.exists() {
-                if let Ok(props) =
-                    read_properties(server_properties_path.to_str().unwrap_or_default())
-                {
-                    if let Some(port_str) = props.get("server-port") {
-                        if let Ok(parsed_port) = port_str.parse::<u16>() {
-                            server.port = parsed_port;
-                        }
-                    }
-                }
-            }
+            server.port = read_server_port(std::path::Path::new(new_path), server.port);
 
             let updated_server = server.clone();
             drop(servers);

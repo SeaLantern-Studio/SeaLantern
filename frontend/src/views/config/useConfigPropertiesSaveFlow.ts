@@ -1,5 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue";
 import { configApi } from "@api/config";
+import type { ServerConfigDiscoveryOptions, ServerConfigFileKind } from "@api/config";
 import { i18n } from "@language";
 import { buildDiffLines } from "@utils/configDiff";
 
@@ -8,6 +9,9 @@ export interface PendingSaveItem {
   serverName: string;
   serverPath: string;
   filePath: string;
+  relativePath: string;
+  locator?: string;
+  discoveryOptions?: ServerConfigDiscoveryOptions;
   originalText: string;
   modifiedText: string;
 }
@@ -29,7 +33,11 @@ interface SaveCompareContext {
 
 interface UseConfigPropertiesSaveFlowOptions {
   serverPath: Ref<string>;
-  serverPropertiesPath: Ref<string>;
+  currentConfigRelativePath: Ref<string>;
+  currentConfigLocator: Ref<string>;
+  currentConfigFilePath: Ref<string>;
+  currentConfigKind: Ref<ServerConfigFileKind | null>;
+  discoveryOptions: Ref<ServerConfigDiscoveryOptions>;
   currentServerId: Ref<string | null>;
   currentServerName: ComputedRef<string>;
   editorMode: Ref<"visual" | "source">;
@@ -114,16 +122,16 @@ export function useConfigPropertiesSaveFlow(options: UseConfigPropertiesSaveFlow
   }
 
   async function buildVisualPreviewSource() {
-    const changedValues = getChangedPropertyValues();
-
-    if (options.sourceDraftText.value !== options.loadedSourceText.value) {
-      return configApi.previewServerPropertiesWriteFromSource(
-        options.sourceDraftText.value,
-        changedValues,
-      );
+    if (options.currentConfigKind.value !== "properties") {
+      return options.sourceDraftText.value;
     }
 
-    return configApi.previewServerPropertiesWrite(options.serverPath.value, changedValues);
+    const changedValues = getChangedPropertyValues();
+    const baseSource =
+      options.sourceDraftText.value !== options.loadedSourceText.value
+        ? options.sourceDraftText.value
+        : options.loadedSourceText.value;
+    return configApi.previewServerPropertiesWriteFromSource(baseSource, changedValues);
   }
 
   async function saveProperties() {
@@ -165,11 +173,14 @@ export function useConfigPropertiesSaveFlow(options: UseConfigPropertiesSaveFlow
         options.sourceDraftText.value !== options.loadedSourceText.value ||
         !areMapValuesEqual(options.editValues.value, options.loadedValues.value);
       if (sourceChanged) {
-        const latestSourceText = await configApi.readServerPropertiesSource(
+        const latestSourceText = await configApi.readServerConfigSource(
           options.serverPath.value,
+          options.currentConfigRelativePath.value,
+          options.currentConfigLocator.value || undefined,
+          options.discoveryOptions.value,
         );
         const nextSourceText =
-          options.editorMode.value === "visual"
+          options.editorMode.value === "visual" && options.currentConfigKind.value === "properties"
             ? await buildVisualPreviewSource()
             : options.sourceDraftText.value;
 
@@ -178,7 +189,10 @@ export function useConfigPropertiesSaveFlow(options: UseConfigPropertiesSaveFlow
             serverId: options.currentServerId.value || "",
             serverName: options.currentServerName.value || i18n.t("config.compare.source_server"),
             serverPath: options.serverPath.value,
-            filePath: options.serverPropertiesPath.value,
+            filePath: options.currentConfigFilePath.value,
+            relativePath: options.currentConfigRelativePath.value,
+            locator: options.currentConfigLocator.value || undefined,
+            discoveryOptions: options.discoveryOptions.value,
             originalText: latestSourceText,
             modifiedText: nextSourceText,
           });
@@ -196,8 +210,9 @@ export function useConfigPropertiesSaveFlow(options: UseConfigPropertiesSaveFlow
             context.compareTargetLoadedValues.value,
           ));
       if (targetDirty && context?.compareTargetPath.value) {
-        const latestTargetText = await configApi.readServerPropertiesSource(
+        const latestTargetText = await configApi.readServerConfigSource(
           context.compareTargetPath.value,
+          options.currentConfigRelativePath.value,
         );
         const nextTargetText =
           options.editorMode.value === "visual"
@@ -211,6 +226,7 @@ export function useConfigPropertiesSaveFlow(options: UseConfigPropertiesSaveFlow
               context.compareTargetServerName.value || i18n.t("config.compare.target_server"),
             serverPath: context.compareTargetPath.value,
             filePath: context.compareTargetServerPropertiesPath.value,
+            relativePath: options.currentConfigRelativePath.value,
             originalText: latestTargetText,
             modifiedText: nextTargetText,
           });
@@ -245,7 +261,13 @@ export function useConfigPropertiesSaveFlow(options: UseConfigPropertiesSaveFlow
     try {
       await Promise.all(
         pendingSaveItems.value.map((item) =>
-          configApi.writeServerPropertiesSource(item.serverPath, item.modifiedText),
+          configApi.writeServerConfigSource(
+            item.serverPath,
+            item.relativePath,
+            item.modifiedText,
+            item.locator,
+            item.discoveryOptions,
+          ),
         ),
       );
 

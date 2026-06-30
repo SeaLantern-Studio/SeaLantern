@@ -18,6 +18,7 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("pick_startup_file", handle_unsupported as CommandHandler);
     builder.register("pick_java_file", handle_unsupported as CommandHandler);
     builder.register("pick_folder", handle_unsupported as CommandHandler);
+    builder.register("pick_file", handle_unsupported as CommandHandler);
     builder.register("pick_image_file", handle_unsupported as CommandHandler);
 }
 

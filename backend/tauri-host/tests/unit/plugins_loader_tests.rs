@@ -171,9 +171,7 @@ fn test_validate_manifest_allows_missing_sealantern_engine_requirement() {
 #[test]
 fn test_validate_manifest_accepts_satisfied_sealantern_engine_requirement() {
     let mut manifest = make_manifest(vec![]);
-    manifest.engines = Some(PluginEngines {
-        sealantern: Some("^1.2.0".into()),
-    });
+    manifest.engines = Some(PluginEngines { sealantern: Some("^1.2.0".into()) });
 
     assert!(PluginLoader::validate_manifest_against_version(&manifest, "1.2.3").is_ok());
 }
@@ -181,9 +179,7 @@ fn test_validate_manifest_accepts_satisfied_sealantern_engine_requirement() {
 #[test]
 fn test_validate_manifest_rejects_unsatisfied_sealantern_engine_requirement() {
     let mut manifest = make_manifest(vec![]);
-    manifest.engines = Some(PluginEngines {
-        sealantern: Some(">=9.0.0".into()),
-    });
+    manifest.engines = Some(PluginEngines { sealantern: Some(">=9.0.0".into()) });
 
     let error = PluginLoader::validate_manifest_against_version(&manifest, "1.2.3")
         .expect_err("manifest should be rejected when engines.sealantern is not satisfied");
@@ -199,10 +195,7 @@ fn test_classify_install_error_extracts_sealantern_compatibility_issue() {
     )
     .expect("compatibility issue should be classified");
 
-    assert_eq!(
-        issue.code,
-        "plugins.install.issue.incompatible_sealantern_version"
-    );
+    assert_eq!(issue.code, "plugins.install.issue.incompatible_sealantern_version");
     assert_eq!(
         issue.args.get("plugin_id").and_then(|value| value.as_str()),
         Some("com.example.test")

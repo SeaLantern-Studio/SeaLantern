@@ -162,6 +162,11 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String
 }
 
 #[tauri::command]
+pub async fn pick_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    dialogs::pick_file(app).await
+}
+
+#[tauri::command]
 pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     dialogs::pick_image_file(app).await
 }

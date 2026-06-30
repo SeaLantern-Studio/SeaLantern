@@ -1,6 +1,11 @@
 import { computed, ref, shallowRef, type ComputedRef, type Ref } from "vue";
 import { configApi } from "@api/config";
-import type { ConfigEntry as ConfigEntryType } from "@api/config";
+import type {
+  ConfigEntry as ConfigEntryType,
+  DiscoveredServerConfigFile,
+  ServerConfigDiscoveryOptions,
+  ServerConfigFileKind,
+} from "@api/config";
 import { i18n } from "@language";
 import { useConfigPropertiesModeSwitch } from "@views/config/useConfigPropertiesModeSwitch";
 import { useConfigPropertiesReloadGuard } from "@views/config/useConfigPropertiesReloadGuard";
@@ -31,7 +36,12 @@ const COMPARE_DIFFERENCE_CATEGORY = "difference";
 
 interface UseConfigPropertiesEditorOptions {
   serverPath: Ref<string>;
-  serverPropertiesPath: Ref<string>;
+  currentConfigFile: Ref<DiscoveredServerConfigFile | null>;
+  currentConfigLocator: Ref<string>;
+  discoveryOptions: Ref<ServerConfigDiscoveryOptions>;
+  selectedConfigRelativePath: Ref<string>;
+  currentConfigFilePath: Ref<string>;
+  currentConfigLabel: ComputedRef<string>;
   currentServerId: Ref<string | null>;
   currentServerName: ComputedRef<string>;
   setError: (message: string | null) => void;
@@ -60,11 +70,15 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   const sourceParseError = ref<string | null>(null);
 
   const compareContext = shallowRef<CompareContext | null>(null);
+  const currentConfigKind = computed<ServerConfigFileKind | null>(
+    () => options.currentConfigFile.value?.kind ?? null,
+  );
+  const isPropertiesFile = computed(() => currentConfigKind.value === "properties");
 
   const categories = computed(() => {
     const cats = new Set(entries.value.map((e) => e.category));
     const categoryList = ["all", ...Array.from(cats)];
-    if (compareContext.value?.compareMode.value) {
+    if (isPropertiesFile.value && compareContext.value?.compareMode.value) {
       categoryList.push(COMPARE_DIFFERENCE_CATEGORY);
     }
     return categoryList;
@@ -103,6 +117,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   const hasUnsavedChanges = computed(() => {
     const context = compareContext.value;
     const targetDirty =
+      isPropertiesFile.value &&
       !!context?.compareMode.value &&
       (context.compareTargetSourceDraftText.value !== context.compareTargetLoadedSourceText.value ||
         !areMapValuesEqual(
@@ -129,7 +144,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
   const reloadCurrentTooltipText = computed(() =>
     i18n.t("config.reload_properties_tooltip", {
-      name: options.currentServerName.value || i18n.t("config.current_server"),
+      name: `${options.currentServerName.value || i18n.t("config.current_server")} · ${options.currentConfigLabel.value}`,
     }),
   );
 
@@ -148,6 +163,19 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     sourceText: string,
     targetMode: "visual" | "source" = "visual",
   ) {
+    if (!isPropertiesFile.value) {
+      entries.value = [];
+      editValues.value = {};
+      loadedValues.value = {};
+      visualModeBaseValues.value = {};
+      sourceDraftText.value = sourceText;
+      loadedSourceText.value = sourceText;
+      modeSwitch.clearSourceParseError();
+      modeSwitch.visualDraftDirty.value = false;
+      editorMode.value = "source";
+      return null;
+    }
+
     const parsed = await configApi.parseServerPropertiesSource(sourceText);
     entries.value = parsed.entries as ConfigEntryType[];
     editValues.value = { ...parsed.raw };
@@ -169,7 +197,11 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
   const saveFlow = useConfigPropertiesSaveFlow({
     serverPath: options.serverPath,
-    serverPropertiesPath: options.serverPropertiesPath,
+    currentConfigRelativePath: computed(() => options.currentConfigFile.value?.relative_path ?? ""),
+    currentConfigLocator: options.currentConfigLocator,
+    currentConfigFilePath: options.currentConfigFilePath,
+    currentConfigKind,
+    discoveryOptions: options.discoveryOptions,
     currentServerId: options.currentServerId,
     currentServerName: options.currentServerName,
     editorMode,
@@ -189,6 +221,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
   const modeSwitch = useConfigPropertiesModeSwitch({
     serverPath: options.serverPath,
+    currentConfigKind,
     editorMode,
     sourceDraftText,
     editValues,
@@ -200,16 +233,21 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   });
 
   async function loadProperties() {
-    if (!options.serverPath.value) return;
+    if (!options.serverPath.value || !options.currentConfigFile.value) return;
 
     loading.value = true;
     options.setError(null);
     try {
-      const sourceText = await configApi.readServerPropertiesSource(options.serverPath.value);
-      await applyParsedSourceState(sourceText, "visual");
+      const sourceText = await configApi.readServerConfigSource(
+        options.serverPath.value,
+        options.currentConfigFile.value.relative_path,
+        options.currentConfigLocator.value || undefined,
+        options.discoveryOptions.value,
+      );
+      await applyParsedSourceState(sourceText, isPropertiesFile.value ? "visual" : "source");
 
       const context = compareContext.value;
-      if (context?.compareMode.value && context.compareTargetServerId.value) {
+      if (isPropertiesFile.value && context?.compareMode.value && context.compareTargetServerId.value) {
         await context.loadCompareProperties();
       }
     } catch (e) {
@@ -234,13 +272,18 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   }
 
   async function loadCurrentPropertiesOnly() {
-    if (!options.serverPath.value) return;
+    if (!options.serverPath.value || !options.currentConfigFile.value) return;
 
     loading.value = true;
     options.setError(null);
     try {
-      const sourceText = await configApi.readServerPropertiesSource(options.serverPath.value);
-      await applyParsedSourceState(sourceText, "visual");
+      const sourceText = await configApi.readServerConfigSource(
+        options.serverPath.value,
+        options.currentConfigFile.value.relative_path,
+        options.currentConfigLocator.value || undefined,
+        options.discoveryOptions.value,
+      );
+      await applyParsedSourceState(sourceText, isPropertiesFile.value ? "visual" : "source");
     } catch (e) {
       options.setError(String(e));
       entries.value = [];
@@ -255,6 +298,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
   const reloadGuard = useConfigPropertiesReloadGuard({
     currentServerName: options.currentServerName,
+    currentConfigLabel: options.currentConfigLabel,
     sourceDraftText,
     loadedSourceText,
     editValues,
@@ -274,7 +318,9 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     }
 
     editValues.value[key] = String(value);
-    modeSwitch.markVisualDraftDirty();
+    if (isPropertiesFile.value) {
+      modeSwitch.markVisualDraftDirty();
+    }
   }
 
   function updateSourceDraft(value: string) {
@@ -310,6 +356,10 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     searchQuery.value = value;
   }
 
+  function selectConfigFile(relativePath: string | number) {
+    options.selectedConfigRelativePath.value = String(relativePath);
+  }
+
   return {
     entries,
     editValues,
@@ -328,6 +378,11 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     categories,
     filteredEntries,
     numericFieldErrors,
+    currentConfigKind,
+    currentConfigFile: options.currentConfigFile,
+    currentConfigLabel: options.currentConfigLabel,
+    currentConfigFilePath: options.currentConfigFilePath,
+    isPropertiesFile,
     hasUnsavedChanges,
     saveStatusText,
     hasInvalidNumericValues,
@@ -340,6 +395,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     getTranslatedPropertyDescription,
     loadProperties,
     loadCurrentPropertiesOnly,
+    selectConfigFile,
     saveProperties: saveFlow.saveProperties,
     updateValue,
     updateSourceDraft,

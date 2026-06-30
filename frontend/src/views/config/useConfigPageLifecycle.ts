@@ -6,6 +6,7 @@ interface UseConfigPageLifecycleOptions {
   serverCount: ComputedRef<number>;
   setCurrentServer: (id: string | null) => void;
   refreshList: () => Promise<void>;
+  loadConfigFiles: () => Promise<void>;
   loadProperties: () => Promise<void>;
   loadPlugins: () => Promise<void>;
   compareTargetServerId: Ref<string>;
@@ -22,6 +23,7 @@ export function useConfigPageLifecycle(options: UseConfigPageLifecycleOptions) {
       return;
     }
 
+    await options.loadConfigFiles();
     await Promise.all([options.loadProperties(), options.loadPlugins()]);
   }
 

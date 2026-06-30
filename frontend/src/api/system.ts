@@ -245,6 +245,18 @@ export const systemApi = {
     return tauriInvoke("pick_folder");
   },
 
+  async pickFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      const file = await pickFileFromBrowser();
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
+    }
+    return tauriInvoke("pick_file");
+  },
+
   async pickImageFile(): Promise<string | null> {
     if (isUploadSupported()) {
       const file = await pickFileFromBrowser({ accept: ".png,.jpg,.jpeg,.webp,.gif,.bmp" });

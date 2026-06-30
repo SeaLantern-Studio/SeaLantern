@@ -11,12 +11,33 @@ async function scanServerPort(server: ServerInstance) {
     const serverPath = server.path;
     if (!serverPath) return;
 
-    const data = await configApi.readServerProperties(serverPath);
-    if (data.raw && data.raw["server-port"]) {
-      const port = parseInt(data.raw["server-port"]);
-      if (!isNaN(port)) {
-        server.port = port;
-      }
+    const files = await configApi.listServerConfigFiles(serverPath);
+    const portConfig =
+      files.find((file) => file.known_role === "pumpkin") ||
+      files.find((file) => file.known_role === "server_properties");
+    if (!portConfig) {
+      return;
+    }
+
+    const document = await configApi.readServerConfigDocument(serverPath, portConfig.relative_path);
+    const content = document.content as Record<string, unknown> | null;
+    let portValue: string | number | undefined;
+
+    if (portConfig.known_role === "pumpkin") {
+      const address = typeof content?.java_edition_address === "string" ? content.java_edition_address : "";
+      const portText = address.split(":").pop();
+      portValue = portText;
+    } else if (content && typeof content["server-port"] !== "undefined") {
+      portValue = content["server-port"] as string | number;
+    }
+
+    if (typeof portValue === "undefined") {
+      return;
+    }
+
+    const port = parseInt(String(portValue));
+    if (!isNaN(port)) {
+      server.port = port;
     }
   } catch (error) {
     console.warn(`Failed to scan port for server ${server.id}:`, error);

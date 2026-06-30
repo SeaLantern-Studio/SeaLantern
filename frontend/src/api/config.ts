@@ -1,6 +1,24 @@
 import { tauriInvoke } from "@api/tauri";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 
+export type ServerConfigFileKind = "properties" | "toml" | "yaml" | "json";
+
+export type ServerConfigOwnership = "service_managed" | "server_managed" | "third_party";
+
+export type ServerConfigSourceKind = "server_root" | "manual_root" | "manual_file";
+
+export type ServerConfigSearchMode = "keyword" | "regex" | "similarity";
+
+export type ServerConfigSearchScope = "path" | "content" | "all";
+
+export type ServerConfigJsonMode = "disabled" | "filtered" | "all";
+
+export type KnownServerConfigRole =
+  | "startup_primary"
+  | "startup_legacy"
+  | "server_properties"
+  | "pumpkin";
+
 /**
  * 配置条目
  */
@@ -19,6 +37,54 @@ export interface ConfigEntry {
 export interface ServerProperties {
   entries: ConfigEntry[];
   raw: Record<string, string>;
+}
+
+export interface DiscoveredServerConfigFile {
+  locator: string;
+  relative_path: string;
+  file_name: string;
+  absolute_path: string;
+  source_kind: ServerConfigSourceKind;
+  source_label: string;
+  server_relative_path?: string | null;
+  kind: ServerConfigFileKind;
+  known_role?: KnownServerConfigRole | null;
+  ownership: ServerConfigOwnership;
+  priority: number;
+}
+
+export interface ServerConfigSearchHit {
+  locator: string;
+  relative_path: string;
+  file_name: string;
+  absolute_path: string;
+  source_kind: ServerConfigSourceKind;
+  source_label: string;
+  server_relative_path?: string | null;
+  kind: ServerConfigFileKind;
+  known_role?: KnownServerConfigRole | null;
+  ownership: ServerConfigOwnership;
+  priority: number;
+  score: number;
+  reason: string;
+  content_match?: ServerConfigContentMatch | null;
+}
+
+export interface ServerConfigContentMatch {
+  line_number: number;
+  line_text: string;
+}
+
+export interface ServerConfigDiscoveryOptions {
+  manual_import_dirs: string[];
+  manual_import_files: string[];
+  json_mode: ServerConfigJsonMode;
+}
+
+export interface ServerConfigDocument {
+  relative_path: string;
+  kind: ServerConfigFileKind;
+  content: unknown;
 }
 
 /**
@@ -42,6 +108,93 @@ export const configApi = {
   async readServerProperties(serverPath: string): Promise<ServerProperties> {
     return tauriInvoke("read_server_properties", {
       serverPath,
+    });
+  },
+
+  async listServerConfigFiles(
+    serverPath: string,
+    discoveryOptions?: ServerConfigDiscoveryOptions,
+  ): Promise<DiscoveredServerConfigFile[]> {
+    return tauriInvoke("list_server_config_files", { serverPath, discoveryOptions });
+  },
+
+  async searchServerConfigFiles(
+    serverPath: string,
+    query: string,
+    mode: ServerConfigSearchMode,
+    scope: ServerConfigSearchScope,
+    discoveryOptions?: ServerConfigDiscoveryOptions,
+    limit?: number,
+    caseSensitive = false,
+  ): Promise<ServerConfigSearchHit[]> {
+    return tauriInvoke("search_server_config_files", {
+      serverPath,
+      query,
+      mode,
+      scope,
+      discoveryOptions,
+      limit,
+      caseSensitive,
+    });
+  },
+
+  async readServerConfigSource(
+    serverPath: string,
+    relativePath: string,
+    locator?: string,
+    discoveryOptions?: ServerConfigDiscoveryOptions,
+  ): Promise<string> {
+    return tauriInvoke("read_server_config_source", {
+      serverPath,
+      relativePath,
+      locator,
+      discoveryOptions,
+    });
+  },
+
+  async writeServerConfigSource(
+    serverPath: string,
+    relativePath: string,
+    source: string,
+    locator?: string,
+    discoveryOptions?: ServerConfigDiscoveryOptions,
+  ): Promise<void> {
+    return tauriInvoke("write_server_config_source", {
+      serverPath,
+      relativePath,
+      locator,
+      discoveryOptions,
+      source,
+    });
+  },
+
+  async readServerConfigDocument(
+    serverPath: string,
+    relativePath: string,
+    locator?: string,
+    discoveryOptions?: ServerConfigDiscoveryOptions,
+  ): Promise<ServerConfigDocument> {
+    return tauriInvoke("read_server_config_document", {
+      serverPath,
+      relativePath,
+      locator,
+      discoveryOptions,
+    });
+  },
+
+  async writeServerConfigDocument(
+    serverPath: string,
+    relativePath: string,
+    content: unknown,
+    locator?: string,
+    discoveryOptions?: ServerConfigDiscoveryOptions,
+  ): Promise<void> {
+    return tauriInvoke("write_server_config_document", {
+      serverPath,
+      relativePath,
+      locator,
+      discoveryOptions,
+      content,
     });
   },
 

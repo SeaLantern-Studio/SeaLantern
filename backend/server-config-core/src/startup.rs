@@ -2,10 +2,14 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use toml_edit::{value, DocumentMut};
 
+use crate::discovery::{
+    resolve_primary_port_config_path, resolve_primary_server_properties_path,
+    resolve_primary_startup_config_path,
+};
 use crate::properties;
 use crate::types::{
-    CpuPolicyConfig, JvmPresetConfig, SLStartupConfig, ServerStartupConfigDocument,
-    StartupConfigPresence,
+    CpuPolicyConfig, JvmPresetConfig, KnownServerConfigRole, SLStartupConfig,
+    ServerStartupConfigDocument, StartupConfigPresence,
 };
 
 const INSTANCE_CONFIG_DIR_NAME: &str = "SeaLantern";
@@ -201,10 +205,8 @@ fn resolve_config_target_path(file_path: &str) -> Result<PathBuf, String> {
 }
 
 pub fn build_server_properties_path(server_path: &str) -> Result<String, String> {
-    validate_config_path(server_path)?;
-    let props_path = format!("{}/server.properties", server_path);
-    validate_path_within_server(server_path, &props_path)?;
-    Ok(props_path)
+    let props_path = resolve_primary_server_properties_path(server_path)?;
+    Ok(props_path.to_string_lossy().to_string())
 }
 
 fn read_startup_document_from_toml(path: &Path) -> Result<ServerStartupConfigDocument, String> {
@@ -260,14 +262,12 @@ pub fn read_server_startup_config(server_path: &str) -> Result<SLStartupConfig, 
 pub fn read_server_startup_config_document(
     server_path: &str,
 ) -> Result<ServerStartupConfigDocument, String> {
-    let instance_config_path = build_instance_config_path(server_path)?;
-    if instance_config_path.exists() {
-        return read_startup_document_from_toml(&instance_config_path);
-    }
-
-    let legacy_path = build_legacy_sl_config_path(server_path)?;
-    if legacy_path.exists() {
-        return read_startup_document_from_legacy_json(&legacy_path);
+    if let Some((role, path)) = resolve_primary_startup_config_path(server_path)? {
+        return match role {
+            KnownServerConfigRole::StartupPrimary => read_startup_document_from_toml(&path),
+            KnownServerConfigRole::StartupLegacy => read_startup_document_from_legacy_json(&path),
+            _ => Ok(ServerStartupConfigDocument::default()),
+        };
     }
 
     Ok(ServerStartupConfigDocument::default())
@@ -319,17 +319,19 @@ pub fn read_server_port(server_dir: &Path, fallback: u16) -> u16 {
 }
 
 pub fn read_server_port_checked(server_dir: &Path) -> Result<Option<u16>, String> {
-    let pumpkin_path = server_dir.join("pumpkin.toml");
-    if pumpkin_path.exists() {
-        return read_pumpkin_port_checked(&pumpkin_path);
-    }
-
-    let server_properties_path = server_dir.join("server.properties");
-    if !server_properties_path.exists() {
+    let Some(config_path) = resolve_primary_port_config_path(server_dir)? else {
         return Ok(None);
+    };
+
+    if config_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.eq_ignore_ascii_case("pumpkin.toml"))
+    {
+        return read_pumpkin_port_checked(&config_path);
     }
 
-    let props = properties::read_properties(&server_properties_path.to_string_lossy())?;
+    let props = properties::read_properties(&config_path.to_string_lossy())?;
     let Some(port_str) = props.get("server-port") else {
         return Ok(None);
     };

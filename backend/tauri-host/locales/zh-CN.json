@@ -44,6 +44,7 @@
   "app.dialog.title_save_file": "保存文件",
   "app.dialog.title_select_java_executable": "选择 Java 可执行文件",
   "app.dialog.title_select_folder": "选择文件夹",
+  "app.dialog.title_select_file": "选择文件",
   "app.dialog.title_select_image": "选择图片",
   "app.dialog.title_select_server_bat": "选择服务端 BAT 文件",
   "app.dialog.title_select_server_executable": "选择服务端可执行文件",

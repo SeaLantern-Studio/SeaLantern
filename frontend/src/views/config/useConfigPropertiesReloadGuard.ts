@@ -15,6 +15,7 @@ interface ReloadCompareContext {
 
 interface UseConfigPropertiesReloadGuardOptions {
   currentServerName: ComputedRef<string>;
+  currentConfigLabel: ComputedRef<string>;
   sourceDraftText: Ref<string>;
   loadedSourceText: Ref<string>;
   editValues: Ref<Record<string, string>>;
@@ -84,7 +85,7 @@ export function useConfigPropertiesReloadGuard(options: UseConfigPropertiesReloa
     }
     if (pendingReloadSide.value === "current") {
       return i18n.t("config.compare.discard_current_message", {
-        name: options.currentServerName.value || i18n.t("config.compare.source_server"),
+        name: `${options.currentServerName.value || i18n.t("config.compare.source_server")} · ${options.currentConfigLabel.value}`,
       });
     }
     return i18n.t("config.discard_message");

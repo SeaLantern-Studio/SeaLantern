@@ -44,6 +44,7 @@
   "app.dialog.title_save_file": "Save File",
   "app.dialog.title_select_java_executable": "Select Java executable",
   "app.dialog.title_select_folder": "Select folder",
+  "app.dialog.title_select_file": "Select file",
   "app.dialog.title_select_image": "Select image",
   "app.dialog.title_select_server_bat": "Select server BAT file",
   "app.dialog.title_select_server_executable": "Select server executable",

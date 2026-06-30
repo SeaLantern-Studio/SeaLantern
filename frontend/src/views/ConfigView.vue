@@ -7,7 +7,6 @@ import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import SLTooltip from "@components/common/SLTooltip.vue";
 import { SLTabBar } from "@components/common";
 import { i18n } from "@language";
-import { FileDiff } from "@lucide/vue";
 import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
 import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.vue";
 import ConfigStartupSection from "@components/config/ConfigStartupSection.vue";
@@ -28,7 +27,6 @@ const currentServerId = viewModel.currentServerId;
 const currentServer = viewModel.currentServer;
 const serverPath = viewModel.serverPath;
 const propertiesEditor = viewModel.propertiesEditor;
-const compare = viewModel.compare;
 const propertiesDialogs = viewModel.propertiesDialogs;
 const propertiesSectionBindings = viewModel.propertiesSectionBindings;
 const pluginsState = viewModel.pluginsState;
@@ -44,17 +42,8 @@ const setError = viewModel.setError;
       <div class="config-tabs-row">
         <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" />
         <div v-if="activeTab === 'properties'" class="config-properties-header-actions">
-          <SLButton
-            v-if="compare.hasCompareTargets.value"
-            size="sm"
-            :variant="compare.compareMode.value ? 'primary' : 'secondary'"
-            class="config-compare-toggle"
-            @click="compare.handleCompareModeChange(!compare.compareMode.value)"
-          >
-            <FileDiff :size="16" />
-            {{ i18n.t("config.compare.toggle") }}
-          </SLButton>
           <SLTabBar
+            v-if="propertiesEditor.isPropertiesFile.value"
             class="config-editor-mode-bar"
             :modelValue="propertiesEditor.editorMode.value"
             :tabs="editorModeTabs"
@@ -82,6 +71,16 @@ const setError = viewModel.setError;
         <ConfigPropertiesSection
           v-bind="propertiesSectionBindings.sectionProps.value"
           @updateCategory="propertiesSectionBindings.sectionHandlers.updateCategory"
+          @updateSelectedConfigFile="propertiesSectionBindings.sectionHandlers.updateSelectedConfigFile"
+          @importConfigDirectory="propertiesSectionBindings.sectionHandlers.importConfigDirectory"
+          @importConfigFile="propertiesSectionBindings.sectionHandlers.importConfigFile"
+          @removeConfigImportDirectory="propertiesSectionBindings.sectionHandlers.removeConfigImportDirectory"
+          @removeConfigImportFile="propertiesSectionBindings.sectionHandlers.removeConfigImportFile"
+          @updateConfigSearchQuery="propertiesSectionBindings.sectionHandlers.updateConfigSearchQuery"
+          @updateConfigSearchMode="propertiesSectionBindings.sectionHandlers.updateConfigSearchMode"
+          @updateConfigSearchScope="propertiesSectionBindings.sectionHandlers.updateConfigSearchScope"
+          @updateConfigJsonMode="propertiesSectionBindings.sectionHandlers.updateConfigJsonMode"
+          @updateCompareMode="propertiesSectionBindings.sectionHandlers.updateCompareMode"
           @updateSearch="propertiesSectionBindings.sectionHandlers.updateSearch"
           @updateSourceDraft="propertiesSectionBindings.sectionHandlers.updateSourceDraft"
           @updateCompareTargetSourceDraft="

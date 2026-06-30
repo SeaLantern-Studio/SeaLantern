@@ -1,13 +1,19 @@
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import type { RouteLocationNormalizedLoaded } from "vue-router";
-import { useServerStore } from "@stores/serverStore";
+import { configApi } from "@api/config";
+import type {
+  ServerConfigDiscoveryOptions,
+  ServerConfigJsonMode,
+} from "@api/config";
+import { systemApi } from "@api/system";
 import { i18n } from "@language";
-import { useConfigPlugins } from "@views/config/useConfigPlugins";
+import { useServerStore } from "@stores/serverStore";
 import { useConfigCompare } from "@views/config/useConfigCompare";
-import { useConfigPropertiesDialogs } from "@views/config/useConfigPropertiesDialogs";
 import { useConfigPageLifecycle } from "@views/config/useConfigPageLifecycle";
-import { useConfigPropertiesSectionBindings } from "@views/config/useConfigPropertiesSectionBindings";
+import { useConfigPlugins } from "@views/config/useConfigPlugins";
+import { useConfigPropertiesDialogs } from "@views/config/useConfigPropertiesDialogs";
 import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
+import { useConfigPropertiesSectionBindings } from "@views/config/useConfigPropertiesSectionBindings";
 
 type ConfigTabKey = "properties" | "plugins" | "startup";
 
@@ -22,14 +28,16 @@ function resolveActiveTab(route: RouteLocationNormalizedLoaded): ConfigTabKey {
   return "properties";
 }
 
-function buildServerPropertiesPath(path: string) {
-  const basePath = path.replace(/[/\\]$/, "");
-  if (!basePath) {
-    return "server.properties";
-  }
+function createDefaultDiscoveryOptions(): ServerConfigDiscoveryOptions {
+  return {
+    manual_import_dirs: [],
+    manual_import_files: [],
+    json_mode: "filtered",
+  };
+}
 
-  const separator = basePath.includes("\\") ? "\\" : "/";
-  return `${basePath}${separator}server.properties`;
+function dedupePaths(paths: string[]) {
+  return Array.from(new Set(paths.map((path) => path.trim()).filter(Boolean)));
 }
 
 export interface UseConfigViewModelOptions {
@@ -50,7 +58,202 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
     () => store.servers.find((server) => server.id === store.currentServerId) || null,
   );
   const serverPath = computed(() => currentServer.value?.path || "");
-  const serverPropertiesPath = computed(() => buildServerPropertiesPath(serverPath.value));
+
+  const configFiles = ref<Awaited<ReturnType<typeof configApi.listServerConfigFiles>>>([]);
+  const configSearchResults = ref<Awaited<ReturnType<typeof configApi.searchServerConfigFiles>>>([]);
+  const configDiscoveryOptions = ref<ServerConfigDiscoveryOptions>(createDefaultDiscoveryOptions());
+  const configSearchQuery = ref("");
+  const configSearchMode = ref<"keyword" | "regex" | "similarity">("keyword");
+  const configSearchScope = ref<"path" | "content" | "all">("path");
+  const configSearchLoading = ref(false);
+  const configSearchError = ref<string | null>(null);
+  const selectedConfigLocator = ref("");
+  const selectedConfigRelativePath = ref("");
+  let configSearchRequestId = 0;
+
+  const currentConfigFile = computed(() => {
+    if (selectedConfigLocator.value) {
+      const located =
+        configFiles.value.find((file) => file.locator === selectedConfigLocator.value) || null;
+      if (located) {
+        return located;
+      }
+    }
+
+    if (!selectedConfigRelativePath.value) {
+      return null;
+    }
+
+    return (
+      configFiles.value.find((file) => file.relative_path === selectedConfigRelativePath.value) || null
+    );
+  });
+
+  const visibleConfigFiles = computed(() => {
+    const baseFiles = configFiles.value;
+    if (!configSearchQuery.value.trim()) {
+      return baseFiles;
+    }
+
+    const mapped = configSearchResults.value
+      .map((hit) => baseFiles.find((file) => file.locator === hit.locator) || null)
+      .filter((file): file is NonNullable<(typeof baseFiles)[number]> => !!file);
+
+    const selected = currentConfigFile.value;
+    if (selected && !mapped.some((file) => file.locator === selected.locator)) {
+      return [selected, ...mapped];
+    }
+
+    return mapped;
+  });
+
+  const currentConfigLabel = computed(
+    () => currentConfigFile.value?.relative_path || i18n.t("config.config_files"),
+  );
+  const currentConfigFilePath = computed(() => currentConfigFile.value?.absolute_path || "");
+
+  function syncSelectedConfig(file: (typeof configFiles.value)[number] | null) {
+    selectedConfigLocator.value = file?.locator || "";
+    selectedConfigRelativePath.value = file?.relative_path || "";
+  }
+
+  async function loadConfigFiles() {
+    if (!serverPath.value) {
+      configFiles.value = [];
+      configSearchResults.value = [];
+      configSearchError.value = null;
+      syncSelectedConfig(null);
+      return;
+    }
+
+    const files = await configApi.listServerConfigFiles(serverPath.value, configDiscoveryOptions.value);
+    configFiles.value = files;
+    await refreshConfigSearch();
+
+    const current = files.find((file) => file.locator === selectedConfigLocator.value) || null;
+    if (current) {
+      syncSelectedConfig(current);
+      return;
+    }
+
+    const preferred =
+      files.find((file) => file.known_role === "server_properties") ||
+      files.find((file) => file.known_role === "startup_primary") ||
+      files[0] ||
+      null;
+    syncSelectedConfig(preferred);
+  }
+
+  async function refreshConfigSearch() {
+    const query = configSearchQuery.value.trim();
+    configSearchError.value = null;
+
+    if (!serverPath.value || !query) {
+      configSearchResults.value = [];
+      configSearchLoading.value = false;
+      return;
+    }
+
+    const requestId = ++configSearchRequestId;
+    configSearchLoading.value = true;
+    try {
+      const hits = await configApi.searchServerConfigFiles(
+        serverPath.value,
+        query,
+        configSearchMode.value,
+        configSearchScope.value,
+        configDiscoveryOptions.value,
+        100,
+        false,
+      );
+      if (requestId !== configSearchRequestId) {
+        return;
+      }
+      configSearchResults.value = hits;
+    } catch (e) {
+      if (requestId !== configSearchRequestId) {
+        return;
+      }
+      configSearchResults.value = [];
+      configSearchError.value = String(e);
+    } finally {
+      if (requestId === configSearchRequestId) {
+        configSearchLoading.value = false;
+      }
+    }
+  }
+
+  function updateSelectedConfigFile(value: string | number) {
+    const locator = String(value);
+    const next = configFiles.value.find((file) => file.locator === locator) || null;
+    syncSelectedConfig(next);
+  }
+
+  function updateConfigSearchQuery(value: string) {
+    configSearchQuery.value = value;
+  }
+
+  function updateConfigSearchMode(value: string | number) {
+    configSearchMode.value = String(value) as typeof configSearchMode.value;
+  }
+
+  function updateConfigSearchScope(value: string | number) {
+    configSearchScope.value = String(value) as typeof configSearchScope.value;
+  }
+
+  async function updateConfigJsonMode(value: ServerConfigJsonMode) {
+    configDiscoveryOptions.value = {
+      ...configDiscoveryOptions.value,
+      json_mode: value,
+    };
+    await loadConfigFiles();
+  }
+
+  async function importConfigDirectory() {
+    const selected = await systemApi.pickFolder();
+    if (!selected) {
+      return;
+    }
+
+    configDiscoveryOptions.value = {
+      ...configDiscoveryOptions.value,
+      manual_import_dirs: dedupePaths([...configDiscoveryOptions.value.manual_import_dirs, selected]),
+    };
+    await loadConfigFiles();
+  }
+
+  async function importConfigFile() {
+    const selected = await systemApi.pickFile();
+    if (!selected) {
+      return;
+    }
+
+    configDiscoveryOptions.value = {
+      ...configDiscoveryOptions.value,
+      manual_import_files: dedupePaths([...configDiscoveryOptions.value.manual_import_files, selected]),
+    };
+    await loadConfigFiles();
+  }
+
+  async function removeConfigImportDirectory(path: string) {
+    configDiscoveryOptions.value = {
+      ...configDiscoveryOptions.value,
+      manual_import_dirs: configDiscoveryOptions.value.manual_import_dirs.filter(
+        (item) => item !== path,
+      ),
+    };
+    await loadConfigFiles();
+  }
+
+  async function removeConfigImportFile(path: string) {
+    configDiscoveryOptions.value = {
+      ...configDiscoveryOptions.value,
+      manual_import_files: configDiscoveryOptions.value.manual_import_files.filter(
+        (item) => item !== path,
+      ),
+    };
+    await loadConfigFiles();
+  }
 
   function setError(message: string | null) {
     error.value = message;
@@ -81,7 +284,12 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
 
   const propertiesEditor = useConfigPropertiesEditor({
     serverPath,
-    serverPropertiesPath,
+    currentConfigFile,
+    currentConfigLocator: computed(() => selectedConfigLocator.value),
+    discoveryOptions: computed(() => configDiscoveryOptions.value),
+    selectedConfigRelativePath,
+    currentConfigFilePath,
+    currentConfigLabel,
     currentServerId,
     currentServerName: computed(() => currentServer.value?.name || ""),
     setError,
@@ -92,6 +300,9 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
   const compare = useConfigCompare({
     currentServerId,
     servers: computed(() => store.servers),
+    sourceConfigRelativePath: computed(() => currentConfigFile.value?.relative_path || ""),
+    sourceConfigKind: computed(() => currentConfigFile.value?.kind || null),
+    sourceConfigSourceKind: computed(() => currentConfigFile.value?.source_kind || null),
     sourceEntries: propertiesEditor.entries,
     sourceValues: propertiesEditor.editValues,
     sourceNumericFieldErrors: propertiesEditor.numericFieldErrors,
@@ -134,9 +345,9 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
   const configTabs = computed(() => [
     {
       key: "properties",
-      label: i18n.t("config.server_properties"),
+      label: i18n.t("config.config_files"),
       count: "i",
-      countTitle: serverPropertiesPath.value,
+      countTitle: currentConfigFilePath.value,
     },
     { key: "startup", label: i18n.t("config.startup_properties") },
     { key: "plugins", label: i18n.t("config.server_plugins") },
@@ -175,15 +386,36 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
   const compareTargetServerName = computed(
     () => compare.compareTargetServer.value?.name || i18n.t("config.compare.target_server"),
   );
+
   const propertiesSectionBindings = useConfigPropertiesSectionBindings({
     propertiesEditor,
     compare,
+    allConfigFiles: computed(() => configFiles.value),
+    configFiles: visibleConfigFiles,
+    selectedConfigLocator: computed(() => selectedConfigLocator.value),
+    discoveryOptions: computed(() => configDiscoveryOptions.value),
+    configSearchQuery: computed(() => configSearchQuery.value),
+    configSearchMode: computed(() => configSearchMode.value),
+    configSearchScope: computed(() => configSearchScope.value),
+    configSearchResults: computed(() => configSearchResults.value),
+    configSearchLoading: computed(() => configSearchLoading.value),
+    configSearchError: computed(() => configSearchError.value),
+    updateSelectedConfigFile,
+    updateConfigSearchQuery,
+    updateConfigSearchMode,
+    updateConfigSearchScope,
+    updateConfigJsonMode,
+    importConfigDirectory,
+    importConfigFile,
+    removeConfigImportDirectory,
+    removeConfigImportFile,
     currentServerName,
     compareTargetServerName,
     translatedDescriptionByKey,
     gamemodeOptions,
     difficultyOptions,
   });
+
   const propertiesDialogs = useConfigPropertiesDialogs({
     propertiesEditor,
     modalWidth: configSaveDiffModalWidth,
@@ -204,6 +436,7 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
       }
     },
     refreshList: () => store.refreshList(),
+    loadConfigFiles,
     loadProperties: () => propertiesEditor.loadProperties(),
     loadPlugins: () => pluginsState.loadPlugins(),
     compareTargetServerId: compare.compareTargetServerId,
@@ -212,6 +445,19 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
     compareMode: compare.compareMode,
     loadCompareProperties: () => compare.loadCompareProperties(),
     resetCompareState: (clearTarget) => compare.resetCompareState(clearTarget),
+  });
+
+  watch(selectedConfigLocator, async (locator, previousLocator) => {
+    if (!locator || locator === previousLocator || !currentServerId.value) {
+      return;
+    }
+
+    compare.resetCompareState(true);
+    await propertiesEditor.loadProperties();
+  });
+
+  watch([configSearchQuery, configSearchMode, configSearchScope, serverPath], async () => {
+    await refreshConfigSearch();
   });
 
   return {
@@ -226,6 +472,30 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
     currentServerName,
     compareTargetServerName,
     serverPath,
+    configFiles,
+    visibleConfigFiles,
+    currentConfigFile,
+    currentConfigLabel,
+    currentConfigFilePath,
+    configDiscoveryOptions,
+    selectedConfigLocator,
+    selectedConfigRelativePath,
+    configSearchQuery,
+    configSearchMode,
+    configSearchScope,
+    configSearchResults,
+    configSearchLoading,
+    configSearchError,
+    loadConfigFiles,
+    updateSelectedConfigFile,
+    updateConfigSearchQuery,
+    updateConfigSearchMode,
+    updateConfigSearchScope,
+    updateConfigJsonMode,
+    importConfigDirectory,
+    importConfigFile,
+    removeConfigImportDirectory,
+    removeConfigImportFile,
     setError,
     propertiesEditor,
     compare,

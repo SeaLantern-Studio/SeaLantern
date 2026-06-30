@@ -243,6 +243,52 @@ pub(super) struct ReadConfigRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(super) struct ReadServerConfigSourceRequest {
+    pub server_path: String,
+    pub relative_path: String,
+    #[serde(default)]
+    pub locator: Option<String>,
+    #[serde(default)]
+    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct WriteServerConfigSourceRequest {
+    pub server_path: String,
+    pub relative_path: String,
+    #[serde(default)]
+    pub locator: Option<String>,
+    #[serde(default)]
+    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub source: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ReadServerConfigDocumentRequest {
+    pub server_path: String,
+    pub relative_path: String,
+    #[serde(default)]
+    pub locator: Option<String>,
+    #[serde(default)]
+    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct WriteServerConfigDocumentRequest {
+    pub server_path: String,
+    pub relative_path: String,
+    #[serde(default)]
+    pub locator: Option<String>,
+    #[serde(default)]
+    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub content: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct WriteConfigRequest {
     pub server_path: String,
     pub path: String,
@@ -299,6 +345,30 @@ pub(super) struct ReadServerPropertiesRequest {
 #[serde(rename_all = "camelCase")]
 pub(super) struct ServerPathRequest {
     pub server_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ListServerConfigFilesRequest {
+    pub server_path: String,
+    #[serde(default)]
+    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct SearchServerConfigFilesRequest {
+    pub server_path: String,
+    pub query: String,
+    pub mode: sea_lantern_server_config_core::types::ServerConfigSearchMode,
+    #[serde(default)]
+    pub scope: Option<sea_lantern_server_config_core::types::ServerConfigSearchScope>,
+    #[serde(default)]
+    pub discovery_options: Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    #[serde(default)]
+    pub limit: Option<usize>,
+    #[serde(default)]
+    pub case_sensitive: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

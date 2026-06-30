@@ -1,6 +1,127 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerConfigFileKind {
+    Properties,
+    Toml,
+    Yaml,
+    Json,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum KnownServerConfigRole {
+    StartupPrimary,
+    StartupLegacy,
+    ServerProperties,
+    Pumpkin,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerConfigOwnership {
+    ServiceManaged,
+    ServerManaged,
+    ThirdParty,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerConfigSourceKind {
+    ServerRoot,
+    ManualRoot,
+    ManualFile,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerConfigSearchMode {
+    Keyword,
+    Regex,
+    Similarity,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerConfigSearchScope {
+    Path,
+    Content,
+    All,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerConfigJsonMode {
+    Disabled,
+    #[default]
+    Filtered,
+    All,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerConfigDiscoveryOptions {
+    #[serde(default)]
+    pub manual_import_dirs: Vec<String>,
+    #[serde(default)]
+    pub manual_import_files: Vec<String>,
+    #[serde(default)]
+    pub json_mode: ServerConfigJsonMode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiscoveredServerConfigFile {
+    pub locator: String,
+    pub relative_path: String,
+    pub file_name: String,
+    pub absolute_path: String,
+    pub source_kind: ServerConfigSourceKind,
+    pub source_label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_relative_path: Option<String>,
+    pub kind: ServerConfigFileKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub known_role: Option<KnownServerConfigRole>,
+    pub ownership: ServerConfigOwnership,
+    pub priority: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ServerConfigSearchHit {
+    pub locator: String,
+    pub relative_path: String,
+    pub file_name: String,
+    pub absolute_path: String,
+    pub source_kind: ServerConfigSourceKind,
+    pub source_label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_relative_path: Option<String>,
+    pub kind: ServerConfigFileKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub known_role: Option<KnownServerConfigRole>,
+    pub ownership: ServerConfigOwnership,
+    pub priority: u32,
+    pub score: u32,
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_match: Option<ServerConfigContentMatch>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ServerConfigContentMatch {
+    pub line_number: usize,
+    pub line_text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ServerConfigDocument {
+    pub relative_path: String,
+    pub kind: ServerConfigFileKind,
+    pub content: serde_json::Value,
+}
+
 fn default_true() -> bool {
     true
 }

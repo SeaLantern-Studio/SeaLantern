@@ -1,14 +1,14 @@
 use crate::hardcode_data::app_files::PLUGIN_INSTALL_METADATA_FILE_NAME;
 use crate::models::plugin::{
-    PluginDistributionClass, PluginEnableBlockReason, PluginEnableGrantScope,
-    PluginEnableResult, PluginExecutionClass, PluginInfo, PluginIntegrityStatus, PluginManifest,
+    PluginDistributionClass, PluginEnableBlockReason, PluginEnableGrantScope, PluginEnableResult,
+    PluginExecutionClass, PluginInfo, PluginIntegrityStatus, PluginManifest,
     PluginPermissionProfile, PluginReviewStatus, PluginTrustLevelDisplay,
     PluginTrustedPolicySource,
 };
 use crate::plugins::runtime::permissions::normalize_permissions;
 use once_cell::sync::Lazy;
-use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -109,19 +109,12 @@ pub fn write_install_metadata(
     let json = serde_json::to_string_pretty(metadata)
         .map_err(|error| format!("Failed to serialize plugin install metadata: {}", error))?;
     std::fs::write(&path, json).map_err(|error| {
-        format!(
-            "Failed to write plugin install metadata '{}': {}",
-            path.display(),
-            error
-        )
+        format!("Failed to write plugin install metadata '{}': {}", path.display(), error)
     })
 }
 
 fn should_ignore_tree_hash_entry(relative_path: &str) -> bool {
-    matches!(
-        relative_path,
-        PLUGIN_INSTALL_METADATA_FILE_NAME | "settings.json"
-    )
+    matches!(relative_path, PLUGIN_INSTALL_METADATA_FILE_NAME | "settings.json")
 }
 
 pub fn compute_plugin_tree_sha256(plugin_dir: &Path) -> Result<String, String> {
@@ -131,7 +124,9 @@ pub fn compute_plugin_tree_sha256(plugin_dir: &Path) -> Result<String, String> {
         entries: &mut Vec<(String, Vec<u8>)>,
     ) -> Result<(), String> {
         let mut children = std::fs::read_dir(current)
-            .map_err(|error| format!("Failed to read plugin directory '{}': {}", current.display(), error))?
+            .map_err(|error| {
+                format!("Failed to read plugin directory '{}': {}", current.display(), error)
+            })?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|error| format!("Failed to read plugin directory entry: {}", error))?;
         children.sort_by_key(|entry| entry.file_name());
@@ -147,7 +142,9 @@ pub fn compute_plugin_tree_sha256(plugin_dir: &Path) -> Result<String, String> {
 
             let relative = path
                 .strip_prefix(root)
-                .map_err(|error| format!("Failed to normalize plugin entry '{}': {}", path.display(), error))?
+                .map_err(|error| {
+                    format!("Failed to normalize plugin entry '{}': {}", path.display(), error)
+                })?
                 .to_string_lossy()
                 .replace('\\', "/");
 
@@ -160,8 +157,9 @@ pub fn compute_plugin_tree_sha256(plugin_dir: &Path) -> Result<String, String> {
                 continue;
             }
 
-            let content = std::fs::read(&path)
-                .map_err(|error| format!("Failed to read plugin entry '{}': {}", path.display(), error))?;
+            let content = std::fs::read(&path).map_err(|error| {
+                format!("Failed to read plugin entry '{}': {}", path.display(), error)
+            })?;
             entries.push((relative, content));
         }
 
@@ -192,7 +190,9 @@ pub fn apply_runtime_integrity_state(
         return Ok(plugin);
     };
 
-    if !(plugin.hash_matched || matches!(plugin.trust_level_display, PluginTrustLevelDisplay::Trusted)) {
+    if !(plugin.hash_matched
+        || matches!(plugin.trust_level_display, PluginTrustLevelDisplay::Trusted))
+    {
         return Ok(plugin);
     }
 
@@ -233,11 +233,7 @@ pub fn load_enable_grants(data_dir: &Path) -> Result<Vec<PersistedPluginEnableGr
     };
 
     serde_json::from_str(&content).map_err(|error| {
-        format!(
-            "Failed to parse plugin enable grants '{}': {}",
-            path.display(),
-            error
-        )
+        format!("Failed to parse plugin enable grants '{}': {}", path.display(), error)
     })
 }
 
@@ -249,11 +245,7 @@ pub fn save_enable_grants(
     let content = serde_json::to_string_pretty(grants)
         .map_err(|error| format!("Failed to serialize plugin enable grants: {}", error))?;
     std::fs::write(&path, content).map_err(|error| {
-        format!(
-            "Failed to write plugin enable grants '{}': {}",
-            path.display(),
-            error
-        )
+        format!("Failed to write plugin enable grants '{}': {}", path.display(), error)
     })
 }
 
@@ -318,16 +310,16 @@ pub fn evaluate_enable_requirement(
     };
 
     let expected_fingerprint = permissions_fingerprint(&plugin.manifest.permissions);
-    let grant = grants.iter().find(|grant| grant.plugin_id == plugin.manifest.id);
+    let grant = grants
+        .iter()
+        .find(|grant| grant.plugin_id == plugin.manifest.id);
     let satisfied = match grant {
         Some(grant) if grant.permissions_fingerprint == expected_fingerprint => {
             match required_scope {
                 PluginEnableGrantScope::Once => false,
                 PluginEnableGrantScope::Version => {
-                    grant_scope_covers(
-                        grant.grant_scope.clone(),
-                        PluginEnableGrantScope::Version,
-                    ) && grant.version == plugin.manifest.version
+                    grant_scope_covers(grant.grant_scope.clone(), PluginEnableGrantScope::Version)
+                        && grant.version == plugin.manifest.version
                 }
                 PluginEnableGrantScope::Hash => {
                     matches!(grant.grant_scope, PluginEnableGrantScope::Hash)
@@ -485,7 +477,9 @@ pub fn assess_plugin(
     let allowed_permissions: HashSet<String> = entry
         .permission_ceiling
         .iter()
-        .map(|permission| crate::hardcode_data::plugin_permissions::normalize_permission_id(permission))
+        .map(|permission| {
+            crate::hardcode_data::plugin_permissions::normalize_permission_id(permission)
+        })
         .collect();
     let within_ceiling = normalized_permissions
         .iter()
@@ -508,16 +502,24 @@ pub fn assess_plugin(
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_runtime_integrity_state, assess_plugin, compute_plugin_tree_sha256, grant_scope_covers, PluginInstallMetadata};
+    use super::{
+        apply_runtime_integrity_state, assess_plugin, compute_plugin_tree_sha256,
+        grant_scope_covers, PluginInstallMetadata,
+    };
     use crate::models::plugin::{
-        PluginAuthor, PluginDistributionClass, PluginExecutionClass, PluginEnableGrantScope,
+        PluginActions, PluginAuthor, PluginDistributionClass,
+        PluginDistributionClass as DistributionClass, PluginEnableGrantScope, PluginExecutionClass,
         PluginInfo, PluginIntegrityStatus, PluginManifest, PluginPermissionProfile,
-        PluginReviewStatus, PluginSource, PluginTrustedPolicySource, PluginTrustLevelDisplay,
-        PluginRuntimeKind, PluginActions, PluginDistributionClass as DistributionClass,
+        PluginReviewStatus, PluginRuntimeKind, PluginSource, PluginTrustLevelDisplay,
+        PluginTrustedPolicySource,
     };
     use std::collections::HashMap;
 
-    fn manifest_with_permissions(id: &str, version: &str, permissions: Vec<&str>) -> PluginManifest {
+    fn manifest_with_permissions(
+        id: &str,
+        version: &str,
+        permissions: Vec<&str>,
+    ) -> PluginManifest {
         PluginManifest {
             id: id.to_string(),
             name: id.to_string(),
@@ -533,7 +535,10 @@ mod tests {
             homepage: None,
             repository: None,
             engines: None,
-            permissions: permissions.into_iter().map(|item| item.to_string()).collect(),
+            permissions: permissions
+                .into_iter()
+                .map(|item| item.to_string())
+                .collect(),
             ui: None,
             events: Vec::new(),
             commands: Vec::new(),
@@ -572,11 +577,8 @@ mod tests {
             vec!["execute_program", "process.exec"],
         );
 
-        let assessment = assess_plugin(
-            &manifest,
-            PluginDistributionClass::Market,
-            Some("deadbeef"),
-        );
+        let assessment =
+            assess_plugin(&manifest, PluginDistributionClass::Market, Some("deadbeef"));
 
         assert_eq!(assessment.trust_level_display, PluginTrustLevelDisplay::Unreviewed);
         assert_eq!(assessment.execution_class, PluginExecutionClass::Sandboxed);

@@ -157,18 +157,9 @@ mod tests {
 
     #[test]
     fn shared_permission_metadata_drives_risk_group() {
-        assert_eq!(
-            permission_risk_group("process.exec"),
-            PluginPermissionRiskGroup::TrustedOnly
-        );
-        assert_eq!(
-            permission_risk_group("network"),
-            PluginPermissionRiskGroup::EscalatedSandbox
-        );
-        assert_eq!(
-            permission_risk_group("log"),
-            PluginPermissionRiskGroup::StandardSandboxAllowed
-        );
+        assert_eq!(permission_risk_group("process.exec"), PluginPermissionRiskGroup::TrustedOnly);
+        assert_eq!(permission_risk_group("network"), PluginPermissionRiskGroup::EscalatedSandbox);
+        assert_eq!(permission_risk_group("log"), PluginPermissionRiskGroup::StandardSandboxAllowed);
     }
 
     #[test]
@@ -187,5 +178,4 @@ mod tests {
         assert!(requests_trusted_capabilities(&["process.exec".to_string()]));
         assert!(!requests_trusted_capabilities(&["network".to_string()]));
     }
-
 }

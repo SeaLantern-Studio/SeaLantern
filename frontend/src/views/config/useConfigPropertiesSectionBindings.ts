@@ -1,7 +1,15 @@
 import { computed, type ComputedRef } from "vue";
 import type { useConfigCompare } from "@views/config/useConfigCompare";
 import type { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
-import type { ConfigEntry as ConfigEntryType } from "@api/config";
+import type {
+  ConfigEntry as ConfigEntryType,
+  DiscoveredServerConfigFile,
+  ServerConfigDiscoveryOptions,
+  ServerConfigJsonMode,
+  ServerConfigSearchHit,
+  ServerConfigSearchMode,
+  ServerConfigSearchScope,
+} from "@api/config";
 
 type PropertiesEditorState = ReturnType<typeof useConfigPropertiesEditor>;
 type CompareState = ReturnType<typeof useConfigCompare>;
@@ -14,6 +22,25 @@ interface Option {
 interface UseConfigPropertiesSectionBindingsOptions {
   propertiesEditor: PropertiesEditorState;
   compare: CompareState;
+  allConfigFiles: ComputedRef<DiscoveredServerConfigFile[]>;
+  configFiles: ComputedRef<DiscoveredServerConfigFile[]>;
+  selectedConfigLocator: ComputedRef<string>;
+  discoveryOptions: ComputedRef<ServerConfigDiscoveryOptions>;
+  configSearchQuery: ComputedRef<string>;
+  configSearchMode: ComputedRef<ServerConfigSearchMode>;
+  configSearchScope: ComputedRef<ServerConfigSearchScope>;
+  configSearchResults: ComputedRef<ServerConfigSearchHit[]>;
+  configSearchLoading: ComputedRef<boolean>;
+  configSearchError: ComputedRef<string | null>;
+  updateSelectedConfigFile: (value: string | number) => void;
+  updateConfigSearchQuery: (query: string) => void;
+  updateConfigSearchMode: (value: string | number) => void;
+  updateConfigSearchScope: (value: string | number) => void;
+  updateConfigJsonMode: (value: ServerConfigJsonMode) => void;
+  importConfigDirectory: () => Promise<void>;
+  importConfigFile: () => Promise<void>;
+  removeConfigImportDirectory: (path: string) => Promise<void>;
+  removeConfigImportFile: (path: string) => Promise<void>;
   currentServerName: ComputedRef<string>;
   compareTargetServerName: ComputedRef<string>;
   translatedDescriptionByKey: ComputedRef<Record<string, string>>;
@@ -26,9 +53,11 @@ export function useConfigPropertiesSectionBindings(
 ) {
   const sectionProps = computed(() => ({
     editorMode: options.propertiesEditor.editorMode.value,
+    isPropertiesFile: options.propertiesEditor.isPropertiesFile.value,
     loading: options.propertiesEditor.loading.value,
     compareLoading: options.compare.compareLoading.value,
     compareMode: options.compare.compareMode.value,
+    compareSupported: options.compare.compareSupported.value,
     hasCompareTargets: options.compare.hasCompareTargets.value,
     compareTargetServerId: options.compare.compareTargetServerId.value,
     compareServerOptions: options.compare.compareServerOptions.value,
@@ -36,6 +65,18 @@ export function useConfigPropertiesSectionBindings(
     comparePanelRows: options.compare.comparePanelRows.value,
     sourceServerName: options.currentServerName.value,
     targetServerName: options.compareTargetServerName.value,
+    hasDiscoveredConfigFiles: options.allConfigFiles.value.length > 0,
+    configFiles: options.configFiles.value,
+    selectedConfigLocator: options.selectedConfigLocator.value,
+    manualImportDirs: options.discoveryOptions.value.manual_import_dirs,
+    manualImportFiles: options.discoveryOptions.value.manual_import_files,
+    configJsonMode: options.discoveryOptions.value.json_mode,
+    configSearchQuery: options.configSearchQuery.value,
+    configSearchMode: options.configSearchMode.value,
+    configSearchScope: options.configSearchScope.value,
+    configSearchResults: options.configSearchResults.value,
+    configSearchLoading: options.configSearchLoading.value,
+    configSearchError: options.configSearchError.value,
     categories: options.propertiesEditor.categories.value,
     activeCategory: options.propertiesEditor.activeCategory.value,
     searchQuery: options.propertiesEditor.searchQuery.value,
@@ -57,6 +98,17 @@ export function useConfigPropertiesSectionBindings(
 
   const sectionHandlers = {
     updateCategory: options.propertiesEditor.handleCategoryChange,
+    updateSelectedConfigFile: options.updateSelectedConfigFile,
+    importConfigDirectory: options.importConfigDirectory,
+    importConfigFile: options.importConfigFile,
+    removeConfigImportDirectory: options.removeConfigImportDirectory,
+    removeConfigImportFile: options.removeConfigImportFile,
+    updateConfigSearchQuery: options.updateConfigSearchQuery,
+    updateConfigSearchMode: options.updateConfigSearchMode,
+    updateConfigSearchScope: options.updateConfigSearchScope,
+    updateConfigJsonMode: (value: string | number) =>
+      options.updateConfigJsonMode(String(value) as ServerConfigJsonMode),
+    updateCompareMode: options.compare.handleCompareModeChange,
     updateSearch: options.propertiesEditor.handleSearchUpdate,
     updateSourceDraft: options.propertiesEditor.updateSourceDraft,
     updateCompareTargetSourceDraft: options.propertiesEditor.updateCompareTargetSourceDraft,

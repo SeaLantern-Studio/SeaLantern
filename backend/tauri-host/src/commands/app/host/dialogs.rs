@@ -209,6 +209,22 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String
         .map_err(|e| app_t1("app.dialog.error", e.to_string()))
 }
 
+pub async fn pick_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    app.dialog()
+        .file()
+        .set_title(app_t("app.dialog.title_select_file"))
+        .add_filter(app_t("app.dialog.filter_all_files"), &["*"])
+        .pick_file(move |path| {
+            let result = path.map(|p| p.to_string());
+            let _ = tx.send(result);
+        });
+
+    rx.recv()
+        .map_err(|e| app_t1("app.dialog.error", e.to_string()))
+}
+
 pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = std::sync::mpsc::channel();
 

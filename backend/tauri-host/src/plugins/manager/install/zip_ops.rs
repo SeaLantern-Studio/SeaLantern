@@ -51,7 +51,10 @@ pub(super) fn install_plugin_from_zip(
     persisted_metadata.installed_tree_sha256 = Some(
         crate::services::plugin_trusted_catalog::compute_plugin_tree_sha256(&target_dir)?,
     );
-    crate::services::plugin_trusted_catalog::write_install_metadata(&target_dir, &persisted_metadata)?;
+    crate::services::plugin_trusted_catalog::write_install_metadata(
+        &target_dir,
+        &persisted_metadata,
+    )?;
 
     let loaded_manifest = PluginLoader::load_manifest(&target_dir)?;
     PluginLoader::validate_manifest(&loaded_manifest)?;

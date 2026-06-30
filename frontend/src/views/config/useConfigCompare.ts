@@ -1,6 +1,9 @@
-import { computed, ref, type Ref } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
 import { configApi } from "@api/config";
-import type { ConfigEntry as ConfigEntryType } from "@api/config";
+import type {
+  ConfigEntry as ConfigEntryType,
+  ServerConfigFileKind,
+} from "@api/config";
 import { i18n } from "@language";
 import type { ServerInstance } from "@type/server";
 
@@ -40,6 +43,9 @@ export interface ComparePanelRow {
 interface UseConfigCompareOptions {
   currentServerId: Ref<string | null>;
   servers: Ref<ServerInstance[]>;
+  sourceConfigRelativePath: Ref<string>;
+  sourceConfigKind: Ref<ServerConfigFileKind | null>;
+  sourceConfigSourceKind: Ref<string | null>;
   sourceEntries: Ref<ConfigEntryType[]>;
   sourceValues: Ref<Record<string, string>>;
   sourceNumericFieldErrors: Ref<Record<string, string>>;
@@ -51,14 +57,14 @@ interface UseConfigCompareOptions {
 
 export const COMPARE_DIFFERENCE_CATEGORY = "difference";
 
-function buildServerPropertiesPath(path: string) {
+function buildConfigAbsolutePath(path: string, relativePath: string) {
   const basePath = path.replace(/[/\\]$/, "");
   if (!basePath) {
-    return "server.properties";
+    return relativePath;
   }
 
   const separator = basePath.includes("\\") ? "\\" : "/";
-  return `${basePath}${separator}server.properties`;
+  return `${basePath}${separator}${relativePath}`;
 }
 
 function getChangedValues(
@@ -94,8 +100,14 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     () => options.servers.value.find((s) => s.id === compareTargetServerId.value) || null,
   );
   const compareTargetPath = computed(() => compareTargetServer.value?.path || "");
+  const compareSupported = computed(
+    () =>
+      options.sourceConfigKind.value === "properties" &&
+      options.sourceConfigSourceKind.value === "server_root" &&
+      !!options.sourceConfigRelativePath.value,
+  );
   const compareTargetServerPropertiesPath = computed(() =>
-    buildServerPropertiesPath(compareTargetPath.value),
+    buildConfigAbsolutePath(compareTargetPath.value, options.sourceConfigRelativePath.value),
   );
   const compareServerOptions = computed(() =>
     options.servers.value
@@ -217,14 +229,11 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
 
   async function buildCompareTargetPreviewSource() {
     const changedValues = getCompareTargetChangedValues();
-    if (compareTargetSourceDraftText.value !== compareTargetLoadedSourceText.value) {
-      return configApi.previewServerPropertiesWriteFromSource(
-        compareTargetSourceDraftText.value,
-        changedValues,
-      );
-    }
-
-    return configApi.previewServerPropertiesWrite(compareTargetPath.value, changedValues);
+    const baseSource =
+      compareTargetSourceDraftText.value !== compareTargetLoadedSourceText.value
+        ? compareTargetSourceDraftText.value
+        : compareTargetLoadedSourceText.value;
+    return configApi.previewServerPropertiesWriteFromSource(baseSource, changedValues);
   }
 
   async function prepareCompareTargetSourceDraftForSourceMode() {
@@ -241,7 +250,7 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
   async function loadCompareProperties() {
     const requestId = ++compareLoadRequestId.value;
 
-    if (!compareMode.value || !compareTargetPath.value) {
+    if (!compareMode.value || !compareTargetPath.value || !compareSupported.value) {
       resetCompareState(false);
       return;
     }
@@ -249,7 +258,10 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     compareLoading.value = true;
     options.setError(null);
     try {
-      const sourceText = await configApi.readServerPropertiesSource(compareTargetPath.value);
+      const sourceText = await configApi.readServerConfigSource(
+        compareTargetPath.value,
+        options.sourceConfigRelativePath.value,
+      );
       if (requestId !== compareLoadRequestId.value) {
         return;
       }
@@ -285,6 +297,10 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
   }
 
   function handleCompareModeChange(value: boolean) {
+    if (value && !compareSupported.value) {
+      return;
+    }
+
     compareMode.value = value;
     if (!value) {
       if (options.activeCategory.value === COMPARE_DIFFERENCE_CATEGORY) {
@@ -336,6 +352,12 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
       .map((entry) => entry.key);
   }
 
+  watch(compareSupported, (supported) => {
+    if (!supported) {
+      resetCompareState(true);
+    }
+  });
+
   return {
     compareMode,
     compareTargetServerId,
@@ -348,6 +370,7 @@ export function useConfigCompare(options: UseConfigCompareOptions) {
     compareTargetServer,
     compareTargetPath,
     compareTargetServerPropertiesPath,
+    compareSupported,
     compareServerOptions,
     hasCompareTargets,
     compareDifferenceBadgeText,

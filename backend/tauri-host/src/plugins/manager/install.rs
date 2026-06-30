@@ -56,10 +56,7 @@ pub(super) fn install_local_plugin(
             .distribution_class
             .clone()
             .unwrap_or(PluginDistributionClass::StandardPackage);
-        (
-            zip_ops::install_plugin_from_zip(manager, path, metadata)?,
-            distribution_class,
-        )
+        (zip_ops::install_plugin_from_zip(manager, path, metadata)?, distribution_class)
     } else if path
         .file_name()
         .is_some_and(|name| name == PLUGIN_MANIFEST_FILE_NAME)
@@ -192,7 +189,10 @@ pub(super) fn install_plugin_from_dir(
     persisted_metadata.installed_tree_sha256 = Some(
         crate::services::plugin_trusted_catalog::compute_plugin_tree_sha256(&target_dir)?,
     );
-    crate::services::plugin_trusted_catalog::write_install_metadata(&target_dir, &persisted_metadata)?;
+    crate::services::plugin_trusted_catalog::write_install_metadata(
+        &target_dir,
+        &persisted_metadata,
+    )?;
 
     let loaded_manifest = PluginLoader::load_manifest(&target_dir)?;
     PluginLoader::validate_manifest(&loaded_manifest)?;
@@ -305,10 +305,10 @@ fn remove_dir_all_with_retry(path: &Path, label: &str) -> Result<(), String> {
 mod tests {
     use super::build_install_notices;
     use crate::models::plugin::{
-        PluginActions, PluginAuthor, PluginDistributionClass, PluginExecutionClass,
-        PluginInfo, PluginIntegrityStatus, PluginManifest, PluginPermissionProfile,
-        PluginReviewStatus, PluginRuntimeKind, PluginSource, PluginState,
-        PluginTrustLevelDisplay, PluginTrustedPolicySource,
+        PluginActions, PluginAuthor, PluginDistributionClass, PluginExecutionClass, PluginInfo,
+        PluginIntegrityStatus, PluginManifest, PluginPermissionProfile, PluginReviewStatus,
+        PluginRuntimeKind, PluginSource, PluginState, PluginTrustLevelDisplay,
+        PluginTrustedPolicySource,
     };
     use std::collections::HashMap;
 
@@ -380,7 +380,10 @@ mod tests {
         let plugin = sample_plugin_info(vec!["execute_program", "network"]);
 
         let notices = build_install_notices(&plugin);
-        let codes = notices.into_iter().map(|notice| notice.code).collect::<Vec<_>>();
+        let codes = notices
+            .into_iter()
+            .map(|notice| notice.code)
+            .collect::<Vec<_>>();
 
         assert!(codes.contains(&"plugins.install.issue.requests_trusted_capabilities".to_string()));
         assert!(codes.contains(&"plugins.install.issue.exceeds_standard_sandbox".to_string()));

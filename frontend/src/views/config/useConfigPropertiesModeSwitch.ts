@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
 import { configApi } from "@api/config";
-import type { ConfigEntry as ConfigEntryType } from "@api/config";
+import type { ConfigEntry as ConfigEntryType, ServerConfigFileKind } from "@api/config";
 import { i18n } from "@language";
 
 interface ModeSwitchCompareContext {
@@ -12,6 +12,7 @@ interface ModeSwitchCompareContext {
 
 interface UseConfigPropertiesModeSwitchOptions {
   serverPath: Ref<string>;
+  currentConfigKind: Ref<ServerConfigFileKind | null>;
   editorMode: Ref<"visual" | "source">;
   sourceDraftText: Ref<string>;
   editValues: Ref<Record<string, string>>;
@@ -52,6 +53,11 @@ export function useConfigPropertiesModeSwitch(options: UseConfigPropertiesModeSw
     options.setError(null);
 
     try {
+      if (options.currentConfigKind.value !== "properties") {
+        options.editorMode.value = "source";
+        return null;
+      }
+
       if (targetMode === "source") {
         if (visualDraftDirty.value) {
           options.sourceDraftText.value = await options.buildVisualPreviewSource();

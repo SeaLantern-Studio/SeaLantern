@@ -264,7 +264,9 @@ impl PluginInstallIssueCode {
             Self::IncompatibleSealanternVersion => {
                 "plugins.install.issue.incompatible_sealantern_version"
             }
-            Self::RequestsTrustedCapabilities => "plugins.install.issue.requests_trusted_capabilities",
+            Self::RequestsTrustedCapabilities => {
+                "plugins.install.issue.requests_trusted_capabilities"
+            }
             Self::ExceedsStandardSandbox => "plugins.install.issue.exceeds_standard_sandbox",
         }
     }
@@ -281,20 +283,13 @@ impl PluginInstallIssue {
         let current_version = current_version.into();
 
         Self {
-            code: PluginInstallIssueCode::IncompatibleSealanternVersion.as_code().to_string(),
+            code: PluginInstallIssueCode::IncompatibleSealanternVersion
+                .as_code()
+                .to_string(),
             args: serde_json::Map::from_iter([
-                (
-                    "plugin_id".to_string(),
-                    serde_json::Value::String(plugin_id),
-                ),
-                (
-                    "required_version".to_string(),
-                    serde_json::Value::String(required_version),
-                ),
-                (
-                    "current_version".to_string(),
-                    serde_json::Value::String(current_version),
-                ),
+                ("plugin_id".to_string(), serde_json::Value::String(plugin_id)),
+                ("required_version".to_string(), serde_json::Value::String(required_version)),
+                ("current_version".to_string(), serde_json::Value::String(current_version)),
             ]),
         }
     }
@@ -308,10 +303,7 @@ impl PluginInstallIssue {
                 .as_code()
                 .to_string(),
             args: serde_json::Map::from_iter([
-                (
-                    "plugin_id".to_string(),
-                    serde_json::Value::String(plugin_id.into()),
-                ),
+                ("plugin_id".to_string(), serde_json::Value::String(plugin_id.into())),
                 (
                     "permissions".to_string(),
                     serde_json::Value::Array(
@@ -334,10 +326,7 @@ impl PluginInstallIssue {
                 .as_code()
                 .to_string(),
             args: serde_json::Map::from_iter([
-                (
-                    "plugin_id".to_string(),
-                    serde_json::Value::String(plugin_id.into()),
-                ),
+                ("plugin_id".to_string(), serde_json::Value::String(plugin_id.into())),
                 (
                     "permissions".to_string(),
                     serde_json::Value::Array(
@@ -351,7 +340,10 @@ impl PluginInstallIssue {
         }
     }
 
-    pub fn into_command_error(self, fallback_message: impl Into<String>) -> PluginInstallCommandError {
+    pub fn into_command_error(
+        self,
+        fallback_message: impl Into<String>,
+    ) -> PluginInstallCommandError {
         PluginInstallCommandError {
             code: self.code,
             message: fallback_message.into(),

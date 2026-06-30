@@ -136,7 +136,8 @@ impl PluginManager {
             .get(plugin_id)
             .cloned()
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        self.driver_for(&plugin).enable(self, plugin_id, confirmation)
+        self.driver_for(&plugin)
+            .enable(self, plugin_id, confirmation)
     }
 
     /// 禁用一个插件
@@ -211,12 +212,11 @@ impl PluginManager {
         archive_sha256: Option<&str>,
         missing_dependencies: Vec<crate::models::plugin::MissingDependency>,
     ) -> PluginInfo {
-        let trust_assessment =
-            crate::services::plugin_trusted_catalog::assess_plugin(
-                &manifest,
-                distribution_class.clone(),
-                archive_sha256,
-            );
+        let trust_assessment = crate::services::plugin_trusted_catalog::assess_plugin(
+            &manifest,
+            distribution_class.clone(),
+            archive_sha256,
+        );
 
         self.normalize_plugin_info(PluginInfo {
             manifest,
@@ -285,7 +285,8 @@ impl PluginManager {
         path: &Path,
         metadata: crate::services::plugin_trusted_catalog::PluginInstallMetadata,
     ) -> Result<PluginInstallResult, String> {
-        self.source_driver_for_install_path(path)?.install(self, path, &metadata)
+        self.source_driver_for_install_path(path)?
+            .install(self, path, &metadata)
     }
 
     fn get_missing_dependencies(

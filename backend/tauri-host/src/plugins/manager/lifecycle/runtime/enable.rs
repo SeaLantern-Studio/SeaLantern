@@ -5,14 +5,17 @@ use crate::plugins::manager::lifecycle::dependencies::{
 };
 use crate::plugins::manager::lifecycle::persistence::save_enabled_plugins_checked;
 use crate::plugins::runtime::{kill_all_processes, PluginRuntime};
+use crate::services::events::plugin_server_event_subscriptions_map;
 use crate::services::plugin_trusted_catalog::{
     evaluate_enable_requirement, grant_scope_covers, load_enable_grants, upsert_enable_grant,
 };
-use crate::services::events::plugin_server_event_subscriptions_map;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-fn success_result(manager: &PluginManager, plugin_id: &str) -> crate::models::plugin::PluginEnableResult {
+fn success_result(
+    manager: &PluginManager,
+    plugin_id: &str,
+) -> crate::models::plugin::PluginEnableResult {
     crate::models::plugin::PluginEnableResult {
         success: true,
         disabled_plugins: Vec::new(),
@@ -46,7 +49,8 @@ pub(in crate::plugins::manager) fn enable_plugin_with_confirmation(
         return Ok(success_result(manager, plugin_id));
     }
 
-    let requirement = evaluate_enable_requirement(&plugin_info, &load_enable_grants(&manager.data_dir)?);
+    let requirement =
+        evaluate_enable_requirement(&plugin_info, &load_enable_grants(&manager.data_dir)?);
     if requirement.confirmation_required {
         let Some(confirmation) = confirmation else {
             return Ok(requirement);
