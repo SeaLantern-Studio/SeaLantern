@@ -4,7 +4,8 @@ import {
   type NextPageKind,
   type NextProtectedPageKind,
   type NextRoutePageContract,
-} from "../contracts/page";
+} from "@next-src/contracts/page";
+import type { NextShellNavigationDirection } from "@next-src/contracts/shell";
 
 export type NextTitleSource = "route.meta.titleKey";
 
@@ -128,6 +129,13 @@ const NEXT_ROUTE_META_BY_KIND: Record<NextPageKind, NextRoutePageMeta> = {
   settings: NEXT_PROTECTED_ROUTES[3].meta,
 };
 
+const NEXT_PROTECTED_ROUTE_INDEX_BY_KIND: Record<NextProtectedPageKind, number> = {
+  home: 0,
+  servers: 1,
+  plugins: 2,
+  settings: 3,
+};
+
 export function getNextRoutePageMeta(meta: Record<string, unknown>): NextRoutePageMeta {
   const pageKind = isNextPageKind(meta.pageKind) ? meta.pageKind : "home";
   const fallback = NEXT_ROUTE_META_BY_KIND[pageKind];
@@ -145,4 +153,22 @@ export function getNextRoutePageMeta(meta: Record<string, unknown>): NextRoutePa
 
 export function getNextProtectedRouteByName(name: unknown): NextProtectedRouteDefinition | null {
   return NEXT_PROTECTED_ROUTES.find((route) => route.name === name) ?? null;
+}
+
+export function getNextProtectedRouteOrderIndex(pageKind: NextProtectedPageKind): number {
+  return NEXT_PROTECTED_ROUTE_INDEX_BY_KIND[pageKind];
+}
+
+export function resolveNextProtectedRouteDirection(
+  from: NextProtectedPageKind,
+  to: NextProtectedPageKind,
+): NextShellNavigationDirection | null {
+  const fromIndex = getNextProtectedRouteOrderIndex(from);
+  const toIndex = getNextProtectedRouteOrderIndex(to);
+
+  if (fromIndex === toIndex) {
+    return null;
+  }
+
+  return toIndex > fromIndex ? "down" : "up";
 }

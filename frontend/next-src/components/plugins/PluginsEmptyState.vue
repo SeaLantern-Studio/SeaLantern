@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
+import { i18n } from "@language";
 
 defineProps<{
   loading: boolean;
@@ -15,19 +16,16 @@ defineEmits<{
 <template>
   <SLCard class="plugins-empty-state" variant="outline">
     <div class="plugins-empty-state__content">
-      <span class="plugins-empty-state__eyebrow">Plugins / next</span>
-      <h2 class="plugins-empty-state__title">当前还没有已安装插件</h2>
-      <p class="plugins-empty-state__description">
-        这页已经接入真实 plugin store。你可以先去 classic
-        市场安装插件，或者刷新一次重新扫描本地插件目录。
-      </p>
+      <span class="plugins-empty-state__eyebrow">{{ i18n.t("plugins.next.empty.eyebrow") }}</span>
+      <h2 class="plugins-empty-state__title">{{ i18n.t("plugins.next.empty.title") }}</h2>
+      <p class="plugins-empty-state__description">{{ i18n.t("plugins.next.empty.description") }}</p>
 
       <div class="plugins-empty-state__actions">
         <SLButton variant="primary" size="sm" @click="$emit('open-market')">
-          前往 classic 市场
+          {{ i18n.t("plugins.next.empty.open_market") }}
         </SLButton>
         <SLButton variant="secondary" size="sm" :loading="loading" @click="$emit('refresh')">
-          重新扫描插件
+          {{ i18n.t("plugins.next.empty.refresh") }}
         </SLButton>
       </div>
     </div>

@@ -58,6 +58,7 @@
     "pending_banner_desc": "Restart to switch to {{name}}.",
     "restart_confirm_title": "Restart now?",
     "restart_confirm_message": "Restart SeaLantern now to switch to {{name}}?",
+    "dev_restart_manual_required_message": "In development, restart tauri dev manually. Changes will apply on the next launch.",
     "source": {
       "builtin": "Built-in"
     },
@@ -123,6 +124,47 @@
   "all_plugins_latest": "All plugins are up to date",
   "updates_available": "{{count}} plugins have updates available",
   "open_repository": "Open Repository",
+  "next": {
+    "error_title": "Couldn't load plugins",
+    "close_error": "Close",
+    "retry": "Retry",
+    "loading_title": "Loading installed plugins",
+    "loading_description": "Fetching the list, icons, navigation, and update status.",
+    "update_to": "Update to v{version}",
+    "summary": {
+      "installed_label": "Installed",
+      "installed_hint": "Plugins found in this instance",
+      "enabled_label": "Enabled",
+      "enabled_hint": "Currently turned on",
+      "updates_label": "Updates",
+      "updates_hint": "Available right now",
+      "refresh": "Refresh",
+      "check_updates": "Check updates",
+      "open_market": "Open plugin market"
+    },
+    "empty": {
+      "eyebrow": "Plugins",
+      "title": "No plugins yet",
+      "description": "Install plugins from the market, or refresh to rescan the local plugin folder.",
+      "open_market": "Open plugin market",
+      "refresh": "Rescan plugins"
+    },
+    "card": {
+      "author_prefix": "Author",
+      "id_prefix": "ID",
+      "no_description": "No description provided.",
+      "missing_required": "Required dependency missing",
+      "missing_optional": "Optional dependency missing",
+      "open_details": "Open details",
+      "open_repository": "Open repository",
+      "toggle_unavailable": "Unavailable here",
+      "toggle_requires_dependencies": "Dependencies required"
+    },
+    "permission_revoked_title": "This plugin is revoked",
+    "permission_confirm_title": "Permission confirmation required",
+    "permission_revoked_message": "{name} is currently revoked. Check its source in the classic page first.",
+    "permission_confirm_message": "{name} requests extra permissions. Confirm before enabling it."
+  },
   "missing_required_deps": "Missing required dependencies, cannot enable",
   "dep_tooltip": {
     "required": "Missing required dependencies: {{names}}",

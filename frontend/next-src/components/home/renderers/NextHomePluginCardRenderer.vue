@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { i18n } from "@language";
-import type { NextHomeCardRendererProps, NextHomeResolvedCardRenderer } from "../../../pages/home/cardRendererContract";
+import type {
+  NextHomeCardRendererProps,
+  NextHomeResolvedCardRenderer,
+} from "@next-src/pages/home/cardRendererContract";
 
-const props = defineProps<NextHomeCardRendererProps & {
-  resolution?: NextHomeResolvedCardRenderer;
-}>();
+const props = defineProps<
+  NextHomeCardRendererProps & {
+    resolution?: NextHomeResolvedCardRenderer;
+  }
+>();
 
 const rendererKey = computed(() => props.meta.pluginRendererKey ?? props.instance.kind);
 
@@ -14,11 +19,7 @@ const fallbackMessage = computed(() => {
     return i18n.t("shell.home_plugin_card_placeholder");
   }
 
-  if (i18n.getLocale().startsWith("zh")) {
-    return "当前首页卡片渲染器不可用。";
-  }
-
-  return "This homepage card renderer is currently unavailable.";
+  return i18n.t("shell.home_plugin_card_unavailable");
 });
 </script>
 
@@ -30,7 +31,9 @@ const fallbackMessage = computed(() => {
     :data-layout-editable="meta.movable ? 'true' : 'false'"
   >
     <header class="next-home-plugin-card-renderer__header">
-      <span class="next-home-plugin-card-renderer__eyebrow">{{ i18n.t('shell.home_plugin_card_eyebrow') }}</span>
+      <span class="next-home-plugin-card-renderer__eyebrow">{{
+        i18n.t("shell.home_plugin_card_eyebrow")
+      }}</span>
       <h3>{{ i18n.t(meta.titleKey) }}</h3>
     </header>
 
@@ -40,11 +43,11 @@ const fallbackMessage = computed(() => {
 
     <dl class="next-home-plugin-card-renderer__meta">
       <div>
-        <dt>{{ i18n.t('shell.home_plugin_card_kind_label') }}</dt>
+        <dt>{{ i18n.t("shell.home_plugin_card_kind_label") }}</dt>
         <dd>{{ instance.kind }}</dd>
       </div>
       <div>
-        <dt>{{ i18n.t('shell.home_plugin_card_renderer_label') }}</dt>
+        <dt>{{ i18n.t("shell.home_plugin_card_renderer_label") }}</dt>
         <dd>{{ rendererKey }}</dd>
       </div>
     </dl>

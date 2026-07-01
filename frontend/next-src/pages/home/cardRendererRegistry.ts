@@ -1,12 +1,15 @@
-import NextHomeAttentionCardRenderer from "../../components/home/renderers/NextHomeAttentionCardRenderer.vue";
-import NextHomeMissingCardRenderer from "../../components/home/renderers/NextHomeMissingCardRenderer.vue";
-import NextHomeOperationsCardRenderer from "../../components/home/renderers/NextHomeOperationsCardRenderer.vue";
-import NextHomePluginCardRenderer from "../../components/home/renderers/NextHomePluginCardRenderer.vue";
-import NextHomeSummaryCardRenderer from "../../components/home/renderers/NextHomeSummaryCardRenderer.vue";
-import NextHomeSystemOverviewCardRenderer from "../../components/home/renderers/NextHomeSystemOverviewCardRenderer.vue";
-import NextHomeWorkspaceCardRenderer from "../../components/home/renderers/NextHomeWorkspaceCardRenderer.vue";
+import NextHomeAttentionCardRenderer from "@next-src/components/home/renderers/NextHomeAttentionCardRenderer.vue";
+import NextHomeMissingCardRenderer from "@next-src/components/home/renderers/NextHomeMissingCardRenderer.vue";
+import NextHomeOperationsCardRenderer from "@next-src/components/home/renderers/NextHomeOperationsCardRenderer.vue";
+import NextHomePluginCardRenderer from "@next-src/components/home/renderers/NextHomePluginCardRenderer.vue";
+import NextHomeSummaryCardRenderer from "@next-src/components/home/renderers/NextHomeSummaryCardRenderer.vue";
+import NextHomeSystemOverviewCardRenderer from "@next-src/components/home/renderers/NextHomeSystemOverviewCardRenderer.vue";
+import NextHomeWorkspaceCardRenderer from "@next-src/components/home/renderers/NextHomeWorkspaceCardRenderer.vue";
 import { isBuiltinNextHomeCardKind, type NextHomeCardKind } from "./layoutContract";
-import type { NextHomeCardRendererRegistry, NextHomeResolvedCardRenderer } from "./cardRendererContract";
+import type {
+  NextHomeCardRendererRegistry,
+  NextHomeResolvedCardRenderer,
+} from "./cardRendererContract";
 
 export const NEXT_HOME_BUILTIN_CARD_RENDERERS: NextHomeCardRendererRegistry = {
   "summary-band": NextHomeSummaryCardRenderer,

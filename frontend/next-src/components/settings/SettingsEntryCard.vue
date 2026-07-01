@@ -4,7 +4,7 @@ import SLCard from "@components/common/SLCard.vue";
 import type {
   SettingsCoverageTone,
   SettingsEntryAction,
-} from "../../pages/settings/useSettingsPage";
+} from "@next-src/pages/settings/useSettingsPage";
 
 interface Props {
   eyebrow: string;

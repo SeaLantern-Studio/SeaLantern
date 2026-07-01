@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
+import { i18n } from "@language";
 
 interface Props {
   totalCount: number;
@@ -20,19 +21,29 @@ const emit = defineEmits<{
   <section class="servers-summary-bar">
     <div class="servers-summary-bar__metrics">
       <div class="servers-summary-bar__metric-card">
-        <span class="servers-summary-bar__metric-label">服务器总数</span>
+        <span class="servers-summary-bar__metric-label">{{
+          i18n.t("servers.next.summary.total_label")
+        }}</span>
         <strong class="servers-summary-bar__metric-value">{{ totalCount }}</strong>
       </div>
       <div class="servers-summary-bar__metric-card servers-summary-bar__metric-card--running">
-        <span class="servers-summary-bar__metric-label">运行中</span>
+        <span class="servers-summary-bar__metric-label">{{
+          i18n.t("servers.next.summary.running_label")
+        }}</span>
         <strong class="servers-summary-bar__metric-value">{{ runningCount }}</strong>
       </div>
     </div>
 
     <div class="servers-summary-bar__actions">
-      <SLButton variant="primary" @click="emit('create')">创建服务器</SLButton>
-      <SLButton variant="secondary" @click="emit('importExisting')">导入服务器</SLButton>
-      <SLButton variant="ghost" :loading="refreshing" @click="emit('refresh')">刷新列表</SLButton>
+      <SLButton variant="primary" @click="emit('create')">{{
+        i18n.t("servers.next.summary.create")
+      }}</SLButton>
+      <SLButton variant="secondary" @click="emit('importExisting')">{{
+        i18n.t("servers.next.summary.import")
+      }}</SLButton>
+      <SLButton variant="ghost" :loading="refreshing" @click="emit('refresh')">{{
+        i18n.t("servers.next.summary.refresh")
+      }}</SLButton>
     </div>
   </section>
 </template>

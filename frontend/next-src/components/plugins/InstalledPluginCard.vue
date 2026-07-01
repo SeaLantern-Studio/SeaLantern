@@ -3,6 +3,7 @@ import SLBadge from "@components/common/SLBadge.vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
+import { i18n } from "@language";
 import type { PluginInfo } from "@type/plugin";
 import { Layers } from "@lucide/vue";
 
@@ -53,9 +54,11 @@ defineEmits<{
               </div>
 
               <p v-if="authorName" class="installed-plugin-card__subtitle">
-                作者：{{ authorName }}
+                {{ i18n.t("plugins.next.card.author_prefix") }}: {{ authorName }}
               </p>
-              <p v-else class="installed-plugin-card__subtitle">ID：{{ plugin.manifest.id }}</p>
+              <p v-else class="installed-plugin-card__subtitle">
+                {{ i18n.t("plugins.next.card.id_prefix") }}: {{ plugin.manifest.id }}
+              </p>
             </div>
 
             <div class="installed-plugin-card__status-block">
@@ -75,7 +78,7 @@ defineEmits<{
             v-else
             class="installed-plugin-card__description installed-plugin-card__description--muted"
           >
-            该插件没有提供额外描述。
+            {{ i18n.t("plugins.next.card.no_description") }}
           </p>
 
           <div class="installed-plugin-card__meta-row">
@@ -86,13 +89,13 @@ defineEmits<{
               v-if="hasMissingRequiredDependencies"
               class="installed-plugin-card__meta-pill installed-plugin-card__meta-pill--error"
             >
-              缺少必需依赖
+              {{ i18n.t("plugins.next.card.missing_required") }}
             </span>
             <span
               v-else-if="hasMissingOptionalDependencies"
               class="installed-plugin-card__meta-pill installed-plugin-card__meta-pill--warning"
             >
-              缺少可选依赖
+              {{ i18n.t("plugins.next.card.missing_optional") }}
             </span>
           </div>
         </div>
@@ -106,7 +109,7 @@ defineEmits<{
             size="sm"
             @click="$emit('open-classic', plugin.manifest.id)"
           >
-            查看 classic 详情
+            {{ i18n.t("plugins.next.card.open_details") }}
           </SLButton>
           <SLButton
             v-if="plugin.manifest.repository"
@@ -114,17 +117,19 @@ defineEmits<{
             size="sm"
             @click="$emit('open-repository', plugin.manifest.repository)"
           >
-            打开仓库
+            {{ i18n.t("plugins.next.card.open_repository") }}
           </SLButton>
         </div>
 
         <div class="installed-plugin-card__actions-right">
-          <span v-if="!canToggle" class="installed-plugin-card__toggle-note">当前不可切换</span>
+          <span v-if="!canToggle" class="installed-plugin-card__toggle-note">{{
+            i18n.t("plugins.next.card.toggle_unavailable")
+          }}</span>
           <span
             v-else-if="hasMissingRequiredDependencies && !enabled"
             class="installed-plugin-card__toggle-note"
           >
-            需先满足依赖
+            {{ i18n.t("plugins.next.card.toggle_requires_dependencies") }}
           </span>
           <SLSwitch
             v-if="canToggle"

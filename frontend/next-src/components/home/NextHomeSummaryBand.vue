@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import type { NextHomePageSummaryMetric } from "../../pages/home/useNextHomePage";
+import type { NextHomePageSummaryMetric } from "@next-src/pages/home/useNextHomePage";
 
 defineProps<{
   metrics: NextHomePageSummaryMetric[];

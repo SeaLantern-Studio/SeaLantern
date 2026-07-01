@@ -1,10 +1,13 @@
 use crate::services;
+use serde_json::json;
 
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
+
+use crate::commands::app::ui_shell::RestartAppResponse;
 
 fn reveal_main_window<R: tauri::Runtime, M: Manager<R>>(manager: &M) {
     if let Some(window) = manager.get_webview_window("main") {
@@ -179,7 +182,15 @@ fn restart_in_safe_mode(app: &tauri::AppHandle) {
     }
 }
 
-pub(crate) fn restart_app(app: &tauri::AppHandle) -> Result<(), String> {
+pub(crate) fn restart_app(app: &tauri::AppHandle) -> Result<RestartAppResponse, String> {
+    if cfg!(debug_assertions) {
+        return Err(json!({
+            "code": "plugins.ui_shell.dev_restart_manual_required",
+            "message": "开发环境下请手动重新启动 tauri dev，改动将在下次启动生效",
+        })
+        .to_string());
+    }
+
     stop_servers_and_disable_plugins(app);
     app.restart();
 }

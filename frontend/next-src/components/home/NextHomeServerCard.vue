@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import SLButton from "@src/components/common/SLButton.vue";
 import { i18n } from "@language";
-import type { NextHomeServerCardModel } from "../../pages/home/useNextHomePage";
+import type { NextHomeServerCardModel } from "@next-src/pages/home/useNextHomePage";
 
 defineProps<{
   server: NextHomeServerCardModel;

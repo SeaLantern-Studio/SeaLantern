@@ -264,6 +264,79 @@
   "ipv6_test_targets_label": "Test targets:",
   "minimal_mode": "Minimal Mode",
   "minimal_mode_desc": "Disable all animations and effects, keeping only basic rendering and interactions",
+  "next": {
+    "page_title": "Settings",
+    "page_description": "Adjust common options.",
+    "refresh": "Refresh",
+    "error_title": "Couldn't open settings",
+    "error_description": "Please try again in a moment.",
+    "retry": "Retry",
+    "nav_aria_label": "Settings sections",
+    "sections": {
+      "appearance": {
+        "label": "Appearance",
+        "title": "Appearance",
+        "description": "Theme, display, and interface style."
+      },
+      "general": {
+        "label": "General",
+        "title": "General",
+        "description": "Language, behavior, and defaults."
+      }
+    },
+    "summary": {
+      "eyebrow": "Settings",
+      "title": "Settings home",
+      "description": "Quick links and status for settings.",
+      "refresh": "Refresh",
+      "chips_aria_label": "Settings status"
+    },
+    "bridge": {
+      "eyebrow": "Classic pages",
+      "title": "More settings",
+      "description": "Some settings still open in the classic pages.",
+      "open_personalization": "Open personalization",
+      "open_developer": "Open developer tools",
+      "next_section_title": "Available here",
+      "classic_section_title": "Open in classic"
+    },
+    "appearance": {
+      "live_hint": "Theme, fonts, and window material apply right away.",
+      "theme_managed_by": "Managed by {plugin}",
+      "window_effect_fallback": "Only the default material is available here.",
+      "save_theme_failed": "Theme wasn't saved",
+      "save_font_failed": "Font wasn't saved",
+      "save_window_effect_failed": "Window material wasn't saved",
+      "save_minimal_mode_failed": "Minimal mode wasn't saved",
+      "save_background_failed": "Background settings weren't saved",
+      "save_font_size_failed": "Text size wasn't saved",
+      "save_background_image_failed": "Background image wasn't saved",
+      "pick_image_failed": "Couldn't choose an image",
+      "background": {
+        "title": "Background",
+        "status_set": "Background set",
+        "status_empty": "Not set",
+        "preview_loading": "Loading preview",
+        "preview_alt": "Background preview",
+        "animated_badge": "Animated",
+        "replace": "Replace",
+        "remove": "Remove",
+        "empty_title": "No background image",
+        "empty_description": "Pick an image to apply it right away.",
+        "pick": "Choose image",
+        "opacity": "Opacity",
+        "blur": "Blur",
+        "brightness": "Brightness",
+        "size": "Fit",
+        "size_hint": "Choose how the image fits.",
+        "reselect": "Choose again",
+        "remove_image": "Remove background"
+      }
+    },
+    "general": {
+      "live_hint": "Adjust common behavior and defaults."
+    }
+  },
   "color_options": {
     "custom": "Custom"
   }

@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { i18n } from "@language";
-import type { NextHomeCardRendererProps, NextHomeResolvedCardRenderer } from "../../../pages/home/cardRendererContract";
+import type {
+  NextHomeCardRendererProps,
+  NextHomeResolvedCardRenderer,
+} from "@next-src/pages/home/cardRendererContract";
 
-const props = defineProps<NextHomeCardRendererProps & {
-  resolution?: NextHomeResolvedCardRenderer;
-}>();
-
-const fallbackMessage = computed(() => {
-  if (i18n.getLocale().startsWith("zh")) {
-    return "当前卡片类型已存在于首页布局元数据中，但没有可用的 renderer 注册，暂时无法渲染。";
+const props = defineProps<
+  NextHomeCardRendererProps & {
+    resolution?: NextHomeResolvedCardRenderer;
   }
+>();
 
-  return "This homepage card type exists in the layout registry, but no renderer is registered for it right now.";
-});
+const fallbackMessage = computed(() => i18n.t("shell.home_missing_renderer_message"));
 
 const rendererKey = computed(() => props.meta.pluginRendererKey ?? props.instance.kind);
 </script>
@@ -26,7 +25,9 @@ const rendererKey = computed(() => props.meta.pluginRendererKey ?? props.instanc
     data-renderer-status="missing"
   >
     <header class="next-home-missing-card-renderer__header">
-      <span class="next-home-missing-card-renderer__eyebrow">Renderer missing</span>
+      <span class="next-home-missing-card-renderer__eyebrow">{{
+        i18n.t("shell.home_missing_renderer_eyebrow")
+      }}</span>
       <h3>{{ i18n.t(meta.titleKey) }}</h3>
     </header>
 
@@ -36,11 +37,11 @@ const rendererKey = computed(() => props.meta.pluginRendererKey ?? props.instanc
 
     <dl class="next-home-missing-card-renderer__meta">
       <div>
-        <dt>{{ i18n.t('shell.home_plugin_card_kind_label') }}</dt>
+        <dt>{{ i18n.t("shell.home_plugin_card_kind_label") }}</dt>
         <dd>{{ instance.kind }}</dd>
       </div>
       <div>
-        <dt>{{ i18n.t('shell.home_plugin_card_renderer_label') }}</dt>
+        <dt>{{ i18n.t("shell.home_plugin_card_renderer_label") }}</dt>
         <dd>{{ rendererKey }}</dd>
       </div>
     </dl>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useSlots } from "vue";
 import { House, Puzzle, Server, Settings2 } from "@lucide/vue";
 import { isBrowserEnv } from "@api/tauri";
 import { useRoute, useRouter } from "vue-router";
@@ -9,6 +9,7 @@ import { useAuthStore } from "@stores/authStore";
 import NextSidebarHostItems from "../components/host/NextSidebarHostItems.vue";
 import type { NextProtectedPageKind, NextShellPage } from "../contracts/page";
 import type { NextShellNavItem } from "../contracts/shell";
+import { useNextShellNavigationTransition } from "../composables/useNextShellNavigationTransition";
 import { useNextHostRuntime } from "../host/runtime";
 import NextWorkbenchLayout from "../layout/NextWorkbenchLayout.vue";
 import { getNextRoutePageMeta, NEXT_PROTECTED_ROUTES } from "../router/pageMeta";
@@ -16,20 +17,34 @@ import { getNextRoutePageMeta, NEXT_PROTECTED_ROUTES } from "../router/pageMeta"
 interface Props {
   pageSubtitle?: string;
   railLocked?: boolean;
+  shellHeaderMode?: "title" | "hidden";
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  pageSubtitle: "",
+  railLocked: false,
+  shellHeaderMode: "title",
+});
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const nextHostRuntime = useNextHostRuntime();
 const isBrowserMode = isBrowserEnv();
+const slots = useSlots();
 
 const pageMeta = computed(() => getNextRoutePageMeta(route.meta as Record<string, unknown>));
 const currentPageKind = computed<NextProtectedPageKind>(() => {
   return pageMeta.value.pageKind === "auth" ? "home" : pageMeta.value.pageKind;
 });
+const {
+  handlePageTransitionSettled,
+  pageTransitionClass,
+  railExpanded,
+  setFocusWithinRail,
+  setPointerInsideRail,
+} = useNextShellNavigationTransition(currentPageKind.value);
+const effectiveRailExpanded = computed(() => !props.railLocked && railExpanded.value);
 
 const navIconByKind = {
   home: House,
@@ -75,17 +90,23 @@ async function handleLogout(): Promise<void> {
     :show-logout="isBrowserMode"
     :nav-items="navItems"
     :rail-locked="props.railLocked"
+    :rail-expanded="effectiveRailExpanded"
+    :page-transition-class="pageTransitionClass"
+    :shell-header-mode="props.shellHeaderMode"
     @logout="handleLogout"
+    @page-transition-settled="handlePageTransitionSettled"
+    @rail-focus-within-change="setFocusWithinRail"
+    @rail-pointer-inside-change="setPointerInsideRail"
   >
     <template #sidebar-primary>
       <NextSidebarHostItems :items="hostSidebarItems" />
     </template>
 
     <template #header-primary-actions>
-      <slot name="header-primary-actions" />
+      <slot v-if="slots['header-primary-actions']" name="header-primary-actions" />
     </template>
 
-    <template #page-header-actions>
+    <template v-if="slots['page-header-actions']" #page-header-actions>
       <div class="next-protected-page-view__page-header-actions">
         <slot name="page-header-actions" />
       </div>

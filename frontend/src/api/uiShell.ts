@@ -17,6 +17,10 @@ export interface UiShellStatus {
   available_shells: UiShellInfo[];
 }
 
+export interface RestartAppResponse {
+  restarted: boolean;
+}
+
 export const uiShellApi = {
   async getStatus(): Promise<UiShellStatus> {
     return tauriInvoke("get_ui_shell_status");
@@ -34,7 +38,7 @@ export const uiShellApi = {
     });
   },
 
-  async restartApp(): Promise<void> {
+  async restartApp(): Promise<RestartAppResponse> {
     return tauriInvoke("restart_app");
   },
 };

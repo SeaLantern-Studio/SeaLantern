@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import type { NextHomeServerCardModel } from "../../pages/home/useNextHomePage";
+import type { NextHomeServerCardModel } from "@next-src/pages/home/useNextHomePage";
 import NextHomeServerCard from "./NextHomeServerCard.vue";
 
 defineProps<{
@@ -29,7 +29,9 @@ const emit = defineEmits<{
   >
     <header class="next-home-workspace-band__header">
       <div>
-        <span class="next-home-workspace-band__eyebrow">{{ i18n.t("shell.home_workspace_eyebrow") }}</span>
+        <span class="next-home-workspace-band__eyebrow">{{
+          i18n.t("shell.home_workspace_eyebrow")
+        }}</span>
         <h2>{{ serverCountLabel }}</h2>
       </div>
     </header>

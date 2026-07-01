@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NextHostSlotId, NextHostSlotScope } from "../../contracts/slots";
+import type { NextHostSlotId, NextHostSlotScope } from "@next-src/contracts/slots";
 
 interface Props {
   slotId: NextHostSlotId;

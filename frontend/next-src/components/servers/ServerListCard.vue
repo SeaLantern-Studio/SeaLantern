@@ -9,7 +9,11 @@ import {
 } from "@lucide/vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
-import type { ServersPageServerItem, ServersPageTarget } from "../../pages/servers/useServersPage";
+import { i18n } from "@language";
+import type {
+  ServersPageServerItem,
+  ServersPageTarget,
+} from "@next-src/pages/servers/useServersPage";
 
 interface Props {
   server: ServersPageServerItem;
@@ -35,7 +39,9 @@ const emit = defineEmits<{
       <div class="server-list-card__title-block">
         <div class="server-list-card__title-row">
           <h3 class="server-list-card__title">{{ server.name }}</h3>
-          <span v-if="server.isCurrent" class="server-list-card__current-chip">当前</span>
+          <span v-if="server.isCurrent" class="server-list-card__current-chip">{{
+            i18n.t("servers.next.card.current")
+          }}</span>
         </div>
         <p v-if="server.detailSummary" class="server-list-card__detail">
           {{ server.detailSummary }}
@@ -55,7 +61,9 @@ const emit = defineEmits<{
       <div class="server-list-card__summary-item">
         <MonitorSmartphone :size="16" />
         <div>
-          <span class="server-list-card__summary-label">运行时</span>
+          <span class="server-list-card__summary-label">{{
+            i18n.t("servers.next.card.runtime")
+          }}</span>
           <strong class="server-list-card__summary-value">{{ server.runtimeSummary }}</strong>
         </div>
       </div>
@@ -63,7 +71,9 @@ const emit = defineEmits<{
       <div class="server-list-card__summary-item">
         <Tag :size="16" />
         <div>
-          <span class="server-list-card__summary-label">Core</span>
+          <span class="server-list-card__summary-label">{{
+            i18n.t("servers.next.card.core")
+          }}</span>
           <strong class="server-list-card__summary-value">{{ server.coreSummary }}</strong>
           <span v-if="server.versionSummary" class="server-list-card__summary-meta">
             {{ server.versionSummary }}
@@ -75,19 +85,19 @@ const emit = defineEmits<{
     <div class="server-list-card__meta-row">
       <div class="server-list-card__meta-chip" :title="server.pathTooltip">
         <FolderKanban :size="14" />
-        <span>路径</span>
+        <span>{{ i18n.t("servers.next.card.path") }}</span>
         <strong>{{ server.pathSummary }}</strong>
       </div>
 
       <div class="server-list-card__meta-chip">
         <CircleDot :size="14" />
-        <span>端口</span>
+        <span>{{ i18n.t("servers.next.card.port") }}</span>
         <strong>{{ server.portSummary }}</strong>
       </div>
 
       <div class="server-list-card__meta-chip">
         <MemoryStick :size="14" />
-        <span>内存</span>
+        <span>{{ i18n.t("servers.next.card.memory") }}</span>
         <strong>{{ server.memorySummary }}</strong>
       </div>
     </div>
@@ -97,7 +107,9 @@ const emit = defineEmits<{
         <div class="server-list-card__selection-note">
           <HardDriveDownload :size="14" />
           <span>{{
-            server.isCurrent ? "当前已作为 active server" : "点击卡片可设为当前服务器"
+            server.isCurrent
+              ? i18n.t("servers.next.card.selected")
+              : i18n.t("servers.next.card.select")
           }}</span>
         </div>
 

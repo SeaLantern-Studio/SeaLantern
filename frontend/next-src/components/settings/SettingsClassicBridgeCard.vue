@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
-import type { SettingsCoverageItem } from "../../pages/settings/useSettingsPage";
+import { i18n } from "@language";
+import type { SettingsCoverageItem } from "@next-src/pages/settings/useSettingsPage";
 
 interface Props {
   nextItems: SettingsCoverageItem[];
@@ -19,28 +20,31 @@ const emit = defineEmits<{
   <SLCard variant="outline" padding="lg" class="settings-classic-bridge-card">
     <div class="settings-classic-bridge-card__header">
       <div>
-        <span class="settings-classic-bridge-card__eyebrow">Classic bridge</span>
-        <h3 class="settings-classic-bridge-card__title">next 已聚合哪些入口，哪些仍走 classic</h3>
+        <span class="settings-classic-bridge-card__eyebrow">{{
+          i18n.t("settings.next.bridge.eyebrow")
+        }}</span>
+        <h3 class="settings-classic-bridge-card__title">
+          {{ i18n.t("settings.next.bridge.title") }}
+        </h3>
       </div>
 
       <div class="settings-classic-bridge-card__actions">
         <SLButton variant="secondary" size="sm" @click="emit('action', 'open-paint')">
-          打开 classic 个性化页
+          {{ i18n.t("settings.next.bridge.open_personalization") }}
         </SLButton>
         <SLButton variant="ghost" size="sm" @click="emit('action', 'open-developer')">
-          尝试打开 classic 开发工具
+          {{ i18n.t("settings.next.bridge.open_developer") }}
         </SLButton>
       </div>
     </div>
 
     <p class="settings-classic-bridge-card__description">
-      `/settings` 现在由 next shell 接管，因此这里不再直接承载 classic SettingsView 全量卡片。
-      当前策略是：next 负责统一入口和说明态，复杂设置仍留在 classic 的既有页面体系中。
+      {{ i18n.t("settings.next.bridge.description") }}
     </p>
 
     <div class="settings-classic-bridge-card__grid">
       <section class="settings-classic-bridge-card__column">
-        <h4>当前已在 next 聚合</h4>
+        <h4>{{ i18n.t("settings.next.bridge.next_section_title") }}</h4>
         <ul>
           <li v-for="item in props.nextItems" :key="item.title">
             <strong>{{ item.title }}</strong>
@@ -50,7 +54,7 @@ const emit = defineEmits<{
       </section>
 
       <section class="settings-classic-bridge-card__column">
-        <h4>本轮故意继续走 classic</h4>
+        <h4>{{ i18n.t("settings.next.bridge.classic_section_title") }}</h4>
         <ul>
           <li v-for="item in props.classicItems" :key="item.title">
             <strong>{{ item.title }}</strong>

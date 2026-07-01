@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { i18n } from "@language";
 import NextHomeWorkspaceBand from "../NextHomeWorkspaceBand.vue";
-import type { NextHomeCardRendererProps } from "../../../pages/home/cardRendererContract";
+import type { NextHomeCardRendererProps } from "@next-src/pages/home/cardRendererContract";
 
 const props = defineProps<NextHomeCardRendererProps>();
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
+import { i18n } from "@language";
 
 interface Props {
   errorMessage?: string | null;
@@ -17,16 +18,18 @@ const emit = defineEmits<{
 
 <template>
   <section class="servers-empty-state">
-    <div class="servers-empty-state__badge">Servers</div>
-    <h2 class="servers-empty-state__title">还没有可管理的服务器</h2>
-    <p class="servers-empty-state__description">
-      可以先创建一个新服务器，或把现有服务器目录导入进来。
-    </p>
+    <div class="servers-empty-state__badge">{{ i18n.t("servers.next.empty.eyebrow") }}</div>
+    <h2 class="servers-empty-state__title">{{ i18n.t("servers.next.empty.title") }}</h2>
+    <p class="servers-empty-state__description">{{ i18n.t("servers.next.empty.description") }}</p>
     <p v-if="errorMessage" class="servers-empty-state__error">{{ errorMessage }}</p>
 
     <div class="servers-empty-state__actions">
-      <SLButton variant="primary" @click="emit('create')">前往 /create</SLButton>
-      <SLButton variant="secondary" @click="emit('importExisting')">前往 /add-existing</SLButton>
+      <SLButton variant="primary" @click="emit('create')">{{
+        i18n.t("servers.next.empty.create")
+      }}</SLButton>
+      <SLButton variant="secondary" @click="emit('importExisting')">{{
+        i18n.t("servers.next.empty.import")
+      }}</SLButton>
     </div>
   </section>
 </template>

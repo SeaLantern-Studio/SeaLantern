@@ -2,7 +2,7 @@
 import { computed, shallowRef } from "vue";
 import { LayoutGrid, Magnet, Move, Plus, RotateCcw } from "@lucide/vue";
 import { i18n } from "@language";
-import type { NextHomeCardKind } from "../../pages/home/layoutContract";
+import type { NextHomeCardKind } from "@next-src/pages/home/layoutContract";
 
 interface PaletteEntry {
   kind: NextHomeCardKind;
@@ -66,46 +66,93 @@ function closePalette(): void {
 </script>
 
 <template>
-  <aside class="next-home-card-palette" :class="{ 'next-home-card-palette--open': isOpen }" :style="paletteStyle" @mouseenter="openPalette" @mouseleave="closePalette">
-    <button class="next-home-card-palette__trigger" type="button" :aria-expanded="isOpen" :title="isOpen ? i18n.t('shell.home_palette_collapse') : i18n.t('shell.home_palette_expand')" @focus="openPalette">
+  <aside
+    class="next-home-card-palette"
+    :class="{ 'next-home-card-palette--open': isOpen }"
+    :style="paletteStyle"
+    @mouseenter="openPalette"
+    @mouseleave="closePalette"
+  >
+    <button
+      class="next-home-card-palette__trigger"
+      type="button"
+      :aria-expanded="isOpen"
+      :title="isOpen ? i18n.t('shell.home_palette_collapse') : i18n.t('shell.home_palette_expand')"
+      @focus="openPalette"
+    >
       <LayoutGrid :size="16" />
       <span class="next-home-card-palette__trigger-count">{{ totalCountLabel }}</span>
     </button>
 
     <div class="next-home-card-palette__panel">
       <header class="next-home-card-palette__header">
-        <span class="next-home-card-palette__eyebrow">{{ i18n.t('shell.home_palette_eyebrow') }}</span>
-        <h2>{{ i18n.t('shell.home_palette_title') }}</h2>
-        <button class="next-home-card-palette__reset" type="button" :title="i18n.t('shell.home_palette_reset')" @click="emit('reset')">
+        <span class="next-home-card-palette__eyebrow">{{
+          i18n.t("shell.home_palette_eyebrow")
+        }}</span>
+        <h2>{{ i18n.t("shell.home_palette_title") }}</h2>
+        <button
+          class="next-home-card-palette__reset"
+          type="button"
+          :title="i18n.t('shell.home_palette_reset')"
+          @click="emit('reset')"
+        >
           <RotateCcw :size="14" />
         </button>
       </header>
 
       <div class="next-home-card-palette__settings">
-        <button class="next-home-card-palette__mode-toggle" type="button" :aria-pressed="snapMode" :title="snapMode ? i18n.t('shell.home_palette_snap_active') : i18n.t('shell.home_palette_free_active')" @click="snapMode = !snapMode; emit('updateSnapMode', snapMode)">
+        <button
+          class="next-home-card-palette__mode-toggle"
+          type="button"
+          :aria-pressed="snapMode"
+          :title="
+            snapMode
+              ? i18n.t('shell.home_palette_snap_active')
+              : i18n.t('shell.home_palette_free_active')
+          "
+          @click="
+            snapMode = !snapMode;
+            emit('updateSnapMode', snapMode);
+          "
+        >
           <Magnet v-if="snapMode" :size="14" />
           <Move v-else :size="14" />
-          <span>{{ snapMode ? i18n.t('shell.home_palette_snap_label') : i18n.t('shell.home_palette_free_label') }}</span>
+          <span>{{
+            snapMode
+              ? i18n.t("shell.home_palette_snap_label")
+              : i18n.t("shell.home_palette_free_label")
+          }}</span>
         </button>
       </div>
 
       <div class="next-home-card-palette__list">
-      <article
-        v-for="entry in entries"
-        :key="entry.kind"
-        class="next-home-card-palette__item"
-        :class="{ 'next-home-card-palette__item--disabled': !entry.canAdd }"
-        :draggable="entry.canAdd"
-        :title="entry.canAdd ? i18n.t('shell.home_palette_deploy_hint') : i18n.t('shell.home_palette_limit_reached')"
-        @dblclick="emit('deploy', entry.kind)"
-        @dragstart="handleDragStart(entry.kind, $event)"
-      >
-        <span class="next-home-card-palette__item-title">{{ i18n.t(entry.meta.titleKey) }}</span>
-        <span class="next-home-card-palette__item-count">{{ entry.count }}/{{ entry.limit }}</span>
-        <button class="next-home-card-palette__item-add" type="button" :disabled="!entry.canAdd" @click.stop="emit('deploy', entry.kind)">
-          <Plus :size="14" />
-        </button>
-      </article>
+        <article
+          v-for="entry in entries"
+          :key="entry.kind"
+          class="next-home-card-palette__item"
+          :class="{ 'next-home-card-palette__item--disabled': !entry.canAdd }"
+          :draggable="entry.canAdd"
+          :title="
+            entry.canAdd
+              ? i18n.t('shell.home_palette_deploy_hint')
+              : i18n.t('shell.home_palette_limit_reached')
+          "
+          @dblclick="emit('deploy', entry.kind)"
+          @dragstart="handleDragStart(entry.kind, $event)"
+        >
+          <span class="next-home-card-palette__item-title">{{ i18n.t(entry.meta.titleKey) }}</span>
+          <span class="next-home-card-palette__item-count"
+            >{{ entry.count }}/{{ entry.limit }}</span
+          >
+          <button
+            class="next-home-card-palette__item-add"
+            type="button"
+            :disabled="!entry.canAdd"
+            @click.stop="emit('deploy', entry.kind)"
+          >
+            <Plus :size="14" />
+          </button>
+        </article>
       </div>
     </div>
   </aside>

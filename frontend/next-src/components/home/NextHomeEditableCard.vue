@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { GripVertical, Trash2 } from "@lucide/vue";
 import { i18n } from "@language";
-import type { NextHomeCardInstance, NextHomeCardLayoutMeta } from "../../pages/home/layoutContract";
+import type {
+  NextHomeCardInstance,
+  NextHomeCardLayoutMeta,
+} from "@next-src/pages/home/layoutContract";
 
 interface ResizeHandlePayload {
   instanceId: string;
@@ -92,9 +95,24 @@ function handleResizeStart(axis: ResizeHandlePayload["axis"], event: PointerEven
     </div>
 
     <template v-if="editMode && meta.resizable && !compactMode">
-      <button class="next-home-editable-card__resize-handle next-home-editable-card__resize-handle--east" type="button" :title="i18n.t('shell.home_edit_resize_width')" @pointerdown.stop.prevent="handleResizeStart('horizontal', $event)" />
-      <button class="next-home-editable-card__resize-handle next-home-editable-card__resize-handle--south" type="button" :title="i18n.t('shell.home_edit_resize_height')" @pointerdown.stop.prevent="handleResizeStart('vertical', $event)" />
-      <button class="next-home-editable-card__resize-handle next-home-editable-card__resize-handle--corner" type="button" :title="i18n.t('shell.home_edit_resize_both')" @pointerdown.stop.prevent="handleResizeStart('both', $event)" />
+      <button
+        class="next-home-editable-card__resize-handle next-home-editable-card__resize-handle--east"
+        type="button"
+        :title="i18n.t('shell.home_edit_resize_width')"
+        @pointerdown.stop.prevent="handleResizeStart('horizontal', $event)"
+      />
+      <button
+        class="next-home-editable-card__resize-handle next-home-editable-card__resize-handle--south"
+        type="button"
+        :title="i18n.t('shell.home_edit_resize_height')"
+        @pointerdown.stop.prevent="handleResizeStart('vertical', $event)"
+      />
+      <button
+        class="next-home-editable-card__resize-handle next-home-editable-card__resize-handle--corner"
+        type="button"
+        :title="i18n.t('shell.home_edit_resize_both')"
+        @pointerdown.stop.prevent="handleResizeStart('both', $event)"
+      />
     </template>
   </article>
 </template>

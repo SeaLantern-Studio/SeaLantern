@@ -7,6 +7,8 @@ import { i18n } from "@language";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { normalizeAppError } from "@utils/appError";
 
+const DEV_RESTART_MANUAL_REQUIRED_CODE = "plugins.ui_shell.dev_restart_manual_required";
+
 interface UiShellCardViewModel {
   id: UiShellId;
   name: string;
@@ -45,6 +47,7 @@ export function useUiShellPanel() {
   const restarting = ref(false);
   const showRestartDialog = ref(false);
   const errorMessage = ref<string | null>(null);
+  const restartNotice = ref<string | null>(null);
   const browserOnly = computed(() => isBrowserEnv());
 
   const pendingShellName = computed(() => {
@@ -141,11 +144,13 @@ export function useUiShellPanel() {
     if (browserOnly.value) {
       loading.value = false;
       errorMessage.value = null;
+      restartNotice.value = null;
       return;
     }
 
     loading.value = true;
     errorMessage.value = null;
+    restartNotice.value = null;
 
     try {
       const [nextStatus, safeModeStatus] = await Promise.all([
@@ -207,11 +212,18 @@ export function useUiShellPanel() {
   async function confirmRestart() {
     restarting.value = true;
     errorMessage.value = null;
+    restartNotice.value = null;
 
     try {
       await uiShellApi.restartApp();
     } catch (error) {
       const normalized = normalizeAppError(error);
+      if (normalized.code === DEV_RESTART_MANUAL_REQUIRED_CODE) {
+        restartNotice.value = i18n.t("plugins.ui_shell.dev_restart_manual_required_message");
+        pluginLogger.info("UiShellPanel", "开发环境下跳过自动重启", normalized);
+        return;
+      }
+
       errorMessage.value = normalized.message;
       pluginLogger.error("UiShellPanel", "应用重启失败", normalized);
     } finally {
@@ -231,6 +243,7 @@ export function useUiShellPanel() {
     restarting,
     showRestartDialog,
     errorMessage,
+    restartNotice,
     browserOnly,
     pendingShellName,
     hasPendingRestart: computed(() => status.value?.pending_restart === true),

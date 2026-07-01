@@ -1,17 +1,25 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { resolveNextHomeCardRenderer } from "../../pages/home/cardRendererRegistry";
-import type { NextHomeCardRendererProps, NextHomeCardRendererRegistry, NextHomeResolvedCardRenderer } from "../../pages/home/cardRendererContract";
+import { resolveNextHomeCardRenderer } from "@next-src/pages/home/cardRendererRegistry";
+import type {
+  NextHomeCardRendererProps,
+  NextHomeCardRendererRegistry,
+  NextHomeResolvedCardRenderer,
+} from "@next-src/pages/home/cardRendererContract";
 
 defineOptions({
   inheritAttrs: false,
 });
 
-const props = defineProps<NextHomeCardRendererProps & {
-  registry: NextHomeCardRendererRegistry;
-}>();
+const props = defineProps<
+  NextHomeCardRendererProps & {
+    registry: NextHomeCardRendererRegistry;
+  }
+>();
 
-const resolvedRenderer = computed<NextHomeResolvedCardRenderer>(() => resolveNextHomeCardRenderer(props.instance.kind, props.registry));
+const resolvedRenderer = computed<NextHomeResolvedCardRenderer>(() =>
+  resolveNextHomeCardRenderer(props.instance.kind, props.registry),
+);
 </script>
 
 <template>

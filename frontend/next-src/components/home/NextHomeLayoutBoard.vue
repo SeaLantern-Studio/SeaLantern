@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, shallowRef } from "vue";
-import { HOME_GRID_COLUMNS, HOME_GRID_GAP, HOME_GRID_ROW_HEIGHT } from "../../pages/home/layoutContract";
-import type { NextHomeCardInstance, NextHomeCardKind, NextHomeCardRegistry } from "../../pages/home/layoutContract";
+import {
+  HOME_GRID_COLUMNS,
+  HOME_GRID_GAP,
+  HOME_GRID_ROW_HEIGHT,
+} from "@next-src/pages/home/layoutContract";
+import type {
+  NextHomeCardInstance,
+  NextHomeCardKind,
+  NextHomeCardRegistry,
+} from "@next-src/pages/home/layoutContract";
 import NextHomeEditableCard from "./NextHomeEditableCard.vue";
 
 interface ResizeStartPayload {
@@ -39,8 +47,18 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectInstance: [instanceId: string | null];
-  moveInstance: [payload: { instanceId: string; x?: number; y?: number; colStart?: number; rowStart?: number }];
-  resizeInstance: [payload: { instanceId: string; width?: number; height?: number; colSpan?: number; rowSpan?: number }];
+  moveInstance: [
+    payload: { instanceId: string; x?: number; y?: number; colStart?: number; rowStart?: number },
+  ];
+  resizeInstance: [
+    payload: {
+      instanceId: string;
+      width?: number;
+      height?: number;
+      colSpan?: number;
+      rowSpan?: number;
+    },
+  ];
   removeInstance: [instanceId: string];
   deployCard: [payload: BoardDropPayload];
 }>();
@@ -50,10 +68,12 @@ const compactMode = shallowRef(typeof window !== "undefined" ? window.innerWidth
 const dragPreview = shallowRef<DragPreview | null>(null);
 const dragActiveId = shallowRef<string | null>(null);
 
-const orderedInstances = computed(() => [...props.instances].toSorted((left, right) => {
-  if (left.zIndex !== right.zIndex) return left.zIndex - right.zIndex;
-  return left.instanceId.localeCompare(right.instanceId);
-}));
+const orderedInstances = computed(() =>
+  [...props.instances].toSorted((left, right) => {
+    if (left.zIndex !== right.zIndex) return left.zIndex - right.zIndex;
+    return left.instanceId.localeCompare(right.instanceId);
+  }),
+);
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -76,7 +96,8 @@ function getBoardMetrics() {
     toLeft: (x: number) => x * cellWidth + Math.max(0, x) * HOME_GRID_GAP,
     toTop: (y: number) => y * HOME_GRID_ROW_HEIGHT + Math.max(0, y) * HOME_GRID_GAP,
     toWidth: (width: number) => width * cellWidth + Math.max(0, width - 1) * HOME_GRID_GAP,
-    toHeight: (height: number) => height * HOME_GRID_ROW_HEIGHT + Math.max(0, height - 1) * HOME_GRID_GAP,
+    toHeight: (height: number) =>
+      height * HOME_GRID_ROW_HEIGHT + Math.max(0, height - 1) * HOME_GRID_GAP,
   };
 }
 
@@ -108,7 +129,12 @@ function getPreviewStyle(): Record<string, string> | null {
   };
 }
 
-function clampPreviewPlacement(colStart: number, rowStart: number, colSpan: number, rowSpan: number): DragPreview {
+function clampPreviewPlacement(
+  colStart: number,
+  rowStart: number,
+  colSpan: number,
+  rowSpan: number,
+): DragPreview {
   const maxColStart = Math.max(1, HOME_GRID_COLUMNS - colSpan + 1);
   return {
     instanceId: dragActiveId.value ?? "preview",
@@ -123,7 +149,10 @@ const boardHeight = computed(() => {
   if (compactMode.value) return "auto";
   const metrics = getBoardMetrics();
   if (!metrics) return "auto";
-  const maxBottom = props.instances.reduce((maxValue, instance) => Math.max(maxValue, instance.y + instance.height), 0);
+  const maxBottom = props.instances.reduce(
+    (maxValue, instance) => Math.max(maxValue, instance.y + instance.height),
+    0,
+  );
   return `${Math.max(metrics.toTop(maxBottom), 320)}px`;
 });
 
@@ -149,7 +178,12 @@ function startMove(payload: MoveStartPayload): void {
     const deltaY = moveEvent.clientY - originY;
     const nextX = source.x + deltaX / (metrics.cellWidth + HOME_GRID_GAP);
     const nextY = source.y + deltaY / (metrics.cellHeight + HOME_GRID_GAP);
-    dragPreview.value = clampPreviewPlacement(Math.floor(nextX) + 1, Math.floor(nextY) + 1, source.colSpan, source.rowSpan);
+    dragPreview.value = clampPreviewPlacement(
+      Math.floor(nextX) + 1,
+      Math.floor(nextY) + 1,
+      source.colSpan,
+      source.rowSpan,
+    );
     dragPreview.value.instanceId = payload.instanceId;
     if (!props.snapMode) {
       emit("moveInstance", {
@@ -204,15 +238,20 @@ function startResize(payload: ResizeStartPayload): void {
     dragPreview.value = clampPreviewPlacement(
       source.colStart,
       source.rowStart,
-      payload.axis === "vertical" ? initialColSpan : Math.max(1, Math.ceil(source.width + deltaWidth)),
-      payload.axis === "horizontal" ? initialRowSpan : Math.max(1, Math.ceil(source.height + deltaHeight)),
+      payload.axis === "vertical"
+        ? initialColSpan
+        : Math.max(1, Math.ceil(source.width + deltaWidth)),
+      payload.axis === "horizontal"
+        ? initialRowSpan
+        : Math.max(1, Math.ceil(source.height + deltaHeight)),
     );
     dragPreview.value.instanceId = payload.instanceId;
     if (!props.snapMode) {
       emit("resizeInstance", {
         instanceId: payload.instanceId,
         width: payload.axis === "vertical" ? source.width : Math.max(1, source.width + deltaWidth),
-        height: payload.axis === "horizontal" ? source.height : Math.max(1, source.height + deltaHeight),
+        height:
+          payload.axis === "horizontal" ? source.height : Math.max(1, source.height + deltaHeight),
       });
     }
   };
@@ -237,7 +276,9 @@ function startResize(payload: ResizeStartPayload): void {
 }
 
 function resolveDropPlacement(event: DragEvent): BoardDropPayload | null {
-  const kind = event.dataTransfer?.getData("application/x-sealantern-home-card") as NextHomeCardKind | "";
+  const kind = event.dataTransfer?.getData("application/x-sealantern-home-card") as
+    | NextHomeCardKind
+    | "";
   if (!kind) return null;
   const metrics = getBoardMetrics();
   if (!metrics) return null;
@@ -269,9 +310,29 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="next-home-layout-board-shell" :class="{ 'next-home-layout-board-shell--edit-mode': editMode }">
-    <div ref="boardRef" class="next-home-layout-board" :class="{ 'next-home-layout-board--compact': compactMode }" :style="{ height: boardHeight }" @click="emit('selectInstance', null)" @dragover.prevent @drop="handleDrop">
-      <div v-for="instance in orderedInstances" :key="instance.instanceId" class="next-home-layout-board__item" :class="{ 'next-home-layout-board__item--dragging': dragActiveId === instance.instanceId && !snapMode }" :style="getCardStyle(instance)">
+  <div
+    class="next-home-layout-board-shell"
+    :class="{ 'next-home-layout-board-shell--edit-mode': editMode }"
+  >
+    <div
+      ref="boardRef"
+      class="next-home-layout-board"
+      :class="{ 'next-home-layout-board--compact': compactMode }"
+      :style="{ height: boardHeight }"
+      @click="emit('selectInstance', null)"
+      @dragover.prevent
+      @drop="handleDrop"
+    >
+      <div
+        v-for="instance in orderedInstances"
+        :key="instance.instanceId"
+        class="next-home-layout-board__item"
+        :class="{
+          'next-home-layout-board__item--dragging':
+            dragActiveId === instance.instanceId && !snapMode,
+        }"
+        :style="getCardStyle(instance)"
+      >
         <NextHomeEditableCard
           :instance="instance"
           :meta="registry[instance.kind]"
@@ -289,7 +350,11 @@ onUnmounted(() => {
         </NextHomeEditableCard>
       </div>
 
-      <div v-if="editMode && snapMode && dragPreview && getPreviewStyle()" class="next-home-layout-board__preview" :style="getPreviewStyle()!" />
+      <div
+        v-if="editMode && snapMode && dragPreview && getPreviewStyle()"
+        class="next-home-layout-board__preview"
+        :style="getPreviewStyle()!"
+      />
     </div>
   </div>
 </template>

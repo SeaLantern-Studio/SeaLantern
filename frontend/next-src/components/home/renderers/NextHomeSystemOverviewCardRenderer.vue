@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { i18n } from "@language";
 import NextHomeSystemOverviewPanel from "../NextHomeSystemOverviewPanel.vue";
-import type { NextHomeCardRendererProps } from "../../../pages/home/cardRendererContract";
+import type { NextHomeCardRendererProps } from "@next-src/pages/home/cardRendererContract";
 
 defineProps<NextHomeCardRendererProps>();
 </script>

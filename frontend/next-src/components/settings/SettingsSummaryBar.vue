@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
+import { i18n } from "@language";
 import type {
   SettingsSummaryChip,
   SettingsSummaryFact,
-} from "../../pages/settings/useSettingsPage";
+} from "@next-src/pages/settings/useSettingsPage";
 
 interface Props {
   chips: SettingsSummaryChip[];
@@ -25,11 +26,12 @@ const emit = defineEmits<{
   <SLCard variant="outline" padding="lg" class="settings-summary-bar">
     <div class="settings-summary-bar__header">
       <div class="settings-summary-bar__copy">
-        <span class="settings-summary-bar__eyebrow">Settings / next</span>
-        <h2 class="settings-summary-bar__title">next 设置入口页</h2>
+        <span class="settings-summary-bar__eyebrow">{{
+          i18n.t("settings.next.summary.eyebrow")
+        }}</span>
+        <h2 class="settings-summary-bar__title">{{ i18n.t("settings.next.summary.title") }}</h2>
         <p class="settings-summary-bar__description">
-          这一页负责把 next 下已经稳定的设置相关入口聚合起来，并明确哪些能力已在 next
-          承载、哪些仍然走 classic。
+          {{ i18n.t("settings.next.summary.description") }}
         </p>
       </div>
 
@@ -40,12 +42,15 @@ const emit = defineEmits<{
           :loading="props.refreshing"
           @click="emit('refresh')"
         >
-          重新整理
+          {{ i18n.t("settings.next.summary.refresh") }}
         </SLButton>
       </div>
     </div>
 
-    <div class="settings-summary-bar__chips" aria-label="settings context chips">
+    <div
+      class="settings-summary-bar__chips"
+      :aria-label="i18n.t('settings.next.summary.chips_aria_label')"
+    >
       <span
         v-for="chip in props.chips"
         :key="chip.label"

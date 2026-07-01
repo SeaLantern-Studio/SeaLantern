@@ -2,9 +2,10 @@
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
-import InstalledPluginCard from "../../components/plugins/InstalledPluginCard.vue";
-import PluginsEmptyState from "../../components/plugins/PluginsEmptyState.vue";
-import PluginsSummaryBar from "../../components/plugins/PluginsSummaryBar.vue";
+import { i18n } from "@language";
+import InstalledPluginCard from "@next-src/components/plugins/InstalledPluginCard.vue";
+import PluginsEmptyState from "@next-src/components/plugins/PluginsEmptyState.vue";
+import PluginsSummaryBar from "@next-src/components/plugins/PluginsSummaryBar.vue";
 import { usePluginsPage } from "./usePluginsPage";
 
 const {
@@ -60,14 +61,16 @@ const {
 
     <section v-if="errorMessage" class="plugins-page__error-banner" role="alert" aria-live="polite">
       <div class="plugins-page__error-copy">
-        <strong>读取插件列表失败</strong>
+        <strong>{{ i18n.t("plugins.next.error_title") }}</strong>
         <span>{{ errorMessage }}</span>
       </div>
 
       <div class="plugins-page__error-actions">
-        <SLButton variant="ghost" size="sm" @click="clearError()">关闭</SLButton>
+        <SLButton variant="ghost" size="sm" @click="clearError()">{{
+          i18n.t("plugins.next.close_error")
+        }}</SLButton>
         <SLButton variant="secondary" size="sm" :loading="isRefreshing" @click="refreshPlugins()">
-          重试
+          {{ i18n.t("plugins.next.retry") }}
         </SLButton>
       </div>
     </section>
@@ -80,9 +83,11 @@ const {
       <div class="plugins-page__loading-state">
         <div class="plugins-page__spinner" aria-hidden="true"></div>
         <div>
-          <strong class="plugins-page__loading-title">正在读取已安装插件</strong>
+          <strong class="plugins-page__loading-title">{{
+            i18n.t("plugins.next.loading_title")
+          }}</strong>
           <p class="plugins-page__loading-description">
-            会先拉取插件列表，再补全图标、导航和更新信息。
+            {{ i18n.t("plugins.next.loading_description") }}
           </p>
         </div>
       </div>

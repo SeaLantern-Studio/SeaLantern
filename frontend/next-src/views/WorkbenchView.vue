@@ -15,12 +15,12 @@ const hostSidebarItems = computed(() => nextHostRuntime.sidebarItems.value);
 const isPreviewMode = computed(() => route.query.preview === "1");
 const isEditMode = shallowRef(false);
 const editToggleRef = shallowRef<InstanceType<typeof NextShellEditToggleButton> | null>(null);
-const paletteAnchorRect = shallowRef<{ top: number; left: number; width: number; height: number } | null>(null);
-const pageSubtitle = computed(() =>
-  isPreviewMode.value
-    ? "当前为 preview 数据视图；home editor 与 shell 接线保持原样。"
-    : "home 作为 next 路由体系中的一页保留现有编辑器与工作台实现。",
-);
+const paletteAnchorRect = shallowRef<{
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+} | null>(null);
 
 function toggleEditMode(): void {
   isEditMode.value = !isEditMode.value;
@@ -58,10 +58,7 @@ watch(isEditMode, () => {
 </script>
 
 <template>
-  <NextProtectedPageView
-    :page-subtitle="pageSubtitle"
-    :rail-locked="isEditMode"
-  >
+  <NextProtectedPageView :rail-locked="isEditMode">
     <template #header-primary-actions>
       <NextShellEditToggleButton
         ref="editToggleRef"

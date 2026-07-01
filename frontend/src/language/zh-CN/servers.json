@@ -1,0 +1,41 @@
+{
+  "next": {
+    "error_title": "读取服务器列表失败",
+    "close_error": "关闭",
+    "retry": "重试",
+    "loading_title": "正在加载服务器列表",
+    "loading_description": "正在获取列表和当前状态。",
+    "summary": {
+      "total_label": "服务器总数",
+      "running_label": "运行中",
+      "create": "创建服务器",
+      "import": "导入服务器",
+      "refresh": "刷新列表"
+    },
+    "empty": {
+      "eyebrow": "服务器",
+      "title": "还没有可管理的服务器",
+      "description": "先创建一个服务器，或导入现有服务器后继续。",
+      "create": "创建服务器",
+      "import": "导入现有服务器"
+    },
+    "card": {
+      "current": "当前",
+      "runtime": "运行时",
+      "core": "Core",
+      "path": "路径",
+      "port": "端口",
+      "memory": "内存",
+      "selected": "当前服务器",
+      "select": "设为当前服务器"
+    },
+    "runtime": {
+      "docker": "Docker",
+      "local": "本地运行",
+      "startup_mode": {
+        "starter": "Starter",
+        "custom": "Custom"
+      }
+    }
+  }
+}

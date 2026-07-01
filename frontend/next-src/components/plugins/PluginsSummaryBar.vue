@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
+import { i18n } from "@language";
 
 defineProps<{
   totalCount: number;
@@ -20,29 +21,39 @@ defineEmits<{
   <section class="plugins-summary-bar">
     <div class="plugins-summary-bar__metrics">
       <article class="plugins-summary-bar__metric-card">
-        <span class="plugins-summary-bar__metric-label">已安装插件</span>
+        <span class="plugins-summary-bar__metric-label">{{
+          i18n.t("plugins.next.summary.installed_label")
+        }}</span>
         <strong class="plugins-summary-bar__metric-value">{{ totalCount }}</strong>
-        <span class="plugins-summary-bar__metric-hint">当前实例中已识别的插件总数</span>
+        <span class="plugins-summary-bar__metric-hint">{{
+          i18n.t("plugins.next.summary.installed_hint")
+        }}</span>
       </article>
 
       <article class="plugins-summary-bar__metric-card">
-        <span class="plugins-summary-bar__metric-label">已启用</span>
+        <span class="plugins-summary-bar__metric-label">{{
+          i18n.t("plugins.next.summary.enabled_label")
+        }}</span>
         <strong class="plugins-summary-bar__metric-value">{{ enabledCount }}</strong>
-        <span class="plugins-summary-bar__metric-hint"
-          >复用 classic 启停语义，仅统计 state=enabled</span
-        >
+        <span class="plugins-summary-bar__metric-hint">{{
+          i18n.t("plugins.next.summary.enabled_hint")
+        }}</span>
       </article>
 
       <article class="plugins-summary-bar__metric-card">
-        <span class="plugins-summary-bar__metric-label">可更新</span>
+        <span class="plugins-summary-bar__metric-label">{{
+          i18n.t("plugins.next.summary.updates_label")
+        }}</span>
         <strong class="plugins-summary-bar__metric-value">{{ updateCount }}</strong>
-        <span class="plugins-summary-bar__metric-hint">来自现有检查更新结果缓存</span>
+        <span class="plugins-summary-bar__metric-hint">{{
+          i18n.t("plugins.next.summary.updates_hint")
+        }}</span>
       </article>
     </div>
 
     <div class="plugins-summary-bar__actions">
       <SLButton variant="secondary" size="sm" :loading="refreshing" @click="$emit('refresh')">
-        刷新列表
+        {{ i18n.t("plugins.next.summary.refresh") }}
       </SLButton>
       <SLButton
         variant="secondary"
@@ -50,10 +61,10 @@ defineEmits<{
         :loading="checkingUpdates"
         @click="$emit('check-updates')"
       >
-        检查更新
+        {{ i18n.t("plugins.next.summary.check_updates") }}
       </SLButton>
       <SLButton variant="ghost" size="sm" @click="$emit('open-market')">
-        前往 classic 市场
+        {{ i18n.t("plugins.next.summary.open_market") }}
       </SLButton>
     </div>
   </section>

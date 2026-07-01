@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed, toRef } from "vue";
-import { useNextHostRuntime } from "../../host/runtime";
+import { useNextHostRuntime } from "@next-src/host/runtime";
 import type { NextHomeCardKind } from "./layoutContract";
-import NextHomeCardPalette from "../../components/home/NextHomeCardPalette.vue";
-import NextHomeCardRendererHost from "../../components/home/NextHomeCardRendererHost.vue";
-import NextHomeLayoutBoard from "../../components/home/NextHomeLayoutBoard.vue";
-import { mergeNextHomeCardRendererRegistries, NEXT_HOME_BUILTIN_CARD_RENDERERS } from "./cardRendererRegistry";
-import type { NextHomeCardRendererRegistry, NextHomeCardRuntimeContext } from "./cardRendererContract";
+import NextHomeCardPalette from "@next-src/components/home/NextHomeCardPalette.vue";
+import NextHomeCardRendererHost from "@next-src/components/home/NextHomeCardRendererHost.vue";
+import NextHomeLayoutBoard from "@next-src/components/home/NextHomeLayoutBoard.vue";
+import {
+  mergeNextHomeCardRendererRegistries,
+  NEXT_HOME_BUILTIN_CARD_RENDERERS,
+} from "./cardRendererRegistry";
+import type {
+  NextHomeCardRendererRegistry,
+  NextHomeCardRuntimeContext,
+} from "./cardRendererContract";
 import { useNextHomeLayoutEditor } from "./useNextHomeLayoutEditor";
 import { useNextHomePage } from "./useNextHomePage";
 
@@ -63,11 +69,13 @@ const {
   isRefreshing,
 } = homePage;
 
-const cardRenderers = computed<NextHomeCardRendererRegistry>(() => mergeNextHomeCardRendererRegistries(
-  NEXT_HOME_BUILTIN_CARD_RENDERERS,
-  nextHostRuntime.home.cardRenderers.value,
-  props.additionalCardRenderers,
-));
+const cardRenderers = computed<NextHomeCardRendererRegistry>(() =>
+  mergeNextHomeCardRendererRegistries(
+    NEXT_HOME_BUILTIN_CARD_RENDERERS,
+    nextHostRuntime.home.cardRenderers.value,
+    props.additionalCardRenderers,
+  ),
+);
 
 const cardRuntimeContext = computed<NextHomeCardRuntimeContext>(() => ({
   previewMode: props.previewMode,
@@ -88,7 +96,11 @@ const cardRuntimeContext = computed<NextHomeCardRuntimeContext>(() => ({
   toggleServer,
 }));
 
-function handleBoardDeploy(payload: { kind: NextHomeCardKind; colStart: number; rowStart: number }): void {
+function handleBoardDeploy(payload: {
+  kind: NextHomeCardKind;
+  colStart: number;
+  rowStart: number;
+}): void {
   layoutEditor.deployCard(payload.kind, {
     colStart: payload.colStart,
     rowStart: payload.rowStart,

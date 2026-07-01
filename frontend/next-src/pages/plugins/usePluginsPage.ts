@@ -102,6 +102,10 @@ async function openRepository(url: string): Promise<void> {
   await openUrl(url);
 }
 
+function getPluginNameLabelFallback(): string {
+  return i18n.t("plugins.title");
+}
+
 export function usePluginsPage() {
   const pluginStore = usePluginStore();
 
@@ -167,7 +171,7 @@ export function usePluginsPage() {
       return null;
     }
 
-    return `可更新到 v${update.latest_version}`;
+    return i18n.t("plugins.next.update_to", { version: update.latest_version });
   }
 
   function canOpenClassicDetails(plugin: PluginInfo): boolean {
@@ -257,18 +261,22 @@ export function usePluginsPage() {
 
   const permissionDialogTitle = computed(() => {
     if (pendingPermissionBlockReason.value === "revoked") {
-      return "该插件已被标记为撤销，无法直接启用";
+      return i18n.t("plugins.next.permission_revoked_title");
     }
 
-    return "启用前需要确认权限";
+    return i18n.t("plugins.next.permission_confirm_title");
   });
 
   const permissionDialogMessage = computed(() => {
     if (pendingPermissionBlockReason.value === "revoked") {
-      return `${pendingPermissionPluginName.value || "该插件"} 当前处于撤销状态，请先回到 classic 流程确认来源与完整性。`;
+      return i18n.t("plugins.next.permission_revoked_message", {
+        name: pendingPermissionPluginName.value || getPluginNameLabelFallback(),
+      });
     }
 
-    return `${pendingPermissionPluginName.value || "该插件"} 请求的权限超出直接启用范围，需要你确认后继续。`;
+    return i18n.t("plugins.next.permission_confirm_message", {
+      name: pendingPermissionPluginName.value || getPluginNameLabelFallback(),
+    });
   });
 
   onMounted(() => {

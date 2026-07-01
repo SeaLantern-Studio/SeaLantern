@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
-import ServerListCard from "../../components/servers/ServerListCard.vue";
-import ServersEmptyState from "../../components/servers/ServersEmptyState.vue";
-import ServersSummaryBar from "../../components/servers/ServersSummaryBar.vue";
+import { i18n } from "@language";
+import ServerListCard from "@next-src/components/servers/ServerListCard.vue";
+import ServersEmptyState from "@next-src/components/servers/ServersEmptyState.vue";
+import ServersSummaryBar from "@next-src/components/servers/ServersSummaryBar.vue";
 import { useServersPage, type ServersPageTarget } from "./useServersPage";
 
 const {
@@ -40,14 +41,16 @@ function handleNavigate(payload: { serverId: string; target: ServersPageTarget }
 
     <section v-if="errorMessage" class="servers-page__error-banner" role="alert" aria-live="polite">
       <div class="servers-page__error-copy">
-        <strong>读取服务器列表失败</strong>
+        <strong>{{ i18n.t("servers.next.error_title") }}</strong>
         <span>{{ errorMessage }}</span>
       </div>
 
       <div class="servers-page__error-actions">
-        <SLButton variant="ghost" size="sm" @click="serverStore.clearError()">关闭</SLButton>
+        <SLButton variant="ghost" size="sm" @click="serverStore.clearError()">{{
+          i18n.t("servers.next.close_error")
+        }}</SLButton>
         <SLButton variant="secondary" size="sm" :loading="isRefreshing" @click="loadData(true)">
-          重试
+          {{ i18n.t("servers.next.retry") }}
         </SLButton>
       </div>
     </section>
@@ -60,8 +63,12 @@ function handleNavigate(payload: { serverId: string; target: ServersPageTarget }
       <div class="servers-page__loading-state">
         <div class="servers-page__spinner" aria-hidden="true"></div>
         <div>
-          <strong class="servers-page__loading-title">正在加载服务器列表</strong>
-          <p class="servers-page__loading-description">会先拉取列表，再补全当前状态信息。</p>
+          <strong class="servers-page__loading-title">{{
+            i18n.t("servers.next.loading_title")
+          }}</strong>
+          <p class="servers-page__loading-description">
+            {{ i18n.t("servers.next.loading_description") }}
+          </p>
         </div>
       </div>
     </SLCard>

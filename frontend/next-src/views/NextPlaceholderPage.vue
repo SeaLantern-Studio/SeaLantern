@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from "vue-router";
 import { ArrowRight, Construction, LayoutTemplate, Waypoints } from "@lucide/vue";
+import { i18n } from "@language";
 import { RouterLink } from "vue-router";
 
 interface PlaceholderTrack {
@@ -38,12 +39,12 @@ defineProps<Props>();
       <div class="next-placeholder-page__hero-meta">
         <div class="next-placeholder-page__meta-chip">
           <Construction :size="16" />
-          <span>Preview scaffold</span>
+          <span>{{ i18n.t("shell.next_placeholder_preview_badge") }}</span>
         </div>
 
         <div class="next-placeholder-page__meta-card">
-          <strong>Page shell 已接入</strong>
-          <span>路由、pageKind、认证语义和后续扩展入口已固定。</span>
+          <strong>{{ i18n.t("shell.next_placeholder_meta_title") }}</strong>
+          <span>{{ i18n.t("shell.next_placeholder_meta_description") }}</span>
         </div>
       </div>
     </article>
@@ -52,15 +53,11 @@ defineProps<Props>();
       <article class="next-placeholder-page__card">
         <header class="next-placeholder-page__card-header">
           <LayoutTemplate :size="18" />
-          <h3>预留结构</h3>
+          <h3>{{ i18n.t("shell.next_placeholder_structure_title") }}</h3>
         </header>
 
         <div class="next-placeholder-page__track-list">
-          <article
-            v-for="track in tracks"
-            :key="track.title"
-            class="next-placeholder-page__track"
-          >
+          <article v-for="track in tracks" :key="track.title" class="next-placeholder-page__track">
             <strong>{{ track.title }}</strong>
             <p>{{ track.description }}</p>
           </article>
@@ -70,7 +67,7 @@ defineProps<Props>();
       <article class="next-placeholder-page__card">
         <header class="next-placeholder-page__card-header">
           <Waypoints :size="18" />
-          <h3>后续接线口</h3>
+          <h3>{{ i18n.t("shell.next_placeholder_actions_title") }}</h3>
         </header>
 
         <div class="next-placeholder-page__action-list">

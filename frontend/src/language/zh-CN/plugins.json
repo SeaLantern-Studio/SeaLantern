@@ -58,6 +58,7 @@
     "pending_banner_desc": "重启后切换到 {{name}}。",
     "restart_confirm_title": "现在重启吗？",
     "restart_confirm_message": "现在重启 SeaLantern，并切换到 {{name}} 吗？",
+    "dev_restart_manual_required_message": "开发环境下请手动重新启动 tauri dev，改动将在下次启动生效。",
     "source": {
       "builtin": "内置"
     },
@@ -123,6 +124,47 @@
   "all_plugins_latest": "所有插件均为最新版本",
   "updates_available": "发现 {{count}} 个插件有更新可用",
   "open_repository": "打开仓库",
+  "next": {
+    "error_title": "读取插件列表失败",
+    "close_error": "关闭",
+    "retry": "重试",
+    "loading_title": "正在读取已安装插件",
+    "loading_description": "正在获取列表、图标、导航和更新状态。",
+    "update_to": "可更新到 v{version}",
+    "summary": {
+      "installed_label": "已安装插件",
+      "installed_hint": "当前实例中识别到的插件数量",
+      "enabled_label": "已启用",
+      "enabled_hint": "当前已开启的插件",
+      "updates_label": "可更新",
+      "updates_hint": "现在可安装的更新",
+      "refresh": "刷新列表",
+      "check_updates": "检查更新",
+      "open_market": "打开插件市场"
+    },
+    "empty": {
+      "eyebrow": "插件",
+      "title": "当前还没有已安装插件",
+      "description": "可以先去插件市场安装，或刷新后重新扫描本地插件目录。",
+      "open_market": "打开插件市场",
+      "refresh": "重新扫描插件"
+    },
+    "card": {
+      "author_prefix": "作者",
+      "id_prefix": "ID",
+      "no_description": "该插件没有提供额外描述。",
+      "missing_required": "缺少必需依赖",
+      "missing_optional": "缺少可选依赖",
+      "open_details": "打开详情",
+      "open_repository": "打开仓库",
+      "toggle_unavailable": "当前不可切换",
+      "toggle_requires_dependencies": "需先满足依赖"
+    },
+    "permission_revoked_title": "该插件已被撤销",
+    "permission_confirm_title": "启用前需要确认权限",
+    "permission_revoked_message": "{name} 当前处于撤销状态，请先到 classic 页面确认来源。",
+    "permission_confirm_message": "{name} 请求了额外权限，确认后再继续启用。"
+  },
   "missing_required_deps": "缺少必须依赖，无法启用",
   "dep_tooltip": {
     "required": "缺少必须依赖: {{names}}",

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { LayoutGrid, LogOut } from "@lucide/vue";
 import { RouterLink } from "vue-router";
-import type { NextShellNavItem } from "../../contracts/shell";
+import { onMounted, useTemplateRef, watch } from "vue";
+import { i18n } from "@language";
+import { SLButton, SLCheckbox, SLModal } from "@components/common";
+import { useSettingsStore } from "@stores/settingsStore";
+import type { NextShellNavItem } from "@next-src/contracts/shell";
+import NextDesktopTitlebar from "./NextDesktopTitlebar.vue";
+import { useNextDesktopWindowControls } from "@next-src/composables/useNextDesktopWindowControls";
 
 interface Props {
   brand: string;
@@ -12,18 +18,77 @@ interface Props {
   showLogout?: boolean;
   navItems: NextShellNavItem[];
   railLocked?: boolean;
+  railExpanded?: boolean;
+  pageTransitionClass?: string | null;
 }
 
-defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  showLogout: true,
+  railLocked: false,
+  railExpanded: false,
+  pageTransitionClass: null,
+});
 
 const emit = defineEmits<{
   logout: [];
+  pageTransitionSettled: [];
+  railFocusWithinChange: [value: boolean];
+  railPointerInsideChange: [value: boolean];
 }>();
+
+const railRef = useTemplateRef<HTMLElement>("railRef");
+
+function handleRailFocusOut(event: FocusEvent): void {
+  const nextTarget = event.relatedTarget;
+  if (nextTarget instanceof Node && railRef.value?.contains(nextTarget)) {
+    return;
+  }
+
+  emit("railFocusWithinChange", false);
+}
+
+const settingsStore = useSettingsStore();
+const {
+  isDesktop,
+  isMacOS,
+  showCustomControls,
+  isMaximized,
+  showCloseModal,
+  rememberChoice,
+  syncCloseAction,
+  minimizeWindow,
+  toggleMaximize,
+  closeWindow,
+  handleCloseOption,
+} = useNextDesktopWindowControls();
+
+watch(
+  () => settingsStore.settings.close_action,
+  (value) => {
+    syncCloseAction(value);
+  },
+  { immediate: true },
+);
+
+onMounted(() => {
+  emit("railPointerInsideChange", railRef.value?.matches(":hover") ?? false);
+});
 </script>
 
 <template>
   <div class="next-shell-frame">
-    <aside class="next-shell-frame__rail" :class="{ 'next-shell-frame__rail--locked': railLocked }">
+    <aside
+      ref="railRef"
+      class="next-shell-frame__rail"
+      :class="{
+        'next-shell-frame__rail--expanded': props.railExpanded,
+        'next-shell-frame__rail--locked': props.railLocked,
+      }"
+      @focusin="emit('railFocusWithinChange', true)"
+      @focusout="handleRailFocusOut"
+      @pointerenter="emit('railPointerInsideChange', true)"
+      @pointerleave="emit('railPointerInsideChange', false)"
+    >
       <div class="next-shell-frame__rail-inner">
         <div class="next-shell-frame__brand">
           <div class="next-shell-frame__brand-mark">
@@ -75,39 +140,77 @@ const emit = defineEmits<{
     </aside>
 
     <div class="next-shell-frame__body">
-      <header class="next-shell-frame__header">
-        <div class="next-shell-frame__header-copy">
-          <span class="next-shell-frame__header-eyebrow">{{ railLabel }}</span>
-          <div class="next-shell-frame__header-title-group">
-            <h1>{{ pageTitle }}</h1>
-            <p v-if="pageSubtitle">{{ pageSubtitle }}</p>
-          </div>
+      <NextDesktopTitlebar
+        v-if="isDesktop"
+        :macos="isMacOS"
+        :show-controls="showCustomControls"
+        :is-maximized="isMaximized"
+        @minimize="minimizeWindow"
+        @toggle-maximize="toggleMaximize"
+        @close="closeWindow"
+      />
+
+      <div class="next-shell-frame__content-scroll">
+        <div
+          class="next-shell-frame__page-stage"
+          :class="props.pageTransitionClass"
+          @animationend.self="emit('pageTransitionSettled')"
+        >
+          <header class="next-shell-frame__header">
+            <div class="next-shell-frame__header-copy">
+              <div class="next-shell-frame__header-title-group">
+                <h1>{{ pageTitle }}</h1>
+                <p v-if="pageSubtitle">{{ pageSubtitle }}</p>
+              </div>
+            </div>
+
+            <div class="next-shell-frame__header-actions">
+              <slot name="header-primary-actions" />
+
+              <button
+                v-if="showLogout !== false"
+                class="next-shell-frame__logout"
+                type="button"
+                @click="emit('logout')"
+              >
+                <LogOut :size="16" />
+                <span>{{ logoutLabel }}</span>
+              </button>
+            </div>
+          </header>
+
+          <main class="next-shell-frame__main">
+            <slot />
+          </main>
         </div>
-
-        <div class="next-shell-frame__header-actions">
-          <slot name="header-primary-actions" />
-
-          <button
-            v-if="showLogout !== false"
-            class="next-shell-frame__logout"
-            type="button"
-            @click="emit('logout')"
-          >
-            <LogOut :size="16" />
-            <span>{{ logoutLabel }}</span>
-          </button>
-        </div>
-      </header>
-
-      <main class="next-shell-frame__main">
-        <slot />
-      </main>
+      </div>
 
       <div class="next-shell-frame__overlay-layer">
         <slot name="overlay" />
       </div>
     </div>
   </div>
+
+  <SLModal
+    :visible="showCloseModal"
+    :title="i18n.t('home.close_window_title')"
+    @close="showCloseModal = false"
+  >
+    <div class="next-shell-frame__close-modal-content">
+      <p>{{ i18n.t("home.close_window_message") }}</p>
+      <div class="next-shell-frame__remember-option">
+        <SLCheckbox v-model="rememberChoice" :label="i18n.t('home.remember_choice')" />
+      </div>
+      <div class="next-shell-frame__close-options">
+        <SLButton variant="secondary" @click="handleCloseOption('minimize')">
+          {{ i18n.t("home.close_action_minimize") }}
+        </SLButton>
+        <SLButton variant="danger" @click="handleCloseOption('close')">
+          {{ i18n.t("home.close_action_close") }}
+        </SLButton>
+      </div>
+    </div>
+  </SLModal>
 </template>
 
 <style scoped>
@@ -214,8 +317,7 @@ const emit = defineEmits<{
   color: var(--sl-text-primary);
 }
 
-.next-shell-frame__brand-copy span,
-.next-shell-frame__header-eyebrow {
+.next-shell-frame__brand-copy span {
   font-size: var(--sl-font-size-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -321,14 +423,31 @@ const emit = defineEmits<{
   height: 100vh;
   position: relative;
   z-index: 1;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.next-shell-frame__content-scroll {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
+.next-shell-frame__page-stage {
+  min-width: 0;
+  min-height: 100%;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
 .next-shell-frame__header {
-  padding: 24px 28px 0 12px;
+  padding: 18px 28px 0 12px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -337,7 +456,12 @@ const emit = defineEmits<{
 
 .next-shell-frame__header-copy {
   display: grid;
-  gap: 10px;
+  gap: 6px;
+}
+
+.next-shell-frame__header-title-group {
+  display: grid;
+  gap: 6px;
 }
 
 .next-shell-frame__header-actions {
@@ -345,11 +469,6 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-}
-
-.next-shell-frame__header-title-group {
-  display: grid;
-  gap: 6px;
 }
 
 .next-shell-frame__header-title-group h1 {
@@ -379,25 +498,45 @@ const emit = defineEmits<{
 .next-shell-frame__main {
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
   padding: 24px 28px 28px 12px;
   overflow: visible;
 }
 
 .next-shell-frame__overlay-layer {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
 }
 
+.next-shell-frame__close-modal-content {
+  display: grid;
+  gap: 16px;
+}
+
+.next-shell-frame__close-modal-content p {
+  margin: 0;
+  color: var(--sl-text-secondary);
+}
+
+.next-shell-frame__remember-option {
+  min-width: 0;
+}
+
+.next-shell-frame__close-options {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within {
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked) {
     width: 272px;
   }
 
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__brand-copy,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__nav-label,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
     .next-shell-frame__brand-copy,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
     .next-shell-frame__nav-label {
     max-width: 160px;
     opacity: 1;
@@ -405,21 +544,15 @@ const emit = defineEmits<{
     pointer-events: auto;
   }
 
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__brand,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
-    .next-shell-frame__brand,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover .next-shell-frame__nav-item,
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked) .next-shell-frame__brand,
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
     .next-shell-frame__nav-item {
     padding-left: 12px;
     padding-right: 12px;
     gap: 12px;
   }
 
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover
-    .next-shell-frame__sidebar-slot
-    :deep(.next-sidebar-host-items__item),
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
     .next-shell-frame__sidebar-slot
     :deep(.next-sidebar-host-items__item) {
     padding-left: 12px;
@@ -427,14 +560,64 @@ const emit = defineEmits<{
     gap: 10px;
   }
 
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):hover
-    .next-shell-frame__sidebar-slot
-    :deep(.next-sidebar-host-items__label),
-  .next-shell-frame__rail:not(.next-shell-frame__rail--locked):focus-within
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
     .next-shell-frame__sidebar-slot
     :deep(.next-sidebar-host-items__label) {
     max-width: 160px;
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .next-shell-frame__page-stage--enter-down,
+  .next-shell-frame__page-stage--enter-up {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
+  }
+
+  .next-shell-frame__page-stage--enter-down {
+    animation-name: next-shell-frame-page-enter-down;
+  }
+
+  .next-shell-frame__page-stage--enter-up {
+    animation-name: next-shell-frame-page-enter-up;
+  }
+
+  @keyframes next-shell-frame-page-enter-down {
+    from {
+      opacity: 0;
+      transform: translateY(-28px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes next-shell-frame-page-enter-up {
+    from {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-shell-frame__rail,
+  .next-shell-frame__brand,
+  .next-shell-frame__brand-copy,
+  .next-shell-frame__nav-item,
+  .next-shell-frame__nav-label,
+  .next-shell-frame__sidebar-slot :deep(.next-sidebar-host-items__item),
+  .next-shell-frame__sidebar-slot :deep(.next-sidebar-host-items__label) {
+    transition-duration: 0ms;
   }
 }
 
@@ -495,6 +678,10 @@ const emit = defineEmits<{
     padding-inline: 18px;
   }
 
+  :deep(.next-desktop-titlebar) {
+    padding-inline: 18px;
+  }
+
   .next-shell-frame__header {
     padding-top: 18px;
   }
@@ -523,10 +710,14 @@ const emit = defineEmits<{
     padding-inline: 12px;
   }
 
+  :deep(.next-desktop-titlebar) {
+    padding-inline: 12px;
+  }
+
   .next-shell-frame__header {
     flex-direction: column;
     align-items: stretch;
-    padding-top: 16px;
+    padding-top: 14px;
   }
 
   .next-shell-frame__header-actions {
@@ -545,6 +736,10 @@ const emit = defineEmits<{
 
   .next-shell-frame__logout {
     width: 100%;
+  }
+
+  .next-shell-frame__close-options {
+    flex-direction: column;
   }
 
   .next-shell-frame__main {

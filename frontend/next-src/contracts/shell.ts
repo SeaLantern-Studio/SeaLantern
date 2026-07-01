@@ -2,6 +2,8 @@ import type { Component } from "vue";
 import type { RouteLocationRaw } from "vue-router";
 import type { NextProtectedPageKind } from "./page";
 
+export type NextShellNavigationDirection = "up" | "down";
+
 export interface NextShellNavItem {
   id: NextProtectedPageKind;
   label: string;

@@ -1,5 +1,6 @@
 use crate::services::ui_shell::{self, UiShellStatus};
 use serde::Deserialize;
+use serde::Serialize;
 use tauri::AppHandle;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -10,6 +11,11 @@ pub struct SetUiShellRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ReportUiShellRuntimeRequest {
     pub shell_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RestartAppResponse {
+    pub restarted: bool,
 }
 
 #[tauri::command]
@@ -30,6 +36,6 @@ pub fn report_ui_shell_runtime(
 }
 
 #[tauri::command]
-pub fn restart_app(app: AppHandle) -> Result<(), String> {
+pub fn restart_app(app: AppHandle) -> Result<RestartAppResponse, String> {
     crate::runtime::restart_desktop_app(&app)
 }

@@ -1,6 +1,20 @@
 <script setup lang="ts">
-import { Blocks, DownloadIcon, Home, Info, Link2, Puzzle, Server, Settings, Sparkles, Store, Terminal, Users, type LucideIcon } from "@lucide/vue";
-import type { NextSidebarHostItem } from "../../host/runtime";
+import {
+  Blocks,
+  DownloadIcon,
+  Home,
+  Info,
+  Link2,
+  Puzzle,
+  Server,
+  Settings,
+  Sparkles,
+  Store,
+  Terminal,
+  Users,
+  type LucideIcon,
+} from "@lucide/vue";
+import type { NextSidebarHostItem } from "@next-src/host/runtime";
 
 interface Props {
   items: NextSidebarHostItem[];

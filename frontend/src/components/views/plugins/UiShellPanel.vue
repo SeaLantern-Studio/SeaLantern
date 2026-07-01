@@ -12,6 +12,7 @@ const {
   restarting,
   showRestartDialog,
   errorMessage,
+  restartNotice,
   browserOnly,
   pendingShellName,
   hasPendingRestart,
@@ -42,6 +43,10 @@ const restartMessage = computed(() =>
     <template v-else>
       <div v-if="safeMode" class="ui-shell-note">
         {{ i18n.t("plugins.ui_shell.safe_mode_hint") }}
+      </div>
+
+      <div v-if="restartNotice" class="ui-shell-note ui-shell-note--info">
+        {{ restartNotice }}
       </div>
 
       <div v-if="errorMessage" class="ui-shell-error">
@@ -133,6 +138,12 @@ const restartMessage = computed(() =>
   background: var(--sl-bg-secondary);
   border: 1px solid var(--sl-border-light);
   color: var(--sl-text-secondary);
+}
+
+.ui-shell-note--info {
+  background: color-mix(in srgb, var(--sl-primary) 10%, var(--sl-surface));
+  border-color: color-mix(in srgb, var(--sl-primary) 24%, transparent);
+  color: var(--sl-text-primary);
 }
 
 .ui-shell-note--readonly {

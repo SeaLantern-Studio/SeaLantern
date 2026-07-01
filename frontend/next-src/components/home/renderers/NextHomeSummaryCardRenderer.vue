@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import NextHomeSummaryBand from "../NextHomeSummaryBand.vue";
-import type { NextHomeCardRendererProps } from "../../../pages/home/cardRendererContract";
+import type { NextHomeCardRendererProps } from "@next-src/pages/home/cardRendererContract";
 
 defineProps<NextHomeCardRendererProps>();
 </script>
@@ -13,4 +13,3 @@ defineProps<NextHomeCardRendererProps>();
     :editable="meta.movable"
   />
 </template>
-

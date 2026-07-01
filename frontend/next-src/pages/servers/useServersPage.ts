@@ -56,18 +56,18 @@ function formatStatusTone(
 }
 
 function formatLocalStartupMode(mode: LocalStartupMode): string {
-  if (mode === "starter") return "Starter";
-  if (mode === "custom") return "Custom";
+  if (mode === "starter") return i18n.t("servers.next.runtime.startup_mode.starter");
+  if (mode === "custom") return i18n.t("servers.next.runtime.startup_mode.custom");
   return mode.toUpperCase();
 }
 
 function formatRuntimeSummary(server: ServerInstance): string {
   if (server.runtime.kind === "docker_itzg") {
     const imageTag = server.runtime.image_tag ? `:${server.runtime.image_tag}` : "";
-    return `Docker · ${server.runtime.image}${imageTag}`;
+    return `${i18n.t("servers.next.runtime.docker")} · ${server.runtime.image}${imageTag}`;
   }
 
-  return `本地运行 · ${formatLocalStartupMode(server.runtime.startup_mode)}`;
+  return `${i18n.t("servers.next.runtime.local")} · ${formatLocalStartupMode(server.runtime.startup_mode)}`;
 }
 
 function formatCoreSummary(server: ServerInstance): string {
