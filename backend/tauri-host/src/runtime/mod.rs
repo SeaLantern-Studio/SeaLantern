@@ -56,6 +56,10 @@ pub fn run_headless_http() {
     }
 }
 
+pub fn restart_desktop_app(app: &tauri::AppHandle) -> Result<(), String> {
+    desktop_shell::restart_app(app)
+}
+
 /// Boots the embedded desktop runtime.
 fn run_desktop() {
     // Fix white screen issue on Wayland desktop environments (tested on Arch Linux + KDE Plasma)

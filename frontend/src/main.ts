@@ -1,4 +1,10 @@
 import { isBrowserEnv } from "@api/tauri";
+import type { UiShellId } from "@api/settings";
+import {
+  reportDesktopShellRuntime,
+  resolveDesktopShellSelection,
+  startDesktopHeartbeat,
+} from "./launcher/desktopShell";
 import { NEXT_SHELL_ENTRY_PATHS } from "../next-src/router/pageMeta";
 
 function normalizePathname(pathname: string): string {
@@ -13,16 +19,12 @@ function normalizePathname(pathname: string): string {
   return pathname;
 }
 
-function shouldMountNextShell(): boolean {
-  if (!isBrowserEnv()) {
-    return false;
-  }
-
+function shouldMountBrowserNextShell(): boolean {
   return NEXT_SHELL_ENTRY_PATHS.includes(normalizePathname(window.location.pathname));
 }
 
-async function mountSelectedShell(): Promise<void> {
-  if (shouldMountNextShell()) {
+async function mountShell(shellId: UiShellId): Promise<void> {
+  if (shellId === "next") {
     const { mountNextApp } = await import("../next-src/main");
     await mountNextApp();
     return;
@@ -30,6 +32,20 @@ async function mountSelectedShell(): Promise<void> {
 
   const { mountClassicApp } = await import("./classic-entry");
   await mountClassicApp();
+}
+
+async function mountSelectedShell(): Promise<void> {
+  if (isBrowserEnv()) {
+    await mountShell(shouldMountBrowserNextShell() ? "next" : "classic");
+    return;
+  }
+
+  const { effectiveShell } = await resolveDesktopShellSelection();
+
+  startDesktopHeartbeat();
+  void reportDesktopShellRuntime(effectiveShell);
+
+  await mountShell(effectiveShell);
 }
 
 void mountSelectedShell();

@@ -177,3 +177,33 @@ fn settings_manager_new_checked_salvages_valid_fields_from_structured_corrupt_se
     assert_eq!(settings.font_size, 18);
     assert_eq!(settings.default_max_memory, AppSettings::default().default_max_memory);
 }
+
+#[test]
+fn settings_manager_new_checked_defaults_ui_shell_when_missing() {
+    let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+    let settings_path = temp_dir.path().join(SETTINGS_FILE);
+    std::fs::write(&settings_path, r#"{ "theme": "dark" }"#)
+        .expect("write settings without ui_shell");
+
+    let _env_lock = lock_env();
+    let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+
+    let manager = SettingsManager::new_checked().expect("settings should load");
+
+    assert_eq!(manager.get().ui_shell, "classic");
+}
+
+#[test]
+fn settings_manager_new_checked_normalizes_invalid_ui_shell() {
+    let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+    let settings_path = temp_dir.path().join(SETTINGS_FILE);
+    std::fs::write(&settings_path, r#"{ "ui_shell": "beta-shell" }"#)
+        .expect("write settings with invalid ui_shell");
+
+    let _env_lock = lock_env();
+    let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+
+    let manager = SettingsManager::new_checked().expect("settings should load");
+
+    assert_eq!(manager.get().ui_shell, "classic");
+}

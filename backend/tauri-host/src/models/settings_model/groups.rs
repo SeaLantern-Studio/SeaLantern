@@ -7,6 +7,7 @@ impl AppSettings {
         if self.close_servers_on_exit != other.close_servers_on_exit
             || self.close_servers_on_update != other.close_servers_on_update
             || self.auto_accept_eula != other.auto_accept_eula
+            || self.ui_shell != other.ui_shell
             || self.close_action != other.close_action
         {
             changed.push(SettingsGroup::General);

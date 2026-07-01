@@ -42,6 +42,36 @@
   "settings_title": "{{name}} Settings",
   "safe_mode_disabled": "Disabled in safe mode",
   "safe_mode": "Safe Mode",
+  "ui_shell": {
+    "title": "UI Shell",
+    "subtitle": "Choose which interface starts next time",
+    "loading": "Loading UI shell status...",
+    "desktop_only": "UI shell switching is only available in the desktop app.",
+    "safe_mode_hint": "Safe mode only allows classic.",
+    "current_running": "Current",
+    "pending_restart": "Restart to apply",
+    "available_target": "Available",
+    "unavailable": "Unavailable",
+    "restart_now": "Restart now",
+    "switch_action": "Switch",
+    "pending_banner_title": "A new shell is ready",
+    "pending_banner_desc": "Restart to switch to {{name}}.",
+    "restart_confirm_title": "Restart now?",
+    "restart_confirm_message": "Restart SeaLantern now to switch to {{name}}?",
+    "source": {
+      "builtin": "Built-in"
+    },
+    "shells": {
+      "classic": {
+        "name": "Classic",
+        "description": "The current classic interface."
+      },
+      "next": {
+        "name": "Next",
+        "description": "The new interface preview."
+      }
+    }
+  },
   "permissions": "Permissions",
   "dependencies": "Dependencies",
   "optional_dependencies": "Optional Dependencies",

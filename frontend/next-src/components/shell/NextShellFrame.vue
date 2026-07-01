@@ -9,6 +9,7 @@ interface Props {
   pageTitle: string;
   pageSubtitle: string;
   logoutLabel: string;
+  showLogout?: boolean;
   navItems: NextShellNavItem[];
   railLocked?: boolean;
 }
@@ -86,7 +87,12 @@ const emit = defineEmits<{
         <div class="next-shell-frame__header-actions">
           <slot name="header-primary-actions" />
 
-          <button class="next-shell-frame__logout" type="button" @click="emit('logout')">
+          <button
+            v-if="showLogout !== false"
+            class="next-shell-frame__logout"
+            type="button"
+            @click="emit('logout')"
+          >
             <LogOut :size="16" />
             <span>{{ logoutLabel }}</span>
           </button>

@@ -10,6 +10,7 @@ interface Props {
   railLabel: string;
   page: NextShellPage;
   logoutLabel: string;
+  showLogout?: boolean;
   navItems: NextShellNavItem[];
   railLocked?: boolean;
 }
@@ -28,6 +29,7 @@ const emit = defineEmits<{
     :page-title="page.title"
     :page-subtitle="page.subtitle || ''"
     :logout-label="logoutLabel"
+    :show-logout="showLogout"
     :nav-items="navItems"
     :rail-locked="railLocked"
     @logout="emit('logout')"

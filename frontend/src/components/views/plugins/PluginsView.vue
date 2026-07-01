@@ -6,6 +6,7 @@ import PluginList from "@components/views/plugins/PluginList.vue";
 import PluginSettingsDialog from "@components/views/plugins/PluginSettingsDialog.vue";
 import PluginsStatePanel from "@components/views/plugins/PluginsStatePanel.vue";
 import PluginsToolbar from "@components/views/plugins/PluginsToolbar.vue";
+import UiShellPanel from "@components/views/plugins/UiShellPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginsViewModel } from "@components/views/plugins/usePluginsViewModel";
 import { i18n } from "@language";
@@ -48,6 +49,8 @@ const page = viewModel.page;
       @check-all-updates="listActions.handleCheckAllUpdates"
       @refresh="page.handleRefresh"
     />
+
+    <UiShellPanel />
 
     <SLDropzone
       class="plugins-dropzone"

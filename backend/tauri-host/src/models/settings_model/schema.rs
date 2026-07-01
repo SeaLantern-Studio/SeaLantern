@@ -11,7 +11,7 @@ use defaults::{
     default_console_font, default_console_font_family, default_console_letter_spacing,
     default_false, default_font_family, default_font_size, default_language, default_log_lines,
     default_max_memory, default_memory_display_precision, default_min_memory, default_port,
-    default_theme, default_true, default_window_effect, default_window_height,
+    default_theme, default_true, default_ui_shell, default_window_effect, default_window_height,
     default_window_width,
 };
 
@@ -21,6 +21,8 @@ pub const WINDOW_EFFECT_BLUR: &str = "blur";
 pub const WINDOW_EFFECT_ACRYLIC: &str = "acrylic";
 pub const WINDOW_EFFECT_MICA: &str = "mica";
 pub const WINDOW_EFFECT_VIBRANCY: &str = "vibrancy";
+pub const UI_SHELL_CLASSIC: &str = "classic";
+pub const UI_SHELL_NEXT: &str = "next";
 
 fn deserialize_jvm_args<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
 where
@@ -226,6 +228,9 @@ pub struct AppSettings {
     #[serde(default = "default_language")]
     pub language: String,
 
+    #[serde(default = "default_ui_shell")]
+    pub ui_shell: String,
+
     #[serde(default = "default_false")]
     pub developer_mode: bool,
 
@@ -336,6 +341,8 @@ pub struct PartialSettings {
     pub app_display_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_shell: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub developer_mode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]

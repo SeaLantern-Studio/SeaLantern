@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { House, Puzzle, Server, Settings2 } from "@lucide/vue";
+import { isBrowserEnv } from "@api/tauri";
 import { useRoute, useRouter } from "vue-router";
 import { i18n } from "@language";
 import { AUTH_ROUTE_NAME } from "@router/authRoute";
@@ -23,6 +24,7 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const nextHostRuntime = useNextHostRuntime();
+const isBrowserMode = isBrowserEnv();
 
 const pageMeta = computed(() => getNextRoutePageMeta(route.meta as Record<string, unknown>));
 const currentPageKind = computed<NextProtectedPageKind>(() => {
@@ -54,6 +56,11 @@ const navItems = computed<NextShellNavItem[]>(() =>
 );
 
 async function handleLogout(): Promise<void> {
+  if (!isBrowserMode) {
+    await router.replace({ path: "/" });
+    return;
+  }
+
   authStore.logout();
   await router.replace({ name: AUTH_ROUTE_NAME });
 }
@@ -65,6 +72,7 @@ async function handleLogout(): Promise<void> {
     :rail-label="i18n.t('shell.rail_label')"
     :page="shellPage"
     :logout-label="i18n.t('shell.logout')"
+    :show-logout="isBrowserMode"
     :nav-items="navItems"
     :rail-locked="props.railLocked"
     @logout="handleLogout"

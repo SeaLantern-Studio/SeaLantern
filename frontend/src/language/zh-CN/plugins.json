@@ -42,6 +42,36 @@
   "settings_title": "{{name}} 设置",
   "safe_mode_disabled": "安全模式下已禁用",
   "safe_mode": "安全模式",
+  "ui_shell": {
+    "title": "界面壳",
+    "subtitle": "选择下次启动使用的界面",
+    "loading": "正在读取界面状态...",
+    "desktop_only": "界面壳切换仅桌面版可用。",
+    "safe_mode_hint": "安全模式下仅允许 classic。",
+    "current_running": "当前运行",
+    "pending_restart": "重启后生效",
+    "available_target": "可切换",
+    "unavailable": "不可用",
+    "restart_now": "立即重启",
+    "switch_action": "切换",
+    "pending_banner_title": "新界面已选中",
+    "pending_banner_desc": "重启后切换到 {{name}}。",
+    "restart_confirm_title": "现在重启吗？",
+    "restart_confirm_message": "现在重启 SeaLantern，并切换到 {{name}} 吗？",
+    "source": {
+      "builtin": "内置"
+    },
+    "shells": {
+      "classic": {
+        "name": "Classic",
+        "description": "当前的 classic 界面。"
+      },
+      "next": {
+        "name": "Next",
+        "description": "新的界面预览。"
+      }
+    }
+  },
   "permissions": "权限",
   "dependencies": "依赖",
   "optional_dependencies": "可选依赖",

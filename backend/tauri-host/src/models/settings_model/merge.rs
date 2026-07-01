@@ -1,6 +1,7 @@
 use super::schema::{
-    AppSettings, PartialSettings, WINDOW_EFFECT_ACRYLIC, WINDOW_EFFECT_AUTO, WINDOW_EFFECT_BLUR,
-    WINDOW_EFFECT_MICA, WINDOW_EFFECT_OFF, WINDOW_EFFECT_VIBRANCY,
+    AppSettings, PartialSettings, UI_SHELL_CLASSIC, UI_SHELL_NEXT, WINDOW_EFFECT_ACRYLIC,
+    WINDOW_EFFECT_AUTO, WINDOW_EFFECT_BLUR, WINDOW_EFFECT_MICA, WINDOW_EFFECT_OFF,
+    WINDOW_EFFECT_VIBRANCY,
 };
 
 impl AppSettings {
@@ -37,6 +38,15 @@ impl AppSettings {
 
         self.window_effect = normalized;
         self.acrylic_enabled = self.window_effect != WINDOW_EFFECT_OFF;
+    }
+
+    pub fn normalize_ui_shell(&mut self) {
+        let normalized = match self.ui_shell.trim().to_ascii_lowercase().as_str() {
+            UI_SHELL_CLASSIC | UI_SHELL_NEXT => self.ui_shell.trim().to_ascii_lowercase(),
+            _ => UI_SHELL_CLASSIC.to_string(),
+        };
+
+        self.ui_shell = normalized;
     }
 
     pub fn merge_from(&mut self, partial: &PartialSettings) {
@@ -149,6 +159,9 @@ impl AppSettings {
         if let Some(ref v) = partial.language {
             self.language = v.clone();
         }
+        if let Some(ref v) = partial.ui_shell {
+            self.ui_shell = v.clone();
+        }
         if let Some(v) = partial.developer_mode {
             self.developer_mode = v;
         }
@@ -175,6 +188,7 @@ impl AppSettings {
         }
 
         self.normalize_window_effect();
+        self.normalize_ui_shell();
         self.normalize_memory_display_precision();
     }
 }

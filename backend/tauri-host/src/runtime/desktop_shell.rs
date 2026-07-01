@@ -179,6 +179,11 @@ fn restart_in_safe_mode(app: &tauri::AppHandle) {
     }
 }
 
+pub(crate) fn restart_app(app: &tauri::AppHandle) -> Result<(), String> {
+    stop_servers_and_disable_plugins(app);
+    app.restart();
+}
+
 pub(crate) fn setup_tray<M: Manager<tauri::Wry>>(app: &M) -> tauri::Result<()> {
     let safe_mode = std::env::args().any(|arg| arg == "--safe-mode");
 

@@ -21,6 +21,9 @@ export type { PlayerEntry, BanEntry, OpEntry } from "@api/player";
 export { settingsApi, getSystemFonts } from "@api/settings";
 export type { AppSettings } from "@api/settings";
 
+export { uiShellApi } from "@api/uiShell";
+export type { UiShellInfo, UiShellStatus } from "@api/uiShell";
+
 export { tunnelApi } from "@api/tunnel";
 export type { TunnelStatus, TunnelConnection } from "@api/tunnel";
 

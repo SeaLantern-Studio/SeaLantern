@@ -12,7 +12,7 @@ mod schema;
 /// 应用设置相关的公开类型
 pub use schema::{
     AppSettings, OneBot11Settings, OneBotTargetType, PartialSettings, SettingsGroup,
-    TextColorOverrides,
+    TextColorOverrides, UI_SHELL_CLASSIC, UI_SHELL_NEXT,
 };
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 pub use schema::{WINDOW_EFFECT_AUTO, WINDOW_EFFECT_OFF};

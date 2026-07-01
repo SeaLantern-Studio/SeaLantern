@@ -16,3 +16,4 @@ pub mod plugin_dir;
 pub mod plugin_trusted_catalog;
 pub mod server;
 pub mod settings_manager;
+pub mod ui_shell;

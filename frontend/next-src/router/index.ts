@@ -5,7 +5,7 @@ import {
   type RouteMeta,
   type RouteRecordRaw,
 } from "vue-router";
-import { exchangeNextBridgeToken } from "@api/tauri";
+import { isBrowserEnv, exchangeNextBridgeToken } from "@api/tauri";
 import pinia from "@src/stores";
 import { useAuthStore } from "@stores/authStore";
 import { AUTH_ROUTE_NAME, buildRedirectQuery, sanitizeRedirectPath } from "@router/authRoute";
@@ -83,6 +83,14 @@ function buildRedirectWithoutBridgeToken(to: RouteLocationNormalized): string {
 }
 
 router.beforeEach(async (to) => {
+  if (!isBrowserEnv()) {
+    if (to.name === AUTH_ROUTE_NAME) {
+      return { path: "/" };
+    }
+
+    return true;
+  }
+
   if (isNextPreviewRoute(to)) {
     return true;
   }
@@ -116,7 +124,9 @@ router.beforeEach(async (to) => {
   if (!authStore.isAuthenticated) {
     const restored = await authStore.hydrate();
     if (!restored) {
-      const redirect = bridgeToken ? buildRedirectWithoutBridgeToken(to) : sanitizeRedirectPath(buildRedirectQuery(to));
+      const redirect = bridgeToken
+        ? buildRedirectWithoutBridgeToken(to)
+        : sanitizeRedirectPath(buildRedirectQuery(to));
       return {
         name: AUTH_ROUTE_NAME,
         query: { redirect },

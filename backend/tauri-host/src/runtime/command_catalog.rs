@@ -8,6 +8,7 @@ use commands::app::host as system_commands;
 use commands::app::i18n as i18n_commands;
 use commands::app::logging as logging_commands;
 use commands::app::settings as settings_commands;
+use commands::app::ui_shell as ui_shell_commands;
 use commands::downloads::java as java_commands;
 use commands::downloads::mods as mod_download_commands;
 use commands::downloads::transfers as download_commands;
@@ -137,6 +138,10 @@ pub(crate) fn desktop_handler(
         settings_commands::update_plugin_commands,
         settings_commands::apply_acrylic,
         settings_commands::apply_window_effect,
+        ui_shell_commands::get_ui_shell_status,
+        ui_shell_commands::set_ui_shell,
+        ui_shell_commands::report_ui_shell_runtime,
+        ui_shell_commands::restart_app,
         tunnel_commands::tunnel_host,
         tunnel_commands::tunnel_join,
         tunnel_commands::tunnel_stop,
