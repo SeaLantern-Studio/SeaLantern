@@ -1,31 +1,11 @@
-import { type UiShellId, settingsApi } from "@api/settings";
-import { systemApi } from "@api/system";
+import type { UiShellId } from "@api/settings";
 import { tauriInvoke } from "@api/tauri";
 import { uiShellApi } from "@api/uiShell";
 
 const HEARTBEAT_INTERVAL = 5000;
+export const DESKTOP_PRIMARY_SHELL: UiShellId = "next";
 
 let heartbeatStarted = false;
-
-export interface DesktopShellSelection {
-  configuredShell: UiShellId;
-  effectiveShell: UiShellId;
-  safeMode: boolean;
-}
-
-export async function resolveDesktopShellSelection(): Promise<DesktopShellSelection> {
-  const [settings, safeMode] = await Promise.all([
-    settingsApi.get(),
-    systemApi.getSafeModeStatus(),
-  ]);
-  const configuredShell = settings.ui_shell;
-
-  return {
-    configuredShell,
-    effectiveShell: safeMode ? "classic" : configuredShell,
-    safeMode,
-  };
-}
 
 export function startDesktopHeartbeat(): void {
   if (heartbeatStarted) {

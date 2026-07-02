@@ -41,7 +41,11 @@ function getSuccessNoticeMessages(item: PluginInstallResult): string[] {
             <span class="batch-item-name">{{ item.plugin.manifest.name }}</span>
             <span class="batch-item-version">v{{ item.plugin.manifest.version }}</span>
             <ul v-if="getSuccessNoticeMessages(item).length > 0" class="batch-notice-list">
-              <li v-for="message in getSuccessNoticeMessages(item)" :key="message" class="batch-item-notice">
+              <li
+                v-for="message in getSuccessNoticeMessages(item)"
+                :key="message"
+                class="batch-item-notice"
+              >
                 {{ message }}
               </li>
             </ul>

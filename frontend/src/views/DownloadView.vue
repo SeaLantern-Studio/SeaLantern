@@ -13,6 +13,7 @@ import { downloadApi, downloadServerApi, type DownloadLink } from "@api/download
 import { systemApi } from "@api/system";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { i18n } from "@language";
+import { resolveServerCreationEntryRoute } from "@utils/serverCreationNavigation";
 
 const router = useRouter();
 const createServerDraftStore = useCreateServerDraftStore();
@@ -274,7 +275,7 @@ function gotoCreatePage(sourcePath: string) {
     sourcePath: sourcePath,
     sourceType: "archive",
   });
-  router.push("/create");
+  void router.push(resolveServerCreationEntryRoute(router.currentRoute.value));
 }
 
 // Common methods

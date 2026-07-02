@@ -71,14 +71,22 @@ const setError = viewModel.setError;
         <ConfigPropertiesSection
           v-bind="propertiesSectionBindings.sectionProps.value"
           @updateCategory="propertiesSectionBindings.sectionHandlers.updateCategory"
-          @updateSelectedConfigFile="propertiesSectionBindings.sectionHandlers.updateSelectedConfigFile"
+          @updateSelectedConfigFile="
+            propertiesSectionBindings.sectionHandlers.updateSelectedConfigFile
+          "
           @importConfigDirectory="propertiesSectionBindings.sectionHandlers.importConfigDirectory"
           @importConfigFile="propertiesSectionBindings.sectionHandlers.importConfigFile"
-          @removeConfigImportDirectory="propertiesSectionBindings.sectionHandlers.removeConfigImportDirectory"
+          @removeConfigImportDirectory="
+            propertiesSectionBindings.sectionHandlers.removeConfigImportDirectory
+          "
           @removeConfigImportFile="propertiesSectionBindings.sectionHandlers.removeConfigImportFile"
-          @updateConfigSearchQuery="propertiesSectionBindings.sectionHandlers.updateConfigSearchQuery"
+          @updateConfigSearchQuery="
+            propertiesSectionBindings.sectionHandlers.updateConfigSearchQuery
+          "
           @updateConfigSearchMode="propertiesSectionBindings.sectionHandlers.updateConfigSearchMode"
-          @updateConfigSearchScope="propertiesSectionBindings.sectionHandlers.updateConfigSearchScope"
+          @updateConfigSearchScope="
+            propertiesSectionBindings.sectionHandlers.updateConfigSearchScope
+          "
           @updateConfigJsonMode="propertiesSectionBindings.sectionHandlers.updateConfigJsonMode"
           @updateCompareMode="propertiesSectionBindings.sectionHandlers.updateCompareMode"
           @updateSearch="propertiesSectionBindings.sectionHandlers.updateSearch"

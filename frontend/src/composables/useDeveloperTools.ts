@@ -12,6 +12,8 @@ const LOG_POLL_INTERVAL = 1500;
 const SYSTEM_POLL_INTERVAL = 5000;
 const LOG_LIMIT = 300;
 
+export type DeveloperBannerTone = "info" | "warning" | "error";
+
 interface UseDeveloperToolsOptions {
   enabled: () => boolean;
 }
@@ -19,6 +21,11 @@ interface UseDeveloperToolsOptions {
 interface LogFilterOption {
   label: string;
   value: string;
+}
+
+interface DeveloperBannerState {
+  tone: DeveloperBannerTone;
+  message: string;
 }
 
 const ALL_LOG_LEVELS = "__all_levels__";
@@ -58,6 +65,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const systemError = ref<string | null>(null);
   const selectedLogLevel = ref(ALL_LOG_LEVELS);
   const selectedLogModule = ref(ALL_LOG_MODULES);
+  const activeBanner = ref<DeveloperBannerState | null>(null);
 
   const logLevelOptions = computed<LogFilterOption[]>(() => {
     const levels = Array.from(new Set(logs.value.map((entry) => entry.level))).toSorted();
@@ -270,6 +278,33 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     }
   }
 
+  function showTestSuccessToast() {
+    globalMessage.success(i18n.t("developer.next.tools.toast.success_message"));
+  }
+
+  function showTestErrorToast() {
+    globalMessage.error(i18n.t("developer.next.tools.toast.error_message"));
+  }
+
+  function showTestWarningToast() {
+    globalMessage.warning(i18n.t("developer.next.tools.toast.warning_message"));
+  }
+
+  function showTestInfoToast() {
+    globalMessage.info(i18n.t("developer.next.tools.toast.info_message"));
+  }
+
+  function showTestBanner(tone: DeveloperBannerTone) {
+    activeBanner.value = {
+      tone,
+      message: i18n.t(`developer.next.tools.banner.${tone}_message`),
+    };
+  }
+
+  function clearTestBanner() {
+    activeBanner.value = null;
+  }
+
   const logPolling = useSerialPolling({
     intervalMs: LOG_POLL_INTERVAL,
     task: async () => {
@@ -334,6 +369,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     downloadingUpdate,
     triggeringCrash,
     updateUrl,
+    activeBanner,
     logError,
     systemError,
     logText,
@@ -358,5 +394,11 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     copySystemSummary,
     downloadUpdateFromUrl,
     triggerCrashTest,
+    showTestSuccessToast,
+    showTestErrorToast,
+    showTestWarningToast,
+    showTestInfoToast,
+    showTestBanner,
+    clearTestBanner,
   };
 }

@@ -1,15 +1,10 @@
+import type { MarketPluginInfo } from "@api/plugin";
+import type { MarketPlugin } from "./pluginMarketShared";
 import {
-  fetchMarketCategories,
-  fetchMarketPluginDetail,
-  fetchMarketPlugins,
-  installFromMarket,
-  type MarketPluginInfo,
-} from "@api/plugin";
-import { formatPluginInstallIssue } from "@components/views/plugins/pluginInstallErrorMessage";
-import { MARKET_BASE_URL, type MarketPlugin } from "./pluginMarketShared";
-import { i18n } from "@language";
-import { pluginLogger } from "@stores/plugin/pluginLogger";
-import { normalizeAppError } from "@utils/appError";
+  installPluginFromMarketEntry,
+  loadPluginMarketCatalog,
+  loadPluginMarketDetail,
+} from "./pluginMarketActionsShared";
 import type { Ref } from "vue";
 
 interface UsePluginMarketActionsOptions {
@@ -29,38 +24,20 @@ interface UsePluginMarketActionsOptions {
   showFeedback: (type: "success" | "warning" | "error", message: string, duration?: number) => void;
 }
 
-function normalizeErrorMessage(err: unknown): string {
-  const normalized = normalizeAppError(err);
-  const issueMessage = formatPluginInstallIssue({
-    code: normalized.code,
-    args: normalized.args,
-  });
-  return issueMessage || normalized.message;
-}
-
 export function usePluginMarketActions(options: UsePluginMarketActionsOptions) {
   async function loadMarket() {
     options.loading.value = true;
     options.error.value = null;
 
     try {
-      const requestUrl = options.getMarketRequestUrl();
-      const sourceUrl = options.getSourceUrl() || MARKET_BASE_URL;
-      const [plugins, categoryMap] = await Promise.all([
-        fetchMarketPlugins(requestUrl),
-        fetchMarketCategories(requestUrl).catch(() => ({})),
-      ]);
-      options.marketPlugins.value = plugins;
-      options.categories.value = categoryMap;
-      pluginLogger.info("Market", "插件市场列表已更新", {
-        source: sourceUrl,
-        pluginCount: plugins.length,
-        categoryCount: Object.keys(categoryMap).length,
+      const data = await loadPluginMarketCatalog({
+        requestUrl: options.getMarketRequestUrl(),
+        sourceUrl: options.getSourceUrl(),
       });
+      options.marketPlugins.value = data.plugins;
+      options.categories.value = data.categories;
     } catch (err) {
-      const normalized = normalizeAppError(err);
-      options.error.value = normalized.message;
-      pluginLogger.error("Market", "插件市场列表读取失败", normalized);
+      options.error.value = err instanceof Error ? err.message : String(err);
     } finally {
       options.loading.value = false;
     }
@@ -71,19 +48,14 @@ export function usePluginMarketActions(options: UsePluginMarketActionsOptions) {
     options.detailLoading.value = true;
 
     try {
-      const requestUrl = options.getMarketRequestUrl();
-      const sourceUrl = options.getSourceUrl() || MARKET_BASE_URL;
-      options.pluginDetail.value = await fetchMarketPluginDetail(
-        plugin._path || `plugins/${plugin.id}.json`,
-        requestUrl,
-      );
-      pluginLogger.info("Market", "插件详情已读取", {
-        pluginId: plugin.id,
-        source: sourceUrl,
+      options.pluginDetail.value = await loadPluginMarketDetail({
+        plugin,
+        requestUrl: options.getMarketRequestUrl(),
+        sourceUrl: options.getSourceUrl(),
       });
     } catch (err) {
       options.pluginDetail.value = null;
-      pluginLogger.error("Market", `插件详情读取失败: ${plugin.id}`, normalizeAppError(err));
+      options.error.value = err instanceof Error ? err.message : String(err);
     } finally {
       options.detailLoading.value = false;
     }
@@ -101,42 +73,12 @@ export function usePluginMarketActions(options: UsePluginMarketActionsOptions) {
 
     options.installing.value = plugin.id;
     try {
-      const result = await installFromMarket({
-        pluginId: plugin.id,
-        downloadUrl: plugin.download_url,
-        repo: plugin.repo,
-        downloadType: plugin.download_type,
-        releaseAsset: plugin.release_asset,
-        branch: plugin.branch,
+      await installPluginFromMarketEntry({
+        plugin,
+        loadPlugins: options.loadPlugins,
+        showFeedback: options.showFeedback,
+        marketErrorHint: options.marketErrorHint.value,
       });
-      await options.loadPlugins();
-
-      const noticeMessages = (result?.install_notices || [])
-        .map((notice) => formatPluginInstallIssue(notice))
-        .filter((message): message is string => Boolean(message));
-
-      if (result?.untrusted_url) {
-        options.showFeedback("warning", i18n.t("market.untrusted_download_warning"));
-      } else if (noticeMessages.length > 0) {
-        options.showFeedback("warning", noticeMessages.join("\n"), 0);
-      } else {
-        options.showFeedback("success", i18n.t("market.install_success"));
-      }
-
-      pluginLogger.info("Market", "插件市场安装完成", {
-        pluginId: plugin.id,
-        untrustedUrl: Boolean(result?.untrusted_url),
-      });
-    } catch (err) {
-      const errorMessage = normalizeErrorMessage(err);
-      const hint = options.marketErrorHint.value || undefined;
-      const extraHint = hint ? `\n${hint}` : "";
-      options.showFeedback(
-        "error",
-        `${i18n.t("market.install_failed")}: ${errorMessage}${extraHint}`,
-        0,
-      );
-      pluginLogger.error("Market", `插件市场安装失败: ${plugin.id}`, normalizeAppError(err));
     } finally {
       options.installing.value = null;
     }

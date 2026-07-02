@@ -93,7 +93,11 @@ onMounted(() => {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--sl-primary) 12%, transparent), transparent 26%),
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--sl-primary) 12%, transparent),
+      transparent 26%
+    ),
     linear-gradient(180deg, color-mix(in srgb, var(--sl-surface) 84%, transparent), var(--sl-bg));
 }
 

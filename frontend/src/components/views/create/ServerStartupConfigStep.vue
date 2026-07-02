@@ -114,6 +114,7 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
         <SLInput
           :placeholder="i18n.t('create.server_name')"
           :model-value="serverName"
+          size="md"
           :disabled="disabled"
           @update:model-value="$emit('update:serverName', $event)"
         />
@@ -125,6 +126,7 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
           <SLInput
             type="text"
             :model-value="maxMemory"
+            size="md"
             :disabled="disabled"
             @input="handleNumberInput($event, 'maxMemory')"
           />
@@ -134,6 +136,7 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
           <SLInput
             type="text"
             :model-value="minMemory"
+            size="md"
             :disabled="disabled"
             @input="handleNumberInput($event, 'minMemory')"
           />
@@ -146,6 +149,7 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
           <SLInput
             type="text"
             :model-value="port"
+            size="md"
             :placeholder="i18n.t('create.default_port_placeholder')"
             :disabled="disabled"
             @input="handleNumberInput($event, 'port')"
@@ -192,6 +196,7 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
           <SLSelect
             :model-value="jvmPreset"
             :options="jvmPresetOptions"
+            size="md"
             :placeholder="i18n.t('create.jvm_preset_placeholder')"
             :disabled="disabled"
             @update:model-value="$emit('update:jvmPreset', $event as JvmPresetId)"
@@ -203,6 +208,7 @@ function handleNumberInput(event: Event, type: "maxMemory" | "minMemory" | "port
           <span class="startup-row-label">{{ i18n.t("create.jvm_args_label") }}</span>
           <SLTextarea
             :model-value="jvmArgsText"
+            size="md"
             :placeholder="i18n.t('create.jvm_args_placeholder')"
             :disabled="disabled"
             :rows="4"

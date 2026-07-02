@@ -1,8 +1,20 @@
 import { computed, onMounted, onUnmounted, shallowRef, watch } from "vue";
 import type { Ref } from "vue";
 import { i18n } from "@language";
-import { HOME_GRID_COLUMNS, HOME_GRID_GAP, HOME_GRID_MAX_ROWS, HOME_GRID_ROW_HEIGHT, NEXT_HOME_CARD_LAYOUTS, NEXT_HOME_DEFAULT_LAYOUT } from "./layoutContract";
-import type { NextHomeCardInstance, NextHomeCardKind, NextHomeCardLayoutMeta, NextHomeCardRegistry } from "./layoutContract";
+import {
+  HOME_GRID_COLUMNS,
+  HOME_GRID_GAP,
+  HOME_GRID_MAX_ROWS,
+  HOME_GRID_ROW_HEIGHT,
+  NEXT_HOME_CARD_LAYOUTS,
+  NEXT_HOME_DEFAULT_LAYOUT,
+} from "./layoutContract";
+import type {
+  NextHomeCardInstance,
+  NextHomeCardKind,
+  NextHomeCardLayoutMeta,
+  NextHomeCardRegistry,
+} from "./layoutContract";
 
 const STORAGE_KEY = "sealantern.next.home.layout.v1";
 const DEFAULT_MAX_INSTANCES = 5;
@@ -51,10 +63,17 @@ function intersects(a: NextHomeCardInstance, b: NextHomeCardInstance): boolean {
   const bColEnd = b.colStart + b.colSpan;
   const aRowEnd = a.rowStart + a.rowSpan;
   const bRowEnd = b.rowStart + b.rowSpan;
-  return a.colStart < bColEnd && aColEnd > b.colStart && a.rowStart < bRowEnd && aRowEnd > b.rowStart;
+  return (
+    a.colStart < bColEnd && aColEnd > b.colStart && a.rowStart < bRowEnd && aRowEnd > b.rowStart
+  );
 }
 
-function normalizeSpan(value: number | undefined, min: number, fallback: number, max: number): number {
+function normalizeSpan(
+  value: number | undefined,
+  min: number,
+  fallback: number,
+  max: number,
+): number {
   const source = Number.isFinite(value) ? Math.floor(value as number) : fallback;
   return clamp(source, min, max);
 }
@@ -68,24 +87,57 @@ function buildInstanceId(kind: NextHomeCardKind): string {
   return `${kind}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function resolveMeta(registry: NextHomeCardRegistry, kind: NextHomeCardKind): NextHomeCardLayoutMeta | null {
+function resolveMeta(
+  registry: NextHomeCardRegistry,
+  kind: NextHomeCardKind,
+): NextHomeCardLayoutMeta | null {
   return registry[kind] ?? null;
 }
 
-function sanitizeInstance(raw: Partial<NextHomeCardInstance>, registry: NextHomeCardRegistry): NextHomeCardInstance | null {
+function sanitizeInstance(
+  raw: Partial<NextHomeCardInstance>,
+  registry: NextHomeCardRegistry,
+): NextHomeCardInstance | null {
   if (!raw.kind) return null;
   const meta = resolveMeta(registry, raw.kind);
   if (!meta) return null;
 
   const maxCols = meta.maxCols ?? HOME_GRID_COLUMNS;
   const maxRows = meta.maxRows ?? HOME_GRID_MAX_ROWS;
-  const width = clamp(Number.isFinite(raw.width) ? Number(raw.width) : normalizeSpan(raw.colSpan, meta.minCols, meta.defaultCols, maxCols), meta.minCols, maxCols);
-  const height = clamp(Number.isFinite(raw.height) ? Number(raw.height) : normalizeSpan(raw.rowSpan, meta.minRows, meta.defaultRows, maxRows), meta.minRows, maxRows);
-  const x = clamp(Number.isFinite(raw.x) ? Number(raw.x) : normalizeStart(raw.colStart, 1, HOME_GRID_COLUMNS - Math.ceil(width) + 1) - 1, 0, HOME_GRID_COLUMNS - width);
-  const y = clamp(Number.isFinite(raw.y) ? Number(raw.y) : normalizeStart(raw.rowStart, 1, HOME_GRID_MAX_ROWS - Math.ceil(height) + 1) - 1, 0, HOME_GRID_MAX_ROWS - height);
+  const width = clamp(
+    Number.isFinite(raw.width)
+      ? Number(raw.width)
+      : normalizeSpan(raw.colSpan, meta.minCols, meta.defaultCols, maxCols),
+    meta.minCols,
+    maxCols,
+  );
+  const height = clamp(
+    Number.isFinite(raw.height)
+      ? Number(raw.height)
+      : normalizeSpan(raw.rowSpan, meta.minRows, meta.defaultRows, maxRows),
+    meta.minRows,
+    maxRows,
+  );
+  const x = clamp(
+    Number.isFinite(raw.x)
+      ? Number(raw.x)
+      : normalizeStart(raw.colStart, 1, HOME_GRID_COLUMNS - Math.ceil(width) + 1) - 1,
+    0,
+    HOME_GRID_COLUMNS - width,
+  );
+  const y = clamp(
+    Number.isFinite(raw.y)
+      ? Number(raw.y)
+      : normalizeStart(raw.rowStart, 1, HOME_GRID_MAX_ROWS - Math.ceil(height) + 1) - 1,
+    0,
+    HOME_GRID_MAX_ROWS - height,
+  );
 
   return syncGridMetrics({
-    instanceId: typeof raw.instanceId === "string" && raw.instanceId.length > 0 ? raw.instanceId : buildInstanceId(raw.kind),
+    instanceId:
+      typeof raw.instanceId === "string" && raw.instanceId.length > 0
+        ? raw.instanceId
+        : buildInstanceId(raw.kind),
     kind: raw.kind,
     x,
     y,
@@ -99,7 +151,12 @@ function sanitizeInstance(raw: Partial<NextHomeCardInstance>, registry: NextHome
   });
 }
 
-function findPlacement(kind: NextHomeCardKind, registry: NextHomeCardRegistry, existing: NextHomeCardInstance[], preferred?: NextHomePlacementRequest): NextHomePlacementRequest | null {
+function findPlacement(
+  kind: NextHomeCardKind,
+  registry: NextHomeCardRegistry,
+  existing: NextHomeCardInstance[],
+  preferred?: NextHomePlacementRequest,
+): NextHomePlacementRequest | null {
   const meta = resolveMeta(registry, kind);
   if (!meta) return null;
 
@@ -109,7 +166,10 @@ function findPlacement(kind: NextHomeCardKind, registry: NextHomeCardRegistry, e
   const rowSpan = normalizeSpan(preferred?.rowSpan, meta.minRows, meta.defaultRows, maxRows);
 
   const tryPlacement = (colStart: number, rowStart: number): NextHomePlacementRequest | null => {
-    const candidate = sanitizeInstance({ instanceId: "candidate", kind, colStart, rowStart, colSpan, rowSpan }, registry);
+    const candidate = sanitizeInstance(
+      { instanceId: "candidate", kind, colStart, rowStart, colSpan, rowSpan },
+      registry,
+    );
     if (!candidate) return null;
     const blocked = existing.some((instance) => intersects(candidate, instance));
     if (blocked) return null;
@@ -140,16 +200,29 @@ function findPlacement(kind: NextHomeCardKind, registry: NextHomeCardRegistry, e
   return null;
 }
 
-function resolveSnapPlacementForInstance(source: NextHomeCardInstance, registry: NextHomeCardRegistry, existing: NextHomeCardInstance[], preferred: NextHomePlacementRequest): NextHomePlacementRequest | null {
-  return findPlacement(source.kind, registry, existing.filter((instance) => instance.instanceId !== source.instanceId), {
-    colStart: preferred.colStart ?? source.colStart,
-    rowStart: preferred.rowStart ?? source.rowStart,
-    colSpan: preferred.colSpan ?? source.colSpan,
-    rowSpan: preferred.rowSpan ?? source.rowSpan,
-  });
+function resolveSnapPlacementForInstance(
+  source: NextHomeCardInstance,
+  registry: NextHomeCardRegistry,
+  existing: NextHomeCardInstance[],
+  preferred: NextHomePlacementRequest,
+): NextHomePlacementRequest | null {
+  return findPlacement(
+    source.kind,
+    registry,
+    existing.filter((instance) => instance.instanceId !== source.instanceId),
+    {
+      colStart: preferred.colStart ?? source.colStart,
+      rowStart: preferred.rowStart ?? source.rowStart,
+      colSpan: preferred.colSpan ?? source.colSpan,
+      rowSpan: preferred.rowSpan ?? source.rowSpan,
+    },
+  );
 }
 
-function buildSnapPlacement(source: NextHomeCardInstance, patch: NextHomePlacementRequest): NextHomePlacementRequest {
+function buildSnapPlacement(
+  source: NextHomeCardInstance,
+  patch: NextHomePlacementRequest,
+): NextHomePlacementRequest {
   const colStart = patch.colStart ?? source.colStart;
   const rowStart = patch.rowStart ?? source.rowStart;
   const colSpan = patch.colSpan ?? source.colSpan;
@@ -179,36 +252,44 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     return { ...NEXT_HOME_CARD_LAYOUTS, ...dynamicRegistry } as NextHomeCardRegistry;
   });
 
-  const countsByKind = computed<Record<string, number>>(() => instances.value.reduce<Record<string, number>>((result, instance) => {
-    result[instance.kind] = (result[instance.kind] ?? 0) + 1;
-    return result;
-  }, {}));
+  const countsByKind = computed<Record<string, number>>(() =>
+    instances.value.reduce<Record<string, number>>((result, instance) => {
+      result[instance.kind] = (result[instance.kind] ?? 0) + 1;
+      return result;
+    }, {}),
+  );
 
-  const sortedInstances = computed(() => [...instances.value].toSorted((left, right) => {
-    const isLeftSelected = left.instanceId === selectedInstanceId.value;
-    const isRightSelected = right.instanceId === selectedInstanceId.value;
-    if (isLeftSelected !== isRightSelected) return isLeftSelected ? 1 : -1;
-    if (left.rowStart !== right.rowStart) return left.rowStart - right.rowStart;
-    if (left.colStart !== right.colStart) return left.colStart - right.colStart;
-    return left.instanceId.localeCompare(right.instanceId);
-  }));
+  const sortedInstances = computed(() =>
+    [...instances.value].toSorted((left, right) => {
+      const isLeftSelected = left.instanceId === selectedInstanceId.value;
+      const isRightSelected = right.instanceId === selectedInstanceId.value;
+      if (isLeftSelected !== isRightSelected) return isLeftSelected ? 1 : -1;
+      if (left.rowStart !== right.rowStart) return left.rowStart - right.rowStart;
+      if (left.colStart !== right.colStart) return left.colStart - right.colStart;
+      return left.instanceId.localeCompare(right.instanceId);
+    }),
+  );
 
-  const paletteEntries = computed<NextHomeCardPaletteEntry[]>(() => Object.values(registry.value)
-    .toSorted((left, right) => {
-      const leftSection = SECTION_ORDER.indexOf(left.section);
-      const rightSection = SECTION_ORDER.indexOf(right.section);
-      if (leftSection !== rightSection) return leftSection - rightSection;
-      return i18n.t(left.titleKey).localeCompare(i18n.t(right.titleKey), "zh-CN");
-    })
-    .map((meta) => {
-      const count = countsByKind.value[meta.id] ?? 0;
-      const limit = meta.maxInstances ?? DEFAULT_MAX_INSTANCES;
-      return { kind: meta.id, meta, count, limit, canAdd: count < limit };
-    }));
+  const paletteEntries = computed<NextHomeCardPaletteEntry[]>(() =>
+    Object.values(registry.value)
+      .toSorted((left, right) => {
+        const leftSection = SECTION_ORDER.indexOf(left.section);
+        const rightSection = SECTION_ORDER.indexOf(right.section);
+        if (leftSection !== rightSection) return leftSection - rightSection;
+        return i18n.t(left.titleKey).localeCompare(i18n.t(right.titleKey), "zh-CN");
+      })
+      .map((meta) => {
+        const count = countsByKind.value[meta.id] ?? 0;
+        const limit = meta.maxInstances ?? DEFAULT_MAX_INSTANCES;
+        return { kind: meta.id, meta, count, limit, canAdd: count < limit };
+      }),
+  );
 
   const selectedInstance = computed(() => {
     if (!selectedInstanceId.value) return null;
-    return instances.value.find((instance) => instance.instanceId === selectedInstanceId.value) ?? null;
+    return (
+      instances.value.find((instance) => instance.instanceId === selectedInstanceId.value) ?? null
+    );
   });
 
   function canAddKind(kind: NextHomeCardKind): boolean {
@@ -223,12 +304,18 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
   }
 
   function getNextZIndex(): number {
-    return instances.value.reduce((maxValue, instance) => Math.max(maxValue, instance.zIndex), 0) + 1;
+    return (
+      instances.value.reduce((maxValue, instance) => Math.max(maxValue, instance.zIndex), 0) + 1
+    );
   }
 
   function bringToFront(instanceId: string): void {
     const nextZIndex = getNextZIndex();
-    replaceInstances(instances.value.map((instance) => (instance.instanceId === instanceId ? { ...instance, zIndex: nextZIndex } : instance)));
+    replaceInstances(
+      instances.value.map((instance) =>
+        instance.instanceId === instanceId ? { ...instance, zIndex: nextZIndex } : instance,
+      ),
+    );
   }
 
   function selectInstance(instanceId: string | null): void {
@@ -236,10 +323,16 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     if (instanceId) bringToFront(instanceId);
   }
 
-  function deployCard(kind: NextHomeCardKind, preferred?: NextHomePlacementRequest): NextHomeCardInstance | null {
+  function deployCard(
+    kind: NextHomeCardKind,
+    preferred?: NextHomePlacementRequest,
+  ): NextHomeCardInstance | null {
     if (!canAddKind(kind)) return null;
     if (!snapMode.value && preferred?.x !== undefined && preferred?.y !== undefined) {
-      const directInstance = sanitizeInstance({ instanceId: buildInstanceId(kind), kind, zIndex: getNextZIndex(), ...preferred }, registry.value);
+      const directInstance = sanitizeInstance(
+        { instanceId: buildInstanceId(kind), kind, zIndex: getNextZIndex(), ...preferred },
+        registry.value,
+      );
       if (!directInstance) return null;
       replaceInstances([...instances.value, directInstance]);
       selectedInstanceId.value = directInstance.instanceId;
@@ -249,7 +342,10 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     const placement = findPlacement(kind, registry.value, instances.value, preferred);
     if (!placement) return null;
 
-    const nextInstance = sanitizeInstance({ instanceId: buildInstanceId(kind), kind, zIndex: getNextZIndex(), ...placement }, registry.value);
+    const nextInstance = sanitizeInstance(
+      { instanceId: buildInstanceId(kind), kind, zIndex: getNextZIndex(), ...placement },
+      registry.value,
+    );
     if (!nextInstance) return null;
 
     replaceInstances([...instances.value, nextInstance]);
@@ -260,9 +356,10 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
   function deployCardToViewportCenter(kind: NextHomeCardKind): NextHomeCardInstance | null {
     const meta = resolveMeta(registry.value, kind);
     if (!meta) return null;
-    const viewportY = typeof window !== "undefined"
-      ? (window.scrollY + window.innerHeight * 0.35) / (HOME_GRID_ROW_HEIGHT + HOME_GRID_GAP)
-      : 2;
+    const viewportY =
+      typeof window !== "undefined"
+        ? (window.scrollY + window.innerHeight * 0.35) / (HOME_GRID_ROW_HEIGHT + HOME_GRID_GAP)
+        : 2;
     const width = meta.defaultCols;
     const height = meta.defaultRows;
     return deployCard(kind, {
@@ -282,7 +379,13 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     if (selectedInstanceId.value === instanceId) selectedInstanceId.value = null;
   }
 
-  function updateInstance(instanceId: string, updater: (source: NextHomeCardInstance, meta: NextHomeCardLayoutMeta) => NextHomePlacementRequest): boolean {
+  function updateInstance(
+    instanceId: string,
+    updater: (
+      source: NextHomeCardInstance,
+      meta: NextHomeCardLayoutMeta,
+    ) => NextHomePlacementRequest,
+  ): boolean {
     const source = instances.value.find((instance) => instance.instanceId === instanceId);
     if (!source) return false;
     const meta = resolveMeta(registry.value, source.kind);
@@ -290,24 +393,44 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
 
     if (snapMode.value) {
       const requestedPlacement = updater(source, meta);
-      const resolvedPlacement = resolveSnapPlacementForInstance(source, registry.value, instances.value, requestedPlacement);
+      const resolvedPlacement = resolveSnapPlacementForInstance(
+        source,
+        registry.value,
+        instances.value,
+        requestedPlacement,
+      );
       if (!resolvedPlacement) return false;
 
       const candidate = sanitizeInstance({ ...source, ...resolvedPlacement }, registry.value);
       if (!candidate) return false;
 
-      replaceInstances(instances.value.map((instance) => (instance.instanceId === source.instanceId ? { ...candidate, zIndex: getNextZIndex() } : instance)));
+      replaceInstances(
+        instances.value.map((instance) =>
+          instance.instanceId === source.instanceId
+            ? { ...candidate, zIndex: getNextZIndex() }
+            : instance,
+        ),
+      );
       return true;
     }
 
     const candidate = sanitizeInstance({ ...source, ...updater(source, meta) }, registry.value);
     if (!candidate) return false;
 
-    replaceInstances(instances.value.map((instance) => (instance.instanceId === source.instanceId ? { ...candidate, zIndex: getNextZIndex() } : instance)));
+    replaceInstances(
+      instances.value.map((instance) =>
+        instance.instanceId === source.instanceId
+          ? { ...candidate, zIndex: getNextZIndex() }
+          : instance,
+      ),
+    );
     return true;
   }
 
-  function moveInstance(instanceId: string, placement: { x?: number; y?: number; colStart?: number; rowStart?: number }): boolean {
+  function moveInstance(
+    instanceId: string,
+    placement: { x?: number; y?: number; colStart?: number; rowStart?: number },
+  ): boolean {
     return updateInstance(instanceId, (source) => {
       if (snapMode.value) {
         return buildSnapPlacement(source, {
@@ -325,7 +448,10 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     });
   }
 
-  function resizeInstance(instanceId: string, size: { width?: number; height?: number; colSpan?: number; rowSpan?: number }): boolean {
+  function resizeInstance(
+    instanceId: string,
+    size: { width?: number; height?: number; colSpan?: number; rowSpan?: number },
+  ): boolean {
     return updateInstance(instanceId, (source) => {
       if (snapMode.value) {
         return buildSnapPlacement(source, {
@@ -344,9 +470,9 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
   }
 
   function resetLayout(): void {
-    const sanitizedDefaults = NEXT_HOME_DEFAULT_LAYOUT
-      .map((instance) => sanitizeInstance(instance, registry.value))
-      .filter((instance): instance is NextHomeCardInstance => instance !== null);
+    const sanitizedDefaults = NEXT_HOME_DEFAULT_LAYOUT.map((instance) =>
+      sanitizeInstance(instance, registry.value),
+    ).filter((instance): instance is NextHomeCardInstance => instance !== null);
     replaceInstances(sanitizedDefaults);
     selectedInstanceId.value = sanitizedDefaults[0]?.instanceId ?? null;
   }
@@ -413,10 +539,14 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     }
   });
 
-  watch(instances, (value) => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  }, { deep: true });
+  watch(
+    instances,
+    (value) => {
+      if (typeof window === "undefined") return;
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    },
+    { deep: true },
+  );
 
   watch(options.editMode, (isEditMode) => {
     if (!isEditMode) selectedInstanceId.value = null;

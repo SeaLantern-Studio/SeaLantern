@@ -1,9 +1,6 @@
 import { computed, ref, watch, type Ref } from "vue";
 import { configApi } from "@api/config";
-import type {
-  ConfigEntry as ConfigEntryType,
-  ServerConfigFileKind,
-} from "@api/config";
+import type { ConfigEntry as ConfigEntryType, ServerConfigFileKind } from "@api/config";
 import { i18n } from "@language";
 import type { ServerInstance } from "@type/server";
 

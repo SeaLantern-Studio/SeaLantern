@@ -3,7 +3,7 @@ import { useRoute, useRouter } from "vue-router";
 import { i18n } from "@language";
 import { useSettingsStore } from "@stores/settingsStore";
 
-export type SettingsSectionId = "appearance" | "general";
+export type SettingsSectionId = "appearance" | "general" | "shell" | "developer-management";
 
 export type SettingsCoverageTone = "next" | "hybrid" | "classic";
 
@@ -56,6 +56,20 @@ function buildSettingsSectionItems(): readonly SettingsSectionItem[] {
       description: i18n.t("settings.next.sections.general.description"),
       hash: "#general",
     },
+    {
+      id: "shell",
+      label: i18n.t("settings.next.sections.shell.label"),
+      title: i18n.t("settings.next.sections.shell.title"),
+      description: i18n.t("settings.next.sections.shell.description"),
+      hash: "#shell",
+    },
+    {
+      id: "developer-management",
+      label: i18n.t("settings.next.sections.developer_management.label"),
+      title: i18n.t("settings.next.sections.developer_management.title"),
+      description: i18n.t("settings.next.sections.developer_management.description"),
+      hash: "#developer-management",
+    },
   ] as const;
 }
 
@@ -65,6 +79,10 @@ function parseSettingsSectionHash(hash: string): SettingsSectionId | null {
       return "appearance";
     case "#general":
       return "general";
+    case "#shell":
+      return "shell";
+    case "#developer-management":
+      return "developer-management";
     default:
       return null;
   }

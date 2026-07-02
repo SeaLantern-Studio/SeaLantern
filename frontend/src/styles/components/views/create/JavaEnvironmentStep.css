@@ -40,18 +40,6 @@
   flex: 1;
 }
 
-.java-step-rescan {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--sl-primary);
-  background: var(--sl-primary-bg);
-  border-radius: var(--sl-radius-sm);
-  padding: 4px 10px;
-  font-size: var(--sl-font-size-sm);
-  cursor: pointer;
-}
-
 .java-step-loading,
 .java-step-empty {
   font-size: var(--sl-font-size-sm);

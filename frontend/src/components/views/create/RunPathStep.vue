@@ -54,6 +54,7 @@ const effectivePath = computed(() => {
       <SLInput
         class="run-path-input"
         :model-value="runPath"
+        size="md"
         :disabled="inputDisabled"
         :placeholder="i18n.t('create.path_custom_placeholder')"
         @update:model-value="emit('update:runPath', $event)"

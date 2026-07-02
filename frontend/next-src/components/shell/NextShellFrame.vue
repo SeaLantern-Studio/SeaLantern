@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { LayoutGrid, LogOut } from "@lucide/vue";
 import { RouterLink } from "vue-router";
-import { onMounted, useTemplateRef, watch } from "vue";
+import { computed, onMounted, useTemplateRef, watch } from "vue";
 import { i18n } from "@language";
 import { SLButton, SLCheckbox, SLModal } from "@components/common";
+import { useShellBackground } from "@composables/useShellBackground";
 import { useSettingsStore } from "@stores/settingsStore";
 import type { NextShellNavItem } from "@next-src/contracts/shell";
 import NextDesktopTitlebar from "./NextDesktopTitlebar.vue";
@@ -37,6 +38,11 @@ const emit = defineEmits<{
 }>();
 
 const railRef = useTemplateRef<HTMLElement>("railRef");
+const { backgroundStyle, hasBackgroundImage, hasTransparentWindowBackdrop } = useShellBackground();
+const frameClasses = computed(() => ({
+  "next-shell-frame--has-background-image": hasBackgroundImage.value,
+  "next-shell-frame--native-window-effect": hasTransparentWindowBackdrop.value,
+}));
 
 function handleRailFocusOut(event: FocusEvent): void {
   const nextTarget = event.relatedTarget;
@@ -76,7 +82,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="next-shell-frame">
+  <div class="next-shell-frame" :class="frameClasses">
+    <div class="next-shell-frame__background" :style="backgroundStyle"></div>
+    <div class="next-shell-frame__backdrop"></div>
+
     <aside
       ref="railRef"
       class="next-shell-frame__rail"
@@ -215,9 +224,37 @@ onMounted(() => {
 
 <style scoped>
 .next-shell-frame {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
+  overflow: hidden;
+  background-color: var(--sl-bg);
+}
+
+.next-shell-frame--native-window-effect {
+  background-color: transparent;
+}
+
+.next-shell-frame__background,
+.next-shell-frame__backdrop {
+  position: absolute;
+  pointer-events: none;
+}
+
+.next-shell-frame__background {
+  inset: -24px;
+  z-index: 0;
+  transition:
+    opacity 0.3s ease,
+    filter 0.3s ease,
+    background-size 0.3s ease;
+}
+
+.next-shell-frame__backdrop {
+  inset: 0;
+  z-index: 0;
   background:
     radial-gradient(
       circle at top left,
@@ -225,6 +262,34 @@ onMounted(() => {
       transparent 24%
     ),
     linear-gradient(180deg, color-mix(in srgb, var(--sl-surface) 88%, transparent), var(--sl-bg));
+}
+
+.next-shell-frame--has-background-image .next-shell-frame__backdrop {
+  background:
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--sl-primary) 14%, transparent),
+      transparent 26%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sl-surface) 72%, transparent),
+      color-mix(in srgb, var(--sl-bg) 88%, transparent)
+    );
+}
+
+.next-shell-frame--native-window-effect .next-shell-frame__backdrop {
+  background:
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--sl-primary) 10%, transparent),
+      transparent 24%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sl-surface) 54%, transparent),
+      color-mix(in srgb, var(--sl-bg) 70%, transparent)
+    );
 }
 
 .next-shell-frame__rail {

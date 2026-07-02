@@ -47,7 +47,12 @@ const toggleTitle = computed(() =>
   >
     <header class="next-home-system-overview__header">
       <h3>{{ title }}</h3>
-      <button class="next-home-system-overview__toggle" type="button" :title="toggleTitle" @click="emit('toggleView')">
+      <button
+        class="next-home-system-overview__toggle"
+        type="button"
+        :title="toggleTitle"
+        @click="emit('toggleView')"
+      >
         <Menu v-if="viewMode === 'gauge'" :size="14" />
         <Gauge v-else :size="14" />
       </button>
@@ -56,7 +61,11 @@ const toggleTitle = computed(() =>
     <div v-if="viewMode === 'gauge'" class="next-home-system-overview__gauge-grid">
       <div v-for="metric in metrics" :key="metric.id" class="next-home-system-overview__gauge-item">
         <div class="next-home-system-overview__gauge-shell">
-          <UsageGauge class="next-home-system-overview__gauge-chart" :value="metric.percent" :tone="metric.tone" />
+          <UsageGauge
+            class="next-home-system-overview__gauge-chart"
+            :value="metric.percent"
+            :tone="metric.tone"
+          />
         </div>
         <div class="next-home-system-overview__metric-copy">
           <span>{{ metric.label }}</span>
@@ -67,13 +76,21 @@ const toggleTitle = computed(() =>
     </div>
 
     <div v-else class="next-home-system-overview__detail-list">
-      <div v-for="metric in metrics" :key="metric.id" class="next-home-system-overview__detail-item">
+      <div
+        v-for="metric in metrics"
+        :key="metric.id"
+        class="next-home-system-overview__detail-item"
+      >
         <div class="next-home-system-overview__detail-header">
           <span>{{ metric.label }}</span>
           <strong>{{ metric.value }}</strong>
         </div>
         <div class="next-home-system-overview__sparkline-wrap">
-          <UsageSparkline class="next-home-system-overview__sparkline" :values="metric.history" :tone="metric.tone" />
+          <UsageSparkline
+            class="next-home-system-overview__sparkline"
+            :values="metric.history"
+            :tone="metric.tone"
+          />
         </div>
         <small>{{ metric.detail }}</small>
       </div>

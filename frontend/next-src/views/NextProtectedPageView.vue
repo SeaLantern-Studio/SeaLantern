@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, useSlots } from "vue";
-import { House, Puzzle, Server, Settings2 } from "@lucide/vue";
+import { Download, House, Link2, Palette, Puzzle, Server, Settings2, Wrench } from "@lucide/vue";
 import { isBrowserEnv } from "@api/tauri";
 import { useRoute, useRouter } from "vue-router";
 import { i18n } from "@language";
 import { AUTH_ROUTE_NAME } from "@router/authRoute";
 import { useAuthStore } from "@stores/authStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import NextSidebarHostItems from "../components/host/NextSidebarHostItems.vue";
 import type { NextProtectedPageKind, NextShellPage } from "../contracts/page";
 import type { NextShellNavItem } from "../contracts/shell";
@@ -29,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const settingsStore = useSettingsStore();
 const nextHostRuntime = useNextHostRuntime();
 const isBrowserMode = isBrowserEnv();
 const slots = useSlots();
@@ -49,7 +51,11 @@ const effectiveRailExpanded = computed(() => !props.railLocked && railExpanded.v
 const navIconByKind = {
   home: House,
   servers: Server,
+  downloads: Download,
+  tunnel: Link2,
   plugins: Puzzle,
+  paint: Palette,
+  developer: Wrench,
   settings: Settings2,
 } as const;
 
@@ -60,7 +66,9 @@ const shellPage = computed<NextShellPage>(() => ({
   subtitle: props.pageSubtitle ?? "",
 }));
 const navItems = computed<NextShellNavItem[]>(() =>
-  NEXT_PROTECTED_ROUTES.map((page) => ({
+  NEXT_PROTECTED_ROUTES.filter((page) => {
+    return page.meta.pageKind !== "developer" || settingsStore.settings.developer_mode;
+  }).map((page) => ({
     id: page.meta.pageKind,
     label: i18n.t(page.meta.navLabelKey ?? page.meta.titleKey),
     icon: navIconByKind[page.meta.pageKind],

@@ -109,5 +109,4 @@
   align-items: center;
   justify-content: center;
   gap: var(--sl-space-sm);
-  padding: var(--sl-space-md) var(--sl-space-lg);
 }

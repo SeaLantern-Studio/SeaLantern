@@ -2,7 +2,11 @@
 import { computed, ref } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import { getPermissionMetadata, summarizePermissionSemantics, type PermissionMetadata } from "@type/plugin";
+import {
+  getPermissionMetadata,
+  summarizePermissionSemantics,
+  type PermissionMetadata,
+} from "@type/plugin";
 import { Lock } from "@lucide/vue";
 import { SLModal } from "@components/common";
 
@@ -80,12 +84,7 @@ const DECLARED_PERMISSION_GROUPS: Record<string, string[]> = {
   system: ["system.info", "system.os", "system.cpu", "system.memory"],
   storage: ["storage.get", "storage.keys", "storage.set", "storage.remove"],
   log: ["log.debug", "log.info", "log.warn", "log.error"],
-  execute_program: [
-    "process.exec",
-    "process.inspect",
-    "process.output.read",
-    "process.kill",
-  ],
+  execute_program: ["process.exec", "process.inspect", "process.output.read", "process.kill"],
   plugin_folder_access: ["plugins.read", "plugins.write"],
   "process.exec": ["process.exec"],
   "process.inspect": ["process.inspect"],
@@ -426,20 +425,30 @@ function formatTime(timestamp: number): string {
           <div class="section-title">{{ i18n.t("plugins.permission.semantic.section_title") }}</div>
           <div class="overview-grid">
             <div class="overview-card">
-              <span class="overview-label">{{ i18n.t("plugins.permission.semantic.risk_group.standard_sandbox_allowed") }}</span>
+              <span class="overview-label">{{
+                i18n.t("plugins.permission.semantic.risk_group.standard_sandbox_allowed")
+              }}</span>
               <span class="overview-value">{{ declaredPermissionSummary.standardCount }}</span>
             </div>
             <div class="overview-card">
-              <span class="overview-label">{{ i18n.t("plugins.permission.semantic.risk_group.escalated_sandbox") }}</span>
+              <span class="overview-label">{{
+                i18n.t("plugins.permission.semantic.risk_group.escalated_sandbox")
+              }}</span>
               <span class="overview-value">{{ declaredPermissionSummary.escalatedCount }}</span>
             </div>
             <div class="overview-card">
-              <span class="overview-label">{{ i18n.t("plugins.permission.semantic.risk_group.trusted_only") }}</span>
+              <span class="overview-label">{{
+                i18n.t("plugins.permission.semantic.risk_group.trusted_only")
+              }}</span>
               <span class="overview-value">{{ declaredPermissionSummary.trustedOnlyCount }}</span>
             </div>
             <div class="overview-card">
-              <span class="overview-label">{{ i18n.t("plugins.permission.semantic.requires_explicit_consent") }}</span>
-              <span class="overview-value">{{ declaredPermissionSummary.requiresConsentCount }}</span>
+              <span class="overview-label">{{
+                i18n.t("plugins.permission.semantic.requires_explicit_consent")
+              }}</span>
+              <span class="overview-value">{{
+                declaredPermissionSummary.requiresConsentCount
+              }}</span>
             </div>
           </div>
         </div>
@@ -451,7 +460,9 @@ function formatTime(timestamp: number): string {
               <div class="permission-sub-id">{{ perm.id }}</div>
               <div class="permission-sub-label">{{ perm.label }}</div>
               <div class="permission-semantic-row">
-                <span class="permission-semantic-chip">{{ getRiskGroupLabel(perm.semantics) }}</span>
+                <span class="permission-semantic-chip">{{
+                  getRiskGroupLabel(perm.semantics)
+                }}</span>
                 <span class="permission-semantic-chip">{{ getBoundaryLabel(perm.semantics) }}</span>
                 <span
                   v-if="perm.semantics.requires_explicit_consent"
@@ -475,7 +486,9 @@ function formatTime(timestamp: number): string {
               <div class="permission-sub-id">{{ perm.id }}</div>
               <div class="permission-sub-label">{{ perm.label }}</div>
               <div class="permission-semantic-row">
-                <span class="permission-semantic-chip">{{ getRiskGroupLabel(perm.semantics) }}</span>
+                <span class="permission-semantic-chip">{{
+                  getRiskGroupLabel(perm.semantics)
+                }}</span>
                 <span class="permission-semantic-chip">{{ getBoundaryLabel(perm.semantics) }}</span>
                 <span
                   v-if="perm.semantics.requires_explicit_consent"

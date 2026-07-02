@@ -149,6 +149,21 @@
   gap: var(--sl-space-md);
 }
 
+.create-step-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sl-space-md);
+  margin-top: var(--sl-space-md);
+}
+
+.create-step-actions--end {
+  justify-content: flex-end;
+}
+
+.create-step-actions :deep(.sl-button) {
+  min-width: 128px;
+}
+
 .create-submit-error {
   margin-top: var(--sl-space-sm);
   padding: 10px 12px;
@@ -222,6 +237,11 @@
 }
 
 @media (max-width: 600px) {
+  .create-step-actions,
+  .create-submit-actions {
+    flex-direction: column;
+  }
+
   .drop-hint {
     padding: var(--sl-space-lg);
     gap: var(--sl-space-sm);

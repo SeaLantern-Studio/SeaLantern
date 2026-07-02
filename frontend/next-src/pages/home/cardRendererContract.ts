@@ -1,6 +1,14 @@
 import type { Component } from "vue";
-import type { NextHomeCardInstance, NextHomeCardKind, NextHomeCardLayoutMeta } from "./layoutContract";
-import type { NextHomePageSummaryMetric, NextHomeServerCardModel, NextHomeSystemMetric } from "./useNextHomePage";
+import type {
+  NextHomeCardInstance,
+  NextHomeCardKind,
+  NextHomeCardLayoutMeta,
+} from "./layoutContract";
+import type {
+  NextHomePageSummaryMetric,
+  NextHomeServerCardModel,
+  NextHomeSystemMetric,
+} from "./useNextHomePage";
 
 export interface NextHomeAlertItem {
   server: string;
@@ -34,7 +42,9 @@ export interface NextHomeCardRendererProps {
 
 export type NextHomeCardRendererComponent = Component;
 
-export type NextHomeCardRendererRegistry = Partial<Record<NextHomeCardKind, NextHomeCardRendererComponent>>;
+export type NextHomeCardRendererRegistry = Partial<
+  Record<NextHomeCardKind, NextHomeCardRendererComponent>
+>;
 
 export type NextHomeCardRendererResolveStatus = "registered" | "plugin-pending" | "missing";
 

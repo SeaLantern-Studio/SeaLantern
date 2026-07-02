@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { FileCode2, FileCog, FolderOpen, RefreshCw, TerminalSquare } from "@lucide/vue";
+import SLButton from "@components/common/SLButton.vue";
 import SLInput from "@components/common/SLInput.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import type { StartupCandidate, StartupMode } from "@components/views/create/startupTypes";
@@ -107,15 +108,16 @@ function getStartupIcon(mode: StartupMode) {
   <div class="startup-step-block">
     <div class="startup-step-header">
       <span class="startup-step-title">{{ i18n.t("create.startup_title") }}</span>
-      <button
+      <SLButton
+        variant="secondary"
+        size="sm"
         type="button"
-        class="startup-step-rescan"
         :disabled="disabled"
         @click="emit('rescan')"
       >
         <RefreshCw :size="14" />
         {{ i18n.t("create.rescan") }}
-      </button>
+      </SLButton>
     </div>
 
     <p class="startup-step-hint">{{ i18n.t("create.startup_hint") }}</p>
@@ -157,6 +159,7 @@ function getStartupIcon(mode: StartupMode) {
           <SLInput
             :label="i18n.t('create.startup_custom_label')"
             :model-value="customStartupCommand"
+            size="md"
             :disabled="disabled"
             :placeholder="i18n.t('create.startup_custom_placeholder')"
             @update:model-value="emit('update:customStartupCommand', $event)"
@@ -186,6 +189,7 @@ function getStartupIcon(mode: StartupMode) {
         <SLSelect
           :model-value="selectedCoreType"
           :options="coreTypeSelectOptions"
+          size="md"
           :disabled="disabled || coreTypeSelectOptions.length === 0"
           :placeholder="i18n.t('create.startup_core_type_placeholder')"
           searchable
@@ -205,6 +209,7 @@ function getStartupIcon(mode: StartupMode) {
         <SLSelect
           :model-value="selectedMcVersion"
           :options="mcVersionSelectOptions"
+          size="md"
           :disabled="disabled || mcVersionSelectOptions.length === 0"
           :placeholder="i18n.t('create.startup_mc_version_placeholder')"
           searchable

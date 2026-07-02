@@ -43,11 +43,13 @@
   "safe_mode_disabled": "Disabled in safe mode",
   "safe_mode": "Safe Mode",
   "ui_shell": {
-    "title": "UI Shell",
+    "title": "Interface",
     "subtitle": "Choose which interface starts next time",
+    "classic_subtitle": "Use this for fallback, legacy pages, and advanced switching.",
+    "readonly_subtitle": "The desktop app uses Next by default.",
     "loading": "Loading UI shell status...",
     "desktop_only": "UI shell switching is only available in the desktop app.",
-    "safe_mode_hint": "Safe mode only allows classic.",
+    "safe_mode_hint": "Safe mode still opens the current interface.",
     "current_running": "Current",
     "pending_restart": "Restart to apply",
     "available_target": "Available",
@@ -65,11 +67,11 @@
     "shells": {
       "classic": {
         "name": "Classic",
-        "description": "The current classic interface."
+        "description": "Works best for fallback and older pages."
       },
       "next": {
         "name": "Next",
-        "description": "The new interface preview."
+        "description": "The default desktop interface."
       }
     }
   },

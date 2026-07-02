@@ -43,11 +43,13 @@
   "safe_mode_disabled": "安全模式下已禁用",
   "safe_mode": "安全模式",
   "ui_shell": {
-    "title": "界面壳",
+    "title": "界面",
     "subtitle": "选择下次启动使用的界面",
+    "classic_subtitle": "用于回退、兼容页面和高级切换。",
+    "readonly_subtitle": "桌面版默认使用 Next 界面。",
     "loading": "正在读取界面状态...",
     "desktop_only": "界面壳切换仅桌面版可用。",
-    "safe_mode_hint": "安全模式下仅允许 classic。",
+    "safe_mode_hint": "安全模式下仍会打开当前界面。",
     "current_running": "当前运行",
     "pending_restart": "重启后生效",
     "available_target": "可切换",
@@ -65,11 +67,11 @@
     "shells": {
       "classic": {
         "name": "Classic",
-        "description": "当前的 classic 界面。"
+        "description": "兼容旧页面，适合回退时使用。"
       },
       "next": {
         "name": "Next",
-        "description": "新的界面预览。"
+        "description": "默认桌面界面。"
       }
     }
   },

@@ -21,12 +21,12 @@ defineProps<{
   hasMissingRequiredDependencies: boolean;
   hasMissingOptionalDependencies: boolean;
   updateSummary: string | null;
-  canOpenClassicDetails: boolean;
+  canOpenDetails: boolean;
 }>();
 
 defineEmits<{
   (e: "toggle", plugin: PluginInfo, nextEnabled: boolean): void;
-  (e: "open-classic", pluginId: string): void;
+  (e: "open-details", pluginId: string): void;
   (e: "open-repository", url: string): void;
 }>();
 </script>
@@ -104,10 +104,10 @@ defineEmits<{
       <div class="installed-plugin-card__footer">
         <div class="installed-plugin-card__actions-left">
           <SLButton
-            v-if="canOpenClassicDetails"
+            v-if="canOpenDetails"
             variant="ghost"
             size="sm"
-            @click="$emit('open-classic', plugin.manifest.id)"
+            @click="$emit('open-details', plugin.manifest.id)"
           >
             {{ i18n.t("plugins.next.card.open_details") }}
           </SLButton>

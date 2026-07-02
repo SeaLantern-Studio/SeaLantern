@@ -242,8 +242,8 @@ async function handleOpenNextSettings() {
     const url = new URL(issued.target_path, window.location.origin);
     url.searchParams.set("next_bridge_token", issued.bridge_token);
     window.location.assign(`${url.pathname}${url.search}${url.hash}`);
-  } catch (error) {
-    nextSettingsBridgeError.value = normalizeAppError(error).message;
+  } catch (bridgeError) {
+    nextSettingsBridgeError.value = normalizeAppError(bridgeError).message;
   } finally {
     openingNextSettings.value = false;
   }
@@ -259,7 +259,11 @@ async function handleOpenNextSettings() {
       </div>
 
       <div class="next-settings-bridge__actions">
-        <SLButton variant="secondary" :loading="openingNextSettings" @click="handleOpenNextSettings">
+        <SLButton
+          variant="secondary"
+          :loading="openingNextSettings"
+          @click="handleOpenNextSettings"
+        >
           打开 next 设置
         </SLButton>
       </div>

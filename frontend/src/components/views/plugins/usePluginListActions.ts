@@ -198,7 +198,10 @@ export function usePluginListActions(options: UsePluginListActionsOptions) {
   async function handleDelete(pluginId: string) {
     const plugin = options.plugins().find((item) => item.manifest.id === pluginId);
     if (plugin && !plugin.actions.can_delete) {
-      options.showAlert(i18n.t("common.message_unknown_error"), `Plugin '${plugin.manifest.name}' cannot be deleted.`);
+      options.showAlert(
+        i18n.t("common.message_unknown_error"),
+        `Plugin '${plugin.manifest.name}' cannot be deleted.`,
+      );
       return;
     }
     if (plugin?.state === "enabled") {

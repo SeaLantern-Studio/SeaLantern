@@ -247,7 +247,11 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
       await applyParsedSourceState(sourceText, isPropertiesFile.value ? "visual" : "source");
 
       const context = compareContext.value;
-      if (isPropertiesFile.value && context?.compareMode.value && context.compareTargetServerId.value) {
+      if (
+        isPropertiesFile.value &&
+        context?.compareMode.value &&
+        context.compareTargetServerId.value
+      ) {
         await context.loadCompareProperties();
       }
     } catch (e) {

@@ -55,7 +55,9 @@ function handleCancel() {
         <div class="header-text">
           <h2>{{ props.title || i18n.t("plugins.permission.warning_title") }}</h2>
           <p>
-            {{ props.message || i18n.t("plugins.permission.warning_message", { name: pluginName }) }}
+            {{
+              props.message || i18n.t("plugins.permission.warning_message", { name: pluginName })
+            }}
           </p>
         </div>
       </div>
@@ -115,7 +117,10 @@ function handleCancel() {
         <SLButton variant="secondary" @click="handleCancel">
           {{ i18n.t("plugins.permission.warning_cancel") }}
         </SLButton>
-        <SLButton :variant="confirmVariant || (hasCritical ? 'danger' : 'primary')" @click="handleConfirm">
+        <SLButton
+          :variant="confirmVariant || (hasCritical ? 'danger' : 'primary')"
+          @click="handleConfirm"
+        >
           {{ confirmText || i18n.t("plugins.permission.warning_confirm") }}
         </SLButton>
       </div>

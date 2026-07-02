@@ -1,6 +1,13 @@
 import { computed, onMounted, shallowRef } from "vue";
+import { useRouter } from "vue-router";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { usePluginsInstaller } from "@components/views/plugins/usePluginsInstaller";
 import { i18n } from "@language";
+import {
+  NEXT_PLUGIN_CATEGORY_ROUTE_NAME,
+  NEXT_PLUGIN_DETAIL_ROUTE_NAME,
+  NEXT_PLUGIN_MARKET_ROUTE_NAME,
+} from "@next-src/router/pageMeta";
 import { usePluginStore } from "@stores/pluginStore";
 import {
   getLocalizedPluginDescription,
@@ -70,14 +77,6 @@ function getMissingOptionalDependencies(plugin: PluginInfo) {
   return (plugin.missing_dependencies ?? []).filter((dependency) => !dependency.required);
 }
 
-function buildClassicPluginDetailPath(pluginId: string): string {
-  return `/plugin/${encodeURIComponent(pluginId)}`;
-}
-
-function navigateToClassicPath(path: string): void {
-  window.location.assign(path);
-}
-
 function getPluginName(plugin: PluginInfo): string {
   return getLocalizedPluginName(plugin.manifest, i18n.getLocale());
 }
@@ -107,7 +106,9 @@ function getPluginNameLabelFallback(): string {
 }
 
 export function usePluginsPage() {
+  const router = useRouter();
   const pluginStore = usePluginStore();
+  const installer = usePluginsInstaller();
 
   const bootstrapping = shallowRef(true);
   const refreshing = shallowRef(false);
@@ -159,6 +160,12 @@ export function usePluginsPage() {
 
   function clearError(): void {
     pluginStore.error = null;
+    installer.installErrorMessage.value = null;
+  }
+
+  function getDependencyDisplayName(depId: string): string {
+    const plugin = pluginStore.plugins.find((item) => item.manifest.id === depId);
+    return plugin ? getPluginName(plugin) : depId;
   }
 
   function hasUpdate(plugin: PluginInfo): boolean {
@@ -174,7 +181,7 @@ export function usePluginsPage() {
     return i18n.t("plugins.next.update_to", { version: update.latest_version });
   }
 
-  function canOpenClassicDetails(plugin: PluginInfo): boolean {
+  function canOpenDetails(plugin: PluginInfo): boolean {
     const pluginId = plugin.manifest.id;
     return (
       pluginStore.navItems.some((item) => item.plugin_id === pluginId) ||
@@ -184,12 +191,24 @@ export function usePluginsPage() {
     );
   }
 
-  function openClassicDetails(pluginId: string): void {
-    navigateToClassicPath(buildClassicPluginDetailPath(pluginId));
+  async function openPluginDetails(pluginId: string): Promise<void> {
+    const plugin = pluginStore.plugins.find((item) => item.manifest.id === pluginId);
+    if (plugin?.manifest.sidebar?.mode === "category") {
+      await router.push({
+        name: NEXT_PLUGIN_CATEGORY_ROUTE_NAME,
+        params: { pluginId },
+      });
+      return;
+    }
+
+    await router.push({
+      name: NEXT_PLUGIN_DETAIL_ROUTE_NAME,
+      params: { pluginId },
+    });
   }
 
-  function openClassicMarket(): void {
-    navigateToClassicPath("/market");
+  async function openPluginMarket(): Promise<void> {
+    await router.push({ name: NEXT_PLUGIN_MARKET_ROUTE_NAME });
   }
 
   function closePermissionDialog(): void {
@@ -256,7 +275,7 @@ export function usePluginsPage() {
     () => installedPlugins.value.filter((plugin) => hasUpdate(plugin)).length,
   );
   const hasPlugins = computed(() => totalCount.value > 0);
-  const errorMessage = computed(() => pluginStore.error);
+  const errorMessage = computed(() => pluginStore.error || installer.installErrorMessage.value);
   const isLoading = computed(() => bootstrapping.value || refreshing.value || pluginStore.loading);
 
   const permissionDialogTitle = computed(() => {
@@ -294,6 +313,7 @@ export function usePluginsPage() {
     isBootstrapping: bootstrapping,
     isRefreshing: refreshing,
     checkingUpdates,
+    installer,
     errorMessage,
     permissionDialogOpen,
     pendingPermissionPluginName,
@@ -306,6 +326,7 @@ export function usePluginsPage() {
     clearError,
     getPluginName,
     getPluginDescription,
+    getDependencyDisplayName,
     getPluginAuthor,
     getPluginMeta,
     getPluginStateLabel,
@@ -314,9 +335,9 @@ export function usePluginsPage() {
     getMissingOptionalDependencies,
     hasUpdate,
     getUpdateSummary,
-    canOpenClassicDetails,
-    openClassicDetails,
-    openClassicMarket,
+    canOpenDetails,
+    openPluginDetails,
+    openPluginMarket,
     openRepository,
     togglePlugin,
     closePermissionDialog,

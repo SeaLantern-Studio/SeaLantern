@@ -101,6 +101,8 @@
   "close": "閉じる",
   "confirm_action": "アクションを確認",
   "confirm": "確認",
+  "previous_step": "前へ",
+  "next_step": "次へ",
   "cancel": "キャンセル",
   "message_unauthorized": "認証に失敗しました",
   "server_start_fallback": "{name} は今回「{from}」方式で起動できなかったため、「{to}」で再試行しています。理由：{reason}",

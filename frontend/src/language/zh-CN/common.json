@@ -116,6 +116,8 @@
   "close": "关闭",
   "confirm_action": "确认操作",
   "confirm": "确认",
+  "previous_step": "上一步",
+  "next_step": "下一步",
   "cancel": "取消",
   "ok": "确定",
   "no_menu_items": "没有可用菜单项",

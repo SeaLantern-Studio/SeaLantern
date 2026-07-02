@@ -116,6 +116,8 @@
   "close": "Close",
   "confirm_action": "Confirm Action",
   "confirm": "Confirm",
+  "previous_step": "Back",
+  "next_step": "Next",
   "cancel": "Cancel",
   "ok": "OK",
   "no_menu_items": "No menu items",

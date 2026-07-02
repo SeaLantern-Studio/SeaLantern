@@ -1,12 +1,20 @@
 import { computed, onMounted, shallowRef } from "vue";
+import { useRouter } from "vue-router";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
 import type { ServerStatusInfo } from "@api/server";
 import type { LocalStartupMode, ServerInstance } from "@type/server";
 import { formatServerPath } from "@utils/formatters";
 import { formatServerCoreTypeLabel } from "@utils/serverCoreLabel";
+import {
+  NEXT_SERVER_CREATE_ROUTE_NAME,
+  NEXT_SERVER_IMPORT_ROUTE_NAME,
+  NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME,
+  NEXT_SERVER_INSTANCE_EXTENSIONS_ROUTE_NAME,
+  NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
+} from "@next-src/router/pageMeta";
 
-export type ServersPageTarget = "console" | "config" | "players";
+export type ServersPageTarget = "players" | "extensions" | "config";
 
 export interface ServersPageActionItem {
   target: ServersPageTarget;
@@ -31,10 +39,18 @@ export interface ServersPageServerItem {
 }
 
 const SERVER_ACTIONS: ServersPageActionItem[] = [
-  { target: "console", label: i18n.t("common.console") },
-  { target: "config", label: i18n.t("common.config_edit") },
   { target: "players", label: i18n.t("common.player_manage") },
+  { target: "extensions", label: i18n.t("common.plugins") },
+  { target: "config", label: i18n.t("common.config_edit") },
 ];
+
+async function navigateToCreate(router: ReturnType<typeof useRouter>): Promise<void> {
+  await router.push({ name: NEXT_SERVER_CREATE_ROUTE_NAME });
+}
+
+async function navigateToImport(router: ReturnType<typeof useRouter>): Promise<void> {
+  await router.push({ name: NEXT_SERVER_IMPORT_ROUTE_NAME });
+}
 
 function formatStatusLabel(status: ServerStatusInfo["status"] | undefined): string {
   if (status === "Running") return i18n.t("home.running");
@@ -100,16 +116,8 @@ function formatDetailSummary(status: ServerStatusInfo | undefined): string | nul
   return null;
 }
 
-function buildClassicPath(target: ServersPageTarget, serverId?: string): string {
-  const encodedId = serverId ? `/${encodeURIComponent(serverId)}` : "";
-  return `/${target}${encodedId}`;
-}
-
-function navigateToPath(path: string): void {
-  window.location.assign(path);
-}
-
 export function useServersPage() {
+  const router = useRouter();
   const serverStore = useServerStore();
   const bootstrapping = shallowRef(true);
   const refreshing = shallowRef(false);
@@ -149,17 +157,23 @@ export function useServersPage() {
     serverStore.setCurrentServer(serverId);
   }
 
-  function navigateToServerTarget(serverId: string, target: ServersPageTarget): void {
+  async function navigateToServerTarget(
+    serverId: string,
+    target: ServersPageTarget,
+  ): Promise<void> {
     serverStore.setCurrentServer(serverId);
-    navigateToPath(buildClassicPath(target, serverId));
-  }
 
-  function navigateToCreate(): void {
-    navigateToPath("/create");
-  }
+    if (target === "config") {
+      await router.push({ name: NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME, params: { serverId } });
+      return;
+    }
 
-  function navigateToImport(): void {
-    navigateToPath("/add-existing");
+    if (target === "extensions") {
+      await router.push({ name: NEXT_SERVER_INSTANCE_EXTENSIONS_ROUTE_NAME, params: { serverId } });
+      return;
+    }
+
+    await router.push({ name: NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME, params: { serverId } });
   }
 
   const serverItems = computed<ServersPageServerItem[]>(() =>
@@ -213,7 +227,7 @@ export function useServersPage() {
     loadData,
     selectServer,
     navigateToServerTarget,
-    navigateToCreate,
-    navigateToImport,
+    navigateToCreate: () => navigateToCreate(router),
+    navigateToImport: () => navigateToImport(router),
   };
 }

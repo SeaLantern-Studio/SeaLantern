@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
+import PluginBatchResultModal from "@components/views/plugins/PluginBatchResultModal.vue";
+import PluginChooserDialog from "@components/views/plugins/PluginChooserDialog.vue";
+import PluginDependencyPromptModal from "@components/views/plugins/PluginDependencyPromptModal.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { i18n } from "@language";
 import InstalledPluginCard from "@next-src/components/plugins/InstalledPluginCard.vue";
@@ -10,6 +13,7 @@ import { usePluginsPage } from "./usePluginsPage";
 
 const {
   pluginStore,
+  installer,
   installedPlugins,
   totalCount,
   enabledCount,
@@ -29,6 +33,7 @@ const {
   clearError,
   getPluginName,
   getPluginDescription,
+  getDependencyDisplayName,
   getPluginAuthor,
   getPluginMeta,
   getPluginStateLabel,
@@ -36,14 +41,26 @@ const {
   getMissingRequiredDependencies,
   getMissingOptionalDependencies,
   getUpdateSummary,
-  canOpenClassicDetails,
-  openClassicDetails,
-  openClassicMarket,
+  canOpenDetails,
+  openPluginDetails,
+  openPluginMarket,
   openRepository,
   togglePlugin,
   closePermissionDialog,
   confirmEnablePlugin,
 } = usePluginsPage();
+
+const {
+  chooserOpen,
+  showDependencyModal,
+  installedPluginName,
+  missingDependencies,
+  showBatchResultModal,
+  batchInstallResult,
+  openChooser,
+  pickFile,
+  pickFolder,
+} = installer;
 </script>
 
 <template>
@@ -54,9 +71,17 @@ const {
       :update-count="updateCount"
       :refreshing="isRefreshing"
       :checking-updates="checkingUpdates"
+      @import-local="openChooser()"
       @refresh="refreshPlugins()"
       @check-updates="checkAllUpdates()"
-      @open-market="openClassicMarket()"
+      @open-market="openPluginMarket()"
+    />
+
+    <PluginChooserDialog
+      :open="chooserOpen"
+      @update:open="chooserOpen = $event"
+      @pick-file="pickFile"
+      @pick-folder="pickFolder"
     />
 
     <section v-if="errorMessage" class="plugins-page__error-banner" role="alert" aria-live="polite">
@@ -97,7 +122,7 @@ const {
       v-else-if="!hasPlugins"
       :loading="isRefreshing"
       @refresh="refreshPlugins()"
-      @open-market="openClassicMarket()"
+      @open-market="openPluginMarket()"
     />
 
     <section v-else class="plugins-page__list">
@@ -117,9 +142,9 @@ const {
         :has-missing-required-dependencies="getMissingRequiredDependencies(plugin).length > 0"
         :has-missing-optional-dependencies="getMissingOptionalDependencies(plugin).length > 0"
         :update-summary="getUpdateSummary(plugin)"
-        :can-open-classic-details="canOpenClassicDetails(plugin)"
+        :can-open-details="canOpenDetails(plugin)"
         @toggle="togglePlugin"
-        @open-classic="openClassicDetails"
+        @open-details="openPluginDetails"
         @open-repository="openRepository"
       />
     </section>
@@ -132,6 +157,21 @@ const {
       :message="permissionDialogMessage"
       @confirm="confirmEnablePlugin"
       @cancel="closePermissionDialog"
+    />
+
+    <PluginDependencyPromptModal
+      :visible="showDependencyModal"
+      :installed-plugin-name="installedPluginName"
+      :missing-dependencies="missingDependencies"
+      :get-dep-display-name="getDependencyDisplayName"
+      @close="showDependencyModal = false"
+      @go-market="openPluginMarket()"
+    />
+
+    <PluginBatchResultModal
+      :visible="showBatchResultModal"
+      :batch-install-result="batchInstallResult"
+      @close="showBatchResultModal = false"
     />
   </div>
 </template>

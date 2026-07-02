@@ -1,41 +1,31 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { SLButton, SLCard, SLConfirmDialog } from "@components/common";
-import UiShellCard from "@components/views/plugins/UiShellCard.vue";
+import { SLButton, SLCard } from "@components/common";
 import { useUiShellPanel } from "@components/views/plugins/useUiShellPanel";
 import { i18n } from "@language";
 
 const {
-  shellCards,
+  shellFacts,
+  currentShellName,
   loading,
   safeMode,
-  restarting,
-  showRestartDialog,
   errorMessage,
-  restartNotice,
   browserOnly,
-  pendingShellName,
-  hasPendingRestart,
-  switchInFlight,
-  selectShell,
-  requestRestart,
-  confirmRestart,
-  closeRestartDialog,
+  refreshStatus,
 } = useUiShellPanel();
-
-const restartMessage = computed(() =>
-  i18n.t("plugins.ui_shell.restart_confirm_message", {
-    name: pendingShellName.value,
-  }),
-);
 </script>
 
 <template>
   <SLCard
     class="ui-shell-panel"
     :title="i18n.t('plugins.ui_shell.title')"
-    :subtitle="i18n.t('plugins.ui_shell.subtitle')"
+    :subtitle="i18n.t('plugins.ui_shell.readonly_subtitle')"
   >
+    <template #actions>
+      <SLButton variant="secondary" size="sm" :loading="loading" @click="refreshStatus">
+        {{ i18n.t("settings.next.refresh") }}
+      </SLButton>
+    </template>
+
     <div v-if="browserOnly" class="ui-shell-note ui-shell-note--readonly">
       {{ i18n.t("plugins.ui_shell.desktop_only") }}
     </div>
@@ -43,10 +33,6 @@ const restartMessage = computed(() =>
     <template v-else>
       <div v-if="safeMode" class="ui-shell-note">
         {{ i18n.t("plugins.ui_shell.safe_mode_hint") }}
-      </div>
-
-      <div v-if="restartNotice" class="ui-shell-note ui-shell-note--info">
-        {{ restartNotice }}
       </div>
 
       <div v-if="errorMessage" class="ui-shell-error">
@@ -58,57 +44,19 @@ const restartMessage = computed(() =>
         <span>{{ i18n.t("plugins.ui_shell.loading") }}</span>
       </div>
 
-      <template v-else>
-        <div v-if="hasPendingRestart" class="ui-shell-pending-banner">
-          <div class="ui-shell-pending-copy">
-            <strong>{{ i18n.t("plugins.ui_shell.pending_banner_title") }}</strong>
-            <span>
-              {{ i18n.t("plugins.ui_shell.pending_banner_desc", { name: pendingShellName }) }}
-            </span>
-          </div>
-          <SLButton
-            size="sm"
-            :loading="restarting"
-            :disabled="switchInFlight"
-            @click="requestRestart"
-          >
-            {{ i18n.t("plugins.ui_shell.restart_now") }}
-          </SLButton>
-        </div>
+      <div v-else class="ui-shell-summary">
+        <strong class="ui-shell-summary__title">{{ currentShellName }}</strong>
+        <p class="ui-shell-summary__hint">{{ i18n.t("settings.next.shell.readonly_hint") }}</p>
 
-        <div class="ui-shell-grid">
-          <UiShellCard
-            v-for="shell in shellCards"
-            :key="shell.id"
-            :title="shell.name"
-            :description="shell.description"
-            :source-label="shell.sourceLabel"
-            :running="shell.running"
-            :pending-restart="shell.pendingRestart"
-            :disabled="shell.disabled"
-            :loading="switchInFlight"
-            :action-label="shell.actionLabel"
-            :status-badges="shell.statusBadges"
-            @select="selectShell(shell.id)"
-            @restart="requestRestart"
-          />
-        </div>
-      </template>
+        <dl class="ui-shell-facts">
+          <div v-for="fact in shellFacts" :key="fact.label" class="ui-shell-fact">
+            <dt>{{ fact.label }}</dt>
+            <dd>{{ fact.value }}</dd>
+          </div>
+        </dl>
+      </div>
     </template>
   </SLCard>
-
-  <SLConfirmDialog
-    :visible="showRestartDialog"
-    :title="i18n.t('plugins.ui_shell.restart_confirm_title')"
-    :message="restartMessage"
-    :confirm-text="i18n.t('plugins.ui_shell.restart_now')"
-    :cancel-text="i18n.t('plugins.cancel')"
-    :loading="restarting"
-    @confirm="confirmRestart"
-    @cancel="closeRestartDialog"
-    @close="closeRestartDialog"
-    @update:visible="closeRestartDialog"
-  />
 </template>
 
 <style scoped>
@@ -116,15 +64,8 @@ const restartMessage = computed(() =>
   border: 1px solid var(--sl-border-light);
 }
 
-.ui-shell-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--sl-space-md);
-}
-
 .ui-shell-note,
-.ui-shell-error,
-.ui-shell-pending-banner {
+.ui-shell-error {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -173,21 +114,52 @@ const restartMessage = computed(() =>
   animation: ui-shell-spin 1s linear infinite;
 }
 
-.ui-shell-pending-banner {
-  background: rgba(var(--sl-warning), 0.08);
-  border: 1px solid rgba(var(--sl-warning), 0.25);
+.ui-shell-summary {
+  display: grid;
+  gap: var(--sl-space-md);
 }
 
-.ui-shell-pending-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.ui-shell-summary__title,
+.ui-shell-summary__hint,
+.ui-shell-fact dt,
+.ui-shell-fact dd {
+  margin: 0;
+}
+
+.ui-shell-summary__title {
+  font-size: 1rem;
   color: var(--sl-text-primary);
 }
 
-.ui-shell-pending-copy span {
+.ui-shell-summary__hint {
   font-size: 0.875rem;
   color: var(--sl-text-secondary);
+}
+
+.ui-shell-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sl-space-md);
+}
+
+.ui-shell-fact {
+  display: grid;
+  gap: 0.375rem;
+  padding: var(--sl-space-md);
+  border-radius: var(--sl-radius-md);
+  border: 1px solid var(--sl-border-light);
+  background: var(--sl-bg-secondary);
+}
+
+.ui-shell-fact dt {
+  font-size: 0.78rem;
+  color: var(--sl-text-tertiary);
+}
+
+.ui-shell-fact dd {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
 }
 
 @keyframes ui-shell-spin {
@@ -197,8 +169,7 @@ const restartMessage = computed(() =>
 }
 
 @media (max-width: 720px) {
-  .ui-shell-note,
-  .ui-shell-pending-banner {
+  .ui-shell-note {
     flex-direction: column;
     align-items: stretch;
   }

@@ -5,7 +5,7 @@ import type { NextProtectedPageKind } from "./page";
 export type NextShellNavigationDirection = "up" | "down";
 
 export interface NextShellNavItem {
-  id: NextProtectedPageKind;
+  id: NextProtectedPageKind | string;
   label: string;
   icon: Component;
   to?: RouteLocationRaw;

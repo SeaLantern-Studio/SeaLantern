@@ -1,6 +1,10 @@
 import { computed, onMounted, shallowRef } from "vue";
 import { useRouter } from "vue-router";
 import { i18n } from "@language";
+import {
+  NEXT_SERVER_CREATE_ROUTE_NAME,
+  NEXT_SERVER_IMPORT_ROUTE_NAME,
+} from "@next-src/router/pageMeta";
 import { useSerialPolling } from "@src/composables/useSerialPolling";
 import { useHomeServerActionsStore } from "@stores/homeServerActionsStore";
 import { useServerStore } from "@stores/serverStore";
@@ -65,14 +69,17 @@ function pushPreviewHistory(target: number[], value: number) {
 }
 
 function formatRuntimeLabel(server: ServerInstance): string {
-  const runtimeLabel = server.runtime_kind === "docker_itzg"
-    ? i18n.t("shell.home_runtime_docker")
-    : i18n.t("shell.home_runtime_local");
+  const runtimeLabel =
+    server.runtime_kind === "docker_itzg"
+      ? i18n.t("shell.home_runtime_docker")
+      : i18n.t("shell.home_runtime_local");
   const coreLabel = formatServerCoreTypeLabel(server.core_type);
   return i18n.t("shell.home_runtime_with_core", { runtime: runtimeLabel, core: coreLabel });
 }
 
-function getStatusTone(status: ServerStatusInfo["status"] | undefined): NextHomeServerCardModel["statusTone"] {
+function getStatusTone(
+  status: ServerStatusInfo["status"] | undefined,
+): NextHomeServerCardModel["statusTone"] {
   if (status === "Running") return "success";
   if (status === "Starting" || status === "Stopping") return "warning";
   if (status === "Error") return "danger";
@@ -241,18 +248,20 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
         id: "issues",
         label: i18n.t("shell.home_summary_issues_label"),
         value: String(issueServerCount.value),
-        meta: issueServerCount.value > 0
-          ? i18n.t("shell.home_summary_issues_meta_blocking")
-          : i18n.t("shell.home_summary_issues_meta_clear"),
+        meta:
+          issueServerCount.value > 0
+            ? i18n.t("shell.home_summary_issues_meta_blocking")
+            : i18n.t("shell.home_summary_issues_meta_clear"),
         tone: issueServerCount.value > 0 ? "danger" : "neutral",
       },
       {
         id: "plugins",
         label: i18n.t("shell.home_summary_plugins_label"),
         value: String(options.sidebarEntryCount),
-        meta: options.sidebarEntryCount > 0
-          ? i18n.t("shell.home_summary_plugins_meta_connected")
-          : i18n.t("shell.home_summary_plugins_meta_empty"),
+        meta:
+          options.sidebarEntryCount > 0
+            ? i18n.t("shell.home_summary_plugins_meta_connected")
+            : i18n.t("shell.home_summary_plugins_meta_empty"),
         tone: "primary",
       },
       {
@@ -268,9 +277,33 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
   const systemMetrics = computed<NextHomeSystemMetric[]>(() => {
     if (isPreviewDataset.value || !statsStore.systemInfo) {
       return [
-        { id: "cpu", label: i18n.t("shell.home_system_cpu"), value: `${previewCpuUsage.value}%`, detail: i18n.t("shell.home_system_preview_cpu_detail"), percent: previewCpuUsage.value, history: previewCpuHistory.value, tone: "primary" },
-        { id: "memory", label: i18n.t("shell.home_system_memory"), value: `${previewMemUsage.value}%`, detail: i18n.t("shell.home_system_preview_memory_detail"), percent: previewMemUsage.value, history: previewMemHistory.value, tone: "success" },
-        { id: "disk", label: i18n.t("shell.home_system_disk"), value: `${previewDiskUsage.value}%`, detail: i18n.t("shell.home_system_preview_disk_detail"), percent: previewDiskUsage.value, history: previewDiskHistory.value, tone: "warning" },
+        {
+          id: "cpu",
+          label: i18n.t("shell.home_system_cpu"),
+          value: `${previewCpuUsage.value}%`,
+          detail: i18n.t("shell.home_system_preview_cpu_detail"),
+          percent: previewCpuUsage.value,
+          history: previewCpuHistory.value,
+          tone: "primary",
+        },
+        {
+          id: "memory",
+          label: i18n.t("shell.home_system_memory"),
+          value: `${previewMemUsage.value}%`,
+          detail: i18n.t("shell.home_system_preview_memory_detail"),
+          percent: previewMemUsage.value,
+          history: previewMemHistory.value,
+          tone: "success",
+        },
+        {
+          id: "disk",
+          label: i18n.t("shell.home_system_disk"),
+          value: `${previewDiskUsage.value}%`,
+          detail: i18n.t("shell.home_system_preview_disk_detail"),
+          percent: previewDiskUsage.value,
+          history: previewDiskHistory.value,
+          tone: "warning",
+        },
       ];
     }
     return [
@@ -286,8 +319,25 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
         history: statsStore.cpuHistory.length > 0 ? statsStore.cpuHistory : [statsStore.cpuUsage],
         tone: "primary",
       },
-      { id: "memory", label: i18n.t("shell.home_system_memory"), value: `${statsStore.memUsage}%`, detail: `${formatBytes(statsStore.systemInfo.memory.used)} / ${formatBytes(statsStore.systemInfo.memory.total)}`, percent: statsStore.memUsage, history: statsStore.memHistory.length > 0 ? statsStore.memHistory : [statsStore.memUsage], tone: "success" },
-      { id: "disk", label: i18n.t("shell.home_system_disk"), value: `${statsStore.diskUsage}%`, detail: `${formatBytes(statsStore.systemInfo.disk.used)} / ${formatBytes(statsStore.systemInfo.disk.total)}`, percent: statsStore.diskUsage, history: statsStore.diskHistory.length > 0 ? statsStore.diskHistory : [statsStore.diskUsage], tone: "warning" },
+      {
+        id: "memory",
+        label: i18n.t("shell.home_system_memory"),
+        value: `${statsStore.memUsage}%`,
+        detail: `${formatBytes(statsStore.systemInfo.memory.used)} / ${formatBytes(statsStore.systemInfo.memory.total)}`,
+        percent: statsStore.memUsage,
+        history: statsStore.memHistory.length > 0 ? statsStore.memHistory : [statsStore.memUsage],
+        tone: "success",
+      },
+      {
+        id: "disk",
+        label: i18n.t("shell.home_system_disk"),
+        value: `${statsStore.diskUsage}%`,
+        detail: `${formatBytes(statsStore.systemInfo.disk.used)} / ${formatBytes(statsStore.systemInfo.disk.total)}`,
+        percent: statsStore.diskUsage,
+        history:
+          statsStore.diskHistory.length > 0 ? statsStore.diskHistory : [statsStore.diskUsage],
+        tone: "warning",
+      },
     ];
   });
 
@@ -299,7 +349,8 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
     if (isPreviewDataset.value) return previewServers.value;
     return liveServers.value.map((server) => {
       const statusInfo = liveStatuses.value[server.id];
-      const canStart = statusInfo?.status === "Stopped" || statusInfo?.status === "Error" || !statusInfo?.status;
+      const canStart =
+        statusInfo?.status === "Stopped" || statusInfo?.status === "Error" || !statusInfo?.status;
       return {
         id: server.id,
         name: server.name,
@@ -321,7 +372,11 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
 
   const featuredServer = computed<NextHomeServerCardModel | null>(() => {
     if (serverCards.value.length === 0) return null;
-    return serverCards.value.find((server) => server.status === "Error") || serverCards.value.find((server) => server.status === "Running") || serverCards.value[0];
+    return (
+      serverCards.value.find((server) => server.status === "Error") ||
+      serverCards.value.find((server) => server.status === "Running") ||
+      serverCards.value[0]
+    );
   });
 
   const secondaryServers = computed(() => {
@@ -329,15 +384,23 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
     return serverCards.value.filter((server) => server.id !== featuredServer.value?.id);
   });
 
-  const alertItems = computed(() => (isPreviewDataset.value ? PREVIEW_ALERTS : homeActionsStore.recentAlerts));
+  const alertItems = computed(() =>
+    isPreviewDataset.value ? PREVIEW_ALERTS : homeActionsStore.recentAlerts,
+  );
 
-  const totalServerCount = computed(() => (isPreviewDataset.value ? previewServers.value.length : liveServers.value.length));
+  const totalServerCount = computed(() =>
+    isPreviewDataset.value ? previewServers.value.length : liveServers.value.length,
+  );
   const usingPreviewFallback = computed(() => isPreviewDataset.value);
 
   const lastUpdatedLabel = computed(() => {
     if (isPreviewDataset.value) return i18n.t("shell.home_last_updated_preview");
     if (!lastUpdatedAt.value) return i18n.t("shell.home_last_updated_waiting");
-    return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(lastUpdatedAt.value);
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(lastUpdatedAt.value);
   });
 
   async function runOverviewLoad(manual = false): Promise<void> {
@@ -371,11 +434,11 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
   }
 
   function goToCreateServer(): void {
-    void router.push("/create");
+    void router.push({ name: NEXT_SERVER_CREATE_ROUTE_NAME });
   }
 
   function goToImportServer(): void {
-    void router.push("/add-existing");
+    void router.push({ name: NEXT_SERVER_IMPORT_ROUTE_NAME });
   }
 
   async function toggleServer(serverId: string): Promise<void> {

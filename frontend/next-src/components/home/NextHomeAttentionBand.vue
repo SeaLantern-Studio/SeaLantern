@@ -20,7 +20,9 @@ defineProps<{
     :data-layout-editable="editable ? 'true' : 'false'"
   >
     <header class="next-home-attention-band__header">
-      <span class="next-home-attention-band__eyebrow">{{ i18n.t("shell.home_attention_eyebrow") }}</span>
+      <span class="next-home-attention-band__eyebrow">{{
+        i18n.t("shell.home_attention_eyebrow")
+      }}</span>
       <h2>{{ title }}</h2>
     </header>
 

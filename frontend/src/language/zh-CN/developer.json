@@ -46,5 +46,78 @@
   "host": "设备名称",
   "cpu": "处理器",
   "memory": "内存",
-  "process_count": "进程数"
+  "process_count": "进程数",
+  "next": {
+    "eyebrow": "开发工具",
+    "page_title": "开发工具",
+    "page_description": "查看环境摘要、日志和常用工具。",
+    "nav_aria_label": "开发工具分组",
+    "summary": {
+      "browser": "浏览器",
+      "desktop": "桌面端",
+      "environment": "运行环境",
+      "log_count": "日志条数",
+      "system_status": "系统状态",
+      "ready": "已就绪",
+      "waiting": "等待刷新"
+    },
+    "sections": {
+      "overview": {
+        "label": "总览",
+        "description": "系统、版本和环境摘要。"
+      },
+      "logs": {
+        "label": "日志",
+        "description": "查看、筛选和导出日志。"
+      },
+      "tools": {
+        "label": "工具",
+        "description": "常规测试与低风险操作。"
+      },
+      "other": {
+        "label": "其他",
+        "description": "低频高风险操作。"
+      }
+    },
+    "overview": {
+      "title": "环境摘要",
+      "description": "集中查看当前设备和应用状态。"
+    },
+    "logs": {
+      "title": "日志",
+      "description": "按级别和模块快速定位问题。"
+    },
+    "tools": {
+      "title": "工具",
+      "description": "保留常用测试入口。",
+      "toast": {
+        "title": "提示测试",
+        "description": "点一下就能看到提示。",
+        "success_button": "显示成功提示",
+        "error_button": "显示错误提示",
+        "warning_button": "显示提醒",
+        "info_button": "显示信息",
+        "success_message": "操作已完成",
+        "error_message": "操作失败，请重试",
+        "warning_message": "请先确认当前操作",
+        "info_message": "正在获取最新状态"
+      },
+      "banner": {
+        "title": "公告测试",
+        "description": "可以直接在这里切换显示。",
+        "info_button": "显示公告",
+        "warning_button": "显示警告公告",
+        "error_button": "显示错误公告",
+        "clear_button": "关闭公告",
+        "info_message": "当前有新的状态提醒",
+        "warning_message": "当前操作需要再次确认",
+        "error_message": "当前状态异常，请尽快处理"
+      }
+    },
+    "other": {
+      "title": "其他",
+      "description": "危险操作会单独放在这里。",
+      "warning": "此区域包含高风险操作。"
+    }
+  }
 }

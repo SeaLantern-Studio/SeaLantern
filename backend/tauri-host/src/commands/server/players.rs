@@ -3,7 +3,9 @@ use crate::services::global;
 use crate::services::server::log_pipeline::map_domain_event;
 use crate::services::server::manager::ServerManager;
 use crate::services::server::player as player_manager;
-use crate::services::server::player::{BanEntry, OpEntry, PlayerEntry};
+use crate::services::server::player::{
+    BanEntry, BannedIpEntry, OpEntry, PlayerEntry, ServerPlayerSummary,
+};
 use serde::Serialize;
 use sl_server_info::log::{parse_log_line, LogLineInput, LogStream};
 use std::path::Path;
@@ -60,8 +62,18 @@ pub fn get_banned_players(server_path: String) -> Result<Vec<BanEntry>, String> 
 }
 
 #[tauri::command]
+pub fn get_banned_ips(server_path: String) -> Result<Vec<BannedIpEntry>, String> {
+    player_manager::read_banned_ips(&server_path)
+}
+
+#[tauri::command]
 pub fn get_ops(server_path: String) -> Result<Vec<OpEntry>, String> {
     player_manager::read_ops(&server_path)
+}
+
+#[tauri::command]
+pub fn get_server_player_summary(server_path: String) -> Result<ServerPlayerSummary, String> {
+    player_manager::read_player_summary(&server_path)
 }
 
 #[tauri::command]

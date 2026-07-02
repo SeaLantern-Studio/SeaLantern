@@ -17,6 +17,7 @@ use commands::online::server_ids as server_id_commands;
 use commands::online::tunnel as tunnel_commands;
 use commands::plugins::manage as plugin_commands;
 use commands::server::config as config_commands;
+use commands::server::extensions as extensions_commands;
 use commands::server::manage as server_commands;
 use commands::server::players as player_commands;
 use commands::server::plugins as server_plugin_commands;
@@ -77,6 +78,7 @@ pub(crate) fn desktop_handler(
         config_commands::preview_server_properties_write_from_source,
         config_commands::read_sl_config,
         config_commands::write_sl_config,
+        extensions_commands::get_server_extensions_summary,
         system_commands::get_system_info,
         system_commands::get_server_resource_usage,
         system_commands::list_event_consumers,
@@ -106,7 +108,9 @@ pub(crate) fn desktop_handler(
         i18n_commands::get_locale_bundle,
         player_commands::get_whitelist,
         player_commands::get_banned_players,
+        player_commands::get_banned_ips,
         player_commands::get_ops,
+        player_commands::get_server_player_summary,
         player_commands::parse_player_log_events,
         player_commands::add_to_whitelist,
         player_commands::remove_from_whitelist,

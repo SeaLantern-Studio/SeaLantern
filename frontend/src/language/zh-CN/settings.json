@@ -272,7 +272,21 @@
         "label": "通用",
         "title": "通用",
         "description": "语言、行为与基础偏好。"
+      },
+      "shell": {
+        "label": "界面",
+        "title": "界面",
+        "description": "当前界面与回退入口。"
+      },
+      "developer_management": {
+        "label": "开发管理",
+        "title": "开发管理",
+        "description": "控制开发工具入口。"
       }
+    },
+    "developer_management": {
+      "title": "开发工具",
+      "description": "控制开发工具是否显示在侧栏。"
     },
     "summary": {
       "eyebrow": "设置",
@@ -325,6 +339,19 @@
     },
     "general": {
       "live_hint": "调整常用行为与默认选项。"
+    },
+    "shell": {
+      "eyebrow": "界面",
+      "title": "当前界面",
+      "description": "桌面版默认使用 Next 界面。",
+      "current_label": "当前界面",
+      "startup_label": "桌面启动",
+      "startup_value": "默认使用 Next",
+      "status_label": "安全模式",
+      "safe_mode_on": "已开启",
+      "safe_mode_off": "未开启",
+      "readonly_hint": "该项当前为只读。",
+      "safe_mode_hint": "安全模式下仍会打开当前界面。"
     }
   },
   "color_options": {

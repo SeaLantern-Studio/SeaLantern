@@ -2,7 +2,11 @@ export const NEXT_PAGE_KINDS = {
   auth: "auth",
   home: "home",
   servers: "servers",
+  downloads: "downloads",
+  tunnel: "tunnel",
   plugins: "plugins",
+  paint: "paint",
+  developer: "developer",
   settings: "settings",
 } as const;
 

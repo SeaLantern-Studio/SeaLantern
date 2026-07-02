@@ -163,7 +163,7 @@ pub(super) fn default_language() -> String {
 }
 
 pub(super) fn default_ui_shell() -> String {
-    "classic".to_string()
+    "next".to_string()
 }
 
 pub(super) fn default_close_action() -> String {

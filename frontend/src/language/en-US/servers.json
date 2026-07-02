@@ -1,5 +1,87 @@
 {
   "next": {
+    "instance": {
+      "eyebrow": "Instance workspace",
+      "brand_fallback": "Instance workspace",
+      "back_to_servers": "Back to servers",
+      "page_subtitle": "Current instance: {server} · {status}",
+      "not_found_title": "Server not found",
+      "not_found_description": "This route does not map to a known server yet, or the list has not refreshed.",
+      "sections": {
+        "players": "Players",
+        "extensions": "Plugins / Mods",
+        "config": "Config",
+        "world": "World"
+      },
+      "players": {
+        "ip_bans_title": "IP ban rules",
+        "ip_bans_hint": "IP bans are independent from player names. Only backend-readable rules are shown here."
+      },
+      "extensions": {
+        "detected": "Detected",
+        "missing": "Missing",
+        "plugins_dir": "plugins / plugin dir",
+        "mods_dir": "mods / mod dir",
+        "plugins_count": "Plugin files",
+        "mods_count": "Mod files",
+        "other_count": "Other files",
+        "read_only_hint": "View only. Install, remove, enable, and marketplace actions are out of scope here.",
+        "refresh": "Refresh",
+        "retry": "Retry",
+        "loading_title": "Loading extension summary",
+        "plugins_title": "Plugins",
+        "mods_title": "Mods",
+        "other_title": "Other / Unclassified",
+        "plugins_description": "Files detected under plugins/ or plugin/.",
+        "mods_description": "Files detected under mods/ or mod/.",
+        "other_description": "Top-level extension-like files that are not classified as plugins or mods.",
+        "plugins_empty": "No plugin files were detected in the current instance.",
+        "mods_empty": "No mod files were detected in the current instance.",
+        "other_empty": "No additional extension files were detected in the current instance.",
+        "no_directories_title": "No extension directories detected",
+        "no_directories_description": "This instance does not currently have plugins/plugin or mods/mod directories.",
+        "empty_directories_title": "Extension directories are empty",
+        "empty_directories_description": "Detected extension directories exist, but no files were recognized yet.",
+        "relative_path": "Relative path",
+        "modified_at": "Last modified",
+        "unknown_modified_at": "Unknown",
+        "file_type": "Type",
+        "type_plugin": "Plugin",
+        "type_mod": "Mod",
+        "type_other": "Other",
+        "type_plugin_with_ext": "Plugin · {ext}",
+        "type_mod_with_ext": "Mod · {ext}",
+        "type_other_with_ext": "Other · {ext}",
+        "entries_count": "{count} files"
+      },
+      "placeholder": {
+        "eyebrow": "Instance subpage",
+        "return_to_players": "Return to players",
+        "actions": {
+          "players": "Return to players first to continue checking status and online presence.",
+          "back": "Go back to the server list and switch to another instance."
+        },
+        "track": {
+          "workspace_title": "Ready now",
+          "boundary_title": "Scope now"
+        },
+        "extensions": {
+          "description": "The instance-level plugins / mods entry is reserved here for later directory summaries and extension pages.",
+          "track_workspace": "Instance rail, route, and page scaffold are connected.",
+          "track_boundary": "This round does not expand real plugins / mods content yet."
+        },
+        "config": {
+          "description": "The instance config entry is reserved here for a future next-native config workflow.",
+          "track_workspace": "Instance navigation, title, and context are already in place.",
+          "track_boundary": "This round does not rebuild the classic config editor capability."
+        },
+        "world": {
+          "description": "The world entry is reserved here for future world map or world tooling.",
+          "track_workspace": "A stable world route now exists inside instance mode.",
+          "track_boundary": "This round keeps it as a placeholder and does not implement a real map."
+        }
+      }
+    },
     "error_title": "Couldn't load servers",
     "close_error": "Close",
     "retry": "Retry",

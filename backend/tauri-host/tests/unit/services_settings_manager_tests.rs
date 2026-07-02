@@ -190,7 +190,7 @@ fn settings_manager_new_checked_defaults_ui_shell_when_missing() {
 
     let manager = SettingsManager::new_checked().expect("settings should load");
 
-    assert_eq!(manager.get().ui_shell, "classic");
+    assert_eq!(manager.get().ui_shell, "next");
 }
 
 #[test]
@@ -205,5 +205,20 @@ fn settings_manager_new_checked_normalizes_invalid_ui_shell() {
 
     let manager = SettingsManager::new_checked().expect("settings should load");
 
-    assert_eq!(manager.get().ui_shell, "classic");
+    assert_eq!(manager.get().ui_shell, "next");
+}
+
+#[test]
+fn settings_manager_new_checked_migrates_legacy_classic_ui_shell_to_next() {
+    let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+    let settings_path = temp_dir.path().join(SETTINGS_FILE);
+    std::fs::write(&settings_path, r#"{ "ui_shell": "classic" }"#)
+        .expect("write settings with legacy classic ui_shell");
+
+    let _env_lock = lock_env();
+    let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+
+    let manager = SettingsManager::new_checked().expect("settings should load");
+
+    assert_eq!(manager.get().ui_shell, "next");
 }

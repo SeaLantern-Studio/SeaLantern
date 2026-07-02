@@ -46,5 +46,78 @@
   "host": "Device Name",
   "cpu": "Processor",
   "memory": "Memory",
-  "process_count": "Process Count"
+  "process_count": "Process Count",
+  "next": {
+    "eyebrow": "Developer Tools",
+    "page_title": "Developer Tools",
+    "page_description": "Check environment details, logs, and common tools.",
+    "nav_aria_label": "Developer sections",
+    "summary": {
+      "browser": "Browser",
+      "desktop": "Desktop",
+      "environment": "Environment",
+      "log_count": "Log entries",
+      "system_status": "System status",
+      "ready": "Ready",
+      "waiting": "Waiting"
+    },
+    "sections": {
+      "overview": {
+        "label": "Overview",
+        "description": "System, version, and environment facts."
+      },
+      "logs": {
+        "label": "Logs",
+        "description": "View, filter, and export logs."
+      },
+      "tools": {
+        "label": "Tools",
+        "description": "Common tests and low-risk actions."
+      },
+      "other": {
+        "label": "Other",
+        "description": "Low-frequency high-risk actions."
+      }
+    },
+    "overview": {
+      "title": "Environment Summary",
+      "description": "See the current device and app state in one place."
+    },
+    "logs": {
+      "title": "Logs",
+      "description": "Find issues faster by level and module."
+    },
+    "tools": {
+      "title": "Tools",
+      "description": "Keep common test entry points here.",
+      "toast": {
+        "title": "Toast Test",
+        "description": "Show a message with one tap.",
+        "success_button": "Show Success",
+        "error_button": "Show Error",
+        "warning_button": "Show Warning",
+        "info_button": "Show Info",
+        "success_message": "Action completed",
+        "error_message": "Action failed, try again",
+        "warning_message": "Please confirm this action first",
+        "info_message": "Loading the latest status"
+      },
+      "banner": {
+        "title": "Banner Test",
+        "description": "Switch the inline banner here.",
+        "info_button": "Show Banner",
+        "warning_button": "Show Warning Banner",
+        "error_button": "Show Error Banner",
+        "clear_button": "Hide Banner",
+        "info_message": "There is a new status update",
+        "warning_message": "This action needs another check",
+        "error_message": "The current state needs attention"
+      }
+    },
+    "other": {
+      "title": "Other",
+      "description": "High-risk actions are isolated here.",
+      "warning": "This area contains high-risk actions."
+    }
+  }
 }

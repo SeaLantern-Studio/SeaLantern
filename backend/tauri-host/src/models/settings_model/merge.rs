@@ -4,6 +4,14 @@ use super::schema::{
     WINDOW_EFFECT_VIBRANCY,
 };
 
+fn normalize_ui_shell_value(shell_id: &str) -> String {
+    match shell_id.trim().to_ascii_lowercase().as_str() {
+        UI_SHELL_NEXT => UI_SHELL_NEXT.to_string(),
+        UI_SHELL_CLASSIC => UI_SHELL_NEXT.to_string(),
+        _ => UI_SHELL_NEXT.to_string(),
+    }
+}
+
 impl AppSettings {
     pub fn normalize_memory_display_precision(&mut self) {
         self.memory_display_precision = match self.memory_display_precision {
@@ -41,12 +49,7 @@ impl AppSettings {
     }
 
     pub fn normalize_ui_shell(&mut self) {
-        let normalized = match self.ui_shell.trim().to_ascii_lowercase().as_str() {
-            UI_SHELL_CLASSIC | UI_SHELL_NEXT => self.ui_shell.trim().to_ascii_lowercase(),
-            _ => UI_SHELL_CLASSIC.to_string(),
-        };
-
-        self.ui_shell = normalized;
+        self.ui_shell = normalize_ui_shell_value(&self.ui_shell);
     }
 
     pub fn merge_from(&mut self, partial: &PartialSettings) {
@@ -190,5 +193,17 @@ impl AppSettings {
         self.normalize_window_effect();
         self.normalize_ui_shell();
         self.normalize_memory_display_precision();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_ui_shell_value_migrates_legacy_classic_to_next() {
+        assert_eq!(normalize_ui_shell_value(UI_SHELL_NEXT), UI_SHELL_NEXT);
+        assert_eq!(normalize_ui_shell_value(UI_SHELL_CLASSIC), UI_SHELL_NEXT);
+        assert_eq!(normalize_ui_shell_value("unknown"), UI_SHELL_NEXT);
     }
 }

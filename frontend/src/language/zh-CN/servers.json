@@ -1,5 +1,87 @@
 {
   "next": {
+    "instance": {
+      "eyebrow": "实例工作区",
+      "brand_fallback": "实例工作区",
+      "back_to_servers": "返回实例列表",
+      "page_subtitle": "当前实例：{server} · {status}",
+      "not_found_title": "实例未找到",
+      "not_found_description": "当前路由对应的实例不存在，或列表尚未刷新。",
+      "sections": {
+        "players": "玩家列表",
+        "extensions": "插件 / Mod",
+        "config": "配置编辑",
+        "world": "世界地图"
+      },
+      "players": {
+        "ip_bans_title": "IP 封禁规则",
+        "ip_bans_hint": "IP 封禁独立于玩家名称，仅展示后端可读取的规则。"
+      },
+      "extensions": {
+        "detected": "已检测",
+        "missing": "未检测到",
+        "plugins_dir": "plugins / plugin 目录",
+        "mods_dir": "mods / mod 目录",
+        "plugins_count": "插件文件数",
+        "mods_count": "Mod 文件数",
+        "other_count": "其它文件数",
+        "read_only_hint": "当前页仅用于查看，不提供安装、卸载、启停或市场操作。",
+        "refresh": "刷新",
+        "retry": "重试",
+        "loading_title": "正在读取扩展摘要",
+        "plugins_title": "Plugins",
+        "mods_title": "Mods",
+        "other_title": "Other / Unclassified",
+        "plugins_description": "展示 plugins/ 或 plugin/ 下识别到的文件。",
+        "mods_description": "展示 mods/ 或 mod/ 下识别到的文件。",
+        "other_description": "展示未归入 plugins/mods，但看起来像扩展产物的顶层文件。",
+        "plugins_empty": "当前实例没有识别到插件文件。",
+        "mods_empty": "当前实例没有识别到 Mod 文件。",
+        "other_empty": "当前实例没有识别到其它扩展文件。",
+        "no_directories_title": "当前实例还没有检测到扩展目录",
+        "no_directories_description": "当前实例下还没有 plugins/plugin 或 mods/mod 目录。",
+        "empty_directories_title": "扩展目录存在，但暂时没有识别到文件",
+        "empty_directories_description": "已检测到扩展目录，但目录中还没有识别到可展示的文件。",
+        "relative_path": "相对路径",
+        "modified_at": "最后修改时间",
+        "unknown_modified_at": "未知",
+        "file_type": "类型",
+        "type_plugin": "插件",
+        "type_mod": "Mod",
+        "type_other": "其它",
+        "type_plugin_with_ext": "插件 · {ext}",
+        "type_mod_with_ext": "Mod · {ext}",
+        "type_other_with_ext": "其它 · {ext}",
+        "entries_count": "{count} 个文件"
+      },
+      "placeholder": {
+        "eyebrow": "实例二级页",
+        "return_to_players": "返回玩家页",
+        "actions": {
+          "players": "先回到玩家页继续排查状态与在线名单。",
+          "back": "回到实例列表，切换到其它服务器。"
+        },
+        "track": {
+          "workspace_title": "本轮已接入",
+          "boundary_title": "当前边界"
+        },
+        "extensions": {
+          "description": "已预留实例级插件 / Mod 入口，后续在这里承接目录摘要与扩展页。",
+          "track_workspace": "实例 rail、路由与页面骨架已接通。",
+          "track_boundary": "这轮先不展开插件 / Mod 的真实内容读取。"
+        },
+        "config": {
+          "description": "已预留实例级配置编辑入口，后续在这里接通 next 版配置工作流。",
+          "track_workspace": "实例级导航、标题和上下文已经就位。",
+          "track_boundary": "这轮不重做 classic 配置编辑器能力。"
+        },
+        "world": {
+          "description": "已预留世界页入口，后续可在此承接世界地图或世界相关工具。",
+          "track_workspace": "实例模式下的世界页路由已稳定存在。",
+          "track_boundary": "这轮只做占位，不实现真实地图功能。"
+        }
+      }
+    },
     "error_title": "读取服务器列表失败",
     "close_error": "关闭",
     "retry": "重试",

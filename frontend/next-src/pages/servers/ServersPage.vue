@@ -23,8 +23,11 @@ const {
   navigateToImport,
 } = useServersPage();
 
-function handleNavigate(payload: { serverId: string; target: ServersPageTarget }): void {
-  navigateToServerTarget(payload.serverId, payload.target);
+async function handleNavigate(payload: {
+  serverId: string;
+  target: ServersPageTarget;
+}): Promise<void> {
+  await navigateToServerTarget(payload.serverId, payload.target);
 }
 </script>
 

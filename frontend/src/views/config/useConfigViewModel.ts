@@ -1,10 +1,7 @@
 import { computed, ref, watch } from "vue";
 import type { RouteLocationNormalizedLoaded } from "vue-router";
 import { configApi } from "@api/config";
-import type {
-  ServerConfigDiscoveryOptions,
-  ServerConfigJsonMode,
-} from "@api/config";
+import type { ServerConfigDiscoveryOptions, ServerConfigJsonMode } from "@api/config";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
@@ -60,7 +57,9 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
   const serverPath = computed(() => currentServer.value?.path || "");
 
   const configFiles = ref<Awaited<ReturnType<typeof configApi.listServerConfigFiles>>>([]);
-  const configSearchResults = ref<Awaited<ReturnType<typeof configApi.searchServerConfigFiles>>>([]);
+  const configSearchResults = ref<Awaited<ReturnType<typeof configApi.searchServerConfigFiles>>>(
+    [],
+  );
   const configDiscoveryOptions = ref<ServerConfigDiscoveryOptions>(createDefaultDiscoveryOptions());
   const configSearchQuery = ref("");
   const configSearchMode = ref<"keyword" | "regex" | "similarity">("keyword");
@@ -85,7 +84,8 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
     }
 
     return (
-      configFiles.value.find((file) => file.relative_path === selectedConfigRelativePath.value) || null
+      configFiles.value.find((file) => file.relative_path === selectedConfigRelativePath.value) ||
+      null
     );
   });
 
@@ -126,7 +126,10 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
       return;
     }
 
-    const files = await configApi.listServerConfigFiles(serverPath.value, configDiscoveryOptions.value);
+    const files = await configApi.listServerConfigFiles(
+      serverPath.value,
+      configDiscoveryOptions.value,
+    );
     configFiles.value = files;
     await refreshConfigSearch();
 
@@ -217,7 +220,10 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
 
     configDiscoveryOptions.value = {
       ...configDiscoveryOptions.value,
-      manual_import_dirs: dedupePaths([...configDiscoveryOptions.value.manual_import_dirs, selected]),
+      manual_import_dirs: dedupePaths([
+        ...configDiscoveryOptions.value.manual_import_dirs,
+        selected,
+      ]),
     };
     await loadConfigFiles();
   }
@@ -230,7 +236,10 @@ export function useConfigViewModel(options: UseConfigViewModelOptions) {
 
     configDiscoveryOptions.value = {
       ...configDiscoveryOptions.value,
-      manual_import_files: dedupePaths([...configDiscoveryOptions.value.manual_import_files, selected]),
+      manual_import_files: dedupePaths([
+        ...configDiscoveryOptions.value.manual_import_files,
+        selected,
+      ]),
     };
     await loadConfigFiles();
   }

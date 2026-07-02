@@ -11,6 +11,7 @@ import {
 } from "@components/views/create/startupUtils";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
+import { resolveCreatedServerRoute } from "@utils/serverCreationNavigation";
 import {
   getCpuPolicyValidationError,
   normalizeCpuPolicy,
@@ -286,11 +287,11 @@ export function useCreateServerSubmit(options: UseCreateServerSubmitOptions) {
             error: String(error),
           }),
         );
-        router.push(`/console/${createdServer.id}`);
+        await router.push(resolveCreatedServerRoute(router.currentRoute.value, createdServer.id));
         return;
       }
 
-      router.push(`/console/${createdServer.id}`);
+      await router.push(resolveCreatedServerRoute(router.currentRoute.value, createdServer.id));
     } catch (error) {
       options.showError(String(error));
     } finally {

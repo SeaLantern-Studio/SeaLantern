@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useRouter } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import AppearanceSection from "@next-src/components/settings/appearance/AppearanceSection.vue";
+import DeveloperManagementSection from "@next-src/components/settings/developer/DeveloperManagementSection.vue";
 import GeneralSection from "@next-src/components/settings/general/GeneralSection.vue";
+import ShellModeSection from "@next-src/components/settings/ShellModeSection.vue";
 import { i18n } from "@language";
+import { NEXT_ABOUT_ROUTE_NAME } from "@next-src/router/pageMeta";
 import { useSettingsPage } from "./useSettingsPage";
+
+const router = useRouter();
 
 const {
   bootstrapping,
@@ -19,8 +25,21 @@ const {
 } = useSettingsPage();
 
 const activeSectionComponent = computed(() => {
-  return currentSectionId.value === "appearance" ? AppearanceSection : GeneralSection;
+  switch (currentSectionId.value) {
+    case "appearance":
+      return AppearanceSection;
+    case "shell":
+      return ShellModeSection;
+    case "developer-management":
+      return DeveloperManagementSection;
+    default:
+      return GeneralSection;
+  }
 });
+
+function openAboutPage(): void {
+  void router.push({ name: NEXT_ABOUT_ROUTE_NAME });
+}
 </script>
 
 <template>
@@ -33,6 +52,10 @@ const activeSectionComponent = computed(() => {
 
       <SLButton variant="secondary" size="sm" :loading="refreshing" @click="loadPage(true)">
         {{ i18n.t("settings.next.refresh") }}
+      </SLButton>
+
+      <SLButton variant="ghost" size="sm" @click="openAboutPage">
+        {{ i18n.t("common.about") }}
       </SLButton>
     </header>
 

@@ -24,7 +24,8 @@ async function scanServerPort(server: ServerInstance) {
     let portValue: string | number | undefined;
 
     if (portConfig.known_role === "pumpkin") {
-      const address = typeof content?.java_edition_address === "string" ? content.java_edition_address : "";
+      const address =
+        typeof content?.java_edition_address === "string" ? content.java_edition_address : "";
       const portText = address.split(":").pop();
       portValue = portText;
     } else if (content && typeof content["server-port"] !== "undefined") {

@@ -3,6 +3,8 @@ use crate::services::global;
 use serde::Serialize;
 use std::sync::{Mutex, OnceLock};
 
+const DESKTOP_PRIMARY_SHELL: &str = UI_SHELL_NEXT;
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct UiShellInfo {
     pub id: String,
@@ -49,16 +51,12 @@ fn ui_shell_label(shell_id: &str) -> &'static str {
 fn ui_shell_description(shell_id: &str) -> &'static str {
     match shell_id {
         UI_SHELL_NEXT => "Builtin next renderer shell.",
-        _ => "Builtin classic renderer shell.",
+        _ => "Builtin classic fallback shell.",
     }
 }
 
 fn available_shell_ids() -> [&'static str; 2] {
     [UI_SHELL_CLASSIC, UI_SHELL_NEXT]
-}
-
-fn is_safe_mode() -> bool {
-    std::env::args().any(|arg| arg == "--safe-mode")
 }
 
 fn runtime_reported_shell() -> Option<String> {
@@ -70,10 +68,6 @@ fn runtime_reported_shell() -> Option<String> {
 }
 
 fn compute_effective_shell(configured_shell: &str) -> String {
-    if is_safe_mode() {
-        return UI_SHELL_CLASSIC.to_string();
-    }
-
     if let Some(reported) = runtime_reported_shell() {
         if let Some(valid) = normalize_shell_id(&reported) {
             return valid.to_string();
@@ -81,7 +75,7 @@ fn compute_effective_shell(configured_shell: &str) -> String {
     }
 
     let _ = configured_shell;
-    UI_SHELL_CLASSIC.to_string()
+    DESKTOP_PRIMARY_SHELL.to_string()
 }
 
 fn build_available_shells() -> Vec<UiShellInfo> {
@@ -93,7 +87,7 @@ fn build_available_shells() -> Vec<UiShellInfo> {
             description: ui_shell_description(shell_id).to_string(),
             source: "builtin".to_string(),
             builtin: true,
-            available: !is_safe_mode() || shell_id == UI_SHELL_CLASSIC,
+            available: shell_id == DESKTOP_PRIMARY_SHELL,
         })
         .collect()
 }
@@ -115,6 +109,13 @@ pub fn get_status() -> UiShellStatus {
 pub fn set_shell(shell_id: &str) -> Result<UiShellStatus, String> {
     let shell_id = normalize_shell_id(shell_id)
         .ok_or_else(|| format!("Unsupported ui shell: {}", shell_id.trim()))?;
+
+    if shell_id != DESKTOP_PRIMARY_SHELL {
+        return Err(format!(
+            "UI shell is not available as a normal desktop startup target: {}",
+            shell_id
+        ));
+    }
 
     let status = get_status();
     let is_available = status
@@ -145,16 +146,10 @@ pub fn report_runtime(shell_id: &str) -> Result<UiShellStatus, String> {
     let shell_id = normalize_shell_id(shell_id)
         .ok_or_else(|| format!("Unsupported runtime ui shell: {}", shell_id.trim()))?;
 
-    let stored = if is_safe_mode() {
-        UI_SHELL_CLASSIC
-    } else {
-        shell_id
-    };
-
     *runtime_state()
         .reported_shell
         .lock()
-        .unwrap_or_else(|e| e.into_inner()) = Some(stored.to_string());
+        .unwrap_or_else(|e| e.into_inner()) = Some(shell_id.to_string());
 
     Ok(get_status())
 }
@@ -168,5 +163,48 @@ mod tests {
         assert_eq!(normalize_shell_id("classic"), Some(UI_SHELL_CLASSIC));
         assert_eq!(normalize_shell_id("NEXT"), Some(UI_SHELL_NEXT));
         assert_eq!(normalize_shell_id("unknown"), None);
+    }
+
+    #[test]
+    fn compute_effective_shell_defaults_to_next_without_runtime_report() {
+        *runtime_state()
+            .reported_shell
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = None;
+
+        assert_eq!(compute_effective_shell(UI_SHELL_NEXT), UI_SHELL_NEXT);
+        assert_eq!(compute_effective_shell(UI_SHELL_CLASSIC), UI_SHELL_NEXT);
+    }
+
+    #[test]
+    fn build_available_shells_only_exposes_next_as_available() {
+        let shells = build_available_shells();
+        let next = shells.iter().find(|shell| shell.id == UI_SHELL_NEXT).unwrap();
+        let classic = shells
+            .iter()
+            .find(|shell| shell.id == UI_SHELL_CLASSIC)
+            .unwrap();
+
+        assert!(next.available);
+        assert!(!classic.available);
+    }
+
+    #[test]
+    fn report_runtime_keeps_real_reported_shell_even_in_safe_mode() {
+        *runtime_state()
+            .reported_shell
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = None;
+
+        let status = report_runtime(UI_SHELL_NEXT).expect("report runtime should succeed");
+
+        assert_eq!(status.effective_shell, UI_SHELL_NEXT);
+        assert_eq!(runtime_reported_shell().as_deref(), Some(UI_SHELL_NEXT));
+    }
+
+    #[test]
+    fn set_shell_rejects_classic_as_normal_target() {
+        let error = set_shell(UI_SHELL_CLASSIC).expect_err("classic should be rejected");
+        assert!(error.contains("normal desktop startup target"));
     }
 }

@@ -35,7 +35,9 @@ const emit = defineEmits<{
       <div class="next-home-operations-band__action-row">
         <SLButton size="lg" @click="emit('create')">{{ createLabel }}</SLButton>
         <SLButton variant="secondary" size="lg" @click="emit('import')">{{ importLabel }}</SLButton>
-        <SLButton variant="ghost" size="lg" :loading="isRefreshing" @click="emit('refresh')">{{ refreshLabel }}</SLButton>
+        <SLButton variant="ghost" size="lg" :loading="isRefreshing" @click="emit('refresh')">{{
+          refreshLabel
+        }}</SLButton>
       </div>
 
       <div class="next-home-operations-band__footer">

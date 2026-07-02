@@ -3,9 +3,10 @@ use super::requests::{
     AddExistingServerRequest, CollectCopyConflictsRequest, CopyDirectoryContentsRequest,
     CreateServerRequest, GetLogsRequest, GetServerStatusRequest, ImportModpackRequest,
     ImportServerRequest, ParseServerCoreKeyRequest, ParseServerCoreTypeRequest,
-    ScanStartupCandidatesRequest, SendCommandRequest, ServerIdRequest, UpdateJavaPathRequest,
-    UpdateNameRequest,
+    ScanStartupCandidatesRequest, SendCommandRequest, ServerIdRequest, ServerPathRequest,
+    UpdateJavaPathRequest, UpdateNameRequest,
 };
+use crate::commands::server::extensions as server_extensions_commands;
 use crate::commands::server::manage as server_commands;
 use serde_json::Value;
 pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
@@ -27,6 +28,10 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("collect_copy_conflicts", handle_collect_copy_conflicts as CommandHandler);
     builder.register("copy_directory_contents", handle_copy_directory_contents as CommandHandler);
     builder.register("add_existing_server", handle_add_existing_server as CommandHandler);
+    builder.register(
+        "get_server_extensions_summary",
+        handle_get_server_extensions_summary as CommandHandler,
+    );
 }
 
 fn handle_create_server(
@@ -268,6 +273,16 @@ fn handle_add_existing_server(
             req.cpu_policy,
             req.jvm_preset,
         )?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_get_server_extensions_summary(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ServerPathRequest = parse_params(params)?;
+        let result = server_extensions_commands::get_server_extensions_summary(req.server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }

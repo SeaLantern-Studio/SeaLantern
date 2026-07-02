@@ -78,14 +78,15 @@ async function pickJavaFile() {
             :model-value="selectedJava"
             :options="javaOptions"
             :placeholder="i18n.t('create.select_java')"
+            size="md"
             searchable
             maxHeight="240px"
             @update:model-value="$emit('update:selectedJava', String($event))"
           />
-          <button type="button" class="java-step-rescan" @click="$emit('detect')">
+          <SLButton variant="secondary" size="sm" type="button" @click="$emit('detect')">
             <RefreshCw :size="14" />
             {{ i18n.t("create.rescan") }}
-          </button>
+          </SLButton>
         </div>
       </div>
     </div>
@@ -101,6 +102,7 @@ async function pickJavaFile() {
       <div class="java-step-control">
         <SLInput
           :model-value="selectedJava"
+          size="md"
           :placeholder="
             props.required === false
               ? i18n.t('create.java_optional_manual')

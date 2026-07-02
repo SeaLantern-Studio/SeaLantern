@@ -8,7 +8,9 @@ function readStringArg(args: Record<string, unknown> | undefined, key: string): 
 
 function readStringArrayArg(args: Record<string, unknown> | undefined, key: string): string[] {
   const value = args?.[key];
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 export function formatPluginInstallIssue(issue?: PluginInstallIssue | null): string | null {

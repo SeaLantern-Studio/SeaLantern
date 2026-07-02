@@ -18,10 +18,13 @@ import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
+import { resolveServerCreationCancelRoute } from "@utils/serverCreationNavigation";
 import { computed, onActivated, onUnmounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import { createDefaultCpuPolicy, createDefaultJvmPreset } from "@utils/serverStartupConfig";
 
 export function useCreateServerPage() {
+  const router = useRouter();
   const { error: errorMsg, showError, clearError } = useMessage();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
@@ -234,6 +237,10 @@ export function useCreateServerPage() {
     await scan.rescanStartupCandidates();
   }
 
+  async function handleCancel() {
+    await router.push(resolveServerCreationCancelRoute(router.currentRoute.value));
+  }
+
   return {
     errorMsg,
     clearError,
@@ -273,6 +280,7 @@ export function useCreateServerPage() {
     updateRunPath,
     rescanStartupCandidates,
     detectJava,
+    handleCancel,
     handleSubmit: submit.handleSubmit,
     starterSelected: submit.starterSelected,
     selectedStartup: submit.selectedStartup,

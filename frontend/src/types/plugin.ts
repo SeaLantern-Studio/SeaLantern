@@ -69,11 +69,7 @@ export type PluginTrustLevelDisplay = "builtin" | "trusted" | "standard_sandbox"
 
 export type PluginExecutionClass = "builtin_full" | "trusted_full" | "sandboxed" | "restricted";
 
-export type PluginReviewStatus =
-  | "builtin"
-  | "sealantern_reviewed"
-  | "unreviewed"
-  | "revoked";
+export type PluginReviewStatus = "builtin" | "sealantern_reviewed" | "unreviewed" | "revoked";
 
 export type PluginIntegrityStatus =
   | "bundled"

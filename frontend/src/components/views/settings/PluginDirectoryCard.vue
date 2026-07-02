@@ -28,7 +28,10 @@ const resolutionSourceLabel = computed(() => {
 </script>
 
 <template>
-  <SLCard :title="i18n.t('settings.plugin_dir_title')" :subtitle="i18n.t('settings.plugin_dir_desc')">
+  <SLCard
+    :title="i18n.t('settings.plugin_dir_title')"
+    :subtitle="i18n.t('settings.plugin_dir_desc')"
+  >
     <div class="sl-settings-group">
       <div class="sl-setting-row full-width">
         <div class="sl-setting-info">

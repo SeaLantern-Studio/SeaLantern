@@ -192,130 +192,134 @@ const ownershipSummaryItems = computed(() => {
 
 <template>
   <div class="config-file-toolbar glass-card">
-      <div class="config-file-toolbar-main">
-        <div class="config-file-picker-wrap">
-          <span class="text-caption config-file-picker-label">{{ i18n.t("config.config_files") }}</span>
-          <SLSelect
-            :modelValue="selectedConfigLocator"
-            :options="configFileOptions"
-            :searchable="configFileOptions.length > 8"
-            dropdownWidth="360px"
-            @update:modelValue="emit('updateSelectedConfigFile', $event)"
-          />
-        </div>
-        <SLButton
-          v-if="compareSupported"
-          size="sm"
-          :variant="compareMode ? 'primary' : 'secondary'"
-          class="config-compare-toggle"
-          @click="emit('updateCompareMode', !compareMode)"
-        >
-          <FileDiff :size="16" />
-          {{ i18n.t("config.compare.toggle") }}
+    <div class="config-file-toolbar-main">
+      <div class="config-file-picker-wrap">
+        <span class="text-caption config-file-picker-label">{{
+          i18n.t("config.config_files")
+        }}</span>
+        <SLSelect
+          :modelValue="selectedConfigLocator"
+          :options="configFileOptions"
+          :searchable="configFileOptions.length > 8"
+          dropdownWidth="360px"
+          @update:modelValue="emit('updateSelectedConfigFile', $event)"
+        />
+      </div>
+      <SLButton
+        v-if="compareSupported"
+        size="sm"
+        :variant="compareMode ? 'primary' : 'secondary'"
+        class="config-compare-toggle"
+        @click="emit('updateCompareMode', !compareMode)"
+      >
+        <FileDiff :size="16" />
+        {{ i18n.t("config.compare.toggle") }}
+      </SLButton>
+    </div>
+
+    <div class="config-discovery-row">
+      <div class="config-discovery-actions">
+        <span class="text-caption">{{ i18n.t("config.imported_folders") }}</span>
+        <SLButton size="sm" variant="secondary" @click="emit('importConfigDirectory')">
+          <Plus :size="14" />
+          {{ i18n.t("config.import_folder") }}
         </SLButton>
       </div>
-
-      <div class="config-discovery-row">
-        <div class="config-discovery-actions">
-          <span class="text-caption">{{ i18n.t("config.imported_folders") }}</span>
-          <SLButton size="sm" variant="secondary" @click="emit('importConfigDirectory')">
-            <Plus :size="14" />
-            {{ i18n.t("config.import_folder") }}
-          </SLButton>
+      <div
+        class="config-import-list"
+        :class="{ 'config-import-list--empty': manualImportDirs.length === 0 }"
+      >
+        <div v-for="path in manualImportDirs" :key="path" class="config-import-chip">
+          <span class="config-import-chip-text text-mono">{{ path }}</span>
+          <button
+            class="config-import-chip-remove"
+            type="button"
+            :aria-label="i18n.t('config.remove_import')"
+            @click="emit('removeConfigImportDirectory', path)"
+          >
+            <X :size="14" />
+          </button>
         </div>
-        <div class="config-import-list" :class="{ 'config-import-list--empty': manualImportDirs.length === 0 }">
-          <div v-for="path in manualImportDirs" :key="path" class="config-import-chip">
-            <span class="config-import-chip-text text-mono">{{ path }}</span>
-            <button
-              class="config-import-chip-remove"
-              type="button"
-              :aria-label="i18n.t('config.remove_import')"
-              @click="emit('removeConfigImportDirectory', path)"
-            >
-              <X :size="14" />
-            </button>
-          </div>
-          <span v-if="manualImportDirs.length === 0" class="text-caption">-</span>
+        <span v-if="manualImportDirs.length === 0" class="text-caption">-</span>
+      </div>
+    </div>
+
+    <div class="config-discovery-row">
+      <div class="config-discovery-actions">
+        <span class="text-caption">{{ i18n.t("config.imported_files") }}</span>
+        <SLButton size="sm" variant="secondary" @click="emit('importConfigFile')">
+          <Plus :size="14" />
+          {{ i18n.t("config.import_file") }}
+        </SLButton>
+      </div>
+      <div
+        class="config-import-list"
+        :class="{ 'config-import-list--empty': manualImportFiles.length === 0 }"
+      >
+        <div v-for="path in manualImportFiles" :key="path" class="config-import-chip">
+          <span class="config-import-chip-text text-mono">{{ path }}</span>
+          <button
+            class="config-import-chip-remove"
+            type="button"
+            :aria-label="i18n.t('config.remove_import')"
+            @click="emit('removeConfigImportFile', path)"
+          >
+            <X :size="14" />
+          </button>
+        </div>
+        <span v-if="manualImportFiles.length === 0" class="text-caption">-</span>
+      </div>
+    </div>
+
+    <div class="config-file-search-row">
+      <SLInput
+        :modelValue="configSearchQuery"
+        :placeholder="i18n.t('common.search')"
+        @update:modelValue="emit('updateConfigSearchQuery', $event)"
+      />
+      <SLSelect
+        :modelValue="configSearchMode"
+        :options="configSearchModeOptions"
+        :loading="configSearchLoading"
+        dropdownWidth="160px"
+        @update:modelValue="emit('updateConfigSearchMode', $event)"
+      />
+      <SLSelect
+        :modelValue="configSearchScope"
+        :options="configSearchScopeOptions"
+        dropdownWidth="160px"
+        @update:modelValue="emit('updateConfigSearchScope', $event)"
+      />
+      <SLSelect
+        :modelValue="configJsonMode"
+        :options="configJsonModeOptions"
+        dropdownWidth="160px"
+        @update:modelValue="emit('updateConfigJsonMode', $event)"
+      />
+    </div>
+
+    <p v-if="configSearchError" class="config-file-search-error text-caption">
+      {{ configSearchError }}
+    </p>
+
+    <div v-if="configFiles.length > 0" class="config-summary-row">
+      <div class="config-summary-group">
+        <span class="text-caption">{{ i18n.t("config.source_groups") }}</span>
+        <div class="config-summary-chips">
+          <span v-for="item in sourceSummaryItems" :key="item.key" class="config-summary-chip">
+            {{ item.label }} {{ item.count }}
+          </span>
         </div>
       </div>
-
-      <div class="config-discovery-row">
-        <div class="config-discovery-actions">
-          <span class="text-caption">{{ i18n.t("config.imported_files") }}</span>
-          <SLButton size="sm" variant="secondary" @click="emit('importConfigFile')">
-            <Plus :size="14" />
-            {{ i18n.t("config.import_file") }}
-          </SLButton>
-        </div>
-        <div class="config-import-list" :class="{ 'config-import-list--empty': manualImportFiles.length === 0 }">
-          <div v-for="path in manualImportFiles" :key="path" class="config-import-chip">
-            <span class="config-import-chip-text text-mono">{{ path }}</span>
-            <button
-              class="config-import-chip-remove"
-              type="button"
-              :aria-label="i18n.t('config.remove_import')"
-              @click="emit('removeConfigImportFile', path)"
-            >
-              <X :size="14" />
-            </button>
-          </div>
-          <span v-if="manualImportFiles.length === 0" class="text-caption">-</span>
+      <div class="config-summary-group">
+        <span class="text-caption">{{ i18n.t("config.owner_groups") }}</span>
+        <div class="config-summary-chips">
+          <span v-for="item in ownershipSummaryItems" :key="item.key" class="config-summary-chip">
+            {{ item.label }} {{ item.count }}
+          </span>
         </div>
       </div>
-
-      <div class="config-file-search-row">
-        <SLInput
-          :modelValue="configSearchQuery"
-          :placeholder="i18n.t('common.search')"
-          @update:modelValue="emit('updateConfigSearchQuery', $event)"
-        />
-        <SLSelect
-          :modelValue="configSearchMode"
-          :options="configSearchModeOptions"
-          :loading="configSearchLoading"
-          dropdownWidth="160px"
-          @update:modelValue="emit('updateConfigSearchMode', $event)"
-        />
-        <SLSelect
-          :modelValue="configSearchScope"
-          :options="configSearchScopeOptions"
-          dropdownWidth="160px"
-          @update:modelValue="emit('updateConfigSearchScope', $event)"
-        />
-        <SLSelect
-          :modelValue="configJsonMode"
-          :options="configJsonModeOptions"
-          dropdownWidth="160px"
-          @update:modelValue="emit('updateConfigJsonMode', $event)"
-        />
-      </div>
-
-      <p v-if="configSearchError" class="config-file-search-error text-caption">
-        {{ configSearchError }}
-      </p>
-
-      <div v-if="configFiles.length > 0" class="config-summary-row">
-        <div class="config-summary-group">
-          <span class="text-caption">{{ i18n.t("config.source_groups") }}</span>
-          <div class="config-summary-chips">
-            <span v-for="item in sourceSummaryItems" :key="item.key" class="config-summary-chip">
-              {{ item.label }} {{ item.count }}
-            </span>
-          </div>
-        </div>
-        <div class="config-summary-group">
-          <span class="text-caption">{{ i18n.t("config.owner_groups") }}</span>
-          <div class="config-summary-chips">
-            <span
-              v-for="item in ownershipSummaryItems"
-              :key="item.key"
-              class="config-summary-chip"
-            >
-              {{ item.label }} {{ item.count }}
-            </span>
-          </div>
-        </div>
-      </div>
+    </div>
   </div>
 
   <div v-if="!hasDiscoveredConfigFiles" class="empty-state glass-card">
@@ -323,169 +327,174 @@ const ownershipSummaryItems = computed(() => {
   </div>
 
   <div v-else-if="configFiles.length === 0" class="empty-state glass-card">
-      <p class="text-caption">{{ i18n.t("common.no_match") }}</p>
+    <p class="text-caption">{{ i18n.t("common.no_match") }}</p>
   </div>
 
   <template v-else>
-      <div v-show="editorMode === 'visual'">
-        <div v-if="!isPropertiesFile" class="empty-state glass-card">
-          <p class="text-caption">{{ i18n.t("config.source_mode") }}</p>
-        </div>
-        <ConfigCategories
-          v-else
-          :categories="categories"
-          :activeCategory="activeCategory"
-          :searchQuery="searchQuery"
-          @updateCategory="emit('updateCategory', $event)"
-          @updateSearch="emit('updateSearch', $event)"
-        />
-
-        <div v-if="loading || compareLoading" class="loading-state">
-          <SLSpinner size="lg" />
-          <span>{{ i18n.t("config.loading") }}</span>
-        </div>
-
-        <div v-else-if="isPropertiesFile && compareMode && !hasCompareTargets" class="empty-state glass-card">
-          <p class="text-caption">{{ i18n.t("config.compare.no_target_servers") }}</p>
-        </div>
-
-        <ConfigComparePanel
-          v-else-if="isPropertiesFile && compareMode && compareTargetServerId"
-          :compareTargetServerId="compareTargetServerId"
-          :compareServerOptions="compareServerOptions"
-          :hasCompareTargets="hasCompareTargets"
-          :compareLoading="compareLoading"
-          :inlineLabel="i18n.t('config.compare.inline_label')"
-          :sourceServerName="sourceServerName"
-          :targetServerName="targetServerName"
-          :differenceBadgeText="compareDifferenceBadgeText"
-          :differentLabel="i18n.t('config.compare.different')"
-          :noDifferencesText="i18n.t('config.compare.no_differences')"
-          :rows="comparePanelRows"
-          :gamemodeOptions="gamemodeOptions"
-          :difficultyOptions="difficultyOptions"
-          @updateCompareTargetServer="emit('updateCompareTargetServer', $event)"
-          @updateSourceValue="emit('updateValue', $event)"
-          @updateTargetValue="emit('updateCompareTargetValue', $event)"
-          @addSourceValue="emit('addSourceValue', $event)"
-          @addTargetValue="emit('addTargetValue', $event)"
-        />
-
-        <div v-else-if="isPropertiesFile" class="config-entries">
-          <div v-for="entry in filteredEntries" :key="entry.key" class="config-entry glass-card">
-            <div class="entry-header">
-              <div class="entry-key-row">
-                <span class="entry-key text-mono">{{ entry.key }}</span>
-              </div>
-              <p v-if="translatedDescriptionByKey[entry.key]" class="entry-desc text-caption">
-                {{ translatedDescriptionByKey[entry.key] }}
-              </p>
-            </div>
-            <div class="entry-control">
-              <ConfigPropertyEditorControl
-                :propertyKey="entry.key"
-                :modelValue="editValues[entry.key]"
-                :valueType="entry.value_type"
-                :defaultValue="entry.default_value"
-                :numericError="numericFieldErrors[entry.key]"
-                :gamemodeOptions="gamemodeOptions"
-                :difficultyOptions="difficultyOptions"
-                @update:modelValue="emit('updateValue', { key: entry.key, value: $event })"
-              />
-            </div>
-          </div>
-          <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
-            <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
-          </div>
-        </div>
+    <div v-show="editorMode === 'visual'">
+      <div v-if="!isPropertiesFile" class="empty-state glass-card">
+        <p class="text-caption">{{ i18n.t("config.source_mode") }}</p>
       </div>
+      <ConfigCategories
+        v-else
+        :categories="categories"
+        :activeCategory="activeCategory"
+        :searchQuery="searchQuery"
+        @updateCategory="emit('updateCategory', $event)"
+        @updateSearch="emit('updateSearch', $event)"
+      />
 
-      <div v-show="editorMode === 'source'">
-        <div class="source-editor-wrap" :class="{ 'source-editor-wrap--compare': compareMode }">
-          <template v-if="isPropertiesFile && compareMode && compareTargetServerId">
-            <div class="source-compare-grid">
-              <div class="source-compare-column">
-                <ConfigSourceEditor
-                  :modelValue="sourceDraftText"
-                  :title="sourceServerName"
-                  iconNavOnly
-                  @update:modelValue="emit('updateSourceDraft', $event)"
-                />
-              </div>
-              <div class="source-compare-column">
-                <ConfigSourceEditor
-                  :modelValue="compareTargetSourceDraftText"
-                  :title="targetServerName"
-                  iconNavOnly
-                  @update:modelValue="emit('updateCompareTargetSourceDraft', $event)"
-                />
-              </div>
-            </div>
-          </template>
-          <ConfigSourceEditor
-            v-else
-            :modelValue="sourceDraftText"
-            @update:modelValue="emit('updateSourceDraft', $event)"
-          />
-          <p v-if="sourceParseError" class="source-parse-error">
-            {{ sourceParseError }}
-          </p>
-        </div>
+      <div v-if="loading || compareLoading" class="loading-state">
+        <SLSpinner size="lg" />
+        <span>{{ i18n.t("config.loading") }}</span>
       </div>
 
       <div
-        class="config-floating-actions glass-strong"
-        :class="{ 'config-floating-actions--unsaved': hasUnsavedChanges }"
+        v-else-if="isPropertiesFile && compareMode && !hasCompareTargets"
+        class="empty-state glass-card"
       >
-        <div class="floating-status-wrap">
-          <div class="floating-status text-caption">{{ saveStatusText }}</div>
+        <p class="text-caption">{{ i18n.t("config.compare.no_target_servers") }}</p>
+      </div>
+
+      <ConfigComparePanel
+        v-else-if="isPropertiesFile && compareMode && compareTargetServerId"
+        :compareTargetServerId="compareTargetServerId"
+        :compareServerOptions="compareServerOptions"
+        :hasCompareTargets="hasCompareTargets"
+        :compareLoading="compareLoading"
+        :inlineLabel="i18n.t('config.compare.inline_label')"
+        :sourceServerName="sourceServerName"
+        :targetServerName="targetServerName"
+        :differenceBadgeText="compareDifferenceBadgeText"
+        :differentLabel="i18n.t('config.compare.different')"
+        :noDifferencesText="i18n.t('config.compare.no_differences')"
+        :rows="comparePanelRows"
+        :gamemodeOptions="gamemodeOptions"
+        :difficultyOptions="difficultyOptions"
+        @updateCompareTargetServer="emit('updateCompareTargetServer', $event)"
+        @updateSourceValue="emit('updateValue', $event)"
+        @updateTargetValue="emit('updateCompareTargetValue', $event)"
+        @addSourceValue="emit('addSourceValue', $event)"
+        @addTargetValue="emit('addTargetValue', $event)"
+      />
+
+      <div v-else-if="isPropertiesFile" class="config-entries">
+        <div v-for="entry in filteredEntries" :key="entry.key" class="config-entry glass-card">
+          <div class="entry-header">
+            <div class="entry-key-row">
+              <span class="entry-key text-mono">{{ entry.key }}</span>
+            </div>
+            <p v-if="translatedDescriptionByKey[entry.key]" class="entry-desc text-caption">
+              {{ translatedDescriptionByKey[entry.key] }}
+            </p>
+          </div>
+          <div class="entry-control">
+            <ConfigPropertyEditorControl
+              :propertyKey="entry.key"
+              :modelValue="editValues[entry.key]"
+              :valueType="entry.value_type"
+              :defaultValue="entry.default_value"
+              :numericError="numericFieldErrors[entry.key]"
+              :gamemodeOptions="gamemodeOptions"
+              :difficultyOptions="difficultyOptions"
+              @update:modelValue="emit('updateValue', { key: entry.key, value: $event })"
+            />
+          </div>
         </div>
-        <div class="floating-actions-group">
-          <SLTooltip :content="reloadCurrentTooltipText">
-            <SLButton
-              variant="secondary"
-              size="sm"
-              iconOnly
-              class="config-floating-icon-btn"
-              @click="emit('reloadCurrent')"
-            >
-              <RefreshCw :size="16" />
-            </SLButton>
-          </SLTooltip>
-          <SLTooltip v-if="compareMode" :content="reloadCompareTooltipText">
-            <SLButton
-              variant="secondary"
-              size="sm"
-              iconOnly
-              class="config-floating-icon-btn"
-              :loading="compareLoading"
-              :disabled="!compareTargetServerId"
-              @click="emit('reloadCompare')"
-            >
-              <RefreshCw :size="16" />
-            </SLButton>
-          </SLTooltip>
+        <div v-if="filteredEntries.length === 0 && !loading" class="empty-state">
+          <p class="text-caption">{{ i18n.t("config.no_config") }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div v-show="editorMode === 'source'">
+      <div class="source-editor-wrap" :class="{ 'source-editor-wrap--compare': compareMode }">
+        <template v-if="isPropertiesFile && compareMode && compareTargetServerId">
+          <div class="source-compare-grid">
+            <div class="source-compare-column">
+              <ConfigSourceEditor
+                :modelValue="sourceDraftText"
+                :title="sourceServerName"
+                iconNavOnly
+                @update:modelValue="emit('updateSourceDraft', $event)"
+              />
+            </div>
+            <div class="source-compare-column">
+              <ConfigSourceEditor
+                :modelValue="compareTargetSourceDraftText"
+                :title="targetServerName"
+                iconNavOnly
+                @update:modelValue="emit('updateCompareTargetSourceDraft', $event)"
+              />
+            </div>
+          </div>
+        </template>
+        <ConfigSourceEditor
+          v-else
+          :modelValue="sourceDraftText"
+          @update:modelValue="emit('updateSourceDraft', $event)"
+        />
+        <p v-if="sourceParseError" class="source-parse-error">
+          {{ sourceParseError }}
+        </p>
+      </div>
+    </div>
+
+    <div
+      class="config-floating-actions glass-strong"
+      :class="{ 'config-floating-actions--unsaved': hasUnsavedChanges }"
+    >
+      <div class="floating-status-wrap">
+        <div class="floating-status text-caption">{{ saveStatusText }}</div>
+      </div>
+      <div class="floating-actions-group">
+        <SLTooltip :content="reloadCurrentTooltipText">
           <SLButton
-            variant="primary"
+            variant="secondary"
             size="sm"
             iconOnly
             class="config-floating-icon-btn"
-            :class="
-              hasUnsavedChanges ? 'config-floating-icon-btn--unsaved' : 'config-floating-icon-btn--idle'
-            "
-            :disabled="!hasUnsavedChanges"
-            :loading="saving"
-            @click="emit('saveProperties')"
+            @click="emit('reloadCurrent')"
           >
-            <span
-              class="save-icon-wrap"
-              :class="{ 'save-icon-wrap--unsaved': hasUnsavedChanges && !saving }"
-            >
-              <Save :size="16" />
-            </span>
+            <RefreshCw :size="16" />
           </SLButton>
-        </div>
+        </SLTooltip>
+        <SLTooltip v-if="compareMode" :content="reloadCompareTooltipText">
+          <SLButton
+            variant="secondary"
+            size="sm"
+            iconOnly
+            class="config-floating-icon-btn"
+            :loading="compareLoading"
+            :disabled="!compareTargetServerId"
+            @click="emit('reloadCompare')"
+          >
+            <RefreshCw :size="16" />
+          </SLButton>
+        </SLTooltip>
+        <SLButton
+          variant="primary"
+          size="sm"
+          iconOnly
+          class="config-floating-icon-btn"
+          :class="
+            hasUnsavedChanges
+              ? 'config-floating-icon-btn--unsaved'
+              : 'config-floating-icon-btn--idle'
+          "
+          :disabled="!hasUnsavedChanges"
+          :loading="saving"
+          @click="emit('saveProperties')"
+        >
+          <span
+            class="save-icon-wrap"
+            :class="{ 'save-icon-wrap--unsaved': hasUnsavedChanges && !saving }"
+          >
+            <Save :size="16" />
+          </span>
+        </SLButton>
       </div>
+    </div>
   </template>
 </template>
 

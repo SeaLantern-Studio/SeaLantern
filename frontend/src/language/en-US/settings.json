@@ -282,7 +282,21 @@
         "label": "General",
         "title": "General",
         "description": "Language, behavior, and defaults."
+      },
+      "shell": {
+        "label": "Interface",
+        "title": "Interface",
+        "description": "Current interface and fallback access."
+      },
+      "developer_management": {
+        "label": "Developer",
+        "title": "Developer",
+        "description": "Control access to developer tools."
       }
+    },
+    "developer_management": {
+      "title": "Developer Tools",
+      "description": "Control whether developer tools appear in the sidebar."
     },
     "summary": {
       "eyebrow": "Settings",
@@ -335,6 +349,19 @@
     },
     "general": {
       "live_hint": "Adjust common behavior and defaults."
+    },
+    "shell": {
+      "eyebrow": "Interface",
+      "title": "Current interface",
+      "description": "The desktop app uses Next by default.",
+      "current_label": "Current interface",
+      "startup_label": "Desktop startup",
+      "startup_value": "Defaults to Next",
+      "status_label": "Safe mode",
+      "safe_mode_on": "On",
+      "safe_mode_off": "Off",
+      "readonly_hint": "This status is read-only right now.",
+      "safe_mode_hint": "Safe mode still opens the current interface."
     }
   },
   "color_options": {

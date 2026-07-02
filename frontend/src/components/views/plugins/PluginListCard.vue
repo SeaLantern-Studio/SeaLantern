@@ -156,10 +156,7 @@ function getPermissionSemanticBadges(plugin: PluginInfo) {
           <p v-if="plugin.manifest.description" class="plugin-description">
             {{ getPluginDescription(plugin) }}
           </p>
-          <div
-            v-if="getPermissionSemanticBadges(plugin).length > 0"
-            class="plugin-semantic-badges"
-          >
+          <div v-if="getPermissionSemanticBadges(plugin).length > 0" class="plugin-semantic-badges">
             <span
               v-for="badge in getPermissionSemanticBadges(plugin)"
               :key="badge"

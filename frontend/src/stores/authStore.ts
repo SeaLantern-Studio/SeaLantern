@@ -2,7 +2,11 @@ import type { Router } from "vue-router";
 import { computed, shallowRef } from "vue";
 import { defineStore } from "pinia";
 import { readBrowserEnvAuthToken, isBrowserEnv } from "@api/tauri";
-import { notifyBrowserUnauthorized, onBrowserUnauthorized, setBrowserRuntimeToken } from "@stores/authRuntime";
+import {
+  notifyBrowserUnauthorized,
+  onBrowserUnauthorized,
+  setBrowserRuntimeToken,
+} from "@stores/authRuntime";
 import {
   clearPersistedTokens,
   clearRememberedToken,
@@ -13,7 +17,12 @@ import {
   type BrowserAuthSource,
 } from "../services/authStorage";
 import { probeBrowserAuthToken } from "../services/authProbe";
-import { AUTH_ROUTE_NAME, buildRedirectQuery, isPublicRoute, sanitizeRedirectPath } from "@router/authRoute";
+import {
+  AUTH_ROUTE_NAME,
+  buildRedirectQuery,
+  isPublicRoute,
+  sanitizeRedirectPath,
+} from "@router/authRoute";
 
 type BrowserAuthStatus =
   | "idle"

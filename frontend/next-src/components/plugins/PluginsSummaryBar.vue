@@ -13,6 +13,7 @@ defineProps<{
 defineEmits<{
   (e: "refresh"): void;
   (e: "check-updates"): void;
+  (e: "import-local"): void;
   (e: "open-market"): void;
 }>();
 </script>
@@ -52,6 +53,9 @@ defineEmits<{
     </div>
 
     <div class="plugins-summary-bar__actions">
+      <SLButton variant="secondary" size="sm" @click="$emit('import-local')">
+        {{ i18n.t("settings.import") }}
+      </SLButton>
       <SLButton variant="secondary" size="sm" :loading="refreshing" @click="$emit('refresh')">
         {{ i18n.t("plugins.next.summary.refresh") }}
       </SLButton>
