@@ -4,7 +4,6 @@ mod desktop_setup;
 mod desktop_shell;
 mod plugin_bridge;
 
-use crate::commands::app::ui_shell::RestartAppResponse;
 use sea_lantern_runtime::RuntimeMode;
 
 fn exit_with_startup_error(message: impl Into<String>) -> ! {
@@ -55,10 +54,6 @@ pub fn run_headless_http() {
             run_headless_http_with_bind(&bind_addr, None);
         }
     }
-}
-
-pub fn restart_desktop_app(app: &tauri::AppHandle) -> Result<RestartAppResponse, String> {
-    desktop_shell::restart_app(app)
 }
 
 /// Boots the embedded desktop runtime.

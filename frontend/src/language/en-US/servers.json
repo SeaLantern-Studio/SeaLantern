@@ -73,7 +73,7 @@
         "config": {
           "description": "The instance config entry is reserved here for a future next-native config workflow.",
           "track_workspace": "Instance navigation, title, and context are already in place.",
-          "track_boundary": "This round does not rebuild the classic config editor capability."
+          "track_boundary": "This route stays as a placeholder and does not provide a config editor yet."
         },
         "world": {
           "description": "The world entry is reserved here for future world map or world tooling.",

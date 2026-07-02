@@ -43,35 +43,11 @@
   "safe_mode_disabled": "Disabled in safe mode",
   "safe_mode": "Safe Mode",
   "ui_shell": {
-    "title": "Interface",
-    "subtitle": "Choose which interface starts next time",
-    "classic_subtitle": "Use this for fallback, legacy pages, and advanced switching.",
-    "readonly_subtitle": "The desktop app uses Next by default.",
     "loading": "Loading UI shell status...",
     "desktop_only": "UI shell switching is only available in the desktop app.",
-    "safe_mode_hint": "Safe mode still opens the current interface.",
-    "current_running": "Current",
-    "pending_restart": "Restart to apply",
-    "available_target": "Available",
-    "unavailable": "Unavailable",
-    "restart_now": "Restart now",
-    "switch_action": "Switch",
-    "pending_banner_title": "A new shell is ready",
-    "pending_banner_desc": "Restart to switch to {{name}}.",
-    "restart_confirm_title": "Restart now?",
-    "restart_confirm_message": "Restart SeaLantern now to switch to {{name}}?",
-    "dev_restart_manual_required_message": "In development, restart tauri dev manually. Changes will apply on the next launch.",
-    "source": {
-      "builtin": "Built-in"
-    },
     "shells": {
-      "classic": {
-        "name": "Classic",
-        "description": "Works best for fallback and older pages."
-      },
       "next": {
-        "name": "Next",
-        "description": "The default desktop interface."
+        "name": "Next"
       }
     }
   },
@@ -164,7 +140,7 @@
     },
     "permission_revoked_title": "This plugin is revoked",
     "permission_confirm_title": "Permission confirmation required",
-    "permission_revoked_message": "{name} is currently revoked. Check its source in the classic page first.",
+    "permission_revoked_message": "{name} is currently revoked. Check the plugin source and trust state before enabling it.",
     "permission_confirm_message": "{name} requests extra permissions. Confirm before enabling it."
   },
   "missing_required_deps": "Missing required dependencies, cannot enable",

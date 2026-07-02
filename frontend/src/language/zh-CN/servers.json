@@ -73,7 +73,7 @@
         "config": {
           "description": "已预留实例级配置编辑入口，后续在这里接通 next 版配置工作流。",
           "track_workspace": "实例级导航、标题和上下文已经就位。",
-          "track_boundary": "这轮不重做 classic 配置编辑器能力。"
+          "track_boundary": "当前仍为占位入口，暂不提供配置编辑能力。"
         },
         "world": {
           "description": "已预留世界页入口，后续可在此承接世界地图或世界相关工具。",

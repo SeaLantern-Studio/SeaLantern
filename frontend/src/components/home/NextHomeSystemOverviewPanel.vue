@@ -2,8 +2,8 @@
 import { computed } from "vue";
 import { Gauge, Menu } from "@lucide/vue";
 import { i18n } from "@language";
-import UsageGauge from "@src/components/views/home/UsageGauge.vue";
-import UsageSparkline from "@src/components/views/home/UsageSparkline.vue";
+import UsageGauge from "@src/components/home/UsageGauge.vue";
+import UsageSparkline from "@src/components/home/UsageSparkline.vue";
 
 type SystemOverviewTone = "primary" | "success" | "warning";
 type SystemOverviewMode = "gauge" | "detail";

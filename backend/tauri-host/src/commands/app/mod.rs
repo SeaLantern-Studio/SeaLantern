@@ -7,4 +7,3 @@ pub(crate) mod host;
 pub(crate) mod i18n;
 pub(crate) mod logging;
 pub(crate) mod settings;
-pub(crate) mod ui_shell;

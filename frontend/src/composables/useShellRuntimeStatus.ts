@@ -1,8 +1,8 @@
 import { computed, onMounted, shallowRef } from "vue";
 import { systemApi } from "@api/system";
 import { isBrowserEnv } from "@api/tauri";
-import type { UiShellId } from "@api/settings";
 import { i18n } from "@language";
+import { DESKTOP_PRIMARY_SHELL, type ActiveUiShellId } from "@src/launcher/desktopShell";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { normalizeAppError } from "@utils/appError";
 
@@ -10,16 +10,14 @@ interface UseShellRuntimeStatusOptions {
   logScope: string;
 }
 
-const DESKTOP_PRIMARY_SHELL: UiShellId = "next";
-
 export function useShellRuntimeStatus(options: UseShellRuntimeStatusOptions) {
   const browserOnly = isBrowserEnv();
   const loading = shallowRef(!browserOnly);
   const safeMode = shallowRef(false);
   const errorMessage = shallowRef<string | null>(null);
 
-  const currentShellId = computed<UiShellId>(() => DESKTOP_PRIMARY_SHELL);
-  const currentShellName = computed(() => i18n.t(`plugins.ui_shell.shells.${currentShellId.value}.name`));
+  const currentShellId = computed<ActiveUiShellId>(() => DESKTOP_PRIMARY_SHELL);
+  const currentShellName = computed(() => i18n.t("plugins.ui_shell.shells.next.name"));
 
   async function refreshStatus(): Promise<void> {
     if (browserOnly) {
