@@ -13,7 +13,6 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      "@next-src": path.resolve(frontendDir, "next-src"),
       "@src": path.resolve(frontendDir, "src"),
       "@api": path.resolve(frontendDir, "src/api"),
       "@assets": path.resolve(frontendDir, "src/assets"),

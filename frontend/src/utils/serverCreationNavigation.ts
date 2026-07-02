@@ -6,7 +6,7 @@ import {
   NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_WORLD_ROUTE_NAME,
   NEXT_SERVERS_ROUTE_NAME,
-} from "@next-src/router/pageMeta";
+} from "@src/router/pageMeta";
 
 type ServerCreationRouteContext = Pick<RouteLocationNormalizedLoaded, "name" | "path">;
 

@@ -19,8 +19,6 @@
     "noFallthroughCasesInSwitch": true,
     /* Path aliases */
     "paths": {
-      "@next-src": ["./next-src"],
-      "@next-src/*": ["./next-src/*"],
       "@src": ["./src"],
       "@src/*": ["./src/*"],
       "@api/*": ["./src/api/*"],
@@ -46,11 +44,7 @@
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx",
-    "src/**/*.vue",
-    "next-src/**/*.ts",
-    "next-src/**/*.d.ts",
-    "next-src/**/*.tsx",
-    "next-src/**/*.vue"
+    "src/**/*.vue"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

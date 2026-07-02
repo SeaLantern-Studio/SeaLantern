@@ -5,7 +5,7 @@ import {
 import { DESKTOP_PRIMARY_SHELL } from "./launcher/desktopShell";
 
 async function mountNextShell(): Promise<void> {
-  const { mountNextApp } = await import("../next-src/main");
+  const { mountNextApp } = await import("./main.next");
   await mountNextApp();
 }
 
