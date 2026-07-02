@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import AboutFooter from "@components/views/about/AboutFooter.vue";
-import ContributorWall from "@components/views/about/ContributorWall.vue";
-import ContributeWays from "@components/views/about/ContributeWays.vue";
-import LinksSection from "@components/views/about/LinksSection.vue";
-import ManifestoCard from "@components/views/about/ManifestoCard.vue";
-import ProjectInfo from "@components/views/about/ProjectInfo.vue";
+import AboutFooter from "@next-src/components/about/AboutFooter.vue";
+import ContributorWall from "@next-src/components/about/ContributorWall.vue";
+import ContributeWays from "@next-src/components/about/ContributeWays.vue";
+import LinksSection from "@next-src/components/about/LinksSection.vue";
+import ManifestoCard from "@next-src/components/about/ManifestoCard.vue";
+import ProjectInfo from "@next-src/components/about/ProjectInfo.vue";
 import WorkbenchFactGrid from "@next-src/components/workbench/WorkbenchFactGrid.vue";
 import WorkbenchPageIntro from "@next-src/components/workbench/WorkbenchPageIntro.vue";
 import { i18n } from "@language";

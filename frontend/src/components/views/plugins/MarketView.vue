@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { i18n } from "@language";
 import { RefreshCw, Globe } from "@lucide/vue";
-import PluginMarketGrid from "@components/views/plugins/PluginMarketGrid.vue";
+import PluginMarketGrid from "@components/plugin/market/PluginMarketGrid.vue";
 import PluginMarketDetailDialog from "@components/views/plugins/PluginMarketDetailDialog.vue";
-import PluginMarketSourcePanel from "@components/views/plugins/PluginMarketSourcePanel.vue";
-import PluginMarketStatePanel from "@components/views/plugins/PluginMarketStatePanel.vue";
+import PluginMarketSourcePanel from "@components/plugin/market/PluginMarketSourcePanel.vue";
+import PluginMarketStatePanel from "@components/plugin/market/PluginMarketStatePanel.vue";
 import { usePluginMarket } from "@components/views/plugins/usePluginMarket";
 import { SLTabBar } from "@components/common";
 const {

@@ -5,7 +5,7 @@ import { usePluginDependencies } from "@components/views/plugins/usePluginDepend
 import { usePluginFeedback } from "@components/views/plugins/usePluginFeedback";
 import { usePluginSelection } from "@components/views/plugins/usePluginSelection";
 import { usePluginSettingsDialog } from "@components/views/plugins/usePluginSettingsDialog";
-import { usePluginsInstaller } from "@components/views/plugins/usePluginsInstaller";
+import { usePluginsInstaller } from "@components/plugin/installer/usePluginsInstaller";
 
 export function usePluginsViewState() {
   const pluginStore = usePluginStore();

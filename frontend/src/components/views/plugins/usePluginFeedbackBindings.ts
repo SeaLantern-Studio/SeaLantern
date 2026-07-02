@@ -3,7 +3,7 @@ import type { usePluginDependencies } from "@components/views/plugins/usePluginD
 import type { usePluginFeedback } from "@components/views/plugins/usePluginFeedback";
 import type { usePluginListActions } from "@components/views/plugins/usePluginListActions";
 import type { usePluginSelection } from "@components/views/plugins/usePluginSelection";
-import type { usePluginsInstaller } from "@components/views/plugins/usePluginsInstaller";
+import type { usePluginsInstaller } from "@components/plugin/installer/usePluginsInstaller";
 import type { usePluginsViewPage } from "@components/views/plugins/usePluginsViewPage";
 
 type PluginSelectionState = ReturnType<typeof usePluginSelection>;

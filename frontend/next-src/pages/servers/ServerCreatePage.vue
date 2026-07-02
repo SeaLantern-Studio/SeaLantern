@@ -11,15 +11,15 @@ import {
 import { FileUp } from "@lucide/vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
-import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
-import RunPathStep from "@components/views/create/RunPathStep.vue";
-import ServerStartupConfigStep from "@components/views/create/ServerStartupConfigStep.vue";
-import SourceIntakeField from "@components/views/create/SourceIntakeField.vue";
-import StartupSelectionStep from "@components/views/create/StartupSelectionStep.vue";
-import { useCreateServerWindowDrop } from "@components/views/create/useCreateServerWindowDrop";
-import { startupModeRequiresJava } from "@components/views/create/startupUtils";
+import JavaEnvironmentStep from "@next-src/components/servers/create/JavaEnvironmentStep.vue";
+import RunPathStep from "@next-src/components/servers/create/RunPathStep.vue";
+import ServerStartupConfigStep from "@next-src/components/servers/create/ServerStartupConfigStep.vue";
+import SourceIntakeField from "@next-src/components/servers/create/SourceIntakeField.vue";
+import StartupSelectionStep from "@next-src/components/servers/create/StartupSelectionStep.vue";
+import { useCreateServerWindowDrop } from "@next-src/pages/servers/create/useCreateServerWindowDrop";
+import { startupModeRequiresJava } from "@next-src/pages/servers/create/startupUtils";
 import { i18n } from "@language";
-import { useCreateServerPage } from "@components/views/create/useCreateServerPage";
+import { useCreateServerPage } from "@next-src/pages/servers/create/useCreateServerPage";
 import { computed, ref, watch } from "vue";
 
 const {

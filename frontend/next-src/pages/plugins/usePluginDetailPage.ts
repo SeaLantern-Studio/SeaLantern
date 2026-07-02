@@ -6,15 +6,15 @@ import {
   installPluginFromMarketEntry,
   loadPluginMarketCatalog,
   loadPluginMarketDetail,
-} from "@components/views/plugins/pluginMarketActionsShared";
-import { usePluginMarketFeedback } from "@components/views/plugins/usePluginMarketFeedback";
+} from "@components/plugin/market/pluginMarketActionsShared";
+import { usePluginMarketFeedback } from "@components/plugin/market/usePluginMarketFeedback";
 import {
   MARKET_BASE_URL,
   MARKET_URL_KEY,
   type MarketFeedback,
   type MarketPlugin,
   validateMarketUrl,
-} from "@components/views/plugins/pluginMarketShared";
+} from "@components/plugin/market/pluginMarketShared";
 import { i18n } from "@language";
 import {
   NEXT_PLUGIN_CATEGORY_ROUTE_NAME,

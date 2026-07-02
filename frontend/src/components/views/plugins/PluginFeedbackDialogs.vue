@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
-import PluginBatchResultModal from "@components/views/plugins/PluginBatchResultModal.vue";
+import PluginBatchResultModal from "@components/plugin/installer/PluginBatchResultModal.vue";
 import PluginDeleteConfirmModal from "@components/views/plugins/PluginDeleteConfirmModal.vue";
-import PluginDependencyPromptModal from "@components/views/plugins/PluginDependencyPromptModal.vue";
+import PluginDependencyPromptModal from "@components/plugin/installer/PluginDependencyPromptModal.vue";
 import SLModal from "@components/common/SLModal.vue";
 import { i18n } from "@language";
 import type { BatchInstallResult, MissingDependency } from "@type/plugin";

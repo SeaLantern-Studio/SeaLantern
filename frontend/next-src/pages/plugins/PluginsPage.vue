@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
-import PluginBatchResultModal from "@components/views/plugins/PluginBatchResultModal.vue";
-import PluginChooserDialog from "@components/views/plugins/PluginChooserDialog.vue";
-import PluginDependencyPromptModal from "@components/views/plugins/PluginDependencyPromptModal.vue";
+import PluginBatchResultModal from "@components/plugin/installer/PluginBatchResultModal.vue";
+import PluginChooserDialog from "@components/plugin/installer/PluginChooserDialog.vue";
+import PluginDependencyPromptModal from "@components/plugin/installer/PluginDependencyPromptModal.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { i18n } from "@language";
 import InstalledPluginCard from "@next-src/components/plugins/InstalledPluginCard.vue";

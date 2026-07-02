@@ -295,15 +295,6 @@
       "refresh": "刷新",
       "chips_aria_label": "设置状态"
     },
-    "bridge": {
-      "eyebrow": "Classic 页面",
-      "title": "更多设置",
-      "description": "部分设置仍在 classic 页面中打开。",
-      "open_personalization": "打开个性化",
-      "open_developer": "打开开发工具",
-      "next_section_title": "这里可用",
-      "classic_section_title": "需在 classic 打开"
-    },
     "appearance": {
       "live_hint": "主题、字体和窗口材质会立即生效。",
       "theme_managed_by": "当前由 {plugin} 控制",

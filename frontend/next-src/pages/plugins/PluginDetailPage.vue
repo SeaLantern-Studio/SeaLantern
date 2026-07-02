@@ -7,7 +7,7 @@ import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import PluginDependentSettingsList from "@next-src/components/plugins/PluginDependentSettingsList.vue";
 import PluginPresetPickerCard from "@next-src/components/plugins/PluginPresetPickerCard.vue";
 import PluginSettingsFormCard from "@next-src/components/plugins/PluginSettingsFormCard.vue";
-import PluginMarketDetailContent from "@components/views/plugins/PluginMarketDetailContent.vue";
+import PluginMarketDetailContent from "@components/plugin/market/PluginMarketDetailContent.vue";
 import { i18n } from "@language";
 import { Layers } from "@lucide/vue";
 import { usePluginDetailPage } from "./usePluginDetailPage";

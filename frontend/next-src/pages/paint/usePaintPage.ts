@@ -4,9 +4,9 @@ import { i18n } from "@language";
 import type { WorkbenchFactItem } from "@next-src/components/workbench/WorkbenchFactGrid.vue";
 import { NEXT_SETTINGS_ROUTE_NAME } from "@next-src/router/pageMeta";
 import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
-import { usePaintAppearanceOptions } from "@components/views/paint/usePaintAppearanceOptions";
-import { usePaintPersonalizationActions } from "@components/views/paint/usePaintPersonalizationActions";
-import { usePaintSettingsFields } from "@components/views/paint/usePaintSettingsFields";
+import { usePaintAppearanceOptions } from "./usePaintAppearanceOptions";
+import { usePaintPersonalizationActions } from "./usePaintPersonalizationActions";
+import { usePaintSettingsFields } from "./usePaintSettingsFields";
 
 export function usePaintPage() {
   const router = useRouter();

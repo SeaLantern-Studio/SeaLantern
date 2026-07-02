@@ -6,11 +6,11 @@ import {
   resolveMarketValue,
   type MarketFeedback,
   type MarketPlugin,
-} from "@components/views/plugins/pluginMarketShared";
+} from "@components/plugin/market/pluginMarketShared";
 import { usePluginMarketActions } from "@components/views/plugins/usePluginMarketActions";
-import { usePluginMarketFeedback } from "@components/views/plugins/usePluginMarketFeedback";
-import { usePluginMarketSource } from "@components/views/plugins/usePluginMarketSource";
-import { usePluginMarketViewState } from "@components/views/plugins/usePluginMarketViewState";
+import { usePluginMarketFeedback } from "@components/plugin/market/usePluginMarketFeedback";
+import { usePluginMarketSource } from "@components/plugin/market/usePluginMarketSource";
+import { usePluginMarketViewState } from "@components/plugin/market/usePluginMarketViewState";
 import { i18n } from "@language";
 import { usePluginStore } from "@stores/pluginStore";
 

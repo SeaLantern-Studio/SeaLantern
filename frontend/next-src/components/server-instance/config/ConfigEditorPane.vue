@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { SLBadge, SLButton, SLCard } from "@components/common";
-import ConfigSourceEditor from "@components/config/ConfigSourceEditor.vue";
+import ConfigSourceEditor from "@src/features/config-editor/components/ConfigSourceEditor.vue";
 import type { DiscoveredServerConfigFile } from "@api/config";
 import { i18n } from "@language";
 import { RefreshCw, Save } from "@lucide/vue";

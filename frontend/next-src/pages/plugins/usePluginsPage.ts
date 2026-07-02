@@ -1,7 +1,7 @@
 import { computed, onMounted, shallowRef } from "vue";
 import { useRouter } from "vue-router";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { usePluginsInstaller } from "@components/views/plugins/usePluginsInstaller";
+import { usePluginsInstaller } from "@components/plugin/installer/usePluginsInstaller";
 import { i18n } from "@language";
 import {
   NEXT_PLUGIN_CATEGORY_ROUTE_NAME,

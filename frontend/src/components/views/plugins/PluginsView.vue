@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SLDropzone from "@components/common/SLDropzone.vue";
-import PluginChooserDialog from "@components/views/plugins/PluginChooserDialog.vue";
+import PluginChooserDialog from "@components/plugin/installer/PluginChooserDialog.vue";
 import PluginFeedbackDialogs from "@components/views/plugins/PluginFeedbackDialogs.vue";
 import PluginList from "@components/views/plugins/PluginList.vue";
 import PluginSettingsDialog from "@components/views/plugins/PluginSettingsDialog.vue";

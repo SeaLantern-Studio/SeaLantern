@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { SLCard } from "@components/common";
-import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
+import ConfigSourceDiffView from "@src/features/config-editor/components/ConfigSourceDiffView.vue";
 import type { DiscoveredServerConfigFile } from "@api/config";
 import { i18n } from "@language";
 import type { ServerInstanceConfigPreviewState } from "@next-src/pages/server-instance/config/useServerInstanceConfigPage";

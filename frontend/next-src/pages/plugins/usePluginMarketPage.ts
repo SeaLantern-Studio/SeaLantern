@@ -1,19 +1,19 @@
 import { onMounted, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { usePluginStore } from "@stores/pluginStore";
-import { usePluginMarketFeedback } from "@components/views/plugins/usePluginMarketFeedback";
-import { usePluginMarketSource } from "@components/views/plugins/usePluginMarketSource";
-import { usePluginMarketViewState } from "@components/views/plugins/usePluginMarketViewState";
+import { usePluginMarketFeedback } from "@components/plugin/market/usePluginMarketFeedback";
+import { usePluginMarketSource } from "@components/plugin/market/usePluginMarketSource";
+import { usePluginMarketViewState } from "@components/plugin/market/usePluginMarketViewState";
 import {
   installPluginFromMarketEntry,
   loadPluginMarketCatalog,
-} from "@components/views/plugins/pluginMarketActionsShared";
+} from "@components/plugin/market/pluginMarketActionsShared";
 import {
   getMarketPermissionLevel,
   resolveMarketValue,
   type MarketFeedback,
   type MarketPlugin,
-} from "@components/views/plugins/pluginMarketShared";
+} from "@components/plugin/market/pluginMarketShared";
 import { i18n } from "@language";
 import { NEXT_PLUGIN_DETAIL_ROUTE_NAME } from "@next-src/router/pageMeta";
 

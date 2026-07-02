@@ -3,8 +3,8 @@ import { i18n } from "@language";
 import type {
   MarketPermissionLevel,
   MarketPlugin,
-} from "@components/views/plugins/pluginMarketShared";
-import PluginMarketDetailContent from "@components/views/plugins/PluginMarketDetailContent.vue";
+} from "@components/plugin/market/pluginMarketShared";
+import PluginMarketDetailContent from "@components/plugin/market/PluginMarketDetailContent.vue";
 import type { MarketPluginInfo } from "@api/plugin";
 import { Puzzle, X } from "@lucide/vue";
 

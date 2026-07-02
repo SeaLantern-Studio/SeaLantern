@@ -5,8 +5,6 @@ import { useSettingsStore } from "@stores/settingsStore";
 
 export type SettingsSectionId = "appearance" | "general" | "shell" | "developer-management";
 
-export type SettingsCoverageTone = "next" | "hybrid" | "classic";
-
 export interface SettingsSummaryChip {
   label: string;
   tone: "primary" | "neutral" | "warning";
@@ -22,12 +20,6 @@ export interface SettingsEntryAction {
   label: string;
   variant?: "primary" | "secondary" | "ghost";
   disabled?: boolean;
-}
-
-export interface SettingsCoverageItem {
-  title: string;
-  description: string;
-  tone: SettingsCoverageTone;
 }
 
 export interface SettingsSectionItem {

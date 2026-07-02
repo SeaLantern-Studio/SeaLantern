@@ -305,15 +305,6 @@
       "refresh": "Refresh",
       "chips_aria_label": "Settings status"
     },
-    "bridge": {
-      "eyebrow": "Classic pages",
-      "title": "More settings",
-      "description": "Some settings still open in the classic pages.",
-      "open_personalization": "Open personalization",
-      "open_developer": "Open developer tools",
-      "next_section_title": "Available here",
-      "classic_section_title": "Open in classic"
-    },
     "appearance": {
       "live_hint": "Theme, fonts, and window material apply right away.",
       "theme_managed_by": "Managed by {plugin}",

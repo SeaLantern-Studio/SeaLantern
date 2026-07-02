@@ -12,17 +12,17 @@ import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
-import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
-import ServerStartupConfigStep from "@components/views/create/ServerStartupConfigStep.vue";
-import StartupSelectionStep from "@components/views/create/StartupSelectionStep.vue";
+import JavaEnvironmentStep from "@next-src/components/servers/create/JavaEnvironmentStep.vue";
+import ServerStartupConfigStep from "@next-src/components/servers/create/ServerStartupConfigStep.vue";
+import StartupSelectionStep from "@next-src/components/servers/create/StartupSelectionStep.vue";
 import { javaApi, type JavaInfo } from "@api/java";
 import { serverApi } from "@api/server";
 import { systemApi } from "@api/system";
-import type { StartupCandidate, StartupMode } from "@components/views/create/startupTypes";
+import type { StartupCandidate, StartupMode } from "@next-src/pages/servers/create/startupTypes";
 import {
   detectVersionCandidatesFromText,
   startupModeRequiresJava,
-} from "@components/views/create/startupUtils";
+} from "@next-src/pages/servers/create/startupUtils";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 import { useLoading } from "@composables/useAsync";
 import { useMessage } from "@composables/useMessage";

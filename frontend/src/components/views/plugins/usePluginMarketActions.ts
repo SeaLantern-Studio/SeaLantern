@@ -1,10 +1,10 @@
 import type { MarketPluginInfo } from "@api/plugin";
-import type { MarketPlugin } from "./pluginMarketShared";
+import type { MarketPlugin } from "@components/plugin/market/pluginMarketShared";
 import {
   installPluginFromMarketEntry,
   loadPluginMarketCatalog,
   loadPluginMarketDetail,
-} from "./pluginMarketActionsShared";
+} from "@components/plugin/market/pluginMarketActionsShared";
 import type { Ref } from "vue";
 
 interface UsePluginMarketActionsOptions {

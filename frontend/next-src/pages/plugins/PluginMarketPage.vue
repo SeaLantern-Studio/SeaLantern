@@ -2,9 +2,9 @@
 import { i18n } from "@language";
 import { RefreshCw, Globe } from "@lucide/vue";
 import { SLTabBar } from "@components/common";
-import PluginMarketGrid from "@components/views/plugins/PluginMarketGrid.vue";
-import PluginMarketSourcePanel from "@components/views/plugins/PluginMarketSourcePanel.vue";
-import PluginMarketStatePanel from "@components/views/plugins/PluginMarketStatePanel.vue";
+import PluginMarketGrid from "@components/plugin/market/PluginMarketGrid.vue";
+import PluginMarketSourcePanel from "@components/plugin/market/PluginMarketSourcePanel.vue";
+import PluginMarketStatePanel from "@components/plugin/market/PluginMarketStatePanel.vue";
 import { usePluginMarketPage } from "./usePluginMarketPage";
 
 const {
