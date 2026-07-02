@@ -40,7 +40,6 @@ impl Default for AppSettings {
             text_color_overrides: Default::default(),
             app_display_name: String::new(),
             language: "zh-CN".to_string(),
-            ui_shell: default_ui_shell(),
             developer_mode: false,
             close_action: "ask".to_string(),
             last_run_path: String::new(),
@@ -160,10 +159,6 @@ pub(super) fn default_memory_display_precision() -> u8 {
 
 pub(super) fn default_language() -> String {
     "zh-CN".to_string()
-}
-
-pub(super) fn default_ui_shell() -> String {
-    "next".to_string()
 }
 
 pub(super) fn default_close_action() -> String {

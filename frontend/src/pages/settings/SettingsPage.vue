@@ -6,7 +6,6 @@ import SLCard from "@components/common/SLCard.vue";
 import AppearanceSection from "@src/components/settings/appearance/AppearanceSection.vue";
 import DeveloperManagementSection from "@src/components/settings/developer/DeveloperManagementSection.vue";
 import GeneralSection from "@src/components/settings/general/GeneralSection.vue";
-import ShellModeSection from "@src/components/settings/ShellModeSection.vue";
 import { i18n } from "@language";
 import { NEXT_ABOUT_ROUTE_NAME } from "@src/router/pageMeta";
 import { useSettingsPage } from "./useSettingsPage";
@@ -28,8 +27,6 @@ const activeSectionComponent = computed(() => {
   switch (currentSectionId.value) {
     case "appearance":
       return AppearanceSection;
-    case "shell":
-      return ShellModeSection;
     case "developer-management":
       return DeveloperManagementSection;
     default:

@@ -29,8 +29,6 @@ const emit = defineEmits<{
 
 <template>
   <WorkbenchPanel :title="i18n.t('developer.next.tools.title')" :description="i18n.t('developer.next.tools.description')">
-    <WorkbenchStatusBanner v-if="isBrowserMode" tone="neutral">{{ i18n.t("plugins.ui_shell.desktop_only") }}</WorkbenchStatusBanner>
-
     <div class="developer-tools-section__group">
       <div class="developer-tools-section__copy">
         <strong>{{ i18n.t("developer.next.tools.toast.title") }}</strong>

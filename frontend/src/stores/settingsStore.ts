@@ -128,7 +128,6 @@ const defaultSettings: AppSettings = {
   },
   app_display_name: "",
   language: "zh-CN",
-  ui_shell: "next",
   developer_mode: false,
   close_action: "ask",
   last_run_path: "",

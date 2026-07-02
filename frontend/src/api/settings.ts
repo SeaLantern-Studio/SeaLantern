@@ -3,7 +3,6 @@ import type { JavaInfo } from "@api/java";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
 
 export type WindowEffect = "off" | "auto" | "blur" | "acrylic" | "mica" | "vibrancy";
-export type UiShellSettingValue = "next";
 
 export interface TextColorOverrides {
   title: string;
@@ -74,7 +73,6 @@ export interface AppSettings {
   text_color_overrides: TextColorOverrides;
   app_display_name: string;
   language: string;
-  ui_shell: UiShellSettingValue;
   locales_base_url?: string;
   developer_mode: boolean;
   close_action: string;
@@ -120,7 +118,6 @@ export interface PartialSettings {
   text_color_overrides?: TextColorOverrides;
   app_display_name?: string;
   language?: string;
-  ui_shell?: UiShellSettingValue;
   developer_mode?: boolean;
   close_action?: string;
   last_run_path?: string;

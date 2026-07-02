@@ -42,15 +42,6 @@
   "settings_title": "{{name}} Settings",
   "safe_mode_disabled": "Disabled in safe mode",
   "safe_mode": "Safe Mode",
-  "ui_shell": {
-    "loading": "Loading UI shell status...",
-    "desktop_only": "UI shell switching is only available in the desktop app.",
-    "shells": {
-      "next": {
-        "name": "Next"
-      }
-    }
-  },
   "permissions": "Permissions",
   "dependencies": "Dependencies",
   "optional_dependencies": "Optional Dependencies",

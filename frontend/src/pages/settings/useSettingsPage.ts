@@ -3,7 +3,7 @@ import { useRoute, useRouter } from "vue-router";
 import { i18n } from "@language";
 import { useSettingsStore } from "@stores/settingsStore";
 
-export type SettingsSectionId = "appearance" | "general" | "shell" | "developer-management";
+export type SettingsSectionId = "appearance" | "general" | "developer-management";
 
 export interface SettingsSummaryChip {
   label: string;
@@ -49,13 +49,6 @@ function buildSettingsSectionItems(): readonly SettingsSectionItem[] {
       hash: "#general",
     },
     {
-      id: "shell",
-      label: i18n.t("settings.next.sections.shell.label"),
-      title: i18n.t("settings.next.sections.shell.title"),
-      description: i18n.t("settings.next.sections.shell.description"),
-      hash: "#shell",
-    },
-    {
       id: "developer-management",
       label: i18n.t("settings.next.sections.developer_management.label"),
       title: i18n.t("settings.next.sections.developer_management.title"),
@@ -71,8 +64,6 @@ function parseSettingsSectionHash(hash: string): SettingsSectionId | null {
       return "appearance";
     case "#general":
       return "general";
-    case "#shell":
-      return "shell";
     case "#developer-management":
       return "developer-management";
     default:
