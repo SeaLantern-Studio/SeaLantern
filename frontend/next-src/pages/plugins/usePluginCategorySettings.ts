@@ -13,10 +13,10 @@ import {
   serializeSettingsRecord,
   type PluginSettingsRecord,
   updatePluginSettingsField,
-} from "@views/plugins/pluginSettingsShared";
-import { useDependentAutoSaves } from "@views/plugins/useDependentAutoSaves";
-import { usePluginCategoryLifecycle } from "@views/plugins/usePluginCategoryLifecycle";
-import { usePluginDependentSettings } from "@views/plugins/usePluginDependentSettings";
+} from "./pluginSettingsShared";
+import { useDependentAutoSaves } from "./useDependentAutoSaves";
+import { usePluginCategoryLifecycle } from "./usePluginCategoryLifecycle";
+import { usePluginDependentSettings } from "./usePluginDependentSettings";
 
 interface UsePluginCategorySettingsOptions {
   pluginId: () => string;

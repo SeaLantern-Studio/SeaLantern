@@ -1,6 +1,6 @@
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import type { PluginInfo } from "@type/plugin";
-import type { PluginSettingsRecord } from "@views/plugins/pluginSettingsShared";
+import type { PluginSettingsRecord } from "./pluginSettingsShared";
 
 interface UsePluginSettingsPersistenceOptions {
   ownerPluginId: () => string;

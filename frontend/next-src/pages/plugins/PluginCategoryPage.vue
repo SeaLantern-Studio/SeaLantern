@@ -3,9 +3,9 @@ import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import { i18n } from "@language";
 import { Palette } from "@lucide/vue";
-import PluginDependentSettingsList from "@views/plugins/PluginDependentSettingsList.vue";
-import PluginPresetPickerCard from "@views/plugins/PluginPresetPickerCard.vue";
-import PluginSettingsFormCard from "@views/plugins/PluginSettingsFormCard.vue";
+import PluginDependentSettingsList from "@next-src/components/plugins/PluginDependentSettingsList.vue";
+import PluginPresetPickerCard from "@next-src/components/plugins/PluginPresetPickerCard.vue";
+import PluginSettingsFormCard from "@next-src/components/plugins/PluginSettingsFormCard.vue";
 import { getLocalizedPluginDescription } from "@type/plugin";
 import { usePluginCategoryPage } from "./usePluginCategoryPage";
 

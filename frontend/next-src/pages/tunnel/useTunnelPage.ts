@@ -6,7 +6,7 @@ import type { WorkbenchFactItem } from "@next-src/components/workbench/Workbench
 import { useConsoleDisplaySettings } from "@composables/useConsoleDisplaySettings";
 import { useGlobalMessage } from "@composables/useMessage";
 import { useSettingsStore } from "@stores/settingsStore";
-import { useTunnelStatusPolling } from "@views/useTunnelStatusPolling";
+import { useTunnelStatusPolling } from "./useTunnelStatusPolling";
 
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;

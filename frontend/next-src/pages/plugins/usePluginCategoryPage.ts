@@ -2,7 +2,7 @@ import { computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { NEXT_PLUGIN_DETAIL_ROUTE_NAME } from "@next-src/router/pageMeta";
 import { usePluginStore } from "@stores/pluginStore";
-import { usePluginCategorySettings } from "@views/plugins/usePluginCategorySettings";
+import { usePluginCategorySettings } from "./usePluginCategorySettings";
 
 export function usePluginCategoryPage() {
   const route = useRoute();

@@ -1,11 +1,11 @@
 import { computed, onMounted, onUnmounted, watch, type Ref } from "vue";
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
-import { useAutoSaveSettings } from "@views/plugins/useAutoSaveSettings";
+import { useAutoSaveSettings } from "./useAutoSaveSettings";
 import {
   serializeSettingsRecord,
   type PluginSettingsRecord,
-} from "@views/plugins/pluginSettingsShared";
+} from "./pluginSettingsShared";
 import type { PluginInfo } from "@type/plugin";
 
 interface UsePluginCategoryLifecycleOptions {

@@ -2,10 +2,10 @@ import {
   clearSettingsRecord,
   buildPluginSettingsForm,
   findDependentPlugins,
-} from "@views/plugins/pluginSettingsShared";
-import { serializeSettingsRecord } from "@views/plugins/pluginSettingsShared";
+} from "./pluginSettingsShared";
+import { serializeSettingsRecord } from "./pluginSettingsShared";
 import type { PluginInfo } from "@type/plugin";
-import type { PluginSettingsRecord } from "@views/plugins/pluginSettingsShared";
+import type { PluginSettingsRecord } from "./pluginSettingsShared";
 
 interface UsePluginDependentSettingsOptions {
   pluginId: () => string;

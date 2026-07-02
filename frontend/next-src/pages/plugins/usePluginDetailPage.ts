@@ -28,7 +28,7 @@ import {
   type PluginInfo,
   type PluginState,
 } from "@type/plugin";
-import { usePluginPageSettings } from "@views/plugins/usePluginPageSettings";
+import { usePluginPageSettings } from "./usePluginPageSettings";
 
 function getPluginStateLabel(state: PluginState): string {
   if (typeof state === "object" && "error" in state) {

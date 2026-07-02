@@ -12,9 +12,9 @@ import {
   resetPluginSettingsForm,
   type PluginSettingsRecord,
   updatePluginSettingsField,
-} from "@views/plugins/pluginSettingsShared";
-import { usePluginDependentSettings } from "@views/plugins/usePluginDependentSettings";
-import { usePluginSettingsPersistence } from "@views/plugins/usePluginSettingsPersistence";
+} from "./pluginSettingsShared";
+import { usePluginDependentSettings } from "./usePluginDependentSettings";
+import { usePluginSettingsPersistence } from "./usePluginSettingsPersistence";
 
 type DependentSettingsForms = Record<string, PluginSettingsRecord>;
 

@@ -3,8 +3,8 @@ import { pluginLogger } from "@stores/plugin/pluginLogger";
 import {
   serializeSettingsRecord,
   type PluginSettingsRecord,
-} from "@views/plugins/pluginSettingsShared";
-import { useAutoSaveSettings } from "@views/plugins/useAutoSaveSettings";
+} from "./pluginSettingsShared";
+import { useAutoSaveSettings } from "./useAutoSaveSettings";
 import type { PluginInfo } from "@type/plugin";
 
 interface UseDependentAutoSavesOptions {

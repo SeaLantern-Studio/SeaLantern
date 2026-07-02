@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { i18n } from "@language";
 import type { PluginInfo } from "@type/plugin";
-import PluginSettingsFormCard from "@views/plugins/PluginSettingsFormCard.vue";
-import type { PluginSettingsRecord, PluginSettingValue } from "@views/plugins/pluginSettingsShared";
+import PluginSettingsFormCard from "@next-src/components/plugins/PluginSettingsFormCard.vue";
+import type {
+  PluginSettingsRecord,
+  PluginSettingValue,
+} from "@next-src/pages/plugins/pluginSettingsShared";
 
 defineProps<{
   plugins: PluginInfo[];
