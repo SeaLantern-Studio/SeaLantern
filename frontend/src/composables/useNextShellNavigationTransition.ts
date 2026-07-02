@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted, shallowRef } from "vue";
+import { computed, onBeforeUnmount, onMounted, shallowRef, unref, type Ref } from "vue";
 import { onBeforeRouteLeave, useRoute } from "vue-router";
 import type { NextProtectedPageKind } from "../contracts/page";
 import type { NextShellNavigationDirection } from "../contracts/shell";
@@ -103,7 +103,9 @@ function setFocusWithinRail(value: boolean): void {
   focusWithinRail.value = value;
 }
 
-export function useNextShellNavigationTransition(currentPageKind: NextProtectedPageKind) {
+export function useNextShellNavigationTransition(
+  currentPageKind: NextProtectedPageKind | Readonly<Ref<NextProtectedPageKind>>,
+) {
   const route = useRoute();
 
   ensureReducedMotionListener();
@@ -117,12 +119,12 @@ export function useNextShellNavigationTransition(currentPageKind: NextProtectedP
       return;
     }
 
-    prepareNextShellNavigation(currentPageKind, nextProtectedRoute.meta.pageKind);
+    prepareNextShellNavigation(unref(currentPageKind), nextProtectedRoute.meta.pageKind);
   });
 
   onMounted(() => {
     const nextProtectedRoute = getNextProtectedRouteByName(route.name);
-    const mountedPageKind = nextProtectedRoute?.meta.pageKind ?? currentPageKind;
+    const mountedPageKind = nextProtectedRoute?.meta.pageKind ?? unref(currentPageKind);
     const pending = pendingNavigation.value;
 
     if (navigationHold.value && pending?.to === mountedPageKind) {

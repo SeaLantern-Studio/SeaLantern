@@ -89,13 +89,13 @@ export function useSettingsPage() {
   const router = useRouter();
   const settingsStore = useSettingsStore();
 
-  const bootstrapping = shallowRef(true);
+  const bootstrapping = shallowRef(!settingsStore.isLoaded);
   const refreshing = shallowRef(false);
 
   async function loadPage(manual = false): Promise<void> {
     if (manual) {
       refreshing.value = true;
-    } else {
+    } else if (!settingsStore.isLoaded) {
       bootstrapping.value = true;
     }
 

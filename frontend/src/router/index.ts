@@ -59,14 +59,9 @@ const NEXT_LEGACY_ADD_EXISTING_COMPAT_ROUTE_NAME = "next-legacy-add-existing-com
 const NEXT_LEGACY_DOWNLOAD_COMPAT_ROUTE_NAME = "next-legacy-download-compat";
 const NEXT_LEGACY_CONFIG_COMPAT_ROUTE_NAME = "next-legacy-config-compat";
 const NEXT_LEGACY_PLAYERS_COMPAT_ROUTE_NAME = "next-legacy-players-compat";
+const NEXT_PROTECTED_ROUTE_HOST_NAME = "next-protected-route-host";
 
-const routes: RouteRecordRaw[] = [
-  {
-    path: NEXT_AUTH_ROUTE.path,
-    name: NEXT_AUTH_ROUTE.name,
-    component: () => import("../views/AuthEntryView.vue"),
-    meta: NEXT_AUTH_ROUTE.meta as unknown as RouteMeta,
-  },
+const protectedChildren: RouteRecordRaw[] = [
   {
     path: NEXT_HOME_ROUTE.path,
     name: NEXT_HOME_ROUTE.name,
@@ -245,6 +240,21 @@ const routes: RouteRecordRaw[] = [
       titleKey: "common.player_manage",
       navLabelKey: "shell.nav_servers",
     }) as unknown as RouteMeta,
+  },
+];
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: NEXT_AUTH_ROUTE.path,
+    name: NEXT_AUTH_ROUTE.name,
+    component: () => import("../views/AuthEntryView.vue"),
+    meta: NEXT_AUTH_ROUTE.meta as unknown as RouteMeta,
+  },
+  {
+    path: "/",
+    component: () => import("../views/NextProtectedRouteView.vue"),
+    name: NEXT_PROTECTED_ROUTE_HOST_NAME,
+    children: protectedChildren,
   },
   {
     path: "/servers/:serverId",

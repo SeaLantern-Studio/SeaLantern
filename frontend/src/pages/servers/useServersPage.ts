@@ -14,6 +14,8 @@ import {
   NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
 } from "@src/router/pageMeta";
 
+let serversPageLoadedOnce = false;
+
 export type ServersPageTarget = "players" | "extensions" | "config";
 
 export interface ServersPageActionItem {
@@ -119,7 +121,7 @@ function formatDetailSummary(status: ServerStatusInfo | undefined): string | nul
 export function useServersPage() {
   const router = useRouter();
   const serverStore = useServerStore();
-  const bootstrapping = shallowRef(true);
+  const bootstrapping = shallowRef(!serversPageLoadedOnce && serverStore.servers.length === 0);
   const refreshing = shallowRef(false);
   const loadedOnce = shallowRef(false);
 
@@ -147,6 +149,7 @@ export function useServersPage() {
       await serverStore.refreshAllStatuses();
       ensureCurrentServer();
       loadedOnce.value = true;
+      serversPageLoadedOnce = true;
     } finally {
       bootstrapping.value = false;
       refreshing.value = false;
@@ -211,6 +214,7 @@ export function useServersPage() {
   const errorMessage = computed(() => serverStore.error);
 
   onMounted(() => {
+    loadedOnce.value = serversPageLoadedOnce;
     void loadData(false);
   });
 

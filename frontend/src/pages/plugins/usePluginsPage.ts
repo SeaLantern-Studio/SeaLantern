@@ -18,6 +18,8 @@ import {
   type PluginState,
 } from "@type/plugin";
 
+let pluginsPageLoadedOnce = false;
+
 function getPluginStateLabel(state: PluginState): string {
   if (typeof state === "object" && "error" in state) {
     return i18n.t("plugins.status.error");
@@ -110,7 +112,7 @@ export function usePluginsPage() {
   const pluginStore = usePluginStore();
   const installer = usePluginsInstaller();
 
-  const bootstrapping = shallowRef(true);
+  const bootstrapping = shallowRef(!pluginsPageLoadedOnce && pluginStore.plugins.length === 0);
   const refreshing = shallowRef(false);
   const checkingUpdates = shallowRef(false);
   const loadedOnce = shallowRef(false);
@@ -137,6 +139,7 @@ export function usePluginsPage() {
       }
 
       loadedOnce.value = true;
+      pluginsPageLoadedOnce = true;
 
       await Promise.allSettled([pluginStore.loadNavItems(), pluginStore.checkAllUpdates()]);
     } finally {
@@ -301,6 +304,7 @@ export function usePluginsPage() {
   });
 
   onMounted(() => {
+    loadedOnce.value = pluginsPageLoadedOnce;
     void loadPage(false);
   });
 

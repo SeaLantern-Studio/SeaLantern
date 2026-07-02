@@ -8,6 +8,9 @@ import { useGlobalMessage } from "@composables/useMessage";
 import { useSettingsStore } from "@stores/settingsStore";
 import { useTunnelStatusPolling } from "./useTunnelStatusPolling";
 
+let cachedTunnelStatus: TunnelStatus | null = null;
+let tunnelSettingsLoaded = false;
+
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;
 
@@ -79,7 +82,7 @@ export function useTunnelPage() {
   const globalMessage = useGlobalMessage();
   const settingsStore = useSettingsStore();
   const pendingAction = shallowRef<PendingAction | null>(null);
-  const status = shallowRef<TunnelStatus | null>(null);
+  const status = shallowRef<TunnelStatus | null>(cachedTunnelStatus);
   const hostPort = shallowRef("");
   const hostPassword = shallowRef("");
   const hostRelayUrl = shallowRef("");
@@ -198,6 +201,7 @@ export function useTunnelPage() {
   }
 
   function applyStatus(next: TunnelStatus) {
+    cachedTunnelStatus = next;
     status.value = next;
     syncLogOutput(next.logs);
     if (!hostPort.value.trim()) hostPort.value = String(next.host_port);
@@ -368,7 +372,11 @@ export function useTunnelPage() {
   }
 
   onMounted(async () => {
-    await settingsStore.ensureLoaded();
+    if (!tunnelSettingsLoaded) {
+      await settingsStore.ensureLoaded();
+      tunnelSettingsLoaded = true;
+    }
+
     await refreshStatus();
     startStatusPolling();
   });

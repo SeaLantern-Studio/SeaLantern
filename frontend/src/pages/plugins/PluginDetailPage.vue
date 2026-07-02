@@ -105,7 +105,7 @@ function getPermissionDesc(perm: string): string {
         <strong>{{ i18n.t("plugins.next.error_title") }}</strong>
         <p>{{ errorMessage }}</p>
       </div>
-      <SLButton variant="secondary" size="sm" :loading="bootstrapping" @click="loadPage">
+      <SLButton variant="secondary" size="sm" :loading="bootstrapping" @click="() => void loadPage()">
         {{ i18n.t("plugins.next.retry") }}
       </SLButton>
     </section>

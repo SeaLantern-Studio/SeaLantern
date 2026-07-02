@@ -8,6 +8,8 @@ import { i18n } from "@language";
 import { NEXT_SERVER_CREATE_ROUTE_NAME } from "@src/router/pageMeta";
 import type { WorkbenchFactItem } from "@src/components/workbench/WorkbenchFactGrid.vue";
 
+let downloadsPageLoadedOnce = false;
+
 export type DownloadsSectionId = "tasks" | "server" | "file";
 export type DownloadTaskKind = "server" | "file";
 export type DownloadTaskStateTone = "primary" | "success" | "warning" | "error";
@@ -135,7 +137,7 @@ export function useDownloadsPage() {
   ]);
 
   const activeSectionId = shallowRef<DownloadsSectionId>("tasks");
-  const bootstrapping = shallowRef(true);
+  const bootstrapping = shallowRef(!downloadsPageLoadedOnce);
   const loadingServerTypes = shallowRef(false);
   const loadingVersions = shallowRef(false);
   const loadingDownloadInfo = shallowRef(false);
@@ -537,9 +539,13 @@ export function useDownloadsPage() {
   );
 
   onMounted(async () => {
-    bootstrapping.value = true;
+    if (!downloadsPageLoadedOnce) {
+      bootstrapping.value = true;
+    }
+
     try {
       await Promise.all([loadDefaultPaths(), loadServerTypes()]);
+      downloadsPageLoadedOnce = true;
     } finally {
       bootstrapping.value = false;
     }

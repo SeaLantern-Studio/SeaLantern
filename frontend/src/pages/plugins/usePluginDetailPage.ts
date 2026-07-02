@@ -16,9 +16,7 @@ import {
   validateMarketUrl,
 } from "@components/plugin/market/pluginMarketShared";
 import { i18n } from "@language";
-import {
-  NEXT_PLUGIN_CATEGORY_ROUTE_NAME,
-} from "@src/router/pageMeta";
+import { NEXT_PLUGIN_CATEGORY_ROUTE_NAME } from "@src/router/pageMeta";
 import { usePluginStore } from "@stores/pluginStore";
 import {
   getLocalizedPluginDescription,
@@ -29,6 +27,19 @@ import {
   type PluginState,
 } from "@type/plugin";
 import { usePluginPageSettings } from "./usePluginPageSettings";
+
+const loadedPluginDetailIds = new Set<string>();
+
+interface PluginDetailMarketState {
+  pluginId: string;
+  plugin: MarketPlugin | null;
+  detail: MarketPluginInfo | null;
+}
+
+interface PluginDetailErrorState {
+  pluginId: string;
+  message: string | null;
+}
 
 function getPluginStateLabel(state: PluginState): string {
   if (typeof state === "object" && "error" in state) {
@@ -113,12 +124,24 @@ export function usePluginDetailPage() {
   const router = useRouter();
   const pluginStore = usePluginStore();
 
-  const bootstrapping = shallowRef(true);
-  const marketLoading = shallowRef(false);
-  const errorMessage = shallowRef<string | null>(null);
+  let loadRequestSequence = 0;
+
+  const pluginId = computed(() => {
+    return typeof route.params.pluginId === "string" ? route.params.pluginId : "";
+  });
+
+  const bootstrapping = shallowRef(!loadedPluginDetailIds.has(pluginId.value));
+  const loadingPluginId = shallowRef<string | null>(null);
   const installFeedback = shallowRef<MarketFeedback | null>(null);
-  const marketPlugin = shallowRef<MarketPlugin | null>(null);
-  const marketDetail = shallowRef<MarketPluginInfo | null>(null);
+  const marketState = shallowRef<PluginDetailMarketState>({
+    pluginId: "",
+    plugin: null,
+    detail: null,
+  });
+  const errorState = shallowRef<PluginDetailErrorState>({
+    pluginId: "",
+    message: null,
+  });
   const installing = shallowRef(false);
 
   const permissionDialogOpen = shallowRef(false);
@@ -132,17 +155,24 @@ export function usePluginDetailPage() {
     installFeedback,
   });
 
-  const pluginId = computed(() => {
-    return typeof route.params.pluginId === "string" ? route.params.pluginId : "";
-  });
-
   const pageSettings = usePluginPageSettings({
     pluginId: () => pluginId.value,
   });
 
+  const marketLoading = computed(() => loadingPluginId.value === pluginId.value);
+  const errorMessage = computed(() => {
+    return errorState.value.pluginId === pluginId.value ? errorState.value.message : null;
+  });
+  const marketPlugin = computed(() => {
+    return marketState.value.pluginId === pluginId.value ? marketState.value.plugin : null;
+  });
+  const marketDetail = computed(() => {
+    return marketState.value.pluginId === pluginId.value ? marketState.value.detail : null;
+  });
   const installedPlugin = computed<PluginInfo | null>(() => {
     return pluginStore.plugins.find((plugin) => plugin.manifest.id === pluginId.value) ?? null;
   });
+  const settingsReady = computed(() => pageSettings.plugin.value?.manifest.id === pluginId.value);
 
   const hasUpdate = computed(() => Boolean(pluginStore.updates[pluginId.value]));
   const marketSourceUrl = computed(() => resolveMarketSourceUrl());
@@ -216,7 +246,11 @@ export function usePluginDetailPage() {
   });
 
   const supportsSettingsOnDetail = computed(() => {
-    return Boolean(installedPlugin.value && installedPlugin.value.manifest.sidebar?.mode !== "category");
+    return Boolean(
+      settingsReady.value &&
+        installedPlugin.value &&
+        installedPlugin.value.manifest.sidebar?.mode !== "category",
+    );
   });
 
   const canOpenCategoryPage = computed(() => {
@@ -252,6 +286,29 @@ export function usePluginDetailPage() {
     return !bootstrapping.value && !installedPlugin.value && !marketPlugin.value;
   });
 
+  function isLatestRequest(requestId: number, targetPluginId: string): boolean {
+    return requestId === loadRequestSequence && targetPluginId === pluginId.value;
+  }
+
+  function setErrorState(targetPluginId: string, message: string | null): void {
+    errorState.value = {
+      pluginId: targetPluginId,
+      message,
+    };
+  }
+
+  function resetMarketState(targetPluginId: string): void {
+    marketState.value = {
+      pluginId: targetPluginId,
+      plugin: null,
+      detail: null,
+    };
+  }
+
+  function hasInstalledPlugin(targetPluginId: string): boolean {
+    return pluginStore.plugins.some((plugin) => plugin.manifest.id === targetPluginId);
+  }
+
   const permissionDialogTitle = computed(() => {
     if (pendingPermissionBlockReason.value === "revoked") {
       return i18n.t("plugins.next.permission_revoked_title");
@@ -272,48 +329,106 @@ export function usePluginDetailPage() {
     });
   });
 
-  async function loadPage(): Promise<void> {
-    bootstrapping.value = true;
-    marketLoading.value = true;
-    errorMessage.value = null;
+  async function loadPage(targetPluginId = pluginId.value): Promise<void> {
+    const requestId = ++loadRequestSequence;
+
+    if (!loadedPluginDetailIds.has(targetPluginId)) {
+      bootstrapping.value = true;
+    }
+
+    loadingPluginId.value = targetPluginId;
+    setErrorState(targetPluginId, null);
+    resetMarketState(targetPluginId);
 
     try {
       if (!pluginStore.plugins.length) {
         await pluginStore.loadPlugins();
       }
 
+      if (!isLatestRequest(requestId, targetPluginId)) {
+        return;
+      }
+
       await Promise.allSettled([pluginStore.loadNavItems(), pluginStore.checkAllUpdates()]);
+
+      if (!isLatestRequest(requestId, targetPluginId)) {
+        return;
+      }
+
       await pageSettings.loadPlugin();
+
+      if (!isLatestRequest(requestId, targetPluginId)) {
+        return;
+      }
 
       const requestUrl = marketSourceUrl.value === MARKET_BASE_URL ? undefined : marketSourceUrl.value;
       const catalog = await loadPluginMarketCatalog({
         requestUrl,
         sourceUrl: marketSourceUrl.value,
       });
-      marketPlugin.value = catalog.plugins.find((plugin) => plugin.id === pluginId.value) ?? null;
 
-      if (marketPlugin.value) {
+      if (!isLatestRequest(requestId, targetPluginId)) {
+        return;
+      }
+
+      const nextMarketPlugin = catalog.plugins.find((plugin) => plugin.id === targetPluginId) ?? null;
+      marketState.value = {
+        pluginId: targetPluginId,
+        plugin: nextMarketPlugin,
+        detail: null,
+      };
+
+      if (nextMarketPlugin) {
         try {
-          marketDetail.value = await loadPluginMarketDetail({
-            plugin: marketPlugin.value,
+          const nextMarketDetail = await loadPluginMarketDetail({
+            plugin: nextMarketPlugin,
             requestUrl,
             sourceUrl: marketSourceUrl.value,
           });
+
+          if (!isLatestRequest(requestId, targetPluginId)) {
+            return;
+          }
+
+          marketState.value = {
+            pluginId: targetPluginId,
+            plugin: nextMarketPlugin,
+            detail: nextMarketDetail,
+          };
         } catch (err) {
-          marketDetail.value = null;
-          if (!installedPlugin.value) {
-            errorMessage.value = err instanceof Error ? err.message : String(err);
+          if (!isLatestRequest(requestId, targetPluginId)) {
+            return;
+          }
+
+          marketState.value = {
+            pluginId: targetPluginId,
+            plugin: nextMarketPlugin,
+            detail: null,
+          };
+
+          if (!hasInstalledPlugin(targetPluginId)) {
+            setErrorState(targetPluginId, err instanceof Error ? err.message : String(err));
           }
         }
-      } else {
-        marketDetail.value = null;
+      }
+
+      if (targetPluginId) {
+        loadedPluginDetailIds.add(targetPluginId);
       }
     } catch (err) {
-      if (!installedPlugin.value) {
-        errorMessage.value = err instanceof Error ? err.message : String(err);
+      if (!isLatestRequest(requestId, targetPluginId)) {
+        return;
+      }
+
+      if (!hasInstalledPlugin(targetPluginId)) {
+        setErrorState(targetPluginId, err instanceof Error ? err.message : String(err));
       }
     } finally {
-      marketLoading.value = false;
+      if (!isLatestRequest(requestId, targetPluginId)) {
+        return;
+      }
+
+      loadingPluginId.value = null;
       bootstrapping.value = false;
     }
   }
@@ -429,22 +544,28 @@ export function usePluginDetailPage() {
     pageSettings.updateSettingsField(form, key, value);
   }
 
-  watch(pluginId, () => {
-    if (!pluginId.value) {
-      return;
-    }
+  watch(
+    pluginId,
+    (nextPluginId) => {
+      if (!nextPluginId) {
+        loadRequestSequence += 1;
+        loadingPluginId.value = null;
+        resetMarketState("");
+        setErrorState("", i18n.t("plugins.not_found"));
+        bootstrapping.value = false;
+        return;
+      }
 
-    void loadPage();
-  });
+      void loadPage(nextPluginId);
+    },
+    { immediate: true },
+  );
 
   onMounted(() => {
     if (!pluginId.value) {
       bootstrapping.value = false;
-      errorMessage.value = i18n.t("plugins.not_found");
-      return;
+      setErrorState("", i18n.t("plugins.not_found"));
     }
-
-    void loadPage();
   });
 
   return {
