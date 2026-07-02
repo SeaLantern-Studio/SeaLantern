@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRouter } from "vue-router";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import AppearanceSection from "@src/components/settings/appearance/AppearanceSection.vue";
 import DeveloperManagementSection from "@src/components/settings/developer/DeveloperManagementSection.vue";
 import GeneralSection from "@src/components/settings/general/GeneralSection.vue";
 import { i18n } from "@language";
-import { NEXT_ABOUT_ROUTE_NAME } from "@src/router/pageMeta";
 import { useSettingsPage } from "./useSettingsPage";
-
-const router = useRouter();
 
 const {
   bootstrapping,
@@ -34,26 +30,20 @@ const activeSectionComponent = computed(() => {
   }
 });
 
-function openAboutPage(): void {
-  void router.push({ name: NEXT_ABOUT_ROUTE_NAME });
-}
 </script>
 
 <template>
   <div class="settings-page">
     <header class="settings-page__intro">
       <div class="settings-page__intro-copy">
-        <h2 class="settings-page__title">{{ i18n.t("settings.next.page_title") }}</h2>
+        <div class="settings-page__title-row">
+          <h2 class="settings-page__title">{{ i18n.t("settings.next.page_title") }}</h2>
+          <SLButton variant="secondary" size="sm" :loading="refreshing" @click="loadPage(true)">
+            {{ i18n.t("settings.next.refresh") }}
+          </SLButton>
+        </div>
         <p class="settings-page__description">{{ i18n.t("settings.next.page_description") }}</p>
       </div>
-
-      <SLButton variant="secondary" size="sm" :loading="refreshing" @click="loadPage(true)">
-        {{ i18n.t("settings.next.refresh") }}
-      </SLButton>
-
-      <SLButton variant="ghost" size="sm" @click="openAboutPage">
-        {{ i18n.t("common.about") }}
-      </SLButton>
     </header>
 
     <section v-if="hasError" class="settings-page__error-banner" role="alert" aria-live="polite">
@@ -99,6 +89,7 @@ function openAboutPage(): void {
             class="settings-directory__item"
             :class="{
               'settings-directory__item--active': currentSectionId === section.id,
+              'settings-directory__item--external': section.id === 'about',
             }"
             :aria-current="currentSectionId === section.id ? 'location' : undefined"
             @click="selectSection(section.id)"
@@ -130,16 +121,21 @@ function openAboutPage(): void {
 }
 
 .settings-page__intro {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  gap: 8px;
 }
 
 .settings-page__intro-copy {
   min-width: 0;
   display: grid;
   gap: 3px;
+}
+
+.settings-page__title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .settings-page__title,
@@ -276,6 +272,10 @@ function openAboutPage(): void {
   background: var(--sl-primary);
 }
 
+.settings-directory__item--external {
+  margin-top: 10px;
+}
+
 .settings-directory__item:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--sl-primary) 18%, transparent);
@@ -407,9 +407,13 @@ function openAboutPage(): void {
 }
 
 @media (max-width: 720px) {
-  .settings-page__intro,
   .settings-page__error-banner {
     flex-direction: column;
+  }
+
+  .settings-page__title-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

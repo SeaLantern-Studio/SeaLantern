@@ -121,7 +121,9 @@ function handleResizeStart(axis: ResizeHandlePayload["axis"], event: PointerEven
 .next-home-editable-card {
   position: relative;
   min-width: 0;
+  width: 100%;
   height: 100%;
+  box-sizing: border-box;
   border-radius: 26px;
   overflow: hidden;
 }
@@ -194,6 +196,7 @@ function handleResizeStart(axis: ResizeHandlePayload["axis"], event: PointerEven
 .next-home-editable-card__body {
   min-width: 0;
   height: 100%;
+  box-sizing: border-box;
   overflow: hidden;
 }
 

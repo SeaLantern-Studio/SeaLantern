@@ -1,9 +1,10 @@
 import { computed, onMounted, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { i18n } from "@language";
+import { NEXT_ABOUT_ROUTE_NAME } from "@src/router/pageMeta";
 import { useSettingsStore } from "@stores/settingsStore";
 
-export type SettingsSectionId = "appearance" | "general" | "developer-management";
+export type SettingsSectionId = "appearance" | "general" | "developer-management" | "about";
 
 export interface SettingsSummaryChip {
   label: string;
@@ -27,7 +28,8 @@ export interface SettingsSectionItem {
   label: string;
   title: string;
   description: string;
-  hash: `#${SettingsSectionId}`;
+  hash?: `#${Exclude<SettingsSectionId, "about">}`;
+  routeName?: string;
 }
 
 const DEFAULT_SECTION_ID: SettingsSectionId = "appearance";
@@ -54,6 +56,13 @@ function buildSettingsSectionItems(): readonly SettingsSectionItem[] {
       title: i18n.t("settings.next.sections.developer_management.title"),
       description: i18n.t("settings.next.sections.developer_management.description"),
       hash: "#developer-management",
+    },
+    {
+      id: "about",
+      label: i18n.t("common.about"),
+      title: i18n.t("common.about"),
+      description: i18n.t("about.subtitle"),
+      routeName: NEXT_ABOUT_ROUTE_NAME,
     },
   ] as const;
 }
@@ -99,6 +108,11 @@ export function useSettingsPage() {
   }
 
   async function applySection(sectionId: SettingsSectionId, replace = false): Promise<void> {
+    if (sectionId === "about") {
+      await router.push({ name: NEXT_ABOUT_ROUTE_NAME });
+      return;
+    }
+
     const nextHash = getSettingsSectionHash(sectionId);
     if (route.hash === nextHash) {
       return;

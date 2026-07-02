@@ -19,10 +19,15 @@ export function usePaintPersonalizationActions(options: UsePaintPersonalizationA
   const pluginStore = usePluginStore();
   const settingsStore = useSettingsStore();
   const toast = useToast();
-  const personalizationBusy = ref(false);
+  const exportBusy = ref(false);
+  const importBusy = ref(false);
 
   async function exportPersonalizationPackage() {
-    personalizationBusy.value = true;
+    if (exportBusy.value) {
+      return;
+    }
+
+    exportBusy.value = true;
     options.settingsDraft.clearError();
     try {
       const suggestedName = await settingsStore.getPersonalizationPackageSuggestedName();
@@ -38,12 +43,16 @@ export function usePaintPersonalizationActions(options: UsePaintPersonalizationA
       options.settingsDraft.setError(message);
       toast.error(message);
     } finally {
-      personalizationBusy.value = false;
+      exportBusy.value = false;
     }
   }
 
   async function importPersonalizationPackage() {
-    personalizationBusy.value = true;
+    if (importBusy.value) {
+      return;
+    }
+
+    importBusy.value = true;
     options.settingsDraft.clearError();
     try {
       const filePath = await systemApi.pickPersonalizationImportFile();
@@ -65,7 +74,7 @@ export function usePaintPersonalizationActions(options: UsePaintPersonalizationA
       options.settingsDraft.setError(message);
       toast.error(message);
     } finally {
-      personalizationBusy.value = false;
+      importBusy.value = false;
     }
   }
 
@@ -93,7 +102,8 @@ export function usePaintPersonalizationActions(options: UsePaintPersonalizationA
   }
 
   return {
-    personalizationBusy,
+    exportBusy,
+    importBusy,
     exportPersonalizationPackage,
     importPersonalizationPackage,
     pickBackgroundImage,

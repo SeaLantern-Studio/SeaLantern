@@ -20,7 +20,8 @@ const {
   appearanceOptions,
   settingsDraft,
   settings,
-  personalizationBusy,
+  exportBusy,
+  importBusy,
   exportPersonalizationPackage,
   importPersonalizationPackage,
   summaryFacts,
@@ -115,7 +116,8 @@ const {
       />
 
       <SettingsActions
-        :busy="personalizationBusy"
+        :import-busy="importBusy"
+        :export-busy="exportBusy"
         @export-package="exportPersonalizationPackage"
         @import-package="importPersonalizationPackage"
         @reset="settingsDraft.showResetConfirm.value = true"

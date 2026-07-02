@@ -330,8 +330,10 @@ export function useTunnelPage() {
     const lineCount = text.split("\n").length;
     try {
       await navigator.clipboard.writeText(text);
+      globalMessage.success(i18n.t("tunnel.log_copied", { count: lineCount }));
       tunnelOutputRef.value?.appendLines([i18n.t("tunnel.log_copied", { count: lineCount })]);
-    } catch {
+    } catch (error) {
+      globalMessage.error(String(error));
       tunnelOutputRef.value?.appendLines([i18n.t("tunnel.log_copy_failed")]);
     }
   }

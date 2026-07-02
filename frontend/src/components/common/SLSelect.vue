@@ -65,6 +65,7 @@ const containerRef = ref<HTMLElement | null>(null);
 const dropdownRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLInputElement | null>(null);
 const highlightedIndex = ref(-1);
+const dropdownPlacement = ref<"up" | "down" | "side">("down");
 
 const dropdownStyle = ref<Record<string, string>>({});
 
@@ -131,11 +132,13 @@ const updateDropdownPosition = () => {
   const viewportWidth = window.innerWidth;
   const dropdownMaxHeight = parseInt(props.maxHeight) || 280;
   const dropdownWidth = parseInt(props.dropdownWidth) || 200;
+  const renderedHeight = dropdownRef.value?.offsetHeight || dropdownMaxHeight;
+  const targetHeight = Math.min(renderedHeight, dropdownMaxHeight);
   const spaceBelow = viewportHeight - rect.bottom;
   const spaceAbove = rect.top;
   const gap = 4;
 
-  const openUpward = spaceBelow < dropdownMaxHeight + gap && spaceAbove > spaceBelow;
+  const openUpward = spaceBelow < targetHeight + gap && spaceAbove > spaceBelow;
 
   let top: number;
   let left: number;
@@ -143,9 +146,11 @@ const updateDropdownPosition = () => {
   if (props.collapsed && props.dropdownAlign === "right") {
     left = rect.right + gap;
     top = rect.top;
+    dropdownPlacement.value = "side";
   } else {
     left = props.dropdownAlign === "right" ? rect.right - dropdownWidth : rect.left;
-    top = openUpward ? rect.top - dropdownMaxHeight - gap : rect.bottom + gap;
+    top = openUpward ? rect.top - targetHeight - gap : rect.bottom + gap;
+    dropdownPlacement.value = openUpward ? "up" : "down";
   }
 
   if (left + dropdownWidth > viewportWidth - gap) {
@@ -155,8 +160,8 @@ const updateDropdownPosition = () => {
     left = gap;
   }
 
-  if (top + dropdownMaxHeight > viewportHeight - gap) {
-    top = viewportHeight - dropdownMaxHeight - gap;
+  if (top + targetHeight > viewportHeight - gap) {
+    top = viewportHeight - targetHeight - gap;
   }
   if (top < gap) {
     top = gap;
@@ -388,7 +393,13 @@ onUnmounted(() => {
 
     <Teleport to="body">
       <Transition name="dropdown">
-        <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef" :style="dropdownStyle">
+        <div
+          v-if="isOpen"
+          ref="dropdownRef"
+          class="sl-select-dropdown"
+          :class="`sl-select-dropdown--${dropdownPlacement}`"
+          :style="dropdownStyle"
+        >
           <div v-if="searchable" class="sl-select-search">
             <Search class="search-icon" :size="arrowIconSize" aria-hidden="true" />
             <input
@@ -673,6 +684,14 @@ onUnmounted(() => {
   -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
 }
 
+.sl-select-dropdown--up {
+  transform-origin: bottom center;
+}
+
+.sl-select-dropdown--side {
+  transform-origin: left top;
+}
+
 .sl-select-dropdown .sl-select-search {
   display: flex;
   align-items: center;
@@ -835,6 +854,38 @@ onUnmounted(() => {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+.sl-select-dropdown--up.dropdown-enter-active {
+  animation-name: dropdown-enter-up;
+}
+
+.sl-select-dropdown--up.dropdown-leave-active {
+  animation-name: dropdown-leave-up;
+}
+
+@keyframes dropdown-enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown-leave-up {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
   }
 }
 

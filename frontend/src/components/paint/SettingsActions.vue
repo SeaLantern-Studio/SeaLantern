@@ -3,7 +3,9 @@ import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 
 defineProps<{
-  busy?: boolean;
+  importBusy?: boolean;
+  exportBusy?: boolean;
+  resetBusy?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -16,13 +18,13 @@ const emit = defineEmits<{
 <template>
   <div class="settings-actions">
     <div class="actions-left">
-      <SLButton variant="secondary" :loading="busy" @click="emit('import-package')">
+      <SLButton variant="secondary" :loading="importBusy" @click="emit('import-package')">
         {{ i18n.t("settings.personalization_import") }}
       </SLButton>
-      <SLButton variant="secondary" :loading="busy" @click="emit('export-package')">
+      <SLButton variant="secondary" :loading="exportBusy" @click="emit('export-package')">
         {{ i18n.t("settings.personalization_export") }}
       </SLButton>
-      <SLButton variant="danger" :loading="busy" @click="emit('reset')">
+      <SLButton variant="danger" :loading="resetBusy" @click="emit('reset')">
         {{ i18n.t("settings.reset") }}
       </SLButton>
     </div>

@@ -211,9 +211,9 @@ export const NEXT_ABOUT_ROUTE: NextProtectedRouteDefinition = {
   path: "/about",
   name: NEXT_ABOUT_ROUTE_NAME,
   meta: defineProtectedPageMeta({
-    pageKind: "settings",
+    pageKind: "about",
     titleKey: "common.about",
-    navLabelKey: "shell.nav_settings",
+    navLabelKey: "common.about",
   }),
 };
 
@@ -235,6 +235,7 @@ export const NEXT_PROTECTED_ROUTES: NextProtectedRouteDefinition[] = [
   NEXT_PAINT_ROUTE,
   NEXT_DEVELOPER_ROUTE,
   NEXT_SETTINGS_ROUTE,
+  NEXT_ABOUT_ROUTE,
 ];
 
 export const NEXT_SERVER_CREATE_ROUTE: NextProtectedRouteDefinition = {
@@ -263,7 +264,6 @@ export const NEXT_AUXILIARY_PROTECTED_ROUTES: NextProtectedRouteDefinition[] = [
   NEXT_PLUGIN_MARKET_ROUTE,
   NEXT_PLUGIN_DETAIL_ROUTE,
   NEXT_PLUGIN_CATEGORY_ROUTE,
-  NEXT_ABOUT_ROUTE,
 ];
 
 export const NEXT_LEGACY_COMPAT_ENTRY_PATHS = Object.freeze([
@@ -305,6 +305,7 @@ const NEXT_ROUTE_META_BY_KIND: Record<NextPageKind, NextRoutePageMeta> = {
   paint: NEXT_PAINT_ROUTE.meta,
   developer: NEXT_DEVELOPER_ROUTE.meta,
   settings: NEXT_SETTINGS_ROUTE.meta,
+  about: NEXT_ABOUT_ROUTE.meta,
 };
 
 const NEXT_PROTECTED_ROUTE_INDEX_BY_KIND: Record<NextProtectedPageKind, number> = {
@@ -316,6 +317,7 @@ const NEXT_PROTECTED_ROUTE_INDEX_BY_KIND: Record<NextProtectedPageKind, number> 
   paint: 5,
   developer: 6,
   settings: 7,
+  about: 8,
 };
 
 export function getNextRoutePageMeta(meta: Record<string, unknown>): NextRoutePageMeta {

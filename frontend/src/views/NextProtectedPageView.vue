@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useSlots } from "vue";
-import { Download, House, Link2, Palette, Puzzle, Server, Settings2, Wrench } from "@lucide/vue";
+import { Download, House, Info, Link2, Palette, Puzzle, Server, Settings2, Wrench } from "@lucide/vue";
 import { isBrowserEnv } from "@api/tauri";
 import { useRoute, useRouter } from "vue-router";
 import { i18n } from "@language";
@@ -57,6 +57,7 @@ const navIconByKind = {
   paint: Palette,
   developer: Wrench,
   settings: Settings2,
+  about: Info,
 } as const;
 
 const hostSidebarItems = computed(() => nextHostRuntime.sidebarItems.value);

@@ -21,7 +21,8 @@ export function usePaintPage() {
 
   const settings = settingsDraft.settings;
   const {
-    personalizationBusy,
+    exportBusy,
+    importBusy,
     exportPersonalizationPackage,
     importPersonalizationPackage,
   } = usePaintPersonalizationActions({
@@ -83,7 +84,8 @@ export function usePaintPage() {
     appearanceOptions,
     settingsDraft,
     settings,
-    personalizationBusy,
+    exportBusy,
+    importBusy,
     exportPersonalizationPackage,
     importPersonalizationPackage,
     summaryFacts,

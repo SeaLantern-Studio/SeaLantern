@@ -8,6 +8,7 @@ export const NEXT_PAGE_KINDS = {
   paint: "paint",
   developer: "developer",
   settings: "settings",
+  about: "about",
 } as const;
 
 export type NextPageKind = (typeof NEXT_PAGE_KINDS)[keyof typeof NEXT_PAGE_KINDS];

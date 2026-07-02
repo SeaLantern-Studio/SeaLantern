@@ -9,6 +9,7 @@ import {
 
 const NAVIGATION_HOLD_DURATION_MS = 420;
 const NEXT_SHELL_TRANSITION_DIRECTIONS = new Set<NextShellNavigationDirection>(["up", "down"]);
+const visitedPageKinds = new Set<NextProtectedPageKind>();
 
 const navigationDirection = shallowRef<NextShellNavigationDirection | null>(null);
 const navigationHold = shallowRef(false);
@@ -125,8 +126,10 @@ export function useNextShellNavigationTransition(currentPageKind: NextProtectedP
     const nextProtectedRoute = getNextProtectedRouteByName(route.name);
     const mountedPageKind = nextProtectedRoute?.meta.pageKind ?? currentPageKind;
     const pending = pendingNavigation.value;
+    const hasVisitedBefore = visitedPageKinds.has(mountedPageKind);
+    visitedPageKinds.add(mountedPageKind);
 
-    if (navigationHold.value && pending?.to === mountedPageKind) {
+    if (navigationHold.value && pending?.to === mountedPageKind && hasVisitedBefore) {
       navigationDirection.value = pending.direction;
       scheduleNavigationHoldRelease();
     } else {
