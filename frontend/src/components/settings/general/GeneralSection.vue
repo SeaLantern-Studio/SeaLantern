@@ -9,7 +9,9 @@ const {
   bootstrapping,
   pending,
   state,
+  languageOptions,
   closeActionOptions,
+  updateLanguage,
   updateCloseAction,
   updateCloseServersOnExit,
   updateCloseServersOnUpdate,
@@ -22,6 +24,32 @@ const {
     <p class="general-section__description">{{ i18n.t("settings.next.general.live_hint") }}</p>
 
     <div class="general-section__list">
+      <section class="general-section__item">
+        <div class="general-section__copy">
+          <span class="general-section__item-title">{{ i18n.t("settings.language") }}</span>
+          <p class="general-section__item-description">
+            {{ i18n.t("settings.language_desc") }}
+          </p>
+        </div>
+
+        <div class="general-section__control general-section__control--select">
+          <span
+            v-if="pending.language"
+            class="general-section__saving-indicator"
+            aria-hidden="true"
+          />
+          <div class="general-section__select-wrap">
+            <SLSelect
+              :model-value="state.language"
+              :options="languageOptions"
+              :disabled="bootstrapping || pending.language"
+              dropdown-width="220px"
+              @update:model-value="updateLanguage"
+            />
+          </div>
+        </div>
+      </section>
+
       <section class="general-section__item">
         <div class="general-section__copy">
           <span class="general-section__item-title">{{ i18n.t("settings.close_action") }}</span>

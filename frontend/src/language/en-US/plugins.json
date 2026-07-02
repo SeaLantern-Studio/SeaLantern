@@ -132,7 +132,15 @@
     "permission_revoked_title": "This plugin is revoked",
     "permission_confirm_title": "Permission confirmation required",
     "permission_revoked_message": "{name} is currently revoked. Check the plugin source and trust state before enabling it.",
-    "permission_confirm_message": "{name} requests extra permissions. Confirm before enabling it."
+    "permission_confirm_message": "{name} requests extra permissions. Confirm before enabling it.",
+    "workspace": {
+      "nav_aria_label": "Plugin sections",
+      "manage_label": "Plugin management",
+      "manage_description": "Installed plugins, local import, and update status.",
+      "market_label": "Plugin market",
+      "market_description": "Browse, search, and install plugins from the market.",
+      "config_description": "Review plugin details and adjust plugin settings."
+    }
   },
   "missing_required_deps": "Missing required dependencies, cannot enable",
   "dep_tooltip": {

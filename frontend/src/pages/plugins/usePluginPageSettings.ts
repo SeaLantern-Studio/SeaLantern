@@ -1,4 +1,4 @@
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, reactive, ref } from "vue";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import { usePluginStore } from "@stores/pluginStore";
 import type { PluginInfo } from "@type/plugin";
@@ -133,17 +133,6 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
     resetPluginSettingsForm(settingsForm, plugin.value.manifest.settings);
   }
 
-  onMounted(() => {
-    void loadPlugin();
-  });
-
-  watch(
-    () => options.pluginId(),
-    () => {
-      void loadPlugin();
-    },
-  );
-
   return {
     plugin,
     settingsForm,
@@ -157,6 +146,7 @@ export function usePluginPageSettings(options: UsePluginPageSettingsOptions) {
     getFieldSelectValue: getPluginFieldSelectValue,
     getFieldOptions: getPluginFieldOptions,
     updateSettingsField: updatePluginSettingsField,
+    loadPlugin,
     applyPreset,
     saveSettings,
     resetToDefault,

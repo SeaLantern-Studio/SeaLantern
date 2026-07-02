@@ -147,6 +147,10 @@ export function usePluginMarketPage() {
     await router.push({
       name: NEXT_PLUGIN_DETAIL_ROUTE_NAME,
       params: { pluginId: plugin.id },
+      query: {
+        ...route.query,
+        pluginsContext: "market",
+      },
     });
   }
 

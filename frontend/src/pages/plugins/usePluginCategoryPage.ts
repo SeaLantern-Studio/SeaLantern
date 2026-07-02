@@ -29,6 +29,7 @@ export function usePluginCategoryPage() {
     await router.push({
       name: NEXT_PLUGIN_DETAIL_ROUTE_NAME,
       params: { pluginId: pluginId.value },
+      query: route.query,
     });
   }
 

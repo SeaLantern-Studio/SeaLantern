@@ -160,11 +160,7 @@ onMounted(() => {
       />
 
       <div class="next-shell-frame__content-scroll">
-        <div
-          class="next-shell-frame__page-stage"
-          :class="props.pageTransitionClass"
-          @animationend.self="emit('pageTransitionSettled')"
-        >
+        <div class="next-shell-frame__page-stage">
           <header class="next-shell-frame__header">
             <div class="next-shell-frame__header-copy">
               <div class="next-shell-frame__header-title-group">
@@ -188,7 +184,11 @@ onMounted(() => {
             </div>
           </header>
 
-          <main class="next-shell-frame__main">
+          <main
+            class="next-shell-frame__main"
+            :class="props.pageTransitionClass"
+            @animationend.self="emit('pageTransitionSettled')"
+          >
             <slot />
           </main>
         </div>
@@ -634,37 +634,17 @@ onMounted(() => {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .next-shell-frame__page-stage--enter-down,
-  .next-shell-frame__page-stage--enter-up {
-    animation-duration: 320ms;
+  .next-shell-frame__page-body--fade-in {
+    animation-duration: 220ms;
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     animation-fill-mode: both;
+    animation-name: next-shell-frame-page-body-fade-in;
   }
 
-  .next-shell-frame__page-stage--enter-down {
-    animation-name: next-shell-frame-page-enter-down;
-  }
-
-  .next-shell-frame__page-stage--enter-up {
-    animation-name: next-shell-frame-page-enter-up;
-  }
-
-  @keyframes next-shell-frame-page-enter-down {
+  @keyframes next-shell-frame-page-body-fade-in {
     from {
       opacity: 0;
-      transform: translateY(-28px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes next-shell-frame-page-enter-up {
-    from {
-      opacity: 0;
-      transform: translateY(28px);
+      transform: translateY(8px);
     }
 
     to {

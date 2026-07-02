@@ -21,6 +21,8 @@
   "jvm_args": "JVM Arguments",
   "general": "General",
   "general_desc": "Basic behavior settings",
+  "language": "Language",
+  "language_desc": "Choose the interface language used by Sea Lantern.",
   "auto_stop_desc": "Automatically send stop command to running servers when exiting Sea Lantern to prevent data loss",
   "auto_eula_desc": "Automatically write eula=true before starting server, eliminating manual modification",
   "server_defaults": "Server Defaults",

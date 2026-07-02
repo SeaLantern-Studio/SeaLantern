@@ -74,9 +74,8 @@ export function useAppearanceSettingsSection() {
   const pluginStore = usePluginStore();
   const toast = useToast();
 
-  const bootstrapping = shallowRef(true);
   const fontsLoading = shallowRef(false);
-  const backgroundExpanded = shallowRef(false);
+  const backgroundExpanded = shallowRef(Boolean(settingsStore.settings.background_image));
 
   const fontSizeDraft = shallowRef(14);
   const backgroundOpacityDraft = shallowRef(0.3);
@@ -92,33 +91,6 @@ export function useAppearanceSettingsSection() {
 
   let saveQueue: Promise<void> = Promise.resolve();
 
-  function syncNumericDrafts(settings: AppSettings): void {
-    fontSizeDraft.value = normalizeNumber(
-      settings.font_size || 14,
-      FONT_SIZE_MIN,
-      FONT_SIZE_MAX,
-      FONT_SIZE_STEP,
-    );
-    backgroundOpacityDraft.value = normalizeNumber(
-      settings.background_opacity ?? 0.3,
-      BACKGROUND_OPACITY_MIN,
-      BACKGROUND_OPACITY_MAX,
-      BACKGROUND_OPACITY_STEP,
-    );
-    backgroundBlurDraft.value = normalizeNumber(
-      settings.background_blur ?? 0,
-      BACKGROUND_BLUR_MIN,
-      BACKGROUND_BLUR_MAX,
-      BACKGROUND_BLUR_STEP,
-    );
-    backgroundBrightnessDraft.value = normalizeNumber(
-      settings.background_brightness ?? 1,
-      BACKGROUND_BRIGHTNESS_MIN,
-      BACKGROUND_BRIGHTNESS_MAX,
-      BACKGROUND_BRIGHTNESS_STEP,
-    );
-  }
-
   function applyLocalSettings(partial: PartialSettings, applyClientSettings = false): void {
     settingsStore.updateSettings(partial as Partial<AppSettings>);
 
@@ -129,7 +101,6 @@ export function useAppearanceSettingsSection() {
 
   async function restorePersistedSettings(): Promise<void> {
     await settingsStore.loadSettings(true);
-    syncNumericDrafts(settingsStore.settings);
     void settingsStore.queueClientSettingsApply();
   }
 
@@ -242,7 +213,7 @@ export function useAppearanceSettingsSection() {
     });
   });
 
-  const isReady = computed(() => !bootstrapping.value);
+  const isReady = computed(() => settingsStore.isLoaded);
   const hasBackgroundImage = computed(() => Boolean(settingsStore.settings.background_image));
   const backgroundImagePath = computed(() => settingsStore.settings.background_image || "");
   const backgroundPreviewUrl = computed(() => {
@@ -530,17 +501,12 @@ export function useAppearanceSettingsSection() {
     },
   );
 
-  onMounted(async () => {
-    const tasks: Promise<unknown>[] = [settingsStore.ensureLoaded(), loadFontOptions()];
+  onMounted(() => {
+    void loadFontOptions();
 
     if (!pluginStore.plugins.length && !pluginStore.loading) {
-      tasks.push(pluginStore.loadPlugins());
+      void pluginStore.loadPlugins();
     }
-
-    await Promise.allSettled(tasks);
-    syncNumericDrafts(settingsStore.settings);
-    backgroundExpanded.value = Boolean(settingsStore.settings.background_image);
-    bootstrapping.value = false;
   });
 
   return {

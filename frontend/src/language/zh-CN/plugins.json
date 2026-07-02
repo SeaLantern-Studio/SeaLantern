@@ -132,7 +132,15 @@
     "permission_revoked_title": "该插件已被撤销",
     "permission_confirm_title": "启用前需要确认权限",
     "permission_revoked_message": "{name} 当前处于撤销状态，请先确认插件来源与信任状态。",
-    "permission_confirm_message": "{name} 请求了额外权限，确认后再继续启用。"
+    "permission_confirm_message": "{name} 请求了额外权限，确认后再继续启用。",
+    "workspace": {
+      "nav_aria_label": "插件分组",
+      "manage_label": "插件管理",
+      "manage_description": "查看已安装插件、本地导入与更新状态。",
+      "market_label": "插件市场",
+      "market_description": "浏览、搜索并安装市场中的插件。",
+      "config_description": "查看插件详情并调整插件设置。"
+    }
   },
   "missing_required_deps": "缺少必须依赖，无法启用",
   "dep_tooltip": {

@@ -197,6 +197,7 @@ export function usePluginsPage() {
       await router.push({
         name: NEXT_PLUGIN_CATEGORY_ROUTE_NAME,
         params: { pluginId },
+        query: { pluginsContext: "manage" },
       });
       return;
     }
@@ -204,6 +205,7 @@ export function usePluginsPage() {
     await router.push({
       name: NEXT_PLUGIN_DETAIL_ROUTE_NAME,
       params: { pluginId },
+      query: { pluginsContext: "manage" },
     });
   }
 

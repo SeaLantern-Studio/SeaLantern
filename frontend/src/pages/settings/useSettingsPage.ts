@@ -139,6 +139,10 @@ export function useSettingsPage() {
   watch(
     () => route.hash,
     (hash) => {
+      if (!hash) {
+        return;
+      }
+
       if (parseSettingsSectionHash(hash)) {
         return;
       }

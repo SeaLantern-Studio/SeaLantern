@@ -1,11 +1,13 @@
-import { computed, onMounted, reactive, shallowRef, watch } from "vue";
+import { computed, reactive, watch } from "vue";
 import { useGlobalMessage } from "@composables/useMessage";
 import { i18n } from "@language";
+import { useI18nStore } from "@stores/i18nStore";
 import { useSettingsStore } from "@stores/settingsStore";
 import { normalizeAppError } from "@utils/appError";
 
 type CloseAction = "ask" | "minimize" | "close";
 type GeneralSettingField =
+  | "language"
   | "closeAction"
   | "closeServersOnExit"
   | "closeServersOnUpdate"
@@ -21,11 +23,13 @@ function resolveCloseAction(value: string | undefined): CloseAction {
 
 export function useGeneralSettingsSection() {
   const settingsStore = useSettingsStore();
+  const i18nStore = useI18nStore();
   const globalMessage = useGlobalMessage();
 
-  const bootstrapping = shallowRef(!settingsStore.isLoaded);
+  const bootstrapping = computed(() => !settingsStore.isLoaded || settingsStore.isLoading);
 
   const state = reactive({
+    language: "zh-CN",
     closeAction: "ask" as CloseAction,
     closeServersOnExit: true,
     closeServersOnUpdate: true,
@@ -33,6 +37,7 @@ export function useGeneralSettingsSection() {
   });
 
   const pending = reactive<Record<GeneralSettingField, boolean>>({
+    language: false,
     closeAction: false,
     closeServersOnExit: false,
     closeServersOnUpdate: false,
@@ -44,16 +49,27 @@ export function useGeneralSettingsSection() {
     { label: i18n.t("settings.close_action_minimize"), value: "minimize" },
     { label: i18n.t("settings.close_action_close"), value: "close" },
   ]);
+  const languageOptions = computed(() => {
+    return i18nStore.localeOptions.map((option) => ({
+      label: option.label,
+      value: option.code,
+    }));
+  });
 
   watch(
     () =>
       [
+        settingsStore.settings.language,
         settingsStore.settings.close_action,
         settingsStore.settings.close_servers_on_exit,
         settingsStore.settings.close_servers_on_update,
         settingsStore.settings.auto_accept_eula,
       ] as const,
-    ([closeAction, closeServersOnExit, closeServersOnUpdate, autoAcceptEula]) => {
+    ([language, closeAction, closeServersOnExit, closeServersOnUpdate, autoAcceptEula]) => {
+      if (!pending.language) {
+        state.language = language || i18nStore.currentLocale;
+      }
+
       if (!pending.closeAction) {
         state.closeAction = resolveCloseAction(closeAction);
       }
@@ -107,6 +123,31 @@ export function useGeneralSettingsSection() {
       globalMessage.error(normalized.message || i18n.t("common.message_unknown_error"));
     } finally {
       pending[field] = false;
+    }
+  }
+
+  async function updateLanguage(nextValue: string | number): Promise<void> {
+    const resolved = String(nextValue);
+    if (pending.language || resolved === state.language) {
+      return;
+    }
+
+    const previousValue = state.language;
+    pending.language = true;
+
+    try {
+      const applied = await i18nStore.setLocale(resolved);
+      if (!applied) {
+        throw new Error(`Unsupported locale: ${resolved}`);
+      }
+
+      state.language = resolved;
+    } catch (error) {
+      state.language = previousValue;
+      const normalized = normalizeAppError(error);
+      globalMessage.error(normalized.message || i18n.t("common.message_unknown_error"));
+    } finally {
+      pending.language = false;
     }
   }
 
@@ -171,19 +212,13 @@ export function useGeneralSettingsSection() {
     );
   }
 
-  onMounted(async () => {
-    try {
-      await settingsStore.ensureLoaded();
-    } finally {
-      bootstrapping.value = false;
-    }
-  });
-
   return {
     bootstrapping,
     pending,
     state,
+    languageOptions,
     closeActionOptions,
+    updateLanguage,
     updateCloseAction,
     updateCloseServersOnExit,
     updateCloseServersOnUpdate,

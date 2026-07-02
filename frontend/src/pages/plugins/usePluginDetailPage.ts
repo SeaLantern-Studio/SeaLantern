@@ -283,6 +283,7 @@ export function usePluginDetailPage() {
       }
 
       await Promise.allSettled([pluginStore.loadNavItems(), pluginStore.checkAllUpdates()]);
+      await pageSettings.loadPlugin();
 
       const requestUrl = marketSourceUrl.value === MARKET_BASE_URL ? undefined : marketSourceUrl.value;
       const catalog = await loadPluginMarketCatalog({
@@ -399,6 +400,7 @@ export function usePluginDetailPage() {
     await router.push({
       name: NEXT_PLUGIN_CATEGORY_ROUTE_NAME,
       params: { pluginId: pluginId.value },
+      query: route.query,
     });
   }
 

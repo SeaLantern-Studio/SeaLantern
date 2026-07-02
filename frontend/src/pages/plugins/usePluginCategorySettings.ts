@@ -161,6 +161,10 @@ export function usePluginCategorySettings(options: UsePluginCategorySettingsOpti
   watch(
     () => pluginStore.plugins,
     (newPlugins) => {
+      if (loading.value || isInitializingForms.value) {
+        return;
+      }
+
       if (newPlugins.length > 0 && !plugin.value) {
         void loadPluginData();
       }

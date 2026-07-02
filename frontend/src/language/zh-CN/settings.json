@@ -21,6 +21,8 @@
   "jvm_args": "JVM 参数",
   "general": "通用",
   "general_desc": "基本行为设置",
+  "language": "语言",
+  "language_desc": "选择 Sea Lantern 使用的界面语言。",
   "auto_stop_desc": "退出 Sea Lantern 时自动向运行中的服务器发送 stop 命令，防止数据丢失",
   "auto_eula_desc": "启动服务器前自动写入 eula=true，省去手动修改的步骤",
   "server_defaults": "服务器默认值",
