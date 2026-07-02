@@ -98,6 +98,9 @@ function sanitizeInstance(
   raw: Partial<NextHomeCardInstance>,
   registry: NextHomeCardRegistry,
 ): NextHomeCardInstance | null {
+  // Persisted layout data may come from older schemas or manual edits in localStorage.
+  // Sanitize every instance through the current registry so bad coordinates never enter
+  // the editor state and future registry changes can still hydrate old layouts safely.
   if (!raw.kind) return null;
   const meta = resolveMeta(registry, raw.kind);
   if (!meta) return null;
@@ -157,6 +160,8 @@ function findPlacement(
   existing: NextHomeCardInstance[],
   preferred?: NextHomePlacementRequest,
 ): NextHomePlacementRequest | null {
+  // Placement is first-fit on the normalized grid, not geometric packing. That keeps
+  // behavior deterministic across drag, paste, reset, and future registry migrations.
   const meta = resolveMeta(registry, kind);
   if (!meta) return null;
 
@@ -392,6 +397,8 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     if (!meta) return false;
 
     if (snapMode.value) {
+      // Snap mode resolves against sibling instances before mutating state so the editor
+      // either lands on a valid grid slot or keeps the previous placement unchanged.
       const requestedPlacement = updater(source, meta);
       const resolvedPlacement = resolveSnapPlacementForInstance(
         source,
@@ -516,6 +523,8 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         try {
+          // Hydration is intentionally lossy: invalid cards are dropped instead of blocking
+          // the whole layout, and an empty valid result falls back to the shipped default.
           const parsed = JSON.parse(raw) as Partial<NextHomeCardInstance>[];
           const hydrated = parsed
             .map((instance) => sanitizeInstance(instance, registry.value))

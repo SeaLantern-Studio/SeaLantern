@@ -148,6 +148,8 @@ async function readSseStream(
   isDisposed: () => boolean,
   buffer: string = "",
 ): Promise<void> {
+  // Keep the trailing partial frame between reads; SSE payload boundaries do not align
+  // with chunk boundaries, so parsing line-by-line would randomly truncate log events.
   const { value, done } = await reader.read();
   if (done || isDisposed()) {
     return;
@@ -463,6 +465,8 @@ export const serverApi = {
   },
 
   async forceStopAll(): Promise<ForceStopAllResult> {
+    // Force-stop is intentionally best-effort across the fleet: one server failing the
+    // confirmation flow must not prevent attempts on the remaining active instances.
     const servers = await this.getList();
     const activeServerIds = await Promise.all(
       servers.map(async (server) => {
@@ -666,6 +670,8 @@ export const serverApi = {
                 return;
               }
 
+              // Browser log streaming should self-heal on transient backend restarts. The
+              // explicit timer also prevents recursive immediate reconnect storms on failure.
               console.warn("[SSE] Connection error, reconnecting...", error);
               abortController?.abort();
               abortController = null;

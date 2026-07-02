@@ -22,6 +22,8 @@ let nextId = 0;
  * 用于在组件中显示错误、成功等提示消息
  */
 export function useMessage(defaultDuration: number = TIME.ERROR_MESSAGE_DURATION) {
+  // These refs model four independent inline-message slots. They intentionally do not share
+  // a queue because many pages bind each severity to a dedicated region in the template.
   const error = ref<string | null>(null);
   const success = ref<string | null>(null);
   const warning = ref<string | null>(null);
@@ -210,6 +212,8 @@ function addMessage(type: MessageType, message: string, duration: number = 2000)
 
   if (duration > 0) {
     const timer = setTimeout(() => {
+      // Route changes and manual dismissals can remove the toast early, so timeout cleanup
+      // must go through removeMessage instead of mutating the array inline here.
       removeMessage(id);
       messageTimers.delete(id);
     }, duration);

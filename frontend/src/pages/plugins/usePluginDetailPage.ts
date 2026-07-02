@@ -29,6 +29,8 @@ import {
 import { usePluginPageSettings } from "./usePluginPageSettings";
 
 const loadedPluginDetailIds = new Set<string>();
+// This cache only suppresses first-load skeletons for plugin ids that already rendered once
+// in the current session. It is not a data cache; network/store refresh still happens below.
 
 interface PluginDetailMarketState {
   pluginId: string;
@@ -75,6 +77,9 @@ function getPluginStateTone(state: PluginState): "success" | "warning" | "neutra
 }
 
 function inferGrantScope(plugin: PluginInfo): PluginEnableGrantScope {
+  // Trust level controls the narrowest safe grant scope the UI should suggest when the store
+  // asks for confirmation. Higher trust can bind to a stable hash, while looser trust stays
+  // version-scoped to avoid silently widening future permissions.
   switch (plugin.trust_level_display) {
     case "trusted":
       return "hash";
@@ -89,6 +94,8 @@ function inferGrantScope(plugin: PluginInfo): PluginEnableGrantScope {
 }
 
 function resolveMarketSourceUrl(): string {
+  // Always re-validate the stored URL before use because settings may persist an outdated or
+  // malformed custom market entry from an older app version.
   const stored = localStorage.getItem(MARKET_URL_KEY) || "";
   const validated = validateMarketUrl(stored);
   return validated?.url || MARKET_BASE_URL;
@@ -99,6 +106,8 @@ function buildMarketIconUrl(plugin: MarketPlugin | null, marketUrl: string): str
     return null;
   }
 
+  // Market icons are stored relative to the plugin manifest path, not the catalog root, so
+  // the UI reconstructs the asset URL instead of assuming a flat icon endpoint contract.
   const dir = plugin._path.replace(/\/[^/]+$/, "");
   return `${marketUrl.trim().replace(/\/$/, "")}/${dir}/${plugin.icon_url}`;
 }
@@ -115,6 +124,8 @@ function resolveLocalizedMarketField(
     return value;
   }
 
+  // The market may publish partial locale maps. Prefer the active locale, then the repo's
+  // primary zh-CN copy, and finally any available entry so detail pages never render blank.
   const localeKey = locale.startsWith("zh") ? "zh-CN" : "en-US";
   return value[localeKey] || value["zh-CN"] || Object.values(value)[0] || "";
 }
@@ -246,6 +257,8 @@ export function usePluginDetailPage() {
   });
 
   const supportsSettingsOnDetail = computed(() => {
+    // Category-mode plugins route to a dedicated category page instead of embedding settings
+    // on the detail view, so this flag protects the page from rendering two competing surfaces.
     return Boolean(
       settingsReady.value &&
         installedPlugin.value &&
@@ -262,6 +275,8 @@ export function usePluginDetailPage() {
       return false;
     }
 
+    // Once a plugin is installed, the market action only remains visible for updates. The
+    // enable/disable lifecycle is handled by local plugin state, not by reinstalling packages.
     if (!installedPlugin.value) {
       return true;
     }
@@ -287,6 +302,8 @@ export function usePluginDetailPage() {
   });
 
   function isLatestRequest(requestId: number, targetPluginId: string): boolean {
+    // Route changes can overlap catalog/detail/settings loads. Sequence gating keeps late
+    // responses from a previous plugin id from repainting the current detail page state.
     return requestId === loadRequestSequence && targetPluginId === pluginId.value;
   }
 
@@ -298,6 +315,8 @@ export function usePluginDetailPage() {
   }
 
   function resetMarketState(targetPluginId: string): void {
+    // Keep the target plugin id alongside the payload so computed consumers can ignore stale
+    // async writes without tearing down the shared reactive object between requests.
     marketState.value = {
       pluginId: targetPluginId,
       plugin: null,
@@ -330,6 +349,8 @@ export function usePluginDetailPage() {
   });
 
   async function loadPage(targetPluginId = pluginId.value): Promise<void> {
+    // This flow merges installed-plugin state with remote market metadata. Each awaited step
+    // must re-check request freshness because the route can move while network/catalog work is in flight.
     const requestId = ++loadRequestSequence;
 
     if (!loadedPluginDetailIds.has(targetPluginId)) {
@@ -406,6 +427,8 @@ export function usePluginDetailPage() {
             detail: null,
           };
 
+          // Installed plugins remain actionable even when the market detail endpoint fails,
+          // so only surface the remote error when there is no local plugin fallback.
           if (!hasInstalledPlugin(targetPluginId)) {
             setErrorState(targetPluginId, err instanceof Error ? err.message : String(err));
           }
@@ -445,6 +468,8 @@ export function usePluginDetailPage() {
         loadPlugins: pluginStore.loadPlugins,
         showFeedback,
       });
+      // Reload both update metadata and the merged page state so the detail view reflects the
+      // installed manifest rather than continuing to render market-only information.
       await pluginStore.checkAllUpdates();
       await loadPage();
     } finally {
@@ -460,6 +485,8 @@ export function usePluginDetailPage() {
     const plugin = installedPlugin.value;
     const result = await pluginStore.togglePlugin(plugin.manifest.id, nextEnabled);
     if (!result.success && result.confirmationRequired) {
+      // Preserve the plugin snapshot returned by the store because the confirmation dialog
+      // must explain the exact permission set that blocked the current toggle attempt.
       const resultPlugin = result.plugin ?? plugin;
       pendingPermissionPluginId.value = plugin.manifest.id;
       pendingPermissionPluginName.value = getLocalizedPluginName(resultPlugin.manifest, i18n.getLocale());
@@ -491,6 +518,8 @@ export function usePluginDetailPage() {
       return;
     }
 
+    // Confirmation reuses the pending dialog state instead of re-reading the route/plugin store
+    // so the grant request cannot drift if the visible page changes before the user clicks confirm.
     const result = await pluginStore.confirmEnablePlugin(pendingPluginId, {
       grant_scope: pendingPermissionGrantScope.value,
     });
@@ -548,6 +577,8 @@ export function usePluginDetailPage() {
     pluginId,
     (nextPluginId) => {
       if (!nextPluginId) {
+        // Invalidate outstanding requests before clearing state so late async completions
+        // cannot repopulate the page after the route became invalid.
         loadRequestSequence += 1;
         loadingPluginId.value = null;
         resetMarketState("");
