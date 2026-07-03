@@ -84,12 +84,14 @@ COPY backend/server-local-setup-core/Cargo.toml ./backend/server-local-setup-cor
 COPY backend/server-local-setup-core/src/ ./backend/server-local-setup-core/src/
 COPY backend/docker-core/Cargo.toml ./backend/docker-core/
 COPY backend/docker-core/src/ ./backend/docker-core/src/
+COPY backend/i18n-core/Cargo.toml ./backend/i18n-core/
+COPY backend/i18n-core/src/ ./backend/i18n-core/src/
+COPY backend/i18n-core/locales/ ./backend/i18n-core/locales/
 COPY backend/tauri-host/Cargo.toml ./backend/tauri-host/
 COPY backend/tauri-host/build.rs ./backend/tauri-host/
 COPY backend/tauri-host/src/ ./backend/tauri-host/src/
 COPY backend/tauri-host/icons/ ./backend/tauri-host/icons/
 COPY backend/tauri-host/tauri.conf.json ./backend/tauri-host/
-COPY backend/tauri-host/locales/ ./backend/tauri-host/locales/
 COPY backend/docker-entry/Cargo.toml ./backend/docker-entry/
 COPY backend/docker-entry/src/ ./backend/docker-entry/src/
 
@@ -149,12 +151,14 @@ COPY backend/server-local-setup-core/Cargo.toml ./backend/server-local-setup-cor
 COPY backend/server-local-setup-core/src/ ./backend/server-local-setup-core/src/
 COPY backend/docker-core/Cargo.toml ./backend/docker-core/
 COPY backend/docker-core/src/ ./backend/docker-core/src/
+COPY backend/i18n-core/Cargo.toml ./backend/i18n-core/
+COPY backend/i18n-core/src/ ./backend/i18n-core/src/
+COPY backend/i18n-core/locales/ ./backend/i18n-core/locales/
 COPY backend/tauri-host/Cargo.toml ./backend/tauri-host/
 COPY backend/tauri-host/build.rs ./backend/tauri-host/
 COPY backend/tauri-host/src/ ./backend/tauri-host/src/
 COPY backend/tauri-host/icons/ ./backend/tauri-host/icons/
 COPY backend/tauri-host/tauri.conf.json ./backend/tauri-host/
-COPY backend/tauri-host/locales/ ./backend/tauri-host/locales/
 COPY backend/docker-entry/Cargo.toml ./backend/docker-entry/
 COPY backend/docker-entry/src/ ./backend/docker-entry/src/
 

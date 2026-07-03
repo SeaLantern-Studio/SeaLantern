@@ -1,36 +1,37 @@
 use super::common::{i18n_err, i18n_err1, plugin_i18n_namespace};
-use crate::services::global::i18n_service;
+use crate::plugins::runtime::host_api::{
+    host_get_all_translations, host_get_available_locales, host_get_locale,
+    host_get_translations_for_locale, host_has_translation, host_has_translation_for_locale,
+    host_t, host_t_with_options,
+};
 use mlua::{Lua, Table, Value, Variadic};
 use std::collections::HashMap;
 
 pub(super) fn get_locale(_: &Lua, (): ()) -> mlua::Result<String> {
-    Ok(i18n_service().get_locale())
+    Ok(host_get_locale())
 }
 
 pub(super) fn translate(_: &Lua, args: Variadic<Value>) -> mlua::Result<String> {
-    let i18n = i18n_service();
     let key = required_string_arg(&args, 0, "plugins.runtime.i18n.translate_key_string_required")?;
 
     match args.get(1) {
-        Some(Value::Table(options)) => Ok(i18n.t_with_options(&key, &table_to_options(options)?)),
-        Some(Value::Nil) | None => Ok(i18n.t(&key)),
+        Some(Value::Table(options)) => Ok(host_t_with_options(&key, &table_to_options(options)?)),
+        Some(Value::Nil) | None => Ok(host_t(&key)),
         Some(_) => Err(i18n_err("plugins.runtime.i18n.translate_options_table_required")),
     }
 }
 
 pub(super) fn has_translation(_: &Lua, args: Variadic<Value>) -> mlua::Result<bool> {
-    let i18n = i18n_service();
     let key =
         required_string_arg(&args, 0, "plugins.runtime.i18n.has_translation_key_string_required")?;
 
     match optional_string_arg(&args, 1)? {
-        Some(locale) => Ok(i18n.has_translation_for_locale(&locale, &key)),
-        None => Ok(i18n.has_translation(&key)),
+        Some(locale) => Ok(host_has_translation_for_locale(&locale, &key)),
+        None => Ok(host_has_translation(&key)),
     }
 }
 
 pub(super) fn t_or_default(_: &Lua, args: Variadic<Value>) -> mlua::Result<String> {
-    let i18n = i18n_service();
     let key = required_string_arg(
         &args,
         0,
@@ -52,10 +53,10 @@ pub(super) fn t_or_default(_: &Lua, args: Variadic<Value>) -> mlua::Result<Strin
         }
     };
 
-    if i18n.has_translation(&key) {
+    if host_has_translation(&key) {
         Ok(match options {
-            Some(options) => i18n.t_with_options(&key, &options),
-            None => i18n.t(&key),
+            Some(options) => host_t_with_options(&key, &options),
+            None => host_t(&key),
         })
     } else {
         Ok(default_value)
@@ -63,15 +64,15 @@ pub(super) fn t_or_default(_: &Lua, args: Variadic<Value>) -> mlua::Result<Strin
 }
 
 pub(super) fn get_all_translations(lua: &Lua, (): ()) -> mlua::Result<Table> {
-    map_to_lua_table(lua, i18n_service().get_all_translations())
+    map_to_lua_table(lua, host_get_all_translations())
 }
 
 pub(super) fn get_translations(lua: &Lua, locale: String) -> mlua::Result<Table> {
-    map_to_lua_table(lua, i18n_service().get_translations_for_locale(&locale))
+    map_to_lua_table(lua, host_get_translations_for_locale(&locale))
 }
 
 pub(super) fn get_available_locales(lua: &Lua, (): ()) -> mlua::Result<Table> {
-    let locales = i18n_service().get_available_locales();
+    let locales = host_get_available_locales();
     let table = lua.create_table()?;
     for (i, locale) in locales.iter().enumerate() {
         table.set(i + 1, locale.clone())?;
@@ -83,7 +84,7 @@ pub(super) fn translate_plugin(
     _: &Lua,
     (plugin_id, key): (String, String),
 ) -> mlua::Result<String> {
-    Ok(i18n_service().t(&plugin_i18n_namespace(&plugin_id, &key)))
+    Ok(host_t(&plugin_i18n_namespace(&plugin_id, &key)))
 }
 
 fn required_string_arg(

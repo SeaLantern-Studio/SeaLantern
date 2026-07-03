@@ -1,6 +1,7 @@
 use super::common::{callbacks_table, i18n_err1, remove_locale_callback_token, I18nContext};
-use crate::services::global::i18n_service;
+use crate::plugins::runtime::host_api::host_on_locale_change;
 use mlua::{Function, Table, Value};
+use std::sync::Arc;
 
 const NEXT_CALLBACK_ID_FIELD: &str = "__next_callback_id";
 
@@ -67,7 +68,7 @@ fn ensure_locale_listener_registered(ctx: &I18nContext, token_key: &str) -> mlua
 
     let callback_plugin_id = ctx.plugin_id.clone();
     let lua_ref = ctx.lua.clone();
-    let token = i18n_service().on_locale_change(move |_old_locale, new_locale| {
+    let token = host_on_locale_change(Arc::new(move |_old_locale, new_locale| {
         let Ok(callbacks) = lua_ref.named_registry_value::<Table>(&format!(
             "_locale_change_callbacks_{}",
             callback_plugin_id
@@ -91,10 +92,10 @@ fn ensure_locale_listener_registered(ctx: &I18nContext, token_key: &str) -> mlua
                 eprintln!("i18n callback error: {}", e);
             }
         }
-    });
+    }));
 
     ctx.lua
-        .set_named_registry_value(token_key, token.0)
+        .set_named_registry_value(token_key, token)
         .map_err(|e| i18n_err1("plugins.runtime.i18n.store_token_failed", e.to_string()))
 }
 

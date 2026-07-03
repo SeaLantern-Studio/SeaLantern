@@ -1,7 +1,8 @@
 // 公共助手函数
 
-use crate::plugins::api::{emit_component_event, emit_permission_log, emit_ui_event};
-use crate::services::global::i18n_service;
+use crate::plugins::runtime::host_api::{
+    host_emit_component_event, host_emit_permission_log, host_emit_ui_event, host_t_with_options,
+};
 use crate::utils::logger::log_error_ctx;
 use mlua::{Function, Lua, String as LuaString, Table, Value};
 use serde_json::{Map, Value as JsonValue};
@@ -14,14 +15,14 @@ pub(super) const VALID_CONTEXT_MENU_CONTEXTS: &[&str] =
 pub(super) fn ui_t1(key: &str, a: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
-    i18n_service().t_with_options(key, &m)
+    host_t_with_options(key, &m)
 }
 
 pub(super) fn ui_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
     m.insert("1".to_string(), b.into());
-    i18n_service().t_with_options(key, &m)
+    host_t_with_options(key, &m)
 }
 
 pub(super) fn lua_str(s: LuaString) -> String {
@@ -65,7 +66,7 @@ pub(super) fn emit_component_action(
     payload: JsonValue,
 ) -> mlua::Result<bool> {
     let payload = json_to_string(&payload, ctx)?;
-    emit_result(lua, pid, ctx, emit_component_event(pid, &payload))
+    emit_result(lua, pid, ctx, host_emit_component_event(pid, &payload))
 }
 
 #[derive(Clone, Copy)]
@@ -84,9 +85,9 @@ pub(super) fn emit_ui_action(
     log_spec: Option<UiLogSpec<'_>>,
 ) -> mlua::Result<bool> {
     if let Some(spec) = log_spec {
-        let _ = emit_permission_log(pid, "api_call", spec.api_name, spec.target);
+        let _ = host_emit_permission_log(pid, "api_call", spec.api_name, spec.target);
     }
-    emit_result(lua, pid, ctx, emit_ui_event(pid, event, target, payload))
+    emit_result(lua, pid, ctx, host_emit_ui_event(pid, event, target, payload))
 }
 
 pub(super) fn validate_context_menu_context(context: &str) -> mlua::Result<()> {

@@ -3,7 +3,7 @@ use super::common::{
     emit_component_action, lua_opt_str, lua_str, lua_value_to_json, map_create_err, map_set_err,
     table_to_json, ui_t2,
 };
-use crate::plugins::api::component_mirror_list;
+use crate::plugins::runtime::host_api::{host_component_mirror_list, host_t_with_options};
 use crate::plugins::runtime::permissions::UI_PERMISSION;
 use mlua::Table;
 
@@ -14,7 +14,7 @@ fn require_component_permission(permissions: &[String], fine_permission: &str) -
     {
         Ok(())
     } else {
-        Err(mlua::Error::runtime(crate::services::global::i18n_service().t_with_options(
+        Err(mlua::Error::runtime(host_t_with_options(
             "plugins.runtime.permissions.permission_required",
             &std::collections::HashMap::from([(
                 "0".to_string(),
@@ -68,7 +68,7 @@ fn register_list(runtime: &PluginRuntime, component_table: &Table) -> Result<(),
         .create_function(move |lua, page_filter: Option<mlua::String>| {
             require_component_permission(&permissions, "ui.component.read")?;
             let filter = lua_opt_str(page_filter);
-            let entries = component_mirror_list(filter.as_deref());
+            let entries = host_component_mirror_list(filter.as_deref());
             let result = lua.create_table()?;
             for (i, entry) in entries.iter().enumerate() {
                 let item = lua.create_table()?;

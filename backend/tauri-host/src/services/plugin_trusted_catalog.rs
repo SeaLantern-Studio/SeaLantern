@@ -1,47 +1,14 @@
-use crate::hardcode_data::app_files::PLUGIN_INSTALL_METADATA_FILE_NAME;
 use crate::models::plugin::{
     PluginDistributionClass, PluginEnableBlockReason, PluginEnableGrantScope, PluginEnableResult,
     PluginExecutionClass, PluginInfo, PluginIntegrityStatus, PluginManifest,
     PluginPermissionProfile, PluginReviewStatus, PluginTrustLevelDisplay,
     PluginTrustedPolicySource,
 };
-use crate::plugins::runtime::permissions::normalize_permissions;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-use std::collections::HashSet;
 use std::path::Path;
 
-const TRUSTED_CATALOG_JSON: &str = include_str!("../../../../shared/plugin-trusted-catalog.json");
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrustedCatalogSnapshot {
-    pub version: u32,
-    pub catalog_id: String,
-    pub generated_at: String,
-    pub expires_at: String,
-    pub issuer: String,
-    #[serde(default)]
-    pub plugins: Vec<TrustedCatalogEntry>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrustedCatalogEntry {
-    pub plugin_id: String,
-    pub version: String,
-    pub archive_sha256: String,
-    pub publisher_id: String,
-    pub review_class: String,
-    pub permission_profile: String,
-    #[serde(default)]
-    pub permission_ceiling: Vec<String>,
-    pub repository: Option<String>,
-    pub license: Option<String>,
-    pub reviewed_at: Option<String>,
-    #[serde(default)]
-    pub revoked: bool,
-    pub notes: Option<String>,
-}
+#[allow(unused_imports)]
+pub use sea_lantern_plugin_trust_core::{TrustedCatalogEntry, TrustedCatalogSnapshot};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PluginInstallMetadata {
@@ -82,103 +49,32 @@ pub struct PluginTrustAssessment {
     pub requires_explicit_consent: bool,
 }
 
-static TRUSTED_CATALOG: Lazy<TrustedCatalogSnapshot> = Lazy::new(|| {
-    serde_json::from_str(TRUSTED_CATALOG_JSON)
-        .expect("shared/plugin-trusted-catalog.json must stay valid")
-});
-
+#[allow(dead_code)]
 pub fn bundled_snapshot() -> &'static TrustedCatalogSnapshot {
-    &TRUSTED_CATALOG
+    sea_lantern_plugin_trust_core::bundled_snapshot()
 }
 
+#[allow(dead_code)]
 pub fn install_metadata_path(plugin_dir: &Path) -> std::path::PathBuf {
-    plugin_dir.join(PLUGIN_INSTALL_METADATA_FILE_NAME)
+    sea_lantern_plugin_trust_core::install_metadata_path(plugin_dir)
 }
 
 pub fn read_install_metadata(plugin_dir: &Path) -> Option<PluginInstallMetadata> {
-    let path = install_metadata_path(plugin_dir);
-    let content = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str(&content).ok()
+    sea_lantern_plugin_trust_core::read_install_metadata(plugin_dir).map(from_core_install_metadata)
 }
 
 pub fn write_install_metadata(
     plugin_dir: &Path,
     metadata: &PluginInstallMetadata,
 ) -> Result<(), String> {
-    let path = install_metadata_path(plugin_dir);
-    let json = serde_json::to_string_pretty(metadata)
-        .map_err(|error| format!("Failed to serialize plugin install metadata: {}", error))?;
-    std::fs::write(&path, json).map_err(|error| {
-        format!("Failed to write plugin install metadata '{}': {}", path.display(), error)
-    })
-}
-
-fn should_ignore_tree_hash_entry(relative_path: &str) -> bool {
-    matches!(relative_path, PLUGIN_INSTALL_METADATA_FILE_NAME | "settings.json")
+    sea_lantern_plugin_trust_core::write_install_metadata(
+        plugin_dir,
+        &to_core_install_metadata(metadata.clone()),
+    )
 }
 
 pub fn compute_plugin_tree_sha256(plugin_dir: &Path) -> Result<String, String> {
-    fn collect_files(
-        root: &Path,
-        current: &Path,
-        entries: &mut Vec<(String, Vec<u8>)>,
-    ) -> Result<(), String> {
-        let mut children = std::fs::read_dir(current)
-            .map_err(|error| {
-                format!("Failed to read plugin directory '{}': {}", current.display(), error)
-            })?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|error| format!("Failed to read plugin directory entry: {}", error))?;
-        children.sort_by_key(|entry| entry.file_name());
-
-        for entry in children {
-            let path = entry.path();
-            let metadata = std::fs::symlink_metadata(&path).map_err(|error| {
-                format!("Failed to inspect plugin entry '{}': {}", path.display(), error)
-            })?;
-            if metadata.file_type().is_symlink() {
-                return Err(format!("Plugin entry '{}' must not be a symlink", path.display()));
-            }
-
-            let relative = path
-                .strip_prefix(root)
-                .map_err(|error| {
-                    format!("Failed to normalize plugin entry '{}': {}", path.display(), error)
-                })?
-                .to_string_lossy()
-                .replace('\\', "/");
-
-            if metadata.is_dir() {
-                collect_files(root, &path, entries)?;
-                continue;
-            }
-
-            if should_ignore_tree_hash_entry(&relative) {
-                continue;
-            }
-
-            let content = std::fs::read(&path).map_err(|error| {
-                format!("Failed to read plugin entry '{}': {}", path.display(), error)
-            })?;
-            entries.push((relative, content));
-        }
-
-        Ok(())
-    }
-
-    let mut entries = Vec::new();
-    collect_files(plugin_dir, plugin_dir, &mut entries)?;
-
-    let mut hasher = Sha256::new();
-    for (relative, content) in entries {
-        hasher.update(relative.as_bytes());
-        hasher.update([0u8]);
-        hasher.update((content.len() as u64).to_le_bytes());
-        hasher.update(content);
-        hasher.update([0xff]);
-    }
-
-    Ok(format!("{:x}", hasher.finalize()))
+    sea_lantern_plugin_trust_core::compute_plugin_tree_sha256(plugin_dir)
 }
 
 pub fn apply_runtime_integrity_state(
@@ -186,98 +82,76 @@ pub fn apply_runtime_integrity_state(
     plugin_dir: &Path,
     metadata: &PluginInstallMetadata,
 ) -> Result<PluginInfo, String> {
-    let Some(expected_tree_hash) = metadata.installed_tree_sha256.as_deref() else {
-        return Ok(plugin);
+    let state = sea_lantern_plugin_trust_core::PluginRuntimeTrustState {
+        trust_level_display: to_core_trust_level(plugin.trust_level_display.clone()),
+        execution_class: to_core_execution_class(plugin.execution_class.clone()),
+        review_status: to_core_review_status(plugin.review_status.clone()),
+        integrity_status: to_core_integrity_status(plugin.integrity_status.clone()),
+        permission_profile: to_core_permission_profile(plugin.permission_profile.clone()),
+        hash_matched: plugin.hash_matched,
+        verified_hash: plugin.verified_hash.clone(),
+        revoked: plugin.revoked,
+        requires_explicit_consent: plugin.requires_explicit_consent,
     };
 
-    if !(plugin.hash_matched
-        || matches!(plugin.trust_level_display, PluginTrustLevelDisplay::Trusted))
-    {
-        return Ok(plugin);
-    }
+    let state = sea_lantern_plugin_trust_core::apply_runtime_integrity_state(
+        state,
+        plugin_dir,
+        &to_core_install_metadata(metadata.clone()),
+    )?;
 
-    let current_tree_hash = compute_plugin_tree_sha256(plugin_dir)?;
-    if current_tree_hash.eq_ignore_ascii_case(expected_tree_hash) {
-        return Ok(plugin);
-    }
-
-    plugin.trust_level_display = PluginTrustLevelDisplay::Unreviewed;
-    plugin.execution_class = PluginExecutionClass::Sandboxed;
-    if !plugin.revoked {
-        plugin.review_status = PluginReviewStatus::Unreviewed;
-    }
-    plugin.integrity_status = PluginIntegrityStatus::Mismatch;
-    plugin.permission_profile = PluginPermissionProfile::Unreviewed;
-    plugin.hash_matched = false;
-    plugin.verified_hash = None;
-    plugin.requires_explicit_consent = true;
+    plugin.trust_level_display = from_core_trust_level(state.trust_level_display);
+    plugin.execution_class = from_core_execution_class(state.execution_class);
+    plugin.review_status = from_core_review_status(state.review_status);
+    plugin.integrity_status = from_core_integrity_status(state.integrity_status);
+    plugin.permission_profile = from_core_permission_profile(state.permission_profile);
+    plugin.hash_matched = state.hash_matched;
+    plugin.verified_hash = state.verified_hash;
+    plugin.requires_explicit_consent = state.requires_explicit_consent;
     Ok(plugin)
 }
 
+#[allow(dead_code)]
 pub fn enable_grants_path(data_dir: &Path) -> std::path::PathBuf {
-    data_dir.join("plugin_enable_grants.json")
+    sea_lantern_plugin_trust_core::enable_grants_path(data_dir)
 }
 
 pub fn load_enable_grants(data_dir: &Path) -> Result<Vec<PersistedPluginEnableGrant>, String> {
-    let path = enable_grants_path(data_dir);
-    let content = match std::fs::read_to_string(&path) {
-        Ok(content) => content,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(error) => {
-            return Err(format!(
-                "Failed to read plugin enable grants '{}': {}",
-                path.display(),
-                error
-            ));
-        }
-    };
-
-    serde_json::from_str(&content).map_err(|error| {
-        format!("Failed to parse plugin enable grants '{}': {}", path.display(), error)
-    })
+    sea_lantern_plugin_trust_core::load_enable_grants(data_dir)
+        .map(|grants| grants.into_iter().map(from_core_grant).collect())
 }
 
+#[allow(dead_code)]
 pub fn save_enable_grants(
     data_dir: &Path,
     grants: &[PersistedPluginEnableGrant],
 ) -> Result<(), String> {
-    let path = enable_grants_path(data_dir);
-    let content = serde_json::to_string_pretty(grants)
-        .map_err(|error| format!("Failed to serialize plugin enable grants: {}", error))?;
-    std::fs::write(&path, content).map_err(|error| {
-        format!("Failed to write plugin enable grants '{}': {}", path.display(), error)
-    })
+    let grants = grants
+        .iter()
+        .cloned()
+        .map(to_core_grant)
+        .collect::<Vec<_>>();
+    sea_lantern_plugin_trust_core::save_enable_grants(data_dir, &grants)
 }
 
+#[allow(dead_code)]
 pub fn permissions_fingerprint(permissions: &[String]) -> String {
-    normalize_permissions(permissions.to_vec()).join("|")
+    sea_lantern_plugin_trust_core::permissions_fingerprint(permissions)
 }
 
+#[allow(dead_code)]
 pub fn required_grant_scope(plugin: &PluginInfo) -> Option<PluginEnableGrantScope> {
-    match plugin.trust_level_display {
-        PluginTrustLevelDisplay::Builtin => None,
-        PluginTrustLevelDisplay::Trusted => Some(PluginEnableGrantScope::Hash),
-        PluginTrustLevelDisplay::StandardSandbox => {
-            if plugin.requires_explicit_consent {
-                Some(PluginEnableGrantScope::Version)
-            } else {
-                None
-            }
-        }
-        PluginTrustLevelDisplay::Unreviewed => Some(PluginEnableGrantScope::Version),
-    }
+    sea_lantern_plugin_trust_core::required_grant_scope(&to_core_enable_context(plugin))
+        .map(from_core_grant_scope)
 }
 
 pub fn grant_scope_covers(
     provided: PluginEnableGrantScope,
     required: PluginEnableGrantScope,
 ) -> bool {
-    matches!(
-        (provided, required),
-        (PluginEnableGrantScope::Once, PluginEnableGrantScope::Once)
-            | (PluginEnableGrantScope::Version, PluginEnableGrantScope::Version)
-            | (PluginEnableGrantScope::Hash, PluginEnableGrantScope::Version)
-            | (PluginEnableGrantScope::Hash, PluginEnableGrantScope::Hash)
+    sea_lantern_plugin_trust_core::grant_scope_covers(
+        to_core_grant_scope(provided),
+        to_core_grant_scope(required),
     )
 }
 
@@ -285,73 +159,24 @@ pub fn evaluate_enable_requirement(
     plugin: &PluginInfo,
     grants: &[PersistedPluginEnableGrant],
 ) -> PluginEnableResult {
-    if plugin.revoked || matches!(plugin.review_status, PluginReviewStatus::Revoked) {
-        return PluginEnableResult {
-            success: false,
-            disabled_plugins: Vec::new(),
-            confirmation_required: true,
-            block_reason: Some(PluginEnableBlockReason::Revoked),
-            plugin: Some(plugin.clone()),
-            grant_scope: Some(PluginEnableGrantScope::Version),
-            message: Some("Plugin was revoked from its previous trusted policy state".to_string()),
-        };
-    }
-
-    let Some(required_scope) = required_grant_scope(plugin) else {
-        return PluginEnableResult {
-            success: true,
-            disabled_plugins: Vec::new(),
-            confirmation_required: false,
-            block_reason: None,
-            plugin: Some(plugin.clone()),
-            grant_scope: None,
-            message: None,
-        };
-    };
-
-    let expected_fingerprint = permissions_fingerprint(&plugin.manifest.permissions);
-    let grant = grants
+    let core_grants = grants
         .iter()
-        .find(|grant| grant.plugin_id == plugin.manifest.id);
-    let satisfied = match grant {
-        Some(grant) if grant.permissions_fingerprint == expected_fingerprint => {
-            match required_scope {
-                PluginEnableGrantScope::Once => false,
-                PluginEnableGrantScope::Version => {
-                    grant_scope_covers(grant.grant_scope.clone(), PluginEnableGrantScope::Version)
-                        && grant.version == plugin.manifest.version
-                }
-                PluginEnableGrantScope::Hash => {
-                    matches!(grant.grant_scope, PluginEnableGrantScope::Hash)
-                        && grant.version == plugin.manifest.version
-                        && grant.hash == plugin.verified_hash
-                        && plugin.verified_hash.is_some()
-                }
-            }
-        }
-        _ => false,
-    };
-
-    if satisfied {
-        return PluginEnableResult {
-            success: true,
-            disabled_plugins: Vec::new(),
-            confirmation_required: false,
-            block_reason: None,
-            plugin: Some(plugin.clone()),
-            grant_scope: Some(required_scope),
-            message: None,
-        };
-    }
+        .cloned()
+        .map(to_core_grant)
+        .collect::<Vec<_>>();
+    let result = sea_lantern_plugin_trust_core::evaluate_enable_requirement(
+        &to_core_enable_context(plugin),
+        &core_grants,
+    );
 
     PluginEnableResult {
-        success: false,
+        success: result.success,
         disabled_plugins: Vec::new(),
-        confirmation_required: true,
-        block_reason: Some(PluginEnableBlockReason::UserConfirmationRequired),
+        confirmation_required: result.confirmation_required,
+        block_reason: result.block_reason.map(from_core_block_reason),
         plugin: Some(plugin.clone()),
-        grant_scope: Some(required_scope),
-        message: None,
+        grant_scope: result.grant_scope.map(from_core_grant_scope),
+        message: result.message,
     }
 }
 
@@ -360,17 +185,11 @@ pub fn upsert_enable_grant(
     plugin: &PluginInfo,
     grant_scope: PluginEnableGrantScope,
 ) -> Result<(), String> {
-    let mut grants = load_enable_grants(data_dir)?;
-    grants.retain(|grant| grant.plugin_id != plugin.manifest.id);
-    grants.push(PersistedPluginEnableGrant {
-        plugin_id: plugin.manifest.id.clone(),
-        version: plugin.manifest.version.clone(),
-        hash: plugin.verified_hash.clone(),
-        permissions_fingerprint: permissions_fingerprint(&plugin.manifest.permissions),
-        grant_scope,
-        granted_at: chrono::Utc::now().to_rfc3339(),
-    });
-    save_enable_grants(data_dir, &grants)
+    sea_lantern_plugin_trust_core::upsert_enable_grant(
+        data_dir,
+        &to_core_enable_context(plugin),
+        to_core_grant_scope(grant_scope),
+    )
 }
 
 pub fn assess_plugin(
@@ -378,293 +197,407 @@ pub fn assess_plugin(
     distribution_class: PluginDistributionClass,
     archive_sha256: Option<&str>,
 ) -> PluginTrustAssessment {
-    let normalized_permissions = normalize_permissions(manifest.permissions.clone());
-    let exceeds_standard_sandbox =
-        crate::hardcode_data::plugin_permissions::exceeds_standard_sandbox_ceiling(
-            &normalized_permissions,
-        );
-    let requests_trusted_capabilities =
-        crate::hardcode_data::plugin_permissions::requests_trusted_capabilities(
-            &normalized_permissions,
-        );
-    let requires_explicit_consent =
-        crate::hardcode_data::plugin_permissions::requires_explicit_consent(
-            &normalized_permissions,
-        );
-    let is_standard_distribution = matches!(
-        distribution_class,
-        PluginDistributionClass::Market | PluginDistributionClass::StandardPackage
+    let assessment = sea_lantern_plugin_trust_core::assess_plugin(
+        &sea_lantern_plugin_trust_core::PluginManifestInput {
+            id: manifest.id.clone(),
+            version: manifest.version.clone(),
+            permissions: manifest.permissions.clone(),
+        },
+        to_core_distribution_class(distribution_class),
+        archive_sha256,
     );
 
-    let base_permission_profile = if requests_trusted_capabilities || exceeds_standard_sandbox {
-        PluginPermissionProfile::Unreviewed
-    } else if requires_explicit_consent {
-        PluginPermissionProfile::SandboxedExtended
-    } else {
-        PluginPermissionProfile::SandboxedNormal
-    };
-
-    let mut assessment = PluginTrustAssessment {
-        trust_level_display: if is_standard_distribution
-            && !exceeds_standard_sandbox
-            && !requests_trusted_capabilities
-        {
-            PluginTrustLevelDisplay::StandardSandbox
-        } else {
-            PluginTrustLevelDisplay::Unreviewed
-        },
-        execution_class: PluginExecutionClass::Sandboxed,
-        review_status: PluginReviewStatus::Unreviewed,
-        integrity_status: if archive_sha256.is_some() {
-            PluginIntegrityStatus::Unsigned
-        } else {
-            PluginIntegrityStatus::Unknown
-        },
-        trusted_policy_source: PluginTrustedPolicySource::None,
-        permission_profile: base_permission_profile,
-        publisher_id: None,
-        trusted_catalog_matched: false,
-        hash_matched: false,
-        verified_hash: None,
-        verified_signature: false,
-        reviewed_at: None,
-        revoked: false,
-        exceeds_standard_sandbox,
-        requires_explicit_consent,
-    };
-
-    if !requests_trusted_capabilities {
-        return assessment;
+    PluginTrustAssessment {
+        trust_level_display: from_core_trust_level(assessment.trust_level_display),
+        execution_class: from_core_execution_class(assessment.execution_class),
+        review_status: from_core_review_status(assessment.review_status),
+        integrity_status: from_core_integrity_status(assessment.integrity_status),
+        trusted_policy_source: from_core_policy_source(assessment.trusted_policy_source),
+        permission_profile: from_core_permission_profile(assessment.permission_profile),
+        publisher_id: assessment.publisher_id,
+        trusted_catalog_matched: assessment.trusted_catalog_matched,
+        hash_matched: assessment.hash_matched,
+        verified_hash: assessment.verified_hash,
+        verified_signature: assessment.verified_signature,
+        reviewed_at: assessment.reviewed_at,
+        revoked: assessment.revoked,
+        exceeds_standard_sandbox: assessment.exceeds_standard_sandbox,
+        requires_explicit_consent: assessment.requires_explicit_consent,
     }
-
-    assessment.trust_level_display = PluginTrustLevelDisplay::Unreviewed;
-    assessment.execution_class = PluginExecutionClass::Sandboxed;
-    assessment.review_status = PluginReviewStatus::Unreviewed;
-    assessment.permission_profile = PluginPermissionProfile::Unreviewed;
-    assessment.trusted_policy_source = PluginTrustedPolicySource::BundledSnapshot;
-
-    let Some(archive_sha256) = archive_sha256 else {
-        assessment.integrity_status = PluginIntegrityStatus::Unknown;
-        return assessment;
-    };
-
-    let entry = bundled_snapshot()
-        .plugins
-        .iter()
-        .find(|entry| entry.plugin_id == manifest.id && entry.version == manifest.version);
-
-    let Some(entry) = entry else {
-        assessment.integrity_status = PluginIntegrityStatus::Mismatch;
-        return assessment;
-    };
-
-    assessment.publisher_id = Some(entry.publisher_id.clone());
-    assessment.reviewed_at = entry.reviewed_at.clone();
-    assessment.trusted_catalog_matched = true;
-
-    if entry.revoked || entry.review_class == "revoked" {
-        assessment.review_status = PluginReviewStatus::Revoked;
-        assessment.integrity_status = PluginIntegrityStatus::Mismatch;
-        assessment.revoked = true;
-        return assessment;
-    }
-
-    if !entry.archive_sha256.eq_ignore_ascii_case(archive_sha256) {
-        assessment.integrity_status = PluginIntegrityStatus::Mismatch;
-        return assessment;
-    }
-
-    let allowed_permissions: HashSet<String> = entry
-        .permission_ceiling
-        .iter()
-        .map(|permission| {
-            crate::hardcode_data::plugin_permissions::normalize_permission_id(permission)
-        })
-        .collect();
-    let within_ceiling = normalized_permissions
-        .iter()
-        .all(|permission| allowed_permissions.contains(permission));
-
-    if !within_ceiling {
-        assessment.integrity_status = PluginIntegrityStatus::Mismatch;
-        return assessment;
-    }
-
-    assessment.trust_level_display = PluginTrustLevelDisplay::Trusted;
-    assessment.execution_class = PluginExecutionClass::TrustedFull;
-    assessment.review_status = PluginReviewStatus::SealanternReviewed;
-    assessment.integrity_status = PluginIntegrityStatus::VerifiedHash;
-    assessment.permission_profile = PluginPermissionProfile::TrustedFull;
-    assessment.hash_matched = true;
-    assessment.verified_hash = Some(entry.archive_sha256.clone());
-    assessment
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{
-        apply_runtime_integrity_state, assess_plugin, compute_plugin_tree_sha256,
-        grant_scope_covers, PluginInstallMetadata,
-    };
-    use crate::models::plugin::{
-        PluginActions, PluginAuthor, PluginDistributionClass,
-        PluginDistributionClass as DistributionClass, PluginEnableGrantScope, PluginExecutionClass,
-        PluginInfo, PluginIntegrityStatus, PluginManifest, PluginPermissionProfile,
-        PluginReviewStatus, PluginRuntimeKind, PluginSource, PluginTrustLevelDisplay,
-        PluginTrustedPolicySource,
-    };
-    use std::collections::HashMap;
+fn to_core_enable_context(
+    plugin: &PluginInfo,
+) -> sea_lantern_plugin_trust_core::PluginEnableContext {
+    sea_lantern_plugin_trust_core::PluginEnableContext {
+        plugin_id: plugin.manifest.id.clone(),
+        version: plugin.manifest.version.clone(),
+        permissions: plugin.manifest.permissions.clone(),
+        trust_level_display: to_core_trust_level(plugin.trust_level_display.clone()),
+        review_status: to_core_review_status(plugin.review_status.clone()),
+        revoked: plugin.revoked,
+        verified_hash: plugin.verified_hash.clone(),
+        requires_explicit_consent: plugin.requires_explicit_consent,
+    }
+}
 
-    fn manifest_with_permissions(
-        id: &str,
-        version: &str,
-        permissions: Vec<&str>,
-    ) -> PluginManifest {
-        PluginManifest {
-            id: id.to_string(),
-            name: id.to_string(),
-            version: version.to_string(),
-            description: "test".to_string(),
-            author: PluginAuthor {
-                name: "SeaLantern".to_string(),
-                email: None,
-                url: None,
-            },
-            main: "main.lua".to_string(),
-            license: None,
-            homepage: None,
-            repository: None,
-            engines: None,
-            permissions: permissions
-                .into_iter()
-                .map(|item| item.to_string())
-                .collect(),
-            ui: None,
-            events: Vec::new(),
-            commands: Vec::new(),
-            programs: Vec::new(),
-            dependencies: Vec::new(),
-            optional_dependencies: Vec::new(),
-            icon: None,
-            settings: None,
-            sidebar: None,
-            locales: None,
-            include: Vec::new(),
-            capabilities: Vec::new(),
-            theme_var_map: HashMap::new(),
-            presets: HashMap::new(),
-            server_events: HashMap::new(),
+fn to_core_install_metadata(
+    value: PluginInstallMetadata,
+) -> sea_lantern_plugin_trust_core::PluginInstallMetadata {
+    sea_lantern_plugin_trust_core::PluginInstallMetadata {
+        distribution_class: value.distribution_class.map(to_core_distribution_class),
+        archive_sha256: value.archive_sha256,
+        installed_tree_sha256: value.installed_tree_sha256,
+    }
+}
+
+fn from_core_install_metadata(
+    value: sea_lantern_plugin_trust_core::PluginInstallMetadata,
+) -> PluginInstallMetadata {
+    PluginInstallMetadata {
+        distribution_class: value.distribution_class.map(from_core_distribution_class),
+        archive_sha256: value.archive_sha256,
+        installed_tree_sha256: value.installed_tree_sha256,
+    }
+}
+
+fn to_core_grant(
+    value: PersistedPluginEnableGrant,
+) -> sea_lantern_plugin_trust_core::PersistedPluginEnableGrant {
+    sea_lantern_plugin_trust_core::PersistedPluginEnableGrant {
+        plugin_id: value.plugin_id,
+        version: value.version,
+        hash: value.hash,
+        permissions_fingerprint: value.permissions_fingerprint,
+        grant_scope: to_core_grant_scope(value.grant_scope),
+        granted_at: value.granted_at,
+    }
+}
+
+fn from_core_grant(
+    value: sea_lantern_plugin_trust_core::PersistedPluginEnableGrant,
+) -> PersistedPluginEnableGrant {
+    PersistedPluginEnableGrant {
+        plugin_id: value.plugin_id,
+        version: value.version,
+        hash: value.hash,
+        permissions_fingerprint: value.permissions_fingerprint,
+        grant_scope: from_core_grant_scope(value.grant_scope),
+        granted_at: value.granted_at,
+    }
+}
+
+fn to_core_distribution_class(
+    value: PluginDistributionClass,
+) -> sea_lantern_plugin_trust_core::PluginDistributionClass {
+    match value {
+        PluginDistributionClass::Builtin => {
+            sea_lantern_plugin_trust_core::PluginDistributionClass::Builtin
+        }
+        PluginDistributionClass::Market => {
+            sea_lantern_plugin_trust_core::PluginDistributionClass::Market
+        }
+        PluginDistributionClass::StandardPackage => {
+            sea_lantern_plugin_trust_core::PluginDistributionClass::StandardPackage
+        }
+        PluginDistributionClass::ManualImport => {
+            sea_lantern_plugin_trust_core::PluginDistributionClass::ManualImport
+        }
+        PluginDistributionClass::LocalDirectory => {
+            sea_lantern_plugin_trust_core::PluginDistributionClass::LocalDirectory
+        }
+        PluginDistributionClass::TrustedCatalog => {
+            sea_lantern_plugin_trust_core::PluginDistributionClass::TrustedCatalog
+        }
+        PluginDistributionClass::Unknown => {
+            sea_lantern_plugin_trust_core::PluginDistributionClass::Unknown
         }
     }
+}
 
-    #[test]
-    fn standard_market_plugin_stays_standard_sandbox() {
-        let manifest = manifest_with_permissions("demo.standard", "1.0.0", vec!["log", "fs.data"]);
-
-        let assessment = assess_plugin(&manifest, PluginDistributionClass::Market, None);
-
-        assert_eq!(assessment.trust_level_display, PluginTrustLevelDisplay::StandardSandbox);
-        assert_eq!(assessment.execution_class, PluginExecutionClass::Sandboxed);
-        assert_eq!(assessment.review_status, PluginReviewStatus::Unreviewed);
-        assert_eq!(assessment.permission_profile, PluginPermissionProfile::SandboxedNormal);
+fn from_core_distribution_class(
+    value: sea_lantern_plugin_trust_core::PluginDistributionClass,
+) -> PluginDistributionClass {
+    match value {
+        sea_lantern_plugin_trust_core::PluginDistributionClass::Builtin => {
+            PluginDistributionClass::Builtin
+        }
+        sea_lantern_plugin_trust_core::PluginDistributionClass::Market => {
+            PluginDistributionClass::Market
+        }
+        sea_lantern_plugin_trust_core::PluginDistributionClass::StandardPackage => {
+            PluginDistributionClass::StandardPackage
+        }
+        sea_lantern_plugin_trust_core::PluginDistributionClass::ManualImport => {
+            PluginDistributionClass::ManualImport
+        }
+        sea_lantern_plugin_trust_core::PluginDistributionClass::LocalDirectory => {
+            PluginDistributionClass::LocalDirectory
+        }
+        sea_lantern_plugin_trust_core::PluginDistributionClass::TrustedCatalog => {
+            PluginDistributionClass::TrustedCatalog
+        }
+        sea_lantern_plugin_trust_core::PluginDistributionClass::Unknown => {
+            PluginDistributionClass::Unknown
+        }
     }
+}
 
-    #[test]
-    fn trusted_only_permission_without_catalog_match_stays_unreviewed() {
-        let manifest = manifest_with_permissions(
-            "demo.trusted",
-            "1.0.0",
-            vec!["execute_program", "process.exec"],
-        );
-
-        let assessment =
-            assess_plugin(&manifest, PluginDistributionClass::Market, Some("deadbeef"));
-
-        assert_eq!(assessment.trust_level_display, PluginTrustLevelDisplay::Unreviewed);
-        assert_eq!(assessment.execution_class, PluginExecutionClass::Sandboxed);
-        assert_eq!(assessment.review_status, PluginReviewStatus::Unreviewed);
-        assert_eq!(assessment.integrity_status, PluginIntegrityStatus::Mismatch);
-        assert_eq!(assessment.permission_profile, PluginPermissionProfile::Unreviewed);
+fn from_core_trust_level(
+    value: sea_lantern_plugin_trust_core::PluginTrustLevelDisplay,
+) -> PluginTrustLevelDisplay {
+    match value {
+        sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Builtin => {
+            PluginTrustLevelDisplay::Builtin
+        }
+        sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Trusted => {
+            PluginTrustLevelDisplay::Trusted
+        }
+        sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::StandardSandbox => {
+            PluginTrustLevelDisplay::StandardSandbox
+        }
+        sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Unreviewed => {
+            PluginTrustLevelDisplay::Unreviewed
+        }
     }
+}
 
-    #[test]
-    fn hash_scope_covers_version_scope() {
-        assert!(grant_scope_covers(
-            PluginEnableGrantScope::Hash,
+fn to_core_trust_level(
+    value: PluginTrustLevelDisplay,
+) -> sea_lantern_plugin_trust_core::PluginTrustLevelDisplay {
+    match value {
+        PluginTrustLevelDisplay::Builtin => {
+            sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Builtin
+        }
+        PluginTrustLevelDisplay::Trusted => {
+            sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Trusted
+        }
+        PluginTrustLevelDisplay::StandardSandbox => {
+            sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::StandardSandbox
+        }
+        PluginTrustLevelDisplay::Unreviewed => {
+            sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Unreviewed
+        }
+    }
+}
+
+fn from_core_execution_class(
+    value: sea_lantern_plugin_trust_core::PluginExecutionClass,
+) -> PluginExecutionClass {
+    match value {
+        sea_lantern_plugin_trust_core::PluginExecutionClass::BuiltinFull => {
+            PluginExecutionClass::BuiltinFull
+        }
+        sea_lantern_plugin_trust_core::PluginExecutionClass::TrustedFull => {
+            PluginExecutionClass::TrustedFull
+        }
+        sea_lantern_plugin_trust_core::PluginExecutionClass::Sandboxed => {
+            PluginExecutionClass::Sandboxed
+        }
+        sea_lantern_plugin_trust_core::PluginExecutionClass::Restricted => {
+            PluginExecutionClass::Restricted
+        }
+    }
+}
+
+fn to_core_execution_class(
+    value: PluginExecutionClass,
+) -> sea_lantern_plugin_trust_core::PluginExecutionClass {
+    match value {
+        PluginExecutionClass::BuiltinFull => {
+            sea_lantern_plugin_trust_core::PluginExecutionClass::BuiltinFull
+        }
+        PluginExecutionClass::TrustedFull => {
+            sea_lantern_plugin_trust_core::PluginExecutionClass::TrustedFull
+        }
+        PluginExecutionClass::Sandboxed => {
+            sea_lantern_plugin_trust_core::PluginExecutionClass::Sandboxed
+        }
+        PluginExecutionClass::Restricted => {
+            sea_lantern_plugin_trust_core::PluginExecutionClass::Restricted
+        }
+    }
+}
+
+fn from_core_review_status(
+    value: sea_lantern_plugin_trust_core::PluginReviewStatus,
+) -> PluginReviewStatus {
+    match value {
+        sea_lantern_plugin_trust_core::PluginReviewStatus::Builtin => PluginReviewStatus::Builtin,
+        sea_lantern_plugin_trust_core::PluginReviewStatus::SealanternReviewed => {
+            PluginReviewStatus::SealanternReviewed
+        }
+        sea_lantern_plugin_trust_core::PluginReviewStatus::Unreviewed => {
+            PluginReviewStatus::Unreviewed
+        }
+        sea_lantern_plugin_trust_core::PluginReviewStatus::Revoked => PluginReviewStatus::Revoked,
+    }
+}
+
+fn to_core_review_status(
+    value: PluginReviewStatus,
+) -> sea_lantern_plugin_trust_core::PluginReviewStatus {
+    match value {
+        PluginReviewStatus::Builtin => sea_lantern_plugin_trust_core::PluginReviewStatus::Builtin,
+        PluginReviewStatus::SealanternReviewed => {
+            sea_lantern_plugin_trust_core::PluginReviewStatus::SealanternReviewed
+        }
+        PluginReviewStatus::Unreviewed => {
+            sea_lantern_plugin_trust_core::PluginReviewStatus::Unreviewed
+        }
+        PluginReviewStatus::Revoked => sea_lantern_plugin_trust_core::PluginReviewStatus::Revoked,
+    }
+}
+
+fn from_core_integrity_status(
+    value: sea_lantern_plugin_trust_core::PluginIntegrityStatus,
+) -> PluginIntegrityStatus {
+    match value {
+        sea_lantern_plugin_trust_core::PluginIntegrityStatus::Bundled => {
+            PluginIntegrityStatus::Bundled
+        }
+        sea_lantern_plugin_trust_core::PluginIntegrityStatus::VerifiedHash => {
+            PluginIntegrityStatus::VerifiedHash
+        }
+        sea_lantern_plugin_trust_core::PluginIntegrityStatus::VerifiedSignature => {
+            PluginIntegrityStatus::VerifiedSignature
+        }
+        sea_lantern_plugin_trust_core::PluginIntegrityStatus::Unsigned => {
+            PluginIntegrityStatus::Unsigned
+        }
+        sea_lantern_plugin_trust_core::PluginIntegrityStatus::Mismatch => {
+            PluginIntegrityStatus::Mismatch
+        }
+        sea_lantern_plugin_trust_core::PluginIntegrityStatus::Unknown => {
+            PluginIntegrityStatus::Unknown
+        }
+    }
+}
+
+fn to_core_integrity_status(
+    value: PluginIntegrityStatus,
+) -> sea_lantern_plugin_trust_core::PluginIntegrityStatus {
+    match value {
+        PluginIntegrityStatus::Bundled => {
+            sea_lantern_plugin_trust_core::PluginIntegrityStatus::Bundled
+        }
+        PluginIntegrityStatus::VerifiedHash => {
+            sea_lantern_plugin_trust_core::PluginIntegrityStatus::VerifiedHash
+        }
+        PluginIntegrityStatus::VerifiedSignature => {
+            sea_lantern_plugin_trust_core::PluginIntegrityStatus::VerifiedSignature
+        }
+        PluginIntegrityStatus::Unsigned => {
+            sea_lantern_plugin_trust_core::PluginIntegrityStatus::Unsigned
+        }
+        PluginIntegrityStatus::Mismatch => {
+            sea_lantern_plugin_trust_core::PluginIntegrityStatus::Mismatch
+        }
+        PluginIntegrityStatus::Unknown => {
+            sea_lantern_plugin_trust_core::PluginIntegrityStatus::Unknown
+        }
+    }
+}
+
+fn from_core_policy_source(
+    value: sea_lantern_plugin_trust_core::PluginTrustedPolicySource,
+) -> PluginTrustedPolicySource {
+    match value {
+        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::Builtin => {
+            PluginTrustedPolicySource::Builtin
+        }
+        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::BundledSnapshot => {
+            PluginTrustedPolicySource::BundledSnapshot
+        }
+        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::RemoteSignedCatalog => {
+            PluginTrustedPolicySource::RemoteSignedCatalog
+        }
+        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::LocalAttestation => {
+            PluginTrustedPolicySource::LocalAttestation
+        }
+        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::None => {
+            PluginTrustedPolicySource::None
+        }
+    }
+}
+
+fn from_core_permission_profile(
+    value: sea_lantern_plugin_trust_core::PluginPermissionProfile,
+) -> PluginPermissionProfile {
+    match value {
+        sea_lantern_plugin_trust_core::PluginPermissionProfile::BuiltinFull => {
+            PluginPermissionProfile::BuiltinFull
+        }
+        sea_lantern_plugin_trust_core::PluginPermissionProfile::TrustedFull => {
+            PluginPermissionProfile::TrustedFull
+        }
+        sea_lantern_plugin_trust_core::PluginPermissionProfile::SandboxedNormal => {
+            PluginPermissionProfile::SandboxedNormal
+        }
+        sea_lantern_plugin_trust_core::PluginPermissionProfile::SandboxedExtended => {
+            PluginPermissionProfile::SandboxedExtended
+        }
+        sea_lantern_plugin_trust_core::PluginPermissionProfile::Unreviewed => {
+            PluginPermissionProfile::Unreviewed
+        }
+    }
+}
+
+fn to_core_permission_profile(
+    value: PluginPermissionProfile,
+) -> sea_lantern_plugin_trust_core::PluginPermissionProfile {
+    match value {
+        PluginPermissionProfile::BuiltinFull => {
+            sea_lantern_plugin_trust_core::PluginPermissionProfile::BuiltinFull
+        }
+        PluginPermissionProfile::TrustedFull => {
+            sea_lantern_plugin_trust_core::PluginPermissionProfile::TrustedFull
+        }
+        PluginPermissionProfile::SandboxedNormal => {
+            sea_lantern_plugin_trust_core::PluginPermissionProfile::SandboxedNormal
+        }
+        PluginPermissionProfile::SandboxedExtended => {
+            sea_lantern_plugin_trust_core::PluginPermissionProfile::SandboxedExtended
+        }
+        PluginPermissionProfile::Unreviewed => {
+            sea_lantern_plugin_trust_core::PluginPermissionProfile::Unreviewed
+        }
+    }
+}
+
+fn from_core_grant_scope(
+    value: sea_lantern_plugin_trust_core::PluginEnableGrantScope,
+) -> PluginEnableGrantScope {
+    match value {
+        sea_lantern_plugin_trust_core::PluginEnableGrantScope::Once => PluginEnableGrantScope::Once,
+        sea_lantern_plugin_trust_core::PluginEnableGrantScope::Version => {
             PluginEnableGrantScope::Version
-        ));
-        assert!(grant_scope_covers(
-            PluginEnableGrantScope::Version,
-            PluginEnableGrantScope::Version
-        ));
-        assert!(!grant_scope_covers(
-            PluginEnableGrantScope::Version,
-            PluginEnableGrantScope::Hash
-        ));
+        }
+        sea_lantern_plugin_trust_core::PluginEnableGrantScope::Hash => PluginEnableGrantScope::Hash,
     }
+}
 
-    #[test]
-    fn runtime_tree_hash_mismatch_downgrades_trusted_plugin() {
-        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
-        let plugin_dir = temp_dir.path().join("trusted-plugin");
-        std::fs::create_dir_all(&plugin_dir).expect("plugin dir should exist");
-        std::fs::write(plugin_dir.join("main.lua"), b"print('hello')\n")
-            .expect("main.lua should exist");
+fn to_core_grant_scope(
+    value: PluginEnableGrantScope,
+) -> sea_lantern_plugin_trust_core::PluginEnableGrantScope {
+    match value {
+        PluginEnableGrantScope::Once => sea_lantern_plugin_trust_core::PluginEnableGrantScope::Once,
+        PluginEnableGrantScope::Version => {
+            sea_lantern_plugin_trust_core::PluginEnableGrantScope::Version
+        }
+        PluginEnableGrantScope::Hash => sea_lantern_plugin_trust_core::PluginEnableGrantScope::Hash,
+    }
+}
 
-        let stored_tree_hash =
-            compute_plugin_tree_sha256(&plugin_dir).expect("tree hash should be computed");
-
-        std::fs::write(plugin_dir.join("main.lua"), b"print('modified')\n")
-            .expect("main.lua should be rewritable");
-
-        let plugin = PluginInfo {
-            manifest: manifest_with_permissions("trusted.plugin", "1.0.0", vec!["process.exec"]),
-            state: crate::models::plugin::PluginState::Loaded,
-            path: plugin_dir.to_string_lossy().to_string(),
-            source: PluginSource::Local,
-            runtime: PluginRuntimeKind::Lua,
-            actions: PluginActions {
-                can_toggle: true,
-                can_delete: true,
-                can_check_update: true,
-            },
-            missing_dependencies: Vec::new(),
-            trust_level_display: PluginTrustLevelDisplay::Trusted,
-            execution_class: PluginExecutionClass::TrustedFull,
-            review_status: PluginReviewStatus::SealanternReviewed,
-            integrity_status: PluginIntegrityStatus::VerifiedHash,
-            trusted_policy_source: PluginTrustedPolicySource::BundledSnapshot,
-            permission_profile: PluginPermissionProfile::TrustedFull,
-            publisher_id: Some("sealantern".to_string()),
-            distribution_class: DistributionClass::Market,
-            trusted_catalog_matched: true,
-            hash_matched: true,
-            verified_hash: Some("deadbeef".to_string()),
-            verified_signature: false,
-            reviewed_at: Some("2026-06-29T00:00:00Z".to_string()),
-            revoked: false,
-            exceeds_standard_sandbox: false,
-            requires_explicit_consent: false,
-        };
-
-        let downgraded = apply_runtime_integrity_state(
-            plugin,
-            &plugin_dir,
-            &PluginInstallMetadata {
-                distribution_class: Some(DistributionClass::Market),
-                archive_sha256: Some("deadbeef".to_string()),
-                installed_tree_sha256: Some(stored_tree_hash),
-            },
-        )
-        .expect("mismatch downgrade should succeed");
-
-        assert_eq!(downgraded.trust_level_display, PluginTrustLevelDisplay::Unreviewed);
-        assert_eq!(downgraded.execution_class, PluginExecutionClass::Sandboxed);
-        assert_eq!(downgraded.review_status, PluginReviewStatus::Unreviewed);
-        assert_eq!(downgraded.integrity_status, PluginIntegrityStatus::Mismatch);
-        assert_eq!(downgraded.permission_profile, PluginPermissionProfile::Unreviewed);
-        assert!(!downgraded.hash_matched);
-        assert_eq!(downgraded.verified_hash, None);
-        assert!(downgraded.requires_explicit_consent);
+fn from_core_block_reason(
+    value: sea_lantern_plugin_trust_core::PluginEnableBlockReason,
+) -> PluginEnableBlockReason {
+    match value {
+        sea_lantern_plugin_trust_core::PluginEnableBlockReason::UserConfirmationRequired => {
+            PluginEnableBlockReason::UserConfirmationRequired
+        }
+        sea_lantern_plugin_trust_core::PluginEnableBlockReason::Revoked => {
+            PluginEnableBlockReason::Revoked
+        }
     }
 }

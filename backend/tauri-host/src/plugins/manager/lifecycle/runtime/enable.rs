@@ -10,8 +10,6 @@ use crate::services::plugin_trusted_catalog::{
     evaluate_enable_requirement, grant_scope_covers, load_enable_grants, upsert_enable_grant,
 };
 use std::path::PathBuf;
-use std::sync::Arc;
-
 fn success_result(
     manager: &PluginManager,
     plugin_id: &str,
@@ -139,7 +137,7 @@ fn perform_enable_plugin(manager: &mut PluginManager, plugin_id: &str) -> Result
         &plugin_data_dir,
         &server_dir,
         &global_dir,
-        Arc::clone(&manager.api_registry),
+        manager.api_registry.clone(),
         permissions,
         allowed_programs,
         plugin_server_event_subscriptions_map(&plugin_info.manifest.server_events),

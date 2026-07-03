@@ -1,3 +1,4 @@
+use crate::plugins::api::PluginApiRegistry;
 use crate::plugins::runtime::process::ProcessEntry;
 use crate::services::events::ServerEventSubscription;
 use crate::services::global::i18n_service;
@@ -36,7 +37,7 @@ pub struct PluginRuntime {
 
     pub(crate) allowed_programs: HashSet<PathBuf>,
 
-    pub(crate) api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
+    pub(crate) api_registry: PluginApiRegistry,
 
     pub(crate) storage_lock: Arc<Mutex<()>>,
 

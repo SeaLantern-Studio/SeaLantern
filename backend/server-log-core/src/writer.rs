@@ -1,23 +1,12 @@
-use super::state::{
-    log_writers, open_or_create_log_db, resolve_server_path, LogSource, LogWriteEntry,
-    ServerLogEventHandler, ServerLogWriter, WriterCommand, SERVER_LOG_EVENT_HANDLER,
+use crate::state::{
+    log_writers, open_or_create_log_db, LogSource, LogWriteEntry, ServerLogWriter, WriterCommand,
+    LOG_BATCH_SIZE, LOG_FLUSH_INTERVAL_MS,
 };
 use rusqlite::{params, Connection, TransactionBehavior};
-use sl_server_info::log::LogStream;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-
-use crate::utils::constants::{LOG_BATCH_SIZE, LOG_FLUSH_INTERVAL_MS};
-
-#[allow(dead_code)] // compatibility path for alternative bridges
-pub fn set_server_log_event_handler(handler: Arc<ServerLogEventHandler>) -> Result<(), String> {
-    SERVER_LOG_EVENT_HANDLER
-        .set(handler)
-        .map_err(|_| "server log event handler already set".to_string())
-}
 
 pub fn init_db(server_path: &Path) -> Result<(), String> {
     open_or_create_log_db(server_path).map(|_| ())
@@ -35,12 +24,16 @@ pub fn shutdown_writer(server_id: &str) {
     }
 }
 
-pub fn append_sealantern_log(server_id: &str, message: &str) -> Result<(), String> {
-    append_log_by_id(server_id, message, LogSource::SeaLantern)
+pub fn append_sealantern_log(
+    server_id: &str,
+    server_path: &Path,
+    message: &str,
+) -> Result<(), String> {
+    append_log(server_id, server_path, message, LogSource::SeaLantern)
 }
 
-pub fn append_server_log(server_id: &str, message: &str) -> Result<(), String> {
-    append_log_by_id(server_id, message, LogSource::Server)
+pub fn append_server_log(server_id: &str, server_path: &Path, message: &str) -> Result<(), String> {
+    append_log(server_id, server_path, message, LogSource::Server)
 }
 
 fn get_or_create_writer(
@@ -82,7 +75,7 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
         Ok(conn) => conn,
         Err(err) => {
             eprintln!(
-                "[server_log_pipeline] failed to open writer db id={} path={} err={}",
+                "[server_log_core] failed to open writer db id={} path={} err={}",
                 server_id,
                 server_path.display(),
                 err
@@ -148,7 +141,7 @@ fn run_log_writer(server_id: String, server_path: PathBuf, rx: mpsc::Receiver<Wr
 
                 if let Err(err) = flush_batch(&mut conn, &batch) {
                     eprintln!(
-                        "[server_log_pipeline] flush batch failed id={} path={} err={}",
+                        "[server_log_core] flush batch failed id={} path={} err={}",
                         server_id,
                         server_path.display(),
                         err
@@ -175,7 +168,7 @@ fn flush_batch_or_log(
 ) {
     if let Err(err) = flush_batch(conn, batch) {
         eprintln!(
-            "[server_log_pipeline] flush batch failed id={} path={} phase={} err={}",
+            "[server_log_core] flush batch failed id={} path={} phase={} err={}",
             server_id,
             server_path.display(),
             phase,
@@ -231,11 +224,5 @@ pub fn append_log(
             .send(WriterCommand::Append(entry))
             .map_err(|e| format!("提交日志写入队列失败: {}", e))?;
     }
-    super::output::emit_server_log_line_with_stream(server_id, message, LogStream::Unknown);
     Ok(())
-}
-
-fn append_log_by_id(server_id: &str, message: &str, source: LogSource) -> Result<(), String> {
-    let server_path = resolve_server_path(server_id)?;
-    append_log(server_id, &server_path, message, source)
 }

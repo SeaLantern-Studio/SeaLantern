@@ -33,7 +33,7 @@ pub use permission_logs::{
     clear_plugin_permission_logs, get_plugin_permission_logs, take_permission_log_snapshot,
     BufferedPermissionLog,
 };
-pub use registry::{new_api_registry, ApiRegistryOps};
+pub use registry::{new_api_registry, ApiRegistryOps, PluginApiRegistry};
 pub use sidebar::{
     clear_plugin_sidebar_snapshot, take_sidebar_event_snapshot, BufferedSidebarEvent,
 };

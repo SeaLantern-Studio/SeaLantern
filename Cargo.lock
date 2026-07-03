@@ -6097,15 +6097,19 @@ dependencies = [
  "opener",
  "rcon",
  "reqwest 0.12.28",
- "rusqlite",
  "sculk",
  "sea-lantern-docker-core",
+ "sea-lantern-event-core",
+ "sea-lantern-i18n-core",
  "sea-lantern-java-installer-core",
+ "sea-lantern-lua-runtime-core",
+ "sea-lantern-plugin-trust-core",
  "sea-lantern-runtime",
  "sea-lantern-server-config-core",
  "sea-lantern-server-download-links-core",
  "sea-lantern-server-installer-core",
  "sea-lantern-server-local-setup-core",
+ "sea-lantern-server-log-core",
  "sea-lantern-server-plugin-core",
  "sea-lantern-server-startup-scan-core",
  "sea-lantern-starter-links-core",
@@ -6154,6 +6158,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sea-lantern-event-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "sea-lantern-i18n-core"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "sea-lantern-java-installer-core"
 version = "0.1.0"
 dependencies = [
@@ -6165,6 +6183,26 @@ dependencies = [
  "tempfile",
  "tokio",
  "zip",
+]
+
+[[package]]
+name = "sea-lantern-lua-runtime-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "sea-lantern-plugin-trust-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
 ]
 
 [[package]]
@@ -6230,6 +6268,16 @@ dependencies = [
  "serde_json",
  "shlex",
  "sl-server-core-taxonomy",
+ "tempfile",
+]
+
+[[package]]
+name = "sea-lantern-server-log-core"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "sea-lantern-server-local-setup-core",
+ "sl-server-info",
  "tempfile",
 ]
 

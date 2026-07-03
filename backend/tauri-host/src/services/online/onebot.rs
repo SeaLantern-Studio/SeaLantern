@@ -1,6 +1,6 @@
+use super::host;
 use crate::models::settings::{OneBot11Settings, OneBotTargetType};
 use crate::services::events::{ServerEventEnvelope, ServerEventKind, ServerEventPayload};
-use crate::utils::logger::{log_info_ctx, log_warn_ctx};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
 
@@ -150,8 +150,7 @@ fn send_via_http(settings: OneBot11Settings, event: ServerEventEnvelope) {
         let parsed_id = match parse_target_id(&target.id) {
             Some(id) => id,
             None => {
-                log_warn_ctx(
-                    "services.online.onebot",
+                host::log_onebot_warn(
                     "send_via_http",
                     &format!("invalid target id: {}", target.id),
                 );
@@ -184,8 +183,7 @@ fn send_via_http(settings: OneBot11Settings, event: ServerEventEnvelope) {
 
         match builder.json(&request).send() {
             Ok(response) if response.status().is_success() => {
-                log_info_ctx(
-                    "services.online.onebot",
+                host::log_onebot_info(
                     "send_via_http",
                     &format!(
                         "sent kind={:?} server_id={} target={}",
@@ -194,8 +192,7 @@ fn send_via_http(settings: OneBot11Settings, event: ServerEventEnvelope) {
                 );
             }
             Ok(response) => {
-                log_warn_ctx(
-                    "services.online.onebot",
+                host::log_onebot_warn(
                     "send_via_http",
                     &format!(
                         "send failed kind={:?} server_id={} target={} status={}",
@@ -207,8 +204,7 @@ fn send_via_http(settings: OneBot11Settings, event: ServerEventEnvelope) {
                 );
             }
             Err(error) => {
-                log_warn_ctx(
-                    "services.online.onebot",
+                host::log_onebot_warn(
                     "send_via_http",
                     &format!(
                         "send errored kind={:?} server_id={} target={} error={}",
@@ -220,12 +216,82 @@ fn send_via_http(settings: OneBot11Settings, event: ServerEventEnvelope) {
     }
 }
 
-pub fn handle_server_event(event: &ServerEventEnvelope) {
-    let settings = crate::services::global::settings_manager().get().onebot_11;
+pub fn handle_server_event_with_settings(settings: OneBot11Settings, event: &ServerEventEnvelope) {
     if !should_send(&settings, event) {
         return;
     }
 
     let event = event.clone();
     std::thread::spawn(move || send_via_http(settings, event));
+}
+
+pub fn handle_server_event(event: &ServerEventEnvelope) {
+    handle_server_event_with_settings(host::current_onebot_settings(), event);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::events::EventScope;
+
+    fn sample_settings() -> OneBot11Settings {
+        serde_json::from_value(serde_json::json!({
+            "enabled": true,
+            "api_base_url": "http://127.0.0.1:3000",
+            "access_token": "",
+            "event_classes": ["output", "lifecycle"],
+            "structured_event_kinds": ["chat", "server_ready"],
+            "server_ids": ["alpha"],
+            "targets": [{ "type": "group", "id": "123456" }],
+            "message_template": "[{server_id}] {kind}: {summary}"
+        }))
+        .expect("sample onebot settings should deserialize")
+    }
+
+    fn chat_event() -> ServerEventEnvelope {
+        ServerEventEnvelope {
+            event_id: "evt-1".to_string(),
+            occurred_at: 1,
+            scope: EventScope::Server,
+            server_id: "alpha".to_string(),
+            source: "runtime.local".to_string(),
+            kind: ServerEventKind::OutputStructuredLog,
+            payload: ServerEventPayload::StructuredLog {
+                line: "<miaom> hello".to_string(),
+                stream: "stdout".to_string(),
+                event_kind: Some("chat".to_string()),
+                player: Some("miaom".to_string()),
+                message: Some("hello".to_string()),
+            },
+        }
+    }
+
+    #[test]
+    fn should_send_requires_matching_server_and_kind() {
+        let settings = sample_settings();
+        let event = chat_event();
+        assert!(should_send(&settings, &event));
+
+        let mut wrong_server = event.clone();
+        wrong_server.server_id = "beta".to_string();
+        assert!(!should_send(&settings, &wrong_server));
+
+        let mut wrong_kind = event.clone();
+        wrong_kind.payload = ServerEventPayload::StructuredLog {
+            line: "server ready".to_string(),
+            stream: "stdout".to_string(),
+            event_kind: Some("player_join".to_string()),
+            player: Some("miaom".to_string()),
+            message: None,
+        };
+        assert!(!should_send(&settings, &wrong_kind));
+    }
+
+    #[test]
+    fn render_message_uses_summary_tokens() {
+        let settings = sample_settings();
+        let event = chat_event();
+
+        assert_eq!(render_message(&settings, &event), "[alpha] outputstructuredlog: miaom: hello");
+    }
 }

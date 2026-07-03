@@ -18,12 +18,12 @@ use crate::models::plugin::{
     PluginActions, PluginDistributionClass, PluginInfo, PluginInstallResult, PluginManifest,
     PluginSource,
 };
-use crate::plugins::api::new_api_registry;
+use crate::plugins::api::PluginApiRegistry;
 use crate::plugins::runtime::PluginRuntime;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 /// 插件管理器
 ///
@@ -33,8 +33,7 @@ pub struct PluginManager {
     runtimes: Arc<RwLock<HashMap<String, PluginRuntime>>>,
     plugins_dir: PathBuf,
     data_dir: PathBuf,
-    api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
-    server_event_subscription_id: Option<u64>,
+    api_registry: PluginApiRegistry,
 }
 
 impl PluginManager {
@@ -67,8 +66,7 @@ impl PluginManager {
             runtimes: Arc::new(RwLock::new(HashMap::new())),
             plugins_dir,
             data_dir,
-            api_registry: new_api_registry(),
-            server_event_subscription_id: None,
+            api_registry: PluginApiRegistry::new(),
         })
     }
 
@@ -104,8 +102,8 @@ impl PluginManager {
     /// # Returns
     ///
     /// 返回当前插件系统共用的 API 注册表
-    pub fn get_api_registry(&self) -> Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
-        Arc::clone(&self.api_registry)
+    pub fn get_api_registry(&self) -> PluginApiRegistry {
+        self.api_registry.clone()
     }
 
     /// 扫描插件目录并刷新插件列表
@@ -498,10 +496,6 @@ impl PluginManager {
             target_data,
         )
     }
-
-    pub fn set_server_event_subscription_id(&mut self, subscriber_id: u64) {
-        self.server_event_subscription_id = Some(subscriber_id);
-    }
 }
 
 #[cfg(test)]
@@ -545,6 +539,6 @@ mod tests {
             .expect("reload_roots should succeed");
 
         assert!(Arc::ptr_eq(&shared_runtimes, &manager.get_shared_runtimes()));
-        assert!(Arc::ptr_eq(&api_registry, &manager.get_api_registry()));
+        assert!(api_registry.ptr_eq(&manager.get_api_registry()));
     }
 }

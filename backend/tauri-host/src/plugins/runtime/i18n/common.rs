@@ -1,4 +1,4 @@
-use crate::services::global::i18n_service;
+use crate::plugins::runtime::host_api::{host_remove_locale_callback, host_t, host_t_with_options};
 use mlua::{Function, Lua, Table};
 use std::collections::HashMap;
 
@@ -72,18 +72,18 @@ pub(super) fn plugin_i18n_namespace(plugin_id: &str, key: &str) -> String {
 pub(super) fn i18n_t1(key: &str, a: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
-    i18n_service().t_with_options(key, &m)
+    host_t_with_options(key, &m)
 }
 
 pub(super) fn i18n_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
     m.insert("1".to_string(), b.into());
-    i18n_service().t_with_options(key, &m)
+    host_t_with_options(key, &m)
 }
 
 pub(super) fn i18n_err(key: &str) -> mlua::Error {
-    mlua::Error::runtime(i18n_service().t(key))
+    mlua::Error::runtime(host_t(key))
 }
 
 pub(super) fn i18n_err1(key: &str, a: impl Into<String>) -> mlua::Error {
@@ -117,5 +117,5 @@ pub(super) fn callbacks_table(lua: &Lua, registry_key: &str) -> mlua::Result<Tab
 }
 
 pub(super) fn remove_locale_callback_token(token_id: usize) {
-    i18n_service().remove_locale_callback(&crate::services::i18n::LocaleCallbackToken(token_id));
+    host_remove_locale_callback(token_id);
 }

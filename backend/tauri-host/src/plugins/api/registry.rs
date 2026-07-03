@@ -1,8 +1,23 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-pub fn new_api_registry() -> Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
-    Arc::new(Mutex::new(HashMap::new()))
+#[derive(Clone, Default)]
+pub struct PluginApiRegistry {
+    inner: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
+}
+
+impl PluginApiRegistry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
+pub fn new_api_registry() -> PluginApiRegistry {
+    PluginApiRegistry::new()
 }
 
 pub trait ApiRegistryOps {
@@ -17,9 +32,9 @@ pub trait ApiRegistryOps {
     fn clear_plugin_apis(&self, plugin_id: &str);
 }
 
-impl ApiRegistryOps for Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
+impl ApiRegistryOps for PluginApiRegistry {
     fn register_api(&self, plugin_id: &str, api_name: &str, lua_fn_name: &str) {
-        let mut registry = self.lock().unwrap_or_else(|e| {
+        let mut registry = self.inner.lock().unwrap_or_else(|e| {
             eprintln!("[WARN] Mutex poisoned, recovering: {}", e);
             e.into_inner()
         });
@@ -28,7 +43,7 @@ impl ApiRegistryOps for Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
     }
 
     fn has_api(&self, plugin_id: &str, api_name: &str) -> bool {
-        let registry = self.lock().unwrap_or_else(|e| {
+        let registry = self.inner.lock().unwrap_or_else(|e| {
             eprintln!("[WARN] Mutex poisoned, recovering: {}", e);
             e.into_inner()
         });
@@ -39,7 +54,7 @@ impl ApiRegistryOps for Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
     }
 
     fn list_apis(&self, plugin_id: &str) -> Vec<String> {
-        let registry = self.lock().unwrap_or_else(|e| {
+        let registry = self.inner.lock().unwrap_or_else(|e| {
             eprintln!("[WARN] Mutex poisoned, recovering: {}", e);
             e.into_inner()
         });
@@ -50,7 +65,7 @@ impl ApiRegistryOps for Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
     }
 
     fn get_api_fn_name(&self, plugin_id: &str, api_name: &str) -> Option<String> {
-        let registry = self.lock().unwrap_or_else(|e| {
+        let registry = self.inner.lock().unwrap_or_else(|e| {
             eprintln!("[WARN] Mutex poisoned, recovering: {}", e);
             e.into_inner()
         });
@@ -60,7 +75,7 @@ impl ApiRegistryOps for Arc<Mutex<HashMap<String, HashMap<String, String>>>> {
     }
 
     fn clear_plugin_apis(&self, plugin_id: &str) {
-        let mut registry = self.lock().unwrap_or_else(|e| {
+        let mut registry = self.inner.lock().unwrap_or_else(|e| {
             eprintln!("[WARN] Mutex poisoned, recovering: {}", e);
             e.into_inner()
         });

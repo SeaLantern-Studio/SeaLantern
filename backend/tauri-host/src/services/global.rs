@@ -52,7 +52,7 @@ fn init_plugin_manager_or_exit() -> Arc<Mutex<PluginManager>> {
     let manager = Arc::new(Mutex::new(plugin_manager));
 
     let manager_for_events = Arc::clone(&manager);
-    let plugin_registration = event_manager().register_named_consumer_with_metadata(
+    let _plugin_registration = event_manager().register_named_consumer_with_metadata(
         "plugin_manager.server_events",
         EventConsumer::server(Arc::new(move |event| {
             let guard = manager_for_events.lock().unwrap_or_else(|e| e.into_inner());
@@ -78,12 +78,6 @@ fn init_plugin_manager_or_exit() -> Arc<Mutex<PluginManager>> {
             "Forward selected server events to the thin OneBot HTTP adapter.",
         ),
     );
-
-    if let Ok(mut guard) = manager.lock() {
-        if let Some(subscriber_id) = plugin_registration.server_subscription_id {
-            guard.set_server_event_subscription_id(subscriber_id);
-        }
-    }
 
     manager
 }

@@ -1,4 +1,5 @@
 use crate::plugins;
+use crate::plugins::api::{ApiRegistryOps, PluginApiRegistry};
 use crate::plugins::runtime::PluginRuntime;
 use crate::services;
 use crate::services::events::{
@@ -9,7 +10,7 @@ use crate::services::global::i18n_service;
 use crate::utils::logger::{log_debug_ctx, log_warn_ctx};
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use tauri::{Emitter, Listener};
 
 fn plugin_bridge_t(key: &str) -> String {
@@ -50,11 +51,9 @@ pub(crate) fn install_plugin_bridge(
     app: &tauri::App,
     shared_runtimes: Arc<RwLock<HashMap<String, PluginRuntime>>>,
     shared_runtimes_for_server_ready: Arc<RwLock<HashMap<String, PluginRuntime>>>,
-    api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
+    api_registry: PluginApiRegistry,
 ) {
     plugins::api::set_api_call_handler(Arc::new(move |_source, target, api_name, args| {
-        use crate::plugins::api::ApiRegistryOps;
-
         let lua_fn_name = api_registry
             .get_api_fn_name(target, api_name)
             .ok_or_else(|| {

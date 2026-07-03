@@ -9,7 +9,6 @@ pub mod events;
 pub mod global;
 pub mod i18n;
 pub mod java_detector;
-pub(crate) mod locale_json;
 pub mod mod_manager;
 pub mod online;
 pub mod plugin_dir;

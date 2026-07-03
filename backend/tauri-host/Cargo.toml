@@ -15,6 +15,9 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 sea_lantern_runtime = { package = "sea-lantern-runtime", path = "../runtime-core" }
+sea_lantern_event_core = { package = "sea-lantern-event-core", path = "../event-core" }
+sea_lantern_i18n_core = { package = "sea-lantern-i18n-core", path = "../i18n-core" }
+sea_lantern_lua_runtime_core = { package = "sea-lantern-lua-runtime-core", path = "../lua-runtime-core" }
 sea_lantern_java_installer_core = { package = "sea-lantern-java-installer-core", path = "../java-installer-core" }
 sea_lantern_server_download_links_core = { package = "sea-lantern-server-download-links-core", path = "../server-download-links-core" }
 sea_lantern_server_installer_core = { package = "sea-lantern-server-installer-core", path = "../server-installer-core" }
@@ -22,6 +25,8 @@ sea_lantern_server_plugin_core = { package = "sea-lantern-server-plugin-core", p
 sea_lantern_server_local_setup_core = { package = "sea-lantern-server-local-setup-core", path = "../server-local-setup-core" }
 sea_lantern_server_startup_scan_core = { package = "sea-lantern-server-startup-scan-core", path = "../server-startup-scan-core" }
 sea_lantern_server_config_core = { package = "sea-lantern-server-config-core", path = "../server-config-core" }
+sea_lantern_plugin_trust_core = { package = "sea-lantern-plugin-trust-core", path = "../plugin-trust-core" }
+sea_lantern_server_log_core = { package = "sea-lantern-server-log-core", path = "../server-log-core" }
 sea_lantern_starter_links_core = { package = "sea-lantern-starter-links-core", path = "../starter-links-core" }
 sea_lantern_update_core = { package = "sea-lantern-update-core", path = "../update-core" }
 sea_lantern_docker_core = { package = "sea-lantern-docker-core", path = "../docker-core" }
@@ -75,7 +80,6 @@ image = { version = "0.25", default-features = false, features = [
     "ico",
 ] }
 url = "2.5"
-rusqlite = { version = "0.32", features = ["bundled"] }
 ipnet = "2.10"
 chrono = "0.4"
 lazy_static = "1.4"

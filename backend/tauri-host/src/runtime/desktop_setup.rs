@@ -1,3 +1,4 @@
+use crate::plugins::api::PluginApiRegistry;
 use crate::plugins::manager::PluginManager;
 use crate::plugins::runtime::PluginRuntime;
 use crate::runtime::desktop_shell;
@@ -12,7 +13,7 @@ use tauri::TitleBarStyle;
 pub(crate) struct PluginSetup {
     pub manager: Arc<Mutex<PluginManager>>,
     pub shared_runtimes: Arc<RwLock<HashMap<String, PluginRuntime>>>,
-    pub api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
+    pub api_registry: PluginApiRegistry,
 }
 
 fn is_safe_mode() -> bool {

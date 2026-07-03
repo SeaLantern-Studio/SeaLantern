@@ -3,7 +3,7 @@ use super::common::{
     emit_result, map_create_err, map_set_err, register_callback, ui_t1,
     validate_context_menu_context,
 };
-use crate::plugins::api::emit_context_menu_event;
+use crate::plugins::runtime::host_api::host_emit_context_menu_event;
 use mlua::{Function, Table};
 
 pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), String> {
@@ -62,7 +62,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
                     lua,
                     &pid,
                     "register_context_menu",
-                    emit_context_menu_event(&pid, "register", &context, &items_json),
+                    host_emit_context_menu_event(&pid, "register", &context, &items_json),
                 )
             }),
         "ui.register_context_menu",
@@ -82,7 +82,7 @@ pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), 
                 lua,
                 &pid,
                 "unregister_context_menu",
-                emit_context_menu_event(&pid, "unregister", &context, "[]"),
+                host_emit_context_menu_event(&pid, "unregister", &context, "[]"),
             )
         }),
         "ui.unregister_context_menu",

@@ -1,21 +1,15 @@
-use crate::services::global::i18n_service;
-use std::collections::HashMap;
+use super::super::host;
 
 pub(super) fn tunnel_t(key: &str) -> String {
-    i18n_service().t(key)
+    host::tunnel_translate(key)
 }
 
 pub(super) fn tunnel_t1(key: &str, a: impl Into<String>) -> String {
-    let mut m = HashMap::new();
-    m.insert("0".to_string(), a.into());
-    i18n_service().t_with_options(key, &m)
+    host::tunnel_translate_with_args(key, &[a.into()])
 }
 
 pub(super) fn tunnel_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
-    let mut m = HashMap::new();
-    m.insert("0".to_string(), a.into());
-    m.insert("1".to_string(), b.into());
-    i18n_service().t_with_options(key, &m)
+    host::tunnel_translate_with_args(key, &[a.into(), b.into()])
 }
 
 pub(super) fn tunnel_t3(
@@ -24,9 +18,5 @@ pub(super) fn tunnel_t3(
     b: impl Into<String>,
     c: impl Into<String>,
 ) -> String {
-    let mut m = HashMap::new();
-    m.insert("0".to_string(), a.into());
-    m.insert("1".to_string(), b.into());
-    m.insert("2".to_string(), c.into());
-    i18n_service().t_with_options(key, &m)
+    host::tunnel_translate_with_args(key, &[a.into(), b.into(), c.into()])
 }

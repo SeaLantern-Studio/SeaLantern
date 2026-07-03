@@ -2,7 +2,7 @@ use super::i18n::{tunnel_t, tunnel_t1, tunnel_t2, tunnel_t3};
 use super::state::push_log;
 use super::TunnelConnection;
 use sculk::tunnel::{ConnectionSnapshot, TunnelEvent};
-use tauri::async_runtime::JoinHandle;
+use tokio::task::JoinHandle;
 
 pub(super) fn map_connection(snapshot: ConnectionSnapshot) -> TunnelConnection {
     TunnelConnection {
@@ -19,7 +19,7 @@ pub(super) fn map_connection(snapshot: ConnectionSnapshot) -> TunnelConnection {
 pub(super) fn spawn_event_task(
     mut events: tokio::sync::mpsc::Receiver<TunnelEvent>,
 ) -> JoinHandle<()> {
-    tauri::async_runtime::spawn(async move {
+    tokio::spawn(async move {
         while let Some(event) = events.recv().await {
             let message = match &event {
                 TunnelEvent::PlayerJoined { id } => {

@@ -9,22 +9,12 @@ use crate::hardcode_data::server_downloads::STARTER_INSTALLER_LINKS_FILE_NAME;
 /// services/settings_manager.rs
 pub const SETTINGS_FILE: &str = "sea_lantern_settings.json";
 
-/// services/i18n.rs（与前端 `src/language/*.json` 语言代码一致）
-pub const SUPPORTED_LOCALES: &[&str] = &[
-    "zh-CN", "en-US", "zh-TW", "de-DE", "es-ES", "fr-FA", "ja-JP", "ko-KR", "ru-RU", "vi-VN",
-];
-
 /// services/server/downloader.rs + services/download/starter_installer_links.rs
 pub const DOWNLOAD_LINK_LIST_URL: &str = SERVER_CORE_MIRROR_LINK_LIST_URL;
 #[cfg(test)]
 pub const STARTER_INSTALLER_LINKS_FILE: &str = STARTER_INSTALLER_LINKS_FILE_NAME;
 #[cfg(test)]
 pub const STARTER_INSTALLER_LINKS_URL: &str = DOWNLOAD_LINK_LIST_URL;
-
-/// services/server/log_pipeline.rs
-pub const LATEST_LOG_DB_FILE: &str = "latest_log.db";
-pub const LOG_BATCH_SIZE: usize = 128;
-pub const LOG_FLUSH_INTERVAL_MS: u64 = 50;
 
 /// services/server/manager.rs
 pub const DATA_FILE: &str = "sea_lantern_servers.json";

@@ -1,5 +1,7 @@
 use super::runtime::PluginRuntime;
+use crate::plugins::api::PluginApiRegistry;
 use crate::plugins::runtime::filesystem::has_any_fs_permission;
+use crate::plugins::runtime::host::ensure_runtime_host_api_installed;
 use crate::plugins::runtime::permissions::{
     has_any_plugins_permission, has_any_process_permission, normalize_permissions,
     EXECUTE_PROGRAM_PERMISSION, NETWORK_PERMISSION, PLUGIN_FOLDER_ACCESS_PERMISSION, UI_PERMISSION,
@@ -9,8 +11,6 @@ use crate::services::global::i18n_service;
 use mlua::Table;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-
 fn core_t1(key: &str, a: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
@@ -42,13 +42,13 @@ impl PluginRuntime {
         data_dir: &Path,
         server_dir: &Path,
         global_dir: &Path,
-        api_registry: Arc<
-            Mutex<std::collections::HashMap<String, std::collections::HashMap<String, String>>>,
-        >,
+        api_registry: PluginApiRegistry,
         permissions: Vec<String>,
         allowed_programs: Vec<String>,
         server_event_subscriptions: HashMap<String, ServerEventSubscription>,
     ) -> Result<Self, String> {
+        ensure_runtime_host_api_installed();
+
         let lua = mlua::Lua::new_with(
             mlua::StdLib::TABLE
                 | mlua::StdLib::STRING

@@ -6,6 +6,8 @@ mod filesystem;
 #[cfg(test)]
 #[path = "../../../tests/unit/plugins_runtime_filesystem_test.rs"]
 mod filesystem_test;
+mod host;
+mod host_api;
 mod http;
 mod i18n;
 mod log;
@@ -27,7 +29,7 @@ pub use process::{kill_all_processes, new_process_registry};
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::plugins::api::new_api_registry;
+    use crate::plugins::api::PluginApiRegistry;
     use mlua::Result as LuaResult;
     use mlua::Value;
     use std::env;
@@ -39,7 +41,7 @@ mod tests {
         let data_dir = temp_dir.join("data");
         let server_dir = temp_dir.join("servers");
         let global_dir = temp_dir.join("global");
-        let api_registry = new_api_registry();
+        let api_registry = PluginApiRegistry::new();
 
         let runtime = PluginRuntime::new(
             "test-plugin",
@@ -66,7 +68,7 @@ mod tests {
         let data_dir = temp_dir.join("data");
         let server_dir = temp_dir.join("servers");
         let global_dir = temp_dir.join("global");
-        let api_registry = new_api_registry();
+        let api_registry = PluginApiRegistry::new();
 
         let runtime = PluginRuntime::new(
             "test-sandbox",

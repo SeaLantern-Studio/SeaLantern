@@ -66,16 +66,16 @@ impl PluginRuntime {
     }
 
     pub fn cleanup(&self) {
-        use crate::plugins::api::emit_i18n_event;
+        use crate::plugins::runtime::host_api::{
+            host_emit_i18n_event, host_remove_locale_callback, host_remove_plugin_translations,
+        };
         use crate::plugins::runtime::process::kill_plugin_processes;
-        use crate::services::global::i18n_service;
-        use crate::services::i18n::LocaleCallbackToken;
 
         let callbacks_registry_key = format!("_locale_change_callbacks_{}", self.plugin_id);
         let token_registry_key = format!("_locale_callback_token_{}", self.plugin_id);
 
         if let Ok(token_id) = self.lua.named_registry_value::<usize>(&token_registry_key) {
-            i18n_service().remove_locale_callback(&LocaleCallbackToken(token_id));
+            host_remove_locale_callback(token_id);
         }
 
         let _ = self
@@ -87,7 +87,7 @@ impl PluginRuntime {
 
         kill_plugin_processes(&self.process_registry, &self.plugin_id);
 
-        i18n_service().remove_plugin_translations(&self.plugin_id);
-        let _ = emit_i18n_event(&self.plugin_id, "remove_translations", "", "");
+        host_remove_plugin_translations(&self.plugin_id);
+        let _ = host_emit_i18n_event(&self.plugin_id, "remove_translations", "", "");
     }
 }

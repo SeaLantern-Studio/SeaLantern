@@ -16,7 +16,7 @@ const FS_SCOPES: &[&str] = &["data", "server", "global"];
 const FS_ACTIONS: &[&str] = &["read", "write", "list", "meta", "delete", "transfer"];
 
 pub(crate) fn normalize_permission(permission: &str) -> String {
-    crate::hardcode_data::plugin_permissions::normalize_permission_id(permission)
+    sea_lantern_plugin_trust_core::normalize_permission_id(permission)
 }
 
 pub(crate) fn normalize_permissions<I>(permissions: I) -> Vec<String>
@@ -37,7 +37,7 @@ where
 }
 
 pub(crate) fn is_valid_declared_permission(permission: &str) -> bool {
-    crate::hardcode_data::plugin_permissions::is_known_permission_or_alias(permission)
+    sea_lantern_plugin_trust_core::is_known_permission_or_alias(permission)
 }
 
 pub(crate) fn is_any_fs_permission(permission: &str) -> bool {
