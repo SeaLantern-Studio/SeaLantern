@@ -2,9 +2,14 @@
 import SLCard from "@components/common/SLCard.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
+import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
+import { useRouter } from "vue-router";
 import BackgroundSection from "./BackgroundSection.vue";
 import { useAppearanceSettingsSection } from "@src/pages/settings/useAppearanceSettingsSection";
+import { NEXT_PAINT_ROUTE_NAME } from "@src/router/pageMeta";
+
+const router = useRouter();
 
 const {
   isReady,
@@ -22,8 +27,8 @@ const {
   backgroundImagePath,
   backgroundPreviewUrl,
   backgroundImageName,
-  isThemeProxied,
-  themeProxyNotice,
+  isThemeProviderActive,
+  themeProviderNotice,
   windowEffectHint,
   themeOptions,
   fontFamilyOptions,
@@ -46,6 +51,10 @@ const {
   removeBackgroundImage,
   setBackgroundExpanded,
 } = useAppearanceSettingsSection();
+
+function openPaintPage(): void {
+  void router.push({ name: NEXT_PAINT_ROUTE_NAME });
+}
 
 function handleThemeChange(value: string | number): void {
   void setTheme(String(value));
@@ -90,13 +99,9 @@ function handleBackgroundSizeChange(value: string): void {
             <SLSelect
               :model-value="theme"
               :options="themeOptions"
-              :disabled="!isReady || isThemeProxied"
+              :disabled="!isReady"
               @update:model-value="handleThemeChange"
             />
-
-            <span v-if="themeProxyNotice" class="appearance-section__hint">
-              {{ themeProxyNotice }}
-            </span>
           </div>
         </div>
 
@@ -176,6 +181,23 @@ function handleBackgroundSizeChange(value: string): void {
             @update:model-value="handleMinimalModeChange"
           />
         </div>
+      </div>
+
+      <div class="appearance-section__bridge">
+        <div class="appearance-section__bridge-copy">
+          <strong>{{ i18n.t("settings.next.appearance.personalize_bridge_title") }}</strong>
+          <span>{{ i18n.t("settings.next.appearance.personalize_bridge_desc") }}</span>
+          <span v-if="themeProviderNotice" class="appearance-section__hint">
+            {{ themeProviderNotice }}
+          </span>
+          <span v-else-if="isThemeProviderActive" class="appearance-section__hint">
+            {{ i18n.t("settings.next.appearance.personalize_bridge_hint") }}
+          </span>
+        </div>
+
+        <SLButton variant="secondary" size="sm" @click="openPaintPage">
+          {{ i18n.t("common.personalize") }}
+        </SLButton>
       </div>
 
       <BackgroundSection
@@ -287,6 +309,39 @@ function handleBackgroundSizeChange(value: string): void {
   line-height: 1.4;
 }
 
+.appearance-section__bridge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--sl-border) 72%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--sl-surface) 86%, transparent);
+}
+
+.appearance-section__bridge-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.appearance-section__bridge-copy strong,
+.appearance-section__bridge-copy span {
+  margin: 0;
+}
+
+.appearance-section__bridge-copy strong {
+  color: var(--sl-text-primary);
+  font-size: 0.9rem;
+}
+
+.appearance-section__bridge-copy span {
+  color: var(--sl-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .appearance-section__slider-control {
   width: min(300px, 100%);
   display: flex;
@@ -340,6 +395,11 @@ function handleBackgroundSizeChange(value: string): void {
   .appearance-section__control,
   .appearance-section__slider-control {
     width: 100%;
+  }
+
+  .appearance-section__bridge {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

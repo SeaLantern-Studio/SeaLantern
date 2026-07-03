@@ -16,7 +16,6 @@ export function usePaintPage() {
     changedGroups: ["Appearance", "Console"],
     syncLocalValues: fields.syncLocalValues,
     prepareForSave: fields.prepareForSave,
-    emptyImportMessage: () => i18n.t("settings.no_json"),
   });
 
   const settings = settingsDraft.settings;
@@ -26,36 +25,32 @@ export function usePaintPage() {
     exportPersonalizationPackage,
     importPersonalizationPackage,
   } = usePaintPersonalizationActions({
-    settings,
     settingsDraft,
-    markChanged: settingsDraft.markChanged,
-  });
-
-  const windowEffectSummary = computed(() => {
-    const effect = settings.value?.window_effect || "off";
-    const key = `settings.window_effect_help.${effect}`;
-    return i18n.t(key);
   });
 
   const summaryFacts = computed<WorkbenchFactItem[]>(() => [
     {
-      label: i18n.t("settings.appearance"),
-      value: settings.value ? i18n.t(`settings.theme_options.${settings.value.theme}`) : "-",
+      label: i18n.t("settings.color_theme"),
+      value: appearanceOptions.isThemeProviderActive.value
+        ? i18n.t("settings.paint.theme_provider_fact", {
+            plugin: appearanceOptions.themeProviderPluginName.value,
+          })
+        : settings.value
+          ? i18n.t(`settings.color_options.${settings.value.color}.label`)
+          : "-",
     },
     {
-      label: i18n.t("settings.font_family"),
-      value:
-        appearanceOptions.fontFamilyOptions.value.find(
-          (item) => item.value === (settings.value?.font_family ?? ""),
-        )?.label ?? i18n.t("settings.font_family_default"),
+      label: i18n.t("settings.app_display_name"),
+      value: settings.value?.app_display_name?.trim() || i18n.t("common.app_name"),
     },
     {
-      label: i18n.t("settings.window_effect"),
+      label: i18n.t("settings.text_customization"),
       value:
-        appearanceOptions.windowEffectOptions.value.find(
-          (item) => item.value === (settings.value?.window_effect ?? "off"),
-        )?.label ?? i18n.t("settings.window_effect_options.off"),
-      detail: windowEffectSummary.value,
+        settings.value?.text_color_overrides.title ||
+        settings.value?.text_color_overrides.text ||
+        settings.value?.text_color_overrides.description
+          ? i18n.t("common.enabled")
+          : i18n.t("common.default"),
     },
     {
       label: i18n.t("settings.console"),
@@ -70,15 +65,6 @@ export function usePaintPage() {
   function openAppearanceSettings(): void {
     void router.push({ name: NEXT_SETTINGS_ROUTE_NAME, hash: "#appearance" });
   }
-
-  async function resetSettings() {
-    await settingsDraft.resetSettings();
-  }
-
-  async function handleImport(json: string) {
-    await settingsDraft.importSettings(json);
-  }
-
   return {
     fields,
     appearanceOptions,
@@ -89,10 +75,7 @@ export function usePaintPage() {
     exportPersonalizationPackage,
     importPersonalizationPackage,
     summaryFacts,
-    windowEffectSummary,
     markChanged,
     openAppearanceSettings,
-    resetSettings,
-    handleImport,
   };
 }

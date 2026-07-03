@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { i18n } from "@language";
+import { resolveNextHomeCardTitle } from "@src/pages/home/cardMeta";
 import type {
   NextHomeCardRendererProps,
   NextHomeResolvedCardRenderer,
@@ -13,6 +14,7 @@ const props = defineProps<
 >();
 
 const rendererKey = computed(() => props.meta.pluginRendererKey ?? props.instance.kind);
+const resolvedTitle = computed(() => resolveNextHomeCardTitle(props.meta));
 
 const fallbackMessage = computed(() => {
   if (props.resolution?.status === "plugin-pending") {
@@ -34,7 +36,7 @@ const fallbackMessage = computed(() => {
       <span class="next-home-plugin-card-renderer__eyebrow">{{
         i18n.t("shell.home_plugin_card_eyebrow")
       }}</span>
-      <h3>{{ i18n.t(meta.titleKey) }}</h3>
+      <h3>{{ resolvedTitle }}</h3>
     </header>
 
     <p class="next-home-plugin-card-renderer__body">

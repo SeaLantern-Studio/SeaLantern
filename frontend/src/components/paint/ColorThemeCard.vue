@@ -7,8 +7,8 @@ import { getThemeOptions } from "@themes";
 
 defineProps<{
   color: string;
-  isThemeProxied: boolean;
-  themeProxyPluginName: string;
+  isThemeProviderActive: boolean;
+  themeProviderNotice: string;
 }>();
 
 const emit = defineEmits<{
@@ -33,17 +33,16 @@ function handleColorChange(value: string | number) {
           <p class="card-subtitle">{{ i18n.t("settings.color_theme_desc") }}</p>
         </div>
         <div class="sl-input-lg">
-          <div v-if="isThemeProxied" class="theme-proxied-notice">
-            <span class="proxied-text">{{
-              i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
-            }}</span>
-          </div>
           <SLSelect
-            v-else
             :model-value="color"
             :options="colorOptions"
+            :disabled="isThemeProviderActive"
             @update:model-value="handleColorChange"
           />
+
+          <div v-if="themeProviderNotice" class="theme-proxied-notice">
+            <span class="proxied-text">{{ themeProviderNotice }}</span>
+          </div>
         </div>
       </div>
     </template>

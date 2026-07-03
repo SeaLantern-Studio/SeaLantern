@@ -1,9 +1,12 @@
+import type { Component } from "vue";
+
 export const HOME_GRID_COLUMNS = 12;
 export const HOME_GRID_MAX_ROWS = 48;
 export const HOME_GRID_GAP = 16;
 export const HOME_GRID_ROW_HEIGHT = 92;
 
 export type NextHomeCardSection = "summary" | "operations" | "workspace" | "attention";
+export type NextHomeHostCardSection = Extract<NextHomeCardSection, "operations" | "attention">;
 
 export type NextHomeBuiltinCardKind =
   | "summary-band"
@@ -15,6 +18,15 @@ export type NextHomeBuiltinCardKind =
 export type NextHomePluginCardKind = `plugin:${string}`;
 
 export type NextHomeCardKind = NextHomeBuiltinCardKind | NextHomePluginCardKind;
+
+export interface NextHomeHostCardDefinition {
+  kind: NextHomePluginCardKind;
+  title: string;
+  section: NextHomeHostCardSection;
+  component: Component;
+  defaultCols?: 4 | 6;
+  defaultRows?: 3 | 4 | 5 | 6;
+}
 
 export interface NextHomeCardInstance {
   instanceId: string;
@@ -32,7 +44,8 @@ export interface NextHomeCardInstance {
 
 export interface NextHomeCardLayoutMeta {
   id: NextHomeCardKind;
-  titleKey: string;
+  titleKey?: string | null;
+  title?: string | null;
   section: NextHomeCardSection;
   minCols: 1 | 2 | 3 | 4 | 6 | 8 | 12;
   defaultCols: 1 | 2 | 3 | 4 | 6 | 8 | 12;
@@ -42,6 +55,7 @@ export interface NextHomeCardLayoutMeta {
   maxRows?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   resizable: boolean;
   movable: boolean;
+  removable: boolean;
   maxInstances?: number;
   provider?: "builtin" | "plugin";
   pluginRendererKey?: string | null;
@@ -62,7 +76,8 @@ export const NEXT_HOME_CARD_LAYOUTS: Record<NextHomeBuiltinCardKind, NextHomeCar
     maxRows: 3,
     resizable: false,
     movable: true,
-    maxInstances: 5,
+    removable: false,
+    maxInstances: 1,
     provider: "builtin",
     pluginRendererKey: null,
   },
@@ -70,15 +85,16 @@ export const NEXT_HOME_CARD_LAYOUTS: Record<NextHomeBuiltinCardKind, NextHomeCar
     id: "operations-band",
     titleKey: "shell.home_card_operations_title",
     section: "operations",
-    minCols: 6,
-    defaultCols: 8,
+    minCols: 12,
+    defaultCols: 12,
     maxCols: 12,
     minRows: 3,
     defaultRows: 3,
-    maxRows: 5,
-    resizable: true,
+    maxRows: 3,
+    resizable: false,
     movable: true,
-    maxInstances: 5,
+    removable: false,
+    maxInstances: 1,
     provider: "builtin",
     pluginRendererKey: null,
   },
@@ -90,11 +106,12 @@ export const NEXT_HOME_CARD_LAYOUTS: Record<NextHomeBuiltinCardKind, NextHomeCar
     defaultCols: 4,
     maxCols: 6,
     minRows: 4,
-    defaultRows: 6,
+    defaultRows: 4,
     maxRows: 8,
     resizable: true,
     movable: true,
-    maxInstances: 5,
+    removable: true,
+    maxInstances: 1,
     provider: "builtin",
     pluginRendererKey: null,
   },
@@ -102,15 +119,16 @@ export const NEXT_HOME_CARD_LAYOUTS: Record<NextHomeBuiltinCardKind, NextHomeCar
     id: "workspace-band",
     titleKey: "shell.home_card_workspace_title",
     section: "workspace",
-    minCols: 6,
+    minCols: 8,
     defaultCols: 8,
     maxCols: 12,
-    minRows: 4,
-    defaultRows: 6,
+    minRows: 5,
+    defaultRows: 7,
     maxRows: 8,
     resizable: true,
     movable: true,
-    maxInstances: 5,
+    removable: false,
+    maxInstances: 1,
     provider: "builtin",
     pluginRendererKey: null,
   },
@@ -122,11 +140,12 @@ export const NEXT_HOME_CARD_LAYOUTS: Record<NextHomeBuiltinCardKind, NextHomeCar
     defaultCols: 4,
     maxCols: 6,
     minRows: 4,
-    defaultRows: 4,
+    defaultRows: 3,
     maxRows: 8,
     resizable: true,
     movable: true,
-    maxInstances: 5,
+    removable: true,
+    maxInstances: 1,
     provider: "builtin",
     pluginRendererKey: null,
   },
@@ -151,11 +170,11 @@ export const NEXT_HOME_DEFAULT_LAYOUT: NextHomeCardInstance[] = [
     kind: "operations-band",
     x: 0,
     y: 2,
-    width: 8,
+    width: 12,
     height: 3,
     colStart: 1,
     rowStart: 3,
-    colSpan: 8,
+    colSpan: 12,
     rowSpan: 3,
     zIndex: 2,
   },
@@ -163,13 +182,13 @@ export const NEXT_HOME_DEFAULT_LAYOUT: NextHomeCardInstance[] = [
     instanceId: "system-overview-1",
     kind: "system-overview",
     x: 8,
-    y: 2,
+    y: 5,
     width: 4,
-    height: 6,
+    height: 4,
     colStart: 9,
-    rowStart: 3,
+    rowStart: 6,
     colSpan: 4,
-    rowSpan: 6,
+    rowSpan: 4,
     zIndex: 3,
   },
   {
@@ -178,28 +197,74 @@ export const NEXT_HOME_DEFAULT_LAYOUT: NextHomeCardInstance[] = [
     x: 0,
     y: 5,
     width: 8,
-    height: 6,
+    height: 7,
     colStart: 1,
     rowStart: 6,
     colSpan: 8,
-    rowSpan: 6,
+    rowSpan: 7,
     zIndex: 4,
   },
   {
     instanceId: "attention-band-1",
     kind: "attention-band",
     x: 8,
-    y: 8,
+    y: 9,
     width: 4,
-    height: 4,
+    height: 3,
     colStart: 9,
-    rowStart: 9,
+    rowStart: 10,
     colSpan: 4,
-    rowSpan: 4,
+    rowSpan: 3,
     zIndex: 5,
   },
 ];
 
 export function isBuiltinNextHomeCardKind(kind: NextHomeCardKind): kind is NextHomeBuiltinCardKind {
   return kind in NEXT_HOME_CARD_LAYOUTS;
+}
+
+export function isNextHomePluginCardKind(kind: string): kind is NextHomePluginCardKind {
+  return kind.startsWith("plugin:");
+}
+
+function normalizeHostCardCols(section: NextHomeHostCardSection, value?: 4 | 6): 4 | 6 {
+  if (value === 6) {
+    return 6;
+  }
+
+  return section === "operations" ? 6 : 4;
+}
+
+function normalizeHostCardRows(section: NextHomeHostCardSection, value?: 3 | 4 | 5 | 6): 3 | 4 | 5 | 6 {
+  if (value) {
+    return value;
+  }
+
+  return section === "operations" ? 3 : 4;
+}
+
+export function createNextHomeHostCardLayoutMeta(
+  definition: NextHomeHostCardDefinition,
+): NextHomeCardLayoutMeta {
+  const defaultCols = normalizeHostCardCols(definition.section, definition.defaultCols);
+  const defaultRows = normalizeHostCardRows(definition.section, definition.defaultRows);
+
+  return {
+    id: definition.kind,
+    title: definition.title.trim() || definition.kind,
+    titleKey: null,
+    section: definition.section,
+    minCols: defaultCols,
+    defaultCols,
+    maxCols: defaultCols,
+    minRows: defaultRows,
+    defaultRows,
+    maxRows: defaultRows,
+    resizable: false,
+    movable: true,
+    removable: true,
+    maxInstances: 1,
+    provider: "plugin",
+    pluginRendererKey: definition.kind,
+  };
 }

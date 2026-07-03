@@ -6,10 +6,13 @@ import NextHomeCardPalette from "@src/components/home/NextHomeCardPalette.vue";
 import NextHomeCardRendererHost from "@src/components/home/NextHomeCardRendererHost.vue";
 import NextHomeLayoutBoard from "@src/components/home/NextHomeLayoutBoard.vue";
 import {
+  createNextHomeHostCardRegistry,
+  mergeNextHomeCardDefinitionRegistries,
   mergeNextHomeCardRendererRegistries,
   NEXT_HOME_BUILTIN_CARD_RENDERERS,
 } from "./cardRendererRegistry";
 import type {
+  NextHomeCardDefinitionRegistry,
   NextHomeCardRendererRegistry,
   NextHomeCardRuntimeContext,
 } from "./cardRendererContract";
@@ -33,8 +36,17 @@ const homePage = useNextHomePage({
   sidebarEntryCount: props.sidebarEntryCount,
 });
 
+const hostCardDefinitions = computed<NextHomeCardDefinitionRegistry>(() =>
+  mergeNextHomeCardDefinitionRegistries(nextHostRuntime.home.cardDefinitions.value),
+);
+
+const hostCardLayouts = computed(() =>
+  Object.values(createNextHomeHostCardRegistry(hostCardDefinitions.value)),
+);
+
 const layoutEditor = useNextHomeLayoutEditor({
   editMode: toRef(props, "editMode"),
+  additionalRegistry: hostCardLayouts,
 });
 
 const {
@@ -72,6 +84,9 @@ const {
 const cardRenderers = computed<NextHomeCardRendererRegistry>(() =>
   mergeNextHomeCardRendererRegistries(
     NEXT_HOME_BUILTIN_CARD_RENDERERS,
+    Object.fromEntries(
+      Object.entries(hostCardDefinitions.value).map(([kind, entry]) => [kind, entry?.renderer]),
+    ),
     nextHostRuntime.home.cardRenderers.value,
     props.additionalCardRenderers,
   ),

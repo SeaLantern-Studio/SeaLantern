@@ -12,6 +12,8 @@ const props = defineProps<{
   color: string;
   textColorOverrides: TextColorOverrides;
   windowEffect: string;
+  isThemeProviderActive: boolean;
+  themeProviderNotice: string;
 }>();
 
 const emit = defineEmits<{
@@ -73,14 +75,21 @@ const defaultTextColors = computed<TextColorOverrides>(() => {
               class="text-color-picker"
               type="color"
               :value="textColorOverrides.title || defaultTextColors.title"
+              :disabled="props.isThemeProviderActive"
               @input="handleColorChange('title', ($event.target as HTMLInputElement).value)"
             />
             <SLInput
               :model-value="textColorOverrides.title"
               :placeholder="defaultTextColors.title"
+              :disabled="props.isThemeProviderActive"
               @update:model-value="handleColorChange('title', $event)"
             />
-            <button class="text-color-reset" type="button" @click="resetColor('title')">
+            <button
+              class="text-color-reset"
+              type="button"
+              :disabled="props.isThemeProviderActive"
+              @click="resetColor('title')"
+            >
               {{ i18n.t("settings.text_color_reset") }}
             </button>
           </div>
@@ -96,14 +105,21 @@ const defaultTextColors = computed<TextColorOverrides>(() => {
               class="text-color-picker"
               type="color"
               :value="textColorOverrides.text || defaultTextColors.text"
+              :disabled="props.isThemeProviderActive"
               @input="handleColorChange('text', ($event.target as HTMLInputElement).value)"
             />
             <SLInput
               :model-value="textColorOverrides.text"
               :placeholder="defaultTextColors.text"
+              :disabled="props.isThemeProviderActive"
               @update:model-value="handleColorChange('text', $event)"
             />
-            <button class="text-color-reset" type="button" @click="resetColor('text')">
+            <button
+              class="text-color-reset"
+              type="button"
+              :disabled="props.isThemeProviderActive"
+              @click="resetColor('text')"
+            >
               {{ i18n.t("settings.text_color_reset") }}
             </button>
           </div>
@@ -121,18 +137,29 @@ const defaultTextColors = computed<TextColorOverrides>(() => {
               class="text-color-picker"
               type="color"
               :value="textColorOverrides.description || defaultTextColors.description"
+              :disabled="props.isThemeProviderActive"
               @input="handleColorChange('description', ($event.target as HTMLInputElement).value)"
             />
             <SLInput
               :model-value="textColorOverrides.description"
               :placeholder="defaultTextColors.description"
+              :disabled="props.isThemeProviderActive"
               @update:model-value="handleColorChange('description', $event)"
             />
-            <button class="text-color-reset" type="button" @click="resetColor('description')">
+            <button
+              class="text-color-reset"
+              type="button"
+              :disabled="props.isThemeProviderActive"
+              @click="resetColor('description')"
+            >
               {{ i18n.t("settings.text_color_reset") }}
             </button>
           </div>
         </div>
+      </div>
+
+      <div v-if="themeProviderNotice" class="text-theme-provider-notice">
+        {{ themeProviderNotice }}
       </div>
     </div>
   </SLCard>
@@ -239,6 +266,18 @@ const defaultTextColors = computed<TextColorOverrides>(() => {
   color: var(--sl-primary);
   border-color: var(--sl-primary-light);
   background: var(--sl-primary-bg);
+}
+
+.text-color-reset:disabled,
+.text-color-picker:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.text-theme-provider-notice {
+  color: var(--sl-text-secondary);
+  font-size: var(--sl-font-size-sm);
+  line-height: 1.5;
 }
 
 @media (max-width: 900px) {

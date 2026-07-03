@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { i18n } from "@language";
 import NextHomeSystemOverviewPanel from "../NextHomeSystemOverviewPanel.vue";
+import { resolveNextHomeCardTitle } from "@src/pages/home/cardMeta";
 import type { NextHomeCardRendererProps } from "@src/pages/home/cardRendererContract";
 
 defineProps<NextHomeCardRendererProps>();
@@ -8,7 +8,7 @@ defineProps<NextHomeCardRendererProps>();
 
 <template>
   <NextHomeSystemOverviewPanel
-    :title="i18n.t(meta.titleKey)"
+    :title="resolveNextHomeCardTitle(meta)"
     :metrics="context.systemMetrics"
     :view-mode="context.statsViewMode"
     :card-id="instance.instanceId"

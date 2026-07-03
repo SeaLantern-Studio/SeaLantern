@@ -19,6 +19,7 @@ const serverCountLabel = computed(() => {
     :featured-server="context.featuredServer"
     :secondary-servers="context.secondaryServers"
     :server-count-label="serverCountLabel"
+    :description="i18n.t('shell.home_workspace_description')"
     :empty-title="i18n.t('shell.home_workspace_empty_title')"
     :empty-description="i18n.t('shell.home_workspace_empty_description')"
     :preview-dataset="context.usingPreviewFallback"

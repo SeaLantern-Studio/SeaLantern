@@ -7,6 +7,7 @@ defineProps<{
   featuredServer: NextHomeServerCardModel | null;
   secondaryServers: NextHomeServerCardModel[];
   serverCountLabel: string;
+  description: string;
   emptyTitle: string;
   emptyDescription: string;
   previewDataset?: boolean;
@@ -33,6 +34,7 @@ const emit = defineEmits<{
           i18n.t("shell.home_workspace_eyebrow")
         }}</span>
         <h2>{{ serverCountLabel }}</h2>
+        <p>{{ description }}</p>
       </div>
     </header>
 
@@ -94,6 +96,13 @@ const emit = defineEmits<{
   margin-top: 6px;
   color: var(--sl-text-primary);
   font-size: clamp(1.3rem, 2.3vw, 1.75rem);
+}
+
+.next-home-workspace-band__header p {
+  margin: 6px 0 0;
+  max-width: 62ch;
+  color: var(--sl-text-secondary);
+  line-height: var(--sl-line-height-relaxed);
 }
 
 .next-home-workspace-band__grid {

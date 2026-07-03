@@ -46,6 +46,10 @@ struct PersonalizationSettings {
     color: String,
     font_size: u32,
     font_family: String,
+    console_font_size: u32,
+    console_font_family: String,
+    console_letter_spacing: i32,
+    max_log_lines: u32,
     memory_display_precision: u8,
     text_color_overrides: TextColorOverrides,
     app_display_name: String,
@@ -111,6 +115,10 @@ fn export_settings_from_app(settings: &AppSettings) -> PersonalizationSettings {
         color: settings.color.clone(),
         font_size: settings.font_size,
         font_family: settings.font_family.clone(),
+        console_font_size: settings.console_font_size,
+        console_font_family: settings.console_font_family.clone(),
+        console_letter_spacing: settings.console_letter_spacing,
+        max_log_lines: settings.max_log_lines,
         memory_display_precision: settings.memory_display_precision,
         text_color_overrides: settings.text_color_overrides.clone(),
         app_display_name: settings.app_display_name.clone(),
@@ -132,6 +140,10 @@ fn apply_personalization_settings(
     settings.color = personalization.color;
     settings.font_size = personalization.font_size;
     settings.font_family = personalization.font_family;
+    settings.console_font_size = personalization.console_font_size;
+    settings.console_font_family = personalization.console_font_family;
+    settings.console_letter_spacing = personalization.console_letter_spacing;
+    settings.max_log_lines = personalization.max_log_lines;
     settings.memory_display_precision = personalization.memory_display_precision;
     settings.text_color_overrides = personalization.text_color_overrides;
     settings.app_display_name = personalization.app_display_name;

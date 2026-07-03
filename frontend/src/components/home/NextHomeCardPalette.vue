@@ -3,11 +3,14 @@ import { computed, shallowRef } from "vue";
 import { LayoutGrid, Magnet, Move, Plus, RotateCcw } from "@lucide/vue";
 import { i18n } from "@language";
 import type { NextHomeCardKind } from "@src/pages/home/layoutContract";
+import { resolveNextHomeCardTitle } from "@src/pages/home/cardMeta";
 
 interface PaletteEntry {
   kind: NextHomeCardKind;
   meta: {
-    titleKey: string;
+    id: NextHomeCardKind;
+    titleKey?: string | null;
+    title?: string | null;
   };
   count: number;
   limit: number;
@@ -140,7 +143,7 @@ function closePalette(): void {
           @dblclick="emit('deploy', entry.kind)"
           @dragstart="handleDragStart(entry.kind, $event)"
         >
-          <span class="next-home-card-palette__item-title">{{ i18n.t(entry.meta.titleKey) }}</span>
+          <span class="next-home-card-palette__item-title">{{ resolveNextHomeCardTitle(entry.meta) }}</span>
           <span class="next-home-card-palette__item-count"
             >{{ entry.count }}/{{ entry.limit }}</span
           >

@@ -10,6 +10,7 @@ defineProps<NextHomeCardRendererProps>();
   <NextHomeAttentionBand
     :alerts="context.alertItems"
     :title="i18n.t('home.recent_alerts')"
+    :description="i18n.t('shell.home_attention_description')"
     :empty-title="i18n.t('shell.home_attention_empty_title')"
     :empty-description="i18n.t('shell.home_attention_empty_description')"
     :card-id="instance.instanceId"

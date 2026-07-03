@@ -1,5 +1,4 @@
-import { ref, type Ref } from "vue";
-import type { AppSettings } from "@api/settings";
+import { ref } from "vue";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { useToast } from "@composables/useToast";
@@ -10,9 +9,7 @@ import type { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 type SettingsDraftState = ReturnType<typeof useSettingsPageDraft>;
 
 interface UsePaintPersonalizationActionsOptions {
-  settings: Ref<AppSettings | null>;
   settingsDraft: SettingsDraftState;
-  markChanged: () => void;
 }
 
 export function usePaintPersonalizationActions(options: UsePaintPersonalizationActionsOptions) {
@@ -65,7 +62,11 @@ export function usePaintPersonalizationActions(options: UsePaintPersonalizationA
       await pluginStore.injectAllPluginCss();
 
       if (result.skipped_plugins.length > 0) {
-        toast.warning(i18n.t("settings.personalization_import_partial"));
+        toast.warning(
+          i18n.t("settings.personalization_import_partial", {
+            count: result.skipped_plugins.length,
+          }),
+        );
       } else {
         toast.success(i18n.t("settings.personalization_import_success"));
       }
@@ -78,35 +79,10 @@ export function usePaintPersonalizationActions(options: UsePaintPersonalizationA
     }
   }
 
-  async function pickBackgroundImage() {
-    try {
-      const result = await systemApi.pickImageFile();
-      console.log("Selected image:", result);
-      if (result && options.settings.value) {
-        options.settings.value.background_image = result;
-        options.markChanged();
-      }
-    } catch (error) {
-      console.error("Pick image error:", error);
-      options.settingsDraft.setError(String(error));
-    }
-  }
-
-  function clearBackgroundImage() {
-    if (!options.settings.value) {
-      return;
-    }
-
-    options.settings.value.background_image = "";
-    options.markChanged();
-  }
-
   return {
     exportBusy,
     importBusy,
     exportPersonalizationPackage,
     importPersonalizationPackage,
-    pickBackgroundImage,
-    clearBackgroundImage,
   };
 }

@@ -4,8 +4,8 @@ import type { AppSettings, PartialSettings, WindowEffect } from "@api/settings";
 import { getSystemFonts } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
+import { useThemeProviderOwnership } from "@composables/useThemeProviderOwnership";
 import { useToast } from "@composables/useToast";
-import { usePluginStore } from "@stores/pluginStore";
 import { useSettingsStore } from "@stores/settingsStore";
 import { isMacOSPlatform, isWindowsPlatform } from "@utils/platform";
 
@@ -71,8 +71,8 @@ function formatFontLabel(fontFamily: string): string {
 
 export function useAppearanceSettingsSection() {
   const settingsStore = useSettingsStore();
-  const pluginStore = usePluginStore();
   const toast = useToast();
+  const { isThemeProviderActive, themeProviderPluginName } = useThemeProviderOwnership();
 
   const fontsLoading = shallowRef(false);
   const backgroundExpanded = shallowRef(Boolean(settingsStore.settings.background_image));
@@ -194,22 +194,12 @@ export function useAppearanceSettingsSection() {
   const isWindows = isWindowsPlatform();
   const isMacOS = isMacOSPlatform();
 
-  const themeProxyPlugin = computed(() => {
-    return pluginStore.plugins.find(
-      (plugin) =>
-        plugin.state === "enabled" &&
-        pluginStore.hasCapability(plugin.manifest.id, "theme-provider"),
-    );
-  });
-
-  const isThemeProxied = computed(() => Boolean(themeProxyPlugin.value));
-  const themeProxyPluginName = computed(() => themeProxyPlugin.value?.manifest.name || "");
-  const themeProxyNotice = computed(() => {
-    if (!themeProxyPluginName.value) {
+  const themeProviderNotice = computed(() => {
+    if (!themeProviderPluginName.value) {
       return "";
     }
-    return i18n.t("settings.next.appearance.theme_managed_by", {
-      plugin: themeProxyPluginName.value,
+    return i18n.t("settings.paint.theme_provider_notice", {
+      plugin: themeProviderPluginName.value,
     });
   });
 
@@ -274,7 +264,7 @@ export function useAppearanceSettingsSection() {
   });
 
   async function setTheme(value: string): Promise<void> {
-    if (isThemeProxied.value || value === theme.value) {
+    if (value === theme.value) {
       return;
     }
 
@@ -503,10 +493,6 @@ export function useAppearanceSettingsSection() {
 
   onMounted(() => {
     void loadFontOptions();
-
-    if (!pluginStore.plugins.length && !pluginStore.loading) {
-      void pluginStore.loadPlugins();
-    }
   });
 
   return {
@@ -526,8 +512,8 @@ export function useAppearanceSettingsSection() {
     backgroundImagePath,
     backgroundPreviewUrl,
     backgroundImageName,
-    isThemeProxied,
-    themeProxyNotice,
+    isThemeProviderActive,
+    themeProviderNotice,
     windowEffectHint,
     themeOptions,
     fontFamilyOptions,

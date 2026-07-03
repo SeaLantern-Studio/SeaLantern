@@ -235,10 +235,10 @@
   "personalize_page_import_export": "Personalization can be moved as a standalone package.",
   "personalization_export": "Export Personalization",
   "personalization_import": "Import Personalization",
-  "personalization_package_desc": "Includes background image, window material, fonts, text color overrides, and plugin theme settings from plugins that expose personalization capabilities.",
+  "personalization_package_desc": "Includes the background image, window material, interface and console fonts, text color overrides, and plugin theme settings from plugins that expose personalization capabilities.",
   "personalization_export_success": "Personalization package exported",
   "personalization_import_success": "Personalization package imported",
-  "personalization_import_partial": "Personalization package imported, but some plugin theme settings could not be applied",
+  "personalization_import_partial": "Personalization package imported, but {count} plugin personalization setting group(s) could not be applied",
   "font_family_default": "System Default",
   "color_picker": "Color Picker",
   "input_color_placeholder": "Input Color Value",
@@ -305,6 +305,9 @@
     "appearance": {
       "live_hint": "Theme, fonts, and window material apply right away.",
       "theme_managed_by": "Managed by {plugin}",
+      "personalize_bridge_title": "Colors, titles, and console preferences live in Personalize",
+      "personalize_bridge_desc": "This page owns theme mode, interface font, window material, and background. Color presets, text colors, app display name, and console display preferences are maintained in Personalize.",
+      "personalize_bridge_hint": "If a theme-provider plugin is enabled, it takes over color presets and text color overrides.",
       "window_effect_fallback": "Only the default material is available here.",
       "save_theme_failed": "Theme wasn't saved",
       "save_font_failed": "Font wasn't saved",
@@ -338,6 +341,13 @@
     "general": {
       "live_hint": "Adjust common behavior and defaults."
     }
+  },
+  "paint": {
+    "page_description": "Adjust color presets, title and text presentation, and console display preferences, then move personalization as a standalone package when needed.",
+    "appearance_bridge_title": "Background and window material live in Appearance",
+    "appearance_bridge_desc": "Background image, window material, theme mode, and interface font belong to Settings > Appearance. This page stays focused on color presets, text colors, app display name, and console display preferences.",
+    "theme_provider_notice": "{plugin} currently controls color presets and text colors. Theme mode, background, and window material still belong to core settings.",
+    "theme_provider_fact": "Managed by {plugin}"
   },
   "color_options": {
     "custom": "Custom",

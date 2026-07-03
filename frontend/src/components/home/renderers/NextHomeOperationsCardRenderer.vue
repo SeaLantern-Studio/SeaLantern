@@ -13,6 +13,7 @@ defineProps<NextHomeCardRendererProps>();
     :import-label="i18n.t('common.add_existing_server')"
     :last-updated-label="context.lastUpdatedLabel"
     :is-refreshing="context.isRefreshing"
+    :description="i18n.t('shell.home_operations_description')"
     :card-id="instance.instanceId"
     :section="meta.section"
     :editable="meta.movable"

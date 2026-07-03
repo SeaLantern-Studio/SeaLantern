@@ -1,6 +1,5 @@
-import { computed, onMounted, onUnmounted, shallowRef, watch } from "vue";
-import type { Ref } from "vue";
-import { i18n } from "@language";
+import { computed, onMounted, onUnmounted, shallowRef, watch, toValue } from "vue";
+import type { MaybeRefOrGetter, Ref } from "vue";
 import {
   HOME_GRID_COLUMNS,
   HOME_GRID_GAP,
@@ -15,6 +14,7 @@ import type {
   NextHomeCardLayoutMeta,
   NextHomeCardRegistry,
 } from "./layoutContract";
+import { resolveNextHomeCardTitle } from "./cardMeta";
 
 const STORAGE_KEY = "sealantern.next.home.layout.v1";
 const DEFAULT_MAX_INSTANCES = 5;
@@ -22,7 +22,7 @@ const SECTION_ORDER = ["summary", "operations", "workspace", "attention"] as con
 
 interface UseNextHomeLayoutEditorOptions {
   editMode: Ref<boolean>;
-  additionalRegistry?: NextHomeCardLayoutMeta[];
+  additionalRegistry?: MaybeRefOrGetter<NextHomeCardLayoutMeta[]>;
 }
 
 interface NextHomeCardPaletteEntry {
@@ -252,7 +252,7 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
   const snapMode = shallowRef(false);
 
   const registry = computed<NextHomeCardRegistry>(() => {
-    const dynamicEntries = options.additionalRegistry ?? [];
+    const dynamicEntries = toValue(options.additionalRegistry) ?? [];
     const dynamicRegistry = Object.fromEntries(dynamicEntries.map((entry) => [entry.id, entry]));
     return { ...NEXT_HOME_CARD_LAYOUTS, ...dynamicRegistry } as NextHomeCardRegistry;
   });
@@ -281,7 +281,7 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
         const leftSection = SECTION_ORDER.indexOf(left.section);
         const rightSection = SECTION_ORDER.indexOf(right.section);
         if (leftSection !== rightSection) return leftSection - rightSection;
-        return i18n.t(left.titleKey).localeCompare(i18n.t(right.titleKey), "zh-CN");
+        return resolveNextHomeCardTitle(left).localeCompare(resolveNextHomeCardTitle(right), "zh-CN");
       })
       .map((meta) => {
         const count = countsByKind.value[meta.id] ?? 0;
@@ -380,6 +380,16 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
   }
 
   function removeInstance(instanceId: string): void {
+    const instance = instances.value.find((item) => item.instanceId === instanceId);
+    if (!instance) {
+      return;
+    }
+
+    const meta = resolveMeta(registry.value, instance.kind);
+    if (!meta?.removable) {
+      return;
+    }
+
     replaceInstances(instances.value.filter((instance) => instance.instanceId !== instanceId));
     if (selectedInstanceId.value === instanceId) selectedInstanceId.value = null;
   }
@@ -547,6 +557,26 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
       window.removeEventListener("keydown", handleKeydown);
     }
   });
+
+  watch(
+    registry,
+    (nextRegistry) => {
+      const sanitized = instances.value
+        .map((instance) => sanitizeInstance(instance, nextRegistry))
+        .filter((instance): instance is NextHomeCardInstance => instance !== null);
+
+      if (sanitized.length !== instances.value.length) {
+        replaceInstances(sanitized);
+        if (
+          selectedInstanceId.value &&
+          !sanitized.some((instance) => instance.instanceId === selectedInstanceId.value)
+        ) {
+          selectedInstanceId.value = null;
+        }
+      }
+    },
+    { deep: true },
+  );
 
   watch(
     instances,

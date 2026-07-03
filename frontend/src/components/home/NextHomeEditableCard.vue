@@ -81,6 +81,7 @@ function handleResizeStart(axis: ResizeHandlePayload["axis"], event: PointerEven
       </button>
 
       <button
+        v-if="meta.removable"
         class="next-home-editable-card__tool next-home-editable-card__tool--danger"
         type="button"
         :title="i18n.t('shell.home_edit_delete')"

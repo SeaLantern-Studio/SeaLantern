@@ -24,6 +24,12 @@ export interface PendingPluginComponentCreate {
 
 export const ALLOWED_PLUGIN_COMPONENT_TYPES = new Set(["SLProgress"]);
 
+export const PLUGIN_COMPONENT_HOST_OWNER_PREFIX = "plugin-component";
+
+export function getPluginComponentHostOwnerId(pluginId: string): string {
+  return `${PLUGIN_COMPONENT_HOST_OWNER_PREFIX}:${pluginId}`;
+}
+
 export function hasPluginPermission(
   getPlugins: () => PluginInfo[],
   pluginId: string,

@@ -5,13 +5,11 @@ import { i18n } from "@language";
 defineProps<{
   importBusy?: boolean;
   exportBusy?: boolean;
-  resetBusy?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: "export-package"): void;
   (e: "import-package"): void;
-  (e: "reset"): void;
 }>();
 </script>
 
@@ -23,9 +21,6 @@ const emit = defineEmits<{
       </SLButton>
       <SLButton variant="secondary" :loading="exportBusy" @click="emit('export-package')">
         {{ i18n.t("settings.personalization_export") }}
-      </SLButton>
-      <SLButton variant="danger" :loading="resetBusy" @click="emit('reset')">
-        {{ i18n.t("settings.reset") }}
       </SLButton>
     </div>
   </div>

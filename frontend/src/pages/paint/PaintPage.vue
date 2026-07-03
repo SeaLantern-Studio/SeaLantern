@@ -4,8 +4,6 @@ import SLCard from "@components/common/SLCard.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import ColorThemeCard from "@src/components/paint/ColorThemeCard.vue";
 import ErrorBanner from "@src/components/paint/ErrorBanner.vue";
-import ImportSettingsModal from "@src/components/paint/ImportSettingsModal.vue";
-import ResetConfirmModal from "@src/components/paint/ResetConfirmModal.vue";
 import SettingsActions from "@src/components/paint/SettingsActions.vue";
 import TextCustomizationCard from "@src/components/paint/TextCustomizationCard.vue";
 import ConsoleSettingsCard from "@src/components/settings/ConsoleSettingsCard.vue";
@@ -27,8 +25,6 @@ const {
   summaryFacts,
   markChanged,
   openAppearanceSettings,
-  resetSettings,
-  handleImport,
 } = usePaintPage();
 </script>
 
@@ -37,7 +33,7 @@ const {
     <WorkbenchPageIntro
       :eyebrow="i18n.t('common.personalize')"
       :title="i18n.t('common.personalize')"
-      :description="i18n.t('settings.personalization_package_desc')"
+      :description="i18n.t('settings.paint.page_description')"
     />
 
     <WorkbenchFactGrid :items="summaryFacts" />
@@ -55,9 +51,12 @@ const {
         :description="i18n.t('settings.next.appearance.live_hint')"
       >
         <div class="paint-page__appearance-bridge">
-          <p class="paint-page__appearance-text">
-            {{ i18n.t("settings.appearance_desc") }}
-          </p>
+          <div class="paint-page__appearance-copy">
+            <strong>{{ i18n.t("settings.paint.appearance_bridge_title") }}</strong>
+            <p class="paint-page__appearance-text">
+              {{ i18n.t("settings.paint.appearance_bridge_desc") }}
+            </p>
+          </div>
           <SLButton variant="secondary" size="sm" @click="openAppearanceSettings">
             {{ i18n.t("settings.appearance") }}
           </SLButton>
@@ -66,8 +65,8 @@ const {
 
       <ColorThemeCard
         :color="settings.color"
-        :is-theme-proxied="appearanceOptions.isThemeProxied.value"
-        :theme-proxy-plugin-name="appearanceOptions.themeProxyPluginName.value"
+        :is-theme-provider-active="appearanceOptions.isThemeProviderActive.value"
+        :theme-provider-notice="appearanceOptions.themeProviderNotice.value"
         @update:color="settings.color = $event"
         @change="markChanged"
       />
@@ -78,6 +77,8 @@ const {
         :color="settings.color"
         :text-color-overrides="settings.text_color_overrides"
         :window-effect="settings.window_effect"
+        :is-theme-provider-active="appearanceOptions.isThemeProviderActive.value"
+        :theme-provider-notice="appearanceOptions.themeProviderNotice.value"
         @update:app-display-name="settings.app_display_name = $event"
         @update:text-color-overrides="settings.text_color_overrides = $event"
         @change="markChanged"
@@ -120,21 +121,8 @@ const {
         :export-busy="exportBusy"
         @export-package="exportPersonalizationPackage"
         @import-package="importPersonalizationPackage"
-        @reset="settingsDraft.showResetConfirm.value = true"
       />
     </template>
-
-    <ImportSettingsModal
-      :visible="settingsDraft.showImportModal.value"
-      @update:visible="settingsDraft.showImportModal.value = $event"
-      @import="handleImport"
-    />
-
-    <ResetConfirmModal
-      :visible="settingsDraft.showResetConfirm.value"
-      @update:visible="settingsDraft.showResetConfirm.value = $event"
-      @confirm="resetSettings"
-    />
   </div>
 </template>
 
@@ -151,6 +139,17 @@ const {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.paint-page__appearance-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.paint-page__appearance-copy strong {
+  color: var(--sl-text-primary);
+  font-size: 0.9rem;
 }
 
 .paint-page__appearance-text {

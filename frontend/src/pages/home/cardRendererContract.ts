@@ -1,5 +1,6 @@
 import type { Component } from "vue";
 import type {
+  NextHomeHostCardDefinition,
   NextHomeCardInstance,
   NextHomeCardKind,
   NextHomeCardLayoutMeta,
@@ -44,6 +45,15 @@ export type NextHomeCardRendererComponent = Component;
 
 export type NextHomeCardRendererRegistry = Partial<
   Record<NextHomeCardKind, NextHomeCardRendererComponent>
+>;
+
+export interface NextHomeCardDefinitionRegistryEntry {
+  definition: NextHomeHostCardDefinition;
+  renderer: NextHomeCardRendererComponent;
+}
+
+export type NextHomeCardDefinitionRegistry = Partial<
+  Record<NextHomeCardKind, NextHomeCardDefinitionRegistryEntry>
 >;
 
 export type NextHomeCardRendererResolveStatus = "registered" | "plugin-pending" | "missing";

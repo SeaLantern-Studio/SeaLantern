@@ -4,6 +4,7 @@ import { i18n } from "@language";
 defineProps<{
   alerts: Array<{ server: string; line: string }>;
   title: string;
+  description: string;
   emptyTitle: string;
   emptyDescription: string;
   cardId?: string;
@@ -24,6 +25,7 @@ defineProps<{
         i18n.t("shell.home_attention_eyebrow")
       }}</span>
       <h2>{{ title }}</h2>
+      <p>{{ description }}</p>
     </header>
 
     <div v-if="alerts.length > 0" class="next-home-attention-band__list">
@@ -69,6 +71,7 @@ defineProps<{
 }
 
 .next-home-attention-band__header h2,
+.next-home-attention-band__header p,
 .next-home-attention-band__empty h3,
 .next-home-attention-band__empty p,
 .next-home-attention-band__item p {
@@ -78,6 +81,12 @@ defineProps<{
 .next-home-attention-band__header h2,
 .next-home-attention-band__empty h3 {
   color: var(--sl-text-primary);
+}
+
+.next-home-attention-band__header p,
+.next-home-attention-band__empty p {
+  color: var(--sl-text-secondary);
+  line-height: var(--sl-line-height-relaxed);
 }
 
 .next-home-attention-band__list {
@@ -115,8 +124,4 @@ defineProps<{
   word-break: break-word;
 }
 
-.next-home-attention-band__empty p {
-  color: var(--sl-text-secondary);
-  line-height: var(--sl-line-height-relaxed);
-}
 </style>

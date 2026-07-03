@@ -8,6 +8,7 @@ defineProps<{
   importLabel: string;
   lastUpdatedLabel: string;
   isRefreshing: boolean;
+  description: string;
   cardId?: string;
   section?: string;
   editable?: boolean;
@@ -30,6 +31,7 @@ const emit = defineEmits<{
     >
       <div class="next-home-operations-band__copy">
         <h2>{{ i18n.t("shell.home_operations_title") }}</h2>
+        <p>{{ description }}</p>
       </div>
 
       <div class="next-home-operations-band__action-row">
@@ -73,6 +75,13 @@ const emit = defineEmits<{
   color: var(--sl-text-primary);
   font-size: clamp(1.35rem, 2.4vw, 1.8rem);
   line-height: 1.1;
+}
+
+.next-home-operations-band__copy p {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--sl-text-secondary);
+  line-height: var(--sl-line-height-relaxed);
 }
 
 .next-home-operations-band__action-row {

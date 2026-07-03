@@ -225,10 +225,10 @@
   "personalize_page_import_export": "个性化内容可导入或导出为独立包。",
   "personalization_export": "导出个性化包",
   "personalization_import": "导入个性化包",
-  "personalization_package_desc": "包含背景图、窗口材质、字体与颜色覆盖，以及支持个性化能力的插件主题设置。",
+  "personalization_package_desc": "包含背景图、窗口材质、界面与控制台字体、文字颜色覆盖，以及支持个性化能力的插件主题设置。",
   "personalization_export_success": "个性化包已导出",
   "personalization_import_success": "个性化包已导入",
-  "personalization_import_partial": "个性化包已导入，部分插件主题配置未能应用",
+  "personalization_import_partial": "个性化包已导入，但有 {count} 个插件个性化配置未能应用",
   "font_family_default": "系统默认",
   "color_picker": "颜色选择器",
   "input_color_placeholder": "输入颜色值",
@@ -295,6 +295,9 @@
     "appearance": {
       "live_hint": "主题、字体和窗口材质会立即生效。",
       "theme_managed_by": "当前由 {plugin} 控制",
+      "personalize_bridge_title": "颜色、标题和控制台偏好在个性化里调整",
+      "personalize_bridge_desc": "这里负责主题模式、界面字体、窗口材质和背景。颜色主题、文字颜色、应用展示名称和控制台显示偏好在“个性化”页面维护。",
+      "personalize_bridge_hint": "如果启用了主题提供者插件，它会接管颜色主题和文字颜色覆盖。",
       "window_effect_fallback": "当前环境仅提供默认材质。",
       "save_theme_failed": "主题未保存",
       "save_font_failed": "字体未保存",
@@ -328,6 +331,13 @@
     "general": {
       "live_hint": "调整常用行为与默认选项。"
     }
+  },
+  "paint": {
+    "page_description": "集中调整颜色主题、标题文字和控制台显示偏好，并可将个性化内容导入或导出为独立包。",
+    "appearance_bridge_title": "背景和窗口材质在外观里调整",
+    "appearance_bridge_desc": "背景图、窗口材质、界面主题模式和界面字体属于“设置 > 外观”。这里专注颜色主题、文字颜色、应用展示名称和控制台显示偏好。",
+    "theme_provider_notice": "当前颜色主题和文字颜色由 {plugin} 控制。主题模式、背景和窗口材质仍由核心设置管理。",
+    "theme_provider_fact": "由 {plugin} 控制"
   },
   "color_options": {
     "custom": "自定义",
