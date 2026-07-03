@@ -54,6 +54,7 @@ struct PersonalizationSettings {
     text_color_overrides: TextColorOverrides,
     app_display_name: String,
     minimal_mode: bool,
+    next_home_layout: Vec<crate::models::settings::NextHomeLayoutItem>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -123,6 +124,7 @@ fn export_settings_from_app(settings: &AppSettings) -> PersonalizationSettings {
         text_color_overrides: settings.text_color_overrides.clone(),
         app_display_name: settings.app_display_name.clone(),
         minimal_mode: settings.minimal_mode,
+        next_home_layout: settings.next_home_layout.clone(),
     }
 }
 
@@ -148,6 +150,7 @@ fn apply_personalization_settings(
     settings.text_color_overrides = personalization.text_color_overrides;
     settings.app_display_name = personalization.app_display_name;
     settings.minimal_mode = personalization.minimal_mode;
+    settings.next_home_layout = personalization.next_home_layout;
 }
 
 fn normalize_zip_entry_name(name: &str) -> String {

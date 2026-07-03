@@ -6,8 +6,6 @@ import LinksSection from "@src/components/about/LinksSection.vue";
 import ManifestoCard from "@src/components/about/ManifestoCard.vue";
 import ProjectInfo from "@src/components/about/ProjectInfo.vue";
 import WorkbenchFactGrid from "@src/components/workbench/WorkbenchFactGrid.vue";
-import WorkbenchPageIntro from "@src/components/workbench/WorkbenchPageIntro.vue";
-import { i18n } from "@language";
 import { useAboutPage } from "./useAboutPage";
 
 const { version, summaryFacts } = useAboutPage();
@@ -15,12 +13,6 @@ const { version, summaryFacts } = useAboutPage();
 
 <template>
   <div class="about-page">
-    <WorkbenchPageIntro
-      :eyebrow="i18n.t('common.about')"
-      :title="i18n.t('about.title')"
-      :description="i18n.t('about.hero_desc')"
-    />
-
     <WorkbenchFactGrid :items="summaryFacts" />
 
     <ManifestoCard />

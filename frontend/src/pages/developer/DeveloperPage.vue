@@ -4,7 +4,6 @@ import DeveloperLogsSection from "@src/components/developer/DeveloperLogsSection
 import DeveloperOverviewSection from "@src/components/developer/DeveloperOverviewSection.vue";
 import DeveloperToolsSection from "@src/components/developer/DeveloperToolsSection.vue";
 import WorkbenchFactGrid from "@src/components/workbench/WorkbenchFactGrid.vue";
-import WorkbenchPageIntro from "@src/components/workbench/WorkbenchPageIntro.vue";
 import WorkbenchSectionHeader from "@src/components/workbench/WorkbenchSectionHeader.vue";
 import WorkbenchSplitView from "@src/components/workbench/WorkbenchSplitView.vue";
 import { i18n } from "@language";
@@ -59,7 +58,6 @@ const {
 
 <template>
   <div class="developer-page">
-    <WorkbenchPageIntro :eyebrow="i18n.t('developer.next.eyebrow')" :title="i18n.t('developer.next.page_title')" :description="i18n.t('developer.next.page_description')" />
     <WorkbenchFactGrid :items="summaryFacts" />
 
     <WorkbenchSplitView :items="sectionItems" :active-id="activeSectionId" :aria-label="i18n.t('developer.next.nav_aria_label')" :ariaLabel="i18n.t('developer.next.nav_aria_label')" @select="selectSection">

@@ -161,6 +161,9 @@ impl AppSettings {
         if let Some(v) = partial.minimal_mode {
             self.minimal_mode = v;
         }
+        if let Some(ref v) = partial.next_home_layout {
+            self.next_home_layout = v.clone();
+        }
         if let Some(ref v) = partial.plugin_console_allowed_commands {
             self.plugin_console_allowed_commands = v.clone();
         }

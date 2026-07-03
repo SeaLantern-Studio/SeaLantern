@@ -132,6 +132,7 @@ const defaultSettings: AppSettings = {
   close_action: "ask",
   last_run_path: "",
   minimal_mode: false,
+  next_home_layout: [],
   agreed_to_terms: false,
   onebot_11: {
     enabled: false,

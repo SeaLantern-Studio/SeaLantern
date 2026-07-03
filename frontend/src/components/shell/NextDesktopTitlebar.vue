@@ -5,6 +5,7 @@ interface Props {
   macos?: boolean;
   showControls?: boolean;
   isMaximized?: boolean;
+  appDisplayName?: string;
 }
 
 defineProps<Props>();
@@ -24,34 +25,45 @@ const emit = defineEmits<{
       aria-hidden="true"
     ></div>
 
-    <div v-if="showControls" class="next-desktop-titlebar__controls">
-      <button
-        class="next-desktop-titlebar__button"
-        type="button"
-        aria-label="Minimize window"
-        @click="emit('minimize')"
+    <div v-if="showControls" class="next-desktop-titlebar__trailing">
+      <div
+        v-if="appDisplayName"
+        class="next-desktop-titlebar__app-name"
+        data-tauri-drag-region
+        :title="appDisplayName"
       >
-        <Minus :size="14" />
-      </button>
+        {{ appDisplayName }}
+      </div>
 
-      <button
-        class="next-desktop-titlebar__button"
-        type="button"
-        :aria-label="isMaximized ? 'Restore window' : 'Maximize window'"
-        @click="emit('toggleMaximize')"
-      >
-        <Copy v-if="isMaximized" :size="14" />
-        <Square v-else :size="14" />
-      </button>
+      <div class="next-desktop-titlebar__controls">
+        <button
+          class="next-desktop-titlebar__button"
+          type="button"
+          aria-label="Minimize window"
+          @click="emit('minimize')"
+        >
+          <Minus :size="14" />
+        </button>
 
-      <button
-        class="next-desktop-titlebar__button next-desktop-titlebar__button--close"
-        type="button"
-        aria-label="Close window"
-        @click="emit('close')"
-      >
-        <X :size="14" />
-      </button>
+        <button
+          class="next-desktop-titlebar__button"
+          type="button"
+          :aria-label="isMaximized ? 'Restore window' : 'Maximize window'"
+          @click="emit('toggleMaximize')"
+        >
+          <Copy v-if="isMaximized" :size="14" />
+          <Square v-else :size="14" />
+        </button>
+
+        <button
+          class="next-desktop-titlebar__button next-desktop-titlebar__button--close"
+          type="button"
+          aria-label="Close window"
+          @click="emit('close')"
+        >
+          <X :size="14" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -81,6 +93,27 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+.next-desktop-titlebar__trailing {
+  min-width: 0;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.next-desktop-titlebar__app-name {
+  min-width: 0;
+  max-width: min(320px, 32vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--sl-text-primary);
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .next-desktop-titlebar__button {
@@ -121,6 +154,15 @@ const emit = defineEmits<{
 @media (max-width: 767px) {
   .next-desktop-titlebar {
     padding-inline: 12px;
+  }
+
+  .next-desktop-titlebar__trailing {
+    gap: 8px;
+  }
+
+  .next-desktop-titlebar__app-name {
+    max-width: 42vw;
+    font-size: 0.88rem;
   }
 }
 </style>

@@ -4,7 +4,6 @@ import DownloadTaskList from "@src/components/downloads/DownloadTaskList.vue";
 import FileDownloadSection from "@src/components/downloads/FileDownloadSection.vue";
 import ServerDownloadSection from "@src/components/downloads/ServerDownloadSection.vue";
 import WorkbenchFactGrid from "@src/components/workbench/WorkbenchFactGrid.vue";
-import WorkbenchPageIntro from "@src/components/workbench/WorkbenchPageIntro.vue";
 import WorkbenchSectionHeader from "@src/components/workbench/WorkbenchSectionHeader.vue";
 import WorkbenchSplitView from "@src/components/workbench/WorkbenchSplitView.vue";
 import WorkbenchStatusBanner from "@src/components/workbench/WorkbenchStatusBanner.vue";
@@ -52,13 +51,11 @@ const {
 
 <template>
   <div class="downloads-page">
-    <WorkbenchPageIntro :eyebrow="i18n.t('downloads.next.eyebrow')" :title="i18n.t('downloads.next.page_title')" :description="i18n.t('downloads.next.page_description')">
-      <template #actions>
-        <SLButton v-if="hasActiveTask && isTaskRunning" variant="secondary" size="sm" @click="cancelActiveTask">
-          {{ i18n.t("downloads.next.cancel_active") }}
-        </SLButton>
-      </template>
-    </WorkbenchPageIntro>
+    <div v-if="hasActiveTask && isTaskRunning" class="downloads-page__top-actions">
+      <SLButton variant="secondary" size="sm" @click="cancelActiveTask">
+        {{ i18n.t("downloads.next.cancel_active") }}
+      </SLButton>
+    </div>
 
     <WorkbenchFactGrid :items="summaryFacts" />
 
@@ -127,6 +124,7 @@ const {
 
 <style scoped>
 .downloads-page { min-width: 0; display: grid; gap: 16px; }
+.downloads-page__top-actions { display: flex; justify-content: flex-end; }
 .downloads-page__loading { display: grid; gap: 14px; }
 .downloads-page__loading-card {
   min-height: 180px;

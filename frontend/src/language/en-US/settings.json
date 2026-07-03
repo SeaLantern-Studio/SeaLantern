@@ -343,11 +343,26 @@
     }
   },
   "paint": {
+    "nav_aria_label": "Personalize sections",
     "page_description": "Adjust color presets, title and text presentation, and console display preferences, then move personalization as a standalone package when needed.",
     "appearance_bridge_title": "Background and window material live in Appearance",
     "appearance_bridge_desc": "Background image, window material, theme mode, and interface font belong to Settings > Appearance. This page stays focused on color presets, text colors, app display name, and console display preferences.",
     "theme_provider_notice": "{plugin} currently controls color presets and text colors. Theme mode, background, and window material still belong to core settings.",
-    "theme_provider_fact": "Managed by {plugin}"
+    "theme_provider_fact": "Managed by {plugin}",
+    "sections": {
+      "appearance_theme": {
+        "label": "Appearance and Theme",
+        "description": "Color presets and appearance entry points."
+      },
+      "text_title": {
+        "label": "Text and Title",
+        "description": "Display name and text colors."
+      },
+      "display_control": {
+        "label": "Display and Control",
+        "description": "Console display plus import and export."
+      }
+    }
   },
   "color_options": {
     "custom": "Custom",

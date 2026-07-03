@@ -8,12 +8,15 @@ import SettingsActions from "@src/components/paint/SettingsActions.vue";
 import TextCustomizationCard from "@src/components/paint/TextCustomizationCard.vue";
 import ConsoleSettingsCard from "@src/components/settings/ConsoleSettingsCard.vue";
 import WorkbenchFactGrid from "@src/components/workbench/WorkbenchFactGrid.vue";
-import WorkbenchPageIntro from "@src/components/workbench/WorkbenchPageIntro.vue";
 import WorkbenchPanel from "@src/components/workbench/WorkbenchPanel.vue";
+import WorkbenchSectionHeader from "@src/components/workbench/WorkbenchSectionHeader.vue";
+import WorkbenchSplitView from "@src/components/workbench/WorkbenchSplitView.vue";
 import { i18n } from "@language";
 import { usePaintPage } from "./usePaintPage";
 
 const {
+  activeSectionId,
+  currentSection,
   fields,
   appearanceOptions,
   settingsDraft,
@@ -22,20 +25,16 @@ const {
   importBusy,
   exportPersonalizationPackage,
   importPersonalizationPackage,
+  sectionItems,
   summaryFacts,
   markChanged,
   openAppearanceSettings,
+  selectSection,
 } = usePaintPage();
 </script>
 
 <template>
   <div class="paint-page">
-    <WorkbenchPageIntro
-      :eyebrow="i18n.t('common.personalize')"
-      :title="i18n.t('common.personalize')"
-      :description="i18n.t('settings.paint.page_description')"
-    />
-
     <WorkbenchFactGrid :items="summaryFacts" />
 
     <ErrorBanner :message="settingsDraft.error.value" @close="settingsDraft.setError(null)" />
@@ -45,84 +44,101 @@ const {
       <div class="paint-page__loading-card"></div>
     </section>
 
-    <template v-else-if="settings">
-      <WorkbenchPanel
-        :title="i18n.t('settings.appearance')"
-        :description="i18n.t('settings.next.appearance.live_hint')"
-      >
-        <div class="paint-page__appearance-bridge">
-          <div class="paint-page__appearance-copy">
-            <strong>{{ i18n.t("settings.paint.appearance_bridge_title") }}</strong>
-            <p class="paint-page__appearance-text">
-              {{ i18n.t("settings.paint.appearance_bridge_desc") }}
-            </p>
+    <WorkbenchSplitView
+      v-else-if="settings"
+      :items="sectionItems"
+      :active-id="activeSectionId"
+      :aria-label="i18n.t('settings.paint.nav_aria_label')"
+      :ariaLabel="i18n.t('settings.paint.nav_aria_label')"
+      @select="selectSection"
+    >
+      <template #content-header>
+        <WorkbenchSectionHeader :title="currentSection.label" :description="currentSection.description" />
+      </template>
+
+      <template v-if="activeSectionId === 'appearance-theme'">
+        <WorkbenchPanel
+          :title="i18n.t('settings.appearance')"
+          :description="i18n.t('settings.next.appearance.live_hint')"
+        >
+          <div class="paint-page__appearance-bridge">
+            <div class="paint-page__appearance-copy">
+              <strong>{{ i18n.t("settings.paint.appearance_bridge_title") }}</strong>
+              <p class="paint-page__appearance-text">
+                {{ i18n.t("settings.paint.appearance_bridge_desc") }}
+              </p>
+            </div>
+            <SLButton variant="secondary" size="sm" @click="openAppearanceSettings">
+              {{ i18n.t("settings.appearance") }}
+            </SLButton>
           </div>
-          <SLButton variant="secondary" size="sm" @click="openAppearanceSettings">
-            {{ i18n.t("settings.appearance") }}
-          </SLButton>
-        </div>
-      </WorkbenchPanel>
+        </WorkbenchPanel>
 
-      <ColorThemeCard
-        :color="settings.color"
-        :is-theme-provider-active="appearanceOptions.isThemeProviderActive.value"
-        :theme-provider-notice="appearanceOptions.themeProviderNotice.value"
-        @update:color="settings.color = $event"
-        @change="markChanged"
-      />
+        <ColorThemeCard
+          :color="settings.color"
+          :is-theme-provider-active="appearanceOptions.isThemeProviderActive.value"
+          :theme-provider-notice="appearanceOptions.themeProviderNotice.value"
+          @update:color="settings.color = $event"
+          @change="markChanged"
+        />
+      </template>
 
-      <TextCustomizationCard
-        :app-display-name="settings.app_display_name"
-        :theme="settings.theme"
-        :color="settings.color"
-        :text-color-overrides="settings.text_color_overrides"
-        :window-effect="settings.window_effect"
-        :is-theme-provider-active="appearanceOptions.isThemeProviderActive.value"
-        :theme-provider-notice="appearanceOptions.themeProviderNotice.value"
-        @update:app-display-name="settings.app_display_name = $event"
-        @update:text-color-overrides="settings.text_color_overrides = $event"
-        @change="markChanged"
-      />
+      <template v-else-if="activeSectionId === 'text-title'">
+        <TextCustomizationCard
+          :app-display-name="settings.app_display_name"
+          :theme="settings.theme"
+          :color="settings.color"
+          :text-color-overrides="settings.text_color_overrides"
+          :window-effect="settings.window_effect"
+          :is-theme-provider-active="appearanceOptions.isThemeProviderActive.value"
+          :theme-provider-notice="appearanceOptions.themeProviderNotice.value"
+          @update:app-display-name="settings.app_display_name = $event"
+          @update:text-color-overrides="settings.text_color_overrides = $event"
+          @change="markChanged"
+        />
+      </template>
 
-      <SLCard
-        :title="i18n.t('settings.memory_display_precision')"
-        :subtitle="i18n.t('settings.memory_display_precision_desc')"
-      >
-        <div class="paint-page__precision-row">
-          <div class="paint-page__precision-select">
-            <SLSelect
-              :model-value="fields.memoryDisplayPrecision.value"
-              :options="appearanceOptions.memoryDisplayPrecisionOptions.value"
-              @update:model-value="
-                fields.memoryDisplayPrecision.value = Number($event);
-                markChanged();
-              "
-            />
+      <template v-else>
+        <SLCard
+          :title="i18n.t('settings.memory_display_precision')"
+          :subtitle="i18n.t('settings.memory_display_precision_desc')"
+        >
+          <div class="paint-page__precision-row">
+            <div class="paint-page__precision-select">
+              <SLSelect
+                :model-value="fields.memoryDisplayPrecision.value"
+                :options="appearanceOptions.memoryDisplayPrecisionOptions.value"
+                @update:model-value="
+                  fields.memoryDisplayPrecision.value = Number($event);
+                  markChanged();
+                "
+              />
+            </div>
           </div>
-        </div>
-      </SLCard>
+        </SLCard>
 
-      <ConsoleSettingsCard
-        :console-font-size="fields.consoleFontSize.value"
-        :console-font-family="fields.consoleFontFamily.value"
-        :console-letter-spacing="fields.consoleLetterSpacing.value"
-        :max-log-lines="fields.maxLogLines.value"
-        :font-family-options="appearanceOptions.fontFamilyOptions.value"
-        :fonts-loading="appearanceOptions.fontsLoading.value"
-        @update:console-font-size="fields.consoleFontSize.value = $event"
-        @update:console-font-family="fields.consoleFontFamily.value = $event"
-        @update:console-letter-spacing="fields.consoleLetterSpacing.value = $event"
-        @update:max-log-lines="fields.maxLogLines.value = $event"
-        @change="markChanged"
-      />
+        <ConsoleSettingsCard
+          :console-font-size="fields.consoleFontSize.value"
+          :console-font-family="fields.consoleFontFamily.value"
+          :console-letter-spacing="fields.consoleLetterSpacing.value"
+          :max-log-lines="fields.maxLogLines.value"
+          :font-family-options="appearanceOptions.fontFamilyOptions.value"
+          :fonts-loading="appearanceOptions.fontsLoading.value"
+          @update:console-font-size="fields.consoleFontSize.value = $event"
+          @update:console-font-family="fields.consoleFontFamily.value = $event"
+          @update:console-letter-spacing="fields.consoleLetterSpacing.value = $event"
+          @update:max-log-lines="fields.maxLogLines.value = $event"
+          @change="markChanged"
+        />
 
-      <SettingsActions
-        :import-busy="importBusy"
-        :export-busy="exportBusy"
-        @export-package="exportPersonalizationPackage"
-        @import-package="importPersonalizationPackage"
-      />
-    </template>
+        <SettingsActions
+          :import-busy="importBusy"
+          :export-busy="exportBusy"
+          @export-package="exportPersonalizationPackage"
+          @import-package="importPersonalizationPackage"
+        />
+      </template>
+    </WorkbenchSplitView>
   </div>
 </template>
 

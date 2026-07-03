@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, shallowRef, watch, toValue } from "vue";
 import type { MaybeRefOrGetter, Ref } from "vue";
+import { useSettingsStore } from "@src/stores/settingsStore";
 import {
   HOME_GRID_COLUMNS,
   HOME_GRID_GAP,
@@ -18,6 +19,7 @@ import { resolveNextHomeCardTitle } from "./cardMeta";
 
 const STORAGE_KEY = "sealantern.next.home.layout.v1";
 const DEFAULT_MAX_INSTANCES = 5;
+const SETTINGS_SAVE_DEBOUNCE_MS = 180;
 const SECTION_ORDER = ["summary", "operations", "workspace", "attention"] as const;
 
 interface UseNextHomeLayoutEditorOptions {
@@ -43,6 +45,10 @@ interface NextHomePlacementRequest {
   colSpan?: number;
   rowSpan?: number;
 }
+
+type PersistedNextHomeCardInstance = Partial<Omit<NextHomeCardInstance, "kind">> & {
+  kind?: string;
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -95,14 +101,15 @@ function resolveMeta(
 }
 
 function sanitizeInstance(
-  raw: Partial<NextHomeCardInstance>,
+  raw: PersistedNextHomeCardInstance,
   registry: NextHomeCardRegistry,
 ): NextHomeCardInstance | null {
   // Persisted layout data may come from older schemas or manual edits in localStorage.
   // Sanitize every instance through the current registry so bad coordinates never enter
   // the editor state and future registry changes can still hydrate old layouts safely.
-  if (!raw.kind) return null;
-  const meta = resolveMeta(registry, raw.kind);
+  if (typeof raw.kind !== "string" || raw.kind.length === 0) return null;
+  const kind = raw.kind as NextHomeCardKind;
+  const meta = resolveMeta(registry, kind);
   if (!meta) return null;
 
   const maxCols = meta.maxCols ?? HOME_GRID_COLUMNS;
@@ -140,8 +147,8 @@ function sanitizeInstance(
     instanceId:
       typeof raw.instanceId === "string" && raw.instanceId.length > 0
         ? raw.instanceId
-        : buildInstanceId(raw.kind),
-    kind: raw.kind,
+        : buildInstanceId(kind),
+    kind,
     x,
     y,
     width,
@@ -246,10 +253,16 @@ function buildSnapPlacement(
 }
 
 export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions) {
+  const settingsStore = useSettingsStore();
   const instances = shallowRef<NextHomeCardInstance[]>([]);
   const selectedInstanceId = shallowRef<string | null>(null);
   const clipboardInstance = shallowRef<NextHomeCardInstance | null>(null);
   const snapMode = shallowRef(false);
+  const isHydratingFromSettings = shallowRef(false);
+  const hasHydrated = shallowRef(false);
+  const lastPersistedSnapshot = shallowRef("[]");
+
+  let pendingSettingsSaveTimer: ReturnType<typeof window.setTimeout> | null = null;
 
   const registry = computed<NextHomeCardRegistry>(() => {
     const dynamicEntries = toValue(options.additionalRegistry) ?? [];
@@ -494,6 +507,90 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     selectedInstanceId.value = sanitizedDefaults[0]?.instanceId ?? null;
   }
 
+  function serializeInstances(value: NextHomeCardInstance[]): string {
+    return JSON.stringify(value);
+  }
+
+  function sanitizePersistedLayout(
+    rawLayout: PersistedNextHomeCardInstance[] | null | undefined,
+    nextRegistry: NextHomeCardRegistry,
+  ): NextHomeCardInstance[] {
+    if (!Array.isArray(rawLayout)) {
+      return [];
+    }
+
+    return rawLayout
+      .map((instance) => sanitizeInstance(instance, nextRegistry))
+      .filter((instance): instance is NextHomeCardInstance => instance !== null);
+  }
+
+  function clearPendingSettingsSave(): void {
+    if (pendingSettingsSaveTimer !== null) {
+      window.clearTimeout(pendingSettingsSaveTimer);
+      pendingSettingsSaveTimer = null;
+    }
+  }
+
+  async function persistLayoutToSettings(value: NextHomeCardInstance[]): Promise<void> {
+    const snapshot = serializeInstances(value);
+    if (snapshot === lastPersistedSnapshot.value) {
+      return;
+    }
+
+    try {
+      await settingsStore.updatePartial({ next_home_layout: value });
+      lastPersistedSnapshot.value = snapshot;
+    } catch (error) {
+      console.error("Failed to persist next home layout via settings API.", error);
+    }
+  }
+
+  async function migrateLegacyLayoutIfNeeded(nextRegistry: NextHomeCardRegistry): Promise<boolean> {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return false;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as PersistedNextHomeCardInstance[];
+      const migrated = sanitizePersistedLayout(parsed, nextRegistry);
+      if (migrated.length === 0) {
+        window.localStorage.removeItem(STORAGE_KEY);
+        return false;
+      }
+
+      replaceInstances(migrated);
+      selectedInstanceId.value = migrated[0]?.instanceId ?? null;
+      lastPersistedSnapshot.value = serializeInstances(migrated);
+      await settingsStore.updatePartial({ next_home_layout: migrated });
+      window.localStorage.removeItem(STORAGE_KEY);
+      return true;
+    } catch (error) {
+      console.error("Failed to migrate legacy next home layout into settings API.", error);
+      return false;
+    }
+  }
+
+  function applySettingsLayout(
+    rawLayout: PersistedNextHomeCardInstance[] | null | undefined,
+    nextRegistry: NextHomeCardRegistry,
+  ): void {
+    const sanitized = sanitizePersistedLayout(rawLayout, nextRegistry);
+    if (sanitized.length > 0) {
+      replaceInstances(sanitized);
+      selectedInstanceId.value = sanitized[0]?.instanceId ?? null;
+      lastPersistedSnapshot.value = serializeInstances(sanitized);
+      return;
+    }
+
+    resetLayout();
+    lastPersistedSnapshot.value = serializeInstances(instances.value);
+  }
+
   function handleKeydown(event: KeyboardEvent): void {
     if (!options.editMode.value) return;
 
@@ -528,32 +625,35 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     }
   }
 
-  onMounted(() => {
-    if (typeof window !== "undefined") {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        try {
-          // Hydration is intentionally lossy: invalid cards are dropped instead of blocking
-          // the whole layout, and an empty valid result falls back to the shipped default.
-          const parsed = JSON.parse(raw) as Partial<NextHomeCardInstance>[];
-          const hydrated = parsed
-            .map((instance) => sanitizeInstance(instance, registry.value))
-            .filter((instance): instance is NextHomeCardInstance => instance !== null);
-          if (hydrated.length > 0) replaceInstances(hydrated);
-          else resetLayout();
-        } catch {
-          resetLayout();
-        }
-      } else {
-        resetLayout();
-      }
+  onMounted(async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
 
-      window.addEventListener("keydown", handleKeydown);
+    window.addEventListener("keydown", handleKeydown);
+
+    await settingsStore.ensureLoaded();
+
+    isHydratingFromSettings.value = true;
+    try {
+      const persistedLayout = settingsStore.settings.next_home_layout;
+      if (persistedLayout.length > 0) {
+        applySettingsLayout(persistedLayout, registry.value);
+      } else {
+        const migrated = await migrateLegacyLayoutIfNeeded(registry.value);
+        if (!migrated) {
+          applySettingsLayout(null, registry.value);
+        }
+      }
+    } finally {
+      hasHydrated.value = true;
+      isHydratingFromSettings.value = false;
     }
   });
 
   onUnmounted(() => {
     if (typeof window !== "undefined") {
+      clearPendingSettingsSave();
       window.removeEventListener("keydown", handleKeydown);
     }
   });
@@ -574,15 +674,92 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
           selectedInstanceId.value = null;
         }
       }
+
+      if (!hasHydrated.value || isHydratingFromSettings.value) {
+        return;
+      }
+
+      const persistedLayout = settingsStore.settings.next_home_layout;
+      const persistedSanitized = sanitizePersistedLayout(persistedLayout, nextRegistry);
+      const persistedSnapshot = serializeInstances(persistedSanitized);
+      const localSnapshot = serializeInstances(instances.value);
+
+      if (persistedSnapshot === localSnapshot) {
+        lastPersistedSnapshot.value = persistedSnapshot;
+        return;
+      }
+
+      isHydratingFromSettings.value = true;
+      try {
+        if (persistedSanitized.length > 0) {
+          replaceInstances(persistedSanitized);
+          if (
+            selectedInstanceId.value &&
+            !persistedSanitized.some((instance) => instance.instanceId === selectedInstanceId.value)
+          ) {
+            selectedInstanceId.value = null;
+          }
+          lastPersistedSnapshot.value = persistedSnapshot;
+        } else {
+          resetLayout();
+          lastPersistedSnapshot.value = serializeInstances(instances.value);
+        }
+      } finally {
+        isHydratingFromSettings.value = false;
+      }
     },
     { deep: true },
   );
 
   watch(
     instances,
+    () => {
+      if (typeof window === "undefined" || !hasHydrated.value || isHydratingFromSettings.value) {
+        return;
+      }
+
+      clearPendingSettingsSave();
+      pendingSettingsSaveTimer = window.setTimeout(() => {
+        pendingSettingsSaveTimer = null;
+        void persistLayoutToSettings(instances.value);
+      }, SETTINGS_SAVE_DEBOUNCE_MS);
+    },
+    { deep: true },
+  );
+
+  watch(
+    () => settingsStore.settings.next_home_layout,
     (value) => {
-      if (typeof window === "undefined") return;
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+      if (!hasHydrated.value || isHydratingFromSettings.value) {
+        return;
+      }
+
+      const sanitized = sanitizePersistedLayout(value, registry.value);
+      const nextSnapshot = serializeInstances(sanitized);
+      const currentSnapshot = serializeInstances(instances.value);
+      if (nextSnapshot === currentSnapshot) {
+        lastPersistedSnapshot.value = nextSnapshot;
+        return;
+      }
+
+      isHydratingFromSettings.value = true;
+      try {
+        if (sanitized.length > 0) {
+          replaceInstances(sanitized);
+          if (
+            selectedInstanceId.value &&
+            !sanitized.some((instance) => instance.instanceId === selectedInstanceId.value)
+          ) {
+            selectedInstanceId.value = null;
+          }
+          lastPersistedSnapshot.value = nextSnapshot;
+        } else {
+          resetLayout();
+          lastPersistedSnapshot.value = serializeInstances(instances.value);
+        }
+      } finally {
+        isHydratingFromSettings.value = false;
+      }
     },
     { deep: true },
   );

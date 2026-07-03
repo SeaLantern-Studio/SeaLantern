@@ -47,6 +47,7 @@ impl AppSettings {
             || self.text_color_overrides != other.text_color_overrides
             || self.app_display_name != other.app_display_name
             || self.minimal_mode != other.minimal_mode
+            || self.next_home_layout != other.next_home_layout
         {
             changed.push(SettingsGroup::Appearance);
         }

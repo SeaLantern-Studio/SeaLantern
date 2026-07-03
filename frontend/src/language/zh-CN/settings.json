@@ -333,11 +333,26 @@
     }
   },
   "paint": {
+    "nav_aria_label": "个性化分组",
     "page_description": "集中调整颜色主题、标题文字和控制台显示偏好，并可将个性化内容导入或导出为独立包。",
     "appearance_bridge_title": "背景和窗口材质在外观里调整",
     "appearance_bridge_desc": "背景图、窗口材质、界面主题模式和界面字体属于“设置 > 外观”。这里专注颜色主题、文字颜色、应用展示名称和控制台显示偏好。",
     "theme_provider_notice": "当前颜色主题和文字颜色由 {plugin} 控制。主题模式、背景和窗口材质仍由核心设置管理。",
-    "theme_provider_fact": "由 {plugin} 控制"
+    "theme_provider_fact": "由 {plugin} 控制",
+    "sections": {
+      "appearance_theme": {
+        "label": "外观与主题",
+        "description": "颜色主题与外观入口。"
+      },
+      "text_title": {
+        "label": "文字与标题",
+        "description": "展示名称和文字颜色。"
+      },
+      "display_control": {
+        "label": "显示和控制",
+        "description": "控制台显示与导入导出。"
+      }
+    }
   },
   "color_options": {
     "custom": "自定义",

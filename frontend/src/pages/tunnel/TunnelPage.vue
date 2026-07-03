@@ -6,7 +6,6 @@ import SLModal from "@components/common/SLModal.vue";
 import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import WorkbenchFactGrid from "@src/components/workbench/WorkbenchFactGrid.vue";
-import WorkbenchPageIntro from "@src/components/workbench/WorkbenchPageIntro.vue";
 import WorkbenchPanel from "@src/components/workbench/WorkbenchPanel.vue";
 import WorkbenchStatusBanner from "@src/components/workbench/WorkbenchStatusBanner.vue";
 import { i18n } from "@language";
@@ -17,17 +16,11 @@ const page = useTunnelPage();
 
 <template>
   <div class="tunnel-page">
-    <WorkbenchPageIntro
-      :eyebrow="i18n.t('common.tunnel')"
-      :title="i18n.t('common.tunnel')"
-      :description="i18n.t('tunnel.info_desc')"
-    >
-      <template #actions>
-        <SLButton variant="secondary" size="sm" @click="page.showInfoModal.value = true">
-          {{ i18n.t("tunnel.info_title") }}
-        </SLButton>
-      </template>
-    </WorkbenchPageIntro>
+    <div class="tunnel-page__top-actions">
+      <SLButton variant="secondary" size="sm" @click="page.showInfoModal.value = true">
+        {{ i18n.t("tunnel.info_title") }}
+      </SLButton>
+    </div>
 
     <WorkbenchFactGrid :items="page.summaryFacts.value" />
 
@@ -322,6 +315,11 @@ const page = useTunnelPage();
   min-width: 0;
   display: grid;
   gap: 16px;
+}
+
+.tunnel-page__top-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .tunnel-page__status-grid,

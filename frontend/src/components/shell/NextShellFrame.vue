@@ -6,6 +6,7 @@ import { i18n } from "@language";
 import { SLButton, SLCheckbox, SLModal } from "@components/common";
 import { useShellBackground } from "@composables/useShellBackground";
 import { useSettingsStore } from "@stores/settingsStore";
+import { getAppDisplayName } from "@utils/theme";
 import type { NextShellNavItem, NextShellRailPinControl } from "@src/contracts/shell";
 import NextDesktopTitlebar from "./NextDesktopTitlebar.vue";
 import { useNextDesktopWindowControls } from "@src/composables/useNextDesktopWindowControls";
@@ -75,6 +76,7 @@ function handleRailPointerLeave(): void {
 }
 
 const settingsStore = useSettingsStore();
+const appDisplayName = computed(() => getAppDisplayName(settingsStore.settings));
 const {
   isDesktop,
   isMacOS,
@@ -192,6 +194,7 @@ onMounted(() => {
         :macos="isMacOS"
         :show-controls="showCustomControls"
         :is-maximized="isMaximized"
+        :app-display-name="appDisplayName"
         @minimize="minimizeWindow"
         @toggle-maximize="toggleMaximize"
         @close="closeWindow"

@@ -37,6 +37,20 @@ export interface OneBot11Settings {
   message_template: string;
 }
 
+export interface NextHomeLayoutItem {
+  instanceId: string;
+  kind: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  colStart: number;
+  rowStart: number;
+  colSpan: number;
+  rowSpan: number;
+  zIndex: number;
+}
+
 export interface AppSettings {
   close_servers_on_exit: boolean;
   close_servers_on_update: boolean;
@@ -78,6 +92,7 @@ export interface AppSettings {
   close_action: string;
   last_run_path: string;
   minimal_mode: boolean;
+  next_home_layout: NextHomeLayoutItem[];
   agreed_to_terms: boolean;
   onebot_11: OneBot11Settings;
 }
@@ -122,6 +137,7 @@ export interface PartialSettings {
   close_action?: string;
   last_run_path?: string;
   minimal_mode?: boolean;
+  next_home_layout?: NextHomeLayoutItem[];
   agreed_to_terms?: boolean;
   onebot_11?: OneBot11Settings;
 }

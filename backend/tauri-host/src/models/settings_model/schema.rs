@@ -105,6 +105,33 @@ pub struct OneBot11Settings {
     pub message_template: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NextHomeLayoutItem {
+    #[serde(default)]
+    pub instance_id: String,
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub x: f64,
+    #[serde(default)]
+    pub y: f64,
+    #[serde(default)]
+    pub width: f64,
+    #[serde(default)]
+    pub height: f64,
+    #[serde(default)]
+    pub col_start: u32,
+    #[serde(default)]
+    pub row_start: u32,
+    #[serde(default)]
+    pub col_span: u32,
+    #[serde(default)]
+    pub row_span: u32,
+    #[serde(default)]
+    pub z_index: i32,
+}
+
 /// 设置变更分组
 ///
 /// 用来标记一次设置更新影响了哪一块功能
@@ -238,6 +265,9 @@ pub struct AppSettings {
     #[serde(default)]
     pub minimal_mode: bool,
 
+    #[serde(default)]
+    pub next_home_layout: Vec<NextHomeLayoutItem>,
+
     #[serde(
         default = "default_allowed_commands",
         alias = "plugin_allowed_commands"
@@ -344,6 +374,8 @@ pub struct PartialSettings {
     pub last_run_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimal_mode: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_home_layout: Option<Vec<NextHomeLayoutItem>>,
     #[serde(
         skip_serializing_if = "Option::is_none",
         alias = "plugin_allowed_commands"
