@@ -7,7 +7,7 @@ import { AUTH_ROUTE_NAME } from "@router/authRoute";
 import { useAuthStore } from "@stores/authStore";
 import { useRouter } from "vue-router";
 import type { NextInstanceSection } from "@src/contracts/instance";
-import type { NextShellNavItem } from "@src/contracts/shell";
+import type { NextShellNavItem, NextShellRailPinControl } from "@src/contracts/shell";
 import { useNextShellNavigationTransition } from "@src/composables/useNextShellNavigationTransition";
 import { useProvideNextInstanceWorkspace } from "@src/composables/useNextInstanceWorkspace";
 import NextWorkbenchLayout from "@src/layout/NextWorkbenchLayout.vue";
@@ -22,10 +22,12 @@ const workspace = useProvideNextInstanceWorkspace();
 const isBrowserMode = isBrowserEnv();
 const {
   handlePageTransitionSettled,
+  isRailPinned,
   pageTransitionClass,
   railExpanded,
   setFocusWithinRail,
   setPointerInsideRail,
+  toggleRailPinned,
 } = useNextShellNavigationTransition("servers");
 
 const brand = computed(
@@ -75,6 +77,10 @@ const layoutPage = computed(() => ({
   title: workspace.pageTitle.value,
   subtitle: workspace.pageSubtitle.value,
 }));
+const railPinControl = computed<NextShellRailPinControl>(() => ({
+  pinned: isRailPinned.value,
+  label: i18n.t(isRailPinned.value ? "shell.rail_unpin" : "shell.rail_pin"),
+}));
 
 async function handleLogout(): Promise<void> {
   if (!isBrowserMode) {
@@ -101,12 +107,14 @@ onMounted(() => {
     :logout-label="i18n.t('shell.logout')"
     :show-logout="isBrowserMode"
     :nav-items="navItems"
+    :rail-pin-control="railPinControl"
     :rail-expanded="railExpanded"
     :page-transition-class="pageTransitionClass"
     @logout="handleLogout"
     @page-transition-settled="handlePageTransitionSettled"
     @rail-focus-within-change="setFocusWithinRail"
     @rail-pointer-inside-change="setPointerInsideRail"
+    @toggle-rail-pin="toggleRailPinned"
   >
     <template #page-header>
       <div class="next-instance-workspace-view__header">
@@ -130,7 +138,8 @@ onMounted(() => {
 <style scoped>
 .next-instance-workspace-view__header {
   display: grid;
-  gap: 6px;
+  gap: 8px;
+  max-width: 72ch;
 }
 
 .next-instance-workspace-view__eyebrow {
@@ -153,6 +162,7 @@ onMounted(() => {
 .next-instance-workspace-view__header p {
   color: var(--sl-text-secondary);
   line-height: 1.5;
+  max-width: 62ch;
   word-break: break-word;
 }
 </style>

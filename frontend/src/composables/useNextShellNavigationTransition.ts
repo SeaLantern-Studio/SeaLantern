@@ -8,9 +8,11 @@ import {
 } from "../router/pageMeta";
 
 const NAVIGATION_HOLD_DURATION_MS = 260;
+const RAIL_PIN_STORAGE_KEY = "sl.next-shell.rail-pinned";
 const NEXT_SHELL_TRANSITION_DIRECTIONS = new Set<NextShellNavigationDirection>(["up", "down"]);
 const navigationDirection = shallowRef<NextShellNavigationDirection | null>(null);
 const navigationHold = shallowRef(false);
+const railPinned = shallowRef(false);
 const pendingNavigation = shallowRef<{
   from: NextProtectedPageKind;
   to: NextProtectedPageKind;
@@ -23,6 +25,33 @@ const prefersReducedMotion = shallowRef(false);
 let holdTimer: ReturnType<typeof setTimeout> | null = null;
 let reducedMotionMediaQuery: MediaQueryList | null = null;
 let removeReducedMotionListener: (() => void) | null = null;
+let railPinPreferenceLoaded = false;
+
+function loadRailPinPreference(): void {
+  if (railPinPreferenceLoaded || typeof window === "undefined") {
+    return;
+  }
+
+  railPinPreferenceLoaded = true;
+
+  try {
+    railPinned.value = window.localStorage.getItem(RAIL_PIN_STORAGE_KEY) === "true";
+  } catch (error) {
+    console.warn("Failed to read next-shell rail pin preference.", error);
+  }
+}
+
+function persistRailPinPreference(value: boolean): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(RAIL_PIN_STORAGE_KEY, value ? "true" : "false");
+  } catch (error) {
+    console.warn("Failed to persist next-shell rail pin preference.", error);
+  }
+}
 
 function clearNavigationHoldTimer(): void {
   if (holdTimer === null) {
@@ -103,11 +132,18 @@ function setFocusWithinRail(value: boolean): void {
   focusWithinRail.value = value;
 }
 
+function toggleRailPinned(): void {
+  loadRailPinPreference();
+  railPinned.value = !railPinned.value;
+  persistRailPinPreference(railPinned.value);
+}
+
 export function useNextShellNavigationTransition(
   currentPageKind: NextProtectedPageKind | Readonly<Ref<NextProtectedPageKind>>,
 ) {
   const route = useRoute();
 
+  loadRailPinPreference();
   ensureReducedMotionListener();
 
   onBeforeRouteLeave((to) => {
@@ -147,8 +183,9 @@ export function useNextShellNavigationTransition(
   });
 
   const railExpanded = computed(
-    () => pointerInsideRail.value || focusWithinRail.value || navigationHold.value,
+    () => railPinned.value || pointerInsideRail.value || focusWithinRail.value || navigationHold.value,
   );
+  const isRailPinned = computed(() => railPinned.value);
   const pageTransitionDirection = computed(() => navigationDirection.value);
   const pageTransitionClass = computed(() => {
     if (prefersReducedMotion.value || pageTransitionDirection.value === null) {
@@ -170,9 +207,11 @@ export function useNextShellNavigationTransition(
 
   return {
     pageTransitionClass,
+    isRailPinned,
     railExpanded,
     setFocusWithinRail,
     setPointerInsideRail,
+    toggleRailPinned,
     handlePageTransitionSettled,
   };
 }

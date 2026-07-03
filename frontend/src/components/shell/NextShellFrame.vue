@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { LayoutGrid, LogOut } from "@lucide/vue";
+import { LayoutGrid, LogOut, PanelLeftOpen } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import { computed, onMounted, useTemplateRef, watch } from "vue";
 import { i18n } from "@language";
 import { SLButton, SLCheckbox, SLModal } from "@components/common";
 import { useShellBackground } from "@composables/useShellBackground";
 import { useSettingsStore } from "@stores/settingsStore";
-import type { NextShellNavItem } from "@src/contracts/shell";
+import type { NextShellNavItem, NextShellRailPinControl } from "@src/contracts/shell";
 import NextDesktopTitlebar from "./NextDesktopTitlebar.vue";
 import { useNextDesktopWindowControls } from "@src/composables/useNextDesktopWindowControls";
 
@@ -18,6 +18,7 @@ interface Props {
   logoutLabel: string;
   showLogout?: boolean;
   navItems: NextShellNavItem[];
+  railPinControl?: NextShellRailPinControl | null;
   railLocked?: boolean;
   railExpanded?: boolean;
   pageTransitionClass?: string | null;
@@ -25,6 +26,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   showLogout: true,
+  railPinControl: null,
   railLocked: false,
   railExpanded: false,
   pageTransitionClass: null,
@@ -35,6 +37,7 @@ const emit = defineEmits<{
   pageTransitionSettled: [];
   railFocusWithinChange: [value: boolean];
   railPointerInsideChange: [value: boolean];
+  toggleRailPin: [];
 }>();
 
 const railRef = useTemplateRef<HTMLElement>("railRef");
@@ -43,6 +46,15 @@ const frameClasses = computed(() => ({
   "next-shell-frame--has-background-image": hasBackgroundImage.value,
   "next-shell-frame--native-window-effect": hasTransparentWindowBackdrop.value,
 }));
+const showRailPinControl = computed(() => props.railPinControl !== null);
+
+function isKeyboardVisibleFocusTarget(target: EventTarget | null): target is HTMLElement {
+  return target instanceof HTMLElement && target.matches(":focus-visible");
+}
+
+function handleRailFocusIn(event: FocusEvent): void {
+  emit("railFocusWithinChange", isKeyboardVisibleFocusTarget(event.target));
+}
 
 function handleRailFocusOut(event: FocusEvent): void {
   const nextTarget = event.relatedTarget;
@@ -51,6 +63,15 @@ function handleRailFocusOut(event: FocusEvent): void {
   }
 
   emit("railFocusWithinChange", false);
+}
+
+function handleRailPointerLeave(): void {
+  emit("railPointerInsideChange", false);
+
+  const activeElement = document.activeElement;
+  if (activeElement instanceof Node && railRef.value?.contains(activeElement)) {
+    emit("railFocusWithinChange", isKeyboardVisibleFocusTarget(activeElement));
+  }
 }
 
 const settingsStore = useSettingsStore();
@@ -93,21 +114,38 @@ onMounted(() => {
         'next-shell-frame__rail--expanded': props.railExpanded,
         'next-shell-frame__rail--locked': props.railLocked,
       }"
-      @focusin="emit('railFocusWithinChange', true)"
+      @focusin="handleRailFocusIn"
       @focusout="handleRailFocusOut"
       @pointerenter="emit('railPointerInsideChange', true)"
-      @pointerleave="emit('railPointerInsideChange', false)"
+      @pointerleave="handleRailPointerLeave"
     >
       <div class="next-shell-frame__rail-inner">
         <div class="next-shell-frame__brand">
-          <div class="next-shell-frame__brand-mark">
-            <LayoutGrid :size="18" />
+          <div class="next-shell-frame__brand-main">
+            <div class="next-shell-frame__brand-mark">
+              <LayoutGrid :size="18" />
+            </div>
+
+            <div class="next-shell-frame__brand-copy">
+              <strong>{{ brand }}</strong>
+              <span>{{ railLabel }}</span>
+            </div>
           </div>
 
-          <div class="next-shell-frame__brand-copy">
-            <strong>{{ brand }}</strong>
-            <span>{{ railLabel }}</span>
-          </div>
+          <button
+            v-if="showRailPinControl"
+            class="next-shell-frame__rail-pin"
+            type="button"
+            :class="{
+              'next-shell-frame__rail-pin--active': props.railPinControl?.pinned,
+            }"
+            :aria-label="props.railPinControl?.label"
+            :title="props.railPinControl?.label"
+            :disabled="props.railPinControl?.disabled"
+            @click="emit('toggleRailPin')"
+          >
+            <PanelLeftOpen :size="16" />
+          </button>
         </div>
 
         <nav class="next-shell-frame__nav" :aria-label="railLabel">
@@ -318,6 +356,7 @@ onMounted(() => {
 }
 
 .next-shell-frame__brand,
+.next-shell-frame__brand-main,
 .next-shell-frame__nav-item,
 .next-shell-frame__logout {
   min-width: 0;
@@ -326,9 +365,22 @@ onMounted(() => {
 .next-shell-frame__brand {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding-left: calc(50% - 20px);
+  justify-content: space-between;
+  padding-left: 0;
   gap: 0;
+  transition:
+    padding-left var(--sl-transition-normal),
+    gap var(--sl-transition-fast);
+}
+
+.next-shell-frame__brand-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  flex: 1 1 auto;
+  padding-left: calc(50% - 20px);
   transition:
     padding-left var(--sl-transition-normal),
     gap var(--sl-transition-fast);
@@ -387,6 +439,48 @@ onMounted(() => {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--sl-text-tertiary);
+}
+
+.next-shell-frame__rail-pin {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--sl-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--sl-transition-fast),
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast);
+}
+
+.next-shell-frame__rail-pin--active {
+  background: color-mix(in srgb, var(--sl-primary) 12%, transparent);
+  color: var(--sl-primary);
+}
+
+.next-shell-frame__rail-pin:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.next-shell-frame__rail-pin:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sl-primary) 40%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .next-shell-frame__rail-pin:not(:disabled):hover {
+    background: color-mix(in srgb, var(--sl-primary) 8%, transparent);
+    color: var(--sl-text-primary);
+  }
 }
 
 .next-shell-frame__nav {
@@ -512,7 +606,7 @@ onMounted(() => {
 }
 
 .next-shell-frame__header {
-  padding: 18px 28px 0 12px;
+  padding: 20px 28px 0 16px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -564,7 +658,7 @@ onMounted(() => {
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
-  padding: 24px 28px 28px 12px;
+  padding: 24px 28px 28px 16px;
   overflow: visible;
 }
 
@@ -594,7 +688,7 @@ onMounted(() => {
   gap: 12px;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media (min-width: 1024px) {
   .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked) {
     width: 272px;
   }
@@ -611,10 +705,18 @@ onMounted(() => {
 
   .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked) .next-shell-frame__brand,
   .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
+    .next-shell-frame__brand-main,
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
     .next-shell-frame__nav-item {
     padding-left: 12px;
     padding-right: 12px;
     gap: 12px;
+  }
+
+  .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
+    .next-shell-frame__rail-pin {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .next-shell-frame__rail--expanded:not(.next-shell-frame__rail--locked)
@@ -696,6 +798,16 @@ onMounted(() => {
   .next-shell-frame__brand {
     justify-content: flex-start;
     gap: 12px;
+  }
+
+  .next-shell-frame__brand-main {
+    flex: 1 1 auto;
+    padding-left: 0;
+    gap: 12px;
+  }
+
+  .next-shell-frame__rail-pin {
+    display: none;
   }
 
   .next-shell-frame__nav {

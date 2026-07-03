@@ -2,6 +2,7 @@ import { AppError as StructuredAppError, normalizeAppError } from "@utils/appErr
 import { handleError, AppError, ErrorType } from "@utils/errorHandler";
 import { getBrowserRuntimeToken, notifyBrowserUnauthorized } from "@stores/authRuntime";
 import { readPersistedBrowserToken } from "@src/services/authStorage";
+import { isTauri as detectTauriRuntime } from "@tauri-apps/api/core";
 
 // Tauri 全局类型声明
 declare global {
@@ -13,10 +14,10 @@ declare global {
 }
 
 // 环境检测：判断是否在浏览器环境（Docker 模式）
-// Tauri v2 默认不注入 window.__TAURI__（需要 withGlobalTauri: true 才有）
-// 但 window.__TAURI_INTERNALS__ 在 Tauri v2 中始终存在，用它来可靠判断
+// 在当前 Tauri v2 dev 运行时里，直接依赖 window.__TAURI_INTERNALS__ 并不稳定。
+// 统一走官方 @tauri-apps/api/core.isTauri()，避免桌面壳被误判成 browser。 
 export const isBrowserEnv = (): boolean => {
-  return typeof window !== "undefined" && !window.__TAURI_INTERNALS__;
+  return typeof window !== "undefined" && !detectTauriRuntime();
 };
 
 // HTTP API 基础 URL（Docker 模式下使用）

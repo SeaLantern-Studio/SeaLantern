@@ -11,6 +11,8 @@
   "nav_paint": "Personalize",
   "nav_developer": "Developer Tools",
   "nav_settings": "Settings",
+  "rail_pin": "Keep sidebar expanded",
+  "rail_unpin": "Use compact sidebar",
   "logout": "Exit current session",
   "context_live": "Verified session",
   "context_preview": "Homepage preview",

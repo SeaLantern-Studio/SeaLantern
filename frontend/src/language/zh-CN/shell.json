@@ -11,6 +11,8 @@
   "nav_paint": "个性化",
   "nav_developer": "开发工具",
   "nav_settings": "设置",
+  "rail_pin": "保持侧栏展开",
+  "rail_unpin": "使用紧凑侧栏",
   "logout": "退出当前会话",
   "context_live": "已验证会话",
   "context_preview": "主页预览",

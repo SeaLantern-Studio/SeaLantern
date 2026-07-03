@@ -9,7 +9,7 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { RouterView, useRoute, useRouter } from "vue-router";
 import NextSidebarHostItems from "@src/components/host/NextSidebarHostItems.vue";
 import type { NextProtectedPageKind, NextShellPage } from "@src/contracts/page";
-import type { NextShellNavItem } from "@src/contracts/shell";
+import type { NextShellNavItem, NextShellRailPinControl } from "@src/contracts/shell";
 import { useNextShellNavigationTransition } from "@src/composables/useNextShellNavigationTransition";
 import { provideNextProtectedShellController } from "@src/composables/useNextProtectedShell";
 import { useNextHostRuntime } from "@src/host/runtime";
@@ -30,10 +30,12 @@ const currentPageKind = computed<NextProtectedPageKind>(() => {
 });
 const {
   handlePageTransitionSettled,
+  isRailPinned,
   pageTransitionClass,
   railExpanded,
   setFocusWithinRail,
   setPointerInsideRail,
+  toggleRailPinned,
 } = useNextShellNavigationTransition(currentPageKind);
 
 const navIconByKind = {
@@ -52,6 +54,11 @@ const hostSidebarItems = computed(() => nextHostRuntime.sidebarItems.value);
 const effectiveRailExpanded = computed(
   () => !shellController.renderState.value.railLocked && railExpanded.value,
 );
+const railPinControl = computed<NextShellRailPinControl>(() => ({
+  pinned: isRailPinned.value,
+  disabled: shellController.renderState.value.railLocked,
+  label: i18n.t(isRailPinned.value ? "shell.rail_unpin" : "shell.rail_pin"),
+}));
 const headerPrimaryActionsRenderer = computed(() => {
   const render = shellController.headerPrimaryActions.value;
   return render ? { render } : null;
@@ -93,6 +100,7 @@ async function handleLogout(): Promise<void> {
     :logout-label="i18n.t('shell.logout')"
     :show-logout="isBrowserMode"
     :nav-items="navItems"
+    :rail-pin-control="railPinControl"
     :rail-locked="shellController.renderState.value.railLocked"
     :rail-expanded="effectiveRailExpanded"
     :page-transition-class="pageTransitionClass"
@@ -101,6 +109,7 @@ async function handleLogout(): Promise<void> {
     @page-transition-settled="handlePageTransitionSettled"
     @rail-focus-within-change="setFocusWithinRail"
     @rail-pointer-inside-change="setPointerInsideRail"
+    @toggle-rail-pin="toggleRailPinned"
   >
     <template #sidebar-primary>
       <NextSidebarHostItems :items="hostSidebarItems" />

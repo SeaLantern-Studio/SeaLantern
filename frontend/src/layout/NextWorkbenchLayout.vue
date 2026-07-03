@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, useSlots } from "vue";
 import type { NextShellPage } from "../contracts/page";
-import type { NextShellNavItem } from "../contracts/shell";
+import type { NextShellNavItem, NextShellRailPinControl } from "../contracts/shell";
 import { NEXT_HOST_SLOT_IDS } from "../host/slotIds";
 import NextHostSlot from "../components/host/NextHostSlot.vue";
 import NextShellFrame from "../components/shell/NextShellFrame.vue";
@@ -13,6 +13,7 @@ interface Props {
   logoutLabel: string;
   showLogout?: boolean;
   navItems: NextShellNavItem[];
+  railPinControl?: NextShellRailPinControl | null;
   railLocked?: boolean;
   railExpanded?: boolean;
   pageTransitionClass?: string | null;
@@ -21,6 +22,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   showLogout: true,
+  railPinControl: null,
   railLocked: false,
   railExpanded: false,
   pageTransitionClass: null,
@@ -42,6 +44,7 @@ const emit = defineEmits<{
   pageTransitionSettled: [];
   railFocusWithinChange: [value: boolean];
   railPointerInsideChange: [value: boolean];
+  toggleRailPin: [];
 }>();
 </script>
 
@@ -55,6 +58,7 @@ const emit = defineEmits<{
     :logout-label="logoutLabel"
     :show-logout="showLogout"
     :nav-items="navItems"
+    :rail-pin-control="railPinControl"
     :rail-locked="railLocked"
     :rail-expanded="railExpanded"
     :page-transition-class="pageTransitionClass"
@@ -62,6 +66,7 @@ const emit = defineEmits<{
     @page-transition-settled="emit('pageTransitionSettled')"
     @rail-focus-within-change="emit('railFocusWithinChange', $event)"
     @rail-pointer-inside-change="emit('railPointerInsideChange', $event)"
+    @toggle-rail-pin="emit('toggleRailPin')"
   >
     <template #sidebar-primary>
       <NextHostSlot :slot-id="NEXT_HOST_SLOT_IDS.sidebarPrimary" scope="shell">
@@ -115,7 +120,7 @@ const emit = defineEmits<{
 .next-workbench-layout__page {
   min-width: 0;
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .next-workbench-layout__page-header {
@@ -129,6 +134,8 @@ const emit = defineEmits<{
 .next-workbench-layout__page-title,
 .next-workbench-layout__page-body {
   min-width: 0;
+  display: grid;
+  gap: 20px;
 }
 
 .next-workbench-layout__page-title {

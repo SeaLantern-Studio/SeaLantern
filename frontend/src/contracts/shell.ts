@@ -12,3 +12,9 @@ export interface NextShellNavItem {
   active?: boolean;
   disabled?: boolean;
 }
+
+export interface NextShellRailPinControl {
+  pinned: boolean;
+  disabled?: boolean;
+  label: string;
+}
