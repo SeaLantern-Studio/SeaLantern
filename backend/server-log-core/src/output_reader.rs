@@ -1,11 +1,11 @@
 use crate::append_server_log;
 use crate::state::decode_console_bytes;
-use sl_server_info::log::{parse_log_line, DomainEvent, LogLineInput, LogStream};
+use sl_server_info::log::{parse_log_line, DomainEvent, LogLineInput, LogStream, ParsedLogLine};
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub type OutputLineHandler = dyn Fn(&str, &str) -> Result<(), String> + Send + Sync;
+pub type OutputLineHandler = dyn Fn(&str, &str, &ParsedLogLine) -> Result<(), String> + Send + Sync;
 pub type ServerReadyHandler = dyn Fn(&str) -> Result<(), String> + Send + Sync;
 pub type OutputErrorHandler = dyn Fn(&str, &str, &str) + Send + Sync;
 
@@ -44,11 +44,12 @@ pub fn spawn_server_output_reader<R>(
                         report_error(&hooks, &server_id, "persist", &error);
                     }
 
-                    if let Err(error) = (hooks.on_line)(&server_id, &line) {
+                    let parsed = parse_log_line(None, LogLineInput { raw: line.clone(), stream });
+
+                    if let Err(error) = (hooks.on_line)(&server_id, &line, &parsed) {
                         report_error(&hooks, &server_id, "emit", &error);
                     }
 
-                    let parsed = parse_log_line(None, LogLineInput { raw: line, stream });
                     if matches!(parsed.event, Some(DomainEvent::ServerReady)) {
                         if let Some(on_server_ready) = &hooks.on_server_ready {
                             if let Err(error) = on_server_ready(&server_id) {

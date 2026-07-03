@@ -57,7 +57,7 @@ mod tests {
         append_server_log, map_domain_event, read_logs, shutdown_writer,
         spawn_server_output_reader, OutputReaderHooks, StructuredLogEventFields,
     };
-    use sl_server_info::log::{DomainEvent, LogStream};
+    use sl_server_info::log::{DomainEvent, LogStream, ParsedLogLine};
     use std::io::Cursor;
     use std::sync::mpsc;
     use std::sync::{Arc, Mutex};
@@ -147,7 +147,7 @@ mod tests {
                     .to_vec(),
             ),
             OutputReaderHooks {
-                on_line: Arc::new(move |_server_id, line| {
+                on_line: Arc::new(move |_server_id, line, _parsed| {
                     line_tx.send(line.to_string()).map_err(|e| e.to_string())
                 }),
                 on_server_ready: Some(Arc::new(move |_server_id| {
@@ -169,5 +169,32 @@ mod tests {
         let persisted = read_logs(&server_path, 0, None).expect("history read should succeed");
         assert_eq!(persisted.len(), 1);
         assert_eq!(*ready_hits.lock().expect("ready hits lock should succeed"), 1);
+    }
+
+    #[test]
+    fn spawn_server_output_reader_passes_parsed_log_line_to_on_line_hook() {
+        let (line_tx, line_rx) = mpsc::channel::<ParsedLogLine>();
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+
+        spawn_server_output_reader(
+            "core-output-reader-parse".to_string(),
+            temp_dir.path().to_path_buf(),
+            LogStream::Stdout,
+            Cursor::new(b"Alex joined the game\n".to_vec()),
+            OutputReaderHooks {
+                on_line: Arc::new(move |_server_id, _line, parsed| {
+                    line_tx.send(parsed.clone()).map_err(|e| e.to_string())
+                }),
+                on_server_ready: None,
+                on_error: None,
+            },
+        );
+
+        let parsed = line_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("output reader should forward parsed line");
+
+        assert_eq!(parsed.event, Some(DomainEvent::PlayerJoin { player: "Alex".to_string() }));
+        assert_eq!(parsed.structured.message, "Alex joined the game");
     }
 }

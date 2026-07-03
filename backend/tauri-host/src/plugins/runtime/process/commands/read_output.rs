@@ -2,7 +2,7 @@ use super::shared::emit_process_log;
 use crate::plugins::runtime::permissions::EXECUTE_PROGRAM_PERMISSION;
 use crate::plugins::runtime::process::common::process_msg2;
 use crate::plugins::runtime::process::common::{
-    collect_finished_processes, is_output_drained, is_process_owner,
+    collect_finished_processes, is_output_drained, is_process_owner, take_output_bytes,
 };
 use crate::plugins::runtime::process::ProcessEntry;
 use mlua::{Function, Lua, Table, Value};
@@ -98,8 +98,10 @@ pub(super) fn read_output(
                 }
 
                 let output = lua.create_table()?;
-                let stdout_text = String::from_utf8_lossy(&output_state.stdout_buf).to_string();
-                let stderr_text = String::from_utf8_lossy(&output_state.stderr_buf).to_string();
+                let stdout_bytes = take_output_bytes(&mut output_state.stdout_buf);
+                let stderr_bytes = take_output_bytes(&mut output_state.stderr_buf);
+                let stdout_text = String::from_utf8_lossy(&stdout_bytes).to_string();
+                let stderr_text = String::from_utf8_lossy(&stderr_bytes).to_string();
                 output.set("stdout", lua.create_string(&stdout_text)?)?;
                 output.set("stderr", lua.create_string(&stderr_text)?)?;
                 output.set("chunk_seq", output_state.next_chunk_seq)?;
@@ -115,8 +117,6 @@ pub(super) fn read_output(
                 }
 
                 output_state.next_chunk_seq = output_state.next_chunk_seq.saturating_add(1);
-                output_state.stdout_buf.clear();
-                output_state.stderr_buf.clear();
                 output_state.stdout_truncated = false;
                 output_state.stderr_truncated = false;
                 let should_cleanup = is_output_drained(&output_state);
@@ -137,8 +137,8 @@ pub(super) fn read_output(
                 return Ok(Value::Nil);
             }
 
-            let output = String::from_utf8_lossy(&output_state.stdout_buf).to_string();
-            output_state.stdout_buf.clear();
+            let stdout_bytes = take_output_bytes(&mut output_state.stdout_buf);
+            let output = String::from_utf8_lossy(&stdout_bytes).to_string();
             output_state.stdout_truncated = false;
 
             let should_cleanup = is_output_drained(&output_state);

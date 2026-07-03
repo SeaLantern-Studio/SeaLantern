@@ -657,7 +657,7 @@ fn test_process_read_output_default_mode_does_not_consume_stderr_only_buffer() {
 
     let pid = register_test_process_with_output(&runtime, |output| {
         let mut state = output.lock().unwrap();
-        state.stderr_buf.extend_from_slice(b"stderr-only\n");
+        state.stderr_buf.extend(b"stderr-only\n".iter().copied());
         process::update_output_timestamp(&mut state, 42);
     });
 
@@ -671,7 +671,7 @@ fn test_process_read_output_default_mode_does_not_consume_stderr_only_buffer() {
 
         assert_eq!(state.next_chunk_seq, 0);
         assert_eq!(state.last_update_unix_ms, Some(42));
-        assert_eq!(state.stderr_buf, b"stderr-only\n");
+        assert_eq!(state.stderr_buf.iter().copied().collect::<Vec<_>>(), b"stderr-only\n");
     }
 
     let structured: Table = read_output
@@ -701,7 +701,7 @@ fn test_process_read_output_include_stderr_false_does_not_consume_stderr_only_bu
 
     let pid = register_test_process_with_output(&runtime, |output| {
         let mut state = output.lock().unwrap();
-        state.stderr_buf.extend_from_slice(b"stderr-only\n");
+        state.stderr_buf.extend(b"stderr-only\n".iter().copied());
         process::update_output_timestamp(&mut state, 84);
     });
 
@@ -717,7 +717,7 @@ fn test_process_read_output_include_stderr_false_does_not_consume_stderr_only_bu
 
         assert_eq!(state.next_chunk_seq, 0);
         assert_eq!(state.last_update_unix_ms, Some(84));
-        assert_eq!(state.stderr_buf, b"stderr-only\n");
+        assert_eq!(state.stderr_buf.iter().copied().collect::<Vec<_>>(), b"stderr-only\n");
     }
 
     let structured: Table = read_output
@@ -793,7 +793,7 @@ fn test_process_read_output_structured_empty_reads_do_not_advance_or_rewind_meta
 
     {
         let mut state = output.lock().unwrap();
-        state.stdout_buf.extend_from_slice(b"first-chunk\n");
+        state.stdout_buf.extend(b"first-chunk\n".iter().copied());
         process::update_output_timestamp(&mut state, 100);
     }
 
@@ -840,7 +840,7 @@ fn test_process_read_output_structured_empty_reads_do_not_advance_or_rewind_meta
         let mut procs = runtime.process_registry.lock().unwrap();
         let entry = procs.get_mut(&pid).unwrap();
         let mut state = entry.output.lock().unwrap();
-        state.stderr_buf.extend_from_slice(b"second-chunk\n");
+        state.stderr_buf.extend(b"second-chunk\n".iter().copied());
         process::update_output_timestamp(&mut state, 90);
     }
 

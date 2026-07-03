@@ -1,4 +1,4 @@
-import { tauriInvoke } from "@api/tauri";
+import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface UpdateInfo {
@@ -60,6 +60,10 @@ export async function restartAndInstall(): Promise<void> {
 export function onDownloadProgress(
   callback: (progress: DownloadProgress) => void,
 ): Promise<UnlistenFn> {
+  if (isBrowserEnv()) {
+    return Promise.resolve(() => {});
+  }
+
   return listen<DownloadProgress>("update-download-progress", (event) => {
     callback(event.payload);
   });

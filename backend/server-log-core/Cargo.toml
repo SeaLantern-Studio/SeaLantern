@@ -11,7 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 rusqlite = { version = "0.32", features = ["bundled"] }
 sea_lantern_server_local_setup_core = { package = "sea-lantern-server-local-setup-core", path = "../server-local-setup-core" }
-sl-server-info = "0.1.0"
+sl-server-info = { path = "../../../libservercore/crates/sl-server-info" }
 
 [dev-dependencies]
 tempfile = "3"

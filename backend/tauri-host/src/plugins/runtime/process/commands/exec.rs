@@ -19,6 +19,7 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use wait_timeout::ChildExt;
 
 /// 注册 `sl.process.exec`
 ///
@@ -200,54 +201,47 @@ pub(super) fn exec(
                     }
                 }
             } else {
-                let started_at = Instant::now();
                 match cmd.spawn() {
                     Ok(mut child) => {
                         let stdout_reader = child.stdout.take().map(spawn_pipe_reader);
                         let stderr_reader = child.stderr.take().map(spawn_pipe_reader);
 
                         let mut timed_out = false;
-                        let exit_status = loop {
-                            match child.try_wait() {
-                                Ok(Some(status)) => break status,
-                                Ok(None) => {
-                                    if started_at.elapsed() >= timeout {
-                                        timed_out = true;
+                        let exit_status = match child.wait_timeout(timeout) {
+                            Ok(Some(status)) => status,
+                            Ok(None) => {
+                                timed_out = true;
 
-                                        if let Err(kill_error) = child.kill() {
-                                            match child.try_wait() {
-                                                Ok(Some(status)) => break status,
-                                                Ok(None) => {
-                                                    return Err(process_err1(
-                                                        "plugins.runtime.process.terminate_timed_out_failed",
-                                                        kill_error.to_string(),
-                                                    ));
-                                                }
-                                                Err(wait_error) => {
-                                                    return Err(process_err1(
-                                                        "plugins.runtime.process.inspect_timed_out_failed",
-                                                        wait_error.to_string(),
-                                                    ));
-                                                }
-                                            }
+                                if let Err(kill_error) = child.kill() {
+                                    match child.try_wait() {
+                                        Ok(Some(status)) => status,
+                                        Ok(None) => {
+                                            return Err(process_err1(
+                                                "plugins.runtime.process.terminate_timed_out_failed",
+                                                kill_error.to_string(),
+                                            ));
                                         }
-
-                                        break child.wait().map_err(|e| {
-                                            process_err1(
-                                                "plugins.runtime.process.wait_timed_out_failed",
-                                                e.to_string(),
-                                            )
-                                        })?;
+                                        Err(wait_error) => {
+                                            return Err(process_err1(
+                                                "plugins.runtime.process.inspect_timed_out_failed",
+                                                wait_error.to_string(),
+                                            ));
+                                        }
                                     }
-
-                                    thread::sleep(Duration::from_millis(25));
+                                } else {
+                                    child.wait().map_err(|e| {
+                                        process_err1(
+                                            "plugins.runtime.process.wait_timed_out_failed",
+                                            e.to_string(),
+                                        )
+                                    })?
                                 }
-                                Err(e) => {
-                                    return Err(process_err1(
-                                        "plugins.runtime.process.wait_failed",
-                                        e.to_string(),
-                                    ));
-                                }
+                            }
+                            Err(e) => {
+                                return Err(process_err1(
+                                    "plugins.runtime.process.wait_failed",
+                                    e.to_string(),
+                                ));
                             }
                         };
 

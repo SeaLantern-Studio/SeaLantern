@@ -9,7 +9,7 @@ use sea_lantern_server_log_core::{
     map_domain_event as map_core_domain_event, read_logs,
     spawn_server_output_reader as spawn_reader, OutputReaderHooks, StructuredLogEventFields,
 };
-use sl_server_info::log::{parse_log_line, DomainEvent, LogLineInput, LogStream};
+use sl_server_info::log::{parse_log_line, DomainEvent, LogLineInput, LogStream, ParsedLogLine};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -119,8 +119,8 @@ where
         stream,
         reader,
         OutputReaderHooks {
-            on_line: Arc::new(move |server_id, line| {
-                emit_server_log_line_with_stream(server_id, line, source_stream);
+            on_line: Arc::new(move |server_id, line, parsed| {
+                emit_server_log_line_with_stream_and_parsed(server_id, line, source_stream, parsed);
                 Ok(())
             }),
             on_server_ready: Some(Arc::new(move |server_id| {
@@ -148,6 +148,16 @@ pub fn emit_server_log_line(server_id: &str, line: &str) {
 }
 
 pub fn emit_server_log_line_with_stream(server_id: &str, line: &str, stream: LogStream) {
+    let parsed = parse_log_line(None, LogLineInput { raw: line.to_string(), stream });
+    emit_server_log_line_with_stream_and_parsed(server_id, line, stream, &parsed)
+}
+
+fn emit_server_log_line_with_stream_and_parsed(
+    server_id: &str,
+    line: &str,
+    stream: LogStream,
+    parsed_before_processors: &ParsedLogLine,
+) {
     let processed_line = process_log_line(server_id, line);
     let source = match stream {
         LogStream::Stdout => ServerEventSource::RuntimeStdout,
@@ -155,7 +165,11 @@ pub fn emit_server_log_line_with_stream(server_id: &str, line: &str, stream: Log
         LogStream::Unknown => ServerEventSource::RuntimeUnknown,
     };
 
-    let parsed = parse_log_line(None, LogLineInput { raw: processed_line.clone(), stream });
+    let parsed = if processed_line == line {
+        parsed_before_processors.clone()
+    } else {
+        parse_log_line(None, LogLineInput { raw: processed_line.clone(), stream })
+    };
     let mapped = map_domain_event(parsed.event);
     let stream_name = match stream {
         LogStream::Stdout => "stdout",

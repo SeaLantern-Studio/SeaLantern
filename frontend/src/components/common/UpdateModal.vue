@@ -5,6 +5,7 @@ import SLButton from "@components/common/SLButton.vue";
 import { useUpdateStore } from "@stores/updateStore";
 import { i18n } from "@language";
 import { downloadUpdate, installUpdate, onDownloadProgress } from "@api/update";
+import { isBrowserEnv } from "@api/tauri";
 import { serverApi } from "@api/server";
 import type { ServerStatus } from "@type/common";
 import type { UnlistenFn } from "@tauri-apps/api/event";
@@ -16,6 +17,7 @@ interface ForceStopFailureItem {
 }
 
 const updateStore = useUpdateStore();
+const isBrowserMode = isBrowserEnv();
 
 const showInstallRiskConfirm = ref(false);
 const activeServerNames = ref<string[]>([]);
@@ -23,6 +25,14 @@ let unlistenProgress: UnlistenFn | null = null;
 const isInstallLaunching = computed(() => updateStore.status === "installing");
 
 const buttonState = computed(() => {
+  if (isBrowserMode) {
+    return {
+      text: i18n.t("about.go_download"),
+      variant: "primary" as const,
+      disabled: !updateStore.updateInfo?.download_url,
+    };
+  }
+
   if (updateStore.status === "downloading") {
     return {
       text: `${i18n.t("about.update_downloading")} ${progressPercent.value}%`,
@@ -56,6 +66,10 @@ const progressPercent = computed(() => {
 });
 
 onMounted(async () => {
+  if (isBrowserMode) {
+    return;
+  }
+
   unlistenProgress = await onDownloadProgress((progress) => {
     const percent =
       progress.percent ?? (progress.total > 0 ? (progress.downloaded / progress.total) * 100 : 0);
@@ -84,6 +98,14 @@ async function handleUpdateClick() {
   }
 
   if (!updateStore.updateInfo?.download_url) {
+    return;
+  }
+
+  if (isBrowserMode) {
+    const opened = window.open(updateStore.updateInfo.download_url, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      window.location.href = updateStore.updateInfo.download_url;
+    }
     return;
   }
 
@@ -131,6 +153,10 @@ async function getActiveServerNames(): Promise<string[]> {
 }
 
 async function handleInstallClick() {
+  if (isBrowserMode) {
+    return;
+  }
+
   if (!updateStore.downloadedFilePath || !updateStore.updateInfo) {
     return;
   }
@@ -171,6 +197,10 @@ async function performInstall() {
 }
 
 async function handleForceAutoUpdate() {
+  if (isBrowserMode) {
+    return;
+  }
+
   if (isInstallLaunching.value) {
     return;
   }

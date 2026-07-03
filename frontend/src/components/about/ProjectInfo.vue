@@ -4,6 +4,7 @@ import { RefreshCw, Check, XCircle } from "@lucide/vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { checkUpdate, type UpdateInfo } from "@api/update";
+import { isBrowserEnv } from "@api/tauri";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { BUILD_YEAR } from "@utils/version";
 import { i18n } from "@language";
@@ -18,6 +19,7 @@ const props = defineProps<{
 }>();
 
 const buildDate = BUILD_YEAR;
+const isBrowserMode = isBrowserEnv();
 
 const isCheckingUpdate = ref(false);
 const updateInfo = ref<UpdateInfo | null>(null);
@@ -51,6 +53,14 @@ async function handleCheckUpdate() {
 async function handleManualDownload() {
   if (updateInfo.value?.download_url) {
     try {
+      if (isBrowserMode) {
+        const opened = window.open(updateInfo.value.download_url, "_blank", "noopener,noreferrer");
+        if (!opened) {
+          window.location.href = updateInfo.value.download_url;
+        }
+        return;
+      }
+
       await openUrl(updateInfo.value.download_url);
     } catch (error) {
       console.error("[ProjectInfo] 打开链接失败:", error);

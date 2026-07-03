@@ -1,48 +1,8 @@
 use std::path::Path;
+use std::sync::OnceLock;
 
 use sea_lantern_server_installer_core::{CoreType, ParsedServerCoreInfo};
-
-const STARTUP_SCAN_CORE_TYPE_OPTIONS: &[&str] = &[
-    "pumpkin",
-    "paper",
-    "purpur",
-    "spigot",
-    "bukkit",
-    "folia",
-    "leaves",
-    "pufferfish",
-    "sponge",
-    "arclight-forge",
-    "arclight-neoforge",
-    "youer",
-    "mohist",
-    "catserver",
-    "neoforge",
-    "forge",
-    "fabric",
-    "quilt",
-    "vanilla",
-    "velocity",
-    "bungeecord",
-    "waterfall",
-    "lightfall",
-    "travertine",
-    "flamecord",
-    "tuinity",
-    "airplane",
-    "glowstone",
-    "cuberite",
-    "minestom",
-    "bds",
-    "liteloaderbds",
-    "levilamina",
-    "bdsx",
-    "allay",
-    "nukkit",
-    "powernukkitx",
-    "pocketmine",
-    "endstone",
-];
+use serde::Deserialize;
 
 struct TempExtractDir(std::path::PathBuf);
 
@@ -445,35 +405,61 @@ fn to_relative_archive_path(base_dir: &Path, absolute_path: &str) -> Result<Stri
     Ok(relative.to_string_lossy().to_string())
 }
 
+#[derive(Debug, Deserialize)]
+struct SharedServerCoreTaxonomyDocument {
+    entries: Vec<SharedServerCoreTaxonomyEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SharedServerCoreTaxonomyEntry {
+    key: String,
+    label: String,
+    #[serde(default)]
+    aliases: Vec<SharedServerCoreTaxonomyAlias>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SharedServerCoreTaxonomyAlias {
+    value: String,
+    label: Option<String>,
+}
+
+fn shared_server_core_taxonomy() -> &'static SharedServerCoreTaxonomyDocument {
+    static TAXONOMY: OnceLock<SharedServerCoreTaxonomyDocument> = OnceLock::new();
+    TAXONOMY.get_or_init(|| {
+        serde_json::from_str(include_str!("../../../shared/server-core-taxonomy.json"))
+            .expect("shared server core taxonomy should be valid json")
+    })
+}
+
 fn format_core_type_label(core_type: &str) -> String {
-    match core_type.trim().to_ascii_lowercase().as_str() {
-        "allay" => "AllayMC".to_string(),
-        "airplane" => "Airplane".to_string(),
-        "arclight-fabric" => "Arclight-Fabric".to_string(),
-        "arclight-forge" => "Arclight-Forge".to_string(),
-        "arclight-neoforge" => "Arclight-NeoForge".to_string(),
-        "bds" => "BDS".to_string(),
-        "bdsx" => "BDSX".to_string(),
-        "bungeecord" => "BungeeCord".to_string(),
-        "cuberite" => "Cuberite".to_string(),
-        "endstone" => "Endstone".to_string(),
-        "flamecord" => "FlameCord".to_string(),
-        "glowstone" => "Glowstone".to_string(),
-        "levilamina" => "LeviLamina".to_string(),
-        "liteloaderbds" => "LiteLoaderBDS".to_string(),
-        "minestom" => "Minestom".to_string(),
-        "neoforge" => "NeoForge".to_string(),
-        "nukkit" => "Nukkit".to_string(),
-        "nukkitx" => "NukkitX".to_string(),
-        "pocketmine" => "PocketMine-MP".to_string(),
-        "powernukkitx" => "PowerNukkitX".to_string(),
-        "pufferfish_purpur" => "Pufferfish-Purpur".to_string(),
-        "pumpkin" => "Pumpkin".to_string(),
-        "sponge" => "Sponge".to_string(),
-        "vanilla-snapshot" => "Vanilla Snapshot".to_string(),
-        "unknown" => "Unknown".to_string(),
-        _ => core_type.to_string(),
+    let normalized = core_type.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        return core_type.to_string();
     }
+
+    let taxonomy = shared_server_core_taxonomy();
+    for entry in &taxonomy.entries {
+        for alias in &entry.aliases {
+            if alias.value.eq_ignore_ascii_case(&normalized) {
+                return alias.label.clone().unwrap_or_else(|| entry.label.clone());
+            }
+        }
+
+        if entry.key.eq_ignore_ascii_case(&normalized) {
+            return entry.label.clone();
+        }
+    }
+
+    if let Some(canonical_key) = normalize_startup_scan_core_key(core_type) {
+        for entry in &taxonomy.entries {
+            if entry.key == canonical_key {
+                return entry.label.clone();
+            }
+        }
+    }
+
+    core_type.to_string()
 }
 
 fn startup_detail(parsed: &ParsedServerCoreInfo) -> String {
@@ -504,6 +490,10 @@ fn normalize_startup_scan_core_key(input: &str) -> Option<String> {
     CoreType::normalize_to_api_core_key(input)
 }
 
+fn startup_scan_core_type_options() -> &'static [&'static str] {
+    CoreType::all_api_core_keys()
+}
+
 fn build_result(
     parsed_core: ParsedServerCoreInfo,
     candidates: Vec<StartupCandidateItem>,
@@ -517,7 +507,7 @@ fn build_result(
         parsed_core,
         candidates,
         detected_core_type_key,
-        core_type_options: STARTUP_SCAN_CORE_TYPE_OPTIONS
+        core_type_options: startup_scan_core_type_options()
             .iter()
             .map(|value| value.to_string())
             .collect(),
@@ -533,9 +523,10 @@ fn build_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        normalize_startup_scan_core_key, scan_startup_candidates, StartupCandidateItem,
-        STARTUP_SCAN_CORE_TYPE_OPTIONS,
+        format_core_type_label, normalize_startup_scan_core_key, scan_startup_candidates,
+        shared_server_core_taxonomy, startup_scan_core_type_options, StartupCandidateItem,
     };
+    use sea_lantern_server_installer_core::CoreType;
     use std::collections::HashSet;
     use std::fs;
     use std::io::Write;
@@ -792,30 +783,49 @@ mod tests {
     }
 
     #[test]
-    fn startup_scan_options_include_new_shared_taxonomy_keys() {
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"waterfall"));
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"bds"));
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"allay"));
+    fn startup_scan_options_reuse_backend_canonical_core_keys() {
+        assert_eq!(startup_scan_core_type_options(), CoreType::all_api_core_keys());
     }
 
     #[test]
-    fn startup_scan_options_expose_canonical_core_keys() {
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"leaves"));
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"pufferfish"));
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"sponge"));
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"forge"));
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"fabric"));
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"vanilla"));
-        assert!(STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"nukkit"));
+    fn shared_taxonomy_canonical_keys_match_backend_canonical_core_keys() {
+        let mut shared_keys = shared_server_core_taxonomy()
+            .entries
+            .iter()
+            .map(|entry| entry.key.clone())
+            .collect::<Vec<String>>();
+        let mut backend_keys = CoreType::all_api_core_keys()
+            .iter()
+            .map(|value| (*value).to_string())
+            .collect::<Vec<String>>();
 
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"leaf"));
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"pufferfish_purpur"));
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"spongevanilla"));
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"spongeforge"));
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"arclight-fabric"));
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"banner"));
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"vanilla-snapshot"));
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"nukkitx"));
-        assert!(!STARTUP_SCAN_CORE_TYPE_OPTIONS.contains(&"arclight"));
+        shared_keys.sort_unstable();
+        backend_keys.sort_unstable();
+
+        assert_eq!(shared_keys, backend_keys);
+    }
+
+    #[test]
+    fn startup_scan_result_exposes_backend_canonical_core_keys() {
+        let dir = tempfile::tempdir().expect("temp dir should exist");
+
+        let result = scan_startup_candidates(dir.path().to_string_lossy().as_ref(), "folder", &[])
+            .expect("folder scan should succeed");
+
+        assert_eq!(
+            result.core_type_options,
+            CoreType::all_api_core_keys()
+                .iter()
+                .map(|value| (*value).to_string())
+                .collect::<Vec<String>>()
+        );
+    }
+
+    #[test]
+    fn startup_scan_labels_follow_shared_taxonomy_metadata() {
+        assert_eq!(format_core_type_label("mohist"), "Mohist");
+        assert_eq!(format_core_type_label("arclight-fabric"), "Arclight-Fabric");
+        assert_eq!(format_core_type_label("Waterfall"), "Waterfall");
+        assert_eq!(format_core_type_label("AllayMC"), "AllayMC");
     }
 }

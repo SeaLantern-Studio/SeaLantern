@@ -87,6 +87,26 @@ mod tests {
     };
     use server_flavor_core::{ServerEdition, ServerExtensionKind, ServerFlavorKind, ServerRole};
 
+    #[derive(Debug, serde::Deserialize)]
+    struct SharedServerCoreTaxonomyDocument {
+        entries: Vec<SharedServerCoreTaxonomyEntry>,
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct SharedServerCoreTaxonomyEntry {
+        key: String,
+        #[serde(default)]
+        supports_plugin_extensions: bool,
+        #[serde(default)]
+        aliases: Vec<SharedServerCoreTaxonomyAlias>,
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct SharedServerCoreTaxonomyAlias {
+        value: String,
+    }
+
     fn test_server(core_type: &str, startup_mode: &str) -> ServerInstance {
         ServerInstance {
             id: format!("test-{core_type}"),
@@ -183,5 +203,33 @@ mod tests {
     fn canonical_detected_core_type_normalizes_detection_aliases() {
         assert_eq!(canonical_detected_core_type("nukkitx"), "nukkit");
         assert_eq!(canonical_detected_core_type("spongeforge"), "forge");
+    }
+
+    #[test]
+    fn shared_taxonomy_metadata_stays_aligned_with_backend_flavor_contract() {
+        let taxonomy: SharedServerCoreTaxonomyDocument =
+            serde_json::from_str(include_str!("../../../../../shared/server-core-taxonomy.json"))
+                .expect("shared server core taxonomy should be valid json");
+
+        for entry in taxonomy.entries {
+            assert_eq!(canonical_server_core_type(&entry.key), entry.key, "canonical key drift");
+
+            let plugin_supported = extension_dir_for_kind(
+                &test_server(&entry.key, "jar"),
+                ServerExtensionKind::Plugin,
+            )
+            .is_some();
+            assert_eq!(
+                plugin_supported, entry.supports_plugin_extensions,
+                "plugin support drift for {}",
+                entry.key
+            );
+
+            for alias in entry.aliases {
+                let normalized = normalize_core_key_for_profile(&alias.value)
+                    .unwrap_or_else(|| canonical_server_core_type(&alias.value));
+                assert_eq!(normalized, entry.key, "alias drift for {}", alias.value);
+            }
+        }
     }
 }

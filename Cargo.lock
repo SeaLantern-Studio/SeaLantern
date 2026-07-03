@@ -6120,7 +6120,7 @@ dependencies = [
  "sha2 0.10.9",
  "shlex",
  "sl-libscv",
- "sl-server-flavor-core",
+ "sl-server-flavor-core 0.2.1",
  "sl-server-info",
  "sysinfo",
  "tar",
@@ -6144,6 +6144,7 @@ dependencies = [
  "trash",
  "url",
  "uuid",
+ "wait-timeout",
  "window-vibrancy",
  "windows 0.58.0",
  "zip",
@@ -6248,7 +6249,7 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "serde",
- "sl-server-core-taxonomy",
+ "sl-server-core-taxonomy 0.1.1",
  "tar",
  "tempfile",
  "uuid",
@@ -6267,7 +6268,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shlex",
- "sl-server-core-taxonomy",
+ "sl-server-core-taxonomy 0.1.1",
  "tempfile",
 ]
 
@@ -6288,7 +6289,7 @@ dependencies = [
  "sea-lantern-server-installer-core",
  "serde",
  "serde_yaml",
- "sl-server-flavor-core",
+ "sl-server-flavor-core 0.2.1",
  "tempfile",
  "zip",
 ]
@@ -6299,7 +6300,7 @@ version = "0.1.0"
 dependencies = [
  "sea-lantern-server-installer-core",
  "serde",
- "sl-server-core-taxonomy",
+ "serde_json",
  "tempfile",
  "uuid",
  "zip",
@@ -6779,10 +6780,14 @@ checksum = "646c83fa33d75e56c3a8b6eba7c77dc5a5be51c0de8a4ebe35629fdaa2d99f85"
 dependencies = [
  "serde",
  "serde_json",
- "sl-server-core-taxonomy",
- "sl-server-flavor-core",
+ "sl-server-core-taxonomy 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sl-server-flavor-core 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml_edit 0.22.27",
 ]
+
+[[package]]
+name = "sl-server-core-taxonomy"
+version = "0.1.1"
 
 [[package]]
 name = "sl-server-core-taxonomy"
@@ -6793,21 +6798,26 @@ checksum = "62f7b9792a823e98d394008b91cd217aff789235c3b2f41a943240a05803c278"
 [[package]]
 name = "sl-server-flavor-core"
 version = "0.2.1"
+dependencies = [
+ "sl-server-core-taxonomy 0.1.1",
+]
+
+[[package]]
+name = "sl-server-flavor-core"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1922a226bd9624751d47064fd190276170e542c9df44f4f2d47c7919189202d8"
 dependencies = [
- "sl-server-core-taxonomy",
+ "sl-server-core-taxonomy 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "sl-server-info"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdb9dd8c517689d968a2cd760079beeb788b01627882628732e3c7765a9239ab"
 dependencies = [
  "rcon",
  "regex",
- "sl-server-core-taxonomy",
+ "sl-server-core-taxonomy 0.1.1",
  "tokio",
 ]
 
@@ -8412,6 +8422,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb067e4cbd1ff067d1df46c9194b5de0e98efd2810bbc95c5d5e5f25a3231150"
 dependencies = [
  "cc",
+ "libc",
+]
+
+[[package]]
+name = "wait-timeout"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09ac3b126d3914f9849036f826e054cbabdc8519970b8998ddaf3b5bd3c65f11"
+dependencies = [
  "libc",
 ]
 

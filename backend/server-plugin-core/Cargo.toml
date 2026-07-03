@@ -13,7 +13,7 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 zip = "2.0"
 sea_lantern_server_installer_core = { package = "sea-lantern-server-installer-core", path = "../server-installer-core" }
-sl-server-flavor-core = "0.2.1"
+sl-server-flavor-core = { path = "../../../libservercore/crates/server-flavor-core" }
 
 [dev-dependencies]
 tempfile = "3"
