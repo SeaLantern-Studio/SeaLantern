@@ -2,7 +2,6 @@
 import { computed } from "vue";
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
-import AppearanceSection from "@src/components/settings/appearance/AppearanceSection.vue";
 import DeveloperManagementSection from "@src/components/settings/developer/DeveloperManagementSection.vue";
 import GeneralSection from "@src/components/settings/general/GeneralSection.vue";
 import { i18n } from "@language";
@@ -21,8 +20,6 @@ const {
 
 const activeSectionComponent = computed(() => {
   switch (currentSectionId.value) {
-    case "appearance":
-      return AppearanceSection;
     case "developer-management":
       return DeveloperManagementSection;
     default:

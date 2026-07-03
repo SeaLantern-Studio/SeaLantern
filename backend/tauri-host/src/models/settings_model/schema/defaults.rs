@@ -40,6 +40,7 @@ impl Default for AppSettings {
             text_color_overrides: Default::default(),
             app_display_name: String::new(),
             language: "zh-CN".to_string(),
+            locale_layer_order: default_locale_layer_order(),
             developer_mode: false,
             close_action: "ask".to_string(),
             last_run_path: String::new(),
@@ -160,6 +161,10 @@ pub(super) fn default_memory_display_precision() -> u8 {
 
 pub(super) fn default_language() -> String {
     "zh-CN".to_string()
+}
+
+pub(super) fn default_locale_layer_order() -> Vec<String> {
+    vec!["zh-CN".to_string(), "en-US".to_string()]
 }
 
 pub(super) fn default_close_action() -> String {

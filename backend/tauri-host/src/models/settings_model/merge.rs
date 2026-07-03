@@ -149,6 +149,9 @@ impl AppSettings {
         if let Some(ref v) = partial.language {
             self.language = v.clone();
         }
+        if let Some(ref v) = partial.locale_layer_order {
+            self.locale_layer_order = v.clone();
+        }
         if let Some(v) = partial.developer_mode {
             self.developer_mode = v;
         }

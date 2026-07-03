@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Copy, Minus, Square, X } from "@lucide/vue";
+import TitlebarLocaleSwitcher from "./TitlebarLocaleSwitcher.vue";
 
 interface Props {
   macos?: boolean;
@@ -26,6 +27,8 @@ const emit = defineEmits<{
     ></div>
 
     <div v-if="showControls" class="next-desktop-titlebar__trailing">
+      <TitlebarLocaleSwitcher />
+
       <div
         v-if="appDisplayName"
         class="next-desktop-titlebar__app-name"
@@ -70,6 +73,8 @@ const emit = defineEmits<{
 
 <style scoped>
 .next-desktop-titlebar {
+  position: relative;
+  z-index: 20;
   min-height: 48px;
   display: flex;
   align-items: center;

@@ -128,6 +128,7 @@ const defaultSettings: AppSettings = {
   },
   app_display_name: "",
   language: "zh-CN",
+  locale_layer_order: [],
   developer_mode: false,
   close_action: "ask",
   last_run_path: "",

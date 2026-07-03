@@ -87,6 +87,7 @@ export interface AppSettings {
   text_color_overrides: TextColorOverrides;
   app_display_name: string;
   language: string;
+  locale_layer_order: string[];
   locales_base_url?: string;
   developer_mode: boolean;
   close_action: string;
@@ -133,6 +134,7 @@ export interface PartialSettings {
   text_color_overrides?: TextColorOverrides;
   app_display_name?: string;
   language?: string;
+  locale_layer_order?: string[];
   developer_mode?: boolean;
   close_action?: string;
   last_run_path?: string;

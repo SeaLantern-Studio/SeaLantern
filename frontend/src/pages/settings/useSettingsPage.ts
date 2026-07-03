@@ -4,7 +4,7 @@ import { i18n } from "@language";
 import { NEXT_ABOUT_ROUTE_NAME } from "@src/router/pageMeta";
 import { useSettingsStore } from "@stores/settingsStore";
 
-export type SettingsSectionId = "appearance" | "general" | "developer-management" | "about";
+export type SettingsSectionId = "general" | "developer-management" | "about";
 
 export interface SettingsSummaryChip {
   label: string;
@@ -32,17 +32,10 @@ export interface SettingsSectionItem {
   routeName?: string;
 }
 
-const DEFAULT_SECTION_ID: SettingsSectionId = "appearance";
+const DEFAULT_SECTION_ID: SettingsSectionId = "general";
 
 function buildSettingsSectionItems(): readonly SettingsSectionItem[] {
   return [
-    {
-      id: "appearance",
-      label: i18n.t("settings.next.sections.appearance.label"),
-      title: i18n.t("settings.next.sections.appearance.title"),
-      description: i18n.t("settings.next.sections.appearance.description"),
-      hash: "#appearance",
-    },
     {
       id: "general",
       label: i18n.t("settings.next.sections.general.label"),
@@ -69,8 +62,6 @@ function buildSettingsSectionItems(): readonly SettingsSectionItem[] {
 
 function parseSettingsSectionHash(hash: string): SettingsSectionId | null {
   switch (hash) {
-    case "#appearance":
-      return "appearance";
     case "#general":
       return "general";
     case "#developer-management":

@@ -8,6 +8,8 @@ impl AppSettings {
             || self.close_servers_on_update != other.close_servers_on_update
             || self.auto_accept_eula != other.auto_accept_eula
             || self.close_action != other.close_action
+            || self.language != other.language
+            || self.locale_layer_order != other.locale_layer_order
         {
             changed.push(SettingsGroup::General);
         }

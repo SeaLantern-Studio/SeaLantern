@@ -1,8 +1,6 @@
 import { computed, shallowRef } from "vue";
-import { useRouter } from "vue-router";
 import { i18n } from "@language";
 import type { WorkbenchFactItem } from "@src/components/workbench/WorkbenchFactGrid.vue";
-import { NEXT_SETTINGS_ROUTE_NAME } from "@src/router/pageMeta";
 import { useSettingsPageDraft } from "@composables/useSettingsPageDraft";
 import { usePaintAppearanceOptions } from "./usePaintAppearanceOptions";
 import { usePaintPersonalizationActions } from "./usePaintPersonalizationActions";
@@ -17,7 +15,6 @@ export interface PaintSectionItem {
 }
 
 export function usePaintPage() {
-  const router = useRouter();
   const fields = usePaintSettingsFields();
   const appearanceOptions = usePaintAppearanceOptions();
   const activeSectionId = shallowRef<PaintSectionId>("appearance-theme");
@@ -80,10 +77,6 @@ export function usePaintPage() {
     settingsDraft.markChanged();
   }
 
-  function openAppearanceSettings(): void {
-    void router.push({ name: NEXT_SETTINGS_ROUTE_NAME, hash: "#appearance" });
-  }
-
   function selectSection(sectionId: string): void {
     if (
       sectionId === "appearance-theme" ||
@@ -108,7 +101,6 @@ export function usePaintPage() {
     sectionItems,
     summaryFacts,
     markChanged,
-    openAppearanceSettings,
     selectSection,
   };
 }

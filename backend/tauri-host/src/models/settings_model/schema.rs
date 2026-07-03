@@ -9,10 +9,10 @@ use defaults::{
     default_allowed_commands, default_bg_blur, default_bg_brightness, default_bg_opacity,
     default_bg_size, default_blocked_commands, default_close_action, default_color,
     default_console_font, default_console_font_family, default_console_letter_spacing,
-    default_false, default_font_family, default_font_size, default_language, default_log_lines,
-    default_max_memory, default_memory_display_precision, default_min_memory, default_port,
-    default_theme, default_true, default_window_effect, default_window_height,
-    default_window_width,
+    default_false, default_font_family, default_font_size, default_language,
+    default_locale_layer_order, default_log_lines, default_max_memory,
+    default_memory_display_precision, default_min_memory, default_port, default_theme,
+    default_true, default_window_effect, default_window_height, default_window_width,
 };
 
 pub const WINDOW_EFFECT_OFF: &str = "off";
@@ -253,6 +253,9 @@ pub struct AppSettings {
     #[serde(default = "default_language")]
     pub language: String,
 
+    #[serde(default = "default_locale_layer_order")]
+    pub locale_layer_order: Vec<String>,
+
     #[serde(default = "default_false")]
     pub developer_mode: bool,
 
@@ -366,6 +369,8 @@ pub struct PartialSettings {
     pub app_display_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locale_layer_order: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub developer_mode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]

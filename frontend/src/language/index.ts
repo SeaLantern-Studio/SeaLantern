@@ -1,4 +1,4 @@
-import { ref, type Ref } from "vue";
+import { ref, shallowRef, type Ref, type ShallowRef } from "vue";
 
 type TranslationValue = string | TranslationNode;
 
@@ -98,15 +98,58 @@ const backendFlatTranslations: Record<string, Record<string, string>> = {};
 
 const pluginFlatTranslations: Record<string, Record<string, Record<string, string>>> = {};
 const pluginLocaleNames: Record<string, string> = {};
+const selectableLocales = new Set<string>(supportedLocales);
+const localeRegistryVersion = shallowRef(0);
+const currentLocaleRef = ref<LocaleCode>(DEFAULT_SYNC_LOCALE);
+const DEFAULT_FALLBACK_LOCALES = ["en-US", DEFAULT_SYNC_LOCALE] as const;
 
 export const SUPPORTED_LOCALES: readonly string[] = supportedLocales;
 export type LocaleCode = string;
 
+function markLocaleRegistryChanged(): void {
+  localeRegistryVersion.value += 1;
+}
+
+function registerSupportedLocale(locale: string): boolean {
+  if (supportedLocales.includes(locale)) {
+    return false;
+  }
+
+  supportedLocales.push(locale);
+  markLocaleRegistryChanged();
+  return true;
+}
+
+function registerSelectableLocale(locale: string): void {
+  const normalized = locale.trim();
+  if (!normalized) {
+    return;
+  }
+
+  registerSupportedLocale(normalized);
+  if (selectableLocales.has(normalized)) {
+    return;
+  }
+
+  selectableLocales.add(normalized);
+  markLocaleRegistryChanged();
+}
+
+function dedupeLocaleCodes(locales: readonly string[]): string[] {
+  return Array.from(new Set(locales.map((locale) => locale.trim()).filter(Boolean)));
+}
+
+function getRegisteredLocalesSorted(): LocaleCode[] {
+  return [...supportedLocales].toSorted((left, right) => left.localeCompare(right));
+}
+
+function getSelectableLocalesSorted(): LocaleCode[] {
+  return [...selectableLocales].toSorted((left, right) => left.localeCompare(right));
+}
+
 export function setTranslations(locale: LocaleCode, data: LanguageFile) {
   translations[locale] = normalizeLanguageFile(data);
-  if (!supportedLocales.includes(locale)) {
-    supportedLocales.push(locale);
-  }
+  registerSelectableLocale(locale);
 }
 
 export async function ensureLocaleLoaded(locale: LocaleCode): Promise<boolean> {
@@ -125,9 +168,7 @@ export async function ensureLocaleLoaded(locale: LocaleCode): Promise<boolean> {
       }
 
       translations[locale] = localeTranslations;
-      if (!supportedLocales.includes(locale)) {
-        supportedLocales.push(locale);
-      }
+      registerSelectableLocale(locale);
       return true;
     })
     .finally(() => {
@@ -143,19 +184,20 @@ export function setLocaleBundle(
   locales?: readonly string[],
 ) {
   backendFlatTranslations[locale] = entries;
+  registerSelectableLocale(locale);
   if (locales) {
     for (const localeCode of locales) {
-      if (!supportedLocales.includes(localeCode)) {
-        supportedLocales.push(localeCode);
-      }
+      registerSelectableLocale(localeCode);
     }
   }
 }
 
 export function registerPluginLocale(locale: string, displayName: string) {
+  const displayNameChanged = pluginLocaleNames[locale] !== displayName;
   pluginLocaleNames[locale] = displayName;
-  if (!supportedLocales.includes(locale)) {
-    supportedLocales.push(locale);
+  const localeAdded = registerSupportedLocale(locale);
+  if (!localeAdded && displayNameChanged) {
+    markLocaleRegistryChanged();
   }
 }
 
@@ -327,8 +369,8 @@ function resolveBackendFlatValue(locale: string, key: string): string | undefine
   return backendFlatTranslations[locale]?.[key];
 }
 
-function getLocaleFallbackChain(locale: string): LocaleCode[] {
-  return Array.from(new Set([locale, "en-US", "zh-CN"]));
+function getLocaleFallbackChain(): LocaleCode[] {
+  return dedupeLocaleCodes([currentLocaleRef.value, ...DEFAULT_FALLBACK_LOCALES]);
 }
 
 function resolveLocaleValue(locale: string, key: string): string | undefined {
@@ -354,7 +396,7 @@ function interpolateVariables(template: string, options: Record<string, unknown>
 }
 
 class I18n {
-  private currentLocale: Ref<LocaleCode> = ref("zh-CN");
+  private currentLocale: Ref<LocaleCode> = currentLocaleRef;
 
   setLocale(locale: string) {
     if (isSupportedLocale(locale) || pluginLocaleNames[locale] !== undefined) {
@@ -367,8 +409,10 @@ class I18n {
   }
 
   t(key: string, options: Record<string, unknown> = {}): string {
+    localeRegistryVersion.value;
+
     let resolved: string | undefined;
-    for (const locale of getLocaleFallbackChain(this.currentLocale.value)) {
+    for (const locale of getLocaleFallbackChain()) {
       resolved = resolveLocaleValue(locale, key);
       if (resolved !== undefined) {
         break;
@@ -377,13 +421,15 @@ class I18n {
 
     if (resolved === undefined) {
       for (const pluginMap of Object.values(pluginFlatTranslations)) {
-        const currentLocaleValue = this.currentLocale.value;
-        const val =
-          pluginMap[currentLocaleValue]?.[key] ??
-          pluginMap["en-US"]?.[key] ??
-          pluginMap["zh-CN"]?.[key];
-        if (val !== undefined) {
-          resolved = val;
+        for (const locale of getLocaleFallbackChain()) {
+          const val = pluginMap[locale]?.[key];
+          if (val !== undefined) {
+            resolved = val;
+            break;
+          }
+        }
+
+        if (resolved !== undefined) {
           break;
         }
       }
@@ -397,19 +443,16 @@ class I18n {
   }
 
   te(key: string): boolean {
-    for (const locale of getLocaleFallbackChain(this.currentLocale.value)) {
+    localeRegistryVersion.value;
+
+    for (const locale of getLocaleFallbackChain()) {
       if (resolveLocaleValue(locale, key) !== undefined) {
         return true;
       }
     }
 
     return Object.values(pluginFlatTranslations).some((pluginMap) => {
-      const currentLocaleValue = this.currentLocale.value;
-      return (
-        pluginMap[currentLocaleValue]?.[key] !== undefined ||
-        pluginMap["en-US"]?.[key] !== undefined ||
-        pluginMap["zh-CN"]?.[key] !== undefined
-      );
+      return getLocaleFallbackChain().some((locale) => pluginMap[locale]?.[key] !== undefined);
     });
   }
 
@@ -418,6 +461,8 @@ class I18n {
   }
 
   getLocaleMetadata(locale: string): LocaleMetadata | undefined {
+    localeRegistryVersion.value;
+
     return (
       builtInLocaleMetadata[locale] ??
       (pluginLocaleNames[locale] ? { language: pluginLocaleNames[locale] } : undefined)
@@ -433,7 +478,17 @@ class I18n {
   }
 
   getAvailableLocales(): readonly LocaleCode[] {
-    return supportedLocales;
+    localeRegistryVersion.value;
+    return getSelectableLocalesSorted();
+  }
+
+  getRegisteredLocales(): readonly LocaleCode[] {
+    localeRegistryVersion.value;
+    return getRegisteredLocalesSorted();
+  }
+
+  getLocaleRegistryVersionRef(): ShallowRef<number> {
+    return localeRegistryVersion;
   }
 
   isSupportedLocale(locale: string): boolean {

@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLSelect from "@components/common/SLSelect.vue";
+import AppearanceSection from "@src/components/settings/appearance/AppearanceSection.vue";
 import ColorThemeCard from "@src/components/paint/ColorThemeCard.vue";
 import ErrorBanner from "@src/components/paint/ErrorBanner.vue";
 import SettingsActions from "@src/components/paint/SettingsActions.vue";
 import TextCustomizationCard from "@src/components/paint/TextCustomizationCard.vue";
 import ConsoleSettingsCard from "@src/components/settings/ConsoleSettingsCard.vue";
 import WorkbenchFactGrid from "@src/components/workbench/WorkbenchFactGrid.vue";
-import WorkbenchPanel from "@src/components/workbench/WorkbenchPanel.vue";
 import WorkbenchSectionHeader from "@src/components/workbench/WorkbenchSectionHeader.vue";
 import WorkbenchSplitView from "@src/components/workbench/WorkbenchSplitView.vue";
 import { i18n } from "@language";
@@ -28,7 +27,6 @@ const {
   sectionItems,
   summaryFacts,
   markChanged,
-  openAppearanceSettings,
   selectSection,
 } = usePaintPage();
 </script>
@@ -57,22 +55,7 @@ const {
       </template>
 
       <template v-if="activeSectionId === 'appearance-theme'">
-        <WorkbenchPanel
-          :title="i18n.t('settings.appearance')"
-          :description="i18n.t('settings.next.appearance.live_hint')"
-        >
-          <div class="paint-page__appearance-bridge">
-            <div class="paint-page__appearance-copy">
-              <strong>{{ i18n.t("settings.paint.appearance_bridge_title") }}</strong>
-              <p class="paint-page__appearance-text">
-                {{ i18n.t("settings.paint.appearance_bridge_desc") }}
-              </p>
-            </div>
-            <SLButton variant="secondary" size="sm" @click="openAppearanceSettings">
-              {{ i18n.t("settings.appearance") }}
-            </SLButton>
-          </div>
-        </WorkbenchPanel>
+        <AppearanceSection />
 
         <ColorThemeCard
           :color="settings.color"
@@ -149,32 +132,6 @@ const {
   gap: 16px;
 }
 
-.paint-page__appearance-bridge {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.paint-page__appearance-copy {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.paint-page__appearance-copy strong {
-  color: var(--sl-text-primary);
-  font-size: 0.9rem;
-}
-
-.paint-page__appearance-text {
-  margin: 0;
-  font-size: 0.87rem;
-  line-height: 1.5;
-  color: var(--sl-text-secondary);
-}
-
 .paint-page__precision-row {
   display: flex;
   justify-content: flex-end;
@@ -213,11 +170,6 @@ const {
 }
 
 @media (max-width: 720px) {
-  .paint-page__appearance-bridge {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .paint-page__precision-row {
     justify-content: stretch;
   }
