@@ -50,7 +50,7 @@
   "next": {
     "eyebrow": "Developer Tools",
     "page_title": "Developer Tools",
-    "page_description": "Check environment details, logs, and common tools.",
+    "page_description": "",
     "nav_aria_label": "Developer sections",
     "summary": {
       "browser": "Browser",
@@ -64,32 +64,32 @@
     "sections": {
       "overview": {
         "label": "Overview",
-        "description": "System, version, and environment facts."
+        "description": ""
       },
       "logs": {
         "label": "Logs",
-        "description": "View, filter, and export logs."
+        "description": ""
       },
       "tools": {
         "label": "Tools",
-        "description": "Common tests and low-risk actions."
+        "description": ""
       },
       "other": {
         "label": "Other",
-        "description": "Low-frequency high-risk actions."
+        "description": ""
       }
     },
     "overview": {
       "title": "Environment Summary",
-      "description": "See the current device and app state in one place."
+      "description": ""
     },
     "logs": {
       "title": "Logs",
-      "description": "Find issues faster by level and module."
+      "description": ""
     },
     "tools": {
       "title": "Tools",
-      "description": "Keep common test entry points here.",
+      "description": "",
       "toast": {
         "title": "Toast Test",
         "description": "Show a message with one tap.",
@@ -116,7 +116,7 @@
     },
     "other": {
       "title": "Other",
-      "description": "High-risk actions are isolated here.",
+      "description": "",
       "warning": "This area contains high-risk actions."
     }
   }

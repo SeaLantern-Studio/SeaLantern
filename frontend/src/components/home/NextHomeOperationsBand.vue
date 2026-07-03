@@ -31,7 +31,7 @@ const emit = defineEmits<{
     >
       <div class="next-home-operations-band__copy">
         <h2>{{ i18n.t("shell.home_operations_title") }}</h2>
-        <p>{{ description }}</p>
+        <p v-if="description">{{ description }}</p>
       </div>
 
       <div class="next-home-operations-band__action-row">
@@ -42,7 +42,7 @@ const emit = defineEmits<{
         }}</SLButton>
       </div>
 
-      <div class="next-home-operations-band__footer">
+      <div v-if="lastUpdatedLabel" class="next-home-operations-band__footer">
         <span>{{ i18n.t("shell.home_operations_last_updated") }}</span>
         <strong>{{ lastUpdatedLabel }}</strong>
       </div>

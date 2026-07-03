@@ -50,7 +50,7 @@
   "next": {
     "eyebrow": "开发工具",
     "page_title": "开发工具",
-    "page_description": "查看环境摘要、日志和常用工具。",
+    "page_description": "",
     "nav_aria_label": "开发工具分组",
     "summary": {
       "browser": "浏览器",
@@ -64,32 +64,32 @@
     "sections": {
       "overview": {
         "label": "总览",
-        "description": "系统、版本和环境摘要。"
+        "description": ""
       },
       "logs": {
         "label": "日志",
-        "description": "查看、筛选和导出日志。"
+        "description": ""
       },
       "tools": {
         "label": "工具",
-        "description": "常规测试与低风险操作。"
+        "description": ""
       },
       "other": {
         "label": "其他",
-        "description": "低频高风险操作。"
+        "description": ""
       }
     },
     "overview": {
       "title": "环境摘要",
-      "description": "集中查看当前设备和应用状态。"
+      "description": ""
     },
     "logs": {
       "title": "日志",
-      "description": "按级别和模块快速定位问题。"
+      "description": ""
     },
     "tools": {
       "title": "工具",
-      "description": "保留常用测试入口。",
+      "description": "",
       "toast": {
         "title": "提示测试",
         "description": "点一下就能看到提示。",
@@ -116,7 +116,7 @@
     },
     "other": {
       "title": "其他",
-      "description": "危险操作会单独放在这里。",
+      "description": "",
       "warning": "此区域包含高风险操作。"
     }
   }

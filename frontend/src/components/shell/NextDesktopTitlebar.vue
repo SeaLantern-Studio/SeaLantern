@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Copy, Minus, Square, X } from "@lucide/vue";
+import { i18n } from "@language";
 import TitlebarLocaleSwitcher from "./TitlebarLocaleSwitcher.vue";
 
 interface Props {
@@ -42,7 +43,8 @@ const emit = defineEmits<{
         <button
           class="next-desktop-titlebar__button"
           type="button"
-          aria-label="Minimize window"
+          :aria-label="i18n.t('common.minimize')"
+          :title="i18n.t('common.minimize')"
           @click="emit('minimize')"
         >
           <Minus :size="14" />
@@ -51,7 +53,8 @@ const emit = defineEmits<{
         <button
           class="next-desktop-titlebar__button"
           type="button"
-          :aria-label="isMaximized ? 'Restore window' : 'Maximize window'"
+          :aria-label="isMaximized ? i18n.t('common.restore') : i18n.t('common.maximize')"
+          :title="isMaximized ? i18n.t('common.restore') : i18n.t('common.maximize')"
           @click="emit('toggleMaximize')"
         >
           <Copy v-if="isMaximized" :size="14" />
@@ -61,7 +64,8 @@ const emit = defineEmits<{
         <button
           class="next-desktop-titlebar__button next-desktop-titlebar__button--close"
           type="button"
-          aria-label="Close window"
+          :aria-label="i18n.t('common.close')"
+          :title="i18n.t('common.close')"
           @click="emit('close')"
         >
           <X :size="14" />

@@ -90,7 +90,7 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="social-icon"
-                title="Gitee"
+                :title="i18n.t('about.gitee')"
               >
                 <BrandIcon name="gitee" :size="16" />
               </a>
@@ -101,7 +101,7 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="social-icon"
-                title="GitHub"
+                :title="i18n.t('about.github')"
               >
                 <BrandIcon name="github" :size="16" />
               </a>
@@ -112,7 +112,7 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="social-icon"
-                title="Bilibili"
+                :title="i18n.t('about.bilibili')"
               >
                 <BrandIcon name="bilibili" :size="16" />
               </a>
@@ -123,7 +123,7 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="social-icon"
-                title="TikTok"
+                :title="i18n.t('about.tiktok')"
               >
                 <BrandIcon name="tiktok" :size="16" />
               </a>

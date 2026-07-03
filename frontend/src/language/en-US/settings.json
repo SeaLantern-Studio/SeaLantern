@@ -268,7 +268,7 @@
   "minimal_mode_desc": "Disable all animations and effects, keeping only basic rendering and interactions",
   "next": {
     "page_title": "Settings",
-    "page_description": "Adjust common options.",
+    "page_description": "",
     "refresh": "Refresh",
     "error_title": "Couldn't open settings",
     "error_description": "Please try again in a moment.",
@@ -278,22 +278,22 @@
       "appearance": {
         "label": "Appearance",
         "title": "Appearance",
-        "description": "Theme, display, and interface style."
+        "description": ""
       },
       "general": {
         "label": "General",
         "title": "General",
-        "description": "Language, behavior, and defaults."
+        "description": ""
       },
       "developer_management": {
         "label": "Developer",
         "title": "Developer",
-        "description": "Control access to developer tools."
+        "description": ""
       }
     },
     "developer_management": {
       "title": "Developer Tools",
-      "description": "Control whether developer tools appear in the sidebar."
+      "description": ""
     },
     "summary": {
       "eyebrow": "Settings",
@@ -303,11 +303,11 @@
       "chips_aria_label": "Settings status"
     },
     "appearance": {
-      "live_hint": "Theme, fonts, and window material apply right away.",
+      "live_hint": "",
       "theme_managed_by": "Managed by {plugin}",
-      "personalize_bridge_title": "Colors, titles, and console preferences live in Personalize",
-      "personalize_bridge_desc": "This page owns theme mode, interface font, window material, and background. Color presets, text colors, app display name, and console display preferences are maintained in Personalize.",
-      "personalize_bridge_hint": "If a theme-provider plugin is enabled, it takes over color presets and text color overrides.",
+      "personalize_bridge_title": "More appearance options live in Personalize",
+      "personalize_bridge_desc": "Adjust colors, titles, and console options in Personalize.",
+      "personalize_bridge_hint": "Theme plugins manage colors here.",
       "window_effect_fallback": "Only the default material is available here.",
       "save_theme_failed": "Theme wasn't saved",
       "save_font_failed": "Font wasn't saved",
@@ -347,20 +347,20 @@
     "page_description": "Adjust color presets, title and text presentation, and console display preferences, then move personalization as a standalone package when needed.",
     "appearance_bridge_title": "Background and window material live in Appearance",
     "appearance_bridge_desc": "Background image, window material, theme mode, and interface font belong to Settings > Appearance. This page stays focused on color presets, text colors, app display name, and console display preferences.",
-    "theme_provider_notice": "{plugin} currently controls color presets and text colors. Theme mode, background, and window material still belong to core settings.",
-    "theme_provider_fact": "Managed by {plugin}",
+    "theme_provider_notice": "{plugin} controls colors right now.",
+    "theme_provider_fact": "From {plugin}",
     "sections": {
       "appearance_theme": {
         "label": "Appearance and Theme",
-        "description": "Color presets and appearance entry points."
+        "description": ""
       },
       "text_title": {
         "label": "Text and Title",
-        "description": "Display name and text colors."
+        "description": ""
       },
       "display_control": {
         "label": "Display and Control",
-        "description": "Console display plus import and export."
+        "description": ""
       }
     }
   },

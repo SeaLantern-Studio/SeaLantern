@@ -9,6 +9,15 @@ import BackgroundSection from "./BackgroundSection.vue";
 import { useAppearanceSettingsSection } from "@src/pages/settings/useAppearanceSettingsSection";
 import { NEXT_PAINT_ROUTE_NAME } from "@src/router/pageMeta";
 
+const props = withDefaults(
+  defineProps<{
+    showPersonalizeBridge?: boolean;
+  }>(),
+  {
+    showPersonalizeBridge: true,
+  },
+);
+
 const router = useRouter();
 
 const {
@@ -83,7 +92,7 @@ function handleBackgroundSizeChange(value: string): void {
 
 <template>
   <SLCard variant="outline" padding="lg" class="appearance-section">
-    <p class="appearance-section__description">
+    <p v-if="i18n.t('settings.next.appearance.live_hint')" class="appearance-section__description">
       {{ i18n.t("settings.next.appearance.live_hint") }}
     </p>
 
@@ -183,7 +192,7 @@ function handleBackgroundSizeChange(value: string): void {
         </div>
       </div>
 
-      <div class="appearance-section__bridge">
+      <div v-if="props.showPersonalizeBridge" class="appearance-section__bridge">
         <div class="appearance-section__bridge-copy">
           <strong>{{ i18n.t("settings.next.appearance.personalize_bridge_title") }}</strong>
           <span>{{ i18n.t("settings.next.appearance.personalize_bridge_desc") }}</span>

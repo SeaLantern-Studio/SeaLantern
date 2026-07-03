@@ -2,7 +2,7 @@
   "next": {
     "eyebrow": "Downloads",
     "page_title": "Downloads",
-    "page_description": "Track tasks in one place and start new downloads by type.",
+    "page_description": "",
     "nav_aria_label": "Download sections",
     "cancel_active": "Cancel active task",
     "error_title": "Download actions are unavailable right now",
@@ -15,24 +15,24 @@
     "sections": {
       "tasks": {
         "label": "Tasks",
-        "description": "See current and recent work."
+        "description": ""
       },
       "server": {
         "label": "New Server",
-        "description": "Download a server file."
+        "description": ""
       },
       "file": {
         "label": "New File",
-        "description": "Download a custom file."
+        "description": ""
       }
     },
     "tasks": {
       "current_title": "Current task",
       "recent_title": "Recent tasks",
       "empty_current_title": "No active task",
-      "empty_current_description": "New work appears here after it starts.",
+      "empty_current_description": "New tasks appear here.",
       "empty_recent_title": "No recent tasks",
-      "empty_recent_description": "New download results stay here.",
+      "empty_recent_description": "Download history stays here.",
       "empty_all_description": "Start from New Server or New File.",
       "target_label": "Target",
       "size_label": "Progress",
@@ -47,9 +47,9 @@
     },
     "server": {
       "form_title": "Download Server",
-      "form_description": "Confirm the version and target, then submit the download.",
+      "form_description": "",
       "summary_title": "Summary",
-      "summary_description": "After submission, progress continues on the Tasks section.",
+      "summary_description": "",
       "save_dir_hint": "When it finishes, you can continue into create instance.",
       "download_url": "Download URL",
       "submit": "Start download",
@@ -62,9 +62,9 @@
     },
     "file": {
       "form_title": "Download File",
-      "form_description": "Enter the URL and target, then submit directly.",
+      "form_description": "",
       "summary_title": "Summary",
-      "summary_description": "Task status continues on the Tasks section.",
+      "summary_description": "",
       "save_dir_hint": "Choose where the file should be saved.",
       "url_label": "Download URL",
       "submit": "Start download",

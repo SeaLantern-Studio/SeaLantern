@@ -31,7 +31,14 @@ const MARKET_BASE_URL = "https://sealantern-studio.github.io/plugin-market";
     :class="['install-feedback', `install-feedback--${installFeedback.type}`]"
   >
     <span>{{ installFeedback.message }}</span>
-    <button class="install-feedback-close" @click="emit('clear-feedback')">x</button>
+    <button
+      class="install-feedback-close"
+      :aria-label="i18n.t('common.close')"
+      :title="i18n.t('common.close')"
+      @click="emit('clear-feedback')"
+    >
+      ×
+    </button>
   </div>
 
   <div v-if="showUrlEditor" class="url-editor glass">

@@ -25,7 +25,7 @@ defineProps<{
         i18n.t("shell.home_attention_eyebrow")
       }}</span>
       <h2>{{ title }}</h2>
-      <p>{{ description }}</p>
+      <p v-if="description">{{ description }}</p>
     </header>
 
     <div v-if="alerts.length > 0" class="next-home-attention-band__list">
@@ -41,7 +41,7 @@ defineProps<{
 
     <div v-else class="next-home-attention-band__empty">
       <h3>{{ emptyTitle }}</h3>
-      <p>{{ emptyDescription }}</p>
+      <p v-if="emptyDescription">{{ emptyDescription }}</p>
     </div>
   </section>
 </template>

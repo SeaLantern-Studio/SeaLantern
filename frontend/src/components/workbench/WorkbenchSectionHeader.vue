@@ -11,7 +11,7 @@ defineProps<Props>();
   <header class="workbench-section-header">
     <div class="workbench-section-header__copy">
       <h3 class="workbench-section-header__title">{{ title }}</h3>
-      <p class="workbench-section-header__description">{{ description }}</p>
+      <p v-if="description" class="workbench-section-header__description">{{ description }}</p>
     </div>
 
     <div v-if="$slots.actions" class="workbench-section-header__actions">

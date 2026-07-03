@@ -26,7 +26,7 @@ defineProps<{
     >
       <span class="next-home-summary-band__label">{{ metric.label }}</span>
       <strong class="next-home-summary-band__value">{{ metric.value }}</strong>
-      <span class="next-home-summary-band__meta">{{ metric.meta }}</span>
+      <span v-if="metric.meta" class="next-home-summary-band__meta">{{ metric.meta }}</span>
     </article>
   </section>
 </template>

@@ -451,7 +451,14 @@ watch(
   <div class="create-view animate-fade-in-up">
     <div v-if="errorMsg" class="create-error-banner">
       <span>{{ errorMsg }}</span>
-      <button class="create-error-close" @click="clearError">x</button>
+      <button
+        class="create-error-close"
+        :aria-label="i18n.t('common.close')"
+        :title="i18n.t('common.close')"
+        @click="clearError"
+      >
+        ×
+      </button>
     </div>
 
     <SLCard

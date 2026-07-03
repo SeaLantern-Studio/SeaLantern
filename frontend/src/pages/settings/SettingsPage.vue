@@ -39,7 +39,9 @@ const activeSectionComponent = computed(() => {
             {{ i18n.t("settings.next.refresh") }}
           </SLButton>
         </div>
-        <p class="settings-page__description">{{ i18n.t("settings.next.page_description") }}</p>
+        <p v-if="i18n.t('settings.next.page_description')" class="settings-page__description">
+          {{ i18n.t("settings.next.page_description") }}
+        </p>
       </div>
     </header>
 
@@ -100,7 +102,9 @@ const activeSectionComponent = computed(() => {
         <header class="settings-page__section-header">
           <div class="settings-page__section-copy">
             <h3 class="settings-page__section-title">{{ currentSection.title }}</h3>
-            <p class="settings-page__section-description">{{ currentSection.description }}</p>
+            <p v-if="currentSection.description" class="settings-page__section-description">
+              {{ currentSection.description }}
+            </p>
           </div>
         </header>
 

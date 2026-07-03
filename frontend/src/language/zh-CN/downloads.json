@@ -2,7 +2,7 @@
   "next": {
     "eyebrow": "下载管理",
     "page_title": "下载管理",
-    "page_description": "统一查看任务，并按类型发起新下载。",
+    "page_description": "",
     "nav_aria_label": "下载分组",
     "cancel_active": "取消当前任务",
     "error_title": "暂时无法完成下载操作",
@@ -15,24 +15,24 @@
     "sections": {
       "tasks": {
         "label": "任务",
-        "description": "查看当前和最近任务。"
+        "description": ""
       },
       "server": {
         "label": "新建服务器",
-        "description": "下载服务端文件。"
+        "description": ""
       },
       "file": {
         "label": "新建文件",
-        "description": "下载自定义文件。"
+        "description": ""
       }
     },
     "tasks": {
       "current_title": "当前任务",
       "recent_title": "最近任务",
       "empty_current_title": "当前没有进行中的任务",
-      "empty_current_description": "新任务开始后会在这里显示。",
+      "empty_current_description": "开始后会显示在这里。",
       "empty_recent_title": "最近没有任务",
-      "empty_recent_description": "新的下载结果会在这里保留。",
+      "empty_recent_description": "下载记录会保留在这里。",
       "empty_all_description": "从新建服务器或新建文件开始。",
       "target_label": "保存位置",
       "size_label": "进度",
@@ -47,9 +47,9 @@
     },
     "server": {
       "form_title": "下载服务端",
-      "form_description": "先确认版本和保存位置，再提交下载。",
+      "form_description": "",
       "summary_title": "提交摘要",
-      "summary_description": "下载开始后，进度会回到任务页继续显示。",
+      "summary_description": "",
       "save_dir_hint": "下载完成后可继续进入创建实例。",
       "download_url": "下载地址",
       "submit": "开始下载",
@@ -62,9 +62,9 @@
     },
     "file": {
       "form_title": "下载文件",
-      "form_description": "填写下载地址与保存位置后直接提交。",
+      "form_description": "",
       "summary_title": "提交摘要",
-      "summary_description": "下载状态会统一回到任务页继续承接。",
+      "summary_description": "",
       "save_dir_hint": "选择文件保存目录。",
       "url_label": "下载地址",
       "submit": "开始下载",

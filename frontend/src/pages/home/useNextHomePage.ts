@@ -394,7 +394,7 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
   const usingPreviewFallback = computed(() => isPreviewDataset.value);
 
   const lastUpdatedLabel = computed(() => {
-    if (isPreviewDataset.value) return i18n.t("shell.home_last_updated_preview");
+    if (isPreviewDataset.value) return "";
     if (!lastUpdatedAt.value) return i18n.t("shell.home_last_updated_waiting");
     return new Intl.DateTimeFormat(undefined, {
       hour: "2-digit",

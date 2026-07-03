@@ -55,7 +55,7 @@ const {
       </template>
 
       <template v-if="activeSectionId === 'appearance-theme'">
-        <AppearanceSection />
+        <AppearanceSection :show-personalize-bridge="false" />
 
         <ColorThemeCard
           :color="settings.color"

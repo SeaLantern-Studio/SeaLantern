@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { i18n } from "@language";
+
 defineProps<{
   message: string | null;
 }>();
@@ -11,7 +13,7 @@ const emit = defineEmits<{
 <template>
   <div v-if="message" class="msg-banner error-banner">
     <span>{{ message }}</span>
-    <button @click="emit('close')">x</button>
+    <button :aria-label="i18n.t('common.close')" :title="i18n.t('common.close')" @click="emit('close')">×</button>
   </div>
 </template>
 

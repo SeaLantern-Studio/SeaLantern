@@ -34,7 +34,7 @@ const emit = defineEmits<{
           i18n.t("shell.home_workspace_eyebrow")
         }}</span>
         <h2>{{ serverCountLabel }}</h2>
-        <p>{{ description }}</p>
+        <p v-if="description">{{ description }}</p>
       </div>
     </header>
 
@@ -60,7 +60,7 @@ const emit = defineEmits<{
 
     <div v-else class="next-home-workspace-band__empty surface-panel">
       <h3>{{ emptyTitle }}</h3>
-      <p>{{ emptyDescription }}</p>
+      <p v-if="emptyDescription">{{ emptyDescription }}</p>
     </div>
   </section>
 </template>
