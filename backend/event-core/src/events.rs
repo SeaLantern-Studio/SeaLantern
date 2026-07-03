@@ -243,11 +243,13 @@ pub enum ServerEventPayload {
 
 pub type ServerEventSubscriber = dyn Fn(&ServerEventEnvelope) -> Result<(), String> + Send + Sync;
 
+#[derive(Clone)]
 struct SubscriberEntry {
     id: u64,
     callback: Arc<ServerEventSubscriber>,
 }
 
+#[derive(Clone)]
 struct AppSubscriberEntry {
     id: u64,
     callback: Arc<AppEventSubscriber>,
@@ -592,8 +594,9 @@ impl EventManager {
         let subscribers = self
             .app_subscribers
             .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        for entry in &*subscribers {
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        for entry in subscribers {
             let _ = (entry.callback)(event);
         }
     }
@@ -602,8 +605,9 @@ impl EventManager {
         let subscribers = self
             .server_subscribers
             .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        for entry in &*subscribers {
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        for entry in subscribers {
             let _ = (entry.callback)(event);
         }
     }
@@ -801,6 +805,7 @@ mod tests {
         EventConsumerMetadata, EventManager, ServerEventKind, ServerEventPayload,
         ServerEventSource, ServerEventSubscription,
     };
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::{Arc, Mutex};
 
     #[test]
@@ -916,5 +921,100 @@ mod tests {
                 .actions,
             vec!["import_server".to_string()]
         );
+    }
+
+    #[test]
+    fn server_subscribers_can_reenter_publish_without_deadlocking() {
+        let manager = Arc::new(EventManager::new());
+        let reentered = Arc::new(AtomicBool::new(false));
+        let hits = Arc::new(AtomicUsize::new(0));
+
+        manager.subscribe_server_events({
+            let manager = Arc::clone(&manager);
+            let reentered = Arc::clone(&reentered);
+            let hits = Arc::clone(&hits);
+            Arc::new(move |event| {
+                hits.fetch_add(1, Ordering::SeqCst);
+                if matches!(event.kind, ServerEventKind::LifecycleStarted)
+                    && !reentered.swap(true, Ordering::SeqCst)
+                {
+                    manager.publish_server_event(
+                        &event.server_id,
+                        ServerEventSource::System,
+                        None,
+                        ServerEventKind::LifecycleStopped,
+                        ServerEventPayload::Lifecycle {
+                            detail: Some("reentered".to_string()),
+                            error: None,
+                            from_mode: None,
+                            to_mode: None,
+                        },
+                    );
+                }
+                Ok(())
+            })
+        });
+
+        manager.publish_server_event(
+            "alpha",
+            ServerEventSource::System,
+            None,
+            ServerEventKind::LifecycleStarted,
+            ServerEventPayload::Lifecycle {
+                detail: Some("initial".to_string()),
+                error: None,
+                from_mode: None,
+                to_mode: None,
+            },
+        );
+
+        assert!(reentered.load(Ordering::SeqCst));
+        assert_eq!(hits.load(Ordering::SeqCst), 2);
+        assert_eq!(manager.recent_server_events(None).len(), 2);
+    }
+
+    #[test]
+    fn app_subscribers_can_reenter_publish_without_deadlocking() {
+        let manager = Arc::new(EventManager::new());
+        let reentered = Arc::new(AtomicBool::new(false));
+        let hits = Arc::new(AtomicUsize::new(0));
+
+        manager.subscribe_app_events({
+            let manager = Arc::clone(&manager);
+            let reentered = Arc::clone(&reentered);
+            let hits = Arc::clone(&hits);
+            Arc::new(move |event| {
+                hits.fetch_add(1, Ordering::SeqCst);
+                if matches!(event.kind, AppEventKind::OperationRequested)
+                    && !reentered.swap(true, Ordering::SeqCst)
+                {
+                    manager.publish_app_event(
+                        "reentered_action",
+                        "test",
+                        AppEventKind::OperationSucceeded,
+                        AppEventPayload::Operation {
+                            action: "reentered_action".to_string(),
+                            detail: Some("reentered".to_string()),
+                            error: None,
+                        },
+                    );
+                }
+                Ok(())
+            })
+        });
+
+        manager.publish_app_event(
+            "initial_action",
+            "test",
+            AppEventKind::OperationRequested,
+            AppEventPayload::Operation {
+                action: "initial_action".to_string(),
+                detail: Some("initial".to_string()),
+                error: None,
+            },
+        );
+
+        assert!(reentered.load(Ordering::SeqCst));
+        assert_eq!(hits.load(Ordering::SeqCst), 2);
     }
 }

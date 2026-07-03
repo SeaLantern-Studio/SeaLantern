@@ -81,6 +81,34 @@ mod tests {
         assert_eq!(req.custom_command, None);
         assert!(req.jvm_args.is_empty());
     }
+
+    #[test]
+    fn validate_server_path_request_accepts_frontend_payload_shape() {
+        let req: super::ValidateServerPathRequest = serde_json::from_str(
+            r#"{
+  "newPath": "E:/servers/existing"
+}"#,
+        )
+        .expect("validate server path request should deserialize");
+
+        assert_eq!(req.new_path, "E:/servers/existing");
+    }
+
+    #[test]
+    fn update_server_path_request_defaults_optional_fields() {
+        let req: super::UpdateServerPathRequest = serde_json::from_str(
+            r#"{
+  "id": "server-1",
+  "newPath": "E:/servers/migrated"
+}"#,
+        )
+        .expect("update server path request should deserialize");
+
+        assert_eq!(req.id, "server-1");
+        assert_eq!(req.new_path, "E:/servers/migrated");
+        assert_eq!(req.new_jar_path, None);
+        assert_eq!(req.new_startup_mode, None);
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -164,6 +192,23 @@ pub(super) struct UpdateNameRequest {
 pub(super) struct UpdateJavaPathRequest {
     pub id: String,
     pub java_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ValidateServerPathRequest {
+    pub new_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct UpdateServerPathRequest {
+    pub id: String,
+    pub new_path: String,
+    #[serde(default)]
+    pub new_jar_path: Option<String>,
+    #[serde(default)]
+    pub new_startup_mode: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

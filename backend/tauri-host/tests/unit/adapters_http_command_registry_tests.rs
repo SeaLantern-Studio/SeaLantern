@@ -33,6 +33,17 @@ fn command_registry_includes_parse_server_core_key_and_compat_alias() {
     assert!(commands.contains(&"parse_server_core_type".to_string()));
 }
 
+#[test]
+fn command_registry_includes_wrapped_settings_contract_commands() {
+    let registry = CommandRegistry::new();
+    let commands = registry.list_commands();
+
+    assert!(commands.contains(&"change_data_dir".to_string()));
+    assert!(commands.contains(&"change_plugin_dir".to_string()));
+    assert!(commands.contains(&"save_settings_with_diff".to_string()));
+    assert!(commands.contains(&"import_settings".to_string()));
+}
+
 #[tokio::test]
 async fn parse_server_core_type_compat_alias_preserves_legacy_display_semantics() {
     let dir = tempfile::tempdir().expect("temp dir should exist");

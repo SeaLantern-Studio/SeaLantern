@@ -4,7 +4,7 @@ use super::requests::{
     CreateServerRequest, GetLogsRequest, GetServerStatusRequest, ImportModpackRequest,
     ImportServerRequest, ParseServerCoreKeyRequest, ParseServerCoreTypeRequest,
     ScanStartupCandidatesRequest, SendCommandRequest, ServerIdRequest, ServerPathRequest,
-    UpdateJavaPathRequest, UpdateNameRequest,
+    UpdateJavaPathRequest, UpdateNameRequest, UpdateServerPathRequest, ValidateServerPathRequest,
 };
 use crate::commands::server::extensions as server_extensions_commands;
 use crate::commands::server::manage as server_commands;
@@ -22,6 +22,8 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_server_logs", handle_get_server_logs as CommandHandler);
     builder.register("update_server_name", handle_update_server_name as CommandHandler);
     builder.register("update_server_java_path", handle_update_server_java_path as CommandHandler);
+    builder.register("validate_server_path", handle_validate_server_path as CommandHandler);
+    builder.register("update_server_path", handle_update_server_path as CommandHandler);
     builder.register("scan_startup_candidates", handle_scan_startup_candidates as CommandHandler);
     builder.register("parse_server_core_key", handle_parse_server_core_key as CommandHandler);
     builder.register("parse_server_core_type", handle_parse_server_core_type as CommandHandler);
@@ -192,6 +194,31 @@ fn handle_update_server_java_path(
     Box::pin(async move {
         let req: UpdateJavaPathRequest = parse_params(params)?;
         let result = server_commands::update_server_java_path(req.id, req.java_path)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_validate_server_path(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ValidateServerPathRequest = parse_params(params)?;
+        let result = server_commands::validate_server_path(req.new_path)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_update_server_path(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: UpdateServerPathRequest = parse_params(params)?;
+        let result = server_commands::update_server_path(
+            req.id,
+            req.new_path,
+            req.new_jar_path,
+            req.new_startup_mode,
+        )?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }

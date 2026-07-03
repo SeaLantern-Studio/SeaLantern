@@ -2,7 +2,16 @@ use super::common::{CommandHandler, RegistryBuilder};
 use crate::commands::app::settings as settings_commands;
 use crate::commands::app::settings::{ChangeDataDirRequest, ChangePluginDirRequest};
 use crate::models::settings::{AppSettings, PartialSettings};
+use serde::de::DeserializeOwned;
 use serde_json::Value;
+
+fn parse_wrapped_or_root<T>(params: Value, field: &str) -> Result<T, String>
+where
+    T: DeserializeOwned,
+{
+    let value = params.get(field).cloned().unwrap_or(params);
+    serde_json::from_value(value).map_err(|e| format!("Invalid parameters: {}", e))
+}
 
 pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_settings", handle_get_settings as CommandHandler);
@@ -57,8 +66,7 @@ fn handle_initialize_data_dir(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let path: String = serde_json::from_value(params.get("path").cloned().unwrap_or(params))
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let path: String = parse_wrapped_or_root(params, "path")?;
         let result = settings_commands::initialize_data_dir(path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -68,8 +76,7 @@ fn handle_change_data_dir(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let request: ChangeDataDirRequest =
-            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let request: ChangeDataDirRequest = parse_wrapped_or_root(params, "request")?;
         let result = settings_commands::change_data_dir(request)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -88,8 +95,7 @@ fn handle_change_plugin_dir(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let request: ChangePluginDirRequest =
-            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let request: ChangePluginDirRequest = parse_wrapped_or_root(params, "request")?;
         let result = settings_commands::change_plugin_dir(request)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -99,8 +105,7 @@ fn handle_save_settings(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let settings: AppSettings =
-            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let settings: AppSettings = parse_wrapped_or_root(params, "settings")?;
         settings_commands::save_settings(settings)?;
         Ok(Value::Null)
     })
@@ -110,8 +115,7 @@ fn handle_save_settings_with_diff(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let settings: AppSettings =
-            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let settings: AppSettings = parse_wrapped_or_root(params, "settings")?;
         let result = settings_commands::save_settings_with_diff(settings)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -121,9 +125,7 @@ fn handle_update_settings_partial(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let partial_value = params.get("partial").cloned().unwrap_or(params);
-        let partial: PartialSettings = serde_json::from_value(partial_value)
-            .map_err(|e| format!("Invalid parameters: {}", e))?;
+        let partial: PartialSettings = parse_wrapped_or_root(params, "partial")?;
         let result = settings_commands::update_settings_partial(partial)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
@@ -151,11 +153,76 @@ fn handle_import_settings(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let json: String =
-            serde_json::from_value(params).map_err(|e| format!("Invalid parameters: {}", e))?;
+        let json: String = parse_wrapped_or_root(params, "json")?;
         let result = settings_commands::import_settings(json)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Deserialize;
+    use serde_json::json;
+
+    #[derive(Debug, Deserialize, PartialEq)]
+    struct TestSettingsPayload {
+        theme: String,
+    }
+
+    #[test]
+    fn parse_wrapped_or_root_accepts_request_wrappers_for_directory_commands() {
+        let wrapped: ChangeDataDirRequest = parse_wrapped_or_root(
+            json!({
+                "request": {
+                    "path": "E:/data",
+                    "migrate_existing": true
+                }
+            }),
+            "request",
+        )
+        .expect("wrapped request payload should deserialize");
+
+        assert_eq!(wrapped.path, "E:/data");
+        assert!(wrapped.migrate_existing);
+
+        let legacy_root: ChangePluginDirRequest = parse_wrapped_or_root(
+            json!({
+                "path": "E:/plugins",
+                "migrate_existing": false
+            }),
+            "request",
+        )
+        .expect("root request payload should remain supported");
+
+        assert_eq!(legacy_root.path, "E:/plugins");
+        assert!(!legacy_root.migrate_existing);
+    }
+
+    #[test]
+    fn parse_wrapped_or_root_accepts_settings_and_json_wrappers() {
+        let settings: TestSettingsPayload = parse_wrapped_or_root(
+            json!({
+                "settings": {
+                    "theme": "dark"
+                }
+            }),
+            "settings",
+        )
+        .expect("wrapped settings payload should deserialize");
+
+        assert_eq!(settings, TestSettingsPayload { theme: "dark".into() });
+
+        let imported_json: String = parse_wrapped_or_root(
+            json!({
+                "json": "{\"theme\":\"dark\"}"
+            }),
+            "json",
+        )
+        .expect("wrapped json payload should deserialize");
+
+        assert_eq!(imported_json, "{\"theme\":\"dark\"}");
+    }
 }
 
 fn handle_export_personalization_package(
