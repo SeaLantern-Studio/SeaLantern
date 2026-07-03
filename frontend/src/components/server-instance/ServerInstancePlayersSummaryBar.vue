@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
+import { i18n } from "@language";
 
 interface Props {
   totalCount: number;
@@ -23,38 +24,42 @@ const emit = defineEmits<{
     <div class="server-instance-players-summary-bar__stats">
       <article class="server-instance-players-summary-bar__stat">
         <strong>{{ totalCount }}</strong>
-        <span>Players</span>
+        <span>{{ i18n.t("servers.next.instance.players.total_label") }}</span>
       </article>
       <article
         class="server-instance-players-summary-bar__stat server-instance-players-summary-bar__stat--online"
       >
         <strong>{{ onlineCount }}</strong>
-        <span>Online</span>
+        <span>{{ i18n.t("servers.next.instance.players.online_label") }}</span>
       </article>
       <article
         class="server-instance-players-summary-bar__stat server-instance-players-summary-bar__stat--op"
       >
         <strong>{{ opCount }}</strong>
-        <span>OP</span>
+        <span>{{ i18n.t("servers.next.instance.players.op_label") }}</span>
       </article>
       <article
         class="server-instance-players-summary-bar__stat server-instance-players-summary-bar__stat--danger"
       >
         <strong>{{ bannedCount }}</strong>
-        <span>Name bans</span>
+        <span>{{ i18n.t("servers.next.instance.players.name_bans_label") }}</span>
       </article>
       <article class="server-instance-players-summary-bar__stat">
         <strong>{{ bannedIpCount }}</strong>
-        <span>IP bans</span>
+        <span>{{ i18n.t("servers.next.instance.players.ip_bans_label") }}</span>
       </article>
     </div>
 
     <div class="server-instance-players-summary-bar__actions">
       <span class="server-instance-players-summary-bar__hint">
-        {{ running ? "Live logs + file summary" : "File summary only" }}
+        {{
+          running
+            ? i18n.t("servers.next.instance.players.summary_live_hint")
+            : i18n.t("servers.next.instance.players.summary_file_only_hint")
+        }}
       </span>
       <SLButton variant="secondary" size="sm" :loading="refreshing" @click="emit('refresh')">
-        Refresh
+        {{ i18n.t("common.refresh") }}
       </SLButton>
     </div>
   </section>

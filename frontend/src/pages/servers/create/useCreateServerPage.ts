@@ -38,7 +38,7 @@ export function useCreateServerPage() {
   let runPathConflictTimer: ReturnType<typeof setTimeout> | null = null;
   let runPathConflictRequestId = 0;
 
-  const serverName = ref("My Server");
+  const serverName = ref(i18n.t("create.default_server_name"));
   const maxMemory = ref("2048");
   const minMemory = ref("512");
   const port = ref("25565");

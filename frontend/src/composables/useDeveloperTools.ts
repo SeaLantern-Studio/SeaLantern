@@ -143,7 +143,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
         version.value = await systemApi.getAppVersion();
         return;
       } catch {
-        version.value = import.meta.env.VITE_APP_VERSION || "Web";
+        version.value = import.meta.env.VITE_APP_VERSION || i18n.t("developer.next.summary.browser");
         return;
       }
     }

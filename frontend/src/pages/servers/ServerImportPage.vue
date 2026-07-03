@@ -138,7 +138,7 @@ const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } =
 const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
 
 const serverPath = ref("");
-const serverName = ref("My Server");
+const serverName = ref(i18n.t("create.default_server_name"));
 const selectedJava = ref("");
 const javaList = ref<JavaInfo[]>([]);
 const maxMemory = ref("2048");

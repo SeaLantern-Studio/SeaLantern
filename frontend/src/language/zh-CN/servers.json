@@ -15,7 +15,22 @@
       },
       "players": {
         "ip_bans_title": "IP 封禁规则",
-        "ip_bans_hint": "IP 封禁独立于玩家名称，仅展示后端可读取的规则。"
+        "ip_bans_hint": "IP 封禁独立于玩家名称，仅展示后端可读取的规则。",
+        "total_label": "玩家",
+        "online_label": "在线",
+        "op_label": "OP",
+        "name_bans_label": "名称封禁",
+        "ip_bans_label": "IP 封禁",
+        "summary_live_hint": "实时日志 + 文件摘要",
+        "summary_file_only_hint": "仅文件摘要",
+        "status_online": "在线",
+        "status_offline": "离线",
+        "uuid_label": "UUID",
+        "op_badge": "OP",
+        "name_ban_badge": "名称封禁",
+        "ip_ban_badge": "IP 封禁",
+        "ip_rules_badge": "存在 IP 规则",
+        "whitelist_badge": "白名单"
       },
       "extensions": {
         "detected": "已检测",

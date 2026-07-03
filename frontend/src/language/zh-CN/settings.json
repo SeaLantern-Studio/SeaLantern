@@ -330,7 +330,27 @@
     }
   },
   "color_options": {
-    "custom": "自定义"
+    "custom": "自定义",
+    "default": {
+      "label": "默认",
+      "description": "SeaLantern 默认配色，偏清爽的蓝绿色。"
+    },
+    "ocean": {
+      "label": "海洋",
+      "description": "偏青蓝的冷色调，整体更清透。"
+    },
+    "rose": {
+      "label": "玫瑰",
+      "description": "偏粉色的暖色调，视觉更柔和。"
+    },
+    "sunset": {
+      "label": "日落",
+      "description": "偏橙金的暖色调，整体更明亮。"
+    },
+    "midnight": {
+      "label": "午夜",
+      "description": "偏靛蓝的深色调，夜间对比更强。"
+    }
   },
   "startup_config_java_path_load_failed": "启动配置已加载，但暂时无法刷新当前 Java 路径。",
   "startup_config_load_failed": "加载启动配置失败",

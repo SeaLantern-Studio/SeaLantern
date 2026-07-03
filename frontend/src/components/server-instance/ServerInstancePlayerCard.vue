@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { Crown, ShieldBan, UserRound, Wifi, WifiOff } from "@lucide/vue";
 import SLButton from "@components/common/SLButton.vue";
+import { i18n } from "@language";
 
 export interface ServerInstancePlayerCardModel {
   key: string;
@@ -39,6 +40,12 @@ const nameClasses = computed(() => ({
   "server-instance-player-card__name--op": props.player.isOp,
   "server-instance-player-card__name--danger": props.player.nameBanned || props.player.ipBanMatched,
 }));
+
+const onlineLabel = computed(() =>
+  props.player.online
+    ? i18n.t("servers.next.instance.players.status_online")
+    : i18n.t("servers.next.instance.players.status_offline"),
+);
 </script>
 
 <template>
@@ -51,11 +58,13 @@ const nameClasses = computed(() => ({
           <span class="server-instance-player-card__status-chip">
             <Wifi v-if="player.online" :size="14" />
             <WifiOff v-else :size="14" />
-            <span>{{ player.online ? "Online" : "Offline" }}</span>
+            <span>{{ onlineLabel }}</span>
           </span>
         </div>
 
-        <p v-if="player.uuid" class="server-instance-player-card__uuid">UUID · {{ player.uuid }}</p>
+        <p v-if="player.uuid" class="server-instance-player-card__uuid">
+          {{ i18n.t("servers.next.instance.players.uuid_label") }} · {{ player.uuid }}
+        </p>
       </div>
 
       <SLButton
@@ -65,7 +74,7 @@ const nameClasses = computed(() => ({
         :disabled="!canKick"
         @click="emit('kick', player.name)"
       >
-        Kick
+        {{ i18n.t("players.kick") }}
       </SLButton>
     </div>
 
@@ -75,27 +84,27 @@ const nameClasses = computed(() => ({
         class="server-instance-player-card__badge server-instance-player-card__badge--op"
       >
         <Crown :size="14" />
-        <span>OP</span>
+        <span>{{ i18n.t("servers.next.instance.players.op_badge") }}</span>
       </span>
       <span
         v-if="player.nameBanned"
         class="server-instance-player-card__badge server-instance-player-card__badge--danger"
       >
         <ShieldBan :size="14" />
-        <span>Name ban</span>
+        <span>{{ i18n.t("servers.next.instance.players.name_ban_badge") }}</span>
       </span>
       <span
         v-if="player.ipBanMatched"
         class="server-instance-player-card__badge server-instance-player-card__badge--danger"
       >
         <ShieldBan :size="14" />
-        <span>IP ban</span>
+        <span>{{ i18n.t("servers.next.instance.players.ip_ban_badge") }}</span>
       </span>
       <span v-else-if="player.ipBanKnown" class="server-instance-player-card__badge">
-        <span>IP rules exist</span>
+        <span>{{ i18n.t("servers.next.instance.players.ip_rules_badge") }}</span>
       </span>
       <span v-if="player.whitelist" class="server-instance-player-card__badge">
-        <span>Whitelist</span>
+        <span>{{ i18n.t("servers.next.instance.players.whitelist_badge") }}</span>
       </span>
       <span
         v-for="badge in player.detailBadges"

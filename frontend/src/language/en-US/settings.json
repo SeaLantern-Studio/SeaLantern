@@ -340,6 +340,26 @@
     }
   },
   "color_options": {
-    "custom": "Custom"
+    "custom": "Custom",
+    "default": {
+      "label": "Default",
+      "description": "SeaLantern default palette with a clean blue-green accent."
+    },
+    "ocean": {
+      "label": "Ocean",
+      "description": "A fresh cyan-blue palette with a cooler surface tone."
+    },
+    "rose": {
+      "label": "Rose",
+      "description": "A pink-forward palette with softer warm highlights."
+    },
+    "sunset": {
+      "label": "Sunset",
+      "description": "A warm orange-gold palette for a brighter atmosphere."
+    },
+    "midnight": {
+      "label": "Midnight",
+      "description": "A deep indigo palette with stronger night-mode contrast."
+    }
   }
 }

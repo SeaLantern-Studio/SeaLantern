@@ -73,15 +73,15 @@ async function handleManualDownload() {
       </div>
       <div class="info-item">
         <span class="info-label">{{ i18n.t("about.frontend") }}</span>
-        <span class="info-value">Vue 3 + TypeScript + Vite</span>
+        <span class="info-value">{{ i18n.t("about.frontend_stack") }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">{{ i18n.t("about.backend") }}</span>
-        <span class="info-value">Rust + Tauri 2</span>
+        <span class="info-value">{{ i18n.t("about.backend_stack") }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">{{ i18n.t("about.license") }}</span>
-        <span class="info-value">GNU GPLv3</span>
+        <span class="info-value">{{ i18n.t("about.license_full") }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">{{ i18n.t("about.docs") }}</span>

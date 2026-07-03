@@ -15,7 +15,22 @@
       },
       "players": {
         "ip_bans_title": "IP ban rules",
-        "ip_bans_hint": "IP bans are independent from player names. Only backend-readable rules are shown here."
+        "ip_bans_hint": "IP bans are independent from player names. Only backend-readable rules are shown here.",
+        "total_label": "Players",
+        "online_label": "Online",
+        "op_label": "OP",
+        "name_bans_label": "Name bans",
+        "ip_bans_label": "IP bans",
+        "summary_live_hint": "Live logs + file summary",
+        "summary_file_only_hint": "File summary only",
+        "status_online": "Online",
+        "status_offline": "Offline",
+        "uuid_label": "UUID",
+        "op_badge": "OP",
+        "name_ban_badge": "Name ban",
+        "ip_ban_badge": "IP ban",
+        "ip_rules_badge": "IP rules exist",
+        "whitelist_badge": "Whitelist"
       },
       "extensions": {
         "detected": "Detected",

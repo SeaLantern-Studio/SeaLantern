@@ -13,15 +13,15 @@ export function useAboutPage() {
     },
     {
       label: i18n.t("about.frontend"),
-      value: "Vue 3 + TypeScript",
+      value: i18n.t("about.frontend_stack"),
     },
     {
       label: i18n.t("about.backend"),
-      value: "Rust + Tauri 2",
+      value: i18n.t("about.backend_stack"),
     },
     {
       label: i18n.t("about.license"),
-      value: "GPLv3",
+      value: i18n.t("about.license_full"),
     },
   ]);
 
