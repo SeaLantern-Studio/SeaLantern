@@ -1,14 +1,17 @@
 import { computed, onMounted, shallowRef } from "vue";
 import { useRouter } from "vue-router";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import type { HostCapabilities } from "@api/system";
 import { usePluginsInstaller } from "@components/plugin/installer/usePluginsInstaller";
 import { i18n } from "@language";
+import { getHostCapabilities } from "@src/services/hostCapabilities";
 import {
   NEXT_PLUGIN_CATEGORY_ROUTE_NAME,
   NEXT_PLUGIN_DETAIL_ROUTE_NAME,
   NEXT_PLUGIN_MARKET_ROUTE_NAME,
 } from "@src/router/pageMeta";
 import { usePluginStore } from "@stores/pluginStore";
+import { derivePluginRuntimeScene } from "./pluginRuntimeScene";
 import {
   getLocalizedPluginDescription,
   getLocalizedPluginName,
@@ -123,6 +126,11 @@ export function usePluginsPage() {
   const pendingPermissionList = shallowRef<string[]>([]);
   const pendingPermissionGrantScope = shallowRef<PluginEnableGrantScope>("version");
   const pendingPermissionBlockReason = shallowRef<PluginEnableBlockReason | null>(null);
+  const hostCapabilities = shallowRef<HostCapabilities | null>(null);
+
+  void getHostCapabilities().then((capabilities) => {
+    hostCapabilities.value = capabilities;
+  });
 
   async function loadPage(manual = false): Promise<void> {
     if (manual) {
@@ -282,6 +290,27 @@ export function usePluginsPage() {
   const hasPlugins = computed(() => totalCount.value > 0);
   const errorMessage = computed(() => pluginStore.error || installer.installErrorMessage.value);
   const isLoading = computed(() => bootstrapping.value || refreshing.value || pluginStore.loading);
+  const runtimeScene = computed(() => derivePluginRuntimeScene(hostCapabilities.value));
+  const showRuntimeBanner = computed(() => runtimeScene.value.kind !== "none");
+  const emptyDescription = computed(
+    () => runtimeScene.value.emptyDescription ?? i18n.t("plugins.next.empty.description"),
+  );
+
+  function getToggleUnavailableMessage(plugin: PluginInfo): string {
+    if (!plugin.actions.can_toggle && runtimeScene.value.toggleUnavailableMessage) {
+      return runtimeScene.value.toggleUnavailableMessage;
+    }
+
+    return i18n.t("plugins.next.card.toggle_unavailable");
+  }
+
+  function getSceneTagLabel(plugin: PluginInfo): string | null {
+    if (plugin.actions.can_toggle) {
+      return null;
+    }
+
+    return runtimeScene.value.tagLabel;
+  }
 
   const permissionDialogTitle = computed(() => {
     if (pendingPermissionBlockReason.value === "revoked") {
@@ -321,6 +350,9 @@ export function usePluginsPage() {
     checkingUpdates,
     installer,
     errorMessage,
+    runtimeScene,
+    showRuntimeBanner,
+    emptyDescription,
     permissionDialogOpen,
     pendingPermissionPluginName,
     pendingPermissionList,
@@ -337,6 +369,8 @@ export function usePluginsPage() {
     getPluginMeta,
     getPluginStateLabel,
     getPluginStateTone,
+    getSceneTagLabel,
+    getToggleUnavailableMessage,
     getMissingRequiredDependencies,
     getMissingOptionalDependencies,
     hasUpdate,

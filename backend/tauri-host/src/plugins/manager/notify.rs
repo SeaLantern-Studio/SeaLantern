@@ -6,11 +6,15 @@ pub(super) fn notify_page_changed(manager: &PluginManager, path: &str) {
         if !plugin_is_enabled(manager, id) {
             continue;
         }
-        if !manager.driver_for(info).capabilities().supports_page_events {
+        if !manager
+            .runtime_driver_for(info)
+            .runtime_capabilities()
+            .supports_page_events
+        {
             continue;
         }
         manager
-            .driver_for(info)
+            .runtime_driver_for(info)
             .notify_page_changed(manager, id, path);
     }
 }
@@ -21,14 +25,14 @@ pub(super) fn notify_locale_changed(manager: &PluginManager, locale: &str) {
             continue;
         }
         if !manager
-            .driver_for(info)
-            .capabilities()
+            .runtime_driver_for(info)
+            .runtime_capabilities()
             .supports_locale_events
         {
             continue;
         }
         manager
-            .driver_for(info)
+            .runtime_driver_for(info)
             .notify_locale_changed(manager, id, locale);
     }
 }
@@ -39,14 +43,14 @@ pub(super) fn notify_server_event(manager: &PluginManager, event: &ServerEventEn
             continue;
         }
         if !manager
-            .driver_for(info)
-            .capabilities()
+            .runtime_driver_for(info)
+            .runtime_capabilities()
             .supports_server_events
         {
             continue;
         }
         manager
-            .driver_for(info)
+            .runtime_driver_for(info)
             .notify_server_event(manager, id, event);
     }
 }
@@ -63,14 +67,14 @@ pub(super) fn notify_context_menu_show(
             continue;
         }
         if !manager
-            .driver_for(info)
-            .capabilities()
+            .runtime_driver_for(info)
+            .runtime_capabilities()
             .supports_context_menu
         {
             continue;
         }
         manager
-            .driver_for(info)
+            .runtime_driver_for(info)
             .notify_context_menu_show(manager, id, context, target_data, x, y);
     }
 }
@@ -81,14 +85,14 @@ pub(super) fn notify_context_menu_hide(manager: &PluginManager) {
             continue;
         }
         if !manager
-            .driver_for(info)
-            .capabilities()
+            .runtime_driver_for(info)
+            .runtime_capabilities()
             .supports_context_menu
         {
             continue;
         }
         manager
-            .driver_for(info)
+            .runtime_driver_for(info)
             .notify_context_menu_hide(manager, id);
     }
 }

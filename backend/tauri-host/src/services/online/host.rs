@@ -1,7 +1,11 @@
 use crate::models::settings::OneBot11Settings;
-use crate::services::global::{i18n_service, settings_manager};
+#[cfg(feature = "online-tunnel")]
+use crate::services::global::i18n_service;
+use crate::services::global::settings_manager;
 use crate::utils::logger::{log_info_ctx, log_warn_ctx};
+#[cfg(feature = "online-tunnel")]
 use std::collections::HashMap;
+#[cfg(feature = "online-tunnel")]
 use std::path::PathBuf;
 
 /// Host-only dependency boundary for the online domain.
@@ -20,14 +24,17 @@ pub(super) fn log_onebot_warn(action: &str, message: &str) {
     log_warn_ctx("services.online.onebot", action, message);
 }
 
+#[cfg(feature = "online-tunnel")]
 pub(super) fn tunnel_app_data_dir() -> PathBuf {
     crate::utils::path::get_app_data_dir()
 }
 
+#[cfg(feature = "online-tunnel")]
 pub(super) fn tunnel_translate(key: &str) -> String {
     i18n_service().t(key)
 }
 
+#[cfg(feature = "online-tunnel")]
 pub(super) fn tunnel_translate_with_args(key: &str, args: &[String]) -> String {
     let values = args
         .iter()

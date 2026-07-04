@@ -3,6 +3,7 @@ import { inject, provide, shallowRef, watch, onBeforeUnmount, onMounted } from "
 import { useRoute } from "vue-router";
 import { getPluginSidebarSnapshot, type BufferedSidebarEvent } from "@api/plugin";
 import { notifyPluginPageLifecycle } from "@router/pluginPageLifecycle";
+import { isPluginRuntimeUiBridgeAvailable } from "@src/services/hostCapabilities";
 import type {
   NextHomeCardDefinitionRegistry,
   NextHomeCardRendererRegistry,
@@ -332,6 +333,11 @@ export function provideNextHostRuntime(): NextHostRuntimeContext {
   const slots = createNextHostSlotManager(() => currentPayload?.route_key ?? null);
 
   async function hydrateSidebarSnapshot(): Promise<void> {
+    if (!(await isPluginRuntimeUiBridgeAvailable())) {
+      sidebarItems.value = [];
+      return;
+    }
+
     try {
       const snapshot = await getPluginSidebarSnapshot();
       sidebarItems.value = buildSidebarItems(snapshot);

@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { isBrowserEnv } from "@api/tauri";
 import { useGlobalMessage } from "@composables/useMessage";
 import { i18n } from "@language";
+import { isPluginRuntimeUiBridgeAvailable } from "@src/services/hostCapabilities";
 import { usePluginStore } from "@stores/pluginStore";
 
 let sharedAudioContext: AudioContext | null = null;
@@ -106,19 +107,23 @@ export function useTauriGlobalEvents() {
   }
 
   onMounted(async () => {
-    await pluginStore.initUiEventListener();
-    await pluginStore.initSidebarEventListener();
     await pluginStore.initPermissionLogListener();
     await pluginStore.initPluginLogListener();
-    await pluginStore.initComponentEventListener();
     await pluginStore.initI18nEventListener();
 
-    registerCleanup(() => pluginStore.cleanupUiEventListener());
-    registerCleanup(() => pluginStore.cleanupSidebarEventListener());
     registerCleanup(() => pluginStore.cleanupPermissionLogListener());
     registerCleanup(() => pluginStore.cleanupPluginLogListener());
-    registerCleanup(() => pluginStore.cleanupComponentEventListener());
     registerCleanup(() => pluginStore.cleanupI18nEventListener());
+
+    if (await isPluginRuntimeUiBridgeAvailable()) {
+      await pluginStore.initUiEventListener();
+      await pluginStore.initSidebarEventListener();
+      await pluginStore.initComponentEventListener();
+
+      registerCleanup(() => pluginStore.cleanupUiEventListener());
+      registerCleanup(() => pluginStore.cleanupSidebarEventListener());
+      registerCleanup(() => pluginStore.cleanupComponentEventListener());
+    }
 
     if (isBrowserEnv()) {
       return;

@@ -4,12 +4,16 @@ use crate::services::events::ServerEventEnvelope;
 use crate::utils::logger::{log_error_ctx, log_warn_ctx};
 use std::path::PathBuf;
 
-use super::driver::{PluginDriver, PluginRuntimeCapabilities};
+use super::driver::{
+    PluginMetadataCapabilities, PluginMetadataDriver, PluginRuntimeCapabilities,
+    PluginRuntimeDriver,
+};
 use super::PluginManager;
 
 pub(crate) struct LuaLocalPluginDriver;
 
 impl LuaLocalPluginDriver {
+    #[cfg(feature = "plugin-local-runtime")]
     fn plugin_runtime<'a>(
         manager: &'a PluginManager,
         plugin_id: &str,
@@ -27,31 +31,13 @@ impl LuaLocalPluginDriver {
     }
 }
 
-impl PluginDriver for LuaLocalPluginDriver {
-    fn capabilities(&self) -> PluginRuntimeCapabilities {
-        PluginRuntimeCapabilities {
-            can_toggle: true,
+impl PluginMetadataDriver for LuaLocalPluginDriver {
+    fn metadata_capabilities(&self) -> PluginMetadataCapabilities {
+        PluginMetadataCapabilities {
             has_settings: true,
             has_icon: true,
             has_css: true,
-            supports_context_menu: true,
-            supports_page_events: true,
-            supports_locale_events: true,
-            supports_server_events: true,
         }
-    }
-
-    fn enable(
-        &self,
-        manager: &mut PluginManager,
-        plugin_id: &str,
-        confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
-    ) -> Result<crate::models::plugin::PluginEnableResult, String> {
-        super::lifecycle::runtime::enable_plugin_with_confirmation(manager, plugin_id, confirmation)
-    }
-
-    fn disable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<Vec<String>, String> {
-        super::lifecycle::runtime::disable_plugin(manager, plugin_id)
     }
 
     fn delete(
@@ -163,6 +149,32 @@ impl PluginDriver for LuaLocalPluginDriver {
             return None;
         }
         Some((plugin.manifest.id.clone(), plugin.manifest.version.clone()))
+    }
+}
+
+#[cfg(feature = "plugin-local-runtime")]
+impl PluginRuntimeDriver for LuaLocalPluginDriver {
+    fn runtime_capabilities(&self) -> PluginRuntimeCapabilities {
+        PluginRuntimeCapabilities {
+            can_toggle: true,
+            supports_context_menu: true,
+            supports_page_events: true,
+            supports_locale_events: true,
+            supports_server_events: true,
+        }
+    }
+
+    fn enable(
+        &self,
+        manager: &mut PluginManager,
+        plugin_id: &str,
+        confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
+    ) -> Result<crate::models::plugin::PluginEnableResult, String> {
+        super::lifecycle::runtime::enable_plugin_with_confirmation(manager, plugin_id, confirmation)
+    }
+
+    fn disable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<Vec<String>, String> {
+        super::lifecycle::runtime::disable_plugin(manager, plugin_id)
     }
 
     fn notify_page_changed(&self, manager: &PluginManager, plugin_id: &str, path: &str) {
@@ -289,5 +301,80 @@ impl PluginDriver for LuaLocalPluginDriver {
             return Err(format!("插件 '{}' 的运行时不存在", plugin_id));
         };
         runtime.call_context_menu_callback(context, item_id, target_data)
+    }
+}
+
+#[cfg(not(feature = "plugin-local-runtime"))]
+impl PluginRuntimeDriver for LuaLocalPluginDriver {
+    fn runtime_capabilities(&self) -> PluginRuntimeCapabilities {
+        PluginRuntimeCapabilities {
+            can_toggle: false,
+            supports_context_menu: false,
+            supports_page_events: false,
+            supports_locale_events: false,
+            supports_server_events: false,
+        }
+    }
+
+    fn enable(
+        &self,
+        _manager: &mut PluginManager,
+        plugin_id: &str,
+        _confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
+    ) -> Result<crate::models::plugin::PluginEnableResult, String> {
+        Err(format!(
+            "Plugin '{}' requires the 'plugin-local-runtime' feature",
+            plugin_id
+        ))
+    }
+
+    fn disable(
+        &self,
+        _manager: &mut PluginManager,
+        plugin_id: &str,
+    ) -> Result<Vec<String>, String> {
+        Err(format!(
+            "Plugin '{}' requires the 'plugin-local-runtime' feature",
+            plugin_id
+        ))
+    }
+
+    fn notify_page_changed(&self, _manager: &PluginManager, _plugin_id: &str, _path: &str) {}
+
+    fn notify_locale_changed(&self, _manager: &PluginManager, _plugin_id: &str, _locale: &str) {}
+
+    fn notify_server_event(
+        &self,
+        _manager: &PluginManager,
+        _plugin_id: &str,
+        _event: &ServerEventEnvelope,
+    ) {
+    }
+
+    fn notify_context_menu_show(
+        &self,
+        _manager: &PluginManager,
+        _plugin_id: &str,
+        _context: &str,
+        _target_data: &serde_json::Value,
+        _x: f64,
+        _y: f64,
+    ) {
+    }
+
+    fn notify_context_menu_hide(&self, _manager: &PluginManager, _plugin_id: &str) {}
+
+    fn dispatch_context_menu_callback(
+        &self,
+        _manager: &PluginManager,
+        plugin_id: &str,
+        _context: &str,
+        _item_id: &str,
+        _target_data: serde_json::Value,
+    ) -> Result<(), String> {
+        Err(format!(
+            "Plugin '{}' requires the 'plugin-local-runtime' feature",
+            plugin_id
+        ))
     }
 }

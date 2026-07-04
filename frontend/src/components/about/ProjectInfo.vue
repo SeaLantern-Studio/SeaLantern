@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { RefreshCw, Check, XCircle } from "@lucide/vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
-import { checkUpdate, type UpdateInfo } from "@api/update";
+import { updateMetadataApi, type UpdateInfo } from "@api/update";
 import { isBrowserEnv } from "@api/tauri";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { BUILD_YEAR } from "@utils/version";
@@ -31,7 +31,7 @@ async function handleCheckUpdate() {
   updateInfo.value = null;
 
   try {
-    const info = await checkUpdate();
+    const info = await updateMetadataApi.check();
 
     if (info) {
       updateInfo.value = info;

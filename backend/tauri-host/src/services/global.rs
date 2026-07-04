@@ -51,20 +51,22 @@ fn init_plugin_manager_or_exit() -> Arc<Mutex<PluginManager>> {
 
     let manager = Arc::new(Mutex::new(plugin_manager));
 
-    let manager_for_events = Arc::clone(&manager);
-    let _plugin_registration = event_manager().register_named_consumer_with_metadata(
-        "plugin_manager.server_events",
-        EventConsumer::server(Arc::new(move |event| {
-            let guard = manager_for_events.lock().unwrap_or_else(|e| e.into_inner());
-            guard.notify_server_event(event);
-            Ok(())
-        })),
-        EventConsumerMetadata::new(
-            EventConsumerKind::PluginRuntime,
-            "plugin_manager",
-            "Dispatch backend server events to enabled plugins.",
-        ),
-    );
+    if PluginManager::server_event_forwarding_enabled() {
+        let manager_for_events = Arc::clone(&manager);
+        let _plugin_registration = event_manager().register_named_consumer_with_metadata(
+            "plugin_manager.server_events",
+            EventConsumer::server(Arc::new(move |event| {
+                let guard = manager_for_events.lock().unwrap_or_else(|e| e.into_inner());
+                guard.notify_server_event(event);
+                Ok(())
+            })),
+            EventConsumerMetadata::new(
+                EventConsumerKind::PluginRuntime,
+                "plugin_manager",
+                "Dispatch backend server events to enabled plugins.",
+            ),
+        );
+    }
 
     let _ = event_manager().register_named_consumer_with_metadata(
         "online.onebot.server_events",

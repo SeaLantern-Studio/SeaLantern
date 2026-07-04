@@ -117,6 +117,19 @@ export interface IPv6TestResult {
   targets?: IPv6TestTarget[];
 }
 
+export type HostBuildFlavor = "desktop-full" | "desktop-min" | "custom";
+
+export interface HostPluginRuntimeCapabilities {
+  available: boolean;
+  local_runtime: boolean;
+  ui_bridge: boolean;
+}
+
+export interface HostCapabilities {
+  build_flavor: HostBuildFlavor;
+  plugin_runtime: HostPluginRuntimeCapabilities;
+}
+
 export const systemApi = {
   async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
     if (!isUploadSupported()) {
@@ -150,6 +163,10 @@ export const systemApi = {
 
   async getSystemInfo(): Promise<SystemInfo> {
     return tauriInvoke("get_system_info");
+  },
+
+  async getHostCapabilities(): Promise<HostCapabilities> {
+    return tauriInvoke("get_host_capabilities");
   },
 
   async getServerResourceUsage(serverId: string): Promise<ServerResourceUsage> {

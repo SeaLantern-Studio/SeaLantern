@@ -63,6 +63,15 @@ export function readBrowserAuthToken(): string | null {
 
 export { notifyBrowserUnauthorized };
 
+export function assertDesktopEnvironment(): void {
+  if (!isBrowserEnv()) {
+    return;
+  }
+
+  const normalized = normalizeAppError({ code: "system.desktop_only_method" });
+  throw new StructuredAppError(normalized.code, normalized.message, normalized.args);
+}
+
 function isStructuredAppError(error: unknown): error is StructuredAppError {
   return error instanceof StructuredAppError;
 }
@@ -284,6 +293,15 @@ export async function tauriInvoke<T>(
 
     return options.defaultValue as T;
   }
+}
+
+export async function tauriInvokeDesktop<T>(
+  command: string,
+  args?: Record<string, unknown>,
+  options: InvokeOptions = {},
+): Promise<T> {
+  assertDesktopEnvironment();
+  return tauriInvoke<T>(command, args, options);
 }
 
 /**

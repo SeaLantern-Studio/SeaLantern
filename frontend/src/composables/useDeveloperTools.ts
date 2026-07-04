@@ -2,6 +2,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import { clearLogs, exportAppLogs, getLogs, type LogLine } from "@api/logging";
 import { systemApi, type SystemInfo } from "@api/system";
+import { desktopUpdaterApi } from "@api/updateDesktop";
 import { useGlobalMessage } from "@composables/useMessage";
 import { useSerialPolling } from "@composables/useSerialPolling";
 import { i18n } from "@language";
@@ -257,7 +258,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
 
     downloadingUpdate.value = true;
     try {
-      await tauriInvoke("download_update_from_debug_url", { url });
+      await desktopUpdaterApi.downloadFromDebugUrl(url);
       globalMessage.success(i18n.t("developer.update_test_started"));
     } catch (error) {
       globalMessage.error(error instanceof Error ? error.message : String(error));

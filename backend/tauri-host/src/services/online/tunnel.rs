@@ -1,10 +1,19 @@
+#[cfg(feature = "online-tunnel")]
 mod config;
+#[cfg(feature = "online-tunnel")]
 mod events;
+#[cfg(feature = "online-tunnel")]
 mod i18n;
+#[cfg(feature = "online-tunnel")]
 mod runtime;
+#[cfg(feature = "online-tunnel")]
 mod state;
 
 use serde::Serialize;
+
+#[cfg(not(feature = "online-tunnel"))]
+const ONLINE_TUNNEL_UNAVAILABLE: &str =
+    "online tunnel support is unavailable without the 'online-tunnel' feature";
 
 #[derive(Debug, Serialize, Clone)]
 pub struct TunnelConnection {
@@ -30,13 +39,42 @@ pub struct TunnelStatus {
     pub relay_url: Option<String>,
 }
 
+#[cfg(not(feature = "online-tunnel"))]
+fn unavailable_error() -> String {
+    ONLINE_TUNNEL_UNAVAILABLE.to_string()
+}
+
+#[cfg(not(feature = "online-tunnel"))]
+fn unavailable_status() -> TunnelStatus {
+    TunnelStatus {
+        running: false,
+        mode: None,
+        ticket: None,
+        connections: Vec::new(),
+        logs: vec![ONLINE_TUNNEL_UNAVAILABLE.to_string()],
+        host_port: 0,
+        join_port: 0,
+        last_ticket: None,
+        relay_url: None,
+    }
+}
+
 pub async fn host(
     port: u16,
     password: Option<String>,
     max_players: Option<u32>,
     relay_url: Option<String>,
 ) -> Result<TunnelStatus, String> {
-    runtime::host(port, password, max_players, relay_url).await
+    #[cfg(feature = "online-tunnel")]
+    {
+        return runtime::host(port, password, max_players, relay_url).await;
+    }
+
+    #[cfg(not(feature = "online-tunnel"))]
+    {
+        let _ = (port, password, max_players, relay_url);
+        Err(unavailable_error())
+    }
 }
 
 pub async fn join(
@@ -44,28 +82,77 @@ pub async fn join(
     local_port: u16,
     password: Option<String>,
 ) -> Result<TunnelStatus, String> {
-    runtime::join(ticket, local_port, password).await
+    #[cfg(feature = "online-tunnel")]
+    {
+        return runtime::join(ticket, local_port, password).await;
+    }
+
+    #[cfg(not(feature = "online-tunnel"))]
+    {
+        let _ = (ticket, local_port, password);
+        Err(unavailable_error())
+    }
 }
 
 pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
-    runtime::regenerate_ticket().await
+    #[cfg(feature = "online-tunnel")]
+    {
+        return runtime::regenerate_ticket().await;
+    }
+
+    #[cfg(not(feature = "online-tunnel"))]
+    {
+        Err(unavailable_error())
+    }
 }
 
 pub async fn generate_ticket() -> Result<TunnelStatus, String> {
-    runtime::generate_ticket().await
+    #[cfg(feature = "online-tunnel")]
+    {
+        return runtime::generate_ticket().await;
+    }
+
+    #[cfg(not(feature = "online-tunnel"))]
+    {
+        Err(unavailable_error())
+    }
 }
 
 pub async fn stop() -> Result<TunnelStatus, String> {
-    runtime::stop().await
+    #[cfg(feature = "online-tunnel")]
+    {
+        return runtime::stop().await;
+    }
+
+    #[cfg(not(feature = "online-tunnel"))]
+    {
+        Ok(unavailable_status())
+    }
 }
 
 pub async fn copy_ticket() -> Result<bool, String> {
-    runtime::copy_ticket().await
+    #[cfg(feature = "online-tunnel")]
+    {
+        return runtime::copy_ticket().await;
+    }
+
+    #[cfg(not(feature = "online-tunnel"))]
+    {
+        Err(unavailable_error())
+    }
 }
 
 pub async fn status() -> Result<TunnelStatus, String> {
-    runtime::status().await
+    #[cfg(feature = "online-tunnel")]
+    {
+        return runtime::status().await;
+    }
+
+    #[cfg(not(feature = "online-tunnel"))]
+    {
+        Ok(unavailable_status())
+    }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "online-tunnel"))]
 mod tests;

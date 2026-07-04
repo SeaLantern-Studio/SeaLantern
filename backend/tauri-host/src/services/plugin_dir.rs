@@ -225,7 +225,10 @@ fn reload_plugin_manager(target_dir: &Path, plugin_data_dir: &Path) -> Result<()
     let mut plugin_manager = manager.lock().unwrap_or_else(|e| e.into_inner());
     plugin_manager.reload_roots(target_dir.to_path_buf(), plugin_data_dir.to_path_buf())?;
     plugin_manager.scan_plugins()?;
+
+    #[cfg(feature = "plugin-local-runtime")]
     plugin_manager.auto_enable_plugins_checked()?;
+
     Ok(())
 }
 

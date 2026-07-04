@@ -17,7 +17,7 @@ tauri-build = { version = "2", features = [] }
 sea_lantern_runtime = { package = "sea-lantern-runtime", path = "../runtime-core" }
 sea_lantern_event_core = { package = "sea-lantern-event-core", path = "../event-core" }
 sea_lantern_i18n_core = { package = "sea-lantern-i18n-core", path = "../i18n-core" }
-sea_lantern_lua_runtime_core = { package = "sea-lantern-lua-runtime-core", path = "../lua-runtime-core" }
+sea_lantern_lua_runtime_core = { package = "sea-lantern-lua-runtime-core", path = "../lua-runtime-core", optional = true }
 sea_lantern_java_installer_core = { package = "sea-lantern-java-installer-core", path = "../java-installer-core" }
 sea_lantern_server_download_links_core = { package = "sea-lantern-server-download-links-core", path = "../server-download-links-core" }
 sea_lantern_server_installer_core = { package = "sea-lantern-server-installer-core", path = "../server-installer-core" }
@@ -66,7 +66,7 @@ tokio-stream = { version = "0.1", features = ["sync"], optional = true }
 mime_guess = { version = "2.0", optional = true }
 futures = "0.3.32"
 encoding_rs = "0.8"
-mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
+mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"], optional = true }
 wait-timeout = "0.2"
 zip = "2.0"
 tar = "0.4"
@@ -87,12 +87,22 @@ lazy_static = "1.4"
 shlex = "1.3.0"
 sha2 = "0.10"
 rcon = { version = "0.6", features = ["rt-tokio"] }
-sculk = { version = "0.3.0-rc.1", features = ["persist", "clipboard"] }
+sculk = { version = "0.3.0-rc.1", features = ["persist", "clipboard"], optional = true }
 java-manager = "0.3.0"
 
 [features]
-default = ["docker"]
+default = [
+    "docker",
+    "online-tunnel",
+    "plugin-local-runtime",
+    "plugin-runtime-bridge",
+    "plugin-builtin-runtime",
+]
 docker = ["axum", "tower", "tower-http", "tokio-stream", "mime_guess"]
+online-tunnel = ["dep:sculk"]
+plugin-local-runtime = ["dep:mlua", "dep:sea_lantern_lua_runtime_core"]
+plugin-runtime-bridge = []
+plugin-builtin-runtime = []
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [

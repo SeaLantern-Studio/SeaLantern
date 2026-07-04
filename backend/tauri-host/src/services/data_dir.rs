@@ -166,7 +166,10 @@ fn reload_plugin_manager(_target_dir: &Path) -> Result<(), String> {
     let plugin_data_dir = crate::services::plugin_dir::current_plugin_data_dir();
     plugin_manager.reload_roots(plugins_dir, plugin_data_dir)?;
     plugin_manager.scan_plugins()?;
+
+    #[cfg(feature = "plugin-local-runtime")]
     plugin_manager.auto_enable_plugins_checked()?;
+
     Ok(())
 }
 

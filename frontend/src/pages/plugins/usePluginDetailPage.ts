@@ -1,6 +1,7 @@
 import { computed, onMounted, shallowRef, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import type { HostCapabilities } from "@api/system";
 import type { MarketPluginInfo } from "@api/plugin";
 import {
   installPluginFromMarketEntry,
@@ -17,6 +18,7 @@ import {
 } from "@components/plugin/market/pluginMarketShared";
 import { i18n } from "@language";
 import { NEXT_PLUGIN_CATEGORY_ROUTE_NAME } from "@src/router/pageMeta";
+import { getHostCapabilities } from "@src/services/hostCapabilities";
 import { usePluginStore } from "@stores/pluginStore";
 import {
   getLocalizedPluginDescription,
@@ -26,6 +28,7 @@ import {
   type PluginInfo,
   type PluginState,
 } from "@type/plugin";
+import { derivePluginRuntimeScene } from "./pluginRuntimeScene";
 import { usePluginPageSettings } from "./usePluginPageSettings";
 
 const loadedPluginDetailIds = new Set<string>();
@@ -161,6 +164,11 @@ export function usePluginDetailPage() {
   const pendingPermissionList = shallowRef<string[]>([]);
   const pendingPermissionGrantScope = shallowRef<PluginEnableGrantScope>("version");
   const pendingPermissionBlockReason = shallowRef<PluginEnableBlockReason | null>(null);
+  const hostCapabilities = shallowRef<HostCapabilities | null>(null);
+
+  void getHostCapabilities().then((capabilities) => {
+    hostCapabilities.value = capabilities;
+  });
 
   const { showFeedback, clearFeedback } = usePluginMarketFeedback({
     installFeedback,
@@ -186,6 +194,10 @@ export function usePluginDetailPage() {
   const settingsReady = computed(() => pageSettings.plugin.value?.manifest.id === pluginId.value);
 
   const hasUpdate = computed(() => Boolean(pluginStore.updates[pluginId.value]));
+  const runtimeScene = computed(() => derivePluginRuntimeScene(hostCapabilities.value));
+  const showRuntimeBanner = computed(
+    () => Boolean(installedPlugin.value) && runtimeScene.value.kind !== "none",
+  );
   const marketSourceUrl = computed(() => resolveMarketSourceUrl());
   const iconUrl = computed(() => {
     if (installedPlugin.value) {
@@ -268,6 +280,16 @@ export function usePluginDetailPage() {
 
   const canOpenCategoryPage = computed(() => {
     return installedPlugin.value?.manifest.sidebar?.mode === "category";
+  });
+
+  const showToggleControl = computed(() => Boolean(installedPlugin.value?.actions.can_toggle));
+
+  const toggleUnavailableMessage = computed(() => {
+    if (!installedPlugin.value || installedPlugin.value.actions.can_toggle) {
+      return null;
+    }
+
+    return runtimeScene.value.toggleUnavailableMessage ?? i18n.t("plugins.next.card.toggle_unavailable");
   });
 
   const showMarketInstallAction = computed(() => {
@@ -617,8 +639,12 @@ export function usePluginDetailPage() {
     stateLabel,
     stateTone,
     updateSummary,
+    runtimeScene,
+    showRuntimeBanner,
     supportsSettingsOnDetail,
     canOpenCategoryPage,
+    showToggleControl,
+    toggleUnavailableMessage,
     showMarketInstallAction,
     marketActionLabel,
     notFound,

@@ -4,6 +4,7 @@ import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
+import WorkbenchStatusBanner from "@src/components/workbench/WorkbenchStatusBanner.vue";
 import PluginDependentSettingsList from "@src/components/plugins/PluginDependentSettingsList.vue";
 import PluginPresetPickerCard from "@src/components/plugins/PluginPresetPickerCard.vue";
 import PluginSettingsFormCard from "@src/components/plugins/PluginSettingsFormCard.vue";
@@ -30,8 +31,12 @@ const {
   stateLabel,
   stateTone,
   updateSummary,
+  runtimeScene,
+  showRuntimeBanner,
   supportsSettingsOnDetail,
   canOpenCategoryPage,
+  showToggleControl,
+  toggleUnavailableMessage,
   showMarketInstallAction,
   marketActionLabel,
   notFound,
@@ -125,6 +130,11 @@ function getPermissionDesc(perm: string): string {
     </SLCard>
 
     <template v-else>
+      <WorkbenchStatusBanner v-if="showRuntimeBanner" tone="info">
+        <strong>{{ runtimeScene.bannerTitle }}</strong>
+        <span>{{ runtimeScene.bannerDescription }}</span>
+      </WorkbenchStatusBanner>
+
       <SLCard class="plugin-detail-page__hero" variant="outline">
         <div class="plugin-detail-page__hero-main">
           <div class="plugin-detail-page__icon-shell">
@@ -163,6 +173,9 @@ function getPermissionDesc(perm: string): string {
               <span v-for="tag in categoryTags" :key="tag" class="plugin-detail-page__tag">
                 {{ tag }}
               </span>
+              <span v-if="runtimeScene.tagLabel && installedPlugin && !installedPlugin.actions.can_toggle" class="plugin-detail-page__tag plugin-detail-page__tag--info">
+                {{ runtimeScene.tagLabel }}
+              </span>
             </div>
           </div>
         </div>
@@ -188,13 +201,16 @@ function getPermissionDesc(perm: string): string {
           >
             {{ i18n.t("plugins.open_repository") }}
           </SLButton>
-          <div v-if="installedPlugin && installedPlugin.actions.can_toggle" class="plugin-detail-page__toggle-row">
+          <div v-if="showToggleControl" class="plugin-detail-page__toggle-row">
             <span class="plugin-detail-page__toggle-label">{{ i18n.t("plugins.status.enabled") }}</span>
             <SLSwitch
-              :modelValue="installedPlugin.state === 'enabled'"
+              :modelValue="Boolean(installedPlugin && installedPlugin.state === 'enabled')"
               size="sm"
               @update:modelValue="toggleInstalledPlugin(Boolean($event))"
             />
+          </div>
+          <div v-else-if="installedPlugin && toggleUnavailableMessage" class="plugin-detail-page__toggle-note">
+            {{ toggleUnavailableMessage }}
           </div>
         </div>
       </SLCard>
@@ -420,6 +436,17 @@ function getPermissionDesc(perm: string): string {
   color: var(--sl-text-secondary);
   font-size: 0.74rem;
   line-height: 1;
+}
+
+.plugin-detail-page__tag--info {
+  border-color: color-mix(in srgb, var(--sl-primary) 26%, transparent);
+  color: var(--sl-primary);
+}
+
+.plugin-detail-page__toggle-note {
+  font-size: 0.85rem;
+  color: var(--sl-text-secondary);
+  line-height: 1.5;
 }
 
 .plugin-detail-page__section {

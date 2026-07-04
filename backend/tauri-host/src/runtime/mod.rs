@@ -2,6 +2,11 @@ mod bootstrap;
 mod command_catalog;
 mod desktop_setup;
 mod desktop_shell;
+mod frontend_runtime_event_bridge;
+#[cfg(feature = "plugin-runtime-bridge")]
+mod plugin_bridge;
+#[cfg(not(feature = "plugin-runtime-bridge"))]
+#[path = "plugin_bridge_stub.rs"]
 mod plugin_bridge;
 
 use sea_lantern_runtime::RuntimeMode;

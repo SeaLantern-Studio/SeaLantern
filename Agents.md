@@ -48,6 +48,7 @@
 - When the frontend already defines command names, request payload shape, or response typing in `frontend/src/api/`, preserve that contract unless the task explicitly reopens it.
 - When changing backend commands, verify both the registration point and the frontend caller/import surface; do not stop at only one side.
 - Prefer repo-local scripts and documented commands over ad hoc shell compositions, especially for dev startup, Tauri launch, i18n sync/check, and versioning tasks.
+- Treat low-memory development guidance as opt-in only. Do not replace the default `pnpm --dir frontend run tauri:dev` path or the README workspace validation baseline unless the task explicitly asks for low-memory-specific changes.
 
 ## Local Skills
 

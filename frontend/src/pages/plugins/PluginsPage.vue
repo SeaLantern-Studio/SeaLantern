@@ -5,6 +5,7 @@ import PluginBatchResultModal from "@components/plugin/installer/PluginBatchResu
 import PluginChooserDialog from "@components/plugin/installer/PluginChooserDialog.vue";
 import PluginDependencyPromptModal from "@components/plugin/installer/PluginDependencyPromptModal.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
+import WorkbenchStatusBanner from "@src/components/workbench/WorkbenchStatusBanner.vue";
 import { i18n } from "@language";
 import InstalledPluginCard from "@src/components/plugins/InstalledPluginCard.vue";
 import PluginsEmptyState from "@src/components/plugins/PluginsEmptyState.vue";
@@ -23,6 +24,9 @@ const {
   isRefreshing,
   checkingUpdates,
   errorMessage,
+  runtimeScene,
+  showRuntimeBanner,
+  emptyDescription,
   permissionDialogOpen,
   pendingPermissionPluginName,
   pendingPermissionList,
@@ -38,6 +42,8 @@ const {
   getPluginMeta,
   getPluginStateLabel,
   getPluginStateTone,
+  getSceneTagLabel,
+  getToggleUnavailableMessage,
   getMissingRequiredDependencies,
   getMissingOptionalDependencies,
   getUpdateSummary,
@@ -76,6 +82,11 @@ const {
       @check-updates="checkAllUpdates()"
       @open-market="openPluginMarket()"
     />
+
+    <WorkbenchStatusBanner v-if="showRuntimeBanner" tone="info">
+      <strong>{{ runtimeScene.bannerTitle }}</strong>
+      <span>{{ runtimeScene.bannerDescription }}</span>
+    </WorkbenchStatusBanner>
 
     <PluginChooserDialog
       :open="chooserOpen"
@@ -121,6 +132,7 @@ const {
     <PluginsEmptyState
       v-else-if="!hasPlugins"
       :loading="isRefreshing"
+      :description="emptyDescription"
       @refresh="refreshPlugins()"
       @open-market="openPluginMarket()"
     />
@@ -134,11 +146,13 @@ const {
         :description="getPluginDescription(plugin)"
         :author-name="getPluginAuthor(plugin)"
         :meta-items="getPluginMeta(plugin)"
+        :scene-tag-label="getSceneTagLabel(plugin)"
         :state-label="getPluginStateLabel(plugin.state)"
         :state-tone="getPluginStateTone(plugin.state)"
         :icon-url="pluginStore.icons[plugin.manifest.id]"
         :enabled="plugin.state === 'enabled'"
         :can-toggle="plugin.actions.can_toggle"
+        :toggle-unavailable-message="getToggleUnavailableMessage(plugin)"
         :has-missing-required-dependencies="getMissingRequiredDependencies(plugin).length > 0"
         :has-missing-optional-dependencies="getMissingOptionalDependencies(plugin).length > 0"
         :update-summary="getUpdateSummary(plugin)"

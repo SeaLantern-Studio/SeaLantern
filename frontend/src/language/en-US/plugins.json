@@ -129,6 +129,17 @@
       "toggle_unavailable": "Unavailable here",
       "toggle_requires_dependencies": "Dependencies required"
     },
+    "runtime": {
+      "metadata_only_title": "This is a metadata-only desktop build.",
+      "metadata_only_description": "This {flavor} build can show plugin metadata, trust, and permissions, but it cannot start local plugin runtime or enable plugins.",
+      "metadata_only_tag": "{flavor} · metadata only",
+      "metadata_only_toggle_unavailable": "Local plugin runtime is not included in this build, so enable and disable actions are unavailable here.",
+      "metadata_only_empty_description": "This {flavor} build can still rescan plugin metadata and inspect trust details, but it does not run local plugin runtime.",
+      "runtime_off_title": "Plugin runtime is unavailable in this build.",
+      "runtime_off_description": "This {flavor} host can still show plugin metadata, trust, and permissions, but local plugin runtime features are unavailable right now.",
+      "runtime_off_tag": "{flavor} · runtime unavailable",
+      "runtime_off_toggle_unavailable": "Plugin runtime is unavailable in this host build, so enable and disable actions are unavailable here."
+    },
     "permission_revoked_title": "This plugin is revoked",
     "permission_confirm_title": "Permission confirmation required",
     "permission_revoked_message": "{name} is currently revoked. Check the plugin source and trust state before enabling it.",

@@ -10,6 +10,29 @@ use crate::services::event_consumer_registry::{
 };
 use crate::utils::app_version;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum HostBuildFlavor {
+    #[serde(rename = "desktop-full")]
+    DesktopFull,
+    #[serde(rename = "desktop-min")]
+    DesktopMin,
+    #[serde(rename = "custom")]
+    Custom,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct HostPluginRuntimeCapabilities {
+    pub available: bool,
+    pub local_runtime: bool,
+    pub ui_bridge: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct HostCapabilities {
+    pub build_flavor: HostBuildFlavor,
+    pub plugin_runtime: HostPluginRuntimeCapabilities,
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct CreateServerDefaults {
     pub default_run_path: String,
@@ -62,9 +85,41 @@ fn build_create_server_defaults(
     }
 }
 
+fn build_host_capabilities_from_flags(
+    local_runtime_enabled: bool,
+    ui_bridge_enabled: bool,
+) -> HostCapabilities {
+    let build_flavor = match (local_runtime_enabled, ui_bridge_enabled) {
+        (true, true) => HostBuildFlavor::DesktopFull,
+        (false, false) => HostBuildFlavor::DesktopMin,
+        _ => HostBuildFlavor::Custom,
+    };
+
+    HostCapabilities {
+        build_flavor,
+        plugin_runtime: HostPluginRuntimeCapabilities {
+            available: local_runtime_enabled || ui_bridge_enabled,
+            local_runtime: local_runtime_enabled,
+            ui_bridge: ui_bridge_enabled,
+        },
+    }
+}
+
+fn build_host_capabilities() -> HostCapabilities {
+    build_host_capabilities_from_flags(
+        cfg!(feature = "plugin-local-runtime"),
+        cfg!(feature = "plugin-runtime-bridge"),
+    )
+}
+
 #[tauri::command]
 pub fn get_system_info() -> Result<serde_json::Value, String> {
     system_info::get_system_info()
+}
+
+#[tauri::command]
+pub fn get_host_capabilities() -> Result<HostCapabilities, String> {
+    Ok(build_host_capabilities())
 }
 
 #[tauri::command]
@@ -216,7 +271,7 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::build_create_server_defaults;
+    use super::{build_create_server_defaults, build_host_capabilities_from_flags, HostBuildFlavor};
     use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId};
     use crate::models::settings::AppSettings;
     use crate::services::java_detector::JavaInfo;
@@ -264,5 +319,35 @@ mod tests {
         assert_eq!(defaults.default_jvm_preset.preset, JvmPresetId::AikarG1);
         assert_eq!(defaults.preferred_java_path, "C:/Java/jdk21/bin/java.exe");
         assert!(defaults.suggested_run_path.starts_with("E:/servers"));
+    }
+
+    #[test]
+    fn host_capabilities_mark_desktop_full_when_runtime_and_bridge_are_enabled() {
+        let capabilities = build_host_capabilities_from_flags(true, true);
+
+        assert_eq!(capabilities.build_flavor, HostBuildFlavor::DesktopFull);
+        assert!(capabilities.plugin_runtime.available);
+        assert!(capabilities.plugin_runtime.local_runtime);
+        assert!(capabilities.plugin_runtime.ui_bridge);
+    }
+
+    #[test]
+    fn host_capabilities_mark_desktop_min_when_runtime_and_bridge_are_disabled() {
+        let capabilities = build_host_capabilities_from_flags(false, false);
+
+        assert_eq!(capabilities.build_flavor, HostBuildFlavor::DesktopMin);
+        assert!(!capabilities.plugin_runtime.available);
+        assert!(!capabilities.plugin_runtime.local_runtime);
+        assert!(!capabilities.plugin_runtime.ui_bridge);
+    }
+
+    #[test]
+    fn host_capabilities_mark_custom_for_mixed_runtime_flags() {
+        let capabilities = build_host_capabilities_from_flags(false, true);
+
+        assert_eq!(capabilities.build_flavor, HostBuildFlavor::Custom);
+        assert!(capabilities.plugin_runtime.available);
+        assert!(!capabilities.plugin_runtime.local_runtime);
+        assert!(capabilities.plugin_runtime.ui_bridge);
     }
 }

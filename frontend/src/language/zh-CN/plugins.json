@@ -129,6 +129,17 @@
       "toggle_unavailable": "当前不可切换",
       "toggle_requires_dependencies": "需先满足依赖"
     },
+    "runtime": {
+      "metadata_only_title": "当前是仅提供元数据的桌面构建。",
+      "metadata_only_description": "当前 {flavor} 构建可以查看插件元数据、信任状态和权限信息，但不能启动本地插件运行时，也不能启用或停用插件。",
+      "metadata_only_tag": "{flavor} · 仅元数据",
+      "metadata_only_toggle_unavailable": "当前构建未包含本地插件运行时，因此这里不能启用或停用插件。",
+      "metadata_only_empty_description": "当前 {flavor} 构建仍可重新扫描插件元数据并查看信任细节，但不会运行本地插件运行时。",
+      "runtime_off_title": "当前宿主未提供插件运行时。",
+      "runtime_off_description": "当前 {flavor} 宿主仍可显示插件元数据、信任状态和权限信息，但本地插件运行时能力暂不可用。",
+      "runtime_off_tag": "{flavor} · 运行时不可用",
+      "runtime_off_toggle_unavailable": "当前宿主未提供插件运行时，因此这里不能启用或停用插件。"
+    },
     "permission_revoked_title": "该插件已被撤销",
     "permission_confirm_title": "启用前需要确认权限",
     "permission_revoked_message": "{name} 当前处于撤销状态，请先确认插件来源与信任状态。",

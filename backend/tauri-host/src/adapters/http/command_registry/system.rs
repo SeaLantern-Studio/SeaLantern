@@ -4,6 +4,7 @@ use crate::commands::app::logging as logging_commands;
 use serde_json::Value;
 pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_system_info", handle_get_system_info as CommandHandler);
+    builder.register("get_host_capabilities", handle_get_host_capabilities as CommandHandler);
     builder.register("get_default_run_path", handle_get_default_run_path as CommandHandler);
     builder.register("get_app_version", handle_get_app_version as CommandHandler);
     builder.register(
@@ -32,6 +33,15 @@ fn handle_get_system_info(
     Box::pin(async move {
         let result = host_commands::get_system_info()?;
         Ok(result)
+    })
+}
+
+fn handle_get_host_capabilities(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = host_commands::get_host_capabilities()?;
+        serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
 

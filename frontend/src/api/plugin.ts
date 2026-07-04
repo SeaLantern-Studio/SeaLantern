@@ -159,6 +159,24 @@ export interface InstallFromMarketOptions {
   version?: string;
 }
 
+async function invokeOptionalPluginRuntime<T>(
+  command: string,
+  args: Record<string, unknown> | undefined,
+  defaultValue: T,
+): Promise<T> {
+  try {
+    return await tauriInvoke<T>(command, args);
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[PluginRuntime] optional command "${command}" is unavailable or failed; using fallback`,
+        error,
+      );
+    }
+    return defaultValue;
+  }
+}
+
 export async function installFromMarket(
   options: InstallFromMarketOptions,
 ): Promise<PluginInstallResult> {
@@ -174,23 +192,23 @@ export async function installFromMarket(
 }
 
 export async function onLocaleChanged(locale: string): Promise<void> {
-  return tauriInvoke("on_locale_changed", { locale });
+  return invokeOptionalPluginRuntime("on_locale_changed", { locale }, undefined);
 }
 
 export async function onPageChanged(path: string): Promise<void> {
-  return tauriInvoke("on_page_changed", { path });
+  return invokeOptionalPluginRuntime("on_page_changed", { path }, undefined);
 }
 
 export async function componentMirrorClear(): Promise<void> {
-  return tauriInvoke("component_mirror_clear");
+  return invokeOptionalPluginRuntime("component_mirror_clear", undefined, undefined);
 }
 
 export async function componentMirrorRegister(id: string, componentType: string): Promise<void> {
-  return tauriInvoke("component_mirror_register", { id, componentType });
+  return invokeOptionalPluginRuntime("component_mirror_register", { id, componentType }, undefined);
 }
 
 export async function componentMirrorUnregister(id: string): Promise<void> {
-  return tauriInvoke("component_mirror_unregister", { id });
+  return invokeOptionalPluginRuntime("component_mirror_unregister", { id }, undefined);
 }
 
 export async function contextMenuShowNotify(
@@ -199,11 +217,15 @@ export async function contextMenuShowNotify(
   x: number,
   y: number,
 ): Promise<void> {
-  return tauriInvoke("context_menu_show_notify", { context, targetData, x, y });
+  return invokeOptionalPluginRuntime(
+    "context_menu_show_notify",
+    { context, targetData, x, y },
+    undefined,
+  );
 }
 
 export async function contextMenuHideNotify(): Promise<void> {
-  return tauriInvoke("context_menu_hide_notify");
+  return invokeOptionalPluginRuntime("context_menu_hide_notify", undefined, undefined);
 }
 
 export async function contextMenuCallback(
@@ -212,7 +234,11 @@ export async function contextMenuCallback(
   itemId: string,
   targetData: unknown,
 ): Promise<void> {
-  return tauriInvoke("context_menu_callback", { pluginId, context, itemId, targetData });
+  return invokeOptionalPluginRuntime(
+    "context_menu_callback",
+    { pluginId, context, itemId, targetData },
+    undefined,
+  );
 }
 
 export interface BufferedUiEvent {
@@ -223,7 +249,7 @@ export interface BufferedUiEvent {
 }
 
 export async function getPluginUiSnapshot(): Promise<BufferedUiEvent[]> {
-  return tauriInvoke("get_plugin_ui_snapshot");
+  return invokeOptionalPluginRuntime("get_plugin_ui_snapshot", undefined, []);
 }
 
 export interface BufferedSidebarEvent {
@@ -234,7 +260,7 @@ export interface BufferedSidebarEvent {
 }
 
 export async function getPluginSidebarSnapshot(): Promise<BufferedSidebarEvent[]> {
-  return tauriInvoke("get_plugin_sidebar_snapshot");
+  return invokeOptionalPluginRuntime("get_plugin_sidebar_snapshot", undefined, []);
 }
 
 export interface BufferedContextMenuEvent {
@@ -245,7 +271,7 @@ export interface BufferedContextMenuEvent {
 }
 
 export async function getPluginContextMenuSnapshot(): Promise<BufferedContextMenuEvent[]> {
-  return tauriInvoke("get_plugin_context_menu_snapshot");
+  return invokeOptionalPluginRuntime("get_plugin_context_menu_snapshot", undefined, []);
 }
 
 export interface BufferedComponentEvent {
@@ -254,9 +280,9 @@ export interface BufferedComponentEvent {
 }
 
 export async function getPluginComponentSnapshot(): Promise<BufferedComponentEvent[]> {
-  return tauriInvoke("get_plugin_component_snapshot");
+  return invokeOptionalPluginRuntime("get_plugin_component_snapshot", undefined, []);
 }
 
 export async function getPluginPermissionLogs(pluginId: string): Promise<PluginPermissionLog[]> {
-  return tauriInvoke("get_plugin_permission_logs", { pluginId });
+  return invokeOptionalPluginRuntime("get_plugin_permission_logs", { pluginId }, []);
 }

@@ -4,7 +4,7 @@ import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { useUpdateStore } from "@stores/updateStore";
 import { i18n } from "@language";
-import { downloadUpdate, installUpdate, onDownloadProgress } from "@api/update";
+import { desktopUpdaterApi } from "@api/updateDesktop";
 import { isBrowserEnv } from "@api/tauri";
 import { serverApi } from "@api/server";
 import type { ServerStatus } from "@type/common";
@@ -70,7 +70,7 @@ onMounted(async () => {
     return;
   }
 
-  unlistenProgress = await onDownloadProgress((progress) => {
+  unlistenProgress = await desktopUpdaterApi.onDownloadProgress((progress) => {
     const percent =
       progress.percent ?? (progress.total > 0 ? (progress.downloaded / progress.total) * 100 : 0);
     updateStore.setDownloading(percent);
@@ -111,7 +111,7 @@ async function handleUpdateClick() {
 
   try {
     updateStore.setDownloading(0);
-    const filePath = await downloadUpdate(
+    const filePath = await desktopUpdaterApi.download(
       updateStore.updateInfo.download_url,
       updateStore.updateInfo.sha256,
       updateStore.updateInfo.latest_version,
@@ -188,7 +188,10 @@ async function performInstall() {
   updateStore.setInstalling();
 
   try {
-    await installUpdate(updateStore.downloadedFilePath, updateStore.updateInfo.latest_version);
+    await desktopUpdaterApi.install(
+      updateStore.downloadedFilePath,
+      updateStore.updateInfo.latest_version,
+    );
     window.close();
   } catch (error) {
     console.error("Install failed:", error);

@@ -5,6 +5,10 @@ use crate::services::global;
 use serde::Deserialize;
 use serde_json::Value;
 
+fn plugin_runtime_feature_enabled() -> bool {
+    cfg!(feature = "plugin-local-runtime") || cfg!(feature = "plugin-runtime-bridge")
+}
+
 #[derive(Deserialize)]
 struct PluginIdRequest {
     #[serde(alias = "pluginId")]
@@ -502,6 +506,9 @@ fn handle_component_mirror_register(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Null);
+        }
         let req: ComponentMirrorRegisterRequest = parse_params(params)?;
         crate::plugins::api::component_mirror_register(&req.id, &req.component_type);
         Ok(Value::Null)
@@ -512,6 +519,9 @@ fn handle_component_mirror_unregister(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Null);
+        }
         let req: ComponentMirrorIdRequest = parse_params(params)?;
         crate::plugins::api::component_mirror_unregister(&req.id);
         Ok(Value::Null)
@@ -522,6 +532,9 @@ fn handle_component_mirror_clear(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Null);
+        }
         crate::plugins::api::component_mirror_clear();
         Ok(Value::Null)
     })
@@ -543,6 +556,9 @@ fn handle_get_plugin_ui_snapshot(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         serde_json::to_value(crate::plugins::api::take_ui_event_snapshot())
             .map_err(|error| error.to_string())
     })
@@ -552,6 +568,9 @@ fn handle_get_plugin_sidebar_snapshot(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         serde_json::to_value(crate::plugins::api::take_sidebar_event_snapshot())
             .map_err(|error| error.to_string())
     })
@@ -561,6 +580,9 @@ fn handle_get_plugin_context_menu_snapshot(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         serde_json::to_value(crate::plugins::api::take_context_menu_snapshot())
             .map_err(|error| error.to_string())
     })
@@ -570,6 +592,9 @@ fn handle_get_plugin_component_snapshot(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         serde_json::to_value(crate::plugins::api::take_component_event_snapshot())
             .map_err(|error| error.to_string())
     })
@@ -579,6 +604,9 @@ fn handle_get_plugin_permission_logs(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         let req: PluginIdRequest = parse_params(params)?;
         let result = crate::plugins::api::get_plugin_permission_logs(&req.plugin_id);
         serde_json::to_value(result).map_err(|error| error.to_string())

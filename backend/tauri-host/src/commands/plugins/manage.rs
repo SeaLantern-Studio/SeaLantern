@@ -8,6 +8,10 @@ pub(crate) mod market;
 mod permissions;
 mod ui_bridge;
 
+fn plugin_runtime_feature_enabled() -> bool {
+    cfg!(feature = "plugin-local-runtime") || cfg!(feature = "plugin-runtime-bridge")
+}
+
 #[tauri::command]
 /// 读取插件列表
 pub fn list_plugins(
@@ -299,16 +303,27 @@ pub fn on_locale_changed(
 
 #[tauri::command]
 pub fn component_mirror_register(id: String, component_type: String) {
+    if !plugin_runtime_feature_enabled() {
+        let _ = (id, component_type);
+        return;
+    }
     crate::plugins::api::component_mirror_register(&id, &component_type)
 }
 
 #[tauri::command]
 pub fn component_mirror_unregister(id: String) {
+    if !plugin_runtime_feature_enabled() {
+        let _ = id;
+        return;
+    }
     crate::plugins::api::component_mirror_unregister(&id)
 }
 
 #[tauri::command]
 pub fn component_mirror_clear() {
+    if !plugin_runtime_feature_enabled() {
+        return;
+    }
     crate::plugins::api::component_mirror_clear()
 }
 
@@ -325,21 +340,33 @@ pub fn on_page_changed(
 
 #[tauri::command]
 pub fn get_plugin_component_snapshot() -> Vec<crate::plugins::api::BufferedComponentEvent> {
+    if !plugin_runtime_feature_enabled() {
+        return Vec::new();
+    }
     crate::plugins::api::take_component_event_snapshot()
 }
 
 #[tauri::command]
 pub fn get_plugin_ui_snapshot() -> Vec<crate::plugins::api::BufferedUiEvent> {
+    if !plugin_runtime_feature_enabled() {
+        return Vec::new();
+    }
     crate::plugins::api::take_ui_event_snapshot()
 }
 
 #[tauri::command]
 pub fn get_plugin_sidebar_snapshot() -> Vec<crate::plugins::api::BufferedSidebarEvent> {
+    if !plugin_runtime_feature_enabled() {
+        return Vec::new();
+    }
     crate::plugins::api::take_sidebar_event_snapshot()
 }
 
 #[tauri::command]
 pub fn get_plugin_context_menu_snapshot() -> Vec<crate::plugins::api::BufferedContextMenuEvent> {
+    if !plugin_runtime_feature_enabled() {
+        return Vec::new();
+    }
     crate::plugins::api::take_context_menu_snapshot()
 }
 
@@ -347,6 +374,10 @@ pub fn get_plugin_context_menu_snapshot() -> Vec<crate::plugins::api::BufferedCo
 pub fn get_plugin_permission_logs(
     plugin_id: String,
 ) -> Result<Vec<crate::plugins::api::BufferedPermissionLog>, String> {
+    if !plugin_runtime_feature_enabled() {
+        let _ = plugin_id;
+        return Ok(Vec::new());
+    }
     ui_bridge::get_plugin_permission_logs(plugin_id)
 }
 

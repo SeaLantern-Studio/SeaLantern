@@ -2,13 +2,21 @@
 //!
 //! 这里负责启动 Axum 服务，并把认证、路由、上传、日志流等细节委托给子模块。
 
+#[path = "server/api.rs"]
 mod api;
+#[path = "server/auth.rs"]
 mod auth;
+#[path = "server/event_stream.rs"]
 mod event_stream;
+#[path = "server/log_stream.rs"]
 mod log_stream;
+#[path = "server/next_bridge.rs"]
 mod next_bridge;
+#[path = "server/router.rs"]
 mod router;
+#[path = "server/state.rs"]
 mod state;
+#[path = "server/upload.rs"]
 mod upload;
 
 use super::command_registry::CommandRegistry;

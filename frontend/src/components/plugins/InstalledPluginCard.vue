@@ -13,11 +13,13 @@ defineProps<{
   description: string;
   authorName: string | null;
   metaItems: string[];
+  sceneTagLabel?: string | null;
   stateLabel: string;
   stateTone: "success" | "warning" | "neutral" | "error";
   iconUrl?: string;
   enabled: boolean;
   canToggle: boolean;
+  toggleUnavailableMessage?: string;
   hasMissingRequiredDependencies: boolean;
   hasMissingOptionalDependencies: boolean;
   updateSummary: string | null;
@@ -85,6 +87,9 @@ defineEmits<{
             <span v-for="item in metaItems" :key="item" class="installed-plugin-card__meta-pill">
               {{ item }}
             </span>
+            <span v-if="sceneTagLabel" class="installed-plugin-card__meta-pill installed-plugin-card__meta-pill--info">
+              {{ sceneTagLabel }}
+            </span>
             <span
               v-if="hasMissingRequiredDependencies"
               class="installed-plugin-card__meta-pill installed-plugin-card__meta-pill--error"
@@ -123,7 +128,7 @@ defineEmits<{
 
         <div class="installed-plugin-card__actions-right">
           <span v-if="!canToggle" class="installed-plugin-card__toggle-note">{{
-            i18n.t("plugins.next.card.toggle_unavailable")
+            toggleUnavailableMessage || i18n.t("plugins.next.card.toggle_unavailable")
           }}</span>
           <span
             v-else-if="hasMissingRequiredDependencies && !enabled"
@@ -254,6 +259,11 @@ defineEmits<{
 .installed-plugin-card__meta-pill--warning {
   border-color: rgba(245, 158, 11, 0.28);
   color: var(--sl-warning);
+}
+
+.installed-plugin-card__meta-pill--info {
+  border-color: color-mix(in srgb, var(--sl-primary) 26%, transparent);
+  color: var(--sl-primary);
 }
 
 .installed-plugin-card__meta-pill--error {

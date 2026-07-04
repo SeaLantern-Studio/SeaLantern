@@ -16,7 +16,7 @@ mod versioning;
 pub(crate) use crate::models::plugin::PluginState;
 use crate::models::plugin::{
     PluginActions, PluginDistributionClass, PluginInfo, PluginInstallResult, PluginManifest,
-    PluginSource,
+    PluginRuntimeKind, PluginSource,
 };
 use crate::plugins::api::PluginApiRegistry;
 use crate::plugins::runtime::PluginRuntime;
@@ -24,6 +24,14 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
+
+fn local_plugin_runtime_feature_enabled() -> bool {
+    cfg!(feature = "plugin-local-runtime")
+}
+
+fn builtin_plugin_runtime_feature_enabled() -> bool {
+    cfg!(all(feature = "docker", feature = "plugin-builtin-runtime"))
+}
 
 /// 插件管理器
 ///
@@ -37,6 +45,33 @@ pub struct PluginManager {
 }
 
 impl PluginManager {
+    fn plugin_runtime_is_available_for(&self, plugin: &PluginInfo) -> bool {
+        !matches!(plugin.runtime, PluginRuntimeKind::Lua)
+            || local_plugin_runtime_feature_enabled()
+    }
+
+    fn plugin_runtime_unavailable_error(&self, plugin: &PluginInfo) -> String {
+        format!(
+            "plugin runtime is unavailable for plugin '{}' without the 'plugin-local-runtime' feature",
+            plugin.manifest.id
+        )
+    }
+
+    pub(crate) fn runtime_activation_available_for(&self, plugin: &PluginInfo) -> bool {
+        match crate::plugins::manager::driver::driver_kind_for(plugin) {
+            crate::plugins::manager::driver::PluginDriverKind::LuaLocal => {
+                local_plugin_runtime_feature_enabled()
+            }
+            crate::plugins::manager::driver::PluginDriverKind::BuiltinRust => {
+                builtin_plugin_runtime_feature_enabled()
+            }
+        }
+    }
+
+    pub(crate) fn server_event_forwarding_enabled() -> bool {
+        local_plugin_runtime_feature_enabled() || builtin_plugin_runtime_feature_enabled()
+    }
+
     /// 创建插件管理器
     ///
     /// # Parameters
@@ -134,7 +169,10 @@ impl PluginManager {
             .get(plugin_id)
             .cloned()
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        self.driver_for(&plugin)
+        if !self.plugin_runtime_is_available_for(&plugin) {
+            return Err(self.plugin_runtime_unavailable_error(&plugin));
+        }
+        self.runtime_driver_for(&plugin)
             .enable(self, plugin_id, confirmation)
     }
 
@@ -153,7 +191,10 @@ impl PluginManager {
             .get(plugin_id)
             .cloned()
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        self.driver_for(&plugin).disable(self, plugin_id)
+        if !self.plugin_runtime_is_available_for(&plugin) {
+            return Err(self.plugin_runtime_unavailable_error(&plugin));
+        }
+        self.runtime_driver_for(&plugin).disable(self, plugin_id)
     }
 
     fn copy_included_resources(
@@ -248,7 +289,11 @@ impl PluginManager {
     }
 
     pub(crate) fn apply_runtime_capabilities(&self, mut plugin: PluginInfo) -> PluginInfo {
-        let capabilities = self.driver_for(&plugin).capabilities();
+        if !self.plugin_runtime_is_available_for(&plugin) {
+            plugin.actions.can_toggle = false;
+            return plugin;
+        }
+        let capabilities = self.runtime_driver_for(&plugin).runtime_capabilities();
         plugin.actions.can_toggle = capabilities.can_toggle;
         plugin
     }
@@ -300,10 +345,14 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        if !self.driver_for(plugin).capabilities().has_settings {
+        if !self
+            .metadata_driver_for(plugin)
+            .metadata_capabilities()
+            .has_settings
+        {
             return Ok(serde_json::json!({}));
         }
-        self.driver_for(plugin).get_settings(self, plugin)
+        self.metadata_driver_for(plugin).get_settings(self, plugin)
     }
 
     /// 写入插件设置
@@ -316,10 +365,15 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        if !self.driver_for(plugin).capabilities().has_settings {
+        if !self
+            .metadata_driver_for(plugin)
+            .metadata_capabilities()
+            .has_settings
+        {
             return Err(format!("Plugin '{}' does not support settings", plugin_id));
         }
-        self.driver_for(plugin).set_settings(self, plugin, settings)
+        self.metadata_driver_for(plugin)
+            .set_settings(self, plugin, settings)
     }
 
     /// 读取插件图标
@@ -328,10 +382,10 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        if !self.driver_for(plugin).capabilities().has_icon {
+        if !self.metadata_driver_for(plugin).metadata_capabilities().has_icon {
             return Ok(String::new());
         }
-        self.driver_for(plugin).get_icon(self, plugin)
+        self.metadata_driver_for(plugin).get_icon(self, plugin)
     }
 
     /// 读取插件样式
@@ -340,10 +394,10 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        if !self.driver_for(plugin).capabilities().has_css {
+        if !self.metadata_driver_for(plugin).metadata_capabilities().has_css {
             return Ok(String::new());
         }
-        self.driver_for(plugin).get_css(self, plugin)
+        self.metadata_driver_for(plugin).get_css(self, plugin)
     }
 
     /// 读取全部启用插件样式
@@ -367,7 +421,7 @@ impl PluginManager {
             .get(plugin_id)
             .cloned()
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        self.driver_for(&plugin)
+        self.metadata_driver_for(&plugin)
             .delete(self, plugin_id, delete_data)
     }
 
@@ -376,20 +430,34 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        Ok(self.driver_for(plugin).collect_update_version(plugin))
+        Ok(self.metadata_driver_for(plugin).collect_update_version(plugin))
     }
 
     pub fn collect_update_versions(&self) -> Vec<(String, String)> {
         self.plugins
             .values()
-            .filter_map(|plugin| self.driver_for(plugin).collect_update_version(plugin))
+            .filter_map(|plugin| self.metadata_driver_for(plugin).collect_update_version(plugin))
             .collect()
     }
 
-    pub(crate) fn driver_for(
+    pub(crate) fn metadata_driver_for(
         &self,
         plugin: &PluginInfo,
-    ) -> &'static dyn crate::plugins::manager::driver::PluginDriver {
+    ) -> &'static dyn crate::plugins::manager::driver::PluginMetadataDriver {
+        match crate::plugins::manager::driver::driver_kind_for(plugin) {
+            crate::plugins::manager::driver::PluginDriverKind::LuaLocal => {
+                &crate::plugins::manager::driver_local::LuaLocalPluginDriver
+            }
+            crate::plugins::manager::driver::PluginDriverKind::BuiltinRust => {
+                &crate::plugins::manager::driver_builtin::BuiltinRustPluginDriver
+            }
+        }
+    }
+
+    pub(crate) fn runtime_driver_for(
+        &self,
+        plugin: &PluginInfo,
+    ) -> &'static dyn crate::plugins::manager::driver::PluginRuntimeDriver {
         match crate::plugins::manager::driver::driver_kind_for(plugin) {
             crate::plugins::manager::driver::PluginDriverKind::LuaLocal => {
                 &crate::plugins::manager::driver_local::LuaLocalPluginDriver
@@ -485,10 +553,17 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        if !self.driver_for(plugin).capabilities().supports_context_menu {
+        if !self.plugin_runtime_is_available_for(plugin) {
+            return Err(self.plugin_runtime_unavailable_error(plugin));
+        }
+        if !self
+            .runtime_driver_for(plugin)
+            .runtime_capabilities()
+            .supports_context_menu
+        {
             return Err(format!("Plugin '{}' does not support context menu callbacks", plugin_id));
         }
-        self.driver_for(plugin).dispatch_context_menu_callback(
+        self.runtime_driver_for(plugin).dispatch_context_menu_callback(
             self,
             plugin_id,
             context,
@@ -501,7 +576,47 @@ impl PluginManager {
 #[cfg(test)]
 mod tests {
     use super::PluginManager;
+    use crate::models::plugin::{PluginAuthor, PluginManifest, PluginRuntimeKind};
+    use std::collections::HashMap;
     use std::sync::Arc;
+
+    fn sample_local_manifest(runtime: PluginRuntimeKind) -> PluginManifest {
+        PluginManifest {
+            id: "example-plugin".to_string(),
+            name: "Example Plugin".to_string(),
+            version: "1.0.0".to_string(),
+            description: "test plugin".to_string(),
+            author: PluginAuthor {
+                name: "tester".to_string(),
+                email: None,
+                url: None,
+            },
+            main: match runtime {
+                PluginRuntimeKind::Lua => "main.lua".to_string(),
+                PluginRuntimeKind::Rust => "builtin:rust".to_string(),
+            },
+            license: None,
+            homepage: None,
+            repository: None,
+            engines: None,
+            permissions: Vec::new(),
+            ui: None,
+            events: Vec::new(),
+            commands: Vec::new(),
+            programs: Vec::new(),
+            dependencies: Vec::new(),
+            optional_dependencies: Vec::new(),
+            icon: None,
+            settings: None,
+            sidebar: None,
+            locales: None,
+            include: Vec::new(),
+            capabilities: Vec::new(),
+            theme_var_map: HashMap::new(),
+            presets: HashMap::new(),
+            server_events: HashMap::new(),
+        }
+    }
 
     #[test]
     fn new_checked_rejects_file_backed_plugins_dir() {
@@ -540,5 +655,63 @@ mod tests {
 
         assert!(Arc::ptr_eq(&shared_runtimes, &manager.get_shared_runtimes()));
         assert!(api_registry.ptr_eq(&manager.get_api_registry()));
+    }
+
+    #[test]
+    fn runtime_off_contract_disables_toggle_for_lua_plugin() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let plugins_dir = temp_dir.path().join("plugins");
+        let data_dir = temp_dir.path().join("plugin-data");
+        let manager = PluginManager::new_checked(plugins_dir, data_dir)
+            .expect("plugin manager should initialize");
+
+        let plugin = manager.make_local_plugin_info(
+            sample_local_manifest(PluginRuntimeKind::Lua),
+            crate::plugins::manager::PluginState::Disabled,
+            temp_dir.path().join("sample-plugin").display().to_string(),
+            crate::models::plugin::PluginDistributionClass::LocalDirectory,
+            None,
+            Vec::new(),
+        );
+
+        let normalized = manager.apply_runtime_capabilities(plugin);
+
+        assert_eq!(normalized.actions.can_toggle, cfg!(feature = "plugin-local-runtime"));
+    }
+
+    #[test]
+    fn runtime_activation_availability_matches_build_feature_matrix() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let plugins_dir = temp_dir.path().join("plugins");
+        let data_dir = temp_dir.path().join("plugin-data");
+        let manager = PluginManager::new_checked(plugins_dir, data_dir)
+            .expect("plugin manager should initialize");
+
+        let lua_plugin = manager.make_local_plugin_info(
+            sample_local_manifest(PluginRuntimeKind::Lua),
+            crate::plugins::manager::PluginState::Disabled,
+            temp_dir.path().join("sample-plugin").display().to_string(),
+            crate::models::plugin::PluginDistributionClass::LocalDirectory,
+            None,
+            Vec::new(),
+        );
+        let builtin_plugin = crate::plugins::builtin::builtin_plugin_infos()
+            .into_iter()
+            .next()
+            .expect("builtin plugin should exist");
+
+        assert_eq!(
+            manager.runtime_activation_available_for(&lua_plugin),
+            cfg!(feature = "plugin-local-runtime")
+        );
+        assert_eq!(
+            manager.runtime_activation_available_for(&builtin_plugin),
+            cfg!(all(feature = "docker", feature = "plugin-builtin-runtime"))
+        );
+        assert_eq!(
+            PluginManager::server_event_forwarding_enabled(),
+            cfg!(feature = "plugin-local-runtime")
+                || cfg!(all(feature = "docker", feature = "plugin-builtin-runtime"))
+        );
     }
 }

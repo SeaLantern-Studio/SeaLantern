@@ -4,11 +4,15 @@ use crate::services::events::ServerEventEnvelope;
 use super::PluginManager;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct PluginRuntimeCapabilities {
-    pub can_toggle: bool,
+pub(crate) struct PluginMetadataCapabilities {
     pub has_settings: bool,
     pub has_icon: bool,
     pub has_css: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PluginRuntimeCapabilities {
+    pub can_toggle: bool,
     pub supports_context_menu: bool,
     pub supports_page_events: bool,
     pub supports_locale_events: bool,
@@ -21,16 +25,9 @@ pub(crate) enum PluginDriverKind {
     BuiltinRust,
 }
 
-pub(crate) trait PluginDriver {
-    fn capabilities(&self) -> PluginRuntimeCapabilities;
+pub(crate) trait PluginMetadataDriver {
+    fn metadata_capabilities(&self) -> PluginMetadataCapabilities;
 
-    fn enable(
-        &self,
-        manager: &mut PluginManager,
-        plugin_id: &str,
-        confirmation: Option<PluginEnableConfirmation>,
-    ) -> Result<PluginEnableResult, String>;
-    fn disable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<Vec<String>, String>;
     fn delete(
         &self,
         manager: &mut PluginManager,
@@ -51,6 +48,18 @@ pub(crate) trait PluginDriver {
     fn get_icon(&self, manager: &PluginManager, plugin: &PluginInfo) -> Result<String, String>;
     fn get_css(&self, manager: &PluginManager, plugin: &PluginInfo) -> Result<String, String>;
     fn collect_update_version(&self, plugin: &PluginInfo) -> Option<(String, String)>;
+}
+
+pub(crate) trait PluginRuntimeDriver {
+    fn runtime_capabilities(&self) -> PluginRuntimeCapabilities;
+
+    fn enable(
+        &self,
+        manager: &mut PluginManager,
+        plugin_id: &str,
+        confirmation: Option<PluginEnableConfirmation>,
+    ) -> Result<PluginEnableResult, String>;
+    fn disable(&self, manager: &mut PluginManager, plugin_id: &str) -> Result<Vec<String>, String>;
     fn notify_page_changed(&self, manager: &PluginManager, plugin_id: &str, path: &str);
     fn notify_locale_changed(&self, manager: &PluginManager, plugin_id: &str, locale: &str);
     fn notify_server_event(

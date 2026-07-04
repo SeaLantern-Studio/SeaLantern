@@ -1,4 +1,9 @@
+#[cfg(all(feature = "docker", feature = "plugin-builtin-runtime"))]
 #[path = "obv11-client/mod.rs"]
+pub(crate) mod obv11_client;
+
+#[cfg(not(all(feature = "docker", feature = "plugin-builtin-runtime")))]
+#[path = "obv11-client/mod_stub.rs"]
 pub(crate) mod obv11_client;
 
 use crate::models::plugin::{
