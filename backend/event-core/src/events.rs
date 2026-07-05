@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// High-level scope used to separate app-wide events from per-server events.
 pub enum EventScope {
     App,
     Server,
@@ -14,6 +15,7 @@ pub enum EventScope {
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// Lifecycle of app-level operations emitted through the shared event bus.
 pub enum AppEventKind {
     OperationRequested,
     OperationSucceeded,
@@ -21,6 +23,7 @@ pub enum AppEventKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Envelope delivered to app-event subscribers and persisted in the recent-event buffer.
 pub struct AppEventEnvelope {
     pub event_id: String,
     pub occurred_at: u64,
@@ -33,6 +36,7 @@ pub struct AppEventEnvelope {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
+/// App-event payload variants carried inside [`AppEventEnvelope`].
 pub enum AppEventPayload {
     Operation {
         action: String,
@@ -41,9 +45,11 @@ pub enum AppEventPayload {
     },
 }
 
+/// Callback signature for app-scoped event subscribers.
 pub type AppEventSubscriber = dyn Fn(&AppEventEnvelope) -> Result<(), String> + Send + Sync;
 
 #[derive(Clone)]
+/// Combined registration payload for consumers that may listen to server events, app events, or both.
 pub struct EventConsumer {
     pub server_events: Option<Arc<ServerEventSubscriber>>,
     pub server_filter: Option<ServerEventSubscription>,
@@ -52,6 +58,7 @@ pub struct EventConsumer {
 }
 
 impl EventConsumer {
+    /// Creates a consumer with optional server and app callbacks.
     pub fn new(
         server_events: Option<Arc<ServerEventSubscriber>>,
         app_events: Option<Arc<AppEventSubscriber>>,
@@ -64,14 +71,17 @@ impl EventConsumer {
         }
     }
 
+    /// Creates a consumer that only subscribes to server events.
     pub fn server(server_events: Arc<ServerEventSubscriber>) -> Self {
         Self::new(Some(server_events), None)
     }
 
+    /// Creates a consumer that only subscribes to app events.
     pub fn app(app_events: Arc<AppEventSubscriber>) -> Self {
         Self::new(None, Some(app_events))
     }
 
+    /// Creates a consumer that subscribes to both server and app event streams.
     pub fn both(
         server_events: Arc<ServerEventSubscriber>,
         app_events: Arc<AppEventSubscriber>,
@@ -79,11 +89,13 @@ impl EventConsumer {
         Self::new(Some(server_events), Some(app_events))
     }
 
+    /// Attaches a normalized server-event filter to the consumer.
     pub fn with_server_filter(mut self, filter: ServerEventSubscription) -> Self {
         self.server_filter = Some(filter.normalized());
         self
     }
 
+    /// Attaches a normalized app-event filter to the consumer.
     pub fn with_app_filter(mut self, filter: AppEventSubscription) -> Self {
         self.app_filter = Some(filter.normalized());
         self
@@ -91,6 +103,7 @@ impl EventConsumer {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+/// Subscription identifiers returned after registering a consumer.
 pub struct EventConsumerRegistration {
     pub server_subscription_id: Option<u64>,
     pub app_subscription_id: Option<u64>,
@@ -98,6 +111,7 @@ pub struct EventConsumerRegistration {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// Broad classification used for diagnostics and registry visibility.
 pub enum EventConsumerKind {
     Internal,
     PluginRuntime,
@@ -107,6 +121,7 @@ pub enum EventConsumerKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Human-readable metadata attached to a named consumer registration.
 pub struct EventConsumerMetadata {
     pub kind: EventConsumerKind,
     pub owner: String,
@@ -114,6 +129,7 @@ pub struct EventConsumerMetadata {
 }
 
 impl EventConsumerMetadata {
+    /// Creates metadata for a named consumer entry.
     pub fn new(
         kind: EventConsumerKind,
         owner: impl Into<String>,
@@ -138,6 +154,7 @@ impl Default for EventConsumerMetadata {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Snapshot of a named consumer as exposed by registry and inspection APIs.
 pub struct NamedEventConsumerState {
     pub name: String,
     pub enabled: bool,
@@ -158,6 +175,7 @@ struct ManagedEventConsumer {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// Server runtime event families emitted by the backend event bus.
 pub enum ServerEventKind {
     OutputRawLine,
     OutputStructuredLog,
@@ -176,6 +194,7 @@ pub enum ServerEventKind {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// Source classification for server events.
 pub enum ServerEventSource {
     RuntimeStdout,
     RuntimeStderr,
@@ -187,6 +206,7 @@ pub enum ServerEventSource {
 }
 
 impl ServerEventSource {
+    /// Formats the event source into the string representation used in envelopes.
     pub fn as_str(&self, plugin_id: Option<&str>) -> String {
         match self {
             Self::RuntimeStdout => "runtime_stdout".to_string(),
@@ -203,6 +223,7 @@ impl ServerEventSource {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Envelope delivered to server-event subscribers and recent-event buffers.
 pub struct ServerEventEnvelope {
     pub event_id: String,
     pub occurred_at: u64,
@@ -215,6 +236,7 @@ pub struct ServerEventEnvelope {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
+/// Server-event payload variants carried inside [`ServerEventEnvelope`].
 pub enum ServerEventPayload {
     RawLine {
         line: String,
@@ -241,6 +263,7 @@ pub enum ServerEventPayload {
     },
 }
 
+/// Callback signature for server-scoped event subscribers.
 pub type ServerEventSubscriber = dyn Fn(&ServerEventEnvelope) -> Result<(), String> + Send + Sync;
 
 #[derive(Clone)]
@@ -278,6 +301,7 @@ fn next_subscriber_id() -> u64 {
         .fetch_add(1, Ordering::Relaxed)
 }
 
+/// In-memory event bus that buffers recent events and manages named consumer registrations.
 pub struct EventManager {
     named_consumers: Mutex<HashMap<String, ManagedEventConsumer>>,
     recent_app_events: Mutex<Vec<AppEventEnvelope>>,
@@ -289,6 +313,7 @@ pub struct EventManager {
 }
 
 impl EventManager {
+    /// Creates an event manager with bounded recent-event buffers.
     pub fn new() -> Self {
         Self {
             named_consumers: Mutex::new(HashMap::new()),
@@ -301,6 +326,7 @@ impl EventManager {
         }
     }
 
+    /// Publishes an app-scoped event, records it, and notifies subscribers.
     pub fn publish_app_event(
         &self,
         action: &str,
@@ -322,6 +348,7 @@ impl EventManager {
         event
     }
 
+    /// Publishes a server-scoped event, records it, and notifies subscribers.
     pub fn publish_server_event(
         &self,
         server_id: &str,
@@ -344,6 +371,7 @@ impl EventManager {
         event
     }
 
+    /// Registers a raw app-event subscriber and returns its subscription id.
     pub fn subscribe_app_events(&self, callback: Arc<AppEventSubscriber>) -> u64 {
         let id = next_subscriber_id();
         self.app_subscribers
@@ -353,6 +381,7 @@ impl EventManager {
         id
     }
 
+    /// Registers a raw server-event subscriber and returns its subscription id.
     pub fn subscribe_server_events(&self, callback: Arc<ServerEventSubscriber>) -> u64 {
         let id = next_subscriber_id();
         self.server_subscribers
@@ -362,6 +391,7 @@ impl EventManager {
         id
     }
 
+    /// Removes a previously registered server-event subscriber.
     pub fn unsubscribe_server_events(&self, subscriber_id: u64) {
         self.server_subscribers
             .lock()
@@ -369,6 +399,7 @@ impl EventManager {
             .retain(|entry| entry.id != subscriber_id);
     }
 
+    /// Removes a previously registered app-event subscriber.
     pub fn unsubscribe_app_events(&self, subscriber_id: u64) {
         self.app_subscribers
             .lock()
@@ -376,6 +407,7 @@ impl EventManager {
             .retain(|entry| entry.id != subscriber_id);
     }
 
+    /// Registers an anonymous consumer and returns the active subscription ids.
     pub fn register_consumer(&self, consumer: EventConsumer) -> EventConsumerRegistration {
         let server_filter = consumer.server_filter.clone();
         let app_filter = consumer.app_filter.clone();
@@ -410,6 +442,7 @@ impl EventManager {
         }
     }
 
+    /// Registers or replaces a named consumer using default metadata.
     pub fn register_named_consumer(
         &self,
         name: &str,
@@ -418,6 +451,7 @@ impl EventManager {
         self.register_named_consumer_with_metadata(name, consumer, EventConsumerMetadata::default())
     }
 
+    /// Registers or replaces a named consumer with explicit metadata.
     pub fn register_named_consumer_with_metadata(
         &self,
         name: &str,
@@ -441,6 +475,7 @@ impl EventManager {
         registration
     }
 
+    /// Unregisters a named consumer and tears down its active subscriptions.
     pub fn unregister_named_consumer(&self, name: &str) -> Option<EventConsumerRegistration> {
         let managed = self
             .named_consumers
@@ -460,6 +495,7 @@ impl EventManager {
         }
     }
 
+    /// Enables or disables a named consumer by rebuilding its subscriptions.
     pub fn set_named_consumer_enabled(&self, name: &str, enabled: bool) -> Result<(), String> {
         let mut consumers = self
             .named_consumers
@@ -486,6 +522,7 @@ impl EventManager {
         Ok(())
     }
 
+    /// Replaces the filters of a named consumer and reapplies subscriptions when enabled.
     pub fn update_named_consumer_filters(
         &self,
         name: &str,
@@ -515,6 +552,7 @@ impl EventManager {
         Ok(managed.registration)
     }
 
+    /// Updates the metadata attached to a named consumer.
     pub fn update_named_consumer_metadata(
         &self,
         name: &str,
@@ -531,6 +569,7 @@ impl EventManager {
         Ok(())
     }
 
+    /// Returns all named consumer snapshots sorted by name.
     pub fn registered_consumers(&self) -> Vec<NamedEventConsumerState> {
         let mut registrations = self
             .named_consumers
@@ -551,12 +590,14 @@ impl EventManager {
         registrations
     }
 
+    /// Returns the snapshot for a single named consumer.
     pub fn registered_consumer(&self, name: &str) -> Option<NamedEventConsumerState> {
         self.registered_consumers()
             .into_iter()
             .find(|consumer| consumer.name == name)
     }
 
+    /// Returns the newest server events up to `limit` entries.
     pub fn recent_server_events(&self, limit: Option<usize>) -> Vec<ServerEventEnvelope> {
         let events = self
             .recent_server_events
@@ -648,6 +689,7 @@ fn server_event_kind_key(kind: &ServerEventKind) -> &'static str {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// Filter applied to app-event subscriptions.
 pub struct AppEventSubscription {
     pub actions: Vec<String>,
     pub kinds: Vec<String>,
@@ -655,6 +697,7 @@ pub struct AppEventSubscription {
 }
 
 impl AppEventSubscription {
+    /// Lowercases comparison fields so matching stays case-insensitive.
     pub fn normalized(&self) -> Self {
         Self {
             actions: self
@@ -675,6 +718,7 @@ impl AppEventSubscription {
         }
     }
 
+    /// Returns whether the filter accepts `event`.
     pub fn matches(&self, event: &AppEventEnvelope) -> bool {
         (self.actions.is_empty()
             || self
@@ -695,6 +739,7 @@ impl AppEventSubscription {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+/// Plugin-manifest representation of server-event subscriptions.
 pub struct PluginServerEventSubscription {
     #[serde(default)]
     pub classes: Vec<String>,
@@ -705,6 +750,7 @@ pub struct PluginServerEventSubscription {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// Runtime representation of server-event filters used by the event bus.
 pub struct ServerEventSubscription {
     pub classes: Vec<String>,
     pub event_kinds: Vec<String>,
@@ -712,6 +758,7 @@ pub struct ServerEventSubscription {
 }
 
 impl ServerEventSubscription {
+    /// Lowercases class and event-kind selectors for stable matching.
     pub fn normalized(&self) -> Self {
         Self {
             classes: self
@@ -728,6 +775,7 @@ impl ServerEventSubscription {
         }
     }
 
+    /// Returns whether the filter accepts `event`.
     pub fn matches(&self, event: &ServerEventEnvelope) -> bool {
         let class_matches = if self.classes.is_empty() {
             true
@@ -789,6 +837,7 @@ impl From<&PluginServerEventSubscription> for ServerEventSubscription {
     }
 }
 
+/// Converts plugin manifest subscriptions into normalized runtime filters.
 pub fn plugin_server_event_subscriptions_map(
     manifest_subscriptions: &HashMap<String, PluginServerEventSubscription>,
 ) -> HashMap<String, ServerEventSubscription> {

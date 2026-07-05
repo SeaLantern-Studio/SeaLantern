@@ -1,3 +1,5 @@
+//! Startup candidate scanning for folders, jars, and extracted modpack archives.
+
 use std::path::Path;
 use std::sync::OnceLock;
 
@@ -25,6 +27,7 @@ impl Drop for TempExtractDir {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Result returned after scanning a folder or archive for startup candidates.
 pub struct StartupScanResult {
     pub parsed_core: ParsedServerCoreInfo,
     pub candidates: Vec<StartupCandidateItem>,
@@ -36,6 +39,7 @@ pub struct StartupScanResult {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// One startup candidate discovered during folder or archive inspection.
 pub struct StartupCandidateItem {
     pub id: String,
     pub mode: String,
@@ -63,6 +67,7 @@ fn is_pumpkin_executable(path: &Path) -> bool {
     filename.contains("pumpkin") && (extension == "exe" || extension.is_empty())
 }
 
+/// Scans a folder or archive source and ranks startup candidates for the setup flow.
 pub fn scan_startup_candidates(
     source_path: &str,
     source_type: &str,

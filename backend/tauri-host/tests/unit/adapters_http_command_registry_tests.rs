@@ -82,6 +82,9 @@ async fn parse_server_core_type_compat_alias_preserves_legacy_display_semantics(
         DispatchResult::Success(value) => {
             assert_eq!(value.get("core_type").and_then(|item| item.as_str()), Some("paper"));
         }
+        DispatchResult::InvalidRequest(message) => {
+            panic!("parse_server_core_key unexpectedly rejected request: {message}")
+        }
         DispatchResult::Failure(message) => panic!("parse_server_core_key failed: {message}"),
         DispatchResult::NotFound(message) => {
             panic!("parse_server_core_key unexpectedly missing: {message}")
@@ -91,6 +94,9 @@ async fn parse_server_core_type_compat_alias_preserves_legacy_display_semantics(
     match parsed_type {
         DispatchResult::Success(value) => {
             assert_eq!(value.get("core_type").and_then(|item| item.as_str()), Some("Paper"));
+        }
+        DispatchResult::InvalidRequest(message) => {
+            panic!("parse_server_core_type unexpectedly rejected request: {message}")
         }
         DispatchResult::Failure(message) => panic!("parse_server_core_type failed: {message}"),
         DispatchResult::NotFound(message) => {

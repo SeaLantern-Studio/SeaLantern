@@ -13,6 +13,7 @@ pub const PLUGIN_INSTALL_METADATA_FILE_NAME: &str = ".sealantern-plugin-install.
 const TRUSTED_CATALOG_JSON: &str = include_str!("../../../shared/plugin-trusted-catalog.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Signed or bundled snapshot describing reviewed plugin artifacts.
 pub struct TrustedCatalogSnapshot {
     pub version: u32,
     pub catalog_id: String,
@@ -24,6 +25,7 @@ pub struct TrustedCatalogSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// One trusted-catalog entry for a specific plugin version and archive hash.
 pub struct TrustedCatalogEntry {
     pub plugin_id: String,
     pub version: String,
@@ -43,6 +45,7 @@ pub struct TrustedCatalogEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// Origin class used when assessing trust and consent rules.
 pub enum PluginDistributionClass {
     Builtin,
     Market,
@@ -55,6 +58,7 @@ pub enum PluginDistributionClass {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// Persistence scope granted when a user confirms plugin enablement.
 pub enum PluginEnableGrantScope {
     Once,
     #[default]
@@ -64,6 +68,7 @@ pub enum PluginEnableGrantScope {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// User-facing trust badge shown for a plugin.
 pub enum PluginTrustLevelDisplay {
     Builtin,
     Trusted,
@@ -74,6 +79,7 @@ pub enum PluginTrustLevelDisplay {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// Runtime execution class derived from trust assessment.
 pub enum PluginExecutionClass {
     BuiltinFull,
     TrustedFull,
@@ -84,6 +90,7 @@ pub enum PluginExecutionClass {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// Review status assigned by SeaLantern trust policy.
 pub enum PluginReviewStatus {
     Builtin,
     SealanternReviewed,
@@ -94,6 +101,7 @@ pub enum PluginReviewStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// Integrity status derived from hashes or bundled provenance.
 pub enum PluginIntegrityStatus {
     Bundled,
     VerifiedHash,
@@ -106,6 +114,7 @@ pub enum PluginIntegrityStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// Source of the policy decision that upgraded a plugin's trust state.
 pub enum PluginTrustedPolicySource {
     Builtin,
     BundledSnapshot,
@@ -117,6 +126,7 @@ pub enum PluginTrustedPolicySource {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// Permission profile inferred from requested capabilities and trust policy.
 pub enum PluginPermissionProfile {
     BuiltinFull,
     TrustedFull,
@@ -128,12 +138,14 @@ pub enum PluginPermissionProfile {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// Reason why a plugin cannot be enabled without additional user action.
 pub enum PluginEnableBlockReason {
     UserConfirmationRequired,
     Revoked,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Minimal manifest fields needed for trust assessment.
 pub struct PluginManifestInput {
     pub id: String,
     pub version: String,
@@ -141,6 +153,7 @@ pub struct PluginManifestInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Metadata persisted alongside an installed plugin directory.
 pub struct PluginInstallMetadata {
     #[serde(default)]
     pub distribution_class: Option<PluginDistributionClass>,
@@ -151,6 +164,7 @@ pub struct PluginInstallMetadata {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Persisted record of a user's approval to enable a plugin.
 pub struct PersistedPluginEnableGrant {
     pub plugin_id: String,
     pub version: String,
@@ -161,6 +175,7 @@ pub struct PersistedPluginEnableGrant {
 }
 
 #[derive(Debug, Clone, Default)]
+/// Full trust-assessment result produced during installation or refresh.
 pub struct PluginTrustAssessment {
     pub trust_level_display: PluginTrustLevelDisplay,
     pub execution_class: PluginExecutionClass,
@@ -180,6 +195,7 @@ pub struct PluginTrustAssessment {
 }
 
 #[derive(Debug, Clone)]
+/// Runtime trust state after installation metadata and integrity checks are applied.
 pub struct PluginRuntimeTrustState {
     pub trust_level_display: PluginTrustLevelDisplay,
     pub execution_class: PluginExecutionClass,
@@ -193,6 +209,7 @@ pub struct PluginRuntimeTrustState {
 }
 
 #[derive(Debug, Clone)]
+/// Input required to decide whether plugin enablement needs user confirmation.
 pub struct PluginEnableContext {
     pub plugin_id: String,
     pub version: String,
@@ -205,6 +222,7 @@ pub struct PluginEnableContext {
 }
 
 #[derive(Debug, Clone, Default)]
+/// Outcome of evaluating whether a plugin may be enabled immediately.
 pub struct PluginEnableRequirement {
     pub success: bool,
     pub confirmation_required: bool,
@@ -218,20 +236,24 @@ static TRUSTED_CATALOG: Lazy<TrustedCatalogSnapshot> = Lazy::new(|| {
         .expect("shared/plugin-trusted-catalog.json must stay valid")
 });
 
+/// Returns the bundled trusted-catalog snapshot shipped with the application.
 pub fn bundled_snapshot() -> &'static TrustedCatalogSnapshot {
     &TRUSTED_CATALOG
 }
 
+/// Returns the install metadata path inside a plugin directory.
 pub fn install_metadata_path(plugin_dir: &Path) -> PathBuf {
     plugin_dir.join(PLUGIN_INSTALL_METADATA_FILE_NAME)
 }
 
+/// Reads persisted install metadata if it exists and is valid JSON.
 pub fn read_install_metadata(plugin_dir: &Path) -> Option<PluginInstallMetadata> {
     let path = install_metadata_path(plugin_dir);
     let content = std::fs::read_to_string(path).ok()?;
     serde_json::from_str(&content).ok()
 }
 
+/// Writes install metadata next to the plugin directory contents.
 pub fn write_install_metadata(
     plugin_dir: &Path,
     metadata: &PluginInstallMetadata,
@@ -244,6 +266,7 @@ pub fn write_install_metadata(
     })
 }
 
+/// Computes a stable tree hash for all plugin files that participate in integrity checks.
 pub fn compute_plugin_tree_sha256(plugin_dir: &Path) -> Result<String, String> {
     fn collect_files(
         root: &Path,
@@ -308,6 +331,7 @@ pub fn compute_plugin_tree_sha256(plugin_dir: &Path) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// Downgrades runtime trust when the installed plugin tree no longer matches the recorded hash.
 pub fn apply_runtime_integrity_state(
     mut state: PluginRuntimeTrustState,
     plugin_dir: &Path,
@@ -341,10 +365,12 @@ pub fn apply_runtime_integrity_state(
     Ok(state)
 }
 
+/// Returns the persisted enable-grant file path under the application data directory.
 pub fn enable_grants_path(data_dir: &Path) -> PathBuf {
     data_dir.join("plugin_enable_grants.json")
 }
 
+/// Loads persisted plugin enable grants.
 pub fn load_enable_grants(data_dir: &Path) -> Result<Vec<PersistedPluginEnableGrant>, String> {
     let path = enable_grants_path(data_dir);
     let content = match std::fs::read_to_string(&path) {
@@ -364,6 +390,7 @@ pub fn load_enable_grants(data_dir: &Path) -> Result<Vec<PersistedPluginEnableGr
     })
 }
 
+/// Saves persisted plugin enable grants.
 pub fn save_enable_grants(
     data_dir: &Path,
     grants: &[PersistedPluginEnableGrant],
@@ -376,10 +403,12 @@ pub fn save_enable_grants(
     })
 }
 
+/// Builds a stable fingerprint for a permission set after normalization.
 pub fn permissions_fingerprint(permissions: &[String]) -> String {
     normalize_permissions(permissions.to_vec()).join("|")
 }
 
+/// Returns the consent scope required to enable a plugin with the given trust state.
 pub fn required_grant_scope(plugin: &PluginEnableContext) -> Option<PluginEnableGrantScope> {
     match plugin.trust_level_display {
         PluginTrustLevelDisplay::Builtin => None,
@@ -395,6 +424,7 @@ pub fn required_grant_scope(plugin: &PluginEnableContext) -> Option<PluginEnable
     }
 }
 
+/// Returns whether a persisted grant scope satisfies the currently required scope.
 pub fn grant_scope_covers(
     provided: PluginEnableGrantScope,
     required: PluginEnableGrantScope,
@@ -408,6 +438,7 @@ pub fn grant_scope_covers(
     )
 }
 
+/// Evaluates whether a plugin can be enabled immediately or needs renewed consent.
 pub fn evaluate_enable_requirement(
     plugin: &PluginEnableContext,
     grants: &[PersistedPluginEnableGrant],
@@ -474,6 +505,7 @@ pub fn evaluate_enable_requirement(
     }
 }
 
+/// Replaces the persisted enable grant for a plugin.
 pub fn upsert_enable_grant(
     data_dir: &Path,
     plugin: &PluginEnableContext,
@@ -492,6 +524,7 @@ pub fn upsert_enable_grant(
     save_enable_grants(data_dir, &grants)
 }
 
+/// Assesses trust, integrity, and consent requirements for a plugin manifest.
 pub fn assess_plugin(
     manifest: &PluginManifestInput,
     distribution_class: PluginDistributionClass,

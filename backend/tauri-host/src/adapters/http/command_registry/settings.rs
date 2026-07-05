@@ -1,4 +1,4 @@
-use super::common::{CommandHandler, RegistryBuilder};
+use super::common::{invalid_request, CommandHandler, RegistryBuilder};
 use crate::commands::app::settings as settings_commands;
 use crate::commands::app::settings::{ChangeDataDirRequest, ChangePluginDirRequest};
 use crate::models::server::{CpuPolicyConfig, JvmPresetConfig};
@@ -14,7 +14,7 @@ where
     T: DeserializeOwned,
 {
     let value = params.get(field).cloned().unwrap_or(params);
-    serde_json::from_value(value).map_err(|e| format!("Invalid parameters: {}", e))
+    serde_json::from_value(value).map_err(|e| invalid_request(format!("Invalid parameters: {}", e)))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -424,7 +424,7 @@ fn handle_import_web_settings(
     Box::pin(async move {
         let json: String = parse_wrapped_or_root(params, "json")?;
         let settings: WebSettingsDto =
-            serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
+            serde_json::from_str(&json).map_err(|e| invalid_request(format!("Invalid JSON: {}", e)))?;
         let current = settings_commands::get_settings();
         let partial = apply_web_settings_patch(
             &current,

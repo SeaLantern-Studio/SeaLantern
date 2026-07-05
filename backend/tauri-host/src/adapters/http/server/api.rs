@@ -80,7 +80,14 @@ pub(super) async fn handle_api_command(
                 "handle_api_command",
                 &format!("command={} not found: {}", command, message),
             );
-            (StatusCode::NOT_FOUND, Json(ApiResponse::error(message))).into_response()
+            (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponse::error_with_detail(
+                    message.clone(),
+                    ApiErrorDetail::not_found(message),
+                )),
+            )
+                .into_response()
         }
         DispatchResult::Success(data) => {
             logger::log_info_ctx(
@@ -90,13 +97,35 @@ pub(super) async fn handle_api_command(
             );
             (StatusCode::OK, Json(ApiResponse::success(data))).into_response()
         }
+        DispatchResult::InvalidRequest(error) => {
+            logger::log_warn_ctx(
+                "http.api",
+                "handle_api_command",
+                &format!("command={} invalid request: {}", command, error),
+            );
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error_with_detail(
+                    error.clone(),
+                    ApiErrorDetail::invalid_request(error),
+                )),
+            )
+                .into_response()
+        }
         DispatchResult::Failure(error) => {
             logger::log_error_ctx(
                 "http.api",
                 "handle_api_command",
                 &format!("command={} failed: {}", command, error),
             );
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::error(error))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error_with_detail(
+                    error.clone(),
+                    ApiErrorDetail::runtime(error),
+                )),
+            )
+                .into_response()
         }
     }
 }

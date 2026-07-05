@@ -16,6 +16,7 @@ const APP_DIRECTORY_NAME: &str = "Sea Lantern";
 const APP_DIRECTORY_NAME_LOWERCASE: &str = "sea-lantern";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Resolved application data directory together with the source that selected it.
 pub struct AppDataResolution {
     pub path: PathBuf,
     pub source: String,
@@ -26,6 +27,7 @@ struct AppDataLocatorFile {
     data_dir: String,
 }
 
+/// Returns whether `path` is an absolute Windows path, including UNC paths.
 pub fn is_windows_absolute_path(path: &str) -> bool {
     let bytes = path.as_bytes();
     if bytes.len() >= 3
@@ -49,6 +51,7 @@ fn explicit_app_data_dir_from_env() -> Option<PathBuf> {
     Some(PathBuf::from(trimmed))
 }
 
+/// Returns the platform-default application data base directory.
 pub fn default_data_dir_base() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
@@ -87,6 +90,7 @@ pub fn default_data_dir_base() -> PathBuf {
     }
 }
 
+/// Returns the path of the locator file that can override the app data directory.
 pub fn get_app_data_locator_path() -> PathBuf {
     default_data_dir_base().join(APP_DATA_LOCATOR_FILE_NAME)
 }
@@ -210,14 +214,17 @@ fn resolve_app_data_dir_internal() -> AppDataResolution {
     }
 }
 
+/// Returns the resolved app data directory and the source that selected it.
 pub fn describe_app_data_resolution() -> AppDataResolution {
     resolve_app_data_dir_internal()
 }
 
+/// Returns the resolved app data directory path.
 pub fn get_app_data_dir() -> PathBuf {
     resolve_app_data_dir_internal().path
 }
 
+/// Creates the app data directory if possible and returns its display string.
 pub fn get_or_create_app_data_dir() -> String {
     let data_dir = get_app_data_dir();
 
@@ -228,6 +235,7 @@ pub fn get_or_create_app_data_dir() -> String {
     data_dir.to_string_lossy().to_string()
 }
 
+/// Creates the app data directory and surfaces creation failures explicitly.
 pub fn get_or_create_app_data_dir_checked() -> Result<String, String> {
     let data_dir = get_app_data_dir();
 
@@ -237,6 +245,7 @@ pub fn get_or_create_app_data_dir_checked() -> Result<String, String> {
     Ok(data_dir.to_string_lossy().to_string())
 }
 
+/// Resolves an executable from the current `PATH` using platform-specific rules.
 pub fn find_executable_in_path(executable: &str) -> Option<PathBuf> {
     if executable.trim().is_empty() {
         return None;
@@ -383,6 +392,7 @@ pub(crate) fn normalize_path_for_compare(path: &std::path::Path) -> String {
     }
 }
 
+/// Strips `prefix` from `path` after normalization used by cross-platform comparisons.
 pub fn strip_path_prefix_for_compare(
     path: &std::path::Path,
     prefix: &std::path::Path,
@@ -409,10 +419,12 @@ pub(crate) fn startup_file_extension_priority(extension: &str) -> Option<u8> {
     }
 }
 
+/// Best-effort startup file detection that downgrades I/O failures to `None`.
 pub fn find_root_startup_file(dir: &std::path::Path) -> Option<PathBuf> {
     find_root_startup_file_checked(dir).ok().flatten()
 }
 
+/// Scans the server root for the highest-priority startup file and surfaces I/O failures.
 pub fn find_root_startup_file_checked(dir: &std::path::Path) -> Result<Option<PathBuf>, String> {
     let entries = std::fs::read_dir(dir).map_err(|e| format!("读取启动目录失败: {}", e))?;
     let mut candidates = Vec::new();
@@ -452,6 +464,7 @@ pub fn find_root_startup_file_checked(dir: &std::path::Path) -> Result<Option<Pa
     Ok(candidates.into_iter().map(|(_, path)| path).next())
 }
 
+/// Validates that an input is a plain file name without path traversal or separators.
 pub fn validate_file_name_only(file_name: &str) -> Result<&str, String> {
     let trimmed = file_name.trim();
     if trimmed.is_empty() {

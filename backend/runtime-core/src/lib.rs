@@ -1,3 +1,7 @@
+//! Shared runtime utilities for desktop and headless SeaLantern hosts.
+
+//! Shared runtime utilities for desktop and headless SeaLantern hosts.
+
 mod headless_http;
 mod headless_runtime;
 mod http_bind;
@@ -23,8 +27,8 @@ pub use http_bind::{
     resolve_http_bind_addr, resolve_http_bind_addr_checked, resolve_http_bind_host,
 };
 pub use http_dispatch::{
-    dispatch_http_command, handle_unsupported, is_supported_http_command, parse_params,
-    CommandHandler, CommandRegistry, DispatchResult, RegistryBuilder,
+    dispatch_http_command, handle_unsupported, invalid_request, is_supported_http_command,
+    parse_params, CommandHandler, CommandRegistry, DispatchResult, RegistryBuilder,
 };
 pub use logging::{
     capture_eprintln, capture_println, format_log_entry, log_debug, log_debug_ctx, log_error,

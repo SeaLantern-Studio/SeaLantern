@@ -6,6 +6,7 @@ const SHARED_PLUGIN_PERMISSIONS_JSON: &str =
     include_str!("../../../shared/plugin-permissions.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Shared permission metadata loaded from the bundled permission catalog.
 pub struct PluginPermissionInfo {
     pub id: String,
     pub name: String,
@@ -26,6 +27,7 @@ pub struct PluginPermissionInfo {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Coarse permission risk grouping used by trust and consent decisions.
 pub enum PluginPermissionRiskGroup {
     StandardSandboxAllowed,
     EscalatedSandbox,
@@ -49,10 +51,12 @@ static ALIAS_TO_ID: Lazy<HashMap<String, String>> = Lazy::new(|| {
     map
 });
 
+/// Returns the full bundled permission list.
 pub fn get_plugin_permission_list() -> Vec<PluginPermissionInfo> {
     PERMISSIONS.clone()
 }
 
+/// Returns permission metadata for a canonical id or known alias.
 pub fn get_permission_info(permission_id: &str) -> Option<PluginPermissionInfo> {
     let canonical = normalize_permission_id(permission_id);
     PERMISSIONS
@@ -61,6 +65,7 @@ pub fn get_permission_info(permission_id: &str) -> Option<PluginPermissionInfo> 
         .cloned()
 }
 
+/// Normalizes a permission id by resolving known aliases.
 pub fn normalize_permission_id(permission_id: &str) -> String {
     ALIAS_TO_ID
         .get(permission_id.trim())
@@ -68,6 +73,7 @@ pub fn normalize_permission_id(permission_id: &str) -> String {
         .unwrap_or_else(|| permission_id.trim().to_string())
 }
 
+/// Normalizes, deduplicates, and preserves the input order of permissions.
 pub fn normalize_permissions<I>(permissions: I) -> Vec<String>
 where
     I: IntoIterator<Item = String>,
@@ -85,11 +91,13 @@ where
     normalized
 }
 
+/// Returns whether the permission id is known directly or matches a supported fine-grained fs permission.
 pub fn is_known_permission_or_alias(permission_id: &str) -> bool {
     ALIAS_TO_ID.contains_key(permission_id.trim())
         || is_valid_fine_grained_fs_permission(permission_id)
 }
 
+/// Returns whether any requested permission requires explicit user consent.
 pub fn requires_explicit_consent(permissions: &[String]) -> bool {
     permissions.iter().any(|permission| {
         get_permission_info(permission)
@@ -98,6 +106,7 @@ pub fn requires_explicit_consent(permissions: &[String]) -> bool {
     })
 }
 
+/// Returns the coarse risk group for a permission after alias normalization.
 pub fn permission_risk_group(permission_id: &str) -> PluginPermissionRiskGroup {
     let canonical = normalize_permission_id(permission_id);
 
@@ -117,6 +126,7 @@ pub fn permission_risk_group(permission_id: &str) -> PluginPermissionRiskGroup {
     PluginPermissionRiskGroup::Unknown
 }
 
+/// Returns whether any permission exceeds the standard sandbox ceiling.
 pub fn exceeds_standard_sandbox_ceiling(permissions: &[String]) -> bool {
     permissions.iter().any(|permission| {
         !matches!(
@@ -126,6 +136,7 @@ pub fn exceeds_standard_sandbox_ceiling(permissions: &[String]) -> bool {
     })
 }
 
+/// Returns whether any permission requires a trusted plugin execution class.
 pub fn requests_trusted_capabilities(permissions: &[String]) -> bool {
     permissions.iter().any(|permission| {
         let canonical = normalize_permission_id(permission);

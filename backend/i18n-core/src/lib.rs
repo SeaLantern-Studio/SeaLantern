@@ -1,3 +1,5 @@
+//! Embedded locale tables and runtime i18n service primitives.
+
 mod embedded;
 mod service;
 

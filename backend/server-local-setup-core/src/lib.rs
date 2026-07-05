@@ -1,3 +1,5 @@
+//! Shared local-server setup, startup selection, and launch helper logic.
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,6 +29,7 @@ struct StartupModeMetadata {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// Best-effort inspection result for an existing local server folder.
 pub struct LocalFolderInspection {
     pub startup_entry_path: Option<String>,
     pub startup_mode: Option<String>,
@@ -36,6 +39,7 @@ pub struct LocalFolderInspection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Resolved startup selection for attaching an existing local server.
 pub struct ExistingServerStartupSelection {
     pub startup_target_path: String,
     pub startup_mode: String,
@@ -43,6 +47,7 @@ pub struct ExistingServerStartupSelection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Resolved startup selection for a modpack run directory.
 pub struct ModpackStartupSelection {
     pub startup_mode: String,
     pub custom_command: Option<String>,
@@ -52,6 +57,7 @@ pub struct ModpackStartupSelection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Script launch details resolved after starter installation finishes.
 pub struct StarterInstallLaunchSelection {
     pub startup_entry_path: String,
     pub startup_mode: String,
@@ -59,12 +65,14 @@ pub struct StarterInstallLaunchSelection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Validation errors returned while resolving existing-server startup inputs.
 pub enum ResolveExistingServerStartupError {
     CustomCommandEmpty,
     ExecutableMissing(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Validation errors returned while resolving modpack startup inputs.
 pub enum ResolveModpackStartupError {
     StartupFilePathMissing,
     StartupFileMissing(String),
@@ -72,21 +80,25 @@ pub enum ResolveModpackStartupError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Validation errors returned while resolving starter-install script launches.
 pub enum ResolveStarterInstallLaunchError {
     MissingScript,
 }
 
 impl LocalFolderInspection {
+    /// Returns whether the inspected folder exposes a runnable entry or detectable server jar.
     pub fn is_attachable(&self) -> bool {
         self.startup_entry_path.is_some() || self.detected_jar_path.is_some()
     }
 
+    /// Returns the preferred startup path, preferring scripts over detected jars.
     pub fn preferred_startup_path(&self) -> Option<&str> {
         self.startup_entry_path
             .as_deref()
             .or(self.detected_jar_path.as_deref())
     }
 
+    /// Formats a compact diagnostic string for logs and debugging output.
     pub fn describe(&self) -> String {
         format!(
             "attachable={} startup_mode={} startup_entry={} jar={} core={} mc={}",
@@ -100,10 +112,12 @@ impl LocalFolderInspection {
     }
 }
 
+/// Best-effort local folder inspection that downgrades inspection failures to an empty result.
 pub fn inspect_local_folder(folder: &Path) -> LocalFolderInspection {
     inspect_local_folder_checked(folder).unwrap_or_default()
 }
 
+/// Inspects a local folder for startup scripts, jars, inferred core type, and MC version hints.
 pub fn inspect_local_folder_checked(folder: &Path) -> Result<LocalFolderInspection, String> {
     if !folder.exists() || !folder.is_dir() {
         return Ok(LocalFolderInspection::default());
@@ -151,12 +165,14 @@ pub fn inspect_local_folder_checked(folder: &Path) -> Result<LocalFolderInspecti
     })
 }
 
+/// Best-effort startup script resolution for an attachable local folder.
 pub fn resolve_attach_executable_path(folder: &Path) -> Option<PathBuf> {
     resolve_attach_executable_path_checked(folder)
         .ok()
         .flatten()
 }
 
+/// Resolves the preferred startup entry and normalized startup mode for a local folder.
 pub fn resolve_local_startup_entry_checked(
     folder: &Path,
 ) -> Result<Option<(String, String)>, String> {
@@ -173,6 +189,7 @@ pub fn resolve_local_startup_entry_checked(
     }))
 }
 
+/// Resolves the explicit startup selection for attaching an existing server.
 pub fn resolve_existing_server_requested_startup(
     requested_startup_mode: &str,
     custom_command: Option<&str>,
@@ -211,6 +228,7 @@ pub fn resolve_existing_server_requested_startup(
     Ok(None)
 }
 
+/// Rewrites a startup file path so it points into the modpack run directory.
 pub fn resolve_run_dir_startup_file_path(
     source_path: &Path,
     run_dir: &Path,
@@ -242,6 +260,7 @@ pub fn resolve_run_dir_startup_file_path(
     Err(startup_file_path.to_string())
 }
 
+/// Resolves the script launch details required after starter installation.
 pub fn resolve_starter_install_launch_selection(
     server_path: &Path,
 ) -> Result<StarterInstallLaunchSelection, ResolveStarterInstallLaunchError> {
@@ -270,6 +289,7 @@ pub fn resolve_starter_install_launch_selection(
     })
 }
 
+/// Resolves a modpack startup selection after rebasing the startup file into the run directory.
 pub fn resolve_modpack_run_dir_startup_selection(
     source_path: &Path,
     run_dir: &Path,
@@ -295,6 +315,7 @@ pub fn resolve_modpack_run_dir_startup_selection(
     )
 }
 
+/// Resolves normalized startup selection fields for a modpack launch.
 pub fn resolve_modpack_startup_selection(
     requested_startup_mode: &str,
     custom_command: Option<&str>,
@@ -345,6 +366,7 @@ pub fn resolve_modpack_startup_selection(
     })
 }
 
+/// Trims optional user input and drops empty strings.
 pub fn trim_optional_text(value: Option<&str>) -> Option<String> {
     value
         .map(str::trim)
@@ -352,6 +374,7 @@ pub fn trim_optional_text(value: Option<&str>) -> Option<String> {
         .map(str::to_string)
 }
 
+/// Quotes a native startup path when spaces require a shell-safe command string.
 pub fn format_native_startup_command(path: &str) -> String {
     if path.contains(' ') {
         format!("\"{}\"", path)
@@ -360,6 +383,7 @@ pub fn format_native_startup_command(path: &str) -> String {
     }
 }
 
+/// Resolves the preferred startup script for an attachable folder and surfaces scan errors.
 pub fn resolve_attach_executable_path_checked(folder: &Path) -> Result<Option<PathBuf>, String> {
     let preferred_scripts = [
         "start.bat",
@@ -391,6 +415,7 @@ pub fn resolve_attach_executable_path_checked(folder: &Path) -> Result<Option<Pa
     Ok(root_startup.filter(|path| is_script_path(path)))
 }
 
+/// Best-effort MC version inference for local create flows.
 pub fn infer_local_create_mc_version(
     jar_path: &str,
     resolved_name: &str,
@@ -409,6 +434,7 @@ pub fn infer_local_create_mc_version(
     .flatten()
 }
 
+/// MC version inference for local create flows that surfaces directory and scan errors.
 pub fn infer_local_create_mc_version_checked(
     jar_path: &str,
     resolved_name: &str,
@@ -437,6 +463,7 @@ pub fn infer_local_create_mc_version_checked(
     Ok(None)
 }
 
+/// Best-effort core-type inference for local inputs.
 pub fn infer_core_type_from_local_inputs(
     folder: &Path,
     executable_path: Option<&str>,
@@ -446,6 +473,7 @@ pub fn infer_core_type_from_local_inputs(
         .flatten()
 }
 
+/// Core-type inference for local inputs that surfaces directory and scan errors.
 pub fn infer_core_type_from_local_inputs_checked(
     folder: &Path,
     executable_path: Option<&str>,
@@ -457,6 +485,7 @@ pub fn infer_core_type_from_local_inputs_checked(
     Ok(inspect_local_folder_checked(folder)?.inferred_core_type)
 }
 
+/// Resolves the core type for an imported existing local server.
 pub fn resolve_existing_server_core_type(
     explicit_core_type: Option<&str>,
     startup_mode: &str,
@@ -476,6 +505,7 @@ pub fn resolve_existing_server_core_type(
     Ok(canonical_detected_core_type(&detect_core_key(startup_target_path)))
 }
 
+/// Resolves the core type for a local create flow.
 pub fn resolve_local_create_core_type(
     explicit_core_type: Option<&str>,
     folder: Option<&Path>,
@@ -496,6 +526,7 @@ pub fn resolve_local_create_core_type(
     Ok(canonical_detected_core_type(&detect_core_key(jar_path)))
 }
 
+/// Resolves the attach-time core type while preserving already-inspected values when possible.
 pub fn resolve_local_attach_core_type(
     explicit_core_type: Option<&str>,
     inspected_core_type: Option<&str>,
@@ -521,6 +552,7 @@ pub fn resolve_local_attach_core_type(
         .flatten()
 }
 
+/// Resolves the MC version for a local create flow or returns the translated missing-value key.
 pub fn resolve_local_create_mc_version(
     explicit_mc_version: Option<String>,
     jar_path: &str,
@@ -540,6 +572,7 @@ pub fn resolve_local_create_mc_version(
         .ok_or_else(|| "cli.server_setup.local.create_missing_mc_version".to_string())
 }
 
+/// Resolves the MC version for attaching an existing local server.
 pub fn resolve_local_attach_mc_version(
     explicit_mc_version: Option<String>,
     folder: &str,
@@ -563,6 +596,7 @@ pub fn resolve_local_attach_mc_version(
         })
 }
 
+/// Resolves the MC version for Docker create flows.
 pub fn resolve_docker_create_mc_version(
     explicit_mc_version: Option<String>,
     folder_path: Option<&Path>,
@@ -576,6 +610,7 @@ pub fn resolve_docker_create_mc_version(
         .ok_or_else(|| "cli.server_setup.docker.create_missing_mc_version".to_string())
 }
 
+/// Resolves the core type for Docker create flows.
 pub fn resolve_docker_create_core_type(
     explicit_core_type: Option<&str>,
     folder_path: Option<&Path>,
@@ -599,6 +634,7 @@ pub fn resolve_docker_create_core_type(
         .ok_or_else(|| "cli.server_setup.docker.create_missing_core_type".to_string())
 }
 
+/// Refreshes a stored local core type from the current startup target when possible.
 pub fn refresh_local_server_core_type(
     current_core_type: &str,
     startup_mode: &str,
@@ -980,6 +1016,7 @@ pub fn startup_mode_is_custom(startup_mode: &str) -> bool {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Managed console encoding chosen for server process I/O.
 pub enum ManagedConsoleEncoding {
     Utf8,
     #[cfg(target_os = "windows")]
@@ -987,6 +1024,7 @@ pub enum ManagedConsoleEncoding {
 }
 
 impl ManagedConsoleEncoding {
+    /// Returns the Java charset name corresponding to the managed console encoding.
     pub fn java_name(self) -> &'static str {
         match self {
             ManagedConsoleEncoding::Utf8 => "UTF-8",
@@ -996,6 +1034,7 @@ impl ManagedConsoleEncoding {
     }
 
     #[cfg(target_os = "windows")]
+    /// Returns the Windows code page used when launching batch or PowerShell scripts.
     pub fn cmd_code_page(self) -> &'static str {
         match self {
             ManagedConsoleEncoding::Utf8 => "65001",
@@ -1004,11 +1043,13 @@ impl ManagedConsoleEncoding {
     }
 }
 
+/// Returns whether the normalized startup mode is `starter`.
 pub fn startup_mode_is_starter(startup_mode: &str) -> bool {
     normalize_cli_startup_mode(Some(startup_mode)).unwrap_or_else(|_| "jar".to_string())
         == "starter"
 }
 
+/// Returns whether the startup mode requires a Java runtime according to shared metadata.
 pub fn startup_mode_requires_java(startup_mode: &str) -> bool {
     let normalized_mode =
         normalize_cli_startup_mode(Some(startup_mode)).unwrap_or_else(|_| "jar".to_string());
@@ -1020,6 +1061,7 @@ pub fn startup_mode_requires_java(startup_mode: &str) -> bool {
         .unwrap_or(true)
 }
 
+/// Returns whether Windows script encoding detection should run for this startup mode.
 pub fn startup_mode_uses_windows_script_encoding_detection(startup_mode: &str) -> bool {
     matches!(
         normalize_cli_startup_mode(Some(startup_mode))
@@ -1029,6 +1071,7 @@ pub fn startup_mode_uses_windows_script_encoding_detection(startup_mode: &str) -
     )
 }
 
+/// Heuristically decides whether a Windows script should be treated as UTF-8.
 pub fn windows_script_prefers_utf8(startup_mode: &str, startup_path: &Path) -> bool {
     if !startup_mode_uses_windows_script_encoding_detection(startup_mode) {
         return true;
@@ -1042,6 +1085,7 @@ pub fn windows_script_prefers_utf8(startup_mode: &str, startup_path: &Path) -> b
     script_bytes_prefer_utf8(&bytes)
 }
 
+/// Resolves the console encoding used for a managed launch.
 pub fn resolve_managed_console_encoding(
     startup_mode: &str,
     _startup_path: &Path,
@@ -1341,24 +1385,29 @@ fn parse_java_major_version_output(text: &str) -> Option<u32> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Records a fallback from primary direct-JAR launch to another startup mode.
 pub struct LocalLaunchFallbackInfo {
     pub from_mode: String,
     pub to_mode: String,
     pub reason: String,
 }
 
+/// Formats the reason used when direct JAR launch exits too early.
 pub fn format_primary_jar_early_exit_reason(status: &str) -> String {
     format!("JAR 直启进程过早退出: {}", status)
 }
 
+/// Formats the reason used when direct JAR health probing fails.
 pub fn format_primary_jar_probe_error_reason(error: &str) -> String {
     format!("JAR 直启状态检查失败: {}", error)
 }
 
+/// Formats the reason used when direct JAR spawning fails.
 pub fn format_primary_jar_spawn_error_reason(error: &str) -> String {
     format!("JAR 直启失败: {}", error)
 }
 
+/// Builds the fallback record emitted when a direct JAR launch falls back to another mode.
 pub fn build_primary_jar_fallback_info(
     configured_mode: &str,
     reason: String,
@@ -1370,10 +1419,12 @@ pub fn build_primary_jar_fallback_info(
     }
 }
 
+/// Formats the log message emitted when launch falls back to another startup mode.
 pub fn format_launch_fallback_log(reason: &str, configured_mode: &str) -> String {
     format!("[Sea Lantern] {}，回退到 {} 启动", reason, configured_mode)
 }
 
+/// Formats the combined error when both primary launch and fallback launch fail.
 pub fn format_fallback_chain_error(reason: &str, fallback_error: &str) -> String {
     format!("{}；回退也失败：{}", reason, fallback_error)
 }

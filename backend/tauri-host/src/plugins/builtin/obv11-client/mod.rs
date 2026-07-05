@@ -17,6 +17,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -438,17 +439,26 @@ fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, 
             format!("Invalid listen_addr '{}': {}", runtime.settings.listen_addr, e)
         })?;
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let (startup_tx, startup_rx) = mpsc::sync_channel(1);
     let snapshot = Arc::clone(&runtime);
     let thread = std::thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_multi_thread()
+        let rt = match tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
-            .expect("obv11-client tokio runtime should build");
+        {
+            Ok(rt) => rt,
+            Err(error) => {
+                let message = format!("failed to build tokio runtime: {}", error);
+                log_plugin_error("start_runtime_thread", &message);
+                let _ = startup_tx.send(Err(message));
+                return;
+            }
+        };
         rt.block_on(async move {
             let state = HttpAppState { runtime: Arc::clone(&snapshot) };
             let app = Router::new()
                 .route("/health", get(|| async { "OK" }))
-                .route("/api/:action", get(handle_http_action).post(handle_http_action))
+                .route("/api/{action}", get(handle_http_action).post(handle_http_action))
                 .route("/api", get(handle_ws_api))
                 .route("/event", get(handle_ws_event))
                 .route("/", get(handle_ws_universal))
@@ -456,10 +466,14 @@ fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, 
             let listener = match TcpListener::bind(addr).await {
                 Ok(listener) => listener,
                 Err(error) => {
-                    log_plugin_error("start_runtime_thread", &format!("bind failed: {}", error));
+                    let message = format!("bind failed: {}", error);
+                    log_plugin_error("start_runtime_thread", &message);
+                    let _ = startup_tx.send(Err(message));
                     return;
                 }
             };
+
+            let _ = startup_tx.send(Ok(()));
 
             emit_debug(&snapshot, "http_server_bound", &format!("addr={addr}"));
             let poll_runtime = Arc::clone(&snapshot);
@@ -475,11 +489,21 @@ fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, 
         });
     });
 
-    Ok(RuntimeHandle {
-        snapshot: runtime,
-        shutdown_http: Some(shutdown_tx),
-        thread: Some(thread),
-    })
+    match startup_rx.recv() {
+        Ok(Ok(())) => Ok(RuntimeHandle {
+            snapshot: runtime,
+            shutdown_http: Some(shutdown_tx),
+            thread: Some(thread),
+        }),
+        Ok(Err(error)) => {
+            let _ = thread.join();
+            Err(error)
+        }
+        Err(_) => {
+            let _ = thread.join();
+            Err("obv11-client runtime thread exited before startup completed".to_string())
+        }
+    }
 }
 
 async fn poll_config_changes(runtime: Arc<RuntimeSnapshot>) {
@@ -1002,7 +1026,10 @@ fn status_string(status: &ServerStatus) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{default_settings_json, parse_settings, parse_targets};
+    use super::{
+        build_runtime, default_settings_json, parse_settings, parse_targets,
+        start_runtime_thread, PLUGIN_ID,
+    };
 
     #[test]
     fn default_settings_parse() {
@@ -1021,5 +1048,26 @@ mod tests {
         assert_eq!(targets[0].id, 123);
         assert_eq!(targets[1].target_type, "private");
         assert_eq!(targets[1].id, 456);
+    }
+
+    #[test]
+    fn start_runtime_thread_surfaces_bind_failures() {
+        let occupied = std::net::TcpListener::bind("127.0.0.1:0")
+            .expect("occupied listener should bind");
+        let addr = occupied
+            .local_addr()
+            .expect("occupied listener should expose local addr");
+
+        let mut settings =
+            parse_settings(default_settings_json()).expect("default settings should parse");
+        settings.listen_addr = addr.to_string();
+
+        let runtime = build_runtime(PLUGIN_ID, settings);
+        let error = match start_runtime_thread(runtime) {
+            Ok(_) => panic!("occupied port should be reported as startup error"),
+            Err(error) => error,
+        };
+
+        assert!(error.contains("bind failed"), "unexpected error: {}", error);
     }
 }

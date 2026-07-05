@@ -81,8 +81,8 @@ impl PluginManager {
     /// # Returns
     ///
     /// 返回新的插件管理器实例
-    #[allow(dead_code)]
-    pub fn new(plugins_dir: PathBuf, data_dir: PathBuf) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(plugins_dir: PathBuf, data_dir: PathBuf) -> Self {
         Self::new_checked(plugins_dir, data_dir)
             .unwrap_or_else(|error| panic!("Failed to initialize PluginManager: {}", error))
     }

@@ -27,6 +27,7 @@ fn print_error(function: &str, message: &str) {
 }
 
 #[derive(Clone, Debug)]
+/// Runtime configuration for the headless HTTP host.
 pub struct HeadlessHttpConfig {
     pub auth_token: String,
     pub upload_dir: PathBuf,
@@ -36,6 +37,7 @@ pub struct HeadlessHttpConfig {
     pub max_upload_files: usize,
 }
 
+/// Builds a permissive default headless HTTP config and silently downgrades invalid env input.
 pub fn default_headless_http_config() -> HeadlessHttpConfig {
     default_headless_http_config_checked().unwrap_or_else(|_| HeadlessHttpConfig {
         auth_token: env_var_trimmed(HTTP_AUTH_TOKEN_ENV)
@@ -48,6 +50,7 @@ pub fn default_headless_http_config() -> HeadlessHttpConfig {
     })
 }
 
+/// Builds the default headless HTTP config and surfaces invalid environment input.
 pub fn default_headless_http_config_checked() -> Result<HeadlessHttpConfig, String> {
     let configured_token = env_var_trimmed(HTTP_AUTH_TOKEN_ENV);
     let auth_token = configured_token.unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -62,6 +65,7 @@ pub fn default_headless_http_config_checked() -> Result<HeadlessHttpConfig, Stri
     })
 }
 
+/// Prepares the upload directory, logs security state, and binds the HTTP listener.
 pub async fn prepare_headless_http_listener(
     addr: &str,
     config: &HeadlessHttpConfig,
@@ -99,17 +103,20 @@ pub async fn prepare_headless_http_listener(
     Ok(listener)
 }
 
+/// Logs the ready-state messages for the headless HTTP server.
 pub fn log_headless_http_ready(addr: &str) {
     for message in describe_http_ready_messages(addr) {
         print_info("log_headless_http_ready", &message);
     }
 }
 
+/// Logs the static-directory configuration used by the HTTP host.
 pub fn log_headless_http_static_dir(dir: &str) {
     let message = format!("Serving static files from: {} (SPA fallback enabled)", dir);
     print_info("log_headless_http_static_dir", &message);
 }
 
+/// Describes the security-relevant HTTP configuration without leaking the full auth token.
 pub fn describe_http_security_configuration(config: &HeadlessHttpConfig) -> Vec<String> {
     let token_reference = format_token_reference(&config.auth_token);
     let mut messages = Vec::new();
@@ -146,6 +153,7 @@ pub fn describe_http_security_configuration(config: &HeadlessHttpConfig) -> Vec<
     messages
 }
 
+/// Formats a token reference that keeps only a short prefix and hash fingerprint.
 pub fn format_token_reference(token: &str) -> String {
     format!("prefix={} fingerprint={}", token_prefix(token), token_fingerprint(token))
 }

@@ -1,3 +1,5 @@
+//! Plugin trust, integrity, and enable-consent helpers shared by the host runtime.
+
 mod permissions;
 mod trust;
 

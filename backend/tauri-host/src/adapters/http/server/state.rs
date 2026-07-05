@@ -21,6 +21,29 @@ pub(crate) struct ApiErrorDetail {
     pub error_kind: Option<String>,
 }
 
+impl ApiErrorDetail {
+    pub(crate) fn invalid_request(message: impl Into<String>) -> Self {
+        Self::new("common.message_unknown_error", "invalid_request", message)
+    }
+
+    pub(crate) fn not_found(message: impl Into<String>) -> Self {
+        Self::new("common.message_server_not_found", "not_found", message)
+    }
+
+    pub(crate) fn runtime(message: impl Into<String>) -> Self {
+        Self::new("common.message_unknown_error", "runtime", message)
+    }
+
+    fn new(code: &str, error_kind: &str, message: impl Into<String>) -> Self {
+        Self {
+            code: code.to_string(),
+            message: message.into(),
+            args: None,
+            error_kind: Some(error_kind.to_string()),
+        }
+    }
+}
+
 /// HTTP 日志流里的单条日志事件
 #[derive(Clone, Serialize)]
 pub struct LogEvent {
@@ -140,6 +163,7 @@ impl ApiResponse {
     }
 
     /// 构建失败响应
+    #[allow(dead_code)]
     pub fn error(message: String) -> Self {
         let detail = infer_error_detail(&message);
         Self {
@@ -165,11 +189,13 @@ impl ApiResponse {
     }
 }
 
+#[allow(dead_code)]
 struct InferredErrorDetail {
     code: &'static str,
     error_kind: &'static str,
 }
 
+#[allow(dead_code)]
 fn infer_error_detail(message: &str) -> InferredErrorDetail {
     let lower = message.to_ascii_lowercase();
 
@@ -219,11 +245,12 @@ impl UploadFailure {
 
 #[cfg(test)]
 mod tests {
-    use super::RuntimeEventEnvelope;
+    use super::{ApiErrorDetail, ApiResponse, RuntimeEventEnvelope};
     use crate::services::events::{
         AppEventEnvelope, AppEventKind, AppEventPayload, EventScope, ServerEventEnvelope,
         ServerEventKind, ServerEventPayload,
     };
+    use serde_json::Value;
 
     #[test]
     fn runtime_event_envelope_serializes_with_explicit_scope() {
@@ -266,5 +293,46 @@ mod tests {
         assert_eq!(app_json.get("event_scope").and_then(|value| value.as_str()), Some("app"));
         assert!(server_json.get("event").is_some());
         assert!(app_json.get("event").is_some());
+    }
+
+    #[test]
+    fn api_response_error_keeps_legacy_inference_for_untyped_errors() {
+        let response = ApiResponse::error("Unauthorized".to_string());
+
+        assert!(!response.success);
+        assert_eq!(response.error.as_deref(), Some("Unauthorized"));
+        let detail = response.error_detail.expect("error detail");
+        assert_eq!(detail.code, "common.message_unauthorized");
+        assert_eq!(detail.error_kind.as_deref(), Some("unauthorized"));
+    }
+
+    #[test]
+    fn api_error_detail_invalid_request_constructor_sets_expected_fields() {
+        let detail = ApiErrorDetail::invalid_request("Missing path");
+        let value = serde_json::to_value(&detail).expect("serialize detail");
+
+        assert_eq!(detail.code, "common.message_unknown_error");
+        assert_eq!(detail.message, "Missing path");
+        assert_eq!(detail.error_kind.as_deref(), Some("invalid_request"));
+        assert_eq!(value.get("args"), None);
+    }
+
+    #[test]
+    fn api_response_error_with_detail_preserves_explicit_classification() {
+        let response = ApiResponse::error_with_detail(
+            "Missing path".to_string(),
+            ApiErrorDetail::invalid_request("Missing path"),
+        );
+        let payload = serde_json::to_value(response).expect("serialize response");
+
+        assert_eq!(payload.get("success"), Some(&Value::Bool(false)));
+        assert_eq!(payload.get("error"), Some(&Value::String("Missing path".to_string())));
+        assert_eq!(
+            payload
+                .get("error_detail")
+                .and_then(|detail| detail.get("error_kind"))
+                .and_then(|kind| kind.as_str()),
+            Some("invalid_request")
+        );
     }
 }

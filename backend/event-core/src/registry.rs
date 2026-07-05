@@ -5,6 +5,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Serializable registry metadata returned to management surfaces.
 pub struct EventConsumerRegistryMetadataDto {
     pub kind: EventConsumerKind,
     pub owner: String,
@@ -12,6 +13,7 @@ pub struct EventConsumerRegistryMetadataDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Serializable server-event filter payload exposed by the registry.
 pub struct EventConsumerRegistryServerFilterDto {
     pub classes: Vec<String>,
     pub event_kinds: Vec<String>,
@@ -19,6 +21,7 @@ pub struct EventConsumerRegistryServerFilterDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Serializable app-event filter payload exposed by the registry.
 pub struct EventConsumerRegistryAppFilterDto {
     pub actions: Vec<String>,
     pub kinds: Vec<String>,
@@ -26,6 +29,7 @@ pub struct EventConsumerRegistryAppFilterDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Full registry entry returned for a named consumer.
 pub struct EventConsumerRegistryEntryDto {
     pub name: String,
     pub enabled: bool,
@@ -37,12 +41,14 @@ pub struct EventConsumerRegistryEntryDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Request payload for updating registry filters.
 pub struct EventConsumerRegistryFilterUpdateRequest {
     pub server_filter: Option<EventConsumerRegistryServerFilterDto>,
     pub app_filter: Option<EventConsumerRegistryAppFilterDto>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Request payload for updating registry metadata.
 pub struct EventConsumerRegistryMetadataUpdateRequest {
     pub kind: EventConsumerKind,
     pub owner: String,
@@ -123,15 +129,18 @@ impl From<NamedEventConsumerState> for EventConsumerRegistryEntryDto {
     }
 }
 
+/// Read/write facade over [`EventManager`] for named-consumer inspection APIs.
 pub struct EventConsumerRegistry<'a> {
     manager: &'a EventManager,
 }
 
 impl<'a> EventConsumerRegistry<'a> {
+    /// Creates a registry view over the shared event manager.
     pub fn new(manager: &'a EventManager) -> Self {
         Self { manager }
     }
 
+    /// Lists all named consumers.
     pub fn list(&self) -> Vec<EventConsumerRegistryEntryDto> {
         self.manager
             .registered_consumers()
@@ -140,10 +149,12 @@ impl<'a> EventConsumerRegistry<'a> {
             .collect()
     }
 
+    /// Returns one named consumer entry by name.
     pub fn get(&self, name: &str) -> Option<EventConsumerRegistryEntryDto> {
         self.manager.registered_consumer(name).map(Into::into)
     }
 
+    /// Enables or disables a named consumer and returns the refreshed entry.
     pub fn set_enabled(
         &self,
         name: &str,
@@ -154,6 +165,7 @@ impl<'a> EventConsumerRegistry<'a> {
             .ok_or_else(|| format!("event consumer '{}' not found after enable update", name))
     }
 
+    /// Replaces registry filters and returns the refreshed entry.
     pub fn update_filters(
         &self,
         name: &str,
@@ -168,6 +180,7 @@ impl<'a> EventConsumerRegistry<'a> {
             .ok_or_else(|| format!("event consumer '{}' not found after filter update", name))
     }
 
+    /// Replaces registry metadata and returns the refreshed entry.
     pub fn update_metadata(
         &self,
         name: &str,

@@ -1,6 +1,6 @@
 use crate::commands;
 
-// 仅在 debug 构建下导入调试命令模块（发布包中不包含）
+/// Debug-only command module excluded from release builds.
 #[cfg(debug_assertions)]
 use commands::app::debug as debug_commands;
 
@@ -22,11 +22,10 @@ use commands::server::players as player_commands;
 use commands::server::plugins as server_plugin_commands;
 use commands::update as update_commands;
 
-/// 注册桌面模式下的命令表
+/// Registers the Tauri desktop command table.
 ///
-/// # Returns
-///
-/// 返回 Tauri 桌面端使用的命令分发表
+/// The returned handler is the authoritative desktop IPC surface and should stay
+/// aligned with the frontend command wrappers and runtime command catalog.
 pub(crate) fn desktop_handler(
 ) -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![

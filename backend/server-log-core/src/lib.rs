@@ -1,3 +1,5 @@
+//! Shared server log ingestion, persistence, and structured-event helpers.
+
 mod db;
 mod output_reader;
 mod reader;
@@ -15,12 +17,14 @@ pub use state::{LogSource, LATEST_LOG_DB_FILE};
 pub use writer::{append_log, append_sealantern_log, append_server_log, init_db, shutdown_writer};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// Structured fields extracted from parsed server log domain events.
 pub struct StructuredLogEventFields {
     pub event_kind: Option<String>,
     pub player: Option<String>,
     pub message: Option<String>,
 }
 
+/// Maps a parsed domain event into the structured fields persisted with log entries.
 pub fn map_domain_event(event: Option<DomainEvent>) -> StructuredLogEventFields {
     match event {
         Some(DomainEvent::ServerReady) => StructuredLogEventFields {

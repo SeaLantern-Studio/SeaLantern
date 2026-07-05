@@ -1,3 +1,5 @@
+//! Shared server-configuration helpers for startup files, properties, and discovery.
+
 pub mod cpu_policy;
 pub mod discovery;
 pub mod properties;

@@ -1,4 +1,4 @@
-use super::common::{parse_params, CommandHandler, RegistryBuilder};
+use super::common::{invalid_request, parse_params, CommandHandler, RegistryBuilder};
 use crate::commands::plugins::manage as plugin_commands;
 use crate::plugins::loader::PluginLoader;
 use crate::services::global;
@@ -237,7 +237,7 @@ fn handle_install_plugin(
         let path = params
             .get("path")
             .and_then(|value| value.as_str())
-            .ok_or_else(|| "Missing path".to_string())?
+            .ok_or_else(|| invalid_request("Missing path"))?
             .to_string();
         let manager = global::plugin_manager();
         let mut manager = manager.lock().unwrap_or_else(|e| e.into_inner());

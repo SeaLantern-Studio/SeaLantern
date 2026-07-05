@@ -1,4 +1,4 @@
-use super::common::{handle_unsupported, CommandHandler, RegistryBuilder};
+use super::common::{handle_unsupported, invalid_request, CommandHandler, RegistryBuilder};
 use crate::commands::app::host as host_commands;
 use crate::commands::app::logging as logging_commands;
 use serde_json::Value;
@@ -79,7 +79,7 @@ fn handle_get_server_resource_usage(
         let server_id = params
             .get("serverId")
             .and_then(|value| value.as_str())
-            .ok_or_else(|| "Missing serverId".to_string())?
+            .ok_or_else(|| invalid_request("Missing serverId"))?
             .to_string();
 
         let result = host_commands::get_server_resource_usage(server_id)?;

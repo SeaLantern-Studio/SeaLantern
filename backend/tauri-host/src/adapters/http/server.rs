@@ -379,6 +379,68 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn authenticated_api_invalid_params_return_bad_request() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let app = test_app(upload_dir.path().to_path_buf());
+        let token = login_session_token(app.clone()).await;
+
+        let response = app
+            .oneshot(
+                auth_request(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/validate_java_path")
+                        .header(header::CONTENT_TYPE, "application/json"),
+                    &token,
+                )
+                .body(Body::from(r#"{"params":{}}"#))
+                .unwrap(),
+            )
+            .await
+            .expect("api response");
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let payload = response_payload(response).await;
+        assert_eq!(payload.success, false);
+        let error = payload.error.expect("error message");
+        assert!(error.contains("Invalid parameters:"));
+        let error_detail = payload.error_detail.expect("structured error detail");
+        assert_eq!(error_detail.code, "common.message_unknown_error");
+        assert_eq!(error_detail.error_kind.as_deref(), Some("invalid_request"));
+        assert_eq!(error_detail.message, error);
+    }
+
+    #[tokio::test]
+    async fn authenticated_api_runtime_failures_still_return_internal_server_error() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let app = test_app(upload_dir.path().to_path_buf());
+        let token = login_session_token(app.clone()).await;
+
+        let response = app
+            .oneshot(
+                auth_request(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/pick_file")
+                        .header(header::CONTENT_TYPE, "application/json"),
+                    &token,
+                )
+                .body(Body::from(r#"{"params":{}}"#))
+                .unwrap(),
+            )
+            .await
+            .expect("api response");
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let payload = response_payload(response).await;
+        assert_eq!(payload.success, false);
+        let error_detail = payload.error_detail.expect("structured error detail");
+        assert_eq!(error_detail.code, "common.message_unknown_error");
+        assert_eq!(error_detail.error_kind.as_deref(), Some("runtime"));
+        assert!(error_detail.message.contains("not supported"));
+    }
+
+    #[tokio::test]
     async fn authenticated_runtime_event_stream_is_exposed() {
         let upload_dir = tempfile::tempdir().expect("tempdir");
         let app = test_app(upload_dir.path().to_path_buf());

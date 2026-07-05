@@ -1,3 +1,5 @@
+//! Shared archive and core-detection helpers used during server installation flows.
+
 mod archive;
 mod core_type;
 mod mc_version;
@@ -14,16 +16,19 @@ pub use core_type::{CoreType, DockerTypeResolution, StarterInstallArgs, StarterI
 pub use parser::{parse_server_core_key, parse_server_core_type, ParsedServerCoreInfo};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Result of resolving the starter-mode core key from explicit and detected inputs.
 pub struct StarterCoreKeyResolution {
     pub starter_core_key: String,
     pub detected_core_key: String,
 }
 
 impl StarterCoreKeyResolution {
+    /// Returns whether starter mode resolved any usable core identifier.
     pub fn is_starter_mode(&self) -> bool {
         !self.starter_core_key.is_empty() || !self.detected_core_key.is_empty()
     }
 
+    /// Returns whether a user-facing unsupported-core error should be emitted.
     pub fn needs_unrecognized_error(&self, requested_startup_mode: &str) -> bool {
         requested_startup_mode
             .trim()
@@ -31,6 +36,7 @@ impl StarterCoreKeyResolution {
             && self.starter_core_key.is_empty()
     }
 
+    /// Returns the best available display hint when starter core resolution is incomplete.
     pub fn unresolved_display_hint(&self, explicit_core_type: Option<&str>) -> String {
         explicit_core_type
             .map(str::trim)
@@ -44,6 +50,7 @@ fn normalize_detected_core_type(raw: &str) -> String {
     CoreType::normalize_to_api_core_key(raw).unwrap_or_else(|| raw.to_string())
 }
 
+/// Detects a human-readable core type from a startup target, falling back to the file name.
 pub fn detect_core_type(input: &str) -> String {
     detect_core_type_checked(input).unwrap_or_else(|_| {
         let path = Path::new(input);
@@ -53,6 +60,7 @@ pub fn detect_core_type(input: &str) -> String {
     })
 }
 
+/// Detects the normalized API core key from a startup target, falling back to the file name.
 pub fn detect_core_key(input: &str) -> String {
     detect_core_key_checked(input).unwrap_or_else(|_| {
         let path = Path::new(input);
@@ -62,6 +70,7 @@ pub fn detect_core_key(input: &str) -> String {
     })
 }
 
+/// Detects a human-readable core type from a startup target and surfaces read errors.
 pub fn detect_core_type_checked(input: &str) -> Result<String, String> {
     let path = Path::new(input);
     let target_file = if archive::is_script_file(path) {
@@ -79,10 +88,12 @@ pub fn detect_core_type_checked(input: &str) -> Result<String, String> {
     Ok(CoreType::detect_from_filename(&target_file).to_string())
 }
 
+/// Detects the normalized API core key from a startup target and surfaces read errors.
 pub fn detect_core_key_checked(input: &str) -> Result<String, String> {
     detect_core_type_checked(input).map(|value| normalize_detected_core_type(&value))
 }
 
+/// Resolves the starter-mode core key from explicit type hints or a startup target path.
 pub fn resolve_starter_core_key(
     explicit_core_type: Option<&str>,
     startup_target_path: Option<&str>,
@@ -98,6 +109,7 @@ pub fn resolve_starter_core_key(
         })
 }
 
+/// Resolves starter-mode details needed by compatibility and validation flows.
 pub fn resolve_starter_core_key_checked(
     requested_startup_mode: &str,
     explicit_core_type: Option<&str>,
@@ -124,6 +136,7 @@ pub fn resolve_starter_core_key_checked(
     StarterCoreKeyResolution { starter_core_key, detected_core_key }
 }
 
+/// Resolves the imported server core key used when adding existing servers.
 pub fn resolve_imported_server_core_key(startup_mode: &str, startup_target_path: &str) -> String {
     if startup_mode.trim().eq_ignore_ascii_case("custom") {
         let normalized = startup_target_path.trim().to_ascii_lowercase();
@@ -136,6 +149,7 @@ pub fn resolve_imported_server_core_key(startup_mode: &str, startup_target_path:
     normalize_detected_core_type(&detect_core_key(startup_target_path))
 }
 
+/// Returns whether a modpack source should be copied as a native server binary.
 pub fn should_copy_modpack_source_as_native_server_binary(source_path: &Path) -> bool {
     let extension = source_path
         .extension()
@@ -153,6 +167,7 @@ pub fn should_copy_modpack_source_as_native_server_binary(source_path: &Path) ->
             .is_some_and(|name| detect_core_key(name) == "pumpkin")
 }
 
+/// Returns whether starter runtime files should be written after provisioning finishes.
 pub fn should_delay_starter_runtime_file_writes(
     requested_startup_mode: &str,
     source_path: &Path,
@@ -165,6 +180,7 @@ pub fn should_delay_starter_runtime_file_writes(
             .is_some_and(|ext| ext.eq_ignore_ascii_case("jar"))
 }
 
+/// Best-effort Minecraft version detection from a populated mods directory.
 pub fn detect_mc_version_from_mods(
     root_dir: &Path,
     known_versions: &[&str],
@@ -172,6 +188,7 @@ pub fn detect_mc_version_from_mods(
     mc_version::detect_mc_version_from_mods(root_dir, known_versions)
 }
 
+/// Minecraft version detection from a populated mods directory with explicit errors.
 pub fn detect_mc_version_from_mods_checked(
     root_dir: &Path,
     known_versions: &[&str],

@@ -1,3 +1,5 @@
+//! Shared event contracts and registry helpers for backend runtime consumers.
+
 mod events;
 mod registry;
 

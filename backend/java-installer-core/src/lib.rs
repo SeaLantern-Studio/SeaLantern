@@ -1,3 +1,5 @@
+//! Java runtime download and installation helpers shared by host flows.
+
 mod archive;
 mod shared;
 
@@ -40,6 +42,7 @@ impl Drop for TempInstallDir {
 }
 
 #[derive(Clone, Debug, Serialize)]
+/// Progress snapshot emitted during Java runtime download and extraction.
 pub struct JavaInstallProgress {
     pub state: String,
     pub progress: u64,
@@ -94,7 +97,7 @@ impl JavaInstallProgress {
     }
 }
 
-/// 下载并安装 Java 运行时，调用方只负责提供安装根目录、取消标记和进度桥接。
+/// Downloads and installs a Java runtime into the managed runtime directory.
 pub async fn download_and_install_java<F>(
     url: &str,
     version_name: &str,
