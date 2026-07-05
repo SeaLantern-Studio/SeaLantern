@@ -59,7 +59,9 @@ const page = useTunnelPage();
 
       <div class="tunnel-page__ticket-row">
         <span class="tunnel-page__ticket-label">{{ i18n.t("tunnel.ticket") }}</span>
-        <code class="tunnel-page__ticket-value">{{ page.status.value?.ticket || i18n.t("tunnel.no_ticket") }}</code>
+        <code class="tunnel-page__ticket-value">{{
+          page.status.value?.ticket || i18n.t("tunnel.no_ticket")
+        }}</code>
 
         <div class="tunnel-page__ticket-actions">
           <template v-if="page.hasTicket.value">
@@ -128,8 +130,16 @@ const page = useTunnelPage();
               <button
                 type="button"
                 class="tunnel-page__icon-button tunnel-page__input-button"
-                :title="page.showHostPassword.value ? i18n.t('tunnel.hide_password') : i18n.t('tunnel.show_password')"
-                :aria-label="page.showHostPassword.value ? i18n.t('tunnel.hide_password') : i18n.t('tunnel.show_password')"
+                :title="
+                  page.showHostPassword.value
+                    ? i18n.t('tunnel.hide_password')
+                    : i18n.t('tunnel.show_password')
+                "
+                :aria-label="
+                  page.showHostPassword.value
+                    ? i18n.t('tunnel.hide_password')
+                    : i18n.t('tunnel.show_password')
+                "
                 :disabled="!page.canEditHostForm.value"
                 @click="page.showHostPassword.value = !page.showHostPassword.value"
               >
@@ -206,8 +216,16 @@ const page = useTunnelPage();
               <button
                 type="button"
                 class="tunnel-page__icon-button tunnel-page__input-button"
-                :title="page.showJoinPassword.value ? i18n.t('tunnel.hide_password') : i18n.t('tunnel.show_password')"
-                :aria-label="page.showJoinPassword.value ? i18n.t('tunnel.hide_password') : i18n.t('tunnel.show_password')"
+                :title="
+                  page.showJoinPassword.value
+                    ? i18n.t('tunnel.hide_password')
+                    : i18n.t('tunnel.show_password')
+                "
+                :aria-label="
+                  page.showJoinPassword.value
+                    ? i18n.t('tunnel.hide_password')
+                    : i18n.t('tunnel.show_password')
+                "
                 :disabled="!page.canEditJoinForm.value"
                 @click="page.showJoinPassword.value = !page.showJoinPassword.value"
               >
@@ -231,10 +249,7 @@ const page = useTunnelPage();
       </WorkbenchPanel>
     </div>
 
-    <WorkbenchPanel
-      v-if="page.showConnections.value"
-      :title="i18n.t('tunnel.connections_title')"
-    >
+    <WorkbenchPanel v-if="page.showConnections.value" :title="i18n.t('tunnel.connections_title')">
       <div v-if="!page.connectionRows.value.length" class="tunnel-page__empty-text">
         {{ i18n.t("tunnel.no_connections") }}
       </div>
@@ -253,7 +268,9 @@ const page = useTunnelPage();
           <tbody>
             <tr v-for="item in page.connectionRows.value" :key="item.remote_id">
               <td>{{ item.remote_id }}</td>
-              <td>{{ item.is_relay ? i18n.t("tunnel.route_relay") : i18n.t("tunnel.route_direct") }}</td>
+              <td>
+                {{ item.is_relay ? i18n.t("tunnel.route_relay") : i18n.t("tunnel.route_direct") }}
+              </td>
               <td>{{ item.rtt_ms }} ms</td>
               <td>{{ item.tx_bytes }}</td>
               <td>{{ item.rx_bytes }}</td>

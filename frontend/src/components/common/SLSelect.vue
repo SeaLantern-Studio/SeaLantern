@@ -757,7 +757,8 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   background: var(--sl-overlay-surface, #ffffff);
-  border-bottom: 1px solid color-mix(in srgb, var(--sl-overlay-border, var(--sl-border)) 65%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--sl-overlay-border, var(--sl-border)) 65%, transparent);
 }
 
 .sl-select-dropdown .sl-select-option:last-child {

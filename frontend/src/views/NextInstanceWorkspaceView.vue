@@ -140,7 +140,9 @@ function openDeleteDialog(): void {
   }
 
   deleteErrorMessage.value = "";
-  deleteConfirmationItem.value = deleteUsesConfirmationItem.value ? pickDeleteConfirmationItem() : "";
+  deleteConfirmationItem.value = deleteUsesConfirmationItem.value
+    ? pickDeleteConfirmationItem()
+    : "";
   deleteDialogVisible.value = true;
 }
 
@@ -253,11 +255,7 @@ onMounted(() => {
     </template>
 
     <template #page-content-before>
-      <section
-        v-if="deleteErrorMessage"
-        class="next-instance-workspace-view__error"
-        role="alert"
-      >
+      <section v-if="deleteErrorMessage" class="next-instance-workspace-view__error" role="alert">
         <strong>{{ i18n.t("servers.next.error_title") }}</strong>
         <span>{{ deleteErrorMessage }}</span>
       </section>

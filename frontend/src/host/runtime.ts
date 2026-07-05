@@ -148,9 +148,7 @@ function createNextHostSlotManager(getCurrentRouteKey: () => string | null): Nex
       (entry) => entry.ownerId === input.ownerId && entry.entryId === input.entryId,
     );
     const conflictingEntry = registrations.value.find(
-      (entry) =>
-        entry.entryId === input.entryId &&
-        entry.ownerId !== input.ownerId,
+      (entry) => entry.entryId === input.entryId && entry.ownerId !== input.ownerId,
     );
 
     if (conflictingEntry) {
@@ -161,7 +159,8 @@ function createNextHostSlotManager(getCurrentRouteKey: () => string | null): Nex
       };
     }
 
-    const registrationId = sameOwnerEntry?.registrationId ?? buildRegistrationId(input.ownerId, input.entryId);
+    const registrationId =
+      sameOwnerEntry?.registrationId ?? buildRegistrationId(input.ownerId, input.entryId);
 
     const nextEntry: NextHostSlotRegistration = {
       registrationId,
@@ -190,7 +189,9 @@ function createNextHostSlotManager(getCurrentRouteKey: () => string | null): Nex
 
   function unregister(registrationId: string): boolean {
     const previousLength = registrations.value.length;
-    updateRegistrations((current) => current.filter((entry) => entry.registrationId !== registrationId));
+    updateRegistrations((current) =>
+      current.filter((entry) => entry.registrationId !== registrationId),
+    );
     return registrations.value.length !== previousLength;
   }
 

@@ -133,37 +133,134 @@ watch(
 </script>
 
 <template>
-  <WorkbenchPanel :title="i18n.t('developer.next.logs.title')" :description="i18n.t('developer.next.logs.description')">
+  <WorkbenchPanel
+    :title="i18n.t('developer.next.logs.title')"
+    :description="i18n.t('developer.next.logs.description')"
+  >
     <template #actions>
-      <SLButton variant="secondary" size="sm" @click="emit('refresh')">{{ i18n.t("common.refresh") }}</SLButton>
-      <SLButton variant="secondary" size="sm" @click="emit('copy')">{{ i18n.t("developer.copy_logs") }}</SLButton>
-      <SLButton variant="secondary" size="sm" :loading="exporting" :disabled="isBrowserMode || !hasLogEntries" @click="emit('export')">{{ i18n.t("developer.export_logs") }}</SLButton>
-      <SLButton variant="danger" size="sm" :loading="clearing" :disabled="!hasLogEntries" @click="emit('clear')">{{ i18n.t("developer.clear_logs") }}</SLButton>
+      <SLButton variant="secondary" size="sm" @click="emit('refresh')">{{
+        i18n.t("common.refresh")
+      }}</SLButton>
+      <SLButton variant="secondary" size="sm" @click="emit('copy')">{{
+        i18n.t("developer.copy_logs")
+      }}</SLButton>
+      <SLButton
+        variant="secondary"
+        size="sm"
+        :loading="exporting"
+        :disabled="isBrowserMode || !hasLogEntries"
+        @click="emit('export')"
+        >{{ i18n.t("developer.export_logs") }}</SLButton
+      >
+      <SLButton
+        variant="danger"
+        size="sm"
+        :loading="clearing"
+        :disabled="!hasLogEntries"
+        @click="emit('clear')"
+        >{{ i18n.t("developer.clear_logs") }}</SLButton
+      >
     </template>
 
     <div class="developer-logs-section__filters">
-      <SLSelect :model-value="selectedLogLevel" :options="logLevelOptions" :label="i18n.t('developer.log_level_filter')" @update:model-value="emit('updateSelectedLogLevel', String($event))" />
-      <SLSelect :model-value="selectedLogModule" :options="logModuleOptions" :label="i18n.t('developer.log_module_filter')" searchable @update:model-value="emit('updateSelectedLogModule', String($event))" />
-      <p class="developer-logs-section__summary">{{ i18n.t("developer.log_filter_summary", { shown: filteredLogCount, total: totalLogCount }) }}</p>
+      <SLSelect
+        :model-value="selectedLogLevel"
+        :options="logLevelOptions"
+        :label="i18n.t('developer.log_level_filter')"
+        @update:model-value="emit('updateSelectedLogLevel', String($event))"
+      />
+      <SLSelect
+        :model-value="selectedLogModule"
+        :options="logModuleOptions"
+        :label="i18n.t('developer.log_module_filter')"
+        searchable
+        @update:model-value="emit('updateSelectedLogModule', String($event))"
+      />
+      <p class="developer-logs-section__summary">
+        {{
+          i18n.t("developer.log_filter_summary", { shown: filteredLogCount, total: totalLogCount })
+        }}
+      </p>
     </div>
 
     <p v-if="error" class="developer-logs-section__error">{{ error }}</p>
     <div v-else class="developer-logs-section__output">
-      <ConsoleOutput ref="outputRef" :consoleFontSize="consoleFontSize" :consoleFontFamily="consoleFontFamily" :consoleLetterSpacing="consoleLetterSpacing" :maxLogLines="maxLogLines" :userScrolledUp="userScrolledUp" @scroll="(value) => (userScrolledUp = value)" @scrollToBottom="userScrolledUp = false; outputRef?.doScroll();" />
-      <div v-if="loading && logLines.length === 0" class="developer-logs-section__overlay">{{ i18n.t("common.loading") }}</div>
-      <div v-else-if="!hasLogEntries" class="developer-logs-section__overlay">{{ i18n.t("developer.logs_empty") }}</div>
-      <div v-else-if="logLines.length === 0" class="developer-logs-section__overlay">{{ i18n.t("developer.logs_filtered_empty") }}</div>
+      <ConsoleOutput
+        ref="outputRef"
+        :consoleFontSize="consoleFontSize"
+        :consoleFontFamily="consoleFontFamily"
+        :consoleLetterSpacing="consoleLetterSpacing"
+        :maxLogLines="maxLogLines"
+        :userScrolledUp="userScrolledUp"
+        @scroll="(value) => (userScrolledUp = value)"
+        @scrollToBottom="
+          userScrolledUp = false;
+          outputRef?.doScroll();
+        "
+      />
+      <div v-if="loading && logLines.length === 0" class="developer-logs-section__overlay">
+        {{ i18n.t("common.loading") }}
+      </div>
+      <div v-else-if="!hasLogEntries" class="developer-logs-section__overlay">
+        {{ i18n.t("developer.logs_empty") }}
+      </div>
+      <div v-else-if="logLines.length === 0" class="developer-logs-section__overlay">
+        {{ i18n.t("developer.logs_filtered_empty") }}
+      </div>
     </div>
   </WorkbenchPanel>
 </template>
 
 <style scoped>
-.developer-logs-section__filters { display: grid; grid-template-columns: minmax(180px, 220px) minmax(220px, 320px) 1fr; gap: 10px; align-items: end; }
-.developer-logs-section__summary, .developer-logs-section__error { margin: 0; font-size: 0.84rem; line-height: 1.45; }
-.developer-logs-section__summary { color: var(--sl-text-secondary); }
-.developer-logs-section__error { color: var(--sl-error); }
-.developer-logs-section__output { position: relative; min-height: 300px; display: flex; padding: 8px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--sl-border) 72%, transparent); background: color-mix(in srgb, var(--sl-bg-secondary) 68%, transparent); overflow: hidden; }
-.developer-logs-section__output :deep(.console-output) { flex: 1; min-height: 0; padding: 4px 6px; }
-.developer-logs-section__overlay { position: absolute; inset: 8px; display: flex; align-items: center; justify-content: center; padding: 12px; color: var(--sl-text-tertiary); background: color-mix(in srgb, var(--sl-bg-secondary) 82%, transparent); text-align: center; pointer-events: none; }
-@media (max-width: 860px) { .developer-logs-section__filters { grid-template-columns: 1fr; align-items: stretch; } }
+.developer-logs-section__filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(220px, 320px) 1fr;
+  gap: 10px;
+  align-items: end;
+}
+.developer-logs-section__summary,
+.developer-logs-section__error {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.developer-logs-section__summary {
+  color: var(--sl-text-secondary);
+}
+.developer-logs-section__error {
+  color: var(--sl-error);
+}
+.developer-logs-section__output {
+  position: relative;
+  min-height: 300px;
+  display: flex;
+  padding: 8px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--sl-border) 72%, transparent);
+  background: color-mix(in srgb, var(--sl-bg-secondary) 68%, transparent);
+  overflow: hidden;
+}
+.developer-logs-section__output :deep(.console-output) {
+  flex: 1;
+  min-height: 0;
+  padding: 4px 6px;
+}
+.developer-logs-section__overlay {
+  position: absolute;
+  inset: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: var(--sl-text-tertiary);
+  background: color-mix(in srgb, var(--sl-bg-secondary) 82%, transparent);
+  text-align: center;
+  pointer-events: none;
+}
+@media (max-width: 860px) {
+  .developer-logs-section__filters {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
 </style>

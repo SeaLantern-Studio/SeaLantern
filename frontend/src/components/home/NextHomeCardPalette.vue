@@ -143,7 +143,9 @@ function closePalette(): void {
           @dblclick="emit('deploy', entry.kind)"
           @dragstart="handleDragStart(entry.kind, $event)"
         >
-          <span class="next-home-card-palette__item-title">{{ resolveNextHomeCardTitle(entry.meta) }}</span>
+          <span class="next-home-card-palette__item-title">{{
+            resolveNextHomeCardTitle(entry.meta)
+          }}</span>
           <span class="next-home-card-palette__item-count"
             >{{ entry.count }}/{{ entry.limit }}</span
           >

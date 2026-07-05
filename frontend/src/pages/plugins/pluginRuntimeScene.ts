@@ -34,11 +34,9 @@ function buildMetadataOnlyScene(buildFlavor: HostBuildFlavor): PluginRuntimeScen
       `This ${buildFlavor} build can show plugin metadata, trust, and permissions, but it cannot start local plugin runtime or enable plugins.`,
       { flavor: buildFlavor },
     ),
-    tagLabel: translateRuntimeCopy(
-      "metadata_only_tag",
-      `${buildFlavor} · metadata only`,
-      { flavor: buildFlavor },
-    ),
+    tagLabel: translateRuntimeCopy("metadata_only_tag", `${buildFlavor} · metadata only`, {
+      flavor: buildFlavor,
+    }),
     toggleUnavailableMessage: translateRuntimeCopy(
       "metadata_only_toggle_unavailable",
       "Local plugin runtime is not included in this build, so enable and disable actions are unavailable here.",
@@ -65,11 +63,9 @@ function buildRuntimeOffScene(buildFlavor: HostBuildFlavor | null): PluginRuntim
       `This ${flavor} host can still show plugin metadata, trust, and permissions, but local plugin runtime features are unavailable right now.`,
       { flavor },
     ),
-    tagLabel: translateRuntimeCopy(
-      "runtime_off_tag",
-      `${flavor} · runtime unavailable`,
-      { flavor },
-    ),
+    tagLabel: translateRuntimeCopy("runtime_off_tag", `${flavor} · runtime unavailable`, {
+      flavor,
+    }),
     toggleUnavailableMessage: translateRuntimeCopy(
       "runtime_off_toggle_unavailable",
       "Plugin runtime is unavailable in this host build, so enable and disable actions are unavailable here.",

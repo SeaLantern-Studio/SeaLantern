@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import type {
-  MarketPermissionLevel,
-  MarketPlugin,
-} from "./pluginMarketShared";
+import type { MarketPermissionLevel, MarketPlugin } from "./pluginMarketShared";
 import type { MarketPluginInfo } from "@api/plugin";
 
 defineProps<{

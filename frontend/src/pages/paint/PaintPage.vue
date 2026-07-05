@@ -51,7 +51,10 @@ const {
       @select="selectSection"
     >
       <template #content-header>
-        <WorkbenchSectionHeader :title="currentSection.label" :description="currentSection.description" />
+        <WorkbenchSectionHeader
+          :title="currentSection.label"
+          :description="currentSection.description"
+        />
       </template>
 
       <template v-if="activeSectionId === 'appearance-theme'">

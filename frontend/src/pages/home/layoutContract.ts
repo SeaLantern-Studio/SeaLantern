@@ -296,7 +296,10 @@ function normalizeHostCardCols(section: NextHomeHostCardSection, value?: 4 | 6):
   return section === "operations" ? 6 : 4;
 }
 
-function normalizeHostCardRows(section: NextHomeHostCardSection, value?: 3 | 4 | 5 | 6): 3 | 4 | 5 | 6 {
+function normalizeHostCardRows(
+  section: NextHomeHostCardSection,
+  value?: 3 | 4 | 5 | 6,
+): 3 | 4 | 5 | 6 {
   if (value) {
     return value;
   }

@@ -137,14 +137,15 @@ function measureAutoHeightRowSpan(instanceId: string): number | null {
   const paddingBottom = parseFloat(style.paddingBottom) || 0;
   const borderTop = parseFloat(style.borderTopWidth) || 0;
   const borderBottom = parseFloat(style.borderBottomWidth) || 0;
-  const chromeBottom = chrome
-    ? chrome.offsetTop + chrome.offsetHeight + 12
-    : 0;
+  const chromeBottom = chrome ? chrome.offsetTop + chrome.offsetHeight + 12 : 0;
   const totalHeight = Math.max(
     contentHeight + paddingTop + paddingBottom + borderTop + borderBottom,
     chromeBottom + paddingBottom + borderBottom,
   );
-  return Math.max(1, Math.ceil((totalHeight + HOME_GRID_GAP) / (HOME_GRID_ROW_HEIGHT + HOME_GRID_GAP)));
+  return Math.max(
+    1,
+    Math.ceil((totalHeight + HOME_GRID_GAP) / (HOME_GRID_ROW_HEIGHT + HOME_GRID_GAP)),
+  );
 }
 
 function syncAutoHeightRows(): void {

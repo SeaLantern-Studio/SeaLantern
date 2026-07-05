@@ -87,7 +87,10 @@ defineEmits<{
             <span v-for="item in metaItems" :key="item" class="installed-plugin-card__meta-pill">
               {{ item }}
             </span>
-            <span v-if="sceneTagLabel" class="installed-plugin-card__meta-pill installed-plugin-card__meta-pill--info">
+            <span
+              v-if="sceneTagLabel"
+              class="installed-plugin-card__meta-pill installed-plugin-card__meta-pill--info"
+            >
               {{ sceneTagLabel }}
             </span>
             <span

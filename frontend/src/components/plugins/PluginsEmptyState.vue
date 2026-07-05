@@ -19,7 +19,9 @@ defineEmits<{
     <div class="plugins-empty-state__content">
       <span class="plugins-empty-state__eyebrow">{{ i18n.t("plugins.next.empty.eyebrow") }}</span>
       <h2 class="plugins-empty-state__title">{{ i18n.t("plugins.next.empty.title") }}</h2>
-      <p class="plugins-empty-state__description">{{ description || i18n.t("plugins.next.empty.description") }}</p>
+      <p class="plugins-empty-state__description">
+        {{ description || i18n.t("plugins.next.empty.description") }}
+      </p>
 
       <div class="plugins-empty-state__actions">
         <SLButton variant="primary" size="sm" @click="$emit('open-market')">

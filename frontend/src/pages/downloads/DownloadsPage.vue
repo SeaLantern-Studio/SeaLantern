@@ -64,9 +64,18 @@ const {
       <span>{{ pageError }}</span>
     </WorkbenchStatusBanner>
 
-    <WorkbenchSplitView :items="sectionItems" :active-id="activeSectionId" :aria-label="i18n.t('downloads.next.nav_aria_label')" :ariaLabel="i18n.t('downloads.next.nav_aria_label')" @select="selectSection">
+    <WorkbenchSplitView
+      :items="sectionItems"
+      :active-id="activeSectionId"
+      :aria-label="i18n.t('downloads.next.nav_aria_label')"
+      :ariaLabel="i18n.t('downloads.next.nav_aria_label')"
+      @select="selectSection"
+    >
       <template #content-header>
-        <WorkbenchSectionHeader :title="currentSection.label" :description="currentSection.description" />
+        <WorkbenchSectionHeader
+          :title="currentSection.label"
+          :description="currentSection.description"
+        />
       </template>
 
       <section v-if="bootstrapping" class="downloads-page__loading">
@@ -75,8 +84,25 @@ const {
       </section>
 
       <template v-else-if="activeSectionId === 'tasks'">
-        <DownloadTaskList v-if="hasActiveTask && currentTask" :title="i18n.t('downloads.next.tasks.current_title')" :tasks="[currentTask]" :empty-title="i18n.t('downloads.next.tasks.empty_current_title')" :empty-description="i18n.t('downloads.next.tasks.empty_current_description')" @create-instance="goToCreateInstance" />
-        <DownloadTaskList :title="i18n.t('downloads.next.tasks.recent_title')" :tasks="recentTasks" :empty-title="i18n.t('downloads.next.tasks.empty_recent_title')" :empty-description="hasAnyTask ? i18n.t('downloads.next.tasks.empty_recent_description') : i18n.t('downloads.next.tasks.empty_all_description')" @create-instance="goToCreateInstance" />
+        <DownloadTaskList
+          v-if="hasActiveTask && currentTask"
+          :title="i18n.t('downloads.next.tasks.current_title')"
+          :tasks="[currentTask]"
+          :empty-title="i18n.t('downloads.next.tasks.empty_current_title')"
+          :empty-description="i18n.t('downloads.next.tasks.empty_current_description')"
+          @create-instance="goToCreateInstance"
+        />
+        <DownloadTaskList
+          :title="i18n.t('downloads.next.tasks.recent_title')"
+          :tasks="recentTasks"
+          :empty-title="i18n.t('downloads.next.tasks.empty_recent_title')"
+          :empty-description="
+            hasAnyTask
+              ? i18n.t('downloads.next.tasks.empty_recent_description')
+              : i18n.t('downloads.next.tasks.empty_all_description')
+          "
+          @create-instance="goToCreateInstance"
+        />
       </template>
 
       <ServerDownloadSection
@@ -123,18 +149,37 @@ const {
 </template>
 
 <style scoped>
-.downloads-page { min-width: 0; display: grid; gap: 16px; }
-.downloads-page__top-actions { display: flex; justify-content: flex-end; }
-.downloads-page__loading { display: grid; gap: 14px; }
+.downloads-page {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+.downloads-page__top-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.downloads-page__loading {
+  display: grid;
+  gap: 14px;
+}
 .downloads-page__loading-card {
   min-height: 180px;
   border-radius: 22px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--sl-bg-secondary) 86%, transparent) 0%, color-mix(in srgb, var(--sl-surface) 92%, transparent) 50%, color-mix(in srgb, var(--sl-bg-secondary) 86%, transparent) 100%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--sl-bg-secondary) 86%, transparent) 0%,
+    color-mix(in srgb, var(--sl-surface) 92%, transparent) 50%,
+    color-mix(in srgb, var(--sl-bg-secondary) 86%, transparent) 100%
+  );
   background-size: 200% 100%;
   animation: downloads-page-skeleton 1.2s ease-in-out infinite;
 }
 @keyframes downloads-page-skeleton {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 </style>

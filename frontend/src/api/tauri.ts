@@ -15,7 +15,7 @@ declare global {
 
 // 环境检测：判断是否在浏览器环境（Docker 模式）
 // 在当前 Tauri v2 dev 运行时里，直接依赖 window.__TAURI_INTERNALS__ 并不稳定。
-// 统一走官方 @tauri-apps/api/core.isTauri()，避免桌面壳被误判成 browser。 
+// 统一走官方 @tauri-apps/api/core.isTauri()，避免桌面壳被误判成 browser。
 export const isBrowserEnv = (): boolean => {
   return typeof window !== "undefined" && !detectTauriRuntime();
 };

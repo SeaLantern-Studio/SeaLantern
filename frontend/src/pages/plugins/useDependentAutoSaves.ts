@@ -1,9 +1,6 @@
 import { computed } from "vue";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
-import {
-  serializeSettingsRecord,
-  type PluginSettingsRecord,
-} from "./pluginSettingsShared";
+import { serializeSettingsRecord, type PluginSettingsRecord } from "./pluginSettingsShared";
 import { useAutoSaveSettings } from "./useAutoSaveSettings";
 import type { PluginInfo } from "@type/plugin";
 

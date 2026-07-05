@@ -345,7 +345,10 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
         const leftSection = SECTION_ORDER.indexOf(left.section);
         const rightSection = SECTION_ORDER.indexOf(right.section);
         if (leftSection !== rightSection) return leftSection - rightSection;
-        return resolveNextHomeCardTitle(left).localeCompare(resolveNextHomeCardTitle(right), "zh-CN");
+        return resolveNextHomeCardTitle(left).localeCompare(
+          resolveNextHomeCardTitle(right),
+          "zh-CN",
+        );
       })
       .map((meta) => {
         const count = countsByKind.value[meta.id] ?? 0;
@@ -572,7 +575,9 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
 
     const nextInstances = resolveAutoHeightLayout(registry.value, instances.value, candidate).map(
       (instance) =>
-        instance.instanceId === candidate.instanceId ? { ...instance, zIndex: source.zIndex } : instance,
+        instance.instanceId === candidate.instanceId
+          ? { ...instance, zIndex: source.zIndex }
+          : instance,
     );
     replaceInstances(nextInstances);
     return true;

@@ -8,14 +8,8 @@ import {
   getPluginComponentHostOwnerId,
 } from "@stores/plugin/pluginComponentBridgeShared";
 import SLProgress from "@components/common/SLProgress.vue";
-import {
-  NEXT_HOST_SLOT_IDS,
-  type NextHostSlotId,
-} from "@src/contracts/slots";
-import {
-  registerNextHostControlledComponent,
-  useNextHostRuntime,
-} from "@src/host/runtime";
+import { NEXT_HOST_SLOT_IDS, type NextHostSlotId } from "@src/contracts/slots";
+import { registerNextHostControlledComponent, useNextHostRuntime } from "@src/host/runtime";
 
 const pluginStore = usePluginStore();
 const nextHostRuntime = useNextHostRuntime();
@@ -117,7 +111,9 @@ function buildComponentProps(component: PendingPluginComponentCreate) {
   return props;
 }
 
-function resolveComponentSlotId(component: PendingPluginComponentCreate): NextHostSlotId | undefined {
+function resolveComponentSlotId(
+  component: PendingPluginComponentCreate,
+): NextHostSlotId | undefined {
   const raw = component.props.slotId;
   if (
     raw === NEXT_HOST_SLOT_IDS.pageHeaderActions ||

@@ -35,7 +35,7 @@ async function fetchBrowserTotpEndpoint<T>(path: string, init?: RequestInit): Pr
     response = await fetch(`${HTTP_API_BASE}${path}`, {
       ...init,
       headers: {
-        ...(init?.headers ?? {}),
+        ...init?.headers,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });

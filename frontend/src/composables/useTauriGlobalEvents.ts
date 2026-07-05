@@ -150,9 +150,11 @@ export function useTauriGlobalEvents() {
     const unlistenServerError = await listen("server-error", () => {
       void playNotificationSound();
     });
-    const unlistenAppOperation = await serverApi.onAppOperationEvent((payload: AppOperationEvent) => {
-      handleBuiltinPluginEnableFailure(payload);
-    });
+    const unlistenAppOperation = await serverApi.onAppOperationEvent(
+      (payload: AppOperationEvent) => {
+        handleBuiltinPluginEnableFailure(payload);
+      },
+    );
     const unlistenFallback = await listen<ServerStartFallbackEventPayload>(
       "server-start-fallback",
       ({ payload }) => {

@@ -146,7 +146,11 @@ onUnmounted(() => {
             <strong>{{ i18n.t("common.switch_language") }}</strong>
           </header>
 
-          <div class="titlebar-locale-switcher__list" role="listbox" :aria-label="i18n.t('settings.language')">
+          <div
+            class="titlebar-locale-switcher__list"
+            role="listbox"
+            :aria-label="i18n.t('settings.language')"
+          >
             <button
               v-for="entry in localeEntries"
               :key="entry.code"

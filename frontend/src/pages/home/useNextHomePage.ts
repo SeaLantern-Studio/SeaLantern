@@ -1,10 +1,7 @@
 import { computed, onMounted, shallowRef } from "vue";
 import { useRouter } from "vue-router";
 import { i18n } from "@language";
-import {
-  NEXT_SERVER_CREATE_ROUTE_NAME,
-  NEXT_SERVER_IMPORT_ROUTE_NAME,
-} from "@src/router/pageMeta";
+import { NEXT_SERVER_CREATE_ROUTE_NAME, NEXT_SERVER_IMPORT_ROUTE_NAME } from "@src/router/pageMeta";
 import { useSerialPolling } from "@src/composables/useSerialPolling";
 import { useHomeServerActionsStore } from "@stores/homeServerActionsStore";
 import { useServerStore } from "@stores/serverStore";
@@ -340,12 +337,14 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
     ];
   });
 
-  const cpuMetric = computed<NextHomeSystemMetric | null>((): NextHomeSystemMetric | null =>
-    systemMetrics.value.find((metric) => metric.id === "cpu") ?? null,
+  const cpuMetric = computed<NextHomeSystemMetric | null>(
+    (): NextHomeSystemMetric | null =>
+      systemMetrics.value.find((metric) => metric.id === "cpu") ?? null,
   );
 
-  const memoryMetric = computed<NextHomeSystemMetric | null>((): NextHomeSystemMetric | null =>
-    systemMetrics.value.find((metric) => metric.id === "memory") ?? null,
+  const memoryMetric = computed<NextHomeSystemMetric | null>(
+    (): NextHomeSystemMetric | null =>
+      systemMetrics.value.find((metric) => metric.id === "memory") ?? null,
   );
 
   const instanceCountMetric = computed<NextHomePageSummaryMetric | null>(() => ({

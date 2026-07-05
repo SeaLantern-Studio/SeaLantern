@@ -13,7 +13,13 @@ const emit = defineEmits<{
 <template>
   <div v-if="message" class="msg-banner error-banner">
     <span>{{ message }}</span>
-    <button :aria-label="i18n.t('common.close')" :title="i18n.t('common.close')" @click="emit('close')">×</button>
+    <button
+      :aria-label="i18n.t('common.close')"
+      :title="i18n.t('common.close')"
+      @click="emit('close')"
+    >
+      ×
+    </button>
   </div>
 </template>
 

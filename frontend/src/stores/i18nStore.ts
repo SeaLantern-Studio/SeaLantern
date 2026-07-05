@@ -44,7 +44,6 @@ async function downloadLocale(localeCode: string) {
 
 export const useI18nStore = defineStore("i18n", () => {
   const localeRef = i18n.getLocaleRef();
-  const localeRegistryVersionRef = i18n.getLocaleRegistryVersionRef();
   const settingsStore = useSettingsStore();
 
   const locale = computed(() => localeRef.value);
@@ -55,8 +54,6 @@ export const useI18nStore = defineStore("i18n", () => {
   const isEnglish = computed(() => localeRef.value === "en-US");
 
   const registeredLocaleOptions = computed(() => {
-    localeRegistryVersionRef.value;
-
     return i18n.getAvailableLocales().map((code) => ({
       code,
       label: i18n.getLocaleDisplayName(code) ?? code,

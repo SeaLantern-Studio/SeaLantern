@@ -15,7 +15,12 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <SLCard variant="outline" padding="lg" class="workbench-panel" :class="`workbench-panel--${tone}`">
+  <SLCard
+    variant="outline"
+    padding="lg"
+    class="workbench-panel"
+    :class="`workbench-panel--${tone}`"
+  >
     <template v-if="title || description || $slots.actions" #header>
       <div class="workbench-panel__header">
         <div v-if="title || description" class="workbench-panel__copy">

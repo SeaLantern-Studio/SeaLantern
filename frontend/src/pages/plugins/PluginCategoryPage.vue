@@ -9,13 +9,8 @@ import PluginSettingsFormCard from "@src/components/plugins/PluginSettingsFormCa
 import { getLocalizedPluginDescription } from "@type/plugin";
 import { usePluginCategoryPage } from "./usePluginCategoryPage";
 
-const {
-  iconUrl,
-  categorySettings,
-  openDetailPage,
-  updateMainField,
-  updateDependentField,
-} = usePluginCategoryPage();
+const { iconUrl, categorySettings, openDetailPage, updateMainField, updateDependentField } =
+  usePluginCategoryPage();
 
 const {
   plugin,

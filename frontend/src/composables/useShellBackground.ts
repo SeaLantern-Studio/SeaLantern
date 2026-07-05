@@ -29,7 +29,9 @@ export function useShellBackground() {
   const backgroundOpacity = computed(() => settingsStore.backgroundOpacity ?? 0.3);
   const backgroundBlur = computed(() => settingsStore.backgroundBlur ?? 0);
   const backgroundBrightness = computed(() => settingsStore.backgroundBrightness ?? 1);
-  const backgroundSize = computed(() => resolveBackgroundSize(settingsStore.backgroundSize || "cover"));
+  const backgroundSize = computed(() =>
+    resolveBackgroundSize(settingsStore.backgroundSize || "cover"),
+  );
   const windowEffect = computed<WindowEffect>(
     () => (settingsStore.windowEffect || "off") as WindowEffect,
   );

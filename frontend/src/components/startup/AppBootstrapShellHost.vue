@@ -87,7 +87,9 @@ async function handleBootstrapConfirm(path: string): Promise<void> {
     <DataDirectorySetupModal
       v-if="enabled"
       :visible="showDataDirDialog"
-      :recommended-path="bootstrapDataDirPath || dataDirectory.status.value?.recommended_data_dir || ''"
+      :recommended-path="
+        bootstrapDataDirPath || dataDirectory.status.value?.recommended_data_dir || ''
+      "
       :busy="dataDirectory.isBusy.value"
       :error="dataDirectory.error.value"
       @browse="handleBootstrapBrowse"

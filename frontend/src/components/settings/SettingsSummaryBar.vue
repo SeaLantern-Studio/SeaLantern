@@ -2,10 +2,7 @@
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import { i18n } from "@language";
-import type {
-  SettingsSummaryChip,
-  SettingsSummaryFact,
-} from "@src/pages/settings/useSettingsPage";
+import type { SettingsSummaryChip, SettingsSummaryFact } from "@src/pages/settings/useSettingsPage";
 
 interface Props {
   chips: SettingsSummaryChip[];

@@ -4,10 +4,7 @@ import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
 import type { ServerStatusInfo } from "@api/server";
 import type { ServerInstance } from "@type/server";
-import type {
-  NextInstancePlaceholderContent,
-  NextInstanceSection,
-} from "@src/contracts/instance";
+import type { NextInstancePlaceholderContent, NextInstanceSection } from "@src/contracts/instance";
 import {
   NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME,

@@ -83,7 +83,9 @@ export const useAuthStore = defineStore("auth", () => {
   const status = shallowRef<BrowserAuthStatus>("idle");
   const lastErrorCode = shallowRef<string | null>(null);
   const hasSavedCredential = shallowRef(false);
-  const authContractStatus = shallowRef<BrowserAuthContractStatus>(createDefaultAuthContractStatus());
+  const authContractStatus = shallowRef<BrowserAuthContractStatus>(
+    createDefaultAuthContractStatus(),
+  );
   const isLoadingAuthStatus = shallowRef(false);
 
   const isAuthenticated = computed(() => status.value === "authenticated" && !!token.value);
@@ -255,7 +257,11 @@ export const useAuthStore = defineStore("auth", () => {
     return hydratePromise;
   }
 
-  async function initializePassword(setupToken: string, password: string, rememberBrowser: boolean): Promise<boolean> {
+  async function initializePassword(
+    setupToken: string,
+    password: string,
+    rememberBrowser: boolean,
+  ): Promise<boolean> {
     if (!setupToken.trim()) {
       clearRuntimeState("invalid", "auth.message_setup_token_required");
       return false;
@@ -275,7 +281,10 @@ export const useAuthStore = defineStore("auth", () => {
       return true;
     } catch (error) {
       setAuthError(error, "auth.message_setup_failed");
-      clearRuntimeState(lastErrorCode.value === "auth.message_unreachable" ? "unreachable" : "invalid", lastErrorCode.value);
+      clearRuntimeState(
+        lastErrorCode.value === "auth.message_unreachable" ? "unreachable" : "invalid",
+        lastErrorCode.value,
+      );
       return false;
     }
   }
@@ -295,7 +304,10 @@ export const useAuthStore = defineStore("auth", () => {
       return true;
     } catch (error) {
       setAuthError(error, "auth.message_password_invalid");
-      clearRuntimeState(lastErrorCode.value === "auth.message_unreachable" ? "unreachable" : "invalid", lastErrorCode.value);
+      clearRuntimeState(
+        lastErrorCode.value === "auth.message_unreachable" ? "unreachable" : "invalid",
+        lastErrorCode.value,
+      );
       return false;
     }
   }
@@ -324,7 +336,10 @@ export const useAuthStore = defineStore("auth", () => {
       return true;
     } catch (error) {
       setAuthError(error, "auth.message_recovery_failed");
-      clearRuntimeState(lastErrorCode.value === "auth.message_unreachable" ? "unreachable" : "invalid", lastErrorCode.value);
+      clearRuntimeState(
+        lastErrorCode.value === "auth.message_unreachable" ? "unreachable" : "invalid",
+        lastErrorCode.value,
+      );
       return false;
     }
   }

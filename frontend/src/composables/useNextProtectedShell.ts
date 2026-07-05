@@ -29,8 +29,9 @@ export interface NextProtectedShellController {
   clearRegistration: (token: symbol) => void;
 }
 
-const NEXT_PROTECTED_SHELL_CONTROLLER_KEY: InjectionKey<NextProtectedShellController> =
-  Symbol("next-protected-shell-controller");
+const NEXT_PROTECTED_SHELL_CONTROLLER_KEY: InjectionKey<NextProtectedShellController> = Symbol(
+  "next-protected-shell-controller",
+);
 
 const DEFAULT_RENDER_STATE: NextProtectedShellRenderState = {
   railLocked: false,
@@ -92,11 +93,13 @@ function useNextProtectedShellController(): NextProtectedShellController {
   return controller;
 }
 
-export function useRegisterNextProtectedShell(input: {
-  railLocked?: Ref<boolean>;
-  shellHeaderMode?: Ref<"title" | "hidden">;
-  headerPrimaryActions?: Ref<(() => VNode[]) | null>;
-} = {}): void {
+export function useRegisterNextProtectedShell(
+  input: {
+    railLocked?: Ref<boolean>;
+    shellHeaderMode?: Ref<"title" | "hidden">;
+    headerPrimaryActions?: Ref<(() => VNode[]) | null>;
+  } = {},
+): void {
   const controller = useNextProtectedShellController();
   const registrationToken = Symbol("next-protected-shell-registration");
 

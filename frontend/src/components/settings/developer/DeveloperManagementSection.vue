@@ -49,14 +49,21 @@ async function updateDeveloperMode(value: boolean): Promise<void> {
 </script>
 
 <template>
-  <WorkbenchPanel :title="i18n.t('settings.next.developer_management.title')" :description="i18n.t('settings.next.developer_management.description')">
+  <WorkbenchPanel
+    :title="i18n.t('settings.next.developer_management.title')"
+    :description="i18n.t('settings.next.developer_management.description')"
+  >
     <div class="developer-management-section__row">
       <div class="developer-management-section__copy">
         <strong>{{ i18n.t("settings.developer_mode_toggle") }}</strong>
         <p>{{ i18n.t("settings.developer_mode_toggle_desc") }}</p>
       </div>
 
-      <SLSwitch :model-value="developerMode" :disabled="pending.developerMode" @update:model-value="updateDeveloperMode" />
+      <SLSwitch
+        :model-value="developerMode"
+        :disabled="pending.developerMode"
+        @update:model-value="updateDeveloperMode"
+      />
     </div>
   </WorkbenchPanel>
 </template>

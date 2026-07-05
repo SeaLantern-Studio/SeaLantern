@@ -25,10 +25,7 @@ const {
     @select="selectSection"
   >
     <template #content-header>
-      <WorkbenchSectionHeader
-        :title="currentSectionTitle"
-        :description="currentSectionDescription"
-      >
+      <WorkbenchSectionHeader :title="currentSectionTitle" :description="currentSectionDescription">
         <template v-if="isConfigRoute" #actions>
           <SLButton variant="ghost" size="sm" @click="goBack">
             &lt; {{ i18n.t("plugins.back") }}

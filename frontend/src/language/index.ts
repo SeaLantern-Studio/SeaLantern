@@ -147,6 +147,10 @@ function getSelectableLocalesSorted(): LocaleCode[] {
   return [...selectableLocales].toSorted((left, right) => left.localeCompare(right));
 }
 
+function readLocaleRegistryVersion(): number {
+  return localeRegistryVersion.value;
+}
+
 export function setTranslations(locale: LocaleCode, data: LanguageFile) {
   translations[locale] = normalizeLanguageFile(data);
   registerSelectableLocale(locale);
@@ -409,7 +413,7 @@ class I18n {
   }
 
   t(key: string, options: Record<string, unknown> = {}): string {
-    localeRegistryVersion.value;
+    readLocaleRegistryVersion();
 
     let resolved: string | undefined;
     for (const locale of getLocaleFallbackChain()) {
@@ -443,7 +447,7 @@ class I18n {
   }
 
   te(key: string): boolean {
-    localeRegistryVersion.value;
+    readLocaleRegistryVersion();
 
     for (const locale of getLocaleFallbackChain()) {
       if (resolveLocaleValue(locale, key) !== undefined) {
@@ -461,7 +465,7 @@ class I18n {
   }
 
   getLocaleMetadata(locale: string): LocaleMetadata | undefined {
-    localeRegistryVersion.value;
+    readLocaleRegistryVersion();
 
     return (
       builtInLocaleMetadata[locale] ??
@@ -478,12 +482,12 @@ class I18n {
   }
 
   getAvailableLocales(): readonly LocaleCode[] {
-    localeRegistryVersion.value;
+    readLocaleRegistryVersion();
     return getSelectableLocalesSorted();
   }
 
   getRegisteredLocales(): readonly LocaleCode[] {
-    localeRegistryVersion.value;
+    readLocaleRegistryVersion();
     return getRegisteredLocalesSorted();
   }
 

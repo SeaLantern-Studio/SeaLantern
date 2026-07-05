@@ -25,14 +25,10 @@ export function usePaintPage() {
   });
 
   const settings = settingsDraft.settings;
-  const {
-    exportBusy,
-    importBusy,
-    exportPersonalizationPackage,
-    importPersonalizationPackage,
-  } = usePaintPersonalizationActions({
-    settingsDraft,
-  });
+  const { exportBusy, importBusy, exportPersonalizationPackage, importPersonalizationPackage } =
+    usePaintPersonalizationActions({
+      settingsDraft,
+    });
 
   const sectionItems = computed<readonly PaintSectionItem[]>(() => [
     {
@@ -53,7 +49,9 @@ export function usePaintPage() {
   ]);
 
   const currentSection = computed(() => {
-    return sectionItems.value.find((item) => item.id === activeSectionId.value) ?? sectionItems.value[0];
+    return (
+      sectionItems.value.find((item) => item.id === activeSectionId.value) ?? sectionItems.value[0]
+    );
   });
 
   const summaryFacts = computed<WorkbenchFactItem[]>(() => [

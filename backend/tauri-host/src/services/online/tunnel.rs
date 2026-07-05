@@ -67,7 +67,7 @@ pub async fn host(
 ) -> Result<TunnelStatus, String> {
     #[cfg(feature = "online-tunnel")]
     {
-        return runtime::host(port, password, max_players, relay_url).await;
+        runtime::host(port, password, max_players, relay_url).await
     }
 
     #[cfg(not(feature = "online-tunnel"))]
@@ -84,7 +84,7 @@ pub async fn join(
 ) -> Result<TunnelStatus, String> {
     #[cfg(feature = "online-tunnel")]
     {
-        return runtime::join(ticket, local_port, password).await;
+        runtime::join(ticket, local_port, password).await
     }
 
     #[cfg(not(feature = "online-tunnel"))]
@@ -97,7 +97,7 @@ pub async fn join(
 pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
     #[cfg(feature = "online-tunnel")]
     {
-        return runtime::regenerate_ticket().await;
+        runtime::regenerate_ticket().await
     }
 
     #[cfg(not(feature = "online-tunnel"))]
@@ -109,7 +109,7 @@ pub async fn regenerate_ticket() -> Result<TunnelStatus, String> {
 pub async fn generate_ticket() -> Result<TunnelStatus, String> {
     #[cfg(feature = "online-tunnel")]
     {
-        return runtime::generate_ticket().await;
+        runtime::generate_ticket().await
     }
 
     #[cfg(not(feature = "online-tunnel"))]
@@ -121,7 +121,7 @@ pub async fn generate_ticket() -> Result<TunnelStatus, String> {
 pub async fn stop() -> Result<TunnelStatus, String> {
     #[cfg(feature = "online-tunnel")]
     {
-        return runtime::stop().await;
+        runtime::stop().await
     }
 
     #[cfg(not(feature = "online-tunnel"))]
@@ -133,7 +133,7 @@ pub async fn stop() -> Result<TunnelStatus, String> {
 pub async fn copy_ticket() -> Result<bool, String> {
     #[cfg(feature = "online-tunnel")]
     {
-        return runtime::copy_ticket().await;
+        runtime::copy_ticket().await
     }
 
     #[cfg(not(feature = "online-tunnel"))]
@@ -145,7 +145,7 @@ pub async fn copy_ticket() -> Result<bool, String> {
 pub async fn status() -> Result<TunnelStatus, String> {
     #[cfg(feature = "online-tunnel")]
     {
-        return runtime::status().await;
+        runtime::status().await
     }
 
     #[cfg(not(feature = "online-tunnel"))]

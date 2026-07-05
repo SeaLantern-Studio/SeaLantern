@@ -36,7 +36,11 @@ function isConsoleOutputExpose(value: unknown): value is ConsoleOutputExpose {
   );
 }
 
-function hasMatchingPrefix(lines: string[], prefixLength: number, previousLines: string[]): boolean {
+function hasMatchingPrefix(
+  lines: string[],
+  prefixLength: number,
+  previousLines: string[],
+): boolean {
   if (prefixLength === 0) {
     return false;
   }

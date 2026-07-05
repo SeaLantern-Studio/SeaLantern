@@ -204,8 +204,8 @@ export const useSettingsStore = defineStore("settings", () => {
     const enabled = isLinux
       ? false
       : nativeWindowEffectEnabled
-      ? effect !== "off" || !hasBackgroundImage
-      : effect !== "off" && hasBackgroundImage;
+        ? effect !== "off" || !hasBackgroundImage
+        : effect !== "off" && hasBackgroundImage;
     document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
     document.documentElement.setAttribute("data-window-effect", effect);
   }

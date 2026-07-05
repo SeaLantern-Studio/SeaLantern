@@ -212,10 +212,12 @@ export function usePluginDetailPage() {
       return getLocalizedPluginName(installedPlugin.value.manifest, i18n.getLocale());
     }
 
-    return resolveLocalizedMarketField(
-      marketDetail.value?.name || marketPlugin.value?.name,
-      i18n.getLocale(),
-    ) || pluginId.value;
+    return (
+      resolveLocalizedMarketField(
+        marketDetail.value?.name || marketPlugin.value?.name,
+        i18n.getLocale(),
+      ) || pluginId.value
+    );
   });
 
   const displayDescription = computed(() => {
@@ -273,8 +275,8 @@ export function usePluginDetailPage() {
     // on the detail view, so this flag protects the page from rendering two competing surfaces.
     return Boolean(
       settingsReady.value &&
-        installedPlugin.value &&
-        installedPlugin.value.manifest.sidebar?.mode !== "category",
+      installedPlugin.value &&
+      installedPlugin.value.manifest.sidebar?.mode !== "category",
     );
   });
 
@@ -289,7 +291,9 @@ export function usePluginDetailPage() {
       return null;
     }
 
-    return runtimeScene.value.toggleUnavailableMessage ?? i18n.t("plugins.next.card.toggle_unavailable");
+    return (
+      runtimeScene.value.toggleUnavailableMessage ?? i18n.t("plugins.next.card.toggle_unavailable")
+    );
   });
 
   const showMarketInstallAction = computed(() => {
@@ -404,7 +408,8 @@ export function usePluginDetailPage() {
         return;
       }
 
-      const requestUrl = marketSourceUrl.value === MARKET_BASE_URL ? undefined : marketSourceUrl.value;
+      const requestUrl =
+        marketSourceUrl.value === MARKET_BASE_URL ? undefined : marketSourceUrl.value;
       const catalog = await loadPluginMarketCatalog({
         requestUrl,
         sourceUrl: marketSourceUrl.value,
@@ -414,7 +419,8 @@ export function usePluginDetailPage() {
         return;
       }
 
-      const nextMarketPlugin = catalog.plugins.find((plugin) => plugin.id === targetPluginId) ?? null;
+      const nextMarketPlugin =
+        catalog.plugins.find((plugin) => plugin.id === targetPluginId) ?? null;
       marketState.value = {
         pluginId: targetPluginId,
         plugin: nextMarketPlugin,
@@ -469,12 +475,10 @@ export function usePluginDetailPage() {
         setErrorState(targetPluginId, err instanceof Error ? err.message : String(err));
       }
     } finally {
-      if (!isLatestRequest(requestId, targetPluginId)) {
-        return;
+      if (isLatestRequest(requestId, targetPluginId)) {
+        loadingPluginId.value = null;
+        bootstrapping.value = false;
       }
-
-      loadingPluginId.value = null;
-      bootstrapping.value = false;
     }
   }
 
@@ -511,7 +515,10 @@ export function usePluginDetailPage() {
       // must explain the exact permission set that blocked the current toggle attempt.
       const resultPlugin = result.plugin ?? plugin;
       pendingPermissionPluginId.value = plugin.manifest.id;
-      pendingPermissionPluginName.value = getLocalizedPluginName(resultPlugin.manifest, i18n.getLocale());
+      pendingPermissionPluginName.value = getLocalizedPluginName(
+        resultPlugin.manifest,
+        i18n.getLocale(),
+      );
       pendingPermissionList.value = resultPlugin.manifest.permissions ?? [];
       pendingPermissionGrantScope.value = result.grantScope ?? inferGrantScope(resultPlugin);
       pendingPermissionBlockReason.value = result.blockReason ?? null;
@@ -586,7 +593,11 @@ export function usePluginDetailPage() {
     pageSettings.updateSettingsField(pageSettings.settingsForm, key, value);
   }
 
-  function updateDependentField(pluginIdValue: string, key: string, value: string | number | boolean) {
+  function updateDependentField(
+    pluginIdValue: string,
+    key: string,
+    value: string | number | boolean,
+  ) {
     const form = pageSettings.dependentSettingsForms[pluginIdValue];
     if (!form) {
       return;

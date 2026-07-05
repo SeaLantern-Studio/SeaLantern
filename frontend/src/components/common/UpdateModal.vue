@@ -102,7 +102,11 @@ async function handleUpdateClick() {
   }
 
   if (isBrowserMode) {
-    const opened = window.open(updateStore.updateInfo.download_url, "_blank", "noopener,noreferrer");
+    const opened = window.open(
+      updateStore.updateInfo.download_url,
+      "_blank",
+      "noopener,noreferrer",
+    );
     if (!opened) {
       window.location.href = updateStore.updateInfo.download_url;
     }

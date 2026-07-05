@@ -56,7 +56,10 @@ const emit = defineEmits<{
         {{ server.actionLabel }}
       </SLButton>
 
-      <span v-if="previewDataset && i18n.t('shell.home_server_preview_hint')" class="next-home-server-card__hint">
+      <span
+        v-if="previewDataset && i18n.t('shell.home_server_preview_hint')"
+        class="next-home-server-card__hint"
+      >
         {{ i18n.t("shell.home_server_preview_hint") }}
       </span>
     </div>
@@ -205,7 +208,6 @@ const emit = defineEmits<{
 }
 
 @media (max-width: 767px) {
-
   .next-home-server-card__facts {
     grid-template-columns: 1fr;
   }

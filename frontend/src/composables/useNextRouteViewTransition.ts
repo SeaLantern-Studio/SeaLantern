@@ -7,10 +7,7 @@ import {
   resolveNextProtectedRouteDirection,
 } from "@src/router/pageMeta";
 
-type RouteViewTransitionName =
-  | "next-route-fade"
-  | "next-route-forward"
-  | "next-route-backward";
+type RouteViewTransitionName = "next-route-fade" | "next-route-forward" | "next-route-backward";
 
 function resolveProtectedPageKind(
   route: Pick<RouteLocationNormalizedLoaded, "name" | "meta">,

@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { GripVertical, Trash2 } from "@lucide/vue";
 import { i18n } from "@language";
-import type {
-  NextHomeCardInstance,
-  NextHomeCardLayoutMeta,
-} from "@src/pages/home/layoutContract";
+import type { NextHomeCardInstance, NextHomeCardLayoutMeta } from "@src/pages/home/layoutContract";
 
 interface ResizeHandlePayload {
   instanceId: string;

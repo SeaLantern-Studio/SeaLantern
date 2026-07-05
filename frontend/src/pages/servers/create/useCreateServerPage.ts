@@ -5,11 +5,7 @@ import {
 } from "./useCreateServerDropSource";
 import { useCreateServerScan } from "./useCreateServerScan";
 import { useCreateServerSubmit } from "./useCreateServerSubmit";
-import {
-  getParentPath,
-  isStrictChildPath,
-  normalizePathForCompare,
-} from "./startupUtils";
+import { getParentPath, isStrictChildPath, normalizePathForCompare } from "./startupUtils";
 import type { JavaInfo } from "@api/java";
 import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";

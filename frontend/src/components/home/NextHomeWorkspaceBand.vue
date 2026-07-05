@@ -130,5 +130,4 @@ const emit = defineEmits<{
   color: var(--sl-text-secondary);
   line-height: var(--sl-line-height-relaxed);
 }
-
 </style>

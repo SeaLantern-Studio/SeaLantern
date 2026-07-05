@@ -183,7 +183,8 @@ export function useNextShellNavigationTransition(
   });
 
   const railExpanded = computed(
-    () => railPinned.value || pointerInsideRail.value || focusWithinRail.value || navigationHold.value,
+    () =>
+      railPinned.value || pointerInsideRail.value || focusWithinRail.value || navigationHold.value,
   );
   const isRailPinned = computed(() => railPinned.value);
   const pageTransitionDirection = computed(() => navigationDirection.value);

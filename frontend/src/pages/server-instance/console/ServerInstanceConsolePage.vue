@@ -23,7 +23,11 @@ onUnmounted(() => {
 
 <template>
   <div class="server-instance-console-page">
-    <section v-if="page.errorMessage.value" class="server-instance-console-page__error" role="alert">
+    <section
+      v-if="page.errorMessage.value"
+      class="server-instance-console-page__error"
+      role="alert"
+    >
       <strong>{{ i18n.t("servers.next.error_title") }}</strong>
       <span>{{ page.errorMessage.value }}</span>
     </section>

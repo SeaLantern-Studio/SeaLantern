@@ -1,8 +1,4 @@
-import {
-  assertDesktopEnvironment,
-  isBrowserEnv,
-  tauriInvokeDesktop,
-} from "@api/tauri";
+import { assertDesktopEnvironment, isBrowserEnv, tauriInvokeDesktop } from "@api/tauri";
 import type { DownloadProgress, PendingUpdate } from "@api/update";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 

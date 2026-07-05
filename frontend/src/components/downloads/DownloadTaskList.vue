@@ -50,7 +50,10 @@ function formatTimestamp(value: number): string {
 
         <div class="download-task-list__progress">
           <div class="download-task-list__progress-bar">
-            <span class="download-task-list__progress-fill" :style="{ width: `${task.progress}%` }" />
+            <span
+              class="download-task-list__progress-fill"
+              :style="{ width: `${task.progress}%` }"
+            />
           </div>
           <span class="download-task-list__progress-value">{{ task.progress.toFixed(1) }}%</span>
         </div>
@@ -72,7 +75,10 @@ function formatTimestamp(value: number): string {
 
         <p v-if="task.errorMessage" class="download-task-list__error">{{ task.errorMessage }}</p>
 
-        <div v-if="task.canCreateInstance && task.isFinished && !task.errorMessage" class="download-task-list__actions">
+        <div
+          v-if="task.canCreateInstance && task.isFinished && !task.errorMessage"
+          class="download-task-list__actions"
+        >
           <SLButton variant="secondary" size="sm" @click="emit('createInstance', task)">
             {{ i18n.t("downloads.next.tasks.open_create") }}
           </SLButton>
@@ -178,7 +184,11 @@ function formatTimestamp(value: number): string {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--sl-primary), color-mix(in srgb, var(--sl-primary) 65%, white));
+  background: linear-gradient(
+    90deg,
+    var(--sl-primary),
+    color-mix(in srgb, var(--sl-primary) 65%, white)
+  );
 }
 
 .download-task-list__progress-value {

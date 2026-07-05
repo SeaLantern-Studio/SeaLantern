@@ -58,13 +58,28 @@ const factItems = computed(() => {
 
   return [
     { label: i18n.t("developer.app_version"), value: props.version },
-    { label: i18n.t("developer.os"), value: `${props.systemInfo.os_name} ${props.systemInfo.os_version}` },
+    {
+      label: i18n.t("developer.os"),
+      value: `${props.systemInfo.os_name} ${props.systemInfo.os_version}`,
+    },
     { label: i18n.t("developer.kernel"), value: props.systemInfo.kernel_version },
     { label: i18n.t("developer.host"), value: props.systemInfo.host_name || "-" },
-    { label: i18n.t("developer.cpu"), value: `${props.systemInfo.cpu.name} (${props.systemInfo.cpu.count})` },
-    { label: i18n.t("developer.memory"), value: `${formatMemory(props.systemInfo.memory.used)} / ${formatMemory(props.systemInfo.memory.total)}` },
-    { label: i18n.t("developer.server_instances_memory"), value: formatMemory(props.systemInfo.memory.server_instances_used) },
-    { label: i18n.t("developer.app_memory"), value: formatMemory(props.systemInfo.memory.app_used) },
+    {
+      label: i18n.t("developer.cpu"),
+      value: `${props.systemInfo.cpu.name} (${props.systemInfo.cpu.count})`,
+    },
+    {
+      label: i18n.t("developer.memory"),
+      value: `${formatMemory(props.systemInfo.memory.used)} / ${formatMemory(props.systemInfo.memory.total)}`,
+    },
+    {
+      label: i18n.t("developer.server_instances_memory"),
+      value: formatMemory(props.systemInfo.memory.server_instances_used),
+    },
+    {
+      label: i18n.t("developer.app_memory"),
+      value: formatMemory(props.systemInfo.memory.app_used),
+    },
     { label: i18n.t("developer.process_count"), value: String(props.systemInfo.process_count) },
     { label: i18n.t("developer.uptime"), value: formatUptime(props.systemInfo.uptime) },
   ];
@@ -72,22 +87,41 @@ const factItems = computed(() => {
 </script>
 
 <template>
-  <WorkbenchPanel :title="i18n.t('developer.next.overview.title')" :description="i18n.t('developer.next.overview.description')">
+  <WorkbenchPanel
+    :title="i18n.t('developer.next.overview.title')"
+    :description="i18n.t('developer.next.overview.description')"
+  >
     <template #actions>
-      <SLButton variant="secondary" size="sm" @click="emit('refresh')">{{ i18n.t("common.refresh") }}</SLButton>
-      <SLButton variant="secondary" size="sm" :disabled="!systemInfo" @click="emit('copySystem')">{{ i18n.t("developer.copy_system") }}</SLButton>
+      <SLButton variant="secondary" size="sm" @click="emit('refresh')">{{
+        i18n.t("common.refresh")
+      }}</SLButton>
+      <SLButton variant="secondary" size="sm" :disabled="!systemInfo" @click="emit('copySystem')">{{
+        i18n.t("developer.copy_system")
+      }}</SLButton>
     </template>
 
     <p v-if="error" class="developer-overview-section__error">{{ error }}</p>
-    <p v-else-if="loading && !systemInfo" class="developer-overview-section__muted">{{ i18n.t("common.loading") }}</p>
-    <p v-else-if="!systemInfo" class="developer-overview-section__muted">{{ i18n.t("developer.system_empty") }}</p>
+    <p v-else-if="loading && !systemInfo" class="developer-overview-section__muted">
+      {{ i18n.t("common.loading") }}
+    </p>
+    <p v-else-if="!systemInfo" class="developer-overview-section__muted">
+      {{ i18n.t("developer.system_empty") }}
+    </p>
     <WorkbenchFactGrid v-else :items="factItems" />
   </WorkbenchPanel>
 </template>
 
 <style scoped>
 .developer-overview-section__muted,
-.developer-overview-section__error { margin: 0; font-size: 0.84rem; line-height: 1.45; }
-.developer-overview-section__muted { color: var(--sl-text-secondary); }
-.developer-overview-section__error { color: var(--sl-error); }
+.developer-overview-section__error {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.developer-overview-section__muted {
+  color: var(--sl-text-secondary);
+}
+.developer-overview-section__error {
+  color: var(--sl-error);
+}
 </style>

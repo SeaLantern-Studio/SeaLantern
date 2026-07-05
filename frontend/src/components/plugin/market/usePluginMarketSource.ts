@@ -2,11 +2,7 @@ import { computed, ref } from "vue";
 import { i18n } from "@language";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
 import type { MarketFeedbackType } from "./pluginMarketShared";
-import {
-  MARKET_BASE_URL,
-  MARKET_URL_KEY,
-  validateMarketUrl,
-} from "./pluginMarketShared";
+import { MARKET_BASE_URL, MARKET_URL_KEY, validateMarketUrl } from "./pluginMarketShared";
 
 interface UsePluginMarketSourceOptions {
   onSourceChanged: () => void;

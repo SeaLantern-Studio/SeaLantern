@@ -10,10 +10,7 @@ import {
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
 import { i18n } from "@language";
-import type {
-  ServersPageServerItem,
-  ServersPageTarget,
-} from "@src/pages/servers/useServersPage";
+import type { ServersPageServerItem, ServersPageTarget } from "@src/pages/servers/useServersPage";
 
 interface Props {
   server: ServersPageServerItem;

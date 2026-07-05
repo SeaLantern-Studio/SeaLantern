@@ -26,7 +26,6 @@ const activeSectionComponent = computed(() => {
       return GeneralSection;
   }
 });
-
 </script>
 
 <template>

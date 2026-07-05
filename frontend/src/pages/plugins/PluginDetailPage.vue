@@ -99,7 +99,10 @@ function getPermissionDesc(perm: string): string {
   <div class="plugin-detail-page">
     <section
       v-if="installFeedback"
-      :class="['plugin-detail-page__feedback', `plugin-detail-page__feedback--${installFeedback.type}`]"
+      :class="[
+        'plugin-detail-page__feedback',
+        `plugin-detail-page__feedback--${installFeedback.type}`,
+      ]"
     >
       <span>{{ installFeedback.message }}</span>
       <button class="plugin-detail-page__feedback-close" @click="clearFeedback">×</button>
@@ -110,7 +113,12 @@ function getPermissionDesc(perm: string): string {
         <strong>{{ i18n.t("plugins.next.error_title") }}</strong>
         <p>{{ errorMessage }}</p>
       </div>
-      <SLButton variant="secondary" size="sm" :loading="bootstrapping" @click="() => void loadPage()">
+      <SLButton
+        variant="secondary"
+        size="sm"
+        :loading="bootstrapping"
+        @click="() => void loadPage()"
+      >
         {{ i18n.t("plugins.next.retry") }}
       </SLButton>
     </section>
@@ -138,14 +146,21 @@ function getPermissionDesc(perm: string): string {
       <SLCard class="plugin-detail-page__hero" variant="outline">
         <div class="plugin-detail-page__hero-main">
           <div class="plugin-detail-page__icon-shell">
-            <img v-if="iconUrl" :src="iconUrl" :alt="displayName" class="plugin-detail-page__icon" />
+            <img
+              v-if="iconUrl"
+              :src="iconUrl"
+              :alt="displayName"
+              class="plugin-detail-page__icon"
+            />
             <Layers v-else :size="28" class="plugin-detail-page__icon-fallback" />
           </div>
 
           <div class="plugin-detail-page__copy">
             <div class="plugin-detail-page__title-row">
               <h2 class="plugin-detail-page__title">{{ displayName }}</h2>
-              <span v-if="versionLabel" class="plugin-detail-page__version">v{{ versionLabel }}</span>
+              <span v-if="versionLabel" class="plugin-detail-page__version"
+                >v{{ versionLabel }}</span
+              >
             </div>
 
             <p v-if="authorName" class="plugin-detail-page__subtitle">
@@ -173,7 +188,12 @@ function getPermissionDesc(perm: string): string {
               <span v-for="tag in categoryTags" :key="tag" class="plugin-detail-page__tag">
                 {{ tag }}
               </span>
-              <span v-if="runtimeScene.tagLabel && installedPlugin && !installedPlugin.actions.can_toggle" class="plugin-detail-page__tag plugin-detail-page__tag--info">
+              <span
+                v-if="
+                  runtimeScene.tagLabel && installedPlugin && !installedPlugin.actions.can_toggle
+                "
+                class="plugin-detail-page__tag plugin-detail-page__tag--info"
+              >
                 {{ runtimeScene.tagLabel }}
               </span>
             </div>
@@ -190,11 +210,20 @@ function getPermissionDesc(perm: string): string {
           >
             {{ marketActionLabel }}
           </SLButton>
-          <SLButton v-if="installedPlugin && canOpenCategoryPage" variant="secondary" size="sm" @click="openCategoryPage">
+          <SLButton
+            v-if="installedPlugin && canOpenCategoryPage"
+            variant="secondary"
+            size="sm"
+            @click="openCategoryPage"
+          >
             {{ i18n.t("plugins.plugin_category") }}
           </SLButton>
           <SLButton
-            v-if="installedPlugin?.manifest.repository || marketPlugin?.repo || marketDetail?.author?.url"
+            v-if="
+              installedPlugin?.manifest.repository ||
+              marketPlugin?.repo ||
+              marketDetail?.author?.url
+            "
             variant="ghost"
             size="sm"
             @click="openRepository"
@@ -202,14 +231,19 @@ function getPermissionDesc(perm: string): string {
             {{ i18n.t("plugins.open_repository") }}
           </SLButton>
           <div v-if="showToggleControl" class="plugin-detail-page__toggle-row">
-            <span class="plugin-detail-page__toggle-label">{{ i18n.t("plugins.status.enabled") }}</span>
+            <span class="plugin-detail-page__toggle-label">{{
+              i18n.t("plugins.status.enabled")
+            }}</span>
             <SLSwitch
               :modelValue="Boolean(installedPlugin && installedPlugin.state === 'enabled')"
               size="sm"
               @update:modelValue="toggleInstalledPlugin(Boolean($event))"
             />
           </div>
-          <div v-else-if="installedPlugin && toggleUnavailableMessage" class="plugin-detail-page__toggle-note">
+          <div
+            v-else-if="installedPlugin && toggleUnavailableMessage"
+            class="plugin-detail-page__toggle-note"
+          >
             {{ toggleUnavailableMessage }}
           </div>
         </div>
@@ -260,7 +294,10 @@ function getPermissionDesc(perm: string): string {
         @update-field="updateDependentField"
       />
 
-      <div v-if="supportsSettingsOnDetail && installedPlugin" class="plugin-detail-page__footer-actions">
+      <div
+        v-if="supportsSettingsOnDetail && installedPlugin"
+        class="plugin-detail-page__footer-actions"
+      >
         <SLButton variant="secondary" size="sm" @click="resetToDefault">
           {{ i18n.t("plugins.reset_default") }}
         </SLButton>

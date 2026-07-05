@@ -219,13 +219,12 @@ function handleBoardDeploy(payload: {
 .next-home-page__skeleton,
 .next-home-page__skeleton--summary > span {
   border-radius: 20px;
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--sl-surface) 92%, transparent) 0%,
-      color-mix(in srgb, var(--sl-bg-secondary) 78%, white) 50%,
-      color-mix(in srgb, var(--sl-surface) 92%, transparent) 100%
-    );
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--sl-surface) 92%, transparent) 0%,
+    color-mix(in srgb, var(--sl-bg-secondary) 78%, white) 50%,
+    color-mix(in srgb, var(--sl-surface) 92%, transparent) 100%
+  );
   background-size: 200% 100%;
   animation: next-home-page-skeleton 1.2s ease-in-out infinite;
 }

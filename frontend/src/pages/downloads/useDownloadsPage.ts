@@ -177,7 +177,9 @@ export function useDownloadsPage() {
   } = downloadApi.useDownload();
 
   const currentSection = computed(() => {
-    return sectionItems.value.find((item) => item.id === activeSectionId.value) ?? sectionItems.value[0];
+    return (
+      sectionItems.value.find((item) => item.id === activeSectionId.value) ?? sectionItems.value[0]
+    );
   });
 
   const serverTypeOptions = computed(() =>
@@ -232,7 +234,9 @@ export function useDownloadsPage() {
     },
     {
       label: i18n.t("downloads.next.summary.completed_tasks"),
-      value: String(taskHistory.value.filter((entry) => entry.isFinished && !entry.errorMessage).length),
+      value: String(
+        taskHistory.value.filter((entry) => entry.isFinished && !entry.errorMessage).length,
+      ),
       tone: taskHistory.value.some((entry) => entry.isFinished && !entry.errorMessage)
         ? "success"
         : "default",
@@ -247,22 +251,22 @@ export function useDownloadsPage() {
   const canSubmitServer = computed(() => {
     return Boolean(
       !submittingServer.value &&
-        serverForm.selectedType &&
-        serverForm.selectedVersion &&
-        savePaths.serverDir.trim() &&
-        serverForm.filename.trim() &&
-        downloadInfo.value?.url &&
-        !validateThreadCount(serverForm.threadCount),
+      serverForm.selectedType &&
+      serverForm.selectedVersion &&
+      savePaths.serverDir.trim() &&
+      serverForm.filename.trim() &&
+      downloadInfo.value?.url &&
+      !validateThreadCount(serverForm.threadCount),
     );
   });
 
   const canSubmitFile = computed(() => {
     return Boolean(
       !submittingFile.value &&
-        ensureValidUrl(fileForm.url) &&
-        savePaths.fileDir.trim() &&
-        fileForm.filename.trim() &&
-        !validateThreadCount(fileForm.threadCount),
+      ensureValidUrl(fileForm.url) &&
+      savePaths.fileDir.trim() &&
+      fileForm.filename.trim() &&
+      !validateThreadCount(fileForm.threadCount),
     );
   });
 
@@ -298,7 +302,10 @@ export function useDownloadsPage() {
 
   function pushTask(entry: DownloadTaskEntry): void {
     activeTaskId.value = entry.id;
-    taskHistory.value = [entry, ...taskHistory.value.filter((item) => item.id !== entry.id)].slice(0, 8);
+    taskHistory.value = [entry, ...taskHistory.value.filter((item) => item.id !== entry.id)].slice(
+      0,
+      8,
+    );
     syncTaskSnapshot();
   }
 
@@ -532,7 +539,15 @@ export function useDownloadsPage() {
   }
 
   watch(
-    () => [taskInfo.id, taskInfo.progress, taskInfo.downloaded, taskInfo.totalSize, taskInfo.isFinished, taskError.value] as const,
+    () =>
+      [
+        taskInfo.id,
+        taskInfo.progress,
+        taskInfo.downloaded,
+        taskInfo.totalSize,
+        taskInfo.isFinished,
+        taskError.value,
+      ] as const,
     () => {
       syncTaskSnapshot();
     },
