@@ -802,5 +802,9 @@
   "plugins.runtime.core.create_lua_instance_failed": "创建 Lua 实例失败: {0}",
   "plugins.runtime.core.create_data_dir_failed": "创建数据目录失败: {0}",
   "plugins.runtime.core.create_sl_table_failed": "创建 sl 表失败: {0}",
-  "plugins.runtime.core.set_sl_global_failed": "设置 sl 全局表失败: {0}"
+  "plugins.runtime.core.set_sl_global_failed": "设置 sl 全局表失败: {0}",
+  "server.status.starting": "正在启动",
+  "server.status.preparing": "正在准备",
+  "server.status.stopping": "正在停止",
+  "server.status.error": "状态异常"
 }

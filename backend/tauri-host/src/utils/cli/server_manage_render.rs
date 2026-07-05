@@ -513,6 +513,7 @@ mod tests {
             status,
             pid: Some(1234),
             uptime: Some(88),
+            display_message: None,
             detail_message: Some("runtime=local/jar".to_string()),
             error_message: None,
         }
@@ -678,6 +679,7 @@ mod tests {
             status: ServerStatus::Running,
             pid: Some(55),
             uptime: Some(5),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sealantern-paper state=running running=true health=starting exit_code=0 backend=cli command_mode=rcon"
                     .to_string(),
@@ -701,6 +703,7 @@ mod tests {
             status: ServerStatus::Stopped,
             pid: None,
             uptime: None,
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sealantern-paper state=missing".to_string(),
             ),
@@ -715,6 +718,7 @@ mod tests {
             status: ServerStatus::Error,
             pid: None,
             uptime: Some(12),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sealantern-paper state=exited running=false health=none exit_code=137 backend=cli command_mode=rcon"
                     .to_string(),

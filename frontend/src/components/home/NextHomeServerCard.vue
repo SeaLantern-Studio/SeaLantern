@@ -27,7 +27,7 @@ const emit = defineEmits<{
         </div>
 
         <h3>{{ server.name }}</h3>
-        <p>{{ server.detail }}</p>
+        <p v-if="server.detail">{{ server.detail }}</p>
       </div>
     </div>
 

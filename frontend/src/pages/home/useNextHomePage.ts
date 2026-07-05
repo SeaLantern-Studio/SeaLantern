@@ -98,8 +98,7 @@ function formatUptime(uptime: number | null | undefined): string {
 }
 
 function getDetailText(status: ServerStatusInfo | undefined): string {
-  if (status?.detail_message) return status.detail_message;
-  if (status?.error_message) return status.error_message;
+  if (status?.display_message) return status.display_message;
   if (status?.status === "Running") return formatUptime(status.uptime);
   return i18n.t("shell.home_detail_waiting");
 }

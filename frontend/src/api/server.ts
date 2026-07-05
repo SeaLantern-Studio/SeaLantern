@@ -22,6 +22,7 @@ export interface ServerStatusInfo {
   status: ServerStatus;
   pid: number | null;
   uptime: number | null;
+  display_message?: string | null;
   detail_message?: string | null;
   error_message?: string | null;
 }

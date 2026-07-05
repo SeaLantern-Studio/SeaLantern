@@ -107,15 +107,7 @@ function formatVersionSummary(server: ServerInstance): string | null {
 }
 
 function formatDetailSummary(status: ServerStatusInfo | undefined): string | null {
-  if (status?.error_message) {
-    return status.error_message;
-  }
-
-  if (status?.detail_message) {
-    return status.detail_message;
-  }
-
-  return null;
+  return status?.display_message ?? null;
 }
 
 export function useServersPage() {

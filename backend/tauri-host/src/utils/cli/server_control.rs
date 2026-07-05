@@ -577,6 +577,7 @@ mod tests {
             status: ServerStatus::Error,
             pid: Some(456),
             uptime: Some(42),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sea-test state=running running=true health=unhealthy exit_code=0 backend=cli command_mode=rcon"
                     .to_string(),
@@ -594,6 +595,7 @@ mod tests {
             status: ServerStatus::Error,
             pid: None,
             uptime: Some(42),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sea-test state=exited running=false health=none exit_code=137 backend=cli command_mode=rcon"
                     .to_string(),
@@ -611,6 +613,7 @@ mod tests {
             status: ServerStatus::Running,
             pid: Some(1),
             uptime: Some(1),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sea-test state=running running=true health=healthy"
                     .to_string(),
@@ -622,6 +625,7 @@ mod tests {
             status: ServerStatus::Running,
             pid: Some(1),
             uptime: Some(1),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sea-test state=running running=true health=starting"
                     .to_string(),
@@ -633,6 +637,7 @@ mod tests {
             status: ServerStatus::Error,
             pid: None,
             uptime: Some(1),
+            display_message: None,
             detail_message: Some("runtime=docker_itzg running=false".to_string()),
             error_message: Some("startup failed".to_string()),
         };
@@ -641,6 +646,7 @@ mod tests {
             status: ServerStatus::Starting,
             pid: Some(1),
             uptime: Some(1),
+            display_message: None,
             detail_message: None,
             error_message: None,
         };
@@ -658,6 +664,7 @@ mod tests {
             status: ServerStatus::Starting,
             pid: Some(1),
             uptime: Some(1),
+            display_message: None,
             detail_message: Some("runtime=local is_running=true".to_string()),
             error_message: None,
         };
@@ -677,6 +684,7 @@ mod tests {
             status: ServerStatus::Error,
             pid: None,
             uptime: Some(1),
+            display_message: None,
             detail_message: Some("runtime=local is_running=false exit_code=7".to_string()),
             error_message: Some("服务器异常退出 (退出码：7)".to_string()),
         };
@@ -695,6 +703,7 @@ mod tests {
             status: ServerStatus::Stopped,
             pid: None,
             uptime: Some(1),
+            display_message: None,
             detail_message: Some("runtime=local is_running=false exit_code=0".to_string()),
             error_message: None,
         };
@@ -713,6 +722,7 @@ mod tests {
             status: ServerStatus::Running,
             pid: Some(77),
             uptime: Some(3),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sea-test state=running running=true health=starting exit_code=0 backend=cli command_mode=rcon"
                     .to_string(),

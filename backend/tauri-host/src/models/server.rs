@@ -150,6 +150,8 @@ pub struct ServerStatusInfo {
     pub pid: Option<u32>,
     pub uptime: Option<u64>,
     #[serde(default)]
+    pub display_message: Option<String>,
+    #[serde(default)]
     pub detail_message: Option<String>,
     #[serde(default)]
     pub error_message: Option<String>,
@@ -463,6 +465,7 @@ mod tests {
             status: ServerStatus::Running,
             pid: Some(4321),
             uptime: Some(99),
+            display_message: Some("Running".to_string()),
             detail_message: Some("runtime=local/jar".to_string()),
             error_message: Some("runtime placeholder".to_string()),
         })
@@ -472,6 +475,7 @@ mod tests {
         assert_eq!(value["status"], "Running");
         assert_eq!(value["pid"], 4321);
         assert_eq!(value["uptime"], 99);
+        assert_eq!(value["display_message"], "Running");
         assert_eq!(value["detail_message"], "runtime=local/jar");
         assert_eq!(value["error_message"], "runtime placeholder");
     }

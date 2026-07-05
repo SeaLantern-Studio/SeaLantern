@@ -802,5 +802,9 @@
   "plugins.runtime.core.create_lua_instance_failed": "Failed to create the Lua instance: {0}",
   "plugins.runtime.core.create_data_dir_failed": "Failed to create the data directory: {0}",
   "plugins.runtime.core.create_sl_table_failed": "Failed to create the sl table: {0}",
-  "plugins.runtime.core.set_sl_global_failed": "Failed to set the sl global table: {0}"
+  "plugins.runtime.core.set_sl_global_failed": "Failed to set the sl global table: {0}",
+  "server.status.starting": "Starting server",
+  "server.status.preparing": "Preparing server",
+  "server.status.stopping": "Stopping server",
+  "server.status.error": "Server status unavailable"
 }
