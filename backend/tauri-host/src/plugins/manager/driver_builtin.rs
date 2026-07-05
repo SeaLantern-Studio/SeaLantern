@@ -2,6 +2,7 @@ use crate::models::plugin::{
     PluginEnableConfirmation, PluginEnableResult, PluginInfo, PluginState,
 };
 use crate::plugins::builtin;
+use crate::services::events::publish_app_operation_result;
 use crate::services::events::ServerEventEnvelope;
 use crate::utils::logger::log_trace_ctx;
 
@@ -29,6 +30,15 @@ fn log_builtin_driver_trace(function: &str, plugin_id: &str, message: &str) {
         "plugins.manager.driver_builtin",
         function,
         &format!("plugin_id={} {}", plugin_id, message),
+    );
+}
+
+fn publish_builtin_enable_failure(plugin_id: &str, error: &str) {
+    let detail = format!("plugin_id={}", plugin_id);
+    let _ = publish_app_operation_result(
+        "builtin_plugin_enable_failed",
+        Some(detail),
+        Some(error.to_string()),
     );
 }
 
@@ -161,6 +171,7 @@ impl PluginRuntimeDriver for BuiltinRustPluginDriver {
             if let Some(info) = manager.plugins.get_mut(plugin_id) {
                 info.state = PluginState::Disabled;
             }
+            publish_builtin_enable_failure(plugin_id, &error);
             return Err(error);
         }
 

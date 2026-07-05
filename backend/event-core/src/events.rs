@@ -607,6 +607,16 @@ impl EventManager {
         events[events.len().saturating_sub(limit)..].to_vec()
     }
 
+    /// Returns the newest app events up to `limit` entries.
+    pub fn recent_app_events(&self, limit: Option<usize>) -> Vec<AppEventEnvelope> {
+        let events = self
+            .recent_app_events
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let limit = limit.unwrap_or(events.len()).min(events.len());
+        events[events.len().saturating_sub(limit)..].to_vec()
+    }
+
     fn buffer_server_event(&self, event: ServerEventEnvelope) {
         let mut events = self
             .recent_server_events

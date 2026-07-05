@@ -196,6 +196,7 @@ export function usePluginsPage() {
     const pluginId = plugin.manifest.id;
     return (
       pluginStore.navItems.some((item) => item.plugin_id === pluginId) ||
+      Boolean(plugin.manifest.settings?.length) ||
       Boolean(plugin.manifest.ui?.pages?.length) ||
       plugin.manifest.sidebar?.mode === "self" ||
       plugin.manifest.sidebar?.mode === "category"

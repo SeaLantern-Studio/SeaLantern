@@ -8,6 +8,7 @@ use crate::services::event_consumer_registry::{
     EventConsumerRegistryEntryDto, EventConsumerRegistryFilterUpdateRequest,
     EventConsumerRegistryMetadataUpdateRequest,
 };
+use crate::services::events::AppEventEnvelope;
 use crate::utils::app_version;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -135,6 +136,11 @@ pub fn list_event_consumers() -> Result<Vec<EventConsumerRegistryEntryDto>, Stri
 #[tauri::command]
 pub fn get_event_consumer(name: String) -> Result<Option<EventConsumerRegistryEntryDto>, String> {
     Ok(crate::services::global::event_consumer_registry_service().get(&name))
+}
+
+#[tauri::command]
+pub fn get_recent_app_operation_events(limit: Option<usize>) -> Result<Vec<AppEventEnvelope>, String> {
+    Ok(crate::services::global::event_manager().recent_app_events(limit))
 }
 
 #[tauri::command]

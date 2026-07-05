@@ -153,6 +153,31 @@ fn log_plugin_error(function: &str, message: &str) {
     log_error_ctx("plugins.builtin.obv11_client", function, message);
 }
 
+fn log_enable_stage(function: &str, plugin_id: &str, stage: &str, message: &str) {
+    log_plugin_info(
+        function,
+        &format!("plugin_id={} stage={} {}", plugin_id, stage, message),
+    );
+}
+
+fn log_enable_failure(function: &str, plugin_id: &str, stage: &str, error: &str) {
+    log_plugin_error(
+        function,
+        &format!("plugin_id={} stage={} error={}", plugin_id, stage, error),
+    );
+}
+
+fn startup_error(plugin_id: &str, stage: &str, error: impl Into<String>) -> String {
+    let error = error.into();
+    log_enable_failure("enable", plugin_id, stage, &error);
+    let final_message = format!(
+        "plugin_id={} stage=startup_aborted result=plugin enable failed runtime attempt closed cause_stage={} error={}",
+        plugin_id, stage, error
+    );
+    log_plugin_error("enable", &final_message);
+    format!("plugin enable failed at stage '{}': {}", stage, error)
+}
+
 pub(crate) fn manifest_settings() -> Vec<PluginSettingField> {
     vec![
         PluginSettingField {
@@ -244,10 +269,11 @@ pub(crate) fn default_settings_json() -> Value {
 }
 
 pub(crate) fn enable(manager: &PluginManager, plugin_id: &str) -> Result<(), String> {
+    log_enable_stage("enable", plugin_id, "enable_requested", "begin");
     disable(plugin_id);
     let settings = load_settings(manager, plugin_id)?;
     if !settings.enabled {
-        log_plugin_info("enable", "service disabled by settings");
+        log_enable_stage("enable", plugin_id, "enable_skipped", "service disabled by settings");
         return Ok(());
     }
 
@@ -258,6 +284,7 @@ pub(crate) fn enable(manager: &PluginManager, plugin_id: &str) -> Result<(), Str
         .unwrap_or_else(|e| e.into_inner())
         .insert(plugin_id.to_string(), handle);
     send_meta_event(&runtime, "enable");
+    log_enable_stage("enable", plugin_id, "startup_handshake_succeeded", "runtime registered");
     emit_debug(&runtime, "plugin_enabled", "OneBot v11 builtin plugin enabled");
     Ok(())
 }
@@ -434,26 +461,53 @@ fn parse_targets(raw: &str) -> Vec<QqTarget> {
 }
 
 fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, String> {
+    log_enable_stage(
+        "start_runtime_thread",
+        &runtime.plugin_id,
+        "startup_thread_prepare",
+        &format!("listen_addr={}", runtime.settings.listen_addr),
+    );
     let addr: SocketAddr =
         runtime.settings.listen_addr.parse().map_err(|e| {
-            format!("Invalid listen_addr '{}': {}", runtime.settings.listen_addr, e)
+            startup_error(
+                &runtime.plugin_id,
+                "listen_addr_parse_failed",
+                format!("invalid listen_addr '{}': {}", runtime.settings.listen_addr, e),
+            )
         })?;
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let (startup_tx, startup_rx) = mpsc::sync_channel(1);
     let snapshot = Arc::clone(&runtime);
-    let thread = std::thread::spawn(move || {
+    let thread = std::thread::Builder::new()
+        .name(format!("obv11-startup-{}", runtime.plugin_id))
+        .spawn(move || {
+        log_enable_stage(
+            "start_runtime_thread",
+            &snapshot.plugin_id,
+            "startup_thread_spawned",
+            &format!("listen_addr={addr}"),
+        );
         let rt = match tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
         {
             Ok(rt) => rt,
             Err(error) => {
-                let message = format!("failed to build tokio runtime: {}", error);
-                log_plugin_error("start_runtime_thread", &message);
+                let message = startup_error(
+                    &snapshot.plugin_id,
+                    "tokio_runtime_build_failed",
+                    format!("failed to build tokio runtime: {}", error),
+                );
                 let _ = startup_tx.send(Err(message));
                 return;
             }
         };
+        log_enable_stage(
+            "start_runtime_thread",
+            &snapshot.plugin_id,
+            "tokio_runtime_built",
+            "startup runtime ready",
+        );
         rt.block_on(async move {
             let state = HttpAppState { runtime: Arc::clone(&snapshot) };
             let app = Router::new()
@@ -463,16 +517,31 @@ fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, 
                 .route("/event", get(handle_ws_event))
                 .route("/", get(handle_ws_universal))
                 .with_state(state);
+            log_enable_stage(
+                "start_runtime_thread",
+                &snapshot.plugin_id,
+                "listener_bind_requested",
+                &format!("listen_addr={addr}"),
+            );
             let listener = match TcpListener::bind(addr).await {
                 Ok(listener) => listener,
                 Err(error) => {
-                    let message = format!("bind failed: {}", error);
-                    log_plugin_error("start_runtime_thread", &message);
+                    let message = startup_error(
+                        &snapshot.plugin_id,
+                        "listener_bind_failed",
+                        format!("bind failed: {}", error),
+                    );
                     let _ = startup_tx.send(Err(message));
                     return;
                 }
             };
 
+            log_enable_stage(
+                "start_runtime_thread",
+                &snapshot.plugin_id,
+                "startup_handshake_succeeded",
+                &format!("listen_addr={addr}"),
+            );
             let _ = startup_tx.send(Ok(()));
 
             emit_debug(&snapshot, "http_server_bound", &format!("addr={addr}"));
@@ -483,11 +552,30 @@ fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, 
                 let _ = shutdown_rx.await;
             });
             if let Err(error) = server.await {
-                log_plugin_error("start_runtime_thread", &format!("server exited: {}", error));
+                log_enable_failure(
+                    "start_runtime_thread",
+                    &snapshot.plugin_id,
+                    "runtime_closed",
+                    &format!("server exited: {}", error),
+                );
+            } else {
+                log_enable_stage(
+                    "start_runtime_thread",
+                    &snapshot.plugin_id,
+                    "runtime_closed",
+                    "runtime closed after shutdown",
+                );
             }
             poll_task.abort();
         });
-    });
+    })
+        .map_err(|error| {
+            startup_error(
+                &runtime.plugin_id,
+                "startup_thread_spawn_failed",
+                format!("failed to spawn startup thread: {}", error),
+            )
+        })?;
 
     match startup_rx.recv() {
         Ok(Ok(())) => Ok(RuntimeHandle {
@@ -501,7 +589,11 @@ fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, 
         }
         Err(_) => {
             let _ = thread.join();
-            Err("obv11-client runtime thread exited before startup completed".to_string())
+            Err(startup_error(
+                &runtime.plugin_id,
+                "startup_handshake_failed",
+                "runtime thread exited before startup completed",
+            ))
         }
     }
 }
@@ -1027,7 +1119,7 @@ fn status_string(status: &ServerStatus) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_runtime, default_settings_json, parse_settings, parse_targets,
+        build_runtime, default_settings_json, parse_settings, parse_targets, runtime_registry,
         start_runtime_thread, PLUGIN_ID,
     };
 
@@ -1069,5 +1161,35 @@ mod tests {
         };
 
         assert!(error.contains("bind failed"), "unexpected error: {}", error);
+    }
+
+    #[test]
+    fn start_runtime_thread_bind_failure_does_not_register_runtime() {
+        let occupied = std::net::TcpListener::bind("127.0.0.1:0")
+            .expect("occupied listener should bind");
+        let addr = occupied
+            .local_addr()
+            .expect("occupied listener should expose local addr");
+
+        runtime_registry()
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(PLUGIN_ID);
+
+        let mut settings =
+            parse_settings(default_settings_json()).expect("default settings should parse");
+        settings.listen_addr = addr.to_string();
+
+        let runtime = build_runtime(PLUGIN_ID, settings);
+        let result = start_runtime_thread(runtime);
+
+        assert!(result.is_err(), "occupied port should fail startup");
+        assert!(
+            !runtime_registry()
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .contains_key(PLUGIN_ID),
+            "failed startup must not leave runtime registered"
+        );
     }
 }

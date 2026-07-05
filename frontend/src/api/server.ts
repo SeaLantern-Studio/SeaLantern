@@ -605,6 +605,13 @@ export const serverApi = {
     });
   },
 
+  async getRecentAppOperationEvents(limit?: number): Promise<AppOperationEvent[]> {
+    if (isBrowserEnv()) {
+      return Promise.reject(new Error("App operation events are only available in Tauri mode"));
+    }
+    return tauriInvoke("get_recent_app_operation_events", { limit });
+  },
+
   /**
    * SSE 日志流订阅（浏览器/Docker 模式）
    * 返回取消订阅函数

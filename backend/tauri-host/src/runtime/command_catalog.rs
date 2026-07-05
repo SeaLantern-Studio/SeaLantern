@@ -82,6 +82,7 @@ pub(crate) fn desktop_handler(
         system_commands::get_server_resource_usage,
         system_commands::list_event_consumers,
         system_commands::get_event_consumer,
+        system_commands::get_recent_app_operation_events,
         system_commands::set_event_consumer_enabled,
         system_commands::update_event_consumer_filters,
         system_commands::update_event_consumer_metadata,
