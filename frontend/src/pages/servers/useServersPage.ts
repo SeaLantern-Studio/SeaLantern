@@ -1,4 +1,5 @@
 import { computed, onMounted, shallowRef } from "vue";
+import { serverApi } from "@api/server";
 import { useRouter } from "vue-router";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
@@ -7,16 +8,21 @@ import type { LocalStartupMode, ServerInstance } from "@type/server";
 import { formatServerPath } from "@utils/formatters";
 import { formatServerCoreTypeLabel } from "@utils/serverCoreLabel";
 import {
+  NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME,
   NEXT_SERVER_CREATE_ROUTE_NAME,
   NEXT_SERVER_IMPORT_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_EXTENSIONS_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
 } from "@src/router/pageMeta";
+import {
+  pickDeleteConfirmationItem,
+  shouldUseDeleteConfirmationItem,
+} from "@src/utils/serverDeleteConfirmation";
 
 let serversPageLoadedOnce = false;
 
-export type ServersPageTarget = "players" | "extensions" | "config";
+export type ServersPageTarget = "delete" | "console" | "players" | "extensions" | "config";
 
 export interface ServersPageActionItem {
   target: ServersPageTarget;
@@ -41,6 +47,8 @@ export interface ServersPageServerItem {
 }
 
 const SERVER_ACTIONS: ServersPageActionItem[] = [
+  { target: "delete", label: i18n.t("home.delete_server") },
+  { target: "console", label: i18n.t("common.console") },
   { target: "players", label: i18n.t("common.player_manage") },
   { target: "extensions", label: i18n.t("common.plugins") },
   { target: "config", label: i18n.t("common.config_edit") },
@@ -116,6 +124,12 @@ export function useServersPage() {
   const bootstrapping = shallowRef(!serversPageLoadedOnce && serverStore.servers.length === 0);
   const refreshing = shallowRef(false);
   const loadedOnce = shallowRef(false);
+  const deleteDialogVisible = shallowRef(false);
+  const deleteSubmitting = shallowRef(false);
+  const deletingServerId = shallowRef("");
+  const deleteExpectedInput = shallowRef("");
+  const deletePromptMessage = shallowRef("");
+  const deleteInputPlaceholder = shallowRef(i18n.t("home.delete_input_placeholder"));
 
   function ensureCurrentServer(): void {
     if (
@@ -158,6 +172,32 @@ export function useServersPage() {
   ): Promise<void> {
     serverStore.setCurrentServer(serverId);
 
+    if (target === "delete") {
+      const server = serverStore.getServerById(serverId);
+      if (!server) {
+        return;
+      }
+
+      deletingServerId.value = server.id;
+      if (shouldUseDeleteConfirmationItem(server.name)) {
+        const item = pickDeleteConfirmationItem();
+        deleteExpectedInput.value = item;
+        deletePromptMessage.value = i18n.t("home.delete_confirm_item_message", { item });
+        deleteInputPlaceholder.value = i18n.t("home.delete_input_placeholder_item");
+      } else {
+        deleteExpectedInput.value = server.name;
+        deletePromptMessage.value = i18n.t("home.delete_confirm_message", { server: server.name });
+        deleteInputPlaceholder.value = i18n.t("home.delete_input_placeholder");
+      }
+      deleteDialogVisible.value = true;
+      return;
+    }
+
+    if (target === "console") {
+      await router.push({ name: NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME, params: { serverId } });
+      return;
+    }
+
     if (target === "config") {
       await router.push({ name: NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME, params: { serverId } });
       return;
@@ -169,6 +209,34 @@ export function useServersPage() {
     }
 
     await router.push({ name: NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME, params: { serverId } });
+  }
+
+  async function confirmDeleteServer(): Promise<void> {
+    if (!deletingServerId.value) {
+      return;
+    }
+
+    deleteSubmitting.value = true;
+    try {
+      await serverApi.deleteServer(deletingServerId.value);
+      deleteDialogVisible.value = false;
+      deletingServerId.value = "";
+      await loadData(true);
+    } finally {
+      deleteSubmitting.value = false;
+    }
+  }
+
+  function closeDeleteDialog(): void {
+    if (deleteSubmitting.value) {
+      return;
+    }
+
+    deleteDialogVisible.value = false;
+    deletingServerId.value = "";
+    deleteExpectedInput.value = "";
+    deletePromptMessage.value = "";
+    deleteInputPlaceholder.value = i18n.t("home.delete_input_placeholder");
   }
 
   const serverItems = computed<ServersPageServerItem[]>(() =>
@@ -220,9 +288,16 @@ export function useServersPage() {
     isBootstrapping: bootstrapping,
     isRefreshing: refreshing,
     errorMessage,
+    deleteDialogVisible,
+    deleteSubmitting,
+    deleteExpectedInput,
+    deletePromptMessage,
+    deleteInputPlaceholder,
     loadData,
     selectServer,
     navigateToServerTarget,
+    confirmDeleteServer,
+    closeDeleteDialog,
     navigateToCreate: () => navigateToCreate(router),
     navigateToImport: () => navigateToImport(router),
   };

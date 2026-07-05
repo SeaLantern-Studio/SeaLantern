@@ -29,7 +29,7 @@ const emit = defineEmits<{
 
 <template>
   <SLCard
-    variant="glass"
+    variant="outline"
     hoverable
     class="server-list-card"
     :class="{ 'server-list-card--current': server.isCurrent }"
@@ -117,7 +117,7 @@ const emit = defineEmits<{
           <SLButton
             v-for="action in server.actions"
             :key="action.target"
-            variant="ghost"
+            :variant="action.target === 'delete' ? 'danger' : 'ghost'"
             size="sm"
             @click.stop="emit('navigate', { serverId: server.id, target: action.target })"
           >
@@ -132,6 +132,19 @@ const emit = defineEmits<{
 <style scoped>
 .server-list-card {
   min-width: 0;
+  background: transparent;
+  border-color: color-mix(in srgb, var(--sl-border) 42%, transparent);
+  box-shadow: none;
+}
+
+.server-list-card :deep(.sl-card),
+.server-list-card :deep(.sl-card-body) {
+  background: transparent;
+}
+
+.server-list-card :deep(.sl-card-body) {
+  display: grid;
+  gap: 18px;
 }
 
 .server-list-card--current {
@@ -190,9 +203,6 @@ const emit = defineEmits<{
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
   font-size: 0.875rem;
   font-weight: 600;
 }
@@ -204,7 +214,6 @@ const emit = defineEmits<{
 }
 
 .server-list-card__status--running {
-  background: rgba(34, 197, 94, 0.12);
   color: var(--sl-success);
 }
 
@@ -214,7 +223,6 @@ const emit = defineEmits<{
 
 .server-list-card__status--starting,
 .server-list-card__status--stopping {
-  background: rgba(245, 158, 11, 0.12);
   color: var(--sl-warning);
 }
 
@@ -224,7 +232,6 @@ const emit = defineEmits<{
 }
 
 .server-list-card__status--error {
-  background: rgba(239, 68, 68, 0.12);
   color: var(--sl-error);
 }
 
@@ -233,7 +240,6 @@ const emit = defineEmits<{
 }
 
 .server-list-card__status--stopped {
-  background: color-mix(in srgb, var(--sl-bg-tertiary) 88%, transparent);
   color: var(--sl-text-tertiary);
 }
 
@@ -251,10 +257,6 @@ const emit = defineEmits<{
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  padding: 14px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--sl-surface) 90%, transparent);
-  border: 1px solid color-mix(in srgb, var(--sl-border) 84%, transparent);
   color: var(--sl-text-secondary);
 }
 
@@ -278,21 +280,31 @@ const emit = defineEmits<{
 }
 
 .server-list-card__meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .server-list-card__meta-chip {
   min-width: 0;
-  display: inline-flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
   gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--sl-bg-secondary) 88%, transparent);
-  border: 1px solid color-mix(in srgb, var(--sl-border) 84%, transparent);
   color: var(--sl-text-secondary);
+}
+
+.server-list-card__meta-chip span,
+.server-list-card__meta-chip strong {
+  grid-column: 2;
+}
+
+.server-list-card__meta-chip svg {
+  margin-top: 2px;
+}
+
+.server-list-card__meta-chip span {
+  font-size: 0.8125rem;
 }
 
 .server-list-card__meta-chip strong {
@@ -335,6 +347,10 @@ const emit = defineEmits<{
   }
 
   .server-list-card__summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .server-list-card__meta-row {
     grid-template-columns: 1fr;
   }
 

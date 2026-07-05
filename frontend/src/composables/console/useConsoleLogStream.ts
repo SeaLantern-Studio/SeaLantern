@@ -134,6 +134,28 @@ export function useConsoleLogStream(options: UseConsoleLogStreamOptions) {
     renderCachedLogs(serverId);
   }
 
+  async function syncLogDelta(serverId: string) {
+    const since = consoleStore.getLogCursor(serverId);
+    const lines = await serverApi.getLogs(serverId, since, Math.max(1, options.maxLogLines.value));
+
+    if (lines.length === 0) {
+      return;
+    }
+
+    const appendedLines = filterRecentSystemLogDuplicates(serverId, lines);
+    consoleStore.appendLogs(serverId, appendedLines);
+    consoleStore.setLogCursor(serverId, since + lines.length);
+
+    if (activeServerId !== serverId) {
+      return;
+    }
+
+    if (appendedLines.length > 0) {
+      options.consoleOutputRef.value?.appendLines(appendedLines);
+      syncRecentSystemLogMarker(serverId, consoleStore.logs[serverId] || []);
+    }
+  }
+
   const logSyncPolling = useSerialPolling({
     intervalMs: LOG_SYNC_INTERVAL_MS,
     task: async () => {
@@ -141,7 +163,7 @@ export function useConsoleLogStream(options: UseConsoleLogStreamOptions) {
         return;
       }
 
-      await syncRecentLogs(activeServerId);
+      await syncLogDelta(activeServerId);
     },
   });
 
@@ -151,15 +173,17 @@ export function useConsoleLogStream(options: UseConsoleLogStreamOptions) {
     }
 
     unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
+      consoleStore.setLogCursor(server_id, consoleStore.getLogCursor(server_id) + 1);
+
       const dedupedLines = filterRecentSystemLogDuplicates(server_id, [line]);
       if (dedupedLines.length === 0) {
         return;
       }
 
       consoleStore.appendLocal(server_id, dedupedLines[0]);
-      consoleStore.setLogCursor(server_id, (consoleStore.logs[server_id] || []).length);
       if (!serverId || server_id !== serverId) return;
       options.consoleOutputRef.value?.appendLines(dedupedLines);
+      syncRecentSystemLogMarker(server_id, consoleStore.logs[server_id] || []);
     });
   }
 
@@ -223,7 +247,6 @@ export function useConsoleLogStream(options: UseConsoleLogStreamOptions) {
   function clearActiveLogs(serverId: string) {
     if (serverId) {
       consoleStore.clearLogs(serverId);
-      consoleStore.setLogCursor(serverId, 0);
       recentSystemLogByServer.delete(serverId);
     }
 

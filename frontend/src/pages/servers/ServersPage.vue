@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SLButton from "@components/common/SLButton.vue";
 import SLCard from "@components/common/SLCard.vue";
+import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import { i18n } from "@language";
 import ServerListCard from "@src/components/servers/ServerListCard.vue";
 import ServersEmptyState from "@src/components/servers/ServersEmptyState.vue";
@@ -16,9 +17,16 @@ const {
   isBootstrapping,
   isRefreshing,
   errorMessage,
+  deleteDialogVisible,
+  deleteSubmitting,
+  deleteExpectedInput,
+  deletePromptMessage,
+  deleteInputPlaceholder,
   loadData,
   selectServer,
   navigateToServerTarget,
+  confirmDeleteServer,
+  closeDeleteDialog,
   navigateToCreate,
   navigateToImport,
 } = useServersPage();
@@ -92,6 +100,22 @@ async function handleNavigate(payload: {
         @navigate="handleNavigate"
       />
     </section>
+
+    <SLConfirmDialog
+      :visible="deleteDialogVisible"
+      :title="i18n.t('home.delete_server')"
+      :message="deletePromptMessage"
+      :confirmText="i18n.t('home.delete_server')"
+      :cancelText="i18n.t('common.cancel')"
+      :inputPlaceholder="deleteInputPlaceholder"
+      :expectedInput="deleteExpectedInput"
+      :loading="deleteSubmitting"
+      confirmVariant="danger"
+      dangerous
+      requireInput
+      @confirm="confirmDeleteServer"
+      @close="closeDeleteDialog"
+    />
   </div>
 </template>
 

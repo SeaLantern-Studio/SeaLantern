@@ -42,6 +42,7 @@ import {
   NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_EXTENSIONS_ROUTE_NAME,
   NEXT_SERVER_IMPORT_ROUTE_NAME,
+  NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_WORLD_ROUTE_NAME,
@@ -159,7 +160,7 @@ const protectedChildren: RouteRecordRaw[] = [
       }
 
       return {
-        name: NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
+        name: NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME,
         params: { serverId },
       };
     },
@@ -260,12 +261,22 @@ const routes: RouteRecordRaw[] = [
     path: "/servers/:serverId",
     name: NEXT_SERVER_INSTANCE_ROUTE_NAME,
     redirect: (to) => ({
-      name: NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
+      name: NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME,
       params: { serverId: to.params.serverId },
     }),
     meta: createNextProtectedPageMeta({
       pageKind: "servers",
-      titleKey: "servers.next.instance.sections.players",
+      titleKey: "common.console",
+      navLabelKey: "shell.nav_servers",
+    }) as unknown as RouteMeta,
+  },
+  {
+    path: "/servers/:serverId/console",
+    name: NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME,
+    component: () => import("../views/ServerInstanceConsoleView.vue"),
+    meta: createNextProtectedPageMeta({
+      pageKind: "servers",
+      titleKey: "common.console",
       navLabelKey: "shell.nav_servers",
     }) as unknown as RouteMeta,
   },

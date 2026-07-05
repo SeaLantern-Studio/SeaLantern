@@ -86,6 +86,7 @@ export const NEXT_ABOUT_ROUTE_NAME = "next-about";
 export const NEXT_SERVER_CREATE_ROUTE_NAME = "next-server-create";
 export const NEXT_SERVER_IMPORT_ROUTE_NAME = "next-server-import";
 export const NEXT_SERVER_INSTANCE_ROUTE_NAME = "next-server-instance";
+export const NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME = "next-server-instance-console";
 export const NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME = "next-server-instance-players";
 export const NEXT_SERVER_INSTANCE_EXTENSIONS_ROUTE_NAME = "next-server-instance-extensions";
 export const NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME = "next-server-instance-config";
@@ -276,7 +277,7 @@ const NEXT_DYNAMIC_SHELL_ENTRY_PATTERNS = Object.freeze([
   /^\/console(?:\/[^/]+)?$/,
   /^\/config(?:\/[^/]+)?$/,
   /^\/players(?:\/[^/]+)?$/,
-  /^\/servers\/[^/]+(?:\/(?:players|extensions|config|world))?$/,
+  /^\/servers\/[^/]+(?:\/(?:console|players|extensions|config|world))?$/,
   /^\/(?:plugin\/[^/]+|plugin-category\/[^/]+)$/,
 ]);
 

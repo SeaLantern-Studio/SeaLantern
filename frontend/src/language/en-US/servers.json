@@ -8,6 +8,7 @@
       "not_found_title": "Server not found",
       "not_found_description": "This route does not map to a known server yet, or the list has not refreshed.",
       "sections": {
+        "console": "Console",
         "players": "Players",
         "extensions": "Plugins / Mods",
         "config": "Config",

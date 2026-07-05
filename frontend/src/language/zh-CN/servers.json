@@ -8,6 +8,7 @@
       "not_found_title": "实例未找到",
       "not_found_description": "当前路由对应的实例不存在，或列表尚未刷新。",
       "sections": {
+        "console": "控制台",
         "players": "玩家列表",
         "extensions": "插件 / Mod",
         "config": "配置编辑",

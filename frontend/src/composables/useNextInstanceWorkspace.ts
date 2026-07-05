@@ -9,6 +9,7 @@ import type {
   NextInstanceSection,
 } from "@src/contracts/instance";
 import {
+  NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_EXTENSIONS_ROUTE_NAME,
   NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
@@ -49,6 +50,7 @@ function buildPlaceholderContent(
   }
 
   const titleKeyBySection: Record<Exclude<NextInstanceSection, "players">, string> = {
+    console: "common.console",
     extensions: "servers.next.instance.sections.extensions",
     config: "servers.next.instance.sections.config",
     world: "servers.next.instance.sections.world",
@@ -84,6 +86,7 @@ export function useProvideNextInstanceWorkspace() {
   });
 
   const section = computed<NextInstanceSection>(() => {
+    if (route.name === NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME) return "console";
     if (route.name === NEXT_SERVER_INSTANCE_EXTENSIONS_ROUTE_NAME) return "extensions";
     if (route.name === NEXT_SERVER_INSTANCE_CONFIG_ROUTE_NAME) return "config";
     if (route.name === NEXT_SERVER_INSTANCE_WORLD_ROUTE_NAME) return "world";
@@ -95,6 +98,8 @@ export function useProvideNextInstanceWorkspace() {
   const statusLabel = computed(() => formatStatusLabel(status.value?.status));
   const pageTitle = computed(() => {
     switch (section.value) {
+      case "console":
+        return i18n.t("common.console");
       case "extensions":
         return i18n.t("servers.next.instance.sections.extensions");
       case "config":
@@ -151,6 +156,10 @@ export function useProvideNextInstanceWorkspace() {
     router,
     serverStore,
     backToServersRoute: { name: NEXT_SERVERS_ROUTE_NAME },
+    consoleRoute: computed(() => ({
+      name: NEXT_SERVER_INSTANCE_CONSOLE_ROUTE_NAME,
+      params: { serverId: serverId.value },
+    })),
     playersRoute: computed(() => ({
       name: NEXT_SERVER_INSTANCE_PLAYERS_ROUTE_NAME,
       params: { serverId: serverId.value },

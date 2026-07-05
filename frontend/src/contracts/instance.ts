@@ -1,4 +1,4 @@
-export type NextInstanceSection = "players" | "extensions" | "config" | "world";
+export type NextInstanceSection = "console" | "players" | "extensions" | "config" | "world";
 
 export interface NextInstancePlaceholderContent {
   eyebrow: string;
