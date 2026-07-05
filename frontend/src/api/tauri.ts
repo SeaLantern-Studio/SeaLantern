@@ -1,5 +1,8 @@
 import { AppError as StructuredAppError, normalizeAppError } from "@utils/appError";
 import { handleError, AppError, ErrorType } from "@utils/errorHandler";
+import { getBrowserRuntimeToken, notifyBrowserUnauthorized } from "@stores/authRuntime";
+import { readPersistedBrowserToken } from "@src/services/authStorage";
+import { isTauri as detectTauriRuntime } from "@tauri-apps/api/core";
 
 // Tauri 全局类型声明
 declare global {
@@ -11,16 +14,15 @@ declare global {
 }
 
 // 环境检测：判断是否在浏览器环境（Docker 模式）
-// Tauri v2 默认不注入 window.__TAURI__（需要 withGlobalTauri: true 才有）
-// 但 window.__TAURI_INTERNALS__ 在 Tauri v2 中始终存在，用它来可靠判断
+// 在当前 Tauri v2 dev 运行时里，直接依赖 window.__TAURI_INTERNALS__ 并不稳定。
+// 统一走官方 @tauri-apps/api/core.isTauri()，避免桌面壳被误判成 browser。
 export const isBrowserEnv = (): boolean => {
-  return typeof window !== "undefined" && !window.__TAURI_INTERNALS__;
+  return typeof window !== "undefined" && !detectTauriRuntime();
 };
 
 // HTTP API 基础 URL（Docker 模式下使用）
 // 使用相对路径，这样在 Docker 环境下浏览器会自动使用当前页面的域名
 export const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || "";
-const HTTP_AUTH_TOKEN = import.meta.env.VITE_HTTP_AUTH_TOKEN || "";
 
 interface HttpApiErrorDetail {
   code?: string;
@@ -36,13 +38,45 @@ interface HttpApiEnvelope<T> {
   error_detail?: HttpApiErrorDetail;
 }
 
+export interface NextBridgeIssueResponse {
+  bridge_token: string;
+  expires_at: number;
+  purpose: "next_bridge";
+  target_path: string;
+}
+
+export interface NextBridgeExchangeResponse {
+  session_token: string;
+  token: string;
+  expires_at: number;
+  purpose: "browser_session";
+}
+
 export function readBrowserAuthToken(): string | null {
-  const token = HTTP_AUTH_TOKEN.trim();
-  return token ? token : null;
+  return getBrowserRuntimeToken() ?? readPersistedBrowserToken();
+}
+
+export { notifyBrowserUnauthorized };
+
+export function assertDesktopEnvironment(): void {
+  if (!isBrowserEnv()) {
+    return;
+  }
+
+  const normalized = normalizeAppError({ code: "system.desktop_only_method" });
+  throw new StructuredAppError(normalized.code, normalized.message, normalized.args);
 }
 
 function isStructuredAppError(error: unknown): error is StructuredAppError {
   return error instanceof StructuredAppError;
+}
+
+function toStructuredPayloadError(error: unknown): StructuredAppError | null {
+  const normalized = normalizeAppError(error);
+  if (normalized.code !== "common.message_unknown_error") {
+    return new StructuredAppError(normalized.code, normalized.message, normalized.args, error);
+  }
+  return null;
 }
 
 export async function ensureBrowserSession(): Promise<void> {
@@ -105,6 +139,9 @@ async function performHttpInvoke<T>(command: string, args?: Record<string, unkno
   const result = await parseHttpEnvelope<T>(response);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
     throw toStructuredHttpError(result, `HTTP ${response.status}: request failed`);
   }
 
@@ -113,6 +150,49 @@ async function performHttpInvoke<T>(command: string, args?: Record<string, unkno
   }
 
   return result.data as T;
+}
+
+export async function issueNextBridgeToken(targetPath: string): Promise<NextBridgeIssueResponse> {
+  await ensureBrowserSession();
+
+  const token = readBrowserAuthToken();
+  const response = await fetch(`${HTTP_API_BASE}/api/auth/next-bridge/issue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ target_path: targetPath }),
+  });
+
+  const result = await parseHttpEnvelope<NextBridgeIssueResponse>(response);
+  if (!response.ok || !result?.success || !result.data) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
+    throw toStructuredHttpError(result, `HTTP ${response.status}: next bridge issue failed`);
+  }
+
+  return result.data;
+}
+
+export async function exchangeNextBridgeToken(
+  bridgeToken: string,
+): Promise<NextBridgeExchangeResponse> {
+  const response = await fetch(`${HTTP_API_BASE}/api/auth/next-bridge/exchange`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ bridge_token: bridgeToken }),
+  });
+
+  const result = await parseHttpEnvelope<NextBridgeExchangeResponse>(response);
+  if (!response.ok || !result?.success || !result.data) {
+    throw toStructuredHttpError(result, `HTTP ${response.status}: next bridge exchange failed`);
+  }
+
+  return result.data;
 }
 
 /**
@@ -180,6 +260,22 @@ export async function tauriInvoke<T>(
       return options.defaultValue as T;
     }
 
+    const structuredError = toStructuredPayloadError(error);
+    if (structuredError) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" failed:`,
+          structuredError,
+        );
+      }
+
+      if (!options.silent) {
+        throw structuredError;
+      }
+
+      return options.defaultValue as T;
+    }
+
     const errorMessage = handleError(error, options.context || command);
 
     if (import.meta.env.DEV) {
@@ -192,6 +288,15 @@ export async function tauriInvoke<T>(
 
     return options.defaultValue as T;
   }
+}
+
+export async function tauriInvokeDesktop<T>(
+  command: string,
+  args?: Record<string, unknown>,
+  options: InvokeOptions = {},
+): Promise<T> {
+  assertDesktopEnvironment();
+  return tauriInvoke<T>(command, args, options);
 }
 
 /**

@@ -1,25 +1,34 @@
+#[cfg(feature = "plugin-runtime-bridge")]
 use crate::plugins;
+#[cfg(feature = "plugin-runtime-bridge")]
+use crate::plugins::api::{ApiRegistryOps, PluginApiRegistry};
+#[cfg(feature = "plugin-runtime-bridge")]
 use crate::plugins::runtime::PluginRuntime;
-use crate::services;
+#[cfg(feature = "plugin-runtime-bridge")]
 use crate::services::global::i18n_service;
-use crate::services::server::log_pipeline::map_domain_event;
+#[cfg(feature = "plugin-runtime-bridge")]
 use crate::utils::logger::{log_debug_ctx, log_warn_ctx};
-use sl_server_info::log::{parse_log_line, LogLineInput, LogStream};
 
+#[cfg(feature = "plugin-runtime-bridge")]
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+#[cfg(feature = "plugin-runtime-bridge")]
+use std::sync::{Arc, RwLock};
+#[cfg(feature = "plugin-runtime-bridge")]
 use tauri::{Emitter, Listener};
 
+#[cfg(feature = "plugin-runtime-bridge")]
 fn plugin_bridge_t(key: &str) -> String {
     i18n_service().t(key)
 }
 
+#[cfg(feature = "plugin-runtime-bridge")]
 fn plugin_bridge_t1(key: &str, a: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
     i18n_service().t_with_options(key, &m)
 }
 
+#[cfg(feature = "plugin-runtime-bridge")]
 fn plugin_bridge_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
@@ -27,6 +36,7 @@ fn plugin_bridge_t2(key: &str, a: impl Into<String>, b: impl Into<String>) -> St
     i18n_service().t_with_options(key, &m)
 }
 
+#[cfg(feature = "plugin-runtime-bridge")]
 fn parse_element_response_payload(payload_json: &str) -> Result<(u64, String), String> {
     let payload = serde_json::from_str::<serde_json::Value>(payload_json).map_err(|error| {
         plugin_bridge_t1("plugin.bridge.element_response_parse_failed", error.to_string())
@@ -44,15 +54,14 @@ fn parse_element_response_payload(payload_json: &str) -> Result<(u64, String), S
 }
 
 /// 连接插件事件桥。
-pub(crate) fn install_plugin_bridge(
+#[cfg(feature = "plugin-runtime-bridge")]
+pub(crate) fn install_plugin_runtime_bridge(
     app: &tauri::App,
     shared_runtimes: Arc<RwLock<HashMap<String, PluginRuntime>>>,
     shared_runtimes_for_server_ready: Arc<RwLock<HashMap<String, PluginRuntime>>>,
-    api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
+    api_registry: PluginApiRegistry,
 ) {
     plugins::api::set_api_call_handler(Arc::new(move |_source, target, api_name, args| {
-        use crate::plugins::api::ApiRegistryOps;
-
         let lua_fn_name = api_registry
             .get_api_fn_name(target, api_name)
             .ok_or_else(|| {
@@ -270,67 +279,14 @@ pub(crate) fn install_plugin_bridge(
             }
         });
     }
-
-    {
-        use serde::Serialize;
-
-        #[derive(Serialize, Clone)]
-        struct ServerLogLineEvent {
-            server_id: String,
-            line: String,
-        }
-
-        #[derive(Serialize, Clone)]
-        struct StructuredServerLogEvent {
-            server_id: String,
-            line: String,
-            stream: String,
-            event_kind: Option<String>,
-            player: Option<String>,
-            message: Option<String>,
-        }
-
-        let app_handle = app.handle().clone();
-        let _ = services::server::log_pipeline::set_server_log_event_handler(Arc::new(
-            move |server_id, line, stream| {
-                let event = ServerLogLineEvent {
-                    server_id: server_id.to_string(),
-                    line: line.to_string(),
-                };
-                app_handle.emit("server-log-line", event).map_err(|e| {
-                    plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
-                })?;
-
-                let parsed = parse_log_line(None, LogLineInput { raw: line.to_string(), stream });
-                let mapped = map_domain_event(parsed.event);
-
-                let structured_event = StructuredServerLogEvent {
-                    server_id: server_id.to_string(),
-                    line: line.to_string(),
-                    stream: match stream {
-                        LogStream::Stdout => "stdout".to_string(),
-                        LogStream::Stderr => "stderr".to_string(),
-                        LogStream::Unknown => "unknown".to_string(),
-                    },
-                    event_kind: mapped.event_kind,
-                    player: mapped.player,
-                    message: mapped.message,
-                };
-
-                app_handle
-                    .emit("server-log-structured", structured_event)
-                    .map_err(|e| {
-                        plugin_bridge_t1("plugin.bridge.emit_server_log_line_failed", e.to_string())
-                    })
-            },
-        ));
-    }
 }
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "plugin-runtime-bridge")]
     use super::parse_element_response_payload;
 
+    #[cfg(feature = "plugin-runtime-bridge")]
     #[test]
     fn parse_element_response_payload_rejects_invalid_json() {
         let error = parse_element_response_payload("{")
@@ -343,6 +299,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "plugin-runtime-bridge")]
     #[test]
     fn parse_element_response_payload_rejects_missing_fields() {
         let error = parse_element_response_payload(r#"{"request_id":1}"#)

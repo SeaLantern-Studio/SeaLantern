@@ -81,6 +81,34 @@ mod tests {
         assert_eq!(req.custom_command, None);
         assert!(req.jvm_args.is_empty());
     }
+
+    #[test]
+    fn validate_server_path_request_accepts_frontend_payload_shape() {
+        let req: super::ValidateServerPathRequest = serde_json::from_str(
+            r#"{
+  "newPath": "E:/servers/existing"
+}"#,
+        )
+        .expect("validate server path request should deserialize");
+
+        assert_eq!(req.new_path, "E:/servers/existing");
+    }
+
+    #[test]
+    fn update_server_path_request_defaults_optional_fields() {
+        let req: super::UpdateServerPathRequest = serde_json::from_str(
+            r#"{
+  "id": "server-1",
+  "newPath": "E:/servers/migrated"
+}"#,
+        )
+        .expect("update server path request should deserialize");
+
+        assert_eq!(req.id, "server-1");
+        assert_eq!(req.new_path, "E:/servers/migrated");
+        assert_eq!(req.new_jar_path, None);
+        assert_eq!(req.new_startup_mode, None);
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -168,6 +196,23 @@ pub(super) struct UpdateJavaPathRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(super) struct ValidateServerPathRequest {
+    pub new_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct UpdateServerPathRequest {
+    pub id: String,
+    pub new_path: String,
+    #[serde(default)]
+    pub new_jar_path: Option<String>,
+    #[serde(default)]
+    pub new_startup_mode: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct ScanStartupCandidatesRequest {
     pub source_path: String,
     pub source_type: String,
@@ -243,6 +288,56 @@ pub(super) struct ReadConfigRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(super) struct ReadServerConfigSourceRequest {
+    pub server_path: String,
+    pub relative_path: String,
+    #[serde(default)]
+    pub locator: Option<String>,
+    #[serde(default)]
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct WriteServerConfigSourceRequest {
+    pub server_path: String,
+    pub relative_path: String,
+    #[serde(default)]
+    pub locator: Option<String>,
+    #[serde(default)]
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub source: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ReadServerConfigDocumentRequest {
+    pub server_path: String,
+    pub relative_path: String,
+    #[serde(default)]
+    pub locator: Option<String>,
+    #[serde(default)]
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct WriteServerConfigDocumentRequest {
+    pub server_path: String,
+    pub relative_path: String,
+    #[serde(default)]
+    pub locator: Option<String>,
+    #[serde(default)]
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub content: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct WriteConfigRequest {
     pub server_path: String,
     pub path: String,
@@ -299,6 +394,32 @@ pub(super) struct ReadServerPropertiesRequest {
 #[serde(rename_all = "camelCase")]
 pub(super) struct ServerPathRequest {
     pub server_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ListServerConfigFilesRequest {
+    pub server_path: String,
+    #[serde(default)]
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct SearchServerConfigFilesRequest {
+    pub server_path: String,
+    pub query: String,
+    pub mode: sea_lantern_server_config_core::types::ServerConfigSearchMode,
+    #[serde(default)]
+    pub scope: Option<sea_lantern_server_config_core::types::ServerConfigSearchScope>,
+    #[serde(default)]
+    pub discovery_options:
+        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    #[serde(default)]
+    pub limit: Option<usize>,
+    #[serde(default)]
+    pub case_sensitive: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

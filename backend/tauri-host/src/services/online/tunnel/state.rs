@@ -2,8 +2,8 @@ use sculk::persist::Profile;
 use sculk::tunnel::{IrohTunnel, Ticket};
 use sculk::types::SecretKey;
 use std::sync::{Arc, Mutex, OnceLock};
-use tauri::async_runtime::JoinHandle;
 use tokio::sync::Mutex as AsyncMutex;
+use tokio::task::JoinHandle;
 
 pub(super) const MAX_LOG_LINES: usize = 200;
 pub(super) const ONLINE_DIR: &str = "online";
@@ -74,13 +74,13 @@ pub(super) fn clear_running_state() {
 }
 
 pub(super) fn tunnel_profile_path() -> std::path::PathBuf {
-    crate::utils::path::get_app_data_dir()
+    super::super::host::tunnel_app_data_dir()
         .join(ONLINE_DIR)
         .join(PROFILE_FILE)
 }
 
 pub(super) fn tunnel_key_path() -> std::path::PathBuf {
-    crate::utils::path::get_app_data_dir()
+    super::super::host::tunnel_app_data_dir()
         .join(ONLINE_DIR)
         .join(SECRET_KEY_FILE)
 }

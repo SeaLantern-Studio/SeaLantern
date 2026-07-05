@@ -5,6 +5,7 @@ use mlua::Result as LuaResult;
 use sea_lantern_lib::plugins::api::UiEventHandler;
 use sea_lantern_lib::plugins::api::{new_api_registry, set_ui_event_handler};
 use sea_lantern_lib::plugins::runtime::PluginRuntime;
+use std::collections::HashMap;
 use std::env;
 use std::fs as std_fs;
 use std::path::PathBuf;
@@ -44,6 +45,7 @@ fn create_test_runtime_with_permissions(
         api_registry,
         perms,
         vec![],
+        HashMap::new(),
     )
     .unwrap();
 

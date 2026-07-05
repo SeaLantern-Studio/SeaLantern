@@ -1,6 +1,6 @@
 {
   "title": "添加已有服务器",
-  "page_subtitle": "把已经准备好的服务器目录接入 SeaLantern，后续就可以在这里统一管理。",
+  "page_subtitle": "把已经准备好的服务器目录接入 SeaLantern，统一管理。",
   "server_folder": "服务器目录",
   "server_folder_placeholder": "请选择服务器所在文件夹",
   "server_folder_hint": "选择已经能正常启动的服务器文件夹，SeaLantern 会尝试识别常见启动方式。",

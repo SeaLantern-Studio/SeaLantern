@@ -6,7 +6,6 @@ mod shared;
 use super::common::{lock_manager, trim_market_base_url, validate_plugin_id};
 use crate::hardcode_data::plugin_market::PLUGIN_MARKET_BASE_URL;
 use crate::models::plugin::{PluginInstallResult, PluginUpdateInfo};
-use crate::plugins::manager::i18n::plugin_t1;
 use crate::plugins::manager::PluginManager;
 pub(crate) use install::InstallFromMarketRequest;
 use std::sync::{Arc, Mutex};
@@ -17,14 +16,11 @@ pub(super) async fn check_plugin_update(
     plugin_id: String,
 ) -> Result<Option<PluginUpdateInfo>, String> {
     validate_plugin_id(&plugin_id)?;
-
-    let current_version = {
+    let Some((plugin_id, current_version)) = ({
         let manager = lock_manager(&manager);
-        let plugin_info = manager
-            .plugins()
-            .get(&plugin_id)
-            .ok_or_else(|| plugin_t1("plugin.common.not_found", plugin_id.clone()))?;
-        plugin_info.manifest.version.clone()
+        manager.check_plugin_update(&plugin_id)?
+    }) else {
+        return Ok(None);
     };
 
     check_plugin_update_without_manager(current_version, plugin_id).await
@@ -43,11 +39,7 @@ pub(super) async fn check_all_plugin_updates(
 ) -> Result<Vec<PluginUpdateInfo>, String> {
     let plugin_versions: Vec<(String, String)> = {
         let manager = lock_manager(&manager);
-        manager
-            .plugins()
-            .iter()
-            .map(|(id, info)| (id.clone(), info.manifest.version.clone()))
-            .collect()
+        manager.collect_update_versions()
     };
 
     check_all_plugin_updates_without_manager(plugin_versions).await

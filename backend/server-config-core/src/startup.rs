@@ -2,10 +2,14 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use toml_edit::{value, DocumentMut};
 
+use crate::discovery::{
+    resolve_primary_port_config_path, resolve_primary_server_properties_path,
+    resolve_primary_startup_config_path,
+};
 use crate::properties;
 use crate::types::{
-    CpuPolicyConfig, JvmPresetConfig, SLStartupConfig, ServerStartupConfigDocument,
-    StartupConfigPresence,
+    CpuPolicyConfig, JvmPresetConfig, KnownServerConfigRole, SLStartupConfig,
+    ServerStartupConfigDocument, StartupConfigPresence,
 };
 
 const INSTANCE_CONFIG_DIR_NAME: &str = "SeaLantern";
@@ -13,6 +17,7 @@ const INSTANCE_CONFIG_FILE_NAME: &str = "config.toml";
 const SERVER_PATH_PERMISSION_TEST_FILE_NAME: &str = ".sl_permission_test";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Runtime defaults captured from the current host state before instance overrides are applied.
 pub struct StartupRuntimeDefaults {
     pub max_memory: u32,
     pub min_memory: u32,
@@ -22,12 +27,14 @@ pub struct StartupRuntimeDefaults {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Global fallback values used when a config field is explicitly present but empty.
 pub struct StartupResolutionDefaults {
     pub default_max_memory: u32,
     pub default_min_memory: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Fully resolved startup configuration after merging runtime state and instance overrides.
 pub struct EffectiveStartupConfig {
     pub max_memory: u32,
     pub min_memory: u32,
@@ -37,6 +44,7 @@ pub struct EffectiveStartupConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Inputs required to build the managed JVM command line for a server process.
 pub struct ManagedJvmBuildInput {
     pub effective: EffectiveStartupConfig,
     pub java_encoding: String,
@@ -44,6 +52,7 @@ pub struct ManagedJvmBuildInput {
     pub active_processor_count_arg: Option<String>,
 }
 
+/// Resolves the effective startup config by honoring explicit instance-field presence.
 pub fn resolve_effective_startup_config_from_document(
     startup: &ServerStartupConfigDocument,
     runtime: &StartupRuntimeDefaults,
@@ -84,6 +93,7 @@ pub fn resolve_effective_startup_config_from_document(
     }
 }
 
+/// Builds the JVM argument list in the order expected by the managed runtime launcher.
 pub fn build_managed_jvm_args_from_input(input: ManagedJvmBuildInput) -> Vec<String> {
     let ManagedJvmBuildInput {
         effective,
@@ -130,6 +140,7 @@ fn jvm_args_contain_active_processor_count(args: &[String]) -> bool {
         .any(|arg| arg.starts_with("-XX:ActiveProcessorCount="))
 }
 
+/// Rejects path traversal segments before config files are resolved on disk.
 pub fn validate_config_path(path: &str) -> Result<(), String> {
     let path = Path::new(path);
 
@@ -142,6 +153,7 @@ pub fn validate_config_path(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Resolves and validates the canonical server directory.
 pub fn canonical_server_dir(server_path: &str) -> Result<PathBuf, String> {
     validate_config_path(server_path)?;
     let canonical_server =
@@ -152,6 +164,7 @@ pub fn canonical_server_dir(server_path: &str) -> Result<PathBuf, String> {
     Ok(canonical_server)
 }
 
+/// Builds the primary SeaLantern startup config path inside a server directory.
 pub fn build_instance_config_path(server_path: &str) -> Result<PathBuf, String> {
     let canonical_server = canonical_server_dir(server_path)?;
     let instance_config_path = canonical_server
@@ -165,6 +178,7 @@ pub fn build_instance_config_path(server_path: &str) -> Result<PathBuf, String> 
     Ok(instance_config_path)
 }
 
+/// Builds the legacy `SL.json` config path for compatibility reads.
 pub fn build_legacy_sl_config_path(server_path: &str) -> Result<PathBuf, String> {
     let canonical_server = canonical_server_dir(server_path)?;
     let legacy_path = canonical_server.join("SL.json");
@@ -176,6 +190,7 @@ pub fn build_legacy_sl_config_path(server_path: &str) -> Result<PathBuf, String>
     Ok(legacy_path)
 }
 
+/// Verifies that `file_path` resolves inside `server_path`.
 pub fn validate_path_within_server(server_path: &str, file_path: &str) -> Result<(), String> {
     let canonical_server = canonical_server_dir(server_path)?;
     let target_path = resolve_config_target_path(file_path)?;
@@ -200,11 +215,10 @@ fn resolve_config_target_path(file_path: &str) -> Result<PathBuf, String> {
     }
 }
 
+/// Returns the resolved primary `server.properties` path as a UTF-8 string.
 pub fn build_server_properties_path(server_path: &str) -> Result<String, String> {
-    validate_config_path(server_path)?;
-    let props_path = format!("{}/server.properties", server_path);
-    validate_path_within_server(server_path, &props_path)?;
-    Ok(props_path)
+    let props_path = resolve_primary_server_properties_path(server_path)?;
+    Ok(props_path.to_string_lossy().to_string())
 }
 
 fn read_startup_document_from_toml(path: &Path) -> Result<ServerStartupConfigDocument, String> {
@@ -253,26 +267,27 @@ fn startup_config_presence_from_json(value: &serde_json::Value) -> StartupConfig
     }
 }
 
+/// Reads the merged startup config and discards field-presence metadata.
 pub fn read_server_startup_config(server_path: &str) -> Result<SLStartupConfig, String> {
     Ok(read_server_startup_config_document(server_path)?.config)
 }
 
+/// Reads the startup config together with field-presence metadata used for merge semantics.
 pub fn read_server_startup_config_document(
     server_path: &str,
 ) -> Result<ServerStartupConfigDocument, String> {
-    let instance_config_path = build_instance_config_path(server_path)?;
-    if instance_config_path.exists() {
-        return read_startup_document_from_toml(&instance_config_path);
-    }
-
-    let legacy_path = build_legacy_sl_config_path(server_path)?;
-    if legacy_path.exists() {
-        return read_startup_document_from_legacy_json(&legacy_path);
+    if let Some((role, path)) = resolve_primary_startup_config_path(server_path)? {
+        return match role {
+            KnownServerConfigRole::StartupPrimary => read_startup_document_from_toml(&path),
+            KnownServerConfigRole::StartupLegacy => read_startup_document_from_legacy_json(&path),
+            _ => Ok(ServerStartupConfigDocument::default()),
+        };
     }
 
     Ok(ServerStartupConfigDocument::default())
 }
 
+/// Writes the SeaLantern startup config into the managed instance config file.
 pub fn write_server_startup_config(
     server_path: &str,
     config: &SLStartupConfig,
@@ -288,6 +303,7 @@ pub fn write_server_startup_config(
     std::fs::write(&instance_config_path, content).map_err(|e| format!("写入实例配置失败: {}", e))
 }
 
+/// Convenience wrapper for writing a startup config from already-parsed values.
 pub fn write_server_startup_config_for_dir(
     server_dir: &Path,
     max_memory: u32,
@@ -311,6 +327,7 @@ pub fn write_server_startup_config_for_dir(
     write_server_startup_config(server_dir, &config)
 }
 
+/// Reads the server port and falls back to `fallback` on missing or invalid data.
 pub fn read_server_port(server_dir: &Path, fallback: u16) -> u16 {
     match read_server_port_checked(server_dir) {
         Ok(Some(port)) => port,
@@ -318,18 +335,21 @@ pub fn read_server_port(server_dir: &Path, fallback: u16) -> u16 {
     }
 }
 
+/// Reads the configured server port from the primary port-bearing config file.
 pub fn read_server_port_checked(server_dir: &Path) -> Result<Option<u16>, String> {
-    let pumpkin_path = server_dir.join("pumpkin.toml");
-    if pumpkin_path.exists() {
-        return read_pumpkin_port_checked(&pumpkin_path);
-    }
-
-    let server_properties_path = server_dir.join("server.properties");
-    if !server_properties_path.exists() {
+    let Some(config_path) = resolve_primary_port_config_path(server_dir)? else {
         return Ok(None);
+    };
+
+    if config_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.eq_ignore_ascii_case("pumpkin.toml"))
+    {
+        return read_pumpkin_port_checked(&config_path);
     }
 
-    let props = properties::read_properties(&server_properties_path.to_string_lossy())?;
+    let props = properties::read_properties(&config_path.to_string_lossy())?;
     let Some(port_str) = props.get("server-port") else {
         return Ok(None);
     };
@@ -363,6 +383,7 @@ fn read_pumpkin_port_checked(pumpkin_path: &Path) -> Result<Option<u16>, String>
         .map_err(|e| format!("pumpkin.toml 中的 java_edition_address 端口无效: {}", e))
 }
 
+/// Updates `pumpkin.toml` in place when that runtime is present.
 pub fn update_pumpkin_config_if_present(
     server_dir: &Path,
     requested_port: u16,
@@ -388,6 +409,7 @@ pub fn update_pumpkin_config_if_present(
     Ok(true)
 }
 
+/// Creates `server.properties` unless another supported port config already exists.
 pub fn create_server_properties_if_missing(
     server_dir: &Path,
     requested_port: u16,
@@ -412,6 +434,7 @@ pub fn create_server_properties_if_missing(
     Ok(())
 }
 
+/// Probes whether the server directory is writable by creating a temporary file.
 pub fn ensure_server_path_writable(server_path: &Path) -> Result<(), String> {
     let test_file = server_path.join(SERVER_PATH_PERMISSION_TEST_FILE_NAME);
     if std::fs::write(&test_file, "").is_err() {
@@ -421,12 +444,14 @@ pub fn ensure_server_path_writable(server_path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Matches common missing-file messages across supported platforms.
 pub fn is_missing_file_error(error: &str) -> bool {
     error.contains("os error 2")
         || error.contains("系统找不到指定的文件")
         || error.contains("No such file or directory")
 }
 
+/// Returns an empty in-memory server.properties representation.
 pub fn empty_server_properties() -> crate::types::ServerProperties {
     crate::types::ServerProperties { entries: Vec::new(), raw: HashMap::new() }
 }

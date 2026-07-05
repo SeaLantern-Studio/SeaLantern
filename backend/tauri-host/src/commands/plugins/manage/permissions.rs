@@ -20,7 +20,12 @@ pub(super) fn get_plugin_permissions(
 
     let plugin_permissions = get_plugin_permission_list()
         .into_iter()
-        .filter(|permission| plugin.manifest.permissions.contains(&permission.id))
+        .filter(|permission| {
+            plugin.manifest.permissions.iter().any(|declared| {
+                crate::hardcode_data::plugin_permissions::normalize_permission_id(declared)
+                    == permission.id
+            })
+        })
         .collect();
 
     Ok(plugin_permissions)

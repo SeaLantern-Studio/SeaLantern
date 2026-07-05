@@ -1,3 +1,5 @@
+//! Shared server-extension and plugin directory helpers.
+
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -9,6 +11,7 @@ use zip::ZipArchive;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Serializable plugin summary returned by server plugin management APIs.
 pub struct m_PluginInfo {
     pub m_id: String,
     pub name: String,
@@ -25,6 +28,7 @@ pub struct m_PluginInfo {
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Serializable plugin config file payload returned by config inspection APIs.
 pub struct m_PluginConfigFile {
     pub file_name: String,
     pub content: String,
@@ -104,6 +108,7 @@ fn plugin_name_from_file_name(file_name: &str) -> String {
         .to_string()
 }
 
+/// Resolves the relative extension directory for a server flavor and extension kind.
 pub fn resolve_extension_relative_dir(
     core_type: &str,
     runtime_kind: &str,
@@ -130,6 +135,7 @@ pub fn resolve_extension_relative_dir(
     }
 }
 
+/// Resolves the absolute extension directory path for a server.
 pub fn resolve_extension_target_dir(
     server_path: &str,
     core_type: &str,
@@ -141,6 +147,7 @@ pub fn resolve_extension_target_dir(
     Some(Path::new(server_path).join(relative_dir))
 }
 
+/// Resolves and creates the extension directory when the selected flavor supports it.
 pub fn ensure_extension_target_dir(
     server_path: &str,
     core_type: &str,
@@ -162,14 +169,17 @@ pub fn ensure_extension_target_dir(
     Ok(target_dir)
 }
 
+/// Lists plugins from the default `plugins` directory with fallback metadata for unreadable jars.
 pub fn get_plugins(server_path: &str) -> Result<Vec<m_PluginInfo>, String> {
     get_plugins_in_dir(server_path, "plugins")
 }
 
+/// Lists plugins from the default `plugins` directory and surfaces invalid jars as errors.
 pub fn get_plugins_checked(server_path: &str) -> Result<Vec<m_PluginInfo>, String> {
     get_plugins_checked_in_dir(server_path, "plugins")
 }
 
+/// Lists plugins from a caller-selected extension directory with fallback metadata.
 pub fn get_plugins_in_dir(
     server_path: &str,
     relative_dir: &str,
@@ -177,6 +187,7 @@ pub fn get_plugins_in_dir(
     collect_plugins(server_path, relative_dir, false)
 }
 
+/// Lists plugins from a caller-selected extension directory and surfaces invalid jars as errors.
 pub fn get_plugins_checked_in_dir(
     server_path: &str,
     relative_dir: &str,
@@ -272,6 +283,7 @@ fn collect_plugins(
     Ok(plugins)
 }
 
+/// Reads config files for one plugin from the default `plugins` directory.
 pub fn get_plugin_config_files(
     server_path: &str,
     plugin_name: &str,
@@ -279,6 +291,7 @@ pub fn get_plugin_config_files(
     get_plugin_config_files_in_dir(server_path, "plugins", plugin_name)
 }
 
+/// Reads config files for one plugin from a caller-selected extension directory.
 pub fn get_plugin_config_files_in_dir(
     server_path: &str,
     relative_dir: &str,

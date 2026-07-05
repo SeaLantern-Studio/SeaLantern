@@ -347,11 +347,11 @@ fn append_sealantern_service(
         escape_yaml_double_quoted(&host_root)
     ));
     lines.push(
-        "      # 浏览器前端访问 Headless HTTP 时，需要把同一 Bearer token 注入到前端构建环境"
+        "      # 浏览器 Web auth 现在通过 /api/auth/* 建立 session；不要再把 SEALANTERN_HTTP_AUTH_TOKEN 当作浏览器常规登录凭据"
             .to_string(),
     );
     lines.push(
-        "      # 例如在前端构建阶段设置 VITE_HTTP_AUTH_TOKEN，并与 SEALANTERN_HTTP_AUTH_TOKEN 保持一致"
+        "      # 如需启用恢复入口，请单独设置 SEALANTERN_WEB_AUTH_RECOVERY_TOKEN；它只用于 /api/auth/recovery/reset"
             .to_string(),
     );
 

@@ -149,8 +149,14 @@ impl AppSettings {
         if let Some(ref v) = partial.language {
             self.language = v.clone();
         }
+        if let Some(ref v) = partial.locale_layer_order {
+            self.locale_layer_order = v.clone();
+        }
         if let Some(v) = partial.developer_mode {
             self.developer_mode = v;
+        }
+        if let Some(v) = partial.enable_desktop_web_ui {
+            self.enable_desktop_web_ui = v;
         }
         if let Some(ref v) = partial.close_action {
             self.close_action = v.clone();
@@ -161,6 +167,9 @@ impl AppSettings {
         if let Some(v) = partial.minimal_mode {
             self.minimal_mode = v;
         }
+        if let Some(ref v) = partial.next_home_layout {
+            self.next_home_layout = v.clone();
+        }
         if let Some(ref v) = partial.plugin_console_allowed_commands {
             self.plugin_console_allowed_commands = v.clone();
         }
@@ -169,6 +178,9 @@ impl AppSettings {
         }
         if let Some(v) = partial.agreed_to_terms {
             self.agreed_to_terms = v;
+        }
+        if let Some(ref v) = partial.onebot_11 {
+            self.onebot_11 = v.clone();
         }
 
         self.normalize_window_effect();

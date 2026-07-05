@@ -33,6 +33,22 @@ fn command_registry_includes_parse_server_core_key_and_compat_alias() {
     assert!(commands.contains(&"parse_server_core_type".to_string()));
 }
 
+#[test]
+fn command_registry_includes_wrapped_settings_contract_commands() {
+    let registry = CommandRegistry::new();
+    let commands = registry.list_commands();
+
+    assert!(commands.contains(&"change_data_dir".to_string()));
+    assert!(commands.contains(&"change_plugin_dir".to_string()));
+    assert!(commands.contains(&"get_web_settings".to_string()));
+    assert!(commands.contains(&"save_web_settings".to_string()));
+    assert!(commands.contains(&"update_web_settings_partial".to_string()));
+    assert!(commands.contains(&"import_web_settings".to_string()));
+    assert!(!commands.contains(&"get_settings".to_string()));
+    assert!(!commands.contains(&"save_settings_with_diff".to_string()));
+    assert!(!commands.contains(&"import_settings".to_string()));
+}
+
 #[tokio::test]
 async fn parse_server_core_type_compat_alias_preserves_legacy_display_semantics() {
     let dir = tempfile::tempdir().expect("temp dir should exist");
@@ -66,6 +82,9 @@ async fn parse_server_core_type_compat_alias_preserves_legacy_display_semantics(
         DispatchResult::Success(value) => {
             assert_eq!(value.get("core_type").and_then(|item| item.as_str()), Some("paper"));
         }
+        DispatchResult::InvalidRequest(message) => {
+            panic!("parse_server_core_key unexpectedly rejected request: {message}")
+        }
         DispatchResult::Failure(message) => panic!("parse_server_core_key failed: {message}"),
         DispatchResult::NotFound(message) => {
             panic!("parse_server_core_key unexpectedly missing: {message}")
@@ -75,6 +94,9 @@ async fn parse_server_core_type_compat_alias_preserves_legacy_display_semantics(
     match parsed_type {
         DispatchResult::Success(value) => {
             assert_eq!(value.get("core_type").and_then(|item| item.as_str()), Some("Paper"));
+        }
+        DispatchResult::InvalidRequest(message) => {
+            panic!("parse_server_core_type unexpectedly rejected request: {message}")
         }
         DispatchResult::Failure(message) => panic!("parse_server_core_type failed: {message}"),
         DispatchResult::NotFound(message) => {

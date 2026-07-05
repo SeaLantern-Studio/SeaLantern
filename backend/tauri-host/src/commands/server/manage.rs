@@ -8,6 +8,7 @@ mod provisioning;
 mod runtime;
 mod startup_scan;
 
+use crate::services::events::{publish_app_operation_requested, publish_app_operation_result};
 use serde::Serialize;
 
 /// 强制停止前给前端展示的确认信息
@@ -50,7 +51,8 @@ pub fn create_server(
     cpu_policy: crate::models::server::CpuPolicyConfig,
     jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
-    provisioning::create_server(
+    let _ = publish_app_operation_requested("create_server", Some(name.clone()));
+    let result = provisioning::create_server(
         name,
         aliases,
         core_type,
@@ -66,7 +68,16 @@ pub fn create_server(
         jvm_args,
         cpu_policy,
         jvm_preset,
-    )
+    );
+    match &result {
+        Ok(server) => {
+            let _ = publish_app_operation_result("create_server", Some(server.id.clone()), None);
+        }
+        Err(error) => {
+            let _ = publish_app_operation_result("create_server", None, Some(error.clone()));
+        }
+    }
+    result
 }
 
 #[tauri::command]
@@ -85,7 +96,8 @@ pub fn import_server(
     cpu_policy: crate::models::server::CpuPolicyConfig,
     jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
-    provisioning::import_server(
+    let _ = publish_app_operation_requested("import_server", Some(name.clone()));
+    let result = provisioning::import_server(
         name,
         jar_path,
         startup_mode,
@@ -97,7 +109,16 @@ pub fn import_server(
         jvm_args,
         cpu_policy,
         jvm_preset,
-    )
+    );
+    match &result {
+        Ok(server) => {
+            let _ = publish_app_operation_result("import_server", Some(server.id.clone()), None);
+        }
+        Err(error) => {
+            let _ = publish_app_operation_result("import_server", None, Some(error.clone()));
+        }
+    }
+    result
 }
 
 #[tauri::command]
@@ -119,7 +140,8 @@ pub fn add_existing_server(
     cpu_policy: crate::models::server::CpuPolicyConfig,
     jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
-    provisioning::add_existing_server(
+    let _ = publish_app_operation_requested("add_existing_server", Some(name.clone()));
+    let result = provisioning::add_existing_server(
         name,
         server_path,
         java_path,
@@ -134,7 +156,17 @@ pub fn add_existing_server(
         jvm_args,
         cpu_policy,
         jvm_preset,
-    )
+    );
+    match &result {
+        Ok(server) => {
+            let _ =
+                publish_app_operation_result("add_existing_server", Some(server.id.clone()), None);
+        }
+        Err(error) => {
+            let _ = publish_app_operation_result("add_existing_server", None, Some(error.clone()));
+        }
+    }
+    result
 }
 
 #[tauri::command]
@@ -158,7 +190,8 @@ pub fn import_modpack(
     cpu_policy: crate::models::server::CpuPolicyConfig,
     jvm_preset: crate::models::server::JvmPresetConfig,
 ) -> Result<crate::models::server::ServerInstance, String> {
-    provisioning::import_modpack(
+    let _ = publish_app_operation_requested("import_modpack", Some(name.clone()));
+    let result = provisioning::import_modpack(
         name,
         modpack_path,
         java_path,
@@ -175,7 +208,16 @@ pub fn import_modpack(
         jvm_args,
         cpu_policy,
         jvm_preset,
-    )
+    );
+    match &result {
+        Ok(server) => {
+            let _ = publish_app_operation_result("import_modpack", Some(server.id.clone()), None);
+        }
+        Err(error) => {
+            let _ = publish_app_operation_result("import_modpack", None, Some(error.clone()));
+        }
+    }
+    result
 }
 
 #[tauri::command]
@@ -183,7 +225,19 @@ pub fn import_modpack(
 pub async fn parse_server_core_key(
     source_path: String,
 ) -> Result<crate::models::server::ParsedServerCoreInfo, String> {
-    provisioning::parse_server_core_key(source_path).await
+    let detail = source_path.clone();
+    let _ = publish_app_operation_requested("parse_server_core_key", Some(detail.clone()));
+    let result = provisioning::parse_server_core_key(source_path).await;
+    match &result {
+        Ok(_) => {
+            let _ = publish_app_operation_result("parse_server_core_key", Some(detail), None);
+        }
+        Err(error) => {
+            let _ =
+                publish_app_operation_result("parse_server_core_key", None, Some(error.clone()));
+        }
+    }
+    result
 }
 
 #[tauri::command]
@@ -191,7 +245,19 @@ pub async fn parse_server_core_key(
 pub async fn parse_server_core_type(
     source_path: String,
 ) -> Result<crate::models::server::ParsedServerCoreInfo, String> {
-    provisioning::parse_server_core_type(source_path).await
+    let detail = source_path.clone();
+    let _ = publish_app_operation_requested("parse_server_core_type", Some(detail.clone()));
+    let result = provisioning::parse_server_core_type(source_path).await;
+    match &result {
+        Ok(_) => {
+            let _ = publish_app_operation_result("parse_server_core_type", Some(detail), None);
+        }
+        Err(error) => {
+            let _ =
+                publish_app_operation_result("parse_server_core_type", None, Some(error.clone()));
+        }
+    }
+    result
 }
 
 #[tauri::command]
@@ -200,7 +266,19 @@ pub async fn scan_startup_candidates(
     source_path: String,
     source_type: String,
 ) -> Result<crate::models::server::StartupScanResult, String> {
-    startup_scan::scan_startup_candidates(source_path, source_type).await
+    let detail = format!("{} ({})", source_path, source_type);
+    let _ = publish_app_operation_requested("scan_startup_candidates", Some(detail.clone()));
+    let result = startup_scan::scan_startup_candidates(source_path, source_type).await;
+    match &result {
+        Ok(_) => {
+            let _ = publish_app_operation_result("scan_startup_candidates", Some(detail), None);
+        }
+        Err(error) => {
+            let _ =
+                publish_app_operation_result("scan_startup_candidates", None, Some(error.clone()));
+        }
+    }
+    result
 }
 
 #[tauri::command]

@@ -1,6 +1,8 @@
 //! 全局单例访问入口：提供 server_manager / settings_manager / i18n_service 等静态句柄。
 //!
 //! 所有函数都基于 OnceLock 懒初始化，在进程生命周期内保持 `&'static` 引用
+use super::event_consumer_registry::EventConsumerRegistryService;
+use super::events::{EventConsumer, EventConsumerKind, EventConsumerMetadata, EventManager};
 use super::i18n::I18nService;
 use super::mod_manager::ModManager;
 use super::server::id_manager::ServerIdManager;
@@ -9,7 +11,6 @@ use super::server::manager::ServerManager;
 use super::settings_manager::SettingsManager;
 use crate::plugins::manager::PluginManager;
 use crate::utils::logger::{log_error_ctx, log_fatal_ctx, log_warn_ctx};
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::sync::{Arc, Mutex};
@@ -35,11 +36,8 @@ fn init_server_manager_or_exit() -> ServerManager {
 }
 
 fn init_plugin_manager_or_exit() -> Arc<Mutex<PluginManager>> {
-    let app_data_dir = crate::utils::path::get_or_create_app_data_dir_checked()
-        .map(PathBuf::from)
-        .unwrap_or_else(|error| exit_with_global_init_error("plugin app data directory", error));
-    let plugins_dir = app_data_dir.join("plugins");
-    let data_dir = app_data_dir.join("plugin_data");
+    let plugins_dir = crate::services::plugin_dir::current_plugin_dir();
+    let data_dir = crate::services::plugin_dir::current_plugin_data_dir();
 
     let mut plugin_manager = PluginManager::new_checked(plugins_dir, data_dir)
         .unwrap_or_else(|error| exit_with_global_init_error("PluginManager", error));
@@ -51,7 +49,39 @@ fn init_plugin_manager_or_exit() -> Arc<Mutex<PluginManager>> {
         );
     }
 
-    Arc::new(Mutex::new(plugin_manager))
+    let manager = Arc::new(Mutex::new(plugin_manager));
+
+    if PluginManager::server_event_forwarding_enabled() {
+        let manager_for_events = Arc::clone(&manager);
+        let _plugin_registration = event_manager().register_named_consumer_with_metadata(
+            "plugin_manager.server_events",
+            EventConsumer::server(Arc::new(move |event| {
+                let guard = manager_for_events.lock().unwrap_or_else(|e| e.into_inner());
+                guard.notify_server_event(event);
+                Ok(())
+            })),
+            EventConsumerMetadata::new(
+                EventConsumerKind::PluginRuntime,
+                "plugin_manager",
+                "Dispatch backend server events to enabled plugins.",
+            ),
+        );
+    }
+
+    let _ = event_manager().register_named_consumer_with_metadata(
+        "online.onebot.server_events",
+        EventConsumer::server(Arc::new(move |event| {
+            crate::services::online::onebot::handle_server_event(event);
+            Ok(())
+        })),
+        EventConsumerMetadata::new(
+            EventConsumerKind::ProtocolAdapter,
+            "online.onebot",
+            "Forward selected server events to the thin OneBot HTTP adapter.",
+        ),
+    );
+
+    manager
 }
 
 pub fn server_manager() -> &'static ServerManager {
@@ -82,6 +112,17 @@ pub fn mod_manager() -> &'static ModManager {
             ModManager::fallback()
         }
     })
+}
+
+pub fn event_manager() -> &'static EventManager {
+    static INSTANCE: OnceLock<EventManager> = OnceLock::new();
+    INSTANCE.get_or_init(EventManager::new)
+}
+
+#[allow(dead_code)]
+pub fn event_consumer_registry_service() -> &'static EventConsumerRegistryService {
+    static INSTANCE: OnceLock<EventConsumerRegistryService> = OnceLock::new();
+    INSTANCE.get_or_init(EventConsumerRegistryService::new)
 }
 
 pub fn join_manager() -> &'static JoinManager {

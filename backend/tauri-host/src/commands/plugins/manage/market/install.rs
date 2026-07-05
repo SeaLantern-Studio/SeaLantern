@@ -8,6 +8,8 @@ use crate::hardcode_data::plugin_market::{
 use crate::models::plugin::{MarketPluginInfo, PluginInstallResult};
 use crate::plugins::manager::i18n::{plugin_t1, plugin_t2};
 use crate::plugins::manager::PluginManager;
+use crate::services::plugin_trusted_catalog::PluginInstallMetadata;
+use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
 use url::Url;
 
@@ -55,7 +57,7 @@ pub(super) async fn install_from_market(
         ensure_plugin_not_enabled(&manager, &plugin_id)?;
     }
 
-    let (zip_path, untrusted_url) = download_market_plugin(
+    let (zip_path, untrusted_url, archive_bytes) = download_market_plugin(
         plugin_id.clone(),
         download_url,
         repo,
@@ -68,13 +70,29 @@ pub(super) async fn install_from_market(
 
     let result = {
         let mut manager = lock_manager(&manager);
-        manager.install_plugin(&zip_path)
+        manager.install_plugin_with_metadata(
+            &zip_path,
+            PluginInstallMetadata {
+                distribution_class: Some(crate::models::plugin::PluginDistributionClass::Market),
+                archive_sha256: Some(sha256_hex(&archive_bytes)),
+                installed_tree_sha256: None,
+            },
+        )
     };
 
     remove_download_temp_files(&zip_path);
 
     result.map(|mut install_result| {
         install_result.untrusted_url = untrusted_url;
+        install_result.suggested_trust_level =
+            Some(install_result.plugin.trust_level_display.clone());
+        install_result.integrity_status = Some(install_result.plugin.integrity_status.clone());
+        install_result.review_status = Some(install_result.plugin.review_status.clone());
+        install_result.distribution_class = Some(install_result.plugin.distribution_class.clone());
+        install_result.permission_profile = Some(install_result.plugin.permission_profile.clone());
+        install_result.trusted_catalog_matched = install_result.plugin.trusted_catalog_matched;
+        install_result.hash_matched = install_result.plugin.hash_matched;
+        install_result.exceeds_standard_sandbox = install_result.plugin.exceeds_standard_sandbox;
         install_result
     })
 }
@@ -99,7 +117,7 @@ pub(crate) async fn install_from_market_for_http(
         ensure_plugin_not_enabled(&manager, &plugin_id)?;
     }
 
-    let (zip_path, untrusted_url) = download_market_plugin(
+    let (zip_path, untrusted_url, archive_bytes) = download_market_plugin(
         plugin_id.clone(),
         download_url,
         repo,
@@ -113,13 +131,29 @@ pub(crate) async fn install_from_market_for_http(
     let result = {
         let manager = crate::services::global::plugin_manager();
         let mut manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        manager.install_plugin(&zip_path)
+        manager.install_plugin_with_metadata(
+            &zip_path,
+            PluginInstallMetadata {
+                distribution_class: Some(crate::models::plugin::PluginDistributionClass::Market),
+                archive_sha256: Some(sha256_hex(&archive_bytes)),
+                installed_tree_sha256: None,
+            },
+        )
     };
 
     remove_download_temp_files(&zip_path);
 
     result.map(|mut install_result| {
         install_result.untrusted_url = untrusted_url;
+        install_result.suggested_trust_level =
+            Some(install_result.plugin.trust_level_display.clone());
+        install_result.integrity_status = Some(install_result.plugin.integrity_status.clone());
+        install_result.review_status = Some(install_result.plugin.review_status.clone());
+        install_result.distribution_class = Some(install_result.plugin.distribution_class.clone());
+        install_result.permission_profile = Some(install_result.plugin.permission_profile.clone());
+        install_result.trusted_catalog_matched = install_result.plugin.trusted_catalog_matched;
+        install_result.hash_matched = install_result.plugin.hash_matched;
+        install_result.exceeds_standard_sandbox = install_result.plugin.exceeds_standard_sandbox;
         install_result
     })
 }
@@ -145,7 +179,7 @@ async fn download_market_plugin(
     release_asset: Option<String>,
     branch: Option<String>,
     version: Option<String>,
-) -> Result<(std::path::PathBuf, bool), String> {
+) -> Result<(std::path::PathBuf, bool, Vec<u8>), String> {
     let untrusted_url = download_url
         .as_ref()
         .map(|url| {
@@ -220,5 +254,11 @@ async fn download_market_plugin(
         return Err(plugin_t1("plugin.market.save_downloaded_file_failed", error.to_string()));
     }
 
-    Ok((zip_path, untrusted_url))
+    Ok((zip_path, untrusted_url, bytes.to_vec()))
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
 }

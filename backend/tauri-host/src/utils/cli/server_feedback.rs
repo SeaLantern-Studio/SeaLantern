@@ -520,6 +520,7 @@ mod tests {
             status: ServerStatus::Starting,
             pid: Some(1357),
             uptime: Some(3),
+            display_message: None,
             detail_message: Some("runtime=local is_running=true exit_code=none".to_string()),
             error_message: None,
         };
@@ -536,6 +537,7 @@ mod tests {
             status: ServerStatus::Starting,
             pid: Some(2468),
             uptime: Some(1),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sea-test state=running running=true health=starting exit_code=0 backend=cli command_mode=rcon"
                     .to_string(),
@@ -588,6 +590,7 @@ mod tests {
             status: ServerStatus::Stopping,
             pid: Some(2468),
             uptime: Some(10),
+            display_message: None,
             detail_message: Some(
                 "runtime=docker_itzg container=sea-test state=running running=true health=healthy exit_code=0 backend=cli command_mode=rcon"
                     .to_string(),

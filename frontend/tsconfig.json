@@ -37,8 +37,7 @@
       "@tauri-host": ["../backend/tauri-host"],
       "@tauri-host/*": ["../backend/tauri-host/*"],
       "@type/*": ["./src/types/*"],
-      "@utils/*": ["./src/utils/*"],
-      "@views/*": ["./src/views/*"]
+      "@utils/*": ["./src/utils/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],

@@ -62,6 +62,9 @@
   "batch_result_title": "批量安装结果",
   "batch_success": "成功安装 {{count}} 个插件：",
   "batch_failed": "安装失败 {{count}} 个：",
+  "install_issue_incompatible_sealantern_version": "当前 SeaLantern 版本不满足插件要求。需要 {{requiredVersion}}，当前为 {{currentVersion}}。",
+  "install_issue_requests_trusted_capabilities": "该插件申请了 Trusted 专属能力，当前不会进入普通标准沙箱路径：{{permissions}}。",
+  "install_issue_exceeds_standard_sandbox": "该插件权限已超出标准沙箱范围，后续启用时会按更高风险路径处理：{{permissions}}。",
   "installing": "正在安装插件...",
   "enable_failed": "启用失败",
   "plugin_disabled": "插件已禁用",
@@ -90,6 +93,66 @@
   "all_plugins_latest": "所有插件均为最新版本",
   "updates_available": "发现 {{count}} 个插件有更新可用",
   "open_repository": "打开仓库",
+  "next": {
+    "error_title": "读取插件列表失败",
+    "close_error": "关闭",
+    "retry": "重试",
+    "loading_title": "正在读取已安装插件",
+    "loading_description": "正在获取列表、图标、导航和更新状态。",
+    "update_to": "可更新到 v{version}",
+    "summary": {
+      "installed_label": "已安装插件",
+      "installed_hint": "当前实例中识别到的插件数量",
+      "enabled_label": "已启用",
+      "enabled_hint": "当前已开启的插件",
+      "updates_label": "可更新",
+      "updates_hint": "现在可安装的更新",
+      "refresh": "刷新列表",
+      "check_updates": "检查更新",
+      "open_market": "打开插件市场"
+    },
+    "empty": {
+      "eyebrow": "插件",
+      "title": "当前还没有已安装插件",
+      "description": "可以先去插件市场安装，或刷新后重新扫描本地插件目录。",
+      "open_market": "打开插件市场",
+      "refresh": "重新扫描插件"
+    },
+    "card": {
+      "author_prefix": "作者",
+      "id_prefix": "ID",
+      "no_description": "该插件没有提供额外描述。",
+      "missing_required": "缺少必需依赖",
+      "missing_optional": "缺少可选依赖",
+      "open_details": "打开详情",
+      "open_repository": "打开仓库",
+      "toggle_unavailable": "当前不可切换",
+      "toggle_requires_dependencies": "需先满足依赖"
+    },
+    "runtime": {
+      "metadata_only_title": "当前是仅提供元数据的桌面构建。",
+      "metadata_only_description": "当前 {flavor} 构建可以查看插件元数据、信任状态和权限信息，但不能启动本地插件运行时，也不能启用或停用插件。",
+      "metadata_only_tag": "{flavor} · 仅元数据",
+      "metadata_only_toggle_unavailable": "当前构建未包含本地插件运行时，因此这里不能启用或停用插件。",
+      "metadata_only_empty_description": "当前 {flavor} 构建仍可重新扫描插件元数据并查看信任细节，但不会运行本地插件运行时。",
+      "runtime_off_title": "当前宿主未提供插件运行时。",
+      "runtime_off_description": "当前 {flavor} 宿主仍可显示插件元数据、信任状态和权限信息，但本地插件运行时能力暂不可用。",
+      "runtime_off_tag": "{flavor} · 运行时不可用",
+      "runtime_off_toggle_unavailable": "当前宿主未提供插件运行时，因此这里不能启用或停用插件。"
+    },
+    "permission_revoked_title": "该插件已被撤销",
+    "permission_confirm_title": "启用前需要确认权限",
+    "permission_revoked_message": "{name} 当前处于撤销状态，请先确认插件来源与信任状态。",
+    "permission_confirm_message": "{name} 请求了额外权限，确认后再继续启用。",
+    "workspace": {
+      "nav_aria_label": "插件分组",
+      "manage_label": "插件管理",
+      "manage_description": "查看已安装插件、本地导入与更新状态。",
+      "market_label": "插件市场",
+      "market_description": "浏览、搜索并安装市场中的插件。",
+      "config_description": "查看插件详情并调整插件设置。"
+    }
+  },
   "missing_required_deps": "缺少必须依赖，无法启用",
   "dep_tooltip": {
     "required": "缺少必须依赖: {{names}}",
@@ -100,6 +163,12 @@
     "network_desc": "允许插件发送 HTTP 请求，访问外部网络。恶意插件可能利用此权限外泄数据。",
     "fs": "文件系统",
     "fs_desc": "允许插件读写其目录内的文件。",
+    "fs_data": "文件系统 - 私有数据目录",
+    "fs_data_desc": "允许插件在自己的私有数据目录内读写文件。",
+    "fs_server": "文件系统 - 服务器目录",
+    "fs_server_desc": "允许插件在 SeaLantern 管理的服务器目录内读写文件。",
+    "fs_global": "文件系统 - 全局应用目录",
+    "fs_global_desc": "允许插件在 SeaLantern 的全局应用目录内读写文件。",
     "server": "服务器操作",
     "server_desc": "允许插件读写服务器文件、获取服务器列表和信息。",
     "console": "控制台命令",
@@ -156,6 +225,23 @@
     "panel_no_commands": "暂无命令记录",
     "panel_api_stats": "API 调用统计",
     "panel_no_api_calls": "暂无 API 调用",
-    "panel_call_count": "{count} 次"
+    "panel_call_count": "{count} 次",
+    "semantic": {
+      "section_title": "权限语义",
+      "requires_explicit_consent": "需确认",
+      "risk_group": {
+        "standard_sandbox_allowed": "标准沙箱内",
+        "escalated_sandbox": "升级沙箱",
+        "trusted_only": "仅 Trusted",
+        "unknown": "未分类"
+      },
+      "boundary": {
+        "within_standard_ceiling": "标准上限内",
+        "outside_standard_ceiling": "超出标准上限"
+      },
+      "card": {
+        "outside_standard_sandbox": "超出标准沙箱"
+      }
+    }
   }
 }

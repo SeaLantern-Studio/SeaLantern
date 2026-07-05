@@ -6,6 +6,7 @@
 import type { AppSettings } from "@api/settings";
 import { isBrowserEnv } from "@api/tauri";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { i18n } from "@language";
 import { getThemeColors, mapLegacyPlanName } from "@themes";
 
 let _themeProviderOverrides: string[] = [];
@@ -75,10 +76,10 @@ function resolveDisplayName(settings: AppSettings): string {
 
   const now = new Date();
   if (now.getMonth() === 3 && now.getDate() === 1) {
-    return "Shit Lantern";
+    return i18n.t("common.easter_name");
   }
 
-  return "Sea Lantern";
+  return i18n.t("common.app_name");
 }
 
 export function getAppDisplayName(settings: AppSettings): string {

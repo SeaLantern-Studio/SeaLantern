@@ -7,7 +7,10 @@ impl AppSettings {
         if self.close_servers_on_exit != other.close_servers_on_exit
             || self.close_servers_on_update != other.close_servers_on_update
             || self.auto_accept_eula != other.auto_accept_eula
+            || self.enable_desktop_web_ui != other.enable_desktop_web_ui
             || self.close_action != other.close_action
+            || self.language != other.language
+            || self.locale_layer_order != other.locale_layer_order
         {
             changed.push(SettingsGroup::General);
         }
@@ -47,6 +50,7 @@ impl AppSettings {
             || self.text_color_overrides != other.text_color_overrides
             || self.app_display_name != other.app_display_name
             || self.minimal_mode != other.minimal_mode
+            || self.next_home_layout != other.next_home_layout
         {
             changed.push(SettingsGroup::Appearance);
         }
@@ -68,6 +72,10 @@ impl AppSettings {
             || self.plugin_console_blocked_commands != other.plugin_console_blocked_commands
         {
             changed.push(SettingsGroup::PluginConsoleCommands);
+        }
+
+        if self.onebot_11 != other.onebot_11 {
+            changed.push(SettingsGroup::Online);
         }
 
         changed

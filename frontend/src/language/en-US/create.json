@@ -10,6 +10,7 @@
   "java_version": "Java Version",
   "select_java": "Select Java",
   "server_name": "Server Name",
+  "default_server_name": "My Server",
   "server_path": "Server Path",
   "create": "Create",
   "created_but_start_failed": "Server \"{name}\" was created, but the first start failed: {error}. Open the console to inspect the detailed logs.",

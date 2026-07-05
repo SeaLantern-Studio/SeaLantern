@@ -14,11 +14,17 @@ export async function handlePluginRuntimeElementAction(
   event: PluginRuntimeUiEvent,
   eventListenerRegistry: PluginRuntimeEventListenerRegistry,
 ): Promise<boolean> {
+  // This bridge accepts runtime UI commands from plugins and translates them into
+  // tightly scoped DOM reads/writes. Returning true means the action name belongs
+  // to the element-action surface even when the concrete target/payload is invalid.
   const { plugin_id, action, html, target } = event;
 
   switch (action) {
     case "query": {
       if (!target) return true;
+      // Query responses are normalized into a small transport-friendly snapshot so the
+      // plugin runtime never receives live DOM handles and large text nodes do not flood
+      // the Tauri event channel.
       const results = resolveScopedTargets(plugin_id, target).map((element) => ({
         id: element.id || "",
         tag: element.tagName.toLowerCase(),
@@ -168,6 +174,8 @@ export async function handlePluginRuntimeElementAction(
       if (!element) return true;
       try {
         const { value } = JSON.parse(html || "{}") as { value?: string };
+        // Dispatch both input and change so framework-managed controls and plain DOM forms
+        // observe the same mutation. Some pages only react to one of the two events.
         element.value = value ?? "";
         element.dispatchEvent(new Event("input", { bubbles: true }));
         element.dispatchEvent(new Event("change", { bubbles: true }));
@@ -183,6 +191,8 @@ export async function handlePluginRuntimeElementAction(
       if (!element) return true;
       try {
         const { checked } = JSON.parse(html || "{}") as { checked?: boolean };
+        // Checkbox/radio toggles intentionally emit change only; browsers do not fire a
+        // meaningful input event for every control type, and the host code listens on change.
         element.checked = Boolean(checked);
         element.dispatchEvent(new Event("change", { bubbles: true }));
       } catch (error) {
@@ -197,6 +207,8 @@ export async function handlePluginRuntimeElementAction(
       if (!element) return true;
       try {
         const { value } = JSON.parse(html || "{}") as { value?: string };
+        // Select controls also use change as the compatibility signal because Vue/native
+        // forms in this codebase both commit selection updates from that event.
         element.value = value ?? "";
         element.dispatchEvent(new Event("change", { bubbles: true }));
       } catch (error) {
@@ -222,6 +234,9 @@ export async function handlePluginRuntimeElementAction(
       const element = resolveScopedTarget(plugin_id, target) as HTMLElement | null;
       if (!element) return true;
 
+      // Replace any existing listener for the same plugin/element pair before adding
+      // the new one. Plugins re-register handlers after rerenders, and leaking the old
+      // bridge would duplicate callback traffic back into the runtime.
       const listeners = eventListenerRegistry.get(plugin_id) ?? [];
       listeners
         .filter((entry) => entry.eventType === "change" && entry.element === element)
@@ -255,6 +270,8 @@ export async function handlePluginRuntimeElementAction(
       const listeners = eventListenerRegistry.get(plugin_id);
       if (!listeners) return true;
 
+      // Use selector matching here instead of strict element identity so plugins can tear
+      // down listeners after a rerender even when the original node has already been replaced.
       const remaining = listeners.filter((entry) => {
         const shouldRemove = entry.eventType === "change" && entry.element.matches(target);
         if (shouldRemove) {
@@ -282,6 +299,9 @@ export async function handlePluginRuntimeElementAction(
         }
 
         Object.entries(fields).forEach(([name, value]) => {
+          // Prefer CSS.escape when available so plugin-provided field names cannot break
+          // selector parsing. The string fallback only preserves compatibility with older
+          // runtimes that do not expose CSS.escape.
           const cssApi = window as Window & { CSS?: { escape?: (input: string) => string } };
           const escapedName = cssApi.CSS?.escape?.(name);
           const selector = escapedName
@@ -308,6 +328,8 @@ export async function handlePluginRuntimeElementAction(
               (field) => field instanceof HTMLInputElement && field.type.toLowerCase() === "radio",
             )
           ) {
+            // Radio groups must be processed as a set so the browser can clear the old
+            // selection consistently; treating them like a single field leaves stale state.
             matches.forEach((field) => {
               setFormFieldValue(field, value);
             });

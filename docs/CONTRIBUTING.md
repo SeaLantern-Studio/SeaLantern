@@ -216,6 +216,8 @@ pnpm --dir frontend run tauri:build
 
 但我们不推荐本地构建用来发布到 Release 中
 
+如果你要按仓库当前的 GitHub Actions 流程发布正式版本或 Nightly 版本，请查看 [`docs/release-process.md`](./release-process.md)。
+
 ### Clippy 检查失败怎么办？
 
 1. 查看具体警告信息

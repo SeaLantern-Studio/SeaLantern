@@ -20,7 +20,7 @@ interface Quote {
 }
 
 function createDefaultQuote(): Quote {
-  return { text: i18n.t("common.quote_text"), author: "Sea Lantern" };
+  return { text: i18n.t("common.quote_text"), author: i18n.t("common.app_name") };
 }
 
 // 引用相关的响应式数据

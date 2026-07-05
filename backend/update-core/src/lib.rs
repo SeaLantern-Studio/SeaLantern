@@ -1,3 +1,5 @@
+//! Shared update-checking helpers used by the desktop and headless hosts.
+
 pub mod arch;
 mod asset_selector;
 mod checksum;
@@ -27,6 +29,7 @@ use self::cnb as update_cnb;
 use self::github as update_github;
 
 #[cfg(all(not(debug_assertions), target_os = "linux"))]
+/// Chooses the best Linux update result when both CNB and GitHub checks are available.
 fn select_update_result(
     cnb_result: Result<UpdateInfo, String>,
     github_result: Result<UpdateInfo, String>,
@@ -41,6 +44,7 @@ fn select_update_result(
     }
 }
 
+/// Checks whether a newer application version is available for the current host.
 pub async fn check_update(current_version: &str) -> Result<UpdateInfo, String> {
     #[cfg(debug_assertions)]
     {

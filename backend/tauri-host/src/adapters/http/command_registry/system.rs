@@ -1,11 +1,16 @@
-use super::common::{handle_unsupported, CommandHandler, RegistryBuilder};
+use super::common::{handle_unsupported, invalid_request, CommandHandler, RegistryBuilder};
 use crate::commands::app::host as host_commands;
 use crate::commands::app::logging as logging_commands;
 use serde_json::Value;
 pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_system_info", handle_get_system_info as CommandHandler);
+    builder.register("get_host_capabilities", handle_get_host_capabilities as CommandHandler);
     builder.register("get_default_run_path", handle_get_default_run_path as CommandHandler);
     builder.register("get_app_version", handle_get_app_version as CommandHandler);
+    builder.register(
+        "get_create_server_defaults",
+        handle_get_create_server_defaults as CommandHandler,
+    );
     builder
         .register("get_server_resource_usage", handle_get_server_resource_usage as CommandHandler);
     builder.register("get_safe_mode_status", handle_get_safe_mode_status as CommandHandler);
@@ -18,6 +23,7 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("pick_startup_file", handle_unsupported as CommandHandler);
     builder.register("pick_java_file", handle_unsupported as CommandHandler);
     builder.register("pick_folder", handle_unsupported as CommandHandler);
+    builder.register("pick_file", handle_unsupported as CommandHandler);
     builder.register("pick_image_file", handle_unsupported as CommandHandler);
 }
 
@@ -27,6 +33,15 @@ fn handle_get_system_info(
     Box::pin(async move {
         let result = host_commands::get_system_info()?;
         Ok(result)
+    })
+}
+
+fn handle_get_host_capabilities(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = host_commands::get_host_capabilities()?;
+        serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
 
@@ -48,6 +63,15 @@ fn handle_get_app_version(
     })
 }
 
+fn handle_get_create_server_defaults(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = host_commands::get_create_server_defaults()?;
+        serde_json::to_value(result).map_err(|error| error.to_string())
+    })
+}
+
 fn handle_get_server_resource_usage(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
@@ -55,7 +79,7 @@ fn handle_get_server_resource_usage(
         let server_id = params
             .get("serverId")
             .and_then(|value| value.as_str())
-            .ok_or_else(|| "Missing serverId".to_string())?
+            .ok_or_else(|| invalid_request("Missing serverId"))?
             .to_string();
 
         let result = host_commands::get_server_resource_usage(server_id)?;

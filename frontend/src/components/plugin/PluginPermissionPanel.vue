@@ -2,7 +2,11 @@
 import { computed, ref } from "vue";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import { getPermissionMetadata } from "@type/plugin";
+import {
+  getPermissionMetadata,
+  summarizePermissionSemantics,
+  type PermissionMetadata,
+} from "@type/plugin";
 import { Lock } from "@lucide/vue";
 import { SLModal } from "@components/common";
 
@@ -22,6 +26,7 @@ interface PermissionDisplayItem {
   id: string;
   label: string;
   description: string;
+  semantics: PermissionMetadata;
 }
 
 const props = defineProps<Props>();
@@ -79,14 +84,14 @@ const DECLARED_PERMISSION_GROUPS: Record<string, string[]> = {
   system: ["system.info", "system.os", "system.cpu", "system.memory"],
   storage: ["storage.get", "storage.keys", "storage.set", "storage.remove"],
   log: ["log.debug", "log.info", "log.warn", "log.error"],
-  execute_program: [
-    "process.exec",
-    "process.get",
-    "process.list",
-    "process.read_output",
-    "process.kill",
-  ],
-  plugin_folder_access: ["plugins.read", "plugins.list", "plugins.write"],
+  execute_program: ["process.exec", "process.inspect", "process.output.read", "process.kill"],
+  plugin_folder_access: ["plugins.read", "plugins.write"],
+  "process.exec": ["process.exec"],
+  "process.inspect": ["process.inspect"],
+  "process.output.read": ["process.output.read"],
+  "process.kill": ["process.kill"],
+  "plugins.read": ["plugins.read"],
+  "plugins.write": ["plugins.write"],
 };
 
 const FS_SCOPE_PERMISSIONS = ["fs.data", "fs.server", "fs.global"] as const;
@@ -109,23 +114,36 @@ function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).toSorted((a: string, b: string) => a.localeCompare(b));
 }
 
-function getPermissionLabel(permission: string): string {
-  const meta = getPermissionMetadata(permission);
-  return i18n.te(meta.name) ? i18n.t(meta.name) : meta.id;
-}
-
-function getPermissionDesc(permission: string): string {
-  const meta = getPermissionMetadata(permission);
-  return i18n.te(meta.description) ? i18n.t(meta.description) : "";
-}
-
 function createPermissionItem(permission: string): PermissionDisplayItem {
+  const meta = getPermissionMetadata(permission);
   return {
     id: permission,
-    label: getPermissionLabel(permission),
-    description: getPermissionDesc(permission),
+    label: i18n.te(meta.name) ? i18n.t(meta.name) : meta.id,
+    description: i18n.te(meta.description) ? i18n.t(meta.description) : "",
+    semantics: meta,
   };
 }
+
+function getRiskGroupLabel(metadata: PermissionMetadata): string {
+  switch (metadata.risk_group) {
+    case "trusted_only":
+      return i18n.t("plugins.permission.semantic.risk_group.trusted_only");
+    case "escalated_sandbox":
+      return i18n.t("plugins.permission.semantic.risk_group.escalated_sandbox");
+    case "standard_sandbox_allowed":
+      return i18n.t("plugins.permission.semantic.risk_group.standard_sandbox_allowed");
+    default:
+      return i18n.t("plugins.permission.semantic.risk_group.unknown");
+  }
+}
+
+function getBoundaryLabel(metadata: PermissionMetadata): string {
+  return metadata.within_standard_ceiling
+    ? i18n.t("plugins.permission.semantic.boundary.within_standard_ceiling")
+    : i18n.t("plugins.permission.semantic.boundary.outside_standard_ceiling");
+}
+
+const declaredPermissionSummary = computed(() => summarizePermissionSemantics(props.permissions));
 
 function deriveFsPermissionsFromLog(action: string, detail: string): string[] {
   if (!action.startsWith("sl.fs.")) {
@@ -220,11 +238,29 @@ function derivePermissionFromLog(action: string): string | null {
   }
 
   if (action.startsWith("sl.process.")) {
-    return `process.${action.slice("sl.process.".length)}`;
+    const processAction = action.slice("sl.process.".length);
+    if (processAction === "exec") return "process.exec";
+    if (processAction === "get" || processAction === "list") return "process.inspect";
+    if (processAction === "read_output") return "process.output.read";
+    if (processAction === "kill") return "process.kill";
+    return `process.${processAction}`;
   }
 
   if (action.startsWith("sl.plugins.")) {
-    return `plugins.${action.slice("sl.plugins.".length)}`;
+    const pluginsAction = action.slice("sl.plugins.".length);
+    if (
+      pluginsAction === "list" ||
+      pluginsAction === "get_manifest" ||
+      pluginsAction === "read_file" ||
+      pluginsAction === "file_exists" ||
+      pluginsAction === "list_files"
+    ) {
+      return "plugins.read";
+    }
+    if (pluginsAction === "write_file") {
+      return "plugins.write";
+    }
+    return `plugins.${pluginsAction}`;
   }
 
   if (action.startsWith("sl.http.")) {
@@ -386,11 +422,55 @@ function formatTime(timestamp: number): string {
         </div>
 
         <div class="panel-section">
+          <div class="section-title">{{ i18n.t("plugins.permission.semantic.section_title") }}</div>
+          <div class="overview-grid">
+            <div class="overview-card">
+              <span class="overview-label">{{
+                i18n.t("plugins.permission.semantic.risk_group.standard_sandbox_allowed")
+              }}</span>
+              <span class="overview-value">{{ declaredPermissionSummary.standardCount }}</span>
+            </div>
+            <div class="overview-card">
+              <span class="overview-label">{{
+                i18n.t("plugins.permission.semantic.risk_group.escalated_sandbox")
+              }}</span>
+              <span class="overview-value">{{ declaredPermissionSummary.escalatedCount }}</span>
+            </div>
+            <div class="overview-card">
+              <span class="overview-label">{{
+                i18n.t("plugins.permission.semantic.risk_group.trusted_only")
+              }}</span>
+              <span class="overview-value">{{ declaredPermissionSummary.trustedOnlyCount }}</span>
+            </div>
+            <div class="overview-card">
+              <span class="overview-label">{{
+                i18n.t("plugins.permission.semantic.requires_explicit_consent")
+              }}</span>
+              <span class="overview-value">{{
+                declaredPermissionSummary.requiresConsentCount
+              }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
           <div class="section-title">{{ i18n.t("plugins.permission.panel_declared_details") }}</div>
           <div class="permission-sub-list">
             <div v-for="perm in declaredSubPermissions" :key="perm.id" class="permission-sub-item">
               <div class="permission-sub-id">{{ perm.id }}</div>
               <div class="permission-sub-label">{{ perm.label }}</div>
+              <div class="permission-semantic-row">
+                <span class="permission-semantic-chip">{{
+                  getRiskGroupLabel(perm.semantics)
+                }}</span>
+                <span class="permission-semantic-chip">{{ getBoundaryLabel(perm.semantics) }}</span>
+                <span
+                  v-if="perm.semantics.requires_explicit_consent"
+                  class="permission-semantic-chip permission-semantic-chip--warn"
+                >
+                  {{ i18n.t("plugins.permission.semantic.requires_explicit_consent") }}
+                </span>
+              </div>
               <div v-if="perm.description" class="permission-sub-desc">{{ perm.description }}</div>
             </div>
             <div v-if="declaredSubPermissions.length === 0" class="empty-hint">
@@ -405,6 +485,18 @@ function formatTime(timestamp: number): string {
             <div v-for="perm in usedSubPermissions" :key="perm.id" class="permission-sub-item">
               <div class="permission-sub-id">{{ perm.id }}</div>
               <div class="permission-sub-label">{{ perm.label }}</div>
+              <div class="permission-semantic-row">
+                <span class="permission-semantic-chip">{{
+                  getRiskGroupLabel(perm.semantics)
+                }}</span>
+                <span class="permission-semantic-chip">{{ getBoundaryLabel(perm.semantics) }}</span>
+                <span
+                  v-if="perm.semantics.requires_explicit_consent"
+                  class="permission-semantic-chip permission-semantic-chip--warn"
+                >
+                  {{ i18n.t("plugins.permission.semantic.requires_explicit_consent") }}
+                </span>
+              </div>
               <div v-if="perm.description" class="permission-sub-desc">{{ perm.description }}</div>
             </div>
             <div v-if="usedSubPermissions.length === 0" class="empty-hint">
@@ -589,6 +681,28 @@ function formatTime(timestamp: number): string {
   margin-top: 4px;
   font-size: 12px;
   color: var(--sl-text-secondary);
+}
+
+.permission-semantic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.permission-semantic-chip {
+  font-size: 10px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border-light);
+  color: var(--sl-text-secondary);
+}
+
+.permission-semantic-chip--warn {
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--sl-warning);
 }
 
 .permission-sub-desc {

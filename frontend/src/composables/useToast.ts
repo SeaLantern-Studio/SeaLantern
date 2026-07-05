@@ -1,46 +1,24 @@
-import { reactive } from "vue";
+import { useGlobalMessage, type MessageItem, type MessageType } from "./useMessage";
 
-export type ToastType = "success" | "error" | "warning" | "info";
+export type ToastType = MessageType;
 
-export interface ToastItem {
-  id: number;
-  type: ToastType;
-  message: string;
-  duration: number;
-}
+export type ToastItem = MessageItem;
 
-let nextId = 0;
-
-const toasts = reactive<ToastItem[]>([]);
-
-const addToast = (type: ToastType, message: string, duration = 3000) => {
-  const id = nextId++;
-  toasts.push({ id, type, message, duration });
-
-  if (duration > 0) {
-    setTimeout(() => {
-      const index = toasts.findIndex((t) => t.id === id);
-      if (index > -1) {
-        toasts.splice(index, 1);
-      }
-    }, duration);
-  }
-};
-
-const removeToast = (id: number) => {
-  const index = toasts.findIndex((t) => t.id === id);
-  if (index > -1) {
-    toasts.splice(index, 1);
-  }
-};
+const DEFAULT_TOAST_DURATION = 3000;
 
 export function useToast() {
+  const globalMessage = useGlobalMessage();
+
   return {
-    toasts,
-    removeToast,
-    success: (message: string, duration?: number) => addToast("success", message, duration),
-    error: (message: string, duration?: number) => addToast("error", message, duration),
-    warning: (message: string, duration?: number) => addToast("warning", message, duration),
-    info: (message: string, duration?: number) => addToast("info", message, duration),
+    toasts: globalMessage.messages,
+    removeToast: globalMessage.remove,
+    success: (message: string, duration?: number) =>
+      globalMessage.success(message, duration ?? DEFAULT_TOAST_DURATION),
+    error: (message: string, duration?: number) =>
+      globalMessage.error(message, duration ?? DEFAULT_TOAST_DURATION),
+    warning: (message: string, duration?: number) =>
+      globalMessage.warning(message, duration ?? DEFAULT_TOAST_DURATION),
+    info: (message: string, duration?: number) =>
+      globalMessage.info(message, duration ?? DEFAULT_TOAST_DURATION),
   };
 }

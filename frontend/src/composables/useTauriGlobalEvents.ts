@@ -1,8 +1,10 @@
 import { onMounted, onUnmounted } from "vue";
 import { listen } from "@tauri-apps/api/event";
+import { serverApi, type AppOperationEvent } from "@api/server";
 import { isBrowserEnv } from "@api/tauri";
 import { useGlobalMessage } from "@composables/useMessage";
 import { i18n } from "@language";
+import { isPluginRuntimeUiBridgeAvailable } from "@src/services/hostCapabilities";
 import { usePluginStore } from "@stores/pluginStore";
 
 let sharedAudioContext: AudioContext | null = null;
@@ -34,6 +36,9 @@ interface ServerStartFallbackEventPayload {
   toMode: string;
   reason: string;
 }
+
+const BUILTIN_PLUGIN_ENABLE_FAILED_ACTION = "builtin_plugin_enable_failed";
+const BUILTIN_PLUGIN_ENABLE_FAILED_TOAST = "插件启用失败，详细信息请查看日志。";
 
 function getStartupModeLabel(mode: string): string {
   switch (mode) {
@@ -95,7 +100,21 @@ export function useTauriGlobalEvents() {
   const pluginStore = usePluginStore();
   const globalMessage = useGlobalMessage();
   const cleanups: Array<() => void> = [];
+  const seenAppOperationEventIds = new Set<string>();
   let disposed = false;
+
+  function handleBuiltinPluginEnableFailure(event: AppOperationEvent): void {
+    if (
+      event.kind !== "operation_failed" ||
+      event.action !== BUILTIN_PLUGIN_ENABLE_FAILED_ACTION ||
+      seenAppOperationEventIds.has(event.event_id)
+    ) {
+      return;
+    }
+
+    seenAppOperationEventIds.add(event.event_id);
+    globalMessage.error(BUILTIN_PLUGIN_ENABLE_FAILED_TOAST);
+  }
 
   function registerCleanup(cleanup: () => void) {
     if (disposed) {
@@ -106,19 +125,23 @@ export function useTauriGlobalEvents() {
   }
 
   onMounted(async () => {
-    await pluginStore.initUiEventListener();
-    await pluginStore.initSidebarEventListener();
     await pluginStore.initPermissionLogListener();
     await pluginStore.initPluginLogListener();
-    await pluginStore.initComponentEventListener();
     await pluginStore.initI18nEventListener();
 
-    registerCleanup(() => pluginStore.cleanupUiEventListener());
-    registerCleanup(() => pluginStore.cleanupSidebarEventListener());
     registerCleanup(() => pluginStore.cleanupPermissionLogListener());
     registerCleanup(() => pluginStore.cleanupPluginLogListener());
-    registerCleanup(() => pluginStore.cleanupComponentEventListener());
     registerCleanup(() => pluginStore.cleanupI18nEventListener());
+
+    if (await isPluginRuntimeUiBridgeAvailable()) {
+      await pluginStore.initUiEventListener();
+      await pluginStore.initSidebarEventListener();
+      await pluginStore.initComponentEventListener();
+
+      registerCleanup(() => pluginStore.cleanupUiEventListener());
+      registerCleanup(() => pluginStore.cleanupSidebarEventListener());
+      registerCleanup(() => pluginStore.cleanupComponentEventListener());
+    }
 
     if (isBrowserEnv()) {
       return;
@@ -127,6 +150,11 @@ export function useTauriGlobalEvents() {
     const unlistenServerError = await listen("server-error", () => {
       void playNotificationSound();
     });
+    const unlistenAppOperation = await serverApi.onAppOperationEvent(
+      (payload: AppOperationEvent) => {
+        handleBuiltinPluginEnableFailure(payload);
+      },
+    );
     const unlistenFallback = await listen<ServerStartFallbackEventPayload>(
       "server-start-fallback",
       ({ payload }) => {
@@ -145,7 +173,13 @@ export function useTauriGlobalEvents() {
       },
     );
 
+    const recentAppOperations = await serverApi.getRecentAppOperationEvents(32).catch(() => []);
+    for (const event of recentAppOperations) {
+      handleBuiltinPluginEnableFailure(event);
+    }
+
     registerCleanup(unlistenServerError);
+    registerCleanup(unlistenAppOperation);
     registerCleanup(unlistenFallback);
   });
 

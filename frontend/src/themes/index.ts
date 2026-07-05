@@ -1,4 +1,5 @@
 import type { ThemeDefinition, ThemeRegistry, ThemeColors, ColorPlan } from "@type/theme";
+import { i18n } from "@language";
 
 let themes: ThemeRegistry = {};
 
@@ -65,7 +66,8 @@ export function getAllThemes(): ThemeRegistry {
 export function getThemeOptions(): Array<{ label: string; value: string }> {
   ensureInitialized();
   return Object.values(themes).map((theme) => ({
-    label: theme.name,
+    label: i18n.t(`settings.color_options.${theme.id}.label`),
+    subLabel: i18n.t(`settings.color_options.${theme.id}.description`),
     value: theme.id,
   }));
 }

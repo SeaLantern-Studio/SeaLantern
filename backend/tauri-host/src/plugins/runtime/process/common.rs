@@ -1,5 +1,5 @@
 use crate::services::global::i18n_service;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io::Read;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
@@ -43,8 +43,8 @@ pub const MAX_FOREGROUND_EXEC_DURATION: Duration = Duration::from_secs(30);
 /// 后台进程输出缓冲
 #[derive(Default)]
 pub struct ProcessOutputBuffers {
-    pub stdout_buf: Vec<u8>,
-    pub stderr_buf: Vec<u8>,
+    pub stdout_buf: VecDeque<u8>,
+    pub stderr_buf: VecDeque<u8>,
     pub stdout_truncated: bool,
     pub stderr_truncated: bool,
     pub stdout_closed: bool,
@@ -121,6 +121,26 @@ pub fn truncate_output(buf: &mut Vec<u8>) -> bool {
     }
 }
 
+pub fn append_bounded_output(buf: &mut VecDeque<u8>, chunk: &[u8]) -> bool {
+    if chunk.is_empty() {
+        return false;
+    }
+
+    buf.extend(chunk.iter().copied());
+
+    if buf.len() > MAX_STDOUT_BUFFER_BYTES {
+        let overflow = buf.len() - MAX_STDOUT_BUFFER_BYTES;
+        buf.drain(..overflow);
+        true
+    } else {
+        false
+    }
+}
+
+pub fn take_output_bytes(buf: &mut VecDeque<u8>) -> Vec<u8> {
+    buf.drain(..).collect()
+}
+
 /// 为后台进程的单个输出流启动持续读取线程。
 pub fn spawn_background_pipe_reader<R>(
     mut reader: R,
@@ -156,8 +176,7 @@ pub fn spawn_background_pipe_reader<R>(
                             ProcessStream::Stdout => &mut output.stdout_buf,
                             ProcessStream::Stderr => &mut output.stderr_buf,
                         };
-                        target.extend_from_slice(&buf[..n]);
-                        truncate_output(target)
+                        append_bounded_output(target, &buf[..n])
                     };
 
                     update_output_timestamp(&mut output, unix_timestamp_ms_now());
@@ -290,4 +309,35 @@ pub(super) fn process_msg1(key: &str, a: impl Into<String>) -> String {
 
 pub(super) fn process_msg2(key: &str, a: impl Into<String>, b: impl Into<String>) -> String {
     process_t2(key, a, b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        append_bounded_output, take_output_bytes, truncate_output, MAX_STDOUT_BUFFER_BYTES,
+    };
+    use std::collections::VecDeque;
+
+    #[test]
+    fn append_bounded_output_keeps_latest_bytes_without_front_copy_semantics_change() {
+        let mut buf = VecDeque::from(vec![b'a'; MAX_STDOUT_BUFFER_BYTES - 2]);
+
+        assert!(append_bounded_output(&mut buf, b"bcde"));
+
+        let bytes = take_output_bytes(&mut buf);
+        assert_eq!(bytes.len(), MAX_STDOUT_BUFFER_BYTES);
+        assert_eq!(&bytes[..4], b"aaaa");
+        assert_eq!(&bytes[bytes.len() - 4..], b"bcde");
+    }
+
+    #[test]
+    fn truncate_output_keeps_latest_bytes_for_foreground_exec_buffers() {
+        let mut buf = vec![b'x'; MAX_STDOUT_BUFFER_BYTES + 3];
+        let tail_start = buf.len() - 3;
+        buf[tail_start..].copy_from_slice(b"end");
+
+        assert!(truncate_output(&mut buf));
+        assert_eq!(buf.len(), MAX_STDOUT_BUFFER_BYTES);
+        assert_eq!(&buf[buf.len() - 3..], b"end");
+    }
 }

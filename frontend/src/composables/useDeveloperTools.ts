@@ -2,6 +2,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import { clearLogs, exportAppLogs, getLogs, type LogLine } from "@api/logging";
 import { systemApi, type SystemInfo } from "@api/system";
+import { desktopUpdaterApi } from "@api/updateDesktop";
 import { useGlobalMessage } from "@composables/useMessage";
 import { useSerialPolling } from "@composables/useSerialPolling";
 import { i18n } from "@language";
@@ -12,6 +13,8 @@ const LOG_POLL_INTERVAL = 1500;
 const SYSTEM_POLL_INTERVAL = 5000;
 const LOG_LIMIT = 300;
 
+export type DeveloperAnnouncementTone = "info" | "warning" | "error";
+
 interface UseDeveloperToolsOptions {
   enabled: () => boolean;
 }
@@ -19,6 +22,12 @@ interface UseDeveloperToolsOptions {
 interface LogFilterOption {
   label: string;
   value: string;
+}
+
+export interface DeveloperAnnouncementState {
+  tone: DeveloperAnnouncementTone;
+  title: string;
+  message: string;
 }
 
 const ALL_LOG_LEVELS = "__all_levels__";
@@ -58,6 +67,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const systemError = ref<string | null>(null);
   const selectedLogLevel = ref(ALL_LOG_LEVELS);
   const selectedLogModule = ref(ALL_LOG_MODULES);
+  const activeAnnouncement = ref<DeveloperAnnouncementState | null>(null);
 
   const logLevelOptions = computed<LogFilterOption[]>(() => {
     const levels = Array.from(new Set(logs.value.map((entry) => entry.level))).toSorted();
@@ -135,7 +145,8 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
         version.value = await systemApi.getAppVersion();
         return;
       } catch {
-        version.value = import.meta.env.VITE_APP_VERSION || "Web";
+        version.value =
+          import.meta.env.VITE_APP_VERSION || i18n.t("developer.next.summary.browser");
         return;
       }
     }
@@ -249,7 +260,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
 
     downloadingUpdate.value = true;
     try {
-      await tauriInvoke("download_update_from_debug_url", { url });
+      await desktopUpdaterApi.downloadFromDebugUrl(url);
       globalMessage.success(i18n.t("developer.update_test_started"));
     } catch (error) {
       globalMessage.error(error instanceof Error ? error.message : String(error));
@@ -268,6 +279,34 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
       globalMessage.error(error instanceof Error ? error.message : String(error));
       triggeringCrash.value = false;
     }
+  }
+
+  function showTestSuccessToast() {
+    globalMessage.success(i18n.t("developer.next.tools.toast.success_message"));
+  }
+
+  function showTestErrorToast() {
+    globalMessage.error(i18n.t("developer.next.tools.toast.error_message"));
+  }
+
+  function showTestWarningToast() {
+    globalMessage.warning(i18n.t("developer.next.tools.toast.warning_message"));
+  }
+
+  function showTestInfoToast() {
+    globalMessage.info(i18n.t("developer.next.tools.toast.info_message"));
+  }
+
+  function showTestAnnouncement(tone: DeveloperAnnouncementTone) {
+    activeAnnouncement.value = {
+      tone,
+      title: i18n.t("developer.next.tools.banner.title"),
+      message: i18n.t(`developer.next.tools.banner.${tone}_message`),
+    };
+  }
+
+  function clearTestAnnouncement() {
+    activeAnnouncement.value = null;
   }
 
   const logPolling = useSerialPolling({
@@ -334,6 +373,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     downloadingUpdate,
     triggeringCrash,
     updateUrl,
+    activeAnnouncement,
     logError,
     systemError,
     logText,
@@ -358,5 +398,11 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     copySystemSummary,
     downloadUpdateFromUrl,
     triggerCrashTest,
+    showTestSuccessToast,
+    showTestErrorToast,
+    showTestWarningToast,
+    showTestInfoToast,
+    showTestAnnouncement,
+    clearTestAnnouncement,
   };
 }

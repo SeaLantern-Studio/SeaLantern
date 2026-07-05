@@ -8,12 +8,12 @@ mod services;
 mod utils;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-/// 程序入口。
+/// Desktop application entry point.
 pub fn run() {
     runtime::run();
 }
 
-/// Headless HTTP 入口，供 Docker / 外部宿主显式调用。
+/// Headless HTTP entry point used by Docker and external host processes.
 pub fn run_headless_http() {
     runtime::run_headless_http();
 }

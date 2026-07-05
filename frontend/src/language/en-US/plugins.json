@@ -62,6 +62,9 @@
   "batch_result_title": "Batch Install Results",
   "batch_success": "Successfully installed {{count}} plugins:",
   "batch_failed": "Failed to install {{count}} plugins:",
+  "install_issue_incompatible_sealantern_version": "The current SeaLantern version does not satisfy this plugin. Required {{requiredVersion}}, current {{currentVersion}}.",
+  "install_issue_requests_trusted_capabilities": "This plugin requests Trusted-only capabilities and will not enter the normal standard-sandbox path: {{permissions}}.",
+  "install_issue_exceeds_standard_sandbox": "This plugin exceeds the standard sandbox permission ceiling and will use a higher-risk enable flow later: {{permissions}}.",
   "installing": "Installing plugins...",
   "enable_failed": "Enable Failed",
   "plugin_disabled": "Plugin Disabled",
@@ -90,6 +93,66 @@
   "all_plugins_latest": "All plugins are up to date",
   "updates_available": "{{count}} plugins have updates available",
   "open_repository": "Open Repository",
+  "next": {
+    "error_title": "Couldn't load plugins",
+    "close_error": "Close",
+    "retry": "Retry",
+    "loading_title": "Loading installed plugins",
+    "loading_description": "Fetching the list, icons, navigation, and update status.",
+    "update_to": "Update to v{version}",
+    "summary": {
+      "installed_label": "Installed",
+      "installed_hint": "Plugins found in this instance",
+      "enabled_label": "Enabled",
+      "enabled_hint": "Currently turned on",
+      "updates_label": "Updates",
+      "updates_hint": "Available right now",
+      "refresh": "Refresh",
+      "check_updates": "Check updates",
+      "open_market": "Open plugin market"
+    },
+    "empty": {
+      "eyebrow": "Plugins",
+      "title": "No plugins yet",
+      "description": "Install plugins from the market, or refresh to rescan the local plugin folder.",
+      "open_market": "Open plugin market",
+      "refresh": "Rescan plugins"
+    },
+    "card": {
+      "author_prefix": "Author",
+      "id_prefix": "ID",
+      "no_description": "No description provided.",
+      "missing_required": "Required dependency missing",
+      "missing_optional": "Optional dependency missing",
+      "open_details": "Open details",
+      "open_repository": "Open repository",
+      "toggle_unavailable": "Unavailable here",
+      "toggle_requires_dependencies": "Dependencies required"
+    },
+    "runtime": {
+      "metadata_only_title": "This is a metadata-only desktop build.",
+      "metadata_only_description": "This {flavor} build can show plugin metadata, trust, and permissions, but it cannot start local plugin runtime or enable plugins.",
+      "metadata_only_tag": "{flavor} · metadata only",
+      "metadata_only_toggle_unavailable": "Local plugin runtime is not included in this build, so enable and disable actions are unavailable here.",
+      "metadata_only_empty_description": "This {flavor} build can still rescan plugin metadata and inspect trust details, but it does not run local plugin runtime.",
+      "runtime_off_title": "Plugin runtime is unavailable in this build.",
+      "runtime_off_description": "This {flavor} host can still show plugin metadata, trust, and permissions, but local plugin runtime features are unavailable right now.",
+      "runtime_off_tag": "{flavor} · runtime unavailable",
+      "runtime_off_toggle_unavailable": "Plugin runtime is unavailable in this host build, so enable and disable actions are unavailable here."
+    },
+    "permission_revoked_title": "This plugin is revoked",
+    "permission_confirm_title": "Permission confirmation required",
+    "permission_revoked_message": "{name} is currently revoked. Check the plugin source and trust state before enabling it.",
+    "permission_confirm_message": "{name} requests extra permissions. Confirm before enabling it.",
+    "workspace": {
+      "nav_aria_label": "Plugin sections",
+      "manage_label": "Plugin management",
+      "manage_description": "Installed plugins, local import, and update status.",
+      "market_label": "Plugin market",
+      "market_description": "Browse, search, and install plugins from the market.",
+      "config_description": "Review plugin details and adjust plugin settings."
+    }
+  },
   "missing_required_deps": "Missing required dependencies, cannot enable",
   "dep_tooltip": {
     "required": "Missing required dependencies: {{names}}",
@@ -100,6 +163,12 @@
     "network_desc": "Allows the plugin to send HTTP requests and access external networks. Malicious plugins may exploit this to exfiltrate data.",
     "fs": "File System",
     "fs_desc": "Allows the plugin to read and write files within its directory.",
+    "fs_data": "File System - Private Data Directory",
+    "fs_data_desc": "Allows the plugin to access files within its own private data directory.",
+    "fs_server": "File System - Server Directories",
+    "fs_server_desc": "Allows the plugin to access files within SeaLantern-managed server directories.",
+    "fs_global": "File System - Global App Directories",
+    "fs_global_desc": "Allows the plugin to access files within SeaLantern global application directories.",
     "server": "Server Operations",
     "server_desc": "Allows the plugin to read/write server files and retrieve server information.",
     "console": "Console Commands",
@@ -156,6 +225,23 @@
     "panel_no_commands": "No command records",
     "panel_api_stats": "API Call Statistics",
     "panel_no_api_calls": "No API calls",
-    "panel_call_count": "{count} calls"
+    "panel_call_count": "{count} calls",
+    "semantic": {
+      "section_title": "Permission Semantics",
+      "requires_explicit_consent": "Confirmation Required",
+      "risk_group": {
+        "standard_sandbox_allowed": "Within Standard Sandbox",
+        "escalated_sandbox": "Escalated Sandbox",
+        "trusted_only": "Trusted Only",
+        "unknown": "Unclassified"
+      },
+      "boundary": {
+        "within_standard_ceiling": "Within Standard Ceiling",
+        "outside_standard_ceiling": "Outside Standard Ceiling"
+      },
+      "card": {
+        "outside_standard_sandbox": "Outside Standard Sandbox"
+      }
+    }
   }
 }

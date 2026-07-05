@@ -81,6 +81,7 @@
   "import": "Importer",
   "java_download": "Télécharger Java",
   "java_download_desc": "Si Java n'est pas installé ou si vous avez besoin d'une version mise à jour, vous pouvez le télécharger ici",
+  "java_download_desktop_only": "Le telechargement et l'installation de Java ne sont disponibles que dans l'application de bureau",
   "java_download_btn": "Télécharger Java {{version}} (LTS)",
   "reset": "Restaurer les valeurs par défaut",
   "import_settings": "Importer les paramètres",

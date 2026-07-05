@@ -15,6 +15,10 @@
   --sl-bg-tertiary: #e2e8f0;
   --sl-surface: #ffffff;
   --sl-surface-hover: #f8fafc;
+  --sl-overlay-surface: #ffffff;
+  --sl-overlay-surface-muted: #f8fafc;
+  --sl-overlay-surface-hover: #eef4fb;
+  --sl-overlay-border: rgba(148, 163, 184, 0.22);
   --sl-border: #e2e8f0;
   --sl-border-light: #f1f5f9;
 
@@ -117,6 +121,10 @@
   --sl-bg-tertiary: #242836;
   --sl-surface: #1e2130;
   --sl-surface-hover: #282c3e;
+  --sl-overlay-surface: #1b2030;
+  --sl-overlay-surface-muted: #23293a;
+  --sl-overlay-surface-hover: #2b3247;
+  --sl-overlay-border: rgba(148, 163, 184, 0.2);
   --sl-border: rgba(255, 255, 255, 0.1);
   --sl-border-light: rgba(255, 255, 255, 0.05);
 
@@ -146,6 +154,10 @@
   --sl-bg-tertiary: rgba(226, 232, 240, 0.45);
   --sl-surface: rgba(255, 255, 255, 0.65);
   --sl-surface-hover: rgba(248, 250, 252, 0.75);
+  --sl-overlay-surface: rgba(255, 255, 255, 0.95);
+  --sl-overlay-surface-muted: rgba(248, 250, 252, 0.97);
+  --sl-overlay-surface-hover: rgba(238, 244, 251, 0.98);
+  --sl-overlay-border: rgba(148, 163, 184, 0.24);
 }
 
 [data-theme="dark"][data-acrylic="true"] {
@@ -154,6 +166,10 @@
   --sl-bg-tertiary: rgba(36, 40, 54, 0.45);
   --sl-surface: rgba(30, 33, 48, 0.65);
   --sl-surface-hover: rgba(40, 44, 62, 0.75);
+  --sl-overlay-surface: rgba(22, 27, 41, 0.94);
+  --sl-overlay-surface-muted: rgba(29, 35, 50, 0.96);
+  --sl-overlay-surface-hover: rgba(37, 45, 64, 0.98);
+  --sl-overlay-border: rgba(148, 163, 184, 0.22);
 }
 
 [data-minimal="true"] {

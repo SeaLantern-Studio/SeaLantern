@@ -1,5 +1,6 @@
 import * as pluginApi from "@api/plugin";
 import { pluginLogger } from "@stores/plugin/pluginLogger";
+import type { PluginEnableConfirmation } from "@type/plugin";
 import { normalizeAppError } from "@utils/appError";
 import {
   cleanupPluginRuntime,
@@ -61,7 +62,18 @@ export function createPluginLifecycleToggleAction(
   async function togglePlugin(pluginId: string, enable: boolean): Promise<TogglePluginResult> {
     if (enable) {
       try {
-        await pluginApi.enablePlugin(pluginId);
+        const result = await pluginApi.enablePlugin(pluginId);
+
+        if (result.confirmation_required) {
+          return {
+            success: false,
+            confirmationRequired: true,
+            blockReason: result.block_reason ?? undefined,
+            grantScope: result.grant_scope ?? undefined,
+            plugin: result.plugin ?? null,
+            message: result.message ?? null,
+          };
+        }
 
         options.syncThemeProviderOverrides(collectThemeProviderIdsForEnable(options, pluginId));
         await options.injectPluginCss(pluginId);
@@ -73,7 +85,7 @@ export function createPluginLifecycleToggleAction(
         await options.replayUiSnapshot();
         setTimeout(() => void options.replayUiSnapshot(), 300);
 
-        return { success: true };
+        return { success: true, plugin: result.plugin ?? null };
       } catch (errorCause) {
         const normalized = normalizeAppError(errorCause);
         setPluginState(options, pluginId, "disabled");
@@ -103,7 +115,46 @@ export function createPluginLifecycleToggleAction(
     }
   }
 
+  async function confirmEnablePlugin(
+    pluginId: string,
+    confirmation: PluginEnableConfirmation,
+  ): Promise<TogglePluginResult> {
+    try {
+      const result = await pluginApi.enablePlugin(pluginId, confirmation);
+      if (result.confirmation_required) {
+        return {
+          success: false,
+          confirmationRequired: true,
+          blockReason: result.block_reason ?? undefined,
+          grantScope: result.grant_scope ?? undefined,
+          plugin: result.plugin ?? null,
+          message: result.message ?? null,
+        };
+      }
+
+      options.syncThemeProviderOverrides(collectThemeProviderIdsForEnable(options, pluginId));
+      await options.injectPluginCss(pluginId);
+      setPluginState(options, pluginId, "enabled");
+
+      options.syncThemeProviderOverrides();
+      await dependencies.loadNavItems();
+      await pluginApi.onPageChanged(currentPluginPath());
+      await options.replayUiSnapshot();
+      setTimeout(() => void options.replayUiSnapshot(), 300);
+
+      return { success: true, plugin: result.plugin ?? null };
+    } catch (errorCause) {
+      const normalized = normalizeAppError(errorCause);
+      setPluginState(options, pluginId, "disabled");
+      options.removePluginCss(pluginId);
+      options.syncThemeProviderOverrides();
+      pluginLogger.error("Store", `插件启用失败: ${pluginId}`, normalized);
+      return { success: false, error: normalized.message };
+    }
+  }
+
   return {
     togglePlugin,
+    confirmEnablePlugin,
   };
 }

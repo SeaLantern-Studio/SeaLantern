@@ -30,6 +30,22 @@ impl PluginRuntime {
         }
     }
 
+    #[allow(dead_code)] // 新细粒度 namespace 正在逐步接入
+    pub(super) fn check_any_permission(&self, permissions: &[&str]) -> mlua::Result<()> {
+        if permissions
+            .iter()
+            .any(|permission| self.permissions.iter().any(|p| p == permission))
+        {
+            Ok(())
+        } else {
+            let expected = permissions.join(" | ");
+            Err(mlua::Error::runtime(perm_t1(
+                "plugins.runtime.permissions.permission_required",
+                expected,
+            )))
+        }
+    }
+
     pub(super) fn setup_permission_denied_module(
         &self,
         sl: &Table,

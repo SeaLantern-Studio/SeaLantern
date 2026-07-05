@@ -1,11 +1,145 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+/// Parsed config file format used by discovery and document APIs.
+pub enum ServerConfigFileKind {
+    Properties,
+    Toml,
+    Yaml,
+    Json,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+/// Known semantic role for special config files inside a server directory.
+pub enum KnownServerConfigRole {
+    StartupPrimary,
+    StartupLegacy,
+    ServerProperties,
+    Pumpkin,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+/// Ownership model describing who should be considered the source of truth for a config file.
+pub enum ServerConfigOwnership {
+    ServiceManaged,
+    ServerManaged,
+    ThirdParty,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+/// Origin of a discovered config file.
+pub enum ServerConfigSourceKind {
+    ServerRoot,
+    ManualRoot,
+    ManualFile,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+/// Matching strategy used by config search APIs.
+pub enum ServerConfigSearchMode {
+    Keyword,
+    Regex,
+    Similarity,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+/// Search surface used by config search APIs.
+pub enum ServerConfigSearchScope {
+    Path,
+    Content,
+    All,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+/// Controls whether JSON files participate in discovery.
+pub enum ServerConfigJsonMode {
+    Disabled,
+    #[default]
+    Filtered,
+    All,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+/// Discovery options that extend the server root with manual import locations.
+pub struct ServerConfigDiscoveryOptions {
+    #[serde(default)]
+    pub manual_import_dirs: Vec<String>,
+    #[serde(default)]
+    pub manual_import_files: Vec<String>,
+    #[serde(default)]
+    pub json_mode: ServerConfigJsonMode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// One discovered config file together with source and ownership metadata.
+pub struct DiscoveredServerConfigFile {
+    pub locator: String,
+    pub relative_path: String,
+    pub file_name: String,
+    pub absolute_path: String,
+    pub source_kind: ServerConfigSourceKind,
+    pub source_label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_relative_path: Option<String>,
+    pub kind: ServerConfigFileKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub known_role: Option<KnownServerConfigRole>,
+    pub ownership: ServerConfigOwnership,
+    pub priority: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// One search hit inside the discovered config file set.
+pub struct ServerConfigSearchHit {
+    pub locator: String,
+    pub relative_path: String,
+    pub file_name: String,
+    pub absolute_path: String,
+    pub source_kind: ServerConfigSourceKind,
+    pub source_label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_relative_path: Option<String>,
+    pub kind: ServerConfigFileKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub known_role: Option<KnownServerConfigRole>,
+    pub ownership: ServerConfigOwnership,
+    pub priority: u32,
+    pub score: u32,
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_match: Option<ServerConfigContentMatch>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Line-level content match returned for content-based config searches.
+pub struct ServerConfigContentMatch {
+    pub line_number: usize,
+    pub line_text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structured config document returned by read/parse APIs.
+pub struct ServerConfigDocument {
+    pub relative_path: String,
+    pub kind: ServerConfigFileKind,
+    pub content: serde_json::Value,
+}
+
 fn default_true() -> bool {
     true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Schema entry describing a single `server.properties` key.
 pub struct ConfigEntry {
     pub key: String,
     pub value: String,
@@ -16,6 +150,7 @@ pub struct ConfigEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structured representation of `server.properties` content and known schema entries.
 pub struct ServerProperties {
     pub entries: Vec<ConfigEntry>,
     pub raw: HashMap<String, String>,
@@ -23,6 +158,7 @@ pub struct ServerProperties {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// Strategy used to limit visible CPU resources for a managed server.
 pub enum CpuPolicyMode {
     #[default]
     Off,
@@ -31,6 +167,7 @@ pub enum CpuPolicyMode {
 }
 
 impl CpuPolicyMode {
+    /// Stable string form exposed through APIs and persisted config.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Off => "off",
@@ -41,6 +178,7 @@ impl CpuPolicyMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// CPU policy settings persisted in the startup config.
 pub struct CpuPolicyConfig {
     #[serde(default)]
     pub mode: CpuPolicyMode,
@@ -65,6 +203,7 @@ impl Default for CpuPolicyConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
+/// Named JVM flag preset supported by SeaLantern.
 pub enum JvmPresetId {
     #[default]
     None,
@@ -75,6 +214,7 @@ pub enum JvmPresetId {
 }
 
 impl JvmPresetId {
+    /// Stable string form exposed through APIs and persisted config.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::None => "none",
@@ -85,6 +225,7 @@ impl JvmPresetId {
         }
     }
 
+    /// JVM arguments contributed by the preset before user-provided args are appended.
     pub fn preset_args(&self) -> &'static [&'static str] {
         match self {
             Self::None => &[],
@@ -130,12 +271,14 @@ impl JvmPresetId {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+/// Wrapper used to persist the selected JVM preset.
 pub struct JvmPresetConfig {
     #[serde(default)]
     pub preset: JvmPresetId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// SeaLantern-managed startup configuration persisted per server.
 pub struct SLStartupConfig {
     #[serde(default)]
     pub max_memory: Option<u32>,
@@ -150,6 +293,7 @@ pub struct SLStartupConfig {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// Field-presence bitmap used to preserve merge semantics for optional startup settings.
 pub struct StartupConfigPresence {
     pub max_memory: bool,
     pub min_memory: bool,
@@ -159,6 +303,7 @@ pub struct StartupConfigPresence {
 }
 
 #[derive(Debug, Clone, Default)]
+/// Startup config together with explicit field-presence information.
 pub struct ServerStartupConfigDocument {
     pub config: SLStartupConfig,
     pub presence: StartupConfigPresence,

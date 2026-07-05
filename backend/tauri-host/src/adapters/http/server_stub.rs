@@ -4,5 +4,5 @@ pub async fn run_http_server(
     _static_dir: Option<String>,
     _startup_notifier: Option<std::sync::mpsc::Sender<Result<(), String>>>,
 ) -> Result<(), String> {
-    Ok(())
+    Err("headless HTTP runtime is unavailable without the 'docker' feature".to_string())
 }

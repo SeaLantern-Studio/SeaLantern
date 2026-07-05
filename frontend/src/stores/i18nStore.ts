@@ -13,6 +13,8 @@ import { tryLoadLocaleBundle } from "@composables/useI18nBundles";
 import { useSettingsStore } from "@stores/settingsStore";
 import { normalizeAppError, resolveErrorMessage } from "@utils/appError";
 
+const DEFAULT_SELECTED_LOCALE = "zh-CN";
+
 async function ensureLocaleReady(nextLocale: string): Promise<boolean> {
   if (!i18n.isSupportedLocale(nextLocale)) {
     return false;
@@ -42,7 +44,6 @@ async function downloadLocale(localeCode: string) {
 
 export const useI18nStore = defineStore("i18n", () => {
   const localeRef = i18n.getLocaleRef();
-  const supportedLocales = i18n.getAvailableLocales();
   const settingsStore = useSettingsStore();
 
   const locale = computed(() => localeRef.value);
@@ -51,12 +52,22 @@ export const useI18nStore = defineStore("i18n", () => {
   const isSimplifiedChinese = computed(() => localeRef.value === "zh-CN");
   const isTraditionalChinese = computed(() => localeRef.value === "zh-TW");
   const isEnglish = computed(() => localeRef.value === "en-US");
-  const localeOptions = computed(() =>
-    supportedLocales.map((code) => ({
+
+  const registeredLocaleOptions = computed(() => {
+    return i18n.getAvailableLocales().map((code) => ({
       code,
       label: i18n.getLocaleDisplayName(code) ?? code,
-    })),
-  );
+    }));
+  });
+
+  const localeOptions = computed(() => registeredLocaleOptions.value);
+  async function persistLanguageState(current: string): Promise<void> {
+    await settingsStore.updatePartial({
+      language: current,
+      locale_layer_order: [],
+    });
+  }
+
   async function setLocale(nextLocale: string) {
     const localeReady = await ensureLocaleReady(nextLocale);
     if (!localeReady) {
@@ -66,9 +77,10 @@ export const useI18nStore = defineStore("i18n", () => {
     i18n.setLocale(nextLocale);
 
     try {
-      await settingsStore.setLanguage(nextLocale);
+      await persistLanguageState(nextLocale);
     } catch (error) {
-      console.error("Failed to save language setting:", normalizeAppError(error));
+      console.error("Failed to save locale:", normalizeAppError(error));
+      return false;
     }
 
     try {
@@ -81,18 +93,26 @@ export const useI18nStore = defineStore("i18n", () => {
   }
 
   function toggleLocale() {
-    const currentIndex = supportedLocales.indexOf(localeRef.value);
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % supportedLocales.length;
-    void setLocale(supportedLocales[nextIndex]);
+    const locales = registeredLocaleOptions.value.map((option) => option.code);
+    const currentIndex = locales.indexOf(localeRef.value);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % locales.length;
+    const nextLocale = locales[nextIndex];
+    if (nextLocale) {
+      void setLocale(nextLocale);
+    }
   }
 
   async function loadLanguageSetting() {
     try {
       await settingsStore.ensureLoaded();
-      const language = settingsStore.settings.language;
-      if (language && (await ensureLocaleReady(language))) {
-        i18n.setLocale(language);
-      }
+
+      const savedLanguage = settingsStore.settings.language || DEFAULT_SELECTED_LOCALE;
+      const selectedLocale = (await ensureLocaleReady(savedLanguage))
+        ? savedLanguage
+        : DEFAULT_SELECTED_LOCALE;
+      await ensureLocaleReady(selectedLocale);
+
+      i18n.setLocale(selectedLocale);
     } catch (error) {
       console.error("Failed to load language setting:", {
         error: normalizeAppError(error),
@@ -108,6 +128,7 @@ export const useI18nStore = defineStore("i18n", () => {
     isSimplifiedChinese,
     isTraditionalChinese,
     isEnglish,
+    registeredLocaleOptions,
     localeOptions,
     ensureLocaleReady,
     setLocale,

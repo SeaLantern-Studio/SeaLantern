@@ -20,6 +20,14 @@ export interface BanEntry {
   expires: string;
 }
 
+export interface BannedIpEntry {
+  ip: string;
+  reason: string;
+  source: string;
+  created: string;
+  expires: string;
+}
+
 /**
  * OP (管理员) 条目
  */
@@ -28,6 +36,13 @@ export interface OpEntry {
   name: string;
   level: number;
   bypasses_player_limit: boolean;
+}
+
+export interface ServerPlayerSummary {
+  whitelist: PlayerEntry[];
+  banned_players: BanEntry[];
+  banned_ips: BannedIpEntry[];
+  ops: OpEntry[];
 }
 
 export interface ParsedPlayerLogEvent {
@@ -53,11 +68,19 @@ export const playerApi = {
     return tauriInvoke("get_banned_players", { serverPath });
   },
 
+  async getBannedIps(serverPath: string): Promise<BannedIpEntry[]> {
+    return tauriInvoke("get_banned_ips", { serverPath });
+  },
+
   /**
    * 获取 OP 列表
    */
   async getOps(serverPath: string): Promise<OpEntry[]> {
     return tauriInvoke("get_ops", { serverPath });
+  },
+
+  async getServerPlayerSummary(serverPath: string): Promise<ServerPlayerSummary> {
+    return tauriInvoke("get_server_player_summary", { serverPath });
   },
 
   /**

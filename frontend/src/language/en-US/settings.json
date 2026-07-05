@@ -21,8 +21,21 @@
   "jvm_args": "JVM Arguments",
   "general": "General",
   "general_desc": "Basic behavior settings",
+  "language": "Language",
+  "language_desc": "Choose the interface language used by Sea Lantern.",
   "auto_stop_desc": "Automatically send stop command to running servers when exiting Sea Lantern to prevent data loss",
   "auto_eula_desc": "Automatically write eula=true before starting server, eliminating manual modification",
+  "desktop_web_ui": "Enable web UI",
+  "desktop_web_ui_desc": "Start the local web access entry alongside the desktop app. By default it only listens on loopback.",
+  "desktop_web_ui_status": "Status",
+  "desktop_web_ui_status_loading": "Loading",
+  "desktop_web_ui_status_error": "Unavailable",
+  "desktop_web_ui_status_running": "Running",
+  "desktop_web_ui_status_stopped": "Stopped",
+  "desktop_web_ui_url": "Access URL",
+  "desktop_web_ui_copy_url": "Copy URL",
+  "desktop_web_ui_url_copied": "Access URL copied",
+  "desktop_web_ui_static_dir_missing": "Web assets were not found. API only.",
   "server_defaults": "Server Defaults",
   "server_defaults_desc": "Default parameters used when creating new servers",
   "max_memory_desc": "Recommended at least 1024MB. Large modded servers may need 4096MB or more",
@@ -50,6 +63,16 @@
   "data_dir_source_env": "Sea Lantern is currently forced to this directory by an environment variable.",
   "data_dir_source_docker": "Sea Lantern is running in container mode and uses the container data directory.",
   "data_dir_source_legacy_portable": "Sea Lantern detected a legacy portable directory and is still reading data from it.",
+  "plugin_dir_title": "Plugin Directory",
+  "plugin_dir_desc": "Control where plugins installed from the marketplace or local sources are ultimately stored.",
+  "plugin_dir_current": "Current plugin directory",
+  "plugin_dir_locator": "Locator file",
+  "plugin_dir_recommended": "Recommended directory",
+  "plugin_dir_required": "Please choose a plugin directory",
+  "plugin_dir_change": "Migrate and switch",
+  "plugin_dir_change_success": "Plugin directory switched. Migrated {count} item(s).",
+  "plugin_dir_source_default": "Sea Lantern is currently using the default plugin directory.",
+  "plugin_dir_source_locator": "Sea Lantern is currently pinned to this plugin directory by the locator file.",
   "default_jvm_preset_label": "Default JVM Preset",
   "default_jvm_preset_placeholder": "Select a default JVM preset",
   "default_jvm_preset_desc": "The JVM preset selected by default when creating a new server.",
@@ -166,6 +189,7 @@
   "import": "Import",
   "java_download": "Download Java",
   "java_download_desc": "If Java is not installed or you need an updated version, you can download it here",
+  "java_download_desktop_only": "Java download and installation are only available in the desktop app",
   "java_download_btn": "Download Java {{version}} (LTS)",
   "reset": "Restore Defaults",
   "import_settings": "Import Settings",
@@ -223,10 +247,10 @@
   "personalize_page_import_export": "Personalization can be moved as a standalone package.",
   "personalization_export": "Export Personalization",
   "personalization_import": "Import Personalization",
-  "personalization_package_desc": "Includes background image, window material, fonts, text color overrides, and plugin theme settings from plugins that expose personalization capabilities.",
+  "personalization_package_desc": "Includes the background image, window material, interface and console fonts, text color overrides, and plugin theme settings from plugins that expose personalization capabilities.",
   "personalization_export_success": "Personalization package exported",
   "personalization_import_success": "Personalization package imported",
-  "personalization_import_partial": "Personalization package imported, but some plugin theme settings could not be applied",
+  "personalization_import_partial": "Personalization package imported, but {count} plugin personalization setting group(s) could not be applied",
   "font_family_default": "System Default",
   "color_picker": "Color Picker",
   "input_color_placeholder": "Input Color Value",
@@ -254,7 +278,125 @@
   "ipv6_test_targets_label": "Test targets:",
   "minimal_mode": "Minimal Mode",
   "minimal_mode_desc": "Disable all animations and effects, keeping only basic rendering and interactions",
+  "next": {
+    "page_title": "Settings",
+    "page_description": "",
+    "refresh": "Refresh",
+    "error_title": "Couldn't open settings",
+    "error_description": "Please try again in a moment.",
+    "retry": "Retry",
+    "nav_aria_label": "Settings sections",
+    "sections": {
+      "appearance": {
+        "label": "Appearance",
+        "title": "Appearance",
+        "description": ""
+      },
+      "general": {
+        "label": "General",
+        "title": "General",
+        "description": ""
+      },
+      "developer_management": {
+        "label": "Developer",
+        "title": "Developer",
+        "description": ""
+      }
+    },
+    "developer_management": {
+      "title": "Developer Tools",
+      "description": ""
+    },
+    "summary": {
+      "eyebrow": "Settings",
+      "title": "Settings home",
+      "description": "Quick links and status for settings.",
+      "refresh": "Refresh",
+      "chips_aria_label": "Settings status"
+    },
+    "appearance": {
+      "live_hint": "",
+      "theme_managed_by": "Managed by {plugin}",
+      "personalize_bridge_title": "More appearance options live in Personalize",
+      "personalize_bridge_desc": "Adjust colors, titles, and console options in Personalize.",
+      "personalize_bridge_hint": "Theme plugins manage colors here.",
+      "window_effect_fallback": "Only the default material is available here.",
+      "save_theme_failed": "Theme wasn't saved",
+      "save_font_failed": "Font wasn't saved",
+      "save_window_effect_failed": "Window material wasn't saved",
+      "save_minimal_mode_failed": "Minimal mode wasn't saved",
+      "save_background_failed": "Background settings weren't saved",
+      "save_font_size_failed": "Text size wasn't saved",
+      "save_background_image_failed": "Background image wasn't saved",
+      "pick_image_failed": "Couldn't choose an image",
+      "background": {
+        "title": "Background",
+        "status_set": "Background set",
+        "status_empty": "Not set",
+        "preview_loading": "Loading preview",
+        "preview_alt": "Background preview",
+        "animated_badge": "Animated",
+        "replace": "Replace",
+        "remove": "Remove",
+        "empty_title": "No background image",
+        "empty_description": "Pick an image to apply it right away.",
+        "pick": "Choose image",
+        "opacity": "Opacity",
+        "blur": "Blur",
+        "brightness": "Brightness",
+        "size": "Fit",
+        "size_hint": "Choose how the image fits.",
+        "reselect": "Choose again",
+        "remove_image": "Remove background"
+      }
+    },
+    "general": {
+      "live_hint": "Adjust common behavior and defaults."
+    }
+  },
+  "paint": {
+    "nav_aria_label": "Personalize sections",
+    "page_description": "Adjust color presets, title and text presentation, and console display preferences, then move personalization as a standalone package when needed.",
+    "appearance_bridge_title": "Background and window material live in Appearance",
+    "appearance_bridge_desc": "Background image, window material, theme mode, and interface font belong to Settings > Appearance. This page stays focused on color presets, text colors, app display name, and console display preferences.",
+    "theme_provider_notice": "{plugin} controls colors right now.",
+    "theme_provider_fact": "From {plugin}",
+    "sections": {
+      "appearance_theme": {
+        "label": "Appearance and Theme",
+        "description": ""
+      },
+      "text_title": {
+        "label": "Text and Title",
+        "description": ""
+      },
+      "display_control": {
+        "label": "Display and Control",
+        "description": ""
+      }
+    }
+  },
   "color_options": {
-    "custom": "Custom"
+    "custom": "Custom",
+    "default": {
+      "label": "Default",
+      "description": "SeaLantern default palette with a clean blue-green accent."
+    },
+    "ocean": {
+      "label": "Ocean",
+      "description": "A fresh cyan-blue palette with a cooler surface tone."
+    },
+    "rose": {
+      "label": "Rose",
+      "description": "A pink-forward palette with softer warm highlights."
+    },
+    "sunset": {
+      "label": "Sunset",
+      "description": "A warm orange-gold palette for a brighter atmosphere."
+    },
+    "midnight": {
+      "label": "Midnight",
+      "description": "A deep indigo palette with stronger night-mode contrast."
+    }
   }
 }

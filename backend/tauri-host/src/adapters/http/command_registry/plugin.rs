@@ -1,14 +1,19 @@
-use super::common::{parse_params, CommandHandler, RegistryBuilder};
+use super::common::{invalid_request, parse_params, CommandHandler, RegistryBuilder};
 use crate::commands::plugins::manage as plugin_commands;
-use crate::plugins::manager::i18n::plugin_t1;
+use crate::plugins::loader::PluginLoader;
 use crate::services::global;
 use serde::Deserialize;
 use serde_json::Value;
+
+fn plugin_runtime_feature_enabled() -> bool {
+    cfg!(feature = "plugin-local-runtime") || cfg!(feature = "plugin-runtime-bridge")
+}
 
 #[derive(Deserialize)]
 struct PluginIdRequest {
     #[serde(alias = "pluginId")]
     plugin_id: String,
+    confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
 }
 
 #[derive(Deserialize)]
@@ -198,8 +203,8 @@ fn handle_enable_plugin(
         let req: PluginIdRequest = parse_params(params)?;
         let manager = global::plugin_manager();
         let mut manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        manager.enable_plugin(&req.plugin_id)?;
-        Ok(Value::Null)
+        let result = manager.enable_plugin(&req.plugin_id, req.confirmation)?;
+        serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
 
@@ -232,11 +237,18 @@ fn handle_install_plugin(
         let path = params
             .get("path")
             .and_then(|value| value.as_str())
-            .ok_or_else(|| "Missing path".to_string())?
+            .ok_or_else(|| invalid_request("Missing path"))?
             .to_string();
         let manager = global::plugin_manager();
         let mut manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        let result = manager.install_plugin(std::path::Path::new(&path))?;
+        let result = manager
+            .install_plugin(std::path::Path::new(&path))
+            .map_err(|error| {
+                if let Some(issue) = PluginLoader::classify_install_error(&error) {
+                    return issue.into_command_error(error).to_json_string();
+                }
+                error
+            })?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -255,9 +267,11 @@ fn handle_install_plugins_batch(
             let path = std::path::PathBuf::from(&path_str);
             match manager.install_plugin(&path) {
                 Ok(install_result) => success.push(install_result),
-                Err(error) => {
-                    failed.push(crate::models::plugin::BatchInstallError { path: path_str, error })
-                }
+                Err(error) => failed.push(crate::models::plugin::BatchInstallError {
+                    path: path_str,
+                    issue: PluginLoader::classify_install_error(&error),
+                    error,
+                }),
             }
         }
 
@@ -329,21 +343,21 @@ fn handle_check_plugin_update(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: PluginIdRequest = parse_params(params)?;
-        let current_version = {
+        let update_target = {
             let manager = global::plugin_manager();
             let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-            let plugin_info = manager
-                .plugins()
-                .get(&req.plugin_id)
-                .ok_or_else(|| plugin_t1("plugin.common.not_found", req.plugin_id.clone()))?;
-            plugin_info.manifest.version.clone()
+            manager.check_plugin_update(&req.plugin_id)?
         };
-
-        let result = plugin_commands::market::check_plugin_update_without_manager(
-            current_version,
-            req.plugin_id,
-        )
-        .await?;
+        let result = match update_target {
+            Some((plugin_id, current_version)) => {
+                plugin_commands::market::check_plugin_update_without_manager(
+                    current_version,
+                    plugin_id,
+                )
+                .await?
+            }
+            None => None,
+        };
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -355,11 +369,7 @@ fn handle_check_all_plugin_updates(
         let plugin_versions = {
             let manager = global::plugin_manager();
             let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-            manager
-                .plugins()
-                .iter()
-                .map(|(id, info)| (id.clone(), info.manifest.version.clone()))
-                .collect::<Vec<_>>()
+            manager.collect_update_versions()
         };
 
         let result =
@@ -446,12 +456,12 @@ fn handle_context_menu_callback(
         let req: ContextMenuCallbackRequest = parse_params(params)?;
         let manager = global::plugin_manager();
         let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        let runtimes = manager.get_shared_runtimes();
-        let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-        let runtime = runtimes_guard
-            .get(&req.plugin_id)
-            .ok_or_else(|| format!("插件 '{}' 的运行时不存在", req.plugin_id))?;
-        runtime.call_context_menu_callback(&req.context, &req.item_id, req.target_data)?;
+        manager.dispatch_context_menu_callback(
+            &req.plugin_id,
+            &req.context,
+            &req.item_id,
+            req.target_data,
+        )?;
         Ok(Value::Null)
     })
 }
@@ -463,18 +473,7 @@ fn handle_context_menu_show_notify(
         let req: ContextMenuShowRequest = parse_params(params)?;
         let manager = global::plugin_manager();
         let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        let runtimes = manager.get_shared_runtimes();
-        let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-
-        for runtime in runtimes_guard.values() {
-            let _ = runtime.call_context_menu_show_callback(
-                &req.context,
-                req.target_data.clone(),
-                req.x,
-                req.y,
-            );
-        }
-
+        manager.notify_context_menu_show(&req.context, &req.target_data, req.x, req.y);
         Ok(Value::Null)
     })
 }
@@ -485,13 +484,7 @@ fn handle_context_menu_hide_notify(
     Box::pin(async move {
         let manager = global::plugin_manager();
         let manager = manager.lock().unwrap_or_else(|e| e.into_inner());
-        let runtimes = manager.get_shared_runtimes();
-        let runtimes_guard = runtimes.read().unwrap_or_else(|e| e.into_inner());
-
-        for runtime in runtimes_guard.values() {
-            let _ = runtime.call_context_menu_hide_callback();
-        }
-
+        manager.notify_context_menu_hide();
         Ok(Value::Null)
     })
 }
@@ -513,6 +506,9 @@ fn handle_component_mirror_register(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Null);
+        }
         let req: ComponentMirrorRegisterRequest = parse_params(params)?;
         crate::plugins::api::component_mirror_register(&req.id, &req.component_type);
         Ok(Value::Null)
@@ -523,6 +519,9 @@ fn handle_component_mirror_unregister(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Null);
+        }
         let req: ComponentMirrorIdRequest = parse_params(params)?;
         crate::plugins::api::component_mirror_unregister(&req.id);
         Ok(Value::Null)
@@ -533,6 +532,9 @@ fn handle_component_mirror_clear(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Null);
+        }
         crate::plugins::api::component_mirror_clear();
         Ok(Value::Null)
     })
@@ -554,6 +556,9 @@ fn handle_get_plugin_ui_snapshot(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         serde_json::to_value(crate::plugins::api::take_ui_event_snapshot())
             .map_err(|error| error.to_string())
     })
@@ -563,6 +568,9 @@ fn handle_get_plugin_sidebar_snapshot(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         serde_json::to_value(crate::plugins::api::take_sidebar_event_snapshot())
             .map_err(|error| error.to_string())
     })
@@ -572,6 +580,9 @@ fn handle_get_plugin_context_menu_snapshot(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         serde_json::to_value(crate::plugins::api::take_context_menu_snapshot())
             .map_err(|error| error.to_string())
     })
@@ -581,6 +592,9 @@ fn handle_get_plugin_component_snapshot(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         serde_json::to_value(crate::plugins::api::take_component_event_snapshot())
             .map_err(|error| error.to_string())
     })
@@ -590,6 +604,9 @@ fn handle_get_plugin_permission_logs(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
+        if !plugin_runtime_feature_enabled() {
+            return Ok(Value::Array(Vec::new()));
+        }
         let req: PluginIdRequest = parse_params(params)?;
         let result = crate::plugins::api::get_plugin_permission_logs(&req.plugin_id);
         serde_json::to_value(result).map_err(|error| error.to_string())

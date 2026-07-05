@@ -7,7 +7,7 @@
           {{ i18n.t("settings.java_download") }}
         </span>
         <span class="sl-setting-desc">
-          {{ i18n.t("settings.java_download_desc") }}
+          {{ downloadDescription }}
         </span>
       </div>
 
@@ -19,13 +19,14 @@
             <SLSelect
               v-model="selectedVersion"
               :options="versionOptions"
-              :disabled="loadingUrl"
+              :disabled="loadingUrl || !canInstallJavaLocally"
               size="sm"
             />
             <SLButton
               variant="primary"
               class="download-button"
               :loading="loadingUrl"
+              :disabled="!canInstallJavaLocally"
               @click="startDownload"
             >
               {{ downloadButtonText }}
@@ -94,11 +95,11 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from "vue";
 import { i18n } from "@language";
-import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { javaApi } from "@api/java";
 import SLButton from "@components/common/SLButton.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import { X, CheckCircle, AlertCircle } from "@lucide/vue";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const emit = defineEmits(["installed"]);
 
@@ -112,6 +113,8 @@ const errorMessage = ref("");
 const successMessage = ref("");
 const installedPath = ref("");
 const unlistenProgress = ref<UnlistenFn | null>(null);
+const canInstallJavaLocally = javaApi.canInstallLocally();
+const desktopOnlyMessage = i18n.t("settings.java_download_desktop_only");
 
 const versionOptions = computed(() => [
   { label: i18n.t("settings.java_download_btn", { version: "8" }), value: "8" },
@@ -124,6 +127,10 @@ const downloadButtonText = computed(() => {
   return i18n.t("settings.java_download_btn", { version: selectedVersion.value });
 });
 
+const downloadDescription = computed(() => {
+  return canInstallJavaLocally ? i18n.t("settings.java_download_desc") : desktopOnlyMessage;
+});
+
 const resetState = () => {
   errorMessage.value = "";
   successMessage.value = "";
@@ -131,6 +138,44 @@ const resetState = () => {
   isExtracting.value = false;
   progress.value = 0;
 };
+
+interface JavaInstallProgressPayload {
+  state: string;
+  progress: number;
+  total: number;
+  message: string;
+}
+
+async function startInstallProgressListener(): Promise<UnlistenFn | null> {
+  if (!canInstallJavaLocally) {
+    return null;
+  }
+
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<JavaInstallProgressPayload>("java-install-progress", (event) => {
+    const payload = event.payload;
+    statusMessage.value = payload.message;
+
+    if (payload.state === "extracting") {
+      isExtracting.value = true;
+      progress.value = 100;
+      return;
+    }
+
+    if (payload.state === "downloading") {
+      isExtracting.value = false;
+      if (payload.total > 0) {
+        progress.value = (payload.progress / payload.total) * 100;
+      }
+      return;
+    }
+
+    if (payload.state === "finished") {
+      progress.value = 100;
+      isExtracting.value = false;
+    }
+  });
+}
 
 const getDownloadUrl = (version: string): string => {
   // Construct URL for Adoptium API
@@ -170,6 +215,11 @@ const cancelDownload = async () => {
 };
 
 const startDownload = async () => {
+  if (!canInstallJavaLocally) {
+    errorMessage.value = desktopOnlyMessage;
+    return;
+  }
+
   resetState();
   loadingUrl.value = true;
 
@@ -183,40 +233,20 @@ const startDownload = async () => {
 
     if (unlistenProgress.value) unlistenProgress.value();
 
-    unlistenProgress.value = await listen("java-install-progress", (event: any) => {
-      const payload = event.payload as {
-        state: string;
-        progress: number;
-        total: number;
-        message: string;
-      };
-      statusMessage.value = payload.message;
-
-      if (payload.state === "extracting") {
-        isExtracting.value = true;
-        progress.value = 100; // Force full bar or let indeterminate animation take over
-      } else if (payload.state === "downloading") {
-        isExtracting.value = false;
-        if (payload.total > 0) {
-          progress.value = (payload.progress / payload.total) * 100;
-        }
-      } else if (payload.state === "finished") {
-        progress.value = 100;
-        isExtracting.value = false;
-      }
-    });
+    unlistenProgress.value = await startInstallProgressListener();
 
     const resultPath = await javaApi.installJava(url, versionName);
 
     installedPath.value = resultPath;
     successMessage.value = "Success"; // Just a flag, text is in template
     emit("installed", resultPath);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e);
     isDownloading.value = false;
     isExtracting.value = false;
     errorMessage.value =
-      i18n.t("settings.java_install_failed") + (typeof e === "string" ? e : e.message);
+      i18n.t("settings.java_install_failed") +
+      (typeof e === "string" ? e : e instanceof Error ? e.message : String(e));
   } finally {
     isDownloading.value = false;
     isExtracting.value = false;

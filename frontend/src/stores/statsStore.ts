@@ -21,6 +21,7 @@ export const useStatsStore = defineStore("stats", () => {
   const diskUsage = ref(0);
   const cpuHistory = ref<number[]>([]);
   const memHistory = ref<number[]>([]);
+  const diskHistory = ref<number[]>([]);
   const serverCpuUsage = ref(0);
   const serverMemUsage = ref(0);
   const serverDiskUsage = ref(0);
@@ -38,6 +39,7 @@ export const useStatsStore = defineStore("stats", () => {
     diskUsage.value = clampPercent(info.disk.usage);
     pushHistory(cpuHistory.value, cpuUsage.value);
     pushHistory(memHistory.value, memUsage.value);
+    pushHistory(diskHistory.value, diskUsage.value);
     statsLoading.value = false;
   }
 
@@ -86,6 +88,7 @@ export const useStatsStore = defineStore("stats", () => {
     diskUsage,
     cpuHistory,
     memHistory,
+    diskHistory,
     serverCpuUsage,
     serverMemUsage,
     serverDiskUsage,

@@ -476,6 +476,7 @@ fn status_blocks_start_for_docker_error_snapshot_that_is_still_running() {
         status: ServerStatus::Error,
         pid: Some(4321),
         uptime: Some(42),
+        display_message: None,
         detail_message: Some(
             "runtime=docker_itzg container=sea-test state=running running=true health=unhealthy exit_code=0 backend=cli command_mode=rcon"
                 .to_string(),

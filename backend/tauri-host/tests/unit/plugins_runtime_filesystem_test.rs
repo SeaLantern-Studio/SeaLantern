@@ -1,6 +1,7 @@
 use super::PluginRuntime;
 use crate::plugins::api::new_api_registry;
 use mlua::Result as LuaResult;
+use std::collections::HashMap;
 use std::env;
 use std::fs as std_fs;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -31,6 +32,7 @@ fn create_test_runtime_with_permissions(
         api_registry,
         permissions,
         vec![],
+        HashMap::new(),
     )
     .unwrap();
 

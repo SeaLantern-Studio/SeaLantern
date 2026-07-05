@@ -1,4 +1,9 @@
 .startup-step-block {
+  --startup-card-padding: var(--sl-space-sm);
+  --startup-card-icon-size: 1.75rem;
+  --startup-card-badge-padding-y: 2px;
+  --startup-card-badge-padding-x: 8px;
+
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
   background: var(--sl-surface);
@@ -19,23 +24,6 @@
   font-size: var(--sl-font-size-base);
   font-weight: 600;
   color: var(--sl-text-primary);
-}
-
-.startup-step-rescan {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--sl-primary);
-  background: var(--sl-primary-bg);
-  border-radius: var(--sl-radius-sm);
-  padding: 4px 10px;
-  font-size: var(--sl-font-size-sm);
-  cursor: pointer;
-}
-
-.startup-step-rescan:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .startup-step-hint,
@@ -70,7 +58,7 @@
   text-align: left;
   border: none;
   background: transparent;
-  padding: 10px;
+  padding: var(--startup-card-padding);
   display: flex;
   gap: var(--sl-space-sm);
   cursor: pointer;
@@ -86,8 +74,8 @@
 }
 
 .startup-card-icon {
-  width: 28px;
-  height: 28px;
+  width: var(--startup-card-icon-size);
+  height: var(--startup-card-icon-size);
   border-radius: var(--sl-radius-full);
   background: var(--sl-primary-bg);
   color: var(--sl-primary);
@@ -124,7 +112,7 @@
   color: var(--sl-primary);
   background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-full);
-  padding: 2px 8px;
+  padding: var(--startup-card-badge-padding-y) var(--startup-card-badge-padding-x);
 }
 
 .startup-card-detail {

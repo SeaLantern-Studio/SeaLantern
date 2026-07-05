@@ -79,10 +79,6 @@ use std::process::Command;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-#[cfg(test)]
-static TEST_ENV_LOCK: once_cell::sync::Lazy<std::sync::Mutex<()>> =
-    once_cell::sync::Lazy::new(|| std::sync::Mutex::new(()));
-
 pub fn state_file_path(server: &ServerInstance) -> PathBuf {
     Path::new(&server.path).join(crate::utils::constants::LOCAL_RUNTIME_STATE_FILE)
 }
@@ -1060,13 +1056,14 @@ mod tests {
 
     #[test]
     fn read_live_control_state_rejects_stale_helper_pid_and_deletes_file() {
-        let _guard = super::TEST_ENV_LOCK.lock().expect("env lock should work");
+        let _guard = crate::test_support::lock_env();
         let temp_dir = tempdir().expect("temp dir should exist");
         let app_data_dir = temp_dir.path().join("app-data");
         std::fs::create_dir_all(&app_data_dir).expect("app data dir should exist");
-        unsafe {
-            std::env::set_var("SEALANTERN_DATA_DIR", &app_data_dir);
-        }
+        let _env_guard = crate::test_support::EnvGuard::set(
+            "SEALANTERN_DATA_DIR",
+            &app_data_dir.to_string_lossy(),
+        );
         let server = test_server(temp_dir.path().to_string_lossy().to_string());
         let runtime_state = super::LocalRuntimeState {
             server_id: server.id.clone(),
@@ -1096,21 +1093,18 @@ mod tests {
 
         assert_eq!(control, None);
         assert!(!control_path.exists());
-
-        unsafe {
-            std::env::remove_var("SEALANTERN_DATA_DIR");
-        }
     }
 
     #[test]
     fn read_live_control_state_drops_terminal_runtime_control_file() {
-        let _guard = super::TEST_ENV_LOCK.lock().expect("env lock should work");
+        let _guard = crate::test_support::lock_env();
         let temp_dir = tempdir().expect("temp dir should exist");
         let app_data_dir = temp_dir.path().join("app-data");
         std::fs::create_dir_all(&app_data_dir).expect("app data dir should exist");
-        unsafe {
-            std::env::set_var("SEALANTERN_DATA_DIR", &app_data_dir);
-        }
+        let _env_guard = crate::test_support::EnvGuard::set(
+            "SEALANTERN_DATA_DIR",
+            &app_data_dir.to_string_lossy(),
+        );
         let server = test_server(temp_dir.path().to_string_lossy().to_string());
         let runtime_state = super::LocalRuntimeState {
             server_id: server.id.clone(),
@@ -1140,21 +1134,18 @@ mod tests {
 
         assert_eq!(control, None);
         assert!(!control_path.exists());
-
-        unsafe {
-            std::env::remove_var("SEALANTERN_DATA_DIR");
-        }
     }
 
     #[test]
     fn control_state_round_trips_in_private_app_data_file() {
-        let _guard = super::TEST_ENV_LOCK.lock().expect("env lock should work");
+        let _guard = crate::test_support::lock_env();
         let temp_dir = tempdir().expect("temp dir should exist");
         let app_data_dir = temp_dir.path().join("app-data");
         std::fs::create_dir_all(&app_data_dir).expect("app data dir should exist");
-        unsafe {
-            std::env::set_var("SEALANTERN_DATA_DIR", &app_data_dir);
-        }
+        let _env_guard = crate::test_support::EnvGuard::set(
+            "SEALANTERN_DATA_DIR",
+            &app_data_dir.to_string_lossy(),
+        );
 
         let server = test_server(temp_dir.path().join("server").to_string_lossy().to_string());
         let expected = LocalHelperControlState {
@@ -1174,8 +1165,5 @@ mod tests {
         assert!(control_state_file_path(&server).starts_with(&app_data_dir));
 
         remove_control_state_file(&server);
-        unsafe {
-            std::env::remove_var("SEALANTERN_DATA_DIR");
-        }
     }
 }

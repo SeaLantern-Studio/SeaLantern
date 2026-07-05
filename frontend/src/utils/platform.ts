@@ -7,3 +7,8 @@ export function isWindowsPlatform(): boolean {
   if (typeof navigator === "undefined") return false;
   return /Windows/i.test(navigator.userAgent);
 }
+
+export function isLinuxPlatform(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent);
+}

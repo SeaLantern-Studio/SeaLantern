@@ -38,6 +38,7 @@ mod tests {
             status,
             pid: Some(1),
             uptime: Some(1),
+            display_message: None,
             detail_message: Some(detail.to_string()),
             error_message: None,
         }

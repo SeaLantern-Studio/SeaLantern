@@ -44,7 +44,13 @@ impl PluginRuntime {
             &self.allowed_programs,
             &process_registry,
         )?;
-        lifecycle::register(&self.lua, &process_table, &self.plugin_id, &process_registry)?;
+        lifecycle::register(
+            &self.lua,
+            &process_table,
+            &self.plugin_id,
+            &self.permissions,
+            &process_registry,
+        )?;
 
         sl.set("process", process_table).map_err(|e| {
             process_msg1("plugins.runtime.process.set_namespace_failed", e.to_string())

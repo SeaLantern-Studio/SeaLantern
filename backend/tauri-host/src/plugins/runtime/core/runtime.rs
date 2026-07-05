@@ -1,4 +1,6 @@
+use crate::plugins::api::PluginApiRegistry;
 use crate::plugins::runtime::process::ProcessEntry;
+use crate::services::events::ServerEventSubscription;
 use crate::services::global::i18n_service;
 use mlua::{Function, Table, Value};
 use std::collections::{HashMap, HashSet};
@@ -35,11 +37,13 @@ pub struct PluginRuntime {
 
     pub(crate) allowed_programs: HashSet<PathBuf>,
 
-    pub(crate) api_registry: Arc<Mutex<HashMap<String, HashMap<String, String>>>>,
+    pub(crate) api_registry: PluginApiRegistry,
 
     pub(crate) storage_lock: Arc<Mutex<()>>,
 
     pub(crate) process_registry: Arc<Mutex<HashMap<u32, ProcessEntry>>>,
+
+    pub(crate) server_event_subscriptions: HashMap<String, ServerEventSubscription>,
 
     #[allow(dead_code)] // 未来回调用
     pub(crate) element_callbacks: Arc<Mutex<std::collections::HashMap<u64, mlua::RegistryKey>>>,
@@ -123,6 +127,21 @@ impl PluginRuntime {
         Ok(false)
     }
 
+    pub(super) fn call_table_function_json(
+        &self,
+        table: &Table,
+        event: &str,
+        arg_json: &str,
+    ) -> Result<bool, String> {
+        if let Ok(func) = table.get::<Function>(event) {
+            func.call::<()>(arg_json.to_string()).map_err(|e| {
+                core_t2("plugins.runtime.core.call_plugin_event_failed", event, e.to_string())
+            })?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
     pub(super) fn call_global_function0(&self, event: &str) -> Result<bool, String> {
         let globals = self.lua.globals();
         if let Ok(func) = globals.get::<Function>(event) {
@@ -138,6 +157,21 @@ impl PluginRuntime {
         let globals = self.lua.globals();
         if let Ok(func) = globals.get::<Function>(event) {
             func.call::<()>(arg.to_string()).map_err(|e| {
+                core_t2("plugins.runtime.core.call_global_event_failed", event, e.to_string())
+            })?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    pub(super) fn call_global_function_json(
+        &self,
+        event: &str,
+        arg_json: &str,
+    ) -> Result<bool, String> {
+        let globals = self.lua.globals();
+        if let Ok(func) = globals.get::<Function>(event) {
+            func.call::<()>(arg_json.to_string()).map_err(|e| {
                 core_t2("plugins.runtime.core.call_global_event_failed", event, e.to_string())
             })?;
             return Ok(true);

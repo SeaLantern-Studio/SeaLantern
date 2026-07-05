@@ -6,6 +6,8 @@
 import {
   ensureBrowserSession,
   HTTP_API_BASE,
+  isBrowserEnv,
+  notifyBrowserUnauthorized,
   parseHttpEnvelope,
   readBrowserAuthToken,
   toStructuredHttpError,
@@ -41,6 +43,9 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
   const result = await parseHttpEnvelope<{ files: UploadedFile[] }>(response);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
     throw toStructuredHttpError(result, `Upload failed: HTTP ${response.status}`);
   }
 
@@ -70,6 +75,9 @@ export async function uploadFiles(files: File[]): Promise<UploadResult> {
   const result = await parseHttpEnvelope<UploadResult>(response);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
     throw toStructuredHttpError(result, `Upload failed: HTTP ${response.status}`);
   }
 
@@ -133,8 +141,7 @@ export async function uploadFromDropEvent(event: DragEvent): Promise<UploadedFil
  * 检测当前环境是否支持上传（Docker/浏览器模式）
  */
 export function isUploadSupported(): boolean {
-  // Tauri v2 默认不注入 window.__TAURI__，使用 __TAURI_INTERNALS__ 可靠判断
-  return typeof window !== "undefined" && !window.__TAURI_INTERNALS__;
+  return isBrowserEnv();
 }
 
 /**

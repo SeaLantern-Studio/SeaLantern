@@ -58,47 +58,7 @@ pub(in crate::plugins::manager::lifecycle) fn disable_plugin_internal(
 #[cfg(test)]
 mod tests {
     use super::disable_plugin;
-    use crate::models::plugin::{PluginAuthor, PluginInfo, PluginManifest, PluginState};
     use crate::plugins::manager::PluginManager;
-
-    fn enabled_plugin_info(plugin_root: &std::path::Path) -> PluginInfo {
-        PluginInfo {
-            manifest: PluginManifest {
-                id: "example-plugin".to_string(),
-                name: "Example Plugin".to_string(),
-                version: "1.0.0".to_string(),
-                description: "test plugin".to_string(),
-                author: PluginAuthor {
-                    name: "tester".to_string(),
-                    email: None,
-                    url: None,
-                },
-                main: "main.lua".to_string(),
-                license: None,
-                homepage: None,
-                repository: None,
-                engines: None,
-                permissions: Vec::new(),
-                ui: None,
-                events: Vec::new(),
-                commands: Vec::new(),
-                programs: Vec::new(),
-                dependencies: Vec::new(),
-                optional_dependencies: Vec::new(),
-                icon: None,
-                settings: None,
-                sidebar: None,
-                locales: None,
-                include: Vec::new(),
-                capabilities: Vec::new(),
-                theme_var_map: std::collections::HashMap::new(),
-                presets: std::collections::HashMap::new(),
-            },
-            state: PluginState::Enabled,
-            path: plugin_root.to_string_lossy().to_string(),
-            missing_dependencies: Vec::new(),
-        }
-    }
 
     #[test]
     fn disable_plugin_surfaces_enabled_plugin_persistence_failures() {
@@ -114,9 +74,13 @@ mod tests {
             .expect("directory-backed enabled plugins path should exist");
 
         let mut manager = PluginManager::new(plugins_dir, data_dir);
-        manager
-            .plugins
-            .insert("example-plugin".to_string(), enabled_plugin_info(&plugin_root));
+        manager.plugins.insert(
+            "example-plugin".to_string(),
+            super::super::test_support::example_local_plugin_info(
+                &plugin_root,
+                crate::plugins::manager::PluginState::Enabled,
+            ),
+        );
 
         let error = disable_plugin(&mut manager, "example-plugin")
             .expect_err("enabled plugin persistence failure should not be silently downgraded");

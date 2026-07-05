@@ -1,12 +1,12 @@
 use crate::runtime::command_catalog;
 use crate::runtime::desktop_setup;
 use crate::runtime::desktop_shell;
+use crate::runtime::frontend_runtime_event_bridge;
 use crate::runtime::plugin_bridge;
 
 use crate::services::download::download_manager::DownloadManager;
 use crate::utils::logger::log_fatal_ctx;
 
-use std::sync::Arc;
 use tauri::{Emitter, Manager};
 
 /// 启动桌面模式。
@@ -46,16 +46,31 @@ pub(crate) fn run_desktop() {
             desktop_setup::apply_platform_window_style(app);
 
             let plugin_setup = desktop_setup::initialize_plugins();
-            let shared_runtimes_for_server_ready = Arc::clone(&plugin_setup.shared_runtimes);
 
-            plugin_bridge::install_plugin_bridge(
-                app,
-                plugin_setup.shared_runtimes,
-                shared_runtimes_for_server_ready,
-                plugin_setup.api_registry,
-            );
+            #[cfg(feature = "plugin-runtime-bridge")]
+            {
+                let shared_runtimes_for_server_ready =
+                    std::sync::Arc::clone(&plugin_setup.runtime.shared_runtimes);
+
+                plugin_bridge::install_plugin_runtime_bridge(
+                    app,
+                    std::sync::Arc::clone(&plugin_setup.runtime.shared_runtimes),
+                    shared_runtimes_for_server_ready,
+                    plugin_setup.runtime.api_registry.clone(),
+                );
+            }
+
+            frontend_runtime_event_bridge::install_frontend_runtime_event_bridge(app);
 
             app.manage(plugin_setup.manager);
+
+            let desktop_web_enabled = crate::services::global::settings_manager()
+                .get()
+                .enable_desktop_web_ui;
+            crate::services::desktop_web::sync_desktop_web_server(
+                app.handle(),
+                desktop_web_enabled,
+            )?;
 
             desktop_setup::install_frontend_watchdog(app.handle().clone());
 

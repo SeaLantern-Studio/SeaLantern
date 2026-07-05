@@ -56,6 +56,65 @@ pnpm --dir frontend install
 pnpm --dir frontend run tauri:dev
 ```
 
+开发入口：
+
+```bash
+# 桌面 full：当前默认桌面开发入口，会编译默认 Cargo graph
+pnpm --dir frontend run tauri:dev
+pnpm --dir frontend run tauri:dev:desktop-full
+
+# 桌面 min：可选桌面最小入口，显式透传 --no-default-features
+pnpm --dir frontend run tauri:dev:desktop-min
+
+# headless backend：只启动 HTTP / Docker 后端入口，不启动桌面壳
+pnpm --dir frontend run dev:http:backend
+
+# 页面预览：只启动 Vite 并打开对应路由，不改变 Cargo graph
+pnpm --dir frontend run dev
+pnpm --dir frontend run next:home
+pnpm --dir frontend run next:plugins
+pnpm --dir frontend run next:settings
+```
+
+其中：
+
+- `tauri:dev` / `tauri:dev:desktop-full` 会进入 `backend/tauri-host`。
+- `tauri:dev:desktop-min` 会进入 `backend/tauri-host`，并通过 `tauri dev -- --no-default-features` 关闭默认 Cargo features；它是可选入口，不替代默认 full。
+- `tauri:build` / `tauri:build:desktop-full` 对应默认桌面构建；`tauri:build:desktop-min` 对应 `--no-default-features` 的可选桌面构建入口。
+- `dev:http:backend` 会进入 `backend/docker-entry`，只用于 headless HTTP 后端开发。
+- `dev` / `next:*` 只是前端页面预览命令，不会减少 Rust 编译量。
+
+`desktop-min` 的当前正式场景语义可按 **metadata-only desktop** 理解：
+
+- 保留桌面壳、前端页面、基础 Tauri 命令、服务器元数据管理、插件元数据读取/安装/扫描/设置等非 runtime 面。
+- 显式关闭默认 Cargo features：`docker`、`online-tunnel`、`plugin-local-runtime`、`plugin-runtime-bridge`、`plugin-builtin-runtime`。
+- 因此它不是 `desktop-full` 的替代品，也不是新的默认入口，而是一个 opt-in 的场景化最小桌面路径。
+- 在这个场景下，runtime 相关插件能力按契约降级：toggle / runtime callback / snapshot / permission log 等返回 unavailable、no-op 或空结果；Docker / online tunnel 相关能力也不应被当作可用主路径。
+
+### 低内存机器可选开发路径
+
+默认开发路径不变：
+
+- 桌面 full 仍以 `pnpm --dir frontend run tauri:dev` 为主。
+- 提交前后端检查仍以本节下方的 workspace 基线为主。
+- 正常机器不需要因为这份说明主动降到 low-memory 档。
+
+如果你在 `16GiB` 或更低配置机器上开发，可以按需启用下面这些本地建议；它们都是 opt-in，不是仓库默认配置：
+
+1. **rust-analyzer 收口**
+   - 在你自己的编辑器用户设置里，把 linked project 优先收窄到 `backend/tauri-host/Cargo.toml`。
+   - 不要默认打开 `all-features`。
+   - on-save check 优先只跑当前 package 或当前 linked project。
+2. **日常 backend scoped check**
+   - 日常迭代可先跑 `cargo check --manifest-path backend/tauri-host/Cargo.toml`。
+   - 提交前再回到下方的 `cargo check --workspace` 和 `cargo clippy --workspace -- -D warnings` 基线。
+3. **按场景切入口**
+   - 如果你只做 HTTP / Docker backend 路径，可选 `pnpm --dir frontend run dev:http:backend`，不要默认起桌面壳。
+   - 如果你明确想走不带默认 Cargo features 的桌面路径，可选 `pnpm --dir frontend run tauri:dev:desktop-min`；它是 opt-in，不要把它当成默认入口。
+4. **本地轻量 debug/profile 建议**
+   - 如果 `tauri:dev` 仍然容易顶高峰值内存，可以只在你自己的本地 Cargo / IDE 配置里尝试更轻的 debug 信息或调试档。
+   - 这类设置不要直接提交成 `.cargo/config.toml`、`.vscode/settings.json` 之类的仓库默认降级配置。
+
 部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm --dir frontend run tauri:dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
 
 仅前端：

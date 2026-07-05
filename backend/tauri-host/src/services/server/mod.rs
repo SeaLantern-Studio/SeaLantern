@@ -11,6 +11,7 @@
 //! 旧的顶层别名大多已经删掉了。
 //! 新代码直接使用 `services::server::*` 下的真实路径。
 
+pub mod extensions;
 #[cfg(test)]
 pub(crate) mod flavor_support;
 pub mod id_manager;

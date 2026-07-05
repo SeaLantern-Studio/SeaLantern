@@ -7,7 +7,10 @@ use serde_json::Value;
 pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_whitelist", handle_get_whitelist as CommandHandler);
     builder.register("get_banned_players", handle_get_banned_players as CommandHandler);
+    builder.register("get_banned_ips", handle_get_banned_ips as CommandHandler);
     builder.register("get_ops", handle_get_ops as CommandHandler);
+    builder
+        .register("get_server_player_summary", handle_get_server_player_summary as CommandHandler);
     builder.register("parse_player_log_events", handle_parse_player_log_events as CommandHandler);
     builder.register("add_to_whitelist", handle_add_to_whitelist as CommandHandler);
     builder.register("remove_from_whitelist", handle_remove_from_whitelist as CommandHandler);
@@ -39,10 +42,30 @@ fn handle_get_banned_players(
     })
 }
 
+fn handle_get_banned_ips(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ServerPathRequest = parse_params(params)?;
+        let result = player_commands::get_banned_ips(req.server_path)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
 fn handle_get_ops(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: ServerPathRequest = parse_params(params)?;
         let result = player_commands::get_ops(req.server_path)?;
+        serde_json::to_value(result).map_err(|e| e.to_string())
+    })
+}
+
+fn handle_get_server_player_summary(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ServerPathRequest = parse_params(params)?;
+        let result = player_commands::get_server_player_summary(req.server_path)?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }

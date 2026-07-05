@@ -3,6 +3,7 @@ use crate::models::settings::{AppSettings, PartialSettings, TextColorOverrides};
 use crate::models::settings::{WINDOW_EFFECT_AUTO, WINDOW_EFFECT_OFF};
 use crate::services::data_dir::{DataDirChangeResult, DataDirStatus};
 use crate::services::global;
+use crate::services::plugin_dir::{PluginDirChangeResult, PluginDirStatus};
 use font_kit::source::SystemSource;
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -45,10 +46,15 @@ struct PersonalizationSettings {
     color: String,
     font_size: u32,
     font_family: String,
+    console_font_size: u32,
+    console_font_family: String,
+    console_letter_spacing: i32,
+    max_log_lines: u32,
     memory_display_precision: u8,
     text_color_overrides: TextColorOverrides,
     app_display_name: String,
     minimal_mode: bool,
+    next_home_layout: Vec<crate::models::settings::NextHomeLayoutItem>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -110,10 +116,15 @@ fn export_settings_from_app(settings: &AppSettings) -> PersonalizationSettings {
         color: settings.color.clone(),
         font_size: settings.font_size,
         font_family: settings.font_family.clone(),
+        console_font_size: settings.console_font_size,
+        console_font_family: settings.console_font_family.clone(),
+        console_letter_spacing: settings.console_letter_spacing,
+        max_log_lines: settings.max_log_lines,
         memory_display_precision: settings.memory_display_precision,
         text_color_overrides: settings.text_color_overrides.clone(),
         app_display_name: settings.app_display_name.clone(),
         minimal_mode: settings.minimal_mode,
+        next_home_layout: settings.next_home_layout.clone(),
     }
 }
 
@@ -131,10 +142,15 @@ fn apply_personalization_settings(
     settings.color = personalization.color;
     settings.font_size = personalization.font_size;
     settings.font_family = personalization.font_family;
+    settings.console_font_size = personalization.console_font_size;
+    settings.console_font_family = personalization.console_font_family;
+    settings.console_letter_spacing = personalization.console_letter_spacing;
+    settings.max_log_lines = personalization.max_log_lines;
     settings.memory_display_precision = personalization.memory_display_precision;
     settings.text_color_overrides = personalization.text_color_overrides;
     settings.app_display_name = personalization.app_display_name;
     settings.minimal_mode = personalization.minimal_mode;
+    settings.next_home_layout = personalization.next_home_layout;
 }
 
 fn normalize_zip_entry_name(name: &str) -> String {
@@ -401,6 +417,13 @@ pub struct ChangeDataDirRequest {
     pub migrate_existing: bool,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChangePluginDirRequest {
+    pub path: String,
+    #[serde(default)]
+    pub migrate_existing: bool,
+}
+
 #[tauri::command]
 /// 读取当前设置
 pub fn get_settings() -> AppSettings {
@@ -426,6 +449,19 @@ pub fn change_data_dir(request: ChangeDataDirRequest) -> Result<DataDirChangeRes
 }
 
 #[tauri::command]
+pub fn get_plugin_dir_status() -> PluginDirStatus {
+    crate::services::plugin_dir::current_status()
+}
+
+#[tauri::command]
+pub fn change_plugin_dir(request: ChangePluginDirRequest) -> Result<PluginDirChangeResult, String> {
+    crate::services::plugin_dir::switch_plugin_dir(
+        std::path::Path::new(request.path.trim()),
+        request.migrate_existing,
+    )
+}
+
+#[tauri::command]
 /// 保存完整设置
 ///
 /// # Parameters
@@ -435,8 +471,11 @@ pub fn change_data_dir(request: ChangeDataDirRequest) -> Result<DataDirChangeRes
 /// # Returns
 ///
 /// 保存成功时返回 `Ok(())`
-pub fn save_settings(settings: AppSettings) -> Result<(), String> {
-    global::settings_manager().update(settings)
+pub fn save_settings(settings: AppSettings, app: AppHandle) -> Result<(), String> {
+    let enable_desktop_web_ui = settings.enable_desktop_web_ui;
+    global::settings_manager().update(settings)?;
+    crate::services::desktop_web::sync_desktop_web_server(&app, enable_desktop_web_ui)?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -449,8 +488,15 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
 /// # Returns
 ///
 /// 返回新的完整设置和变化分组
-pub fn save_settings_with_diff(settings: AppSettings) -> Result<UpdateSettingsResult, String> {
+pub fn save_settings_with_diff(
+    settings: AppSettings,
+    app: AppHandle,
+) -> Result<UpdateSettingsResult, String> {
     let result = global::settings_manager().update_with_diff(settings)?;
+    crate::services::desktop_web::sync_desktop_web_server(
+        &app,
+        result.settings.enable_desktop_web_ui,
+    )?;
     Ok(UpdateSettingsResult {
         settings: result.settings,
         changed_groups: result
@@ -471,8 +517,15 @@ pub fn save_settings_with_diff(settings: AppSettings) -> Result<UpdateSettingsRe
 /// # Returns
 ///
 /// 返回合并后的设置和变化分组
-pub fn update_settings_partial(partial: PartialSettings) -> Result<UpdateSettingsResult, String> {
+pub fn update_settings_partial(
+    partial: PartialSettings,
+    app: AppHandle,
+) -> Result<UpdateSettingsResult, String> {
     let result = global::settings_manager().update_partial(partial)?;
+    crate::services::desktop_web::sync_desktop_web_server(
+        &app,
+        result.settings.enable_desktop_web_ui,
+    )?;
     Ok(UpdateSettingsResult {
         settings: result.settings,
         changed_groups: result
@@ -485,8 +538,10 @@ pub fn update_settings_partial(partial: PartialSettings) -> Result<UpdateSetting
 
 #[tauri::command]
 /// 重置设置为默认值
-pub fn reset_settings() -> Result<AppSettings, String> {
-    global::settings_manager().reset()
+pub fn reset_settings(app: AppHandle) -> Result<AppSettings, String> {
+    let settings = global::settings_manager().reset()?;
+    crate::services::desktop_web::sync_desktop_web_server(&app, settings.enable_desktop_web_ui)?;
+    Ok(settings)
 }
 
 #[tauri::command]
@@ -506,9 +561,10 @@ pub fn export_settings() -> Result<String, String> {
 /// # Returns
 ///
 /// 导入成功时返回新的完整设置
-pub fn import_settings(json: String) -> Result<AppSettings, String> {
+pub fn import_settings(json: String, app: AppHandle) -> Result<AppSettings, String> {
     let s: AppSettings = serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
     global::settings_manager().update(s.clone())?;
+    crate::services::desktop_web::sync_desktop_web_server(&app, s.enable_desktop_web_ui)?;
     Ok(s)
 }
 
@@ -572,7 +628,10 @@ pub fn export_personalization_package(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn import_personalization_package(path: String) -> Result<ImportPersonalizationResult, String> {
+pub fn import_personalization_package(
+    path: String,
+    app: AppHandle,
+) -> Result<ImportPersonalizationResult, String> {
     let source_path = PathBuf::from(path.trim());
     if !source_path.exists() {
         return Err(format!("Personalization package not found: {}", source_path.display()));
@@ -627,6 +686,10 @@ pub fn import_personalization_package(path: String) -> Result<ImportPersonalizat
     }
 
     let result = global::settings_manager().update_with_diff(next_settings)?;
+    crate::services::desktop_web::sync_desktop_web_server(
+        &app,
+        result.settings.enable_desktop_web_ui,
+    )?;
     let (imported_plugins, skipped_plugins) = import_personalization_plugins(manifest.plugins);
 
     Ok(ImportPersonalizationResult {

@@ -109,6 +109,7 @@
   "import": "インポート",
   "java_download": "Java をダウンロード",
   "java_download_desc": "システムに Java がインストールされていない場合、または最新バージョンが必要な場合は、ここからダウンロードできます",
+  "java_download_desktop_only": "Java のダウンロードとインストールはデスクトップ版でのみ利用できます",
   "java_download_btn": "Java {{version}} (LTS) をダウンロード",
   "reset": "デフォルトに戻す",
   "import_settings": "設定をインポート",

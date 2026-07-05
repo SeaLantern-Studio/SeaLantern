@@ -1,4 +1,4 @@
-use super::AppSettings;
+use super::{AppSettings, OneBot11Settings};
 use crate::models::server::{CpuPolicyConfig, JvmPresetConfig};
 
 /// 创建默认设置
@@ -40,13 +40,38 @@ impl Default for AppSettings {
             text_color_overrides: Default::default(),
             app_display_name: String::new(),
             language: "zh-CN".to_string(),
+            locale_layer_order: default_locale_layer_order(),
             developer_mode: false,
+            enable_desktop_web_ui: false,
             close_action: "ask".to_string(),
             last_run_path: String::new(),
             minimal_mode: false,
+            next_home_layout: Vec::new(),
             plugin_console_allowed_commands: default_allowed_commands(),
             plugin_console_blocked_commands: default_blocked_commands(),
             agreed_to_terms: false,
+            onebot_11: OneBot11Settings::default(),
+        }
+    }
+}
+
+impl Default for OneBot11Settings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            api_base_url: String::new(),
+            access_token: String::new(),
+            event_classes: vec!["output".to_string(), "lifecycle".to_string()],
+            structured_event_kinds: vec![
+                "server_ready".to_string(),
+                "player_join".to_string(),
+                "player_leave".to_string(),
+                "chat".to_string(),
+                "error".to_string(),
+            ],
+            server_ids: Vec::new(),
+            targets: Vec::new(),
+            message_template: "[{server_id}] {kind}: {summary}".to_string(),
         }
     }
 }
@@ -137,6 +162,10 @@ pub(super) fn default_memory_display_precision() -> u8 {
 
 pub(super) fn default_language() -> String {
     "zh-CN".to_string()
+}
+
+pub(super) fn default_locale_layer_order() -> Vec<String> {
+    vec!["zh-CN".to_string(), "en-US".to_string()]
 }
 
 pub(super) fn default_close_action() -> String {

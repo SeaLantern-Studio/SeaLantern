@@ -1,6 +1,6 @@
 use crate::commands;
 
-// 仅在 debug 构建下导入调试命令模块（发布包中不包含）
+/// Debug-only command module excluded from release builds.
 #[cfg(debug_assertions)]
 use commands::app::debug as debug_commands;
 
@@ -16,16 +16,16 @@ use commands::online::server_ids as server_id_commands;
 use commands::online::tunnel as tunnel_commands;
 use commands::plugins::manage as plugin_commands;
 use commands::server::config as config_commands;
+use commands::server::extensions as extensions_commands;
 use commands::server::manage as server_commands;
 use commands::server::players as player_commands;
 use commands::server::plugins as server_plugin_commands;
 use commands::update as update_commands;
 
-/// 注册桌面模式下的命令表
+/// Registers the Tauri desktop command table.
 ///
-/// # Returns
-///
-/// 返回 Tauri 桌面端使用的命令分发表
+/// The returned handler is the authoritative desktop IPC surface and should stay
+/// aligned with the frontend command wrappers and runtime command catalog.
 pub(crate) fn desktop_handler(
 ) -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
@@ -60,6 +60,12 @@ pub(crate) fn desktop_handler(
         mod_download_commands::search_mods,
         mod_download_commands::install_mod,
         config_commands::read_config,
+        config_commands::list_server_config_files,
+        config_commands::search_server_config_files,
+        config_commands::read_server_config_source,
+        config_commands::write_server_config_source,
+        config_commands::read_server_config_document,
+        config_commands::write_server_config_document,
         config_commands::write_config,
         config_commands::read_server_properties,
         config_commands::write_server_properties,
@@ -70,8 +76,17 @@ pub(crate) fn desktop_handler(
         config_commands::preview_server_properties_write_from_source,
         config_commands::read_sl_config,
         config_commands::write_sl_config,
+        extensions_commands::get_server_extensions_summary,
         system_commands::get_system_info,
+        system_commands::get_host_capabilities,
+        system_commands::get_desktop_web_status,
         system_commands::get_server_resource_usage,
+        system_commands::list_event_consumers,
+        system_commands::get_event_consumer,
+        system_commands::get_recent_app_operation_events,
+        system_commands::set_event_consumer_enabled,
+        system_commands::update_event_consumer_filters,
+        system_commands::update_event_consumer_metadata,
         system_commands::pick_jar_file,
         system_commands::pick_archive_file,
         system_commands::pick_startup_file,
@@ -81,6 +96,7 @@ pub(crate) fn desktop_handler(
         system_commands::pick_personalization_export_file,
         system_commands::pick_personalization_import_file,
         system_commands::pick_folder,
+        system_commands::pick_file,
         system_commands::pick_image_file,
         system_commands::open_file,
         system_commands::open_folder,
@@ -93,7 +109,9 @@ pub(crate) fn desktop_handler(
         i18n_commands::get_locale_bundle,
         player_commands::get_whitelist,
         player_commands::get_banned_players,
+        player_commands::get_banned_ips,
         player_commands::get_ops,
+        player_commands::get_server_player_summary,
         player_commands::parse_player_log_events,
         player_commands::add_to_whitelist,
         player_commands::remove_from_whitelist,
@@ -107,6 +125,8 @@ pub(crate) fn desktop_handler(
         settings_commands::get_data_dir_status,
         settings_commands::initialize_data_dir,
         settings_commands::change_data_dir,
+        settings_commands::get_plugin_dir_status,
+        settings_commands::change_plugin_dir,
         settings_commands::save_settings,
         settings_commands::save_settings_with_diff,
         settings_commands::update_settings_partial,

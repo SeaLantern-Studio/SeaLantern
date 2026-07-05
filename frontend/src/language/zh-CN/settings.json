@@ -21,8 +21,21 @@
   "jvm_args": "JVM 参数",
   "general": "通用",
   "general_desc": "基本行为设置",
+  "language": "语言",
+  "language_desc": "选择 Sea Lantern 使用的界面语言。",
   "auto_stop_desc": "退出 Sea Lantern 时自动向运行中的服务器发送 stop 命令，防止数据丢失",
   "auto_eula_desc": "启动服务器前自动写入 eula=true，省去手动修改的步骤",
+  "desktop_web_ui": "开启网页端",
+  "desktop_web_ui_desc": "在桌面端同时启动本机网页访问入口。默认仅监听本地回环地址。",
+  "desktop_web_ui_status": "运行状态",
+  "desktop_web_ui_status_loading": "正在读取",
+  "desktop_web_ui_status_error": "暂时不可用",
+  "desktop_web_ui_status_running": "已运行",
+  "desktop_web_ui_status_stopped": "未运行",
+  "desktop_web_ui_url": "访问地址",
+  "desktop_web_ui_copy_url": "复制地址",
+  "desktop_web_ui_url_copied": "访问地址已复制",
+  "desktop_web_ui_static_dir_missing": "未找到网页静态文件，当前仅提供 API。",
   "server_defaults": "服务器默认值",
   "server_defaults_desc": "创建新服务器时使用的默认参数",
   "max_memory_desc": "建议至少 1024MB。大型模组服可能需要 4096MB 以上",
@@ -50,6 +63,16 @@
   "data_dir_source_env": "当前由环境变量强制指定此目录。",
   "data_dir_source_docker": "当前运行在容器模式，使用容器内数据目录。",
   "data_dir_source_legacy_portable": "检测到旧版便携目录，当前仍从旧位置读取数据。",
+  "plugin_dir_title": "插件目录",
+  "plugin_dir_desc": "控制通过插件市场安装或本地安装的插件最终存放在哪里。",
+  "plugin_dir_current": "当前插件目录",
+  "plugin_dir_locator": "定位文件",
+  "plugin_dir_recommended": "推荐目录",
+  "plugin_dir_required": "请选择插件目录",
+  "plugin_dir_change": "迁移并切换",
+  "plugin_dir_change_success": "插件目录已切换，共迁移 {count} 项。",
+  "plugin_dir_source_default": "当前使用默认插件目录。",
+  "plugin_dir_source_locator": "当前由定位文件固定到这个插件目录。",
   "browse": "浏览",
   "default_jvm_preset_label": "默认 JVM 预设",
   "default_jvm_preset_placeholder": "请选择默认 JVM 预设",
@@ -156,6 +179,7 @@
   "import": "导入",
   "java_download": "下载 Java",
   "java_download_desc": "如果系统中没有 Java 或需要更新版本，可以从这里下载",
+  "java_download_desktop_only": "Java 下载和安装仅支持桌面端",
   "java_download_btn": "下载 Java {{version}} (LTS)",
   "java_version_select": "选择版本",
   "java_installing": "下载中...",
@@ -213,10 +237,10 @@
   "personalize_page_import_export": "个性化内容可导入或导出为独立包。",
   "personalization_export": "导出个性化包",
   "personalization_import": "导入个性化包",
-  "personalization_package_desc": "包含背景图、窗口材质、字体与颜色覆盖，以及支持个性化能力的插件主题设置。",
+  "personalization_package_desc": "包含背景图、窗口材质、界面与控制台字体、文字颜色覆盖，以及支持个性化能力的插件主题设置。",
   "personalization_export_success": "个性化包已导出",
   "personalization_import_success": "个性化包已导入",
-  "personalization_import_partial": "个性化包已导入，部分插件主题配置未能应用",
+  "personalization_import_partial": "个性化包已导入，但有 {count} 个插件个性化配置未能应用",
   "font_family_default": "系统默认",
   "color_picker": "颜色选择器",
   "input_color_placeholder": "输入颜色值",
@@ -244,8 +268,126 @@
   "ipv6_test_targets_label": "测试目标:",
   "minimal_mode": "极简模式",
   "minimal_mode_desc": "关闭所有动效和特效，只保留最基本的渲染和互动",
+  "next": {
+    "page_title": "设置",
+    "page_description": "",
+    "refresh": "刷新",
+    "error_title": "暂时无法打开设置",
+    "error_description": "请稍后重试。",
+    "retry": "重试",
+    "nav_aria_label": "设置分组",
+    "sections": {
+      "appearance": {
+        "label": "外观",
+        "title": "外观",
+        "description": ""
+      },
+      "general": {
+        "label": "通用",
+        "title": "通用",
+        "description": ""
+      },
+      "developer_management": {
+        "label": "开发管理",
+        "title": "开发管理",
+        "description": ""
+      }
+    },
+    "developer_management": {
+      "title": "开发工具",
+      "description": ""
+    },
+    "summary": {
+      "eyebrow": "设置",
+      "title": "设置首页",
+      "description": "集中查看设置入口和当前状态。",
+      "refresh": "刷新",
+      "chips_aria_label": "设置状态"
+    },
+    "appearance": {
+      "live_hint": "",
+      "theme_managed_by": "当前由 {plugin} 控制",
+      "personalize_bridge_title": "更多外观在个性化",
+      "personalize_bridge_desc": "颜色、标题和控制台选项在“个性化”里调整。",
+      "personalize_bridge_hint": "主题插件会接管颜色。",
+      "window_effect_fallback": "当前环境仅提供默认材质。",
+      "save_theme_failed": "主题未保存",
+      "save_font_failed": "字体未保存",
+      "save_window_effect_failed": "窗口材质未保存",
+      "save_minimal_mode_failed": "极简模式未保存",
+      "save_background_failed": "背景设置未保存",
+      "save_font_size_failed": "字号未保存",
+      "save_background_image_failed": "背景图未保存",
+      "pick_image_failed": "图片选择失败",
+      "background": {
+        "title": "背景",
+        "status_set": "已设置背景",
+        "status_empty": "未设置",
+        "preview_loading": "正在加载预览",
+        "preview_alt": "背景预览",
+        "animated_badge": "动态图片",
+        "replace": "更换",
+        "remove": "移除",
+        "empty_title": "未设置背景图",
+        "empty_description": "选择一张图片后会立即生效。",
+        "pick": "选择图片",
+        "opacity": "透明度",
+        "blur": "模糊",
+        "brightness": "亮度",
+        "size": "图片填充方式",
+        "size_hint": "选择背景图的显示方式",
+        "reselect": "重新选择",
+        "remove_image": "移除背景图"
+      }
+    },
+    "general": {
+      "live_hint": "调整常用行为与默认选项。"
+    }
+  },
+  "paint": {
+    "nav_aria_label": "个性化分组",
+    "page_description": "集中调整颜色主题、标题文字和控制台显示偏好，并可将个性化内容导入或导出为独立包。",
+    "appearance_bridge_title": "背景和窗口材质在外观里调整",
+    "appearance_bridge_desc": "背景图、窗口材质、界面主题模式和界面字体属于“设置 > 外观”。这里专注颜色主题、文字颜色、应用展示名称和控制台显示偏好。",
+    "theme_provider_notice": "{plugin} 正在控制颜色。",
+    "theme_provider_fact": "来自 {plugin}",
+    "sections": {
+      "appearance_theme": {
+        "label": "外观与主题",
+        "description": ""
+      },
+      "text_title": {
+        "label": "文字与标题",
+        "description": ""
+      },
+      "display_control": {
+        "label": "显示和控制",
+        "description": ""
+      }
+    }
+  },
   "color_options": {
-    "custom": "自定义"
+    "custom": "自定义",
+    "default": {
+      "label": "默认",
+      "description": "SeaLantern 默认配色，偏清爽的蓝绿色。"
+    },
+    "ocean": {
+      "label": "海洋",
+      "description": "偏青蓝的冷色调，整体更清透。"
+    },
+    "rose": {
+      "label": "玫瑰",
+      "description": "偏粉色的暖色调，视觉更柔和。"
+    },
+    "sunset": {
+      "label": "日落",
+      "description": "偏橙金的暖色调，整体更明亮。"
+    },
+    "midnight": {
+      "label": "午夜",
+      "description": "偏靛蓝的深色调，夜间对比更强。"
+    }
   },
   "startup_config_java_path_load_failed": "启动配置已加载，但暂时无法刷新当前 Java 路径。",
   "startup_config_load_failed": "加载启动配置失败",

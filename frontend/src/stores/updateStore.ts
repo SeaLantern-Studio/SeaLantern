@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { checkUpdate, type UpdateInfo } from "@api/update";
+import { updateMetadataApi, type UpdateInfo } from "@api/update";
 
 export type UpdateStatus =
   | "idle"
@@ -56,7 +56,7 @@ export const useUpdateStore = defineStore("update", () => {
     errorMessage.value = null;
 
     try {
-      const info = await checkUpdate();
+      const info = await updateMetadataApi.check();
       if (info && info.has_update) {
         updateInfo.value = info;
         status.value = "available";

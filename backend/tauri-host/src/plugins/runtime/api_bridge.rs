@@ -1,19 +1,19 @@
 use super::shared::{json_value_from_lua, lua_value_from_json};
 use super::PluginRuntime;
-use crate::plugins::api::{call_api, ApiRegistryOps};
-use crate::services::global::i18n_service;
+use crate::plugins::api::ApiRegistryOps;
+use crate::plugins::runtime::host_api::{host_call_api, host_t, host_t_with_options};
 use mlua::{Function, MultiValue, Table, Value};
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 
 fn api_t(key: &str) -> String {
-    i18n_service().t(key)
+    host_t(key)
 }
 
 fn api_t1(key: &str, a: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
-    i18n_service().t_with_options(key, &m)
+    host_t_with_options(key, &m)
 }
 
 impl PluginRuntime {
@@ -139,7 +139,7 @@ impl PluginRuntime {
             .create_function(move |lua, args: MultiValue| {
                 let (target_plugin, api_name, json_args) = Self::parse_call_args(args)?;
 
-                match call_api(&pid, &target_plugin, &api_name, json_args) {
+                match host_call_api(&pid, &target_plugin, &api_name, json_args) {
                     Ok(result) => lua_value_from_json(lua, &result, 0).map_err(|e| {
                         mlua::Error::runtime(api_t1(
                             "plugins.runtime.api_bridge.result_convert_failed",

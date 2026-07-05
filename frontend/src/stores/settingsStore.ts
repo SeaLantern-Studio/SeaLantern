@@ -6,12 +6,14 @@ import {
   type DataDirChangeResult,
   type DataDirStatus,
   type ImportPersonalizationResult,
+  type PluginDirChangeResult,
+  type PluginDirStatus,
   type PartialSettings,
   type SettingsGroup,
   type WindowEffect,
 } from "@api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { isWindowsPlatform } from "@utils/platform";
+import { isLinuxPlatform, isMacOSPlatform, isWindowsPlatform } from "@utils/platform";
 import {
   applyColors,
   applyDeveloperMode,
@@ -126,20 +128,36 @@ const defaultSettings: AppSettings = {
   },
   app_display_name: "",
   language: "zh-CN",
+  locale_layer_order: [],
   developer_mode: false,
+  enable_desktop_web_ui: false,
   close_action: "ask",
   last_run_path: "",
   minimal_mode: false,
+  next_home_layout: [],
   agreed_to_terms: false,
+  onebot_11: {
+    enabled: false,
+    api_base_url: "",
+    access_token: "",
+    event_classes: ["output", "lifecycle"],
+    structured_event_kinds: ["server_ready", "player_join", "player_leave", "chat", "error"],
+    server_ids: [],
+    targets: [],
+    message_template: "[{server_id}] {kind}: {summary}",
+  },
 };
 
 export const useSettingsStore = defineStore("settings", () => {
   const settings = ref<AppSettings>(defaultSettings);
   const dataDirStatus = ref<DataDirStatus | null>(null);
+  const pluginDirStatus = ref<PluginDirStatus | null>(null);
   const isLoaded = ref(false);
   const isLoading = ref(false);
   const loadError = ref<string | null>(null);
   const isWindows = isWindowsPlatform();
+  const isMacOS = isMacOSPlatform();
+  const isLinux = isLinuxPlatform();
 
   let loadPromise: Promise<void> | null = null;
   let appearanceApplyQueue: Promise<void> = Promise.resolve();
@@ -180,11 +198,14 @@ export const useSettingsStore = defineStore("settings", () => {
 
   function applyWindowEffectAttributes(nextSettings: AppSettings): void {
     const effect = (nextSettings.window_effect || "off") as WindowEffect;
-    const nativeWindowEffectEnabled = !(isWindows && WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED);
+    const nativeWindowEffectEnabled =
+      isMacOS || (isWindows && !WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED);
     const hasBackgroundImage = Boolean(nextSettings.background_image);
-    const enabled = nativeWindowEffectEnabled
-      ? effect !== "off" || !hasBackgroundImage
-      : effect !== "off" && hasBackgroundImage;
+    const enabled = isLinux
+      ? false
+      : nativeWindowEffectEnabled
+        ? effect !== "off" || !hasBackgroundImage
+        : effect !== "off" && hasBackgroundImage;
     document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
     document.documentElement.setAttribute("data-window-effect", effect);
   }
@@ -247,6 +268,7 @@ export const useSettingsStore = defineStore("settings", () => {
         const loadedSettings = await settingsApi.get();
         syncSettings(loadedSettings);
         dataDirStatus.value = await settingsApi.getDataDirStatus();
+        pluginDirStatus.value = await settingsApi.getPluginDirStatus();
       } catch (e) {
         console.error("Failed to load settings:", e);
         loadError.value = e instanceof Error ? e.message : String(e);
@@ -266,6 +288,12 @@ export const useSettingsStore = defineStore("settings", () => {
     return status;
   }
 
+  async function refreshPluginDirStatus(): Promise<PluginDirStatus> {
+    const status = await settingsApi.getPluginDirStatus();
+    pluginDirStatus.value = status;
+    return status;
+  }
+
   async function initializeDataDir(path: string): Promise<DataDirChangeResult> {
     const result = await settingsApi.initializeDataDir(path);
     dataDirStatus.value = result.status;
@@ -276,6 +304,16 @@ export const useSettingsStore = defineStore("settings", () => {
   async function changeDataDir(path: string, migrateExisting = true): Promise<DataDirChangeResult> {
     const result = await settingsApi.changeDataDir(path, migrateExisting);
     dataDirStatus.value = result.status;
+    await loadSettings(true);
+    return result;
+  }
+
+  async function changePluginDir(
+    path: string,
+    migrateExisting = true,
+  ): Promise<PluginDirChangeResult> {
+    const result = await settingsApi.changePluginDir(path, migrateExisting);
+    pluginDirStatus.value = result.status;
     await loadSettings(true);
     return result;
   }
@@ -355,6 +393,7 @@ export const useSettingsStore = defineStore("settings", () => {
   return {
     settings,
     dataDirStatus,
+    pluginDirStatus,
     isLoaded,
     isLoading,
     loadError,
@@ -374,8 +413,10 @@ export const useSettingsStore = defineStore("settings", () => {
     saveSettingsWithDiff,
     updatePartial,
     refreshDataDirStatus,
+    refreshPluginDirStatus,
     initializeDataDir,
     changeDataDir,
+    changePluginDir,
     setLanguage,
     setCloseAction,
     resetSettings,

@@ -19,7 +19,8 @@ impl PluginRuntime {
             .parent()
             .map(|p| p.to_path_buf())
             .unwrap_or_else(|| self.plugin_dir.clone());
-        let ctx = PluginsContext::new(plugins_root, self.plugin_id.clone());
+        let ctx =
+            PluginsContext::new(plugins_root, self.plugin_id.clone(), self.permissions.clone());
 
         set_plugins_function(
             &plugins_table,

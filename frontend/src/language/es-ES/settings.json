@@ -81,6 +81,7 @@
   "import": "Importar",
   "java_download": "Descargar Java",
   "java_download_desc": "Si Java no está instalado o necesitas una versión actualizada, puedes descargarlo aquí",
+  "java_download_desktop_only": "La descarga e instalacion de Java solo esta disponible en la app de escritorio",
   "java_download_btn": "Descargar Java {{version}} (LTS)",
   "reset": "Restablecer",
   "import_settings": "Importar ajustes",

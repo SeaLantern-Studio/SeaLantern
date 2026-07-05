@@ -15,6 +15,9 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 sea_lantern_runtime = { package = "sea-lantern-runtime", path = "../runtime-core" }
+sea_lantern_event_core = { package = "sea-lantern-event-core", path = "../event-core" }
+sea_lantern_i18n_core = { package = "sea-lantern-i18n-core", path = "../i18n-core" }
+sea_lantern_lua_runtime_core = { package = "sea-lantern-lua-runtime-core", path = "../lua-runtime-core", optional = true }
 sea_lantern_java_installer_core = { package = "sea-lantern-java-installer-core", path = "../java-installer-core" }
 sea_lantern_server_download_links_core = { package = "sea-lantern-server-download-links-core", path = "../server-download-links-core" }
 sea_lantern_server_installer_core = { package = "sea-lantern-server-installer-core", path = "../server-installer-core" }
@@ -22,6 +25,8 @@ sea_lantern_server_plugin_core = { package = "sea-lantern-server-plugin-core", p
 sea_lantern_server_local_setup_core = { package = "sea-lantern-server-local-setup-core", path = "../server-local-setup-core" }
 sea_lantern_server_startup_scan_core = { package = "sea-lantern-server-startup-scan-core", path = "../server-startup-scan-core" }
 sea_lantern_server_config_core = { package = "sea-lantern-server-config-core", path = "../server-config-core" }
+sea_lantern_plugin_trust_core = { package = "sea-lantern-plugin-trust-core", path = "../plugin-trust-core" }
+sea_lantern_server_log_core = { package = "sea-lantern-server-log-core", path = "../server-log-core" }
 sea_lantern_starter_links_core = { package = "sea-lantern-starter-links-core", path = "../starter-links-core" }
 sea_lantern_update_core = { package = "sea-lantern-update-core", path = "../update-core" }
 sea_lantern_docker_core = { package = "sea-lantern-docker-core", path = "../docker-core" }
@@ -54,14 +59,15 @@ reqwest = { version = "0.12", features = ["json", "blocking", "stream"] }
 tauri-plugin-process = "2.3.1"
 tauri-plugin-http = "2.5.7"
 sysinfo = "0.32"
-axum = { version = "0.8", features = ["multipart"], optional = true }
+axum = { version = "0.8", features = ["multipart", "ws"], optional = true }
 tower = { version = "0.5", optional = true }
 tower-http = { version = "0.6", features = ["fs", "cors"], optional = true }
 tokio-stream = { version = "0.1", features = ["sync"], optional = true }
 mime_guess = { version = "2.0", optional = true }
 futures = "0.3.32"
 encoding_rs = "0.8"
-mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
+mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"], optional = true }
+wait-timeout = "0.2"
 zip = "2.0"
 tar = "0.4"
 flate2 = "1.0"
@@ -75,18 +81,30 @@ image = { version = "0.25", default-features = false, features = [
     "ico",
 ] }
 url = "2.5"
-rusqlite = { version = "0.32", features = ["bundled"] }
 ipnet = "2.10"
 chrono = "0.4"
 lazy_static = "1.4"
 shlex = "1.3.0"
+sha2 = "0.10"
+argon2 = "0.5"
+rand_core = { version = "0.6", features = ["getrandom"] }
 rcon = { version = "0.6", features = ["rt-tokio"] }
-sculk = { version = "0.3.0-rc.1", features = ["persist", "clipboard"] }
-java-manager = "0.2.0"
+sculk = { version = "0.3.0-rc.1", features = ["persist", "clipboard"], optional = true }
+java-manager = "0.3.0"
 
 [features]
-default = ["docker"]
+default = [
+    "docker",
+    "online-tunnel",
+    "plugin-local-runtime",
+    "plugin-runtime-bridge",
+    "plugin-builtin-runtime",
+]
 docker = ["axum", "tower", "tower-http", "tokio-stream", "mime_guess"]
+online-tunnel = ["dep:sculk"]
+plugin-local-runtime = ["dep:mlua", "dep:sea_lantern_lua_runtime_core"]
+plugin-runtime-bridge = []
+plugin-builtin-runtime = []
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [

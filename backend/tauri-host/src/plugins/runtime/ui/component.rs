@@ -3,8 +3,26 @@ use super::common::{
     emit_component_action, lua_opt_str, lua_str, lua_value_to_json, map_create_err, map_set_err,
     table_to_json, ui_t2,
 };
-use crate::plugins::api::component_mirror_list;
+use crate::plugins::runtime::host_api::{host_component_mirror_list, host_t_with_options};
+use crate::plugins::runtime::permissions::UI_PERMISSION;
 use mlua::Table;
+
+fn require_component_permission(permissions: &[String], fine_permission: &str) -> mlua::Result<()> {
+    if permissions
+        .iter()
+        .any(|permission| permission == fine_permission || permission == UI_PERMISSION)
+    {
+        Ok(())
+    } else {
+        Err(mlua::Error::runtime(host_t_with_options(
+            "plugins.runtime.permissions.permission_required",
+            &std::collections::HashMap::from([(
+                "0".to_string(),
+                format!("{} | {}", fine_permission, UI_PERMISSION),
+            )]),
+        )))
+    }
+}
 
 pub(super) fn register(runtime: &PluginRuntime, ui_table: &Table) -> Result<(), String> {
     let component_table = runtime
@@ -44,11 +62,13 @@ fn component_payload(
 }
 
 fn register_list(runtime: &PluginRuntime, component_table: &Table) -> Result<(), String> {
+    let permissions = runtime.permissions.clone();
     let list_fn = runtime
         .lua
         .create_function(move |lua, page_filter: Option<mlua::String>| {
+            require_component_permission(&permissions, "ui.component.read")?;
             let filter = lua_opt_str(page_filter);
-            let entries = component_mirror_list(filter.as_deref());
+            let entries = host_component_mirror_list(filter.as_deref());
             let result = lua.create_table()?;
             for (i, entry) in entries.iter().enumerate() {
                 let item = lua.create_table()?;
@@ -71,10 +91,12 @@ fn register_list(runtime: &PluginRuntime, component_table: &Table) -> Result<(),
 
 fn register_get(runtime: &PluginRuntime, component_table: &Table) -> Result<(), String> {
     let pid = runtime.plugin_id.clone();
+    let permissions = runtime.permissions.clone();
     let get_fn = map_create_err(
         runtime
             .lua
             .create_function(move |lua, (cid, prop): (mlua::String, mlua::String)| {
+                require_component_permission(&permissions, "ui.component.read")?;
                 let payload = component_payload(
                     &pid,
                     "get",
@@ -95,9 +117,11 @@ fn register_get(runtime: &PluginRuntime, component_table: &Table) -> Result<(), 
 
 fn register_set(runtime: &PluginRuntime, component_table: &Table) -> Result<(), String> {
     let pid = runtime.plugin_id.clone();
+    let permissions = runtime.permissions.clone();
     let set_fn = map_create_err(
         runtime.lua.create_function(
             move |lua, (cid, prop, val): (mlua::String, mlua::String, mlua::Value)| {
+                require_component_permission(&permissions, "ui.component.write")?;
                 let payload = component_payload(
                     &pid,
                     "set",
@@ -120,10 +144,12 @@ fn register_set(runtime: &PluginRuntime, component_table: &Table) -> Result<(), 
 
 fn register_call(runtime: &PluginRuntime, component_table: &Table) -> Result<(), String> {
     let pid = runtime.plugin_id.clone();
+    let permissions = runtime.permissions.clone();
     let call_fn = map_create_err(
         runtime
             .lua
             .create_function(move |lua, (cid, method): (mlua::String, mlua::String)| {
+                require_component_permission(&permissions, "ui.component.write")?;
                 let payload = component_payload(
                     &pid,
                     "call",
@@ -144,10 +170,12 @@ fn register_call(runtime: &PluginRuntime, component_table: &Table) -> Result<(),
 
 fn register_on(runtime: &PluginRuntime, component_table: &Table) -> Result<(), String> {
     let pid = runtime.plugin_id.clone();
+    let permissions = runtime.permissions.clone();
     let on_fn = map_create_err(
         runtime
             .lua
             .create_function(move |lua, (cid, event): (mlua::String, mlua::String)| {
+                require_component_permission(&permissions, "ui.component.write")?;
                 let payload = component_payload(
                     &pid,
                     "on",
@@ -168,6 +196,7 @@ fn register_on(runtime: &PluginRuntime, component_table: &Table) -> Result<(), S
 
 fn register_create(runtime: &PluginRuntime, component_table: &Table) -> Result<(), String> {
     let pid = runtime.plugin_id.clone();
+    let permissions = runtime.permissions.clone();
     let create_fn = map_create_err(
         runtime.lua.create_function(
             move |lua,
@@ -176,6 +205,7 @@ fn register_create(runtime: &PluginRuntime, component_table: &Table) -> Result<(
                 mlua::String,
                 mlua::Table,
             )| {
+                require_component_permission(&permissions, "ui.component.create")?;
                 let payload = component_payload(
                     &pid,
                     "create",

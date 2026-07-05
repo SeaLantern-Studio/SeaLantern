@@ -3,8 +3,10 @@ use crate::hardcode_data::app_files::PLUGIN_MANIFEST_FILE_NAME;
 use crate::hardcode_data::plugin_manifest::{
     manifest_not_found_in_zip_message, parse_manifest_failed_message, read_manifest_failed_message,
 };
+use crate::models::plugin::{PluginDistributionClass, PluginSource};
 use crate::plugins::loader::PluginLoader;
 use crate::plugins::manager::i18n::{plugin_t1, plugin_t2};
+use crate::services::plugin_trusted_catalog::PluginInstallMetadata;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::Path;
@@ -18,6 +20,7 @@ use std::path::Path;
 pub(super) fn install_plugin_from_zip(
     manager: &mut PluginManager,
     zip_path: &Path,
+    metadata: &PluginInstallMetadata,
 ) -> Result<PluginInfo, String> {
     let file = File::open(zip_path)
         .map_err(|e| plugin_t1("plugin.install.open_zip_failed", e.to_string()))?;
@@ -32,15 +35,7 @@ pub(super) fn install_plugin_from_zip(
     PluginLoader::validate_manifest(&manifest)?;
 
     let plugin_id = manifest.id.clone();
-
-    if let Some(existing) = manager.plugins.get(&plugin_id) {
-        if matches!(existing.state, PluginState::Enabled) {
-            return Err(plugin_t1(
-                "plugin.install.already_running_replace",
-                existing.manifest.name.clone(),
-            ));
-        }
-    }
+    super::super::source::validate_replace_target(manager, PluginSource::Local, &plugin_id)?;
 
     let target_dir = manager.plugins_dir.join(&plugin_id);
     if target_dir.exists() {
@@ -52,17 +47,31 @@ pub(super) fn install_plugin_from_zip(
 
     extract_zip_to_dir(&mut archive, &prefix, &target_dir)?;
 
+    let mut persisted_metadata = metadata.clone();
+    persisted_metadata.installed_tree_sha256 = Some(
+        crate::services::plugin_trusted_catalog::compute_plugin_tree_sha256(&target_dir)?,
+    );
+    crate::services::plugin_trusted_catalog::write_install_metadata(
+        &target_dir,
+        &persisted_metadata,
+    )?;
+
     let loaded_manifest = PluginLoader::load_manifest(&target_dir)?;
     PluginLoader::validate_manifest(&loaded_manifest)?;
 
     let missing_deps = manager.get_missing_dependencies(&loaded_manifest);
 
-    let plugin_info = PluginInfo {
-        manifest: loaded_manifest,
-        state: PluginState::Loaded,
-        path: target_dir.to_string_lossy().to_string(),
-        missing_dependencies: missing_deps,
-    };
+    let plugin_info = manager.make_local_plugin_info(
+        loaded_manifest,
+        PluginState::Loaded,
+        target_dir.to_string_lossy().to_string(),
+        metadata
+            .distribution_class
+            .clone()
+            .unwrap_or(PluginDistributionClass::StandardPackage),
+        metadata.archive_sha256.as_deref(),
+        missing_deps,
+    );
 
     manager.plugins.insert(plugin_id, plugin_info.clone());
 

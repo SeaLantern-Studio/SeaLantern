@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, ChevronDown, ChevronUp, Copy, Check, Globe } from "@lucide/vue";
+import { Minus, Square, X, Copy, Check, Globe } from "@lucide/vue";
 import { useI18nStore } from "@stores/i18nStore";
 import { i18n } from "@language";
 import SLModal from "@components/common/SLModal.vue";
@@ -40,39 +40,11 @@ const appDisplayName = computed(() => {
   return getAppDisplayName(settingsStore.settings);
 });
 
-const primaryLanguages = computed(() => {
-  const primaryCodes = ["zh-CN", "zh-TW", "en-US", "ja-JP"];
+const primaryLanguages = computed(() => i18nStore.localeOptions);
 
-  return primaryCodes.map((code) => {
-    return {
-      code,
-      label: i18n.getLocaleDisplayName(code) ?? code,
-    };
-  });
-});
-
-const otherLanguages = computed(() => {
-  const primaryCodes = new Set(["zh-CN", "zh-TW", "en-US", "ja-JP"]);
-  const allLocales = i18n.getAvailableLocales();
-
-  return allLocales
-    .filter((code) => !primaryCodes.has(code))
-    .map((code) => {
-      return {
-        code,
-        label: i18n.getLocaleDisplayName(code) ?? code,
-      };
-    });
-});
-
-const showMoreLanguages = ref(false);
 let unlistenResize: (() => void) | null = null;
 let unlistenCloseRequested: UnlistenFn | null = null;
 let isUnmounted = false;
-
-function toggleMoreLanguages() {
-  showMoreLanguages.value = !showMoreLanguages.value;
-}
 
 onMounted(async () => {
   isUnmounted = false;
@@ -222,43 +194,6 @@ function isActive(code: string) {
               <Check v-if="isActive(option.code)" :size="16" aria-hidden="true" />
             </div>
           </MenuItem>
-
-          <!-- 其他语言（仅在展开时显示） -->
-          <Transition name="language-toggle">
-            <div v-if="showMoreLanguages" id="language-more-list" class="language-more-list">
-              <MenuItem v-for="option in otherLanguages" :key="option.code" v-slot="{ close }">
-                <div
-                  class="language-item"
-                  :class="{ active: isActive(option.code) }"
-                  @click="() => handleLanguageClick(option.code, close)"
-                >
-                  <div class="language-item-main">
-                    <span class="language-label">{{ option.label }}</span>
-                  </div>
-                  <Check v-if="isActive(option.code)" :size="16" aria-hidden="true" />
-                </div>
-              </MenuItem>
-            </div>
-          </Transition>
-
-          <!-- 更多语言选项（固定在最底部） -->
-          <div class="language-item-full-width">
-            <div
-              class="language-item language-item-arrow"
-              role="button"
-              tabindex="0"
-              :aria-expanded="showMoreLanguages"
-              aria-controls="language-more-list"
-              @click="toggleMoreLanguages"
-              @keydown.enter.prevent="toggleMoreLanguages"
-              @keydown.space.prevent="toggleMoreLanguages"
-            >
-              <div class="language-item-main">
-                <ChevronUp v-if="showMoreLanguages" :size="16" class="arrow-icon" />
-                <ChevronDown v-else :size="16" class="arrow-icon" />
-              </div>
-            </div>
-          </div>
         </MenuItems>
       </Menu>
 

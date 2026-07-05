@@ -9,6 +9,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use super::common::process_msg2;
+use crate::plugins::runtime::permissions::{
+    EXECUTE_PROGRAM_PERMISSION, PROCESS_INSPECT_PERMISSION, PROCESS_OUTPUT_READ_PERMISSION,
+};
 
 /// 注册 `sl.process` 下的命令接口
 ///
@@ -49,17 +52,44 @@ pub(super) fn register(
             process_msg2("plugins.runtime.process.set_api_failed", "process.exec", e.to_string())
         })?;
     process_table
-        .set("get", query::get(lua, plugin_id, process_registry)?)
+        .set(
+            "get",
+            query::get(
+                lua,
+                plugin_id,
+                permissions,
+                process_registry,
+                &[PROCESS_INSPECT_PERMISSION, EXECUTE_PROGRAM_PERMISSION],
+            )?,
+        )
         .map_err(|e| {
             process_msg2("plugins.runtime.process.set_api_failed", "process.get", e.to_string())
         })?;
     process_table
-        .set("list", query::list(lua, plugin_id, process_registry)?)
+        .set(
+            "list",
+            query::list(
+                lua,
+                plugin_id,
+                permissions,
+                process_registry,
+                &[PROCESS_INSPECT_PERMISSION, EXECUTE_PROGRAM_PERMISSION],
+            )?,
+        )
         .map_err(|e| {
             process_msg2("plugins.runtime.process.set_api_failed", "process.list", e.to_string())
         })?;
     process_table
-        .set("read_output", read_output::read_output(lua, plugin_id, process_registry)?)
+        .set(
+            "read_output",
+            read_output::read_output(
+                lua,
+                plugin_id,
+                permissions,
+                process_registry,
+                &[PROCESS_OUTPUT_READ_PERMISSION, EXECUTE_PROGRAM_PERMISSION],
+            )?,
+        )
         .map_err(|e| {
             process_msg2(
                 "plugins.runtime.process.set_api_failed",

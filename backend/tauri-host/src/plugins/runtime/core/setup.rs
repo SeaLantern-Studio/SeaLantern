@@ -1,14 +1,16 @@
 use super::runtime::PluginRuntime;
+use crate::plugins::api::PluginApiRegistry;
 use crate::plugins::runtime::filesystem::has_any_fs_permission;
+use crate::plugins::runtime::host::ensure_runtime_host_api_installed;
 use crate::plugins::runtime::permissions::{
-    has_plugin_folder_access_permission, normalize_permissions, PLUGIN_FOLDER_ACCESS_PERMISSION,
+    has_any_plugins_permission, has_any_process_permission, normalize_permissions,
+    EXECUTE_PROGRAM_PERMISSION, NETWORK_PERMISSION, PLUGIN_FOLDER_ACCESS_PERMISSION, UI_PERMISSION,
 };
+use crate::services::events::ServerEventSubscription;
 use crate::services::global::i18n_service;
 use mlua::Table;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-
 fn core_t1(key: &str, a: impl Into<String>) -> String {
     let mut m = HashMap::new();
     m.insert("0".to_string(), a.into());
@@ -33,18 +35,20 @@ impl PluginRuntime {
         Ok(normalized)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         plugin_id: &str,
         plugin_dir: &Path,
         data_dir: &Path,
         server_dir: &Path,
         global_dir: &Path,
-        api_registry: Arc<
-            Mutex<std::collections::HashMap<String, std::collections::HashMap<String, String>>>,
-        >,
+        api_registry: PluginApiRegistry,
         permissions: Vec<String>,
         allowed_programs: Vec<String>,
+        server_event_subscriptions: HashMap<String, ServerEventSubscription>,
     ) -> Result<Self, String> {
+        ensure_runtime_host_api_installed();
+
         let lua = mlua::Lua::new_with(
             mlua::StdLib::TABLE
                 | mlua::StdLib::STRING
@@ -75,6 +79,7 @@ impl PluginRuntime {
             api_registry,
             storage_lock: std::sync::Arc::new(std::sync::Mutex::new(())),
             process_registry: crate::plugins::runtime::process::new_process_registry(),
+            server_event_subscriptions,
             element_callbacks: std::sync::Arc::new(std::sync::Mutex::new(
                 std::collections::HashMap::new(),
             )),
@@ -115,10 +120,12 @@ impl PluginRuntime {
             self.setup_permission_denied_module(&sl, "api")?;
         }
 
-        if self.permissions.iter().any(|p| p == "ui") {
+        if self.permissions.iter().any(|p| p == "ui")
+            || self.permissions.iter().any(|p| p.starts_with("ui."))
+        {
             self.setup_ui_namespace(&sl)?;
         } else {
-            self.setup_permission_denied_module(&sl, "ui")?;
+            self.setup_permission_denied_namespace(&sl, "ui", UI_PERMISSION)?;
         }
 
         if self.permissions.iter().any(|p| p == "element") {
@@ -145,19 +152,19 @@ impl PluginRuntime {
             self.setup_permission_denied_module(&sl, "system")?;
         }
 
-        if self.permissions.iter().any(|p| p == "network") {
+        if self.permissions.iter().any(|p| p == NETWORK_PERMISSION) {
             self.setup_http_namespace(&sl)?;
         } else {
-            self.setup_permission_denied_module(&sl, "network")?;
+            self.setup_permission_denied_namespace(&sl, "http", NETWORK_PERMISSION)?;
         }
 
-        if self.permissions.iter().any(|p| p == "execute_program") {
+        if has_any_process_permission(&self.permissions) {
             self.setup_process_namespace(&sl, std::sync::Arc::clone(&self.process_registry))?;
         } else {
-            self.setup_permission_denied_module(&sl, "execute_program")?;
+            self.setup_permission_denied_namespace(&sl, "process", EXECUTE_PROGRAM_PERMISSION)?;
         }
 
-        if has_plugin_folder_access_permission(&self.permissions) {
+        if has_any_plugins_permission(&self.permissions) {
             self.setup_plugins_namespace(&sl)?;
         } else {
             self.setup_permission_denied_namespace(

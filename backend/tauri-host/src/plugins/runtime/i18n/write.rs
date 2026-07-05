@@ -2,8 +2,10 @@ use super::common::{
     i18n_err, i18n_err1, i18n_t2, plugin_i18n_namespace, validate_locale, validate_translation_key,
     I18nContext,
 };
-use crate::plugins::api::emit_i18n_event;
-use crate::services::global::i18n_service;
+use crate::plugins::runtime::host_api::{
+    host_add_plugin_translations, host_emit_i18n_event, host_plugin_translation_entry_count,
+    host_register_locale, host_remove_plugin_translations,
+};
 use mlua::Table;
 use std::collections::HashMap;
 
@@ -21,11 +23,10 @@ pub(super) fn register_locale(
     validate_locale_input(&locale)?;
     validate_display_name(&display_name)?;
 
-    let i18n = i18n_service();
-    i18n.register_locale(&ctx.plugin_id, &locale, &display_name);
+    host_register_locale(&ctx.plugin_id, &locale, &display_name);
 
     let payload = serde_json::json!({ "displayName": display_name }).to_string();
-    if let Err(e) = emit_i18n_event(&ctx.plugin_id, "register_locale", &locale, &payload) {
+    if let Err(e) = host_emit_i18n_event(&ctx.plugin_id, "register_locale", &locale, &payload) {
         eprintln!("Failed to emit i18n event: {}", e);
     }
 
@@ -38,13 +39,12 @@ pub(super) fn add_translations(
 ) -> mlua::Result<()> {
     validate_locale_input(&locale)?;
 
-    let i18n = i18n_service();
     let map = table_to_namespaced_map(ctx, &entries)?;
     enforce_plugin_translation_quota(&ctx.plugin_id, &locale, map.len())?;
     let payload = serde_json::to_string(&map).unwrap_or_else(|_| "{}".to_string());
 
-    i18n.add_plugin_translations(&ctx.plugin_id, &locale, map);
-    if let Err(e) = emit_i18n_event(&ctx.plugin_id, "add_translations", &locale, &payload) {
+    host_add_plugin_translations(&ctx.plugin_id, &locale, map);
+    if let Err(e) = host_emit_i18n_event(&ctx.plugin_id, "add_translations", &locale, &payload) {
         eprintln!("Failed to emit i18n event: {}", e);
     }
 
@@ -52,9 +52,8 @@ pub(super) fn add_translations(
 }
 
 pub(super) fn remove_translations(ctx: &I18nContext) -> mlua::Result<()> {
-    let i18n = i18n_service();
-    i18n.remove_plugin_translations(&ctx.plugin_id);
-    if let Err(e) = emit_i18n_event(&ctx.plugin_id, "remove_translations", "", "") {
+    host_remove_plugin_translations(&ctx.plugin_id);
+    if let Err(e) = host_emit_i18n_event(&ctx.plugin_id, "remove_translations", "", "") {
         eprintln!("Failed to emit i18n event: {}", e);
     }
 
@@ -152,10 +151,8 @@ fn enforce_plugin_translation_quota(
     locale: &str,
     incoming_entries: usize,
 ) -> mlua::Result<()> {
-    let i18n = i18n_service();
-    let total_entries = i18n
-        .plugin_translation_entry_count(plugin_id)
-        .saturating_add(incoming_entries);
+    let total_entries =
+        host_plugin_translation_entry_count(plugin_id).saturating_add(incoming_entries);
 
     if total_entries > MAX_TRANSLATION_ENTRIES_PER_PLUGIN {
         return Err(mlua::Error::runtime(i18n_t2(

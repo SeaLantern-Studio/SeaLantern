@@ -1,0 +1,12 @@
+[package]
+name = "sea-lantern-event-core"
+version = "0.1.0"
+edition = "2021"
+description = "Shared event envelopes, subscriptions, manager, and registry DTOs for Sea Lantern"
+
+[lib]
+name = "sea_lantern_event_core"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }

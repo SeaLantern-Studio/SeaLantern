@@ -46,11 +46,11 @@ watch(
   <div class="splash-screen">
     <div class="splash-content">
       <div class="splash-logo" :style="{ transform: `scale(${logoScale})` }">
-        <img :src="logo" alt="Sea Lantern" width="120" height="120" />
+        <img :src="logo" :alt="i18n.t('common.app_name')" width="120" height="120" />
       </div>
 
       <div class="splash-text" :style="{ opacity: textOpacity }">
-        <h1 class="splash-title">Sea Lantern</h1>
+        <h1 class="splash-title">{{ i18n.t("common.app_name") }}</h1>
         <p class="splash-subtitle">{{ i18n.t("about.subtitle") }}</p>
       </div>
 

@@ -1,4 +1,4 @@
-import { tauriInvoke } from "@api/tauri";
+import { tauriInvoke, tauriInvokeDesktop } from "@api/tauri";
 import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 import type { JavaInfo } from "@api/java";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
@@ -117,6 +117,27 @@ export interface IPv6TestResult {
   targets?: IPv6TestTarget[];
 }
 
+export type HostBuildFlavor = "desktop-full" | "desktop-min" | "custom";
+
+export interface HostPluginRuntimeCapabilities {
+  available: boolean;
+  local_runtime: boolean;
+  ui_bridge: boolean;
+}
+
+export interface HostCapabilities {
+  build_flavor: HostBuildFlavor;
+  plugin_runtime: HostPluginRuntimeCapabilities;
+}
+
+export interface DesktopWebStatus {
+  enabled: boolean;
+  running: boolean;
+  bind_addr: string;
+  url: string;
+  static_dir_available: boolean;
+}
+
 export const systemApi = {
   async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
     if (!isUploadSupported()) {
@@ -150,6 +171,14 @@ export const systemApi = {
 
   async getSystemInfo(): Promise<SystemInfo> {
     return tauriInvoke("get_system_info");
+  },
+
+  async getHostCapabilities(): Promise<HostCapabilities> {
+    return tauriInvoke("get_host_capabilities");
+  },
+
+  async getDesktopWebStatus(): Promise<DesktopWebStatus> {
+    return tauriInvokeDesktop("get_desktop_web_status");
   },
 
   async getServerResourceUsage(serverId: string): Promise<ServerResourceUsage> {
@@ -243,6 +272,18 @@ export const systemApi = {
       throw new Error(i18n.t("system.docker_native_picker_unsupported"));
     }
     return tauriInvoke("pick_folder");
+  },
+
+  async pickFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      const file = await pickFileFromBrowser();
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
+    }
+    return tauriInvoke("pick_file");
   },
 
   async pickImageFile(): Promise<string | null> {

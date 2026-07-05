@@ -5,13 +5,71 @@ use crate::plugins::manager::lifecycle::dependencies::{
 };
 use crate::plugins::manager::lifecycle::persistence::save_enabled_plugins_checked;
 use crate::plugins::runtime::{kill_all_processes, PluginRuntime};
+use crate::services::events::plugin_server_event_subscriptions_map;
+use crate::services::plugin_trusted_catalog::{
+    evaluate_enable_requirement, grant_scope_covers, load_enable_grants, upsert_enable_grant,
+};
 use std::path::PathBuf;
-use std::sync::Arc;
+fn success_result(
+    manager: &PluginManager,
+    plugin_id: &str,
+) -> crate::models::plugin::PluginEnableResult {
+    crate::models::plugin::PluginEnableResult {
+        success: true,
+        disabled_plugins: Vec::new(),
+        confirmation_required: false,
+        block_reason: None,
+        plugin: manager.plugins().get(plugin_id).cloned(),
+        grant_scope: None,
+        message: None,
+    }
+}
 
 pub(in crate::plugins::manager) fn enable_plugin(
     manager: &mut PluginManager,
     plugin_id: &str,
-) -> Result<(), String> {
+) -> Result<crate::models::plugin::PluginEnableResult, String> {
+    enable_plugin_with_confirmation(manager, plugin_id, None)
+}
+
+pub(in crate::plugins::manager) fn enable_plugin_with_confirmation(
+    manager: &mut PluginManager,
+    plugin_id: &str,
+    confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
+) -> Result<crate::models::plugin::PluginEnableResult, String> {
+    let plugin_info = manager
+        .plugins()
+        .get(plugin_id)
+        .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?
+        .clone();
+
+    if matches!(plugin_info.state, PluginState::Enabled) {
+        return Ok(success_result(manager, plugin_id));
+    }
+
+    let requirement =
+        evaluate_enable_requirement(&plugin_info, &load_enable_grants(&manager.data_dir)?);
+    if requirement.confirmation_required {
+        let Some(confirmation) = confirmation else {
+            return Ok(requirement);
+        };
+
+        let required_scope = requirement
+            .grant_scope
+            .clone()
+            .unwrap_or(crate::models::plugin::PluginEnableGrantScope::Version);
+        if !grant_scope_covers(confirmation.grant_scope.clone(), required_scope) {
+            return Ok(requirement);
+        }
+
+        upsert_enable_grant(&manager.data_dir, &plugin_info, confirmation.grant_scope)?;
+    }
+
+    perform_enable_plugin(manager, plugin_id)?;
+    Ok(success_result(manager, plugin_id))
+}
+
+fn perform_enable_plugin(manager: &mut PluginManager, plugin_id: &str) -> Result<(), String> {
     println!("[PluginManager] 正在启用插件: {}", plugin_id);
 
     let plugin_info = manager
@@ -79,9 +137,10 @@ pub(in crate::plugins::manager) fn enable_plugin(
         &plugin_data_dir,
         &server_dir,
         &global_dir,
-        Arc::clone(&manager.api_registry),
+        manager.api_registry.clone(),
         permissions,
         allowed_programs,
+        plugin_server_event_subscriptions_map(&plugin_info.manifest.server_events),
     )?;
 
     let main_file = plugin_dir.join(&plugin_info.manifest.main);
@@ -147,48 +206,8 @@ pub(in crate::plugins::manager) fn enable_plugin(
 #[cfg(test)]
 mod tests {
     use super::enable_plugin;
-    use crate::models::plugin::{PluginAuthor, PluginInfo, PluginManifest, PluginState};
     use crate::plugins::manager::PluginManager;
     use crate::test_support::{lock_env, EnvGuard};
-
-    fn example_plugin_info(plugin_root: &std::path::Path) -> PluginInfo {
-        PluginInfo {
-            manifest: PluginManifest {
-                id: "example-plugin".to_string(),
-                name: "Example Plugin".to_string(),
-                version: "1.0.0".to_string(),
-                description: "test plugin".to_string(),
-                author: PluginAuthor {
-                    name: "tester".to_string(),
-                    email: None,
-                    url: None,
-                },
-                main: "main.lua".to_string(),
-                license: None,
-                homepage: None,
-                repository: None,
-                engines: None,
-                permissions: Vec::new(),
-                ui: None,
-                events: Vec::new(),
-                commands: Vec::new(),
-                programs: Vec::new(),
-                dependencies: Vec::new(),
-                optional_dependencies: Vec::new(),
-                icon: None,
-                settings: None,
-                sidebar: None,
-                locales: None,
-                include: Vec::new(),
-                capabilities: Vec::new(),
-                theme_var_map: std::collections::HashMap::new(),
-                presets: std::collections::HashMap::new(),
-            },
-            state: PluginState::Disabled,
-            path: plugin_root.to_string_lossy().to_string(),
-            missing_dependencies: Vec::new(),
-        }
-    }
 
     #[test]
     fn enable_plugin_surfaces_app_data_dir_creation_failures() {
@@ -209,9 +228,13 @@ mod tests {
         let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &blocked_path.to_string_lossy());
 
         let mut manager = PluginManager::new(plugins_dir, data_dir);
-        manager
-            .plugins
-            .insert("example-plugin".to_string(), example_plugin_info(&plugin_root));
+        manager.plugins.insert(
+            "example-plugin".to_string(),
+            super::super::test_support::example_local_plugin_info(
+                &plugin_root,
+                crate::plugins::manager::PluginState::Disabled,
+            ),
+        );
 
         let error = enable_plugin(&mut manager, "example-plugin")
             .expect_err("app data dir failure should not be silently downgraded");
@@ -249,9 +272,13 @@ mod tests {
         );
 
         let mut manager = PluginManager::new(plugins_dir, data_dir);
-        manager
-            .plugins
-            .insert("example-plugin".to_string(), example_plugin_info(&plugin_root));
+        manager.plugins.insert(
+            "example-plugin".to_string(),
+            super::super::test_support::example_local_plugin_info(
+                &plugin_root,
+                crate::plugins::manager::PluginState::Disabled,
+            ),
+        );
 
         let error = enable_plugin(&mut manager, "example-plugin")
             .expect_err("enabled plugin persistence failure should not be silently downgraded");

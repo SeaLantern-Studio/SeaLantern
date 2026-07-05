@@ -2,43 +2,14 @@
 import { computed } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
-import type { WindowEffect } from "@api/settings";
 import { useClientSettingsSync } from "@composables/useClientSettingsSync";
+import { useShellBackground } from "@composables/useShellBackground";
 import { useUiStore } from "@stores/uiStore";
-import { useSettingsStore } from "@stores/settingsStore";
-import { isWindowsPlatform } from "@utils/platform";
-
-const WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED = true;
 
 const ui = useUiStore();
-const settingsStore = useSettingsStore();
-const isWindows = isWindowsPlatform();
+const { backgroundStyle, hasTransparentWindowBackdrop } = useShellBackground();
 
 useClientSettingsSync();
-
-const backgroundImage = computed(() => settingsStore.backgroundImage);
-const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
-const backgroundBlur = computed(() => settingsStore.backgroundBlur);
-const backgroundBrightness = computed(() => settingsStore.backgroundBrightness);
-const backgroundSize = computed(() => settingsStore.backgroundSize);
-
-const backgroundStyle = computed(() => {
-  if (!backgroundImage.value) return {};
-  return {
-    backgroundImage: `url(${backgroundImage.value})`,
-    backgroundSize: backgroundSize.value,
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-    opacity: backgroundOpacity.value,
-    filter: `blur(${backgroundBlur.value}px) brightness(${backgroundBrightness.value})`,
-  };
-});
-
-const hasTransparentWindowBackdrop = computed(
-  () =>
-    !(isWindows && WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED) &&
-    ((settingsStore.windowEffect as WindowEffect) !== "off" || !backgroundImage.value),
-);
 
 const layoutClasses = computed(() => ({
   "has-native-window-effect": hasTransparentWindowBackdrop.value,

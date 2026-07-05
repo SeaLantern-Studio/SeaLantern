@@ -139,6 +139,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "argon2"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c3610892ee6e0cbce8ae2700349fcf8f98adb0dbfbee85aec3c9179d29cc072"
+dependencies = [
+ "base64ct",
+ "blake2",
+ "cpufeatures 0.2.17",
+ "password-hash",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -346,6 +358,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b52af3cb4058c895d37317bb27508dccc8e5f2d39454016b297bf4a400597b8"
 dependencies = [
  "axum-core",
+ "base64 0.22.1",
  "bytes",
  "form_urlencoded",
  "futures-util",
@@ -365,8 +378,10 @@ dependencies = [
  "serde_json",
  "serde_path_to_error",
  "serde_urlencoded",
+ "sha1",
  "sync_wrapper",
  "tokio",
+ "tokio-tungstenite",
  "tower",
  "tower-layer",
  "tower-service",
@@ -455,6 +470,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "blake2"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46502ad458c9a52b69d4d4d32775c788b7a1b85e8bc9d482d92250fc0e3f8efe"
+dependencies = [
+ "digest 0.10.7",
 ]
 
 [[package]]
@@ -3388,9 +3412,9 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "java-manager"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbd8f7342580c3746964a3f1d2ada44e5a53e385275dedf8e3865d6336990671"
+checksum = "5a194a8b62b33fd6536e5f53c7827da819235a5dba669d43ae24c9bba34137fb"
 dependencies = [
  "everything-sdk",
  "glob",
@@ -4786,6 +4810,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "password-hash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "346f04948ba92c43e8469c1ee6736c7563d71012b17d40745260fe106aac2166"
+dependencies = [
+ "base64ct",
+ "rand_core 0.6.4",
+ "subtle",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6075,6 +6110,7 @@ dependencies = [
 name = "sea-lantern"
 version = "1.2.0"
 dependencies = [
+ "argon2",
  "axum",
  "base64 0.22.1",
  "chrono",
@@ -6092,17 +6128,22 @@ dependencies = [
  "mlua",
  "once_cell",
  "opener",
+ "rand_core 0.6.4",
  "rcon",
  "reqwest 0.12.28",
- "rusqlite",
  "sculk",
  "sea-lantern-docker-core",
+ "sea-lantern-event-core",
+ "sea-lantern-i18n-core",
  "sea-lantern-java-installer-core",
+ "sea-lantern-lua-runtime-core",
+ "sea-lantern-plugin-trust-core",
  "sea-lantern-runtime",
  "sea-lantern-server-config-core",
  "sea-lantern-server-download-links-core",
  "sea-lantern-server-installer-core",
  "sea-lantern-server-local-setup-core",
+ "sea-lantern-server-log-core",
  "sea-lantern-server-plugin-core",
  "sea-lantern-server-startup-scan-core",
  "sea-lantern-starter-links-core",
@@ -6110,6 +6151,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2 0.10.9",
  "shlex",
  "sl-libscv",
  "sl-server-flavor-core",
@@ -6136,6 +6178,7 @@ dependencies = [
  "trash",
  "url",
  "uuid",
+ "wait-timeout",
  "window-vibrancy",
  "windows 0.58.0",
  "zip",
@@ -6150,6 +6193,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sea-lantern-event-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "sea-lantern-i18n-core"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "sea-lantern-java-installer-core"
 version = "0.1.0"
 dependencies = [
@@ -6161,6 +6218,26 @@ dependencies = [
  "tempfile",
  "tokio",
  "zip",
+]
+
+[[package]]
+name = "sea-lantern-lua-runtime-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "sea-lantern-plugin-trust-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
 ]
 
 [[package]]
@@ -6184,6 +6261,7 @@ dependencies = [
 name = "sea-lantern-server-config-core"
 version = "0.1.0"
 dependencies = [
+ "regex",
  "serde",
  "serde_json",
  "tempfile",
@@ -6229,6 +6307,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sea-lantern-server-log-core"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "sea-lantern-server-local-setup-core",
+ "sl-server-info",
+ "tempfile",
+]
+
+[[package]]
 name = "sea-lantern-server-plugin-core"
 version = "0.1.0"
 dependencies = [
@@ -6246,7 +6334,7 @@ version = "0.1.0"
 dependencies = [
  "sea-lantern-server-installer-core",
  "serde",
- "sl-server-core-taxonomy",
+ "serde_json",
  "tempfile",
  "uuid",
  "zip",
@@ -7749,6 +7837,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-tungstenite"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d25a406cddcc431a75d3d9afc6a7c0f7428d4891dd973e4d54c56b46127bf857"
+dependencies = [
+ "futures-util",
+ "log",
+ "tokio",
+ "tungstenite",
+]
+
+[[package]]
 name = "tokio-util"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8088,6 +8188,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
+name = "tungstenite"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8628dcc84e5a09eb3d8423d6cb682965dea9133204e8fb3efee74c2a0c259442"
+dependencies = [
+ "bytes",
+ "data-encoding",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.9.4",
+ "sha1",
+ "thiserror 2.0.18",
+ "utf-8",
+]
+
+[[package]]
 name = "typeid"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8330,6 +8447,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb067e4cbd1ff067d1df46c9194b5de0e98efd2810bbc95c5d5e5f25a3231150"
 dependencies = [
  "cc",
+ "libc",
+]
+
+[[package]]
+name = "wait-timeout"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09ac3b126d3914f9849036f826e054cbabdc8519970b8998ddaf3b5bd3c65f11"
+dependencies = [
  "libc",
 ]
 

@@ -2,7 +2,7 @@ use crate::plugins::manager::lifecycle::runtime::{disable_plugin_internal, enabl
 use crate::plugins::manager::PluginManager;
 use std::collections::HashSet;
 
-pub(in crate::plugins::manager::lifecycle) fn save_enabled_plugins_checked(
+pub(in crate::plugins::manager) fn save_enabled_plugins_checked(
     manager: &PluginManager,
 ) -> Result<(), String> {
     let enabled: Vec<&str> = manager
@@ -19,7 +19,7 @@ pub(in crate::plugins::manager::lifecycle) fn save_enabled_plugins_checked(
 }
 
 #[allow(dead_code)]
-pub(in crate::plugins::manager::lifecycle) fn save_enabled_plugins(manager: &PluginManager) {
+pub(in crate::plugins::manager) fn save_enabled_plugins(manager: &PluginManager) {
     if let Err(error) = save_enabled_plugins_checked(manager) {
         eprintln!("[WARN] {}", error);
     }
@@ -62,6 +62,13 @@ pub(in crate::plugins::manager) fn auto_enable_plugins_checked(
         let mut next = Vec::new();
         for id in remaining {
             let deps_ok = if let Some(info) = manager.plugins.get(&id) {
+                if !manager.runtime_activation_available_for(info) {
+                    eprintln!(
+                        "[INFO] Auto-enable skipped '{}': runtime activation unavailable in this build",
+                        id
+                    );
+                    continue;
+                }
                 info.manifest
                     .dependencies
                     .iter()
@@ -114,7 +121,95 @@ pub(in crate::plugins::manager) fn disable_all_plugins_for_shutdown(manager: &mu
 #[cfg(test)]
 mod tests {
     use super::{auto_enable_plugins_checked, load_enabled_plugin_ids_checked};
+    use crate::models::plugin::{
+        PluginActions, PluginAuthor, PluginDistributionClass, PluginExecutionClass, PluginInfo,
+        PluginIntegrityStatus, PluginManifest, PluginPermissionProfile, PluginReviewStatus,
+        PluginRuntimeKind, PluginSource, PluginTrustLevelDisplay, PluginTrustedPolicySource,
+    };
     use crate::plugins::manager::PluginManager;
+    use crate::plugins::manager::PluginState;
+    use std::collections::HashMap;
+
+    fn example_plugin_for_unavailable_runtime(
+        manager: &PluginManager,
+        plugin_root: &std::path::Path,
+    ) -> Option<crate::models::plugin::PluginInfo> {
+        let local_plugin = PluginInfo {
+            manifest: PluginManifest {
+                id: "example-plugin".to_string(),
+                name: "Example Plugin".to_string(),
+                version: "1.0.0".to_string(),
+                description: "test plugin".to_string(),
+                author: PluginAuthor {
+                    name: "tester".to_string(),
+                    email: None,
+                    url: None,
+                },
+                main: "main.lua".to_string(),
+                license: None,
+                homepage: None,
+                repository: None,
+                engines: None,
+                permissions: Vec::new(),
+                ui: None,
+                events: Vec::new(),
+                commands: Vec::new(),
+                programs: Vec::new(),
+                dependencies: Vec::new(),
+                optional_dependencies: Vec::new(),
+                icon: None,
+                settings: None,
+                sidebar: None,
+                locales: None,
+                include: Vec::new(),
+                capabilities: Vec::new(),
+                theme_var_map: HashMap::new(),
+                presets: HashMap::new(),
+                server_events: HashMap::new(),
+            },
+            state: PluginState::Disabled,
+            path: plugin_root.to_string_lossy().to_string(),
+            source: PluginSource::Local,
+            runtime: PluginRuntimeKind::Lua,
+            actions: PluginActions {
+                can_toggle: true,
+                can_delete: true,
+                can_check_update: true,
+            },
+            missing_dependencies: Vec::new(),
+            trust_level_display: PluginTrustLevelDisplay::StandardSandbox,
+            execution_class: PluginExecutionClass::Sandboxed,
+            review_status: PluginReviewStatus::Unreviewed,
+            integrity_status: PluginIntegrityStatus::Unknown,
+            trusted_policy_source: PluginTrustedPolicySource::None,
+            permission_profile: PluginPermissionProfile::SandboxedNormal,
+            publisher_id: None,
+            distribution_class: PluginDistributionClass::LocalDirectory,
+            trusted_catalog_matched: false,
+            hash_matched: false,
+            verified_hash: None,
+            verified_signature: false,
+            reviewed_at: None,
+            revoked: false,
+            exceeds_standard_sandbox: false,
+            requires_explicit_consent: false,
+        };
+
+        let local_plugin = manager.normalize_plugin_info(local_plugin);
+        if !manager.runtime_activation_available_for(&local_plugin) {
+            return Some(local_plugin);
+        }
+
+        let builtin_plugin = crate::plugins::builtin::builtin_plugin_infos()
+            .into_iter()
+            .next()
+            .map(|mut plugin| {
+                plugin.path = plugin_root.to_string_lossy().to_string();
+                manager.normalize_plugin_info(plugin)
+            });
+
+        builtin_plugin.filter(|plugin| !manager.runtime_activation_available_for(plugin))
+    }
 
     #[test]
     fn load_enabled_plugin_ids_checked_surfaces_invalid_json() {
@@ -148,5 +243,37 @@ mod tests {
 
         assert!(error.contains("Failed to parse enabled plugins"));
         assert!(error.contains("enabled_plugins.json"));
+    }
+
+    #[test]
+    fn auto_enable_plugins_checked_noops_when_runtime_activation_is_unavailable() {
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let plugins_dir = temp_dir.path().join("plugins");
+        let data_dir = temp_dir.path().join("plugin-data");
+        let mut manager = PluginManager::new_checked(plugins_dir.clone(), data_dir.clone())
+            .expect("plugin manager should initialize");
+
+        let Some(plugin) = example_plugin_for_unavailable_runtime(
+            &manager,
+            &plugins_dir.join("unavailable-runtime-plugin"),
+        ) else {
+            return;
+        };
+
+        let plugin_id = plugin.manifest.id.clone();
+        manager.plugins.insert(plugin_id.clone(), plugin);
+
+        std::fs::write(data_dir.join("enabled_plugins.json"), format!("[\"{}\"]", plugin_id))
+            .expect("enabled plugins file should exist");
+
+        auto_enable_plugins_checked(&mut manager).expect("auto-enable should not fail");
+
+        assert!(manager
+            .plugins()
+            .get(&plugin_id)
+            .is_some_and(|info| matches!(
+                info.state,
+                crate::models::plugin::PluginState::Disabled
+            )));
     }
 }

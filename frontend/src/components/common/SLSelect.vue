@@ -26,6 +26,7 @@ interface Props {
   dropdownAlign?: "left" | "right";
   dropdownWidth?: string;
   variant?: "default" | "server";
+  size?: "sm" | "md" | "lg";
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -39,6 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
   dropdownAlign: "left",
   dropdownWidth: "200px",
   variant: "default",
+  size: "md",
 });
 
 const _selectId = props.componentId ?? `sl-select-${Math.random().toString(36).slice(2, 8)}`;
@@ -63,8 +65,39 @@ const containerRef = ref<HTMLElement | null>(null);
 const dropdownRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLInputElement | null>(null);
 const highlightedIndex = ref(-1);
+const dropdownPlacement = ref<"up" | "down" | "side">("down");
 
 const dropdownStyle = ref<Record<string, string>>({});
+
+const triggerIconSize = computed(() => {
+  if (props.variant === "server") {
+    return props.size === "lg" ? 16 : 14;
+  }
+
+  switch (props.size) {
+    case "sm":
+      return 18;
+    case "lg":
+      return 22;
+    default:
+      return 20;
+  }
+});
+
+const arrowIconSize = computed(() => {
+  if (props.variant === "server") {
+    return props.size === "lg" ? 16 : 14;
+  }
+
+  switch (props.size) {
+    case "sm":
+      return 14;
+    case "lg":
+      return 18;
+    default:
+      return 16;
+  }
+});
 
 const optionsMaxHeight = computed(() => {
   let maxHeight = parseInt(props.maxHeight) || 280;
@@ -99,11 +132,13 @@ const updateDropdownPosition = () => {
   const viewportWidth = window.innerWidth;
   const dropdownMaxHeight = parseInt(props.maxHeight) || 280;
   const dropdownWidth = parseInt(props.dropdownWidth) || 200;
+  const renderedHeight = dropdownRef.value?.offsetHeight || dropdownMaxHeight;
+  const targetHeight = Math.min(renderedHeight, dropdownMaxHeight);
   const spaceBelow = viewportHeight - rect.bottom;
   const spaceAbove = rect.top;
   const gap = 4;
 
-  const openUpward = spaceBelow < dropdownMaxHeight + gap && spaceAbove > spaceBelow;
+  const openUpward = spaceBelow < targetHeight + gap && spaceAbove > spaceBelow;
 
   let top: number;
   let left: number;
@@ -111,9 +146,11 @@ const updateDropdownPosition = () => {
   if (props.collapsed && props.dropdownAlign === "right") {
     left = rect.right + gap;
     top = rect.top;
+    dropdownPlacement.value = "side";
   } else {
     left = props.dropdownAlign === "right" ? rect.right - dropdownWidth : rect.left;
-    top = openUpward ? rect.top - dropdownMaxHeight - gap : rect.bottom + gap;
+    top = openUpward ? rect.top - targetHeight - gap : rect.bottom + gap;
+    dropdownPlacement.value = openUpward ? "up" : "down";
   }
 
   if (left + dropdownWidth > viewportWidth - gap) {
@@ -123,8 +160,8 @@ const updateDropdownPosition = () => {
     left = gap;
   }
 
-  if (top + dropdownMaxHeight > viewportHeight - gap) {
-    top = viewportHeight - dropdownMaxHeight - gap;
+  if (top + targetHeight > viewportHeight - gap) {
+    top = viewportHeight - targetHeight - gap;
   }
   if (top < gap) {
     top = gap;
@@ -287,6 +324,7 @@ onUnmounted(() => {
     :class="{
       'sl-select--collapsed': collapsed,
       'sl-select--server': variant === 'server',
+      [`sl-select--${size}`]: true,
     }"
     ref="containerRef"
   >
@@ -318,7 +356,7 @@ onUnmounted(() => {
         v-if="icon"
         :is="icon"
         class="sl-select-icon"
-        :size="20"
+        :size="triggerIconSize"
         :stroke-width="1.8"
         aria-hidden="true"
       />
@@ -340,14 +378,14 @@ onUnmounted(() => {
           v-if="variant !== 'server'"
           class="sl-select-arrow"
           :class="{ open: isOpen }"
-          :size="16"
+          :size="arrowIconSize"
           aria-hidden="true"
         />
         <ChevronDown
           v-else
           class="sl-select-arrow"
           :class="{ open: isOpen }"
-          :size="14"
+          :size="arrowIconSize"
           aria-hidden="true"
         />
       </template>
@@ -355,9 +393,15 @@ onUnmounted(() => {
 
     <Teleport to="body">
       <Transition name="dropdown">
-        <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef" :style="dropdownStyle">
+        <div
+          v-if="isOpen"
+          ref="dropdownRef"
+          class="sl-select-dropdown"
+          :class="`sl-select-dropdown--${dropdownPlacement}`"
+          :style="dropdownStyle"
+        >
           <div v-if="searchable" class="sl-select-search">
-            <Search class="search-icon" :size="16" aria-hidden="true" />
+            <Search class="search-icon" :size="arrowIconSize" aria-hidden="true" />
             <input
               ref="inputRef"
               v-model="searchQuery"
@@ -419,8 +463,42 @@ onUnmounted(() => {
 
 <style scoped>
 .sl-select {
+  --sl-select-trigger-padding-y: 8px;
+  --sl-select-trigger-padding-x: 12px;
+  --sl-select-trigger-font-size: var(--sl-font-size-base);
+  --sl-select-trigger-min-height: 38px;
+  --sl-select-search-padding-y: 8px;
+  --sl-select-search-padding-x: 12px;
+  --sl-select-option-padding-y: 10px;
+  --sl-select-option-padding-x: 12px;
+  --sl-select-option-min-height: 0px;
+
   position: relative;
   width: 100%;
+}
+
+.sl-select--sm {
+  --sl-select-trigger-padding-y: 6px;
+  --sl-select-trigger-padding-x: 10px;
+  --sl-select-trigger-font-size: var(--sl-font-size-sm);
+  --sl-select-trigger-min-height: 34px;
+  --sl-select-search-padding-y: 6px;
+  --sl-select-search-padding-x: 10px;
+  --sl-select-option-padding-y: 8px;
+  --sl-select-option-padding-x: 10px;
+  --sl-select-option-min-height: 34px;
+}
+
+.sl-select--lg {
+  --sl-select-trigger-padding-y: 10px;
+  --sl-select-trigger-padding-x: 14px;
+  --sl-select-trigger-font-size: var(--sl-font-size-base);
+  --sl-select-trigger-min-height: 44px;
+  --sl-select-search-padding-y: 10px;
+  --sl-select-search-padding-x: 14px;
+  --sl-select-option-padding-y: 12px;
+  --sl-select-option-padding-x: 14px;
+  --sl-select-option-min-height: 44px;
 }
 
 .sl-select-label {
@@ -436,15 +514,15 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 8px 12px;
-  font-size: var(--sl-font-size-base);
-  background: var(--sl-surface);
+  padding: var(--sl-select-trigger-padding-y) var(--sl-select-trigger-padding-x);
+  font-size: var(--sl-select-trigger-font-size);
+  background: var(--sl-overlay-surface-muted, var(--sl-surface));
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   cursor: pointer;
   transition: all var(--sl-transition-fast);
   color: var(--sl-text-primary);
-  min-height: 38px;
+  min-height: var(--sl-select-trigger-min-height);
   box-sizing: border-box;
 }
 
@@ -547,10 +625,10 @@ onUnmounted(() => {
 
 .sl-select-trigger--server {
   gap: var(--sl-space-sm);
-  padding: 8px;
-  min-height: 40px;
+  padding: var(--sl-select-trigger-padding-y);
+  min-height: var(--sl-select-trigger-min-height);
   margin-top: 5px;
-  background: var(--sl-surface);
+  background: var(--sl-overlay-surface-muted, var(--sl-surface));
   border: 1px solid var(--sl-border);
   color: var(--sl-text-secondary);
 }
@@ -595,38 +673,32 @@ onUnmounted(() => {
 <style>
 /* 下拉框样式 - 非 scoped，因为使用 Teleport 渲染到 body */
 .sl-select-dropdown {
-  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
-  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
+  background: var(--sl-overlay-surface, #ffffff);
+  border: 1px solid var(--sl-overlay-border, rgba(148, 163, 184, 0.22));
   border-radius: var(--sl-radius-lg, 12px);
   box-shadow: var(--sl-shadow-lg);
   overflow: hidden;
   color: var(--sl-text-primary);
   transform-origin: top center;
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
 }
 
-[data-theme="dark"] .sl-select-dropdown {
-  --sl-glass-bg: rgba(15, 17, 23, 0.72);
-  --sl-glass-border: rgba(255, 255, 255, 0.08);
+.sl-select-dropdown--up {
+  transform-origin: bottom center;
 }
 
-[data-acrylic="true"] .sl-select-dropdown {
-  --sl-glass-bg: rgba(255, 255, 255, 0.65);
-}
-
-[data-theme="dark"][data-acrylic="true"] .sl-select-dropdown {
-  --sl-glass-bg: rgba(15, 17, 23, 0.65);
-}
-
-[data-acrylic="false"] .sl-select-dropdown {
-  background: var(--sl-surface, #ffffff);
+.sl-select-dropdown--side {
+  transform-origin: left top;
 }
 
 .sl-select-dropdown .sl-select-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--sl-border);
+  padding: var(--sl-select-search-padding-y) var(--sl-select-search-padding-x);
+  background: var(--sl-overlay-surface-muted, var(--sl-surface));
+  border-bottom: 1px solid var(--sl-overlay-border, var(--sl-border));
 }
 
 .sl-select-dropdown .search-icon {
@@ -636,12 +708,20 @@ onUnmounted(() => {
 
 .sl-select-dropdown .sl-select-input {
   flex: 1;
-  border: none;
-  background: transparent;
-  font-size: var(--sl-font-size-base);
+  border: 1px solid var(--sl-overlay-border, var(--sl-border));
+  background: var(--sl-overlay-surface, var(--sl-surface));
+  border-radius: var(--sl-radius-sm);
+  padding: 8px 10px;
+  font-size: var(--sl-select-trigger-font-size);
   color: var(--sl-text-primary);
   outline: none;
   width: 100%;
+  box-sizing: border-box;
+}
+
+.sl-select-dropdown .sl-select-input:focus {
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 3px var(--sl-primary-bg);
 }
 
 .sl-select-dropdown .sl-select-input::placeholder {
@@ -652,6 +732,7 @@ onUnmounted(() => {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  background: var(--sl-overlay-surface, #ffffff);
 }
 
 .sl-select-dropdown .sl-select-empty {
@@ -659,13 +740,15 @@ onUnmounted(() => {
   text-align: center;
   color: var(--sl-text-tertiary);
   font-size: var(--sl-font-size-base);
+  background: var(--sl-overlay-surface, #ffffff);
 }
 
 .sl-select-dropdown .sl-select-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  min-height: var(--sl-select-option-min-height);
+  padding: var(--sl-select-option-padding-y) var(--sl-select-option-padding-x);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -673,6 +756,13 @@ onUnmounted(() => {
   user-select: none;
   position: relative;
   overflow: hidden;
+  background: var(--sl-overlay-surface, #ffffff);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--sl-overlay-border, var(--sl-border)) 65%, transparent);
+}
+
+.sl-select-dropdown .sl-select-option:last-child {
+  border-bottom: none;
 }
 
 .sl-select-dropdown .sl-select-option::before {
@@ -695,12 +785,16 @@ onUnmounted(() => {
 
 .sl-select-dropdown .sl-select-option:hover,
 .sl-select-dropdown .sl-select-option.highlighted {
-  background: var(--sl-surface-hover);
+  background: var(--sl-overlay-surface-hover, var(--sl-surface-hover));
 }
 
 .sl-select-dropdown .sl-select-option.selected {
   color: var(--sl-primary);
-  background: var(--sl-primary-bg);
+  background: color-mix(
+    in srgb,
+    var(--sl-primary-bg) 65%,
+    var(--sl-overlay-surface-hover, var(--sl-surface-hover))
+  );
 }
 
 .sl-select-dropdown .sl-select-option .option-label {
@@ -761,6 +855,38 @@ onUnmounted(() => {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+.sl-select-dropdown--up.dropdown-enter-active {
+  animation-name: dropdown-enter-up;
+}
+
+.sl-select-dropdown--up.dropdown-leave-active {
+  animation-name: dropdown-leave-up;
+}
+
+@keyframes dropdown-enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown-leave-up {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
   }
 }
 

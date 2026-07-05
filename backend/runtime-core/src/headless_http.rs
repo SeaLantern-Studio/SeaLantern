@@ -1,5 +1,5 @@
 use crate::{log_error_ctx, log_info_ctx};
-use http::{header::AUTHORIZATION, HeaderValue};
+use http::HeaderValue;
 use sha2::{Digest, Sha256};
 use std::{
     path::{Path, PathBuf},
@@ -13,6 +13,7 @@ pub(crate) const DEFAULT_MAX_UPLOAD_BYTES: usize = 500 * 1024 * 1024;
 pub(crate) const DEFAULT_MAX_UPLOAD_FILE_BYTES: usize = 100 * 1024 * 1024;
 pub(crate) const DEFAULT_MAX_UPLOAD_FILES: usize = 16;
 pub const HTTP_AUTH_TOKEN_ENV: &str = "SEALANTERN_HTTP_AUTH_TOKEN";
+pub const WEB_AUTH_RECOVERY_TOKEN_ENV: &str = "SEALANTERN_WEB_AUTH_RECOVERY_TOKEN";
 pub const HTTP_CORS_ORIGINS_ENV: &str = "SEALANTERN_HTTP_CORS_ORIGINS";
 
 fn print_info(function: &str, message: &str) {
@@ -26,6 +27,7 @@ fn print_error(function: &str, message: &str) {
 }
 
 #[derive(Clone, Debug)]
+/// Runtime configuration for the headless HTTP host.
 pub struct HeadlessHttpConfig {
     pub auth_token: String,
     pub upload_dir: PathBuf,
@@ -35,6 +37,7 @@ pub struct HeadlessHttpConfig {
     pub max_upload_files: usize,
 }
 
+/// Builds a permissive default headless HTTP config and silently downgrades invalid env input.
 pub fn default_headless_http_config() -> HeadlessHttpConfig {
     default_headless_http_config_checked().unwrap_or_else(|_| HeadlessHttpConfig {
         auth_token: env_var_trimmed(HTTP_AUTH_TOKEN_ENV)
@@ -47,6 +50,7 @@ pub fn default_headless_http_config() -> HeadlessHttpConfig {
     })
 }
 
+/// Builds the default headless HTTP config and surfaces invalid environment input.
 pub fn default_headless_http_config_checked() -> Result<HeadlessHttpConfig, String> {
     let configured_token = env_var_trimmed(HTTP_AUTH_TOKEN_ENV);
     let auth_token = configured_token.unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -61,6 +65,7 @@ pub fn default_headless_http_config_checked() -> Result<HeadlessHttpConfig, Stri
     })
 }
 
+/// Prepares the upload directory, logs security state, and binds the HTTP listener.
 pub async fn prepare_headless_http_listener(
     addr: &str,
     config: &HeadlessHttpConfig,
@@ -98,37 +103,40 @@ pub async fn prepare_headless_http_listener(
     Ok(listener)
 }
 
+/// Logs the ready-state messages for the headless HTTP server.
 pub fn log_headless_http_ready(addr: &str) {
     for message in describe_http_ready_messages(addr) {
         print_info("log_headless_http_ready", &message);
     }
 }
 
+/// Logs the static-directory configuration used by the HTTP host.
 pub fn log_headless_http_static_dir(dir: &str) {
     let message = format!("Serving static files from: {} (SPA fallback enabled)", dir);
     print_info("log_headless_http_static_dir", &message);
 }
 
+/// Describes the security-relevant HTTP configuration without leaking the full auth token.
 pub fn describe_http_security_configuration(config: &HeadlessHttpConfig) -> Vec<String> {
     let token_reference = format_token_reference(&config.auth_token);
     let mut messages = Vec::new();
 
     if std::env::var(HTTP_AUTH_TOKEN_ENV).is_ok() {
-        messages.push(format!(
-            "SeaLantern HTTP auth enabled with configured token {}",
-            token_reference
-        ));
+        messages.push(format!("SeaLantern HTTP token configured {}", token_reference));
     } else {
+        messages
+            .push(format!("SeaLantern HTTP generated a process-local token {}", token_reference));
         messages.push(format!(
-            "SeaLantern HTTP auth generated a process-local token {}",
-            token_reference
-        ));
-        messages.push(format!(
-            "Set '{}' explicitly for a stable token; otherwise use the in-process generated token with header '{}: Bearer <token>' when calling /api/*, /upload, or /api/logs/stream",
+            "Set '{}' explicitly only if another runtime component still needs a stable HTTP token; browser Web auth now uses /api/auth/* browser sessions instead of '{}' as a normal login credential",
             HTTP_AUTH_TOKEN_ENV,
-            AUTHORIZATION.as_str(),
+            HTTP_AUTH_TOKEN_ENV,
         ));
     }
+
+    messages.push(format!(
+        "Browser Web auth requires /api/auth/* session login; recovery mode is controlled only by '{}'",
+        WEB_AUTH_RECOVERY_TOKEN_ENV,
+    ));
 
     if config.cors_allowed_origins.is_empty() {
         messages.push(
@@ -145,6 +153,7 @@ pub fn describe_http_security_configuration(config: &HeadlessHttpConfig) -> Vec<
     messages
 }
 
+/// Formats a token reference that keeps only a short prefix and hash fingerprint.
 pub fn format_token_reference(token: &str) -> String {
     format!("prefix={} fingerprint={}", token_prefix(token), token_fingerprint(token))
 }
@@ -218,6 +227,7 @@ mod tests {
         parse_cors_allowed_origins_checked, prepare_headless_http_listener,
         DEFAULT_MAX_UPLOAD_BYTES, DEFAULT_MAX_UPLOAD_FILES, DEFAULT_MAX_UPLOAD_FILE_BYTES,
         DEFAULT_UPLOAD_DIR, HTTP_AUTH_TOKEN_ENV, HTTP_CORS_ORIGINS_ENV,
+        WEB_AUTH_RECOVERY_TOKEN_ENV,
     };
     use crate::test_support::{lock_env, EnvGuard};
     use std::{
@@ -302,6 +312,10 @@ mod tests {
         assert!(messages
             .iter()
             .any(|message| message.contains("process-local token prefix=")));
+        assert!(messages.iter().any(|message| {
+            message.contains("Browser Web auth requires /api/auth/* session login")
+                && message.contains(WEB_AUTH_RECOVERY_TOKEN_ENV)
+        }));
     }
 
     #[test]

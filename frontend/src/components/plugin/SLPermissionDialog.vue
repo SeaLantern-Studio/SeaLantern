@@ -10,6 +10,10 @@ const props = defineProps<{
   show: boolean;
   pluginName: string;
   permissions: string[];
+  title?: string;
+  message?: string;
+  confirmText?: string;
+  confirmVariant?: "primary" | "danger";
 }>();
 
 const emit = defineEmits<{
@@ -49,9 +53,11 @@ function handleCancel() {
           <Info v-else :size="22" :stroke-width="2" />
         </div>
         <div class="header-text">
-          <h2>{{ i18n.t("plugins.permission.warning_title") }}</h2>
+          <h2>{{ props.title || i18n.t("plugins.permission.warning_title") }}</h2>
           <p>
-            {{ i18n.t("plugins.permission.warning_message", { name: pluginName }) }}
+            {{
+              props.message || i18n.t("plugins.permission.warning_message", { name: pluginName })
+            }}
           </p>
         </div>
       </div>
@@ -111,8 +117,11 @@ function handleCancel() {
         <SLButton variant="secondary" @click="handleCancel">
           {{ i18n.t("plugins.permission.warning_cancel") }}
         </SLButton>
-        <SLButton :variant="hasCritical ? 'danger' : 'primary'" @click="handleConfirm">
-          {{ i18n.t("plugins.permission.warning_confirm") }}
+        <SLButton
+          :variant="confirmVariant || (hasCritical ? 'danger' : 'primary')"
+          @click="handleConfirm"
+        >
+          {{ confirmText || i18n.t("plugins.permission.warning_confirm") }}
         </SLButton>
       </div>
     </div>

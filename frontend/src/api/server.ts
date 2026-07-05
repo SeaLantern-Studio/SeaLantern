@@ -3,6 +3,7 @@ import {
   isBrowserEnv,
   HTTP_API_BASE,
   ensureBrowserSession,
+  notifyBrowserUnauthorized,
   readBrowserAuthToken,
 } from "@api/tauri";
 import type { ServerStatus } from "@type/common";
@@ -21,6 +22,7 @@ export interface ServerStatusInfo {
   status: ServerStatus;
   pid: number | null;
   uptime: number | null;
+  display_message?: string | null;
   detail_message?: string | null;
   error_message?: string | null;
 }
@@ -43,6 +45,66 @@ export interface ServerLogStructuredEvent {
   event_kind: "server_ready" | "player_join" | "player_leave" | "chat" | "error" | null;
   player: string | null;
   message: string | null;
+}
+
+export interface ServerRuntimeEventPayloadRawLine {
+  type: "raw_line";
+  line: string;
+  stream: string;
+}
+
+export interface ServerRuntimeEventPayloadStructuredLog {
+  type: "structured_log";
+  line: string;
+  stream: string;
+  event_kind: string | null;
+  player: string | null;
+  message: string | null;
+}
+
+export interface ServerRuntimeEventPayloadCommand {
+  type: "command";
+  command: string;
+  success: boolean | null;
+  error: string | null;
+  actor: string;
+}
+
+export interface ServerRuntimeEventPayloadLifecycle {
+  type: "lifecycle";
+  detail: string | null;
+  error: string | null;
+  from_mode: string | null;
+  to_mode: string | null;
+}
+
+export interface ServerRuntimeEvent {
+  event_id: string;
+  occurred_at: number;
+  scope: "server";
+  server_id: string;
+  source: string;
+  kind: string;
+  payload:
+    | ServerRuntimeEventPayloadRawLine
+    | ServerRuntimeEventPayloadStructuredLog
+    | ServerRuntimeEventPayloadCommand
+    | ServerRuntimeEventPayloadLifecycle;
+}
+
+export interface AppOperationEvent {
+  event_id: string;
+  occurred_at: number;
+  scope: "app";
+  action: string;
+  source: string;
+  kind: "operation_requested" | "operation_succeeded" | "operation_failed";
+  payload: {
+    type: "operation";
+    action: string;
+    detail: string | null;
+    error: string | null;
+  };
 }
 
 export interface ForceStopPreparation {
@@ -87,6 +149,8 @@ async function readSseStream(
   isDisposed: () => boolean,
   buffer: string = "",
 ): Promise<void> {
+  // Keep the trailing partial frame between reads; SSE payload boundaries do not align
+  // with chunk boundaries, so parsing line-by-line would randomly truncate log events.
   const { value, done } = await reader.read();
   if (done || isDisposed()) {
     return;
@@ -361,6 +425,8 @@ export const serverApi = {
     startupMode: "jar" | "bat" | "sh" | "ps1" | "custom";
     executablePath?: string;
     customCommand?: string;
+    coreType?: string;
+    mcVersion?: string;
     jvmArgs?: string[];
     cpuPolicy?: CpuPolicyConfig;
     jvmPreset?: JvmPresetConfig;
@@ -375,6 +441,8 @@ export const serverApi = {
       startupMode: params.startupMode,
       executablePath: params.executablePath,
       customCommand: params.customCommand,
+      coreType: params.coreType,
+      mcVersion: params.mcVersion,
       jvmArgs: params.jvmArgs ?? [],
       cpuPolicy: params.cpuPolicy,
       jvmPreset: params.jvmPreset,
@@ -398,6 +466,8 @@ export const serverApi = {
   },
 
   async forceStopAll(): Promise<ForceStopAllResult> {
+    // Force-stop is intentionally best-effort across the fleet: one server failing the
+    // confirmation flow must not prevent attempts on the remaining active instances.
     const servers = await this.getList();
     const activeServerIds = await Promise.all(
       servers.map(async (server) => {
@@ -518,6 +588,31 @@ export const serverApi = {
     });
   },
 
+  onRuntimeEvent(callback: (payload: ServerRuntimeEvent) => void): Promise<UnlistenFn> {
+    if (isBrowserEnv()) {
+      return Promise.reject(new Error("Runtime events are only available in Tauri mode"));
+    }
+    return listen<ServerRuntimeEvent>("server-runtime-event", (event) => {
+      callback(event.payload);
+    });
+  },
+
+  onAppOperationEvent(callback: (payload: AppOperationEvent) => void): Promise<UnlistenFn> {
+    if (isBrowserEnv()) {
+      return Promise.reject(new Error("App operation events are only available in Tauri mode"));
+    }
+    return listen<AppOperationEvent>("app-operation-event", (event) => {
+      callback(event.payload);
+    });
+  },
+
+  async getRecentAppOperationEvents(limit?: number): Promise<AppOperationEvent[]> {
+    if (isBrowserEnv()) {
+      return Promise.reject(new Error("App operation events are only available in Tauri mode"));
+    }
+    return tauriInvoke("get_recent_app_operation_events", { limit });
+  },
+
   /**
    * SSE 日志流订阅（浏览器/Docker 模式）
    * 返回取消订阅函数
@@ -567,6 +662,11 @@ export const serverApi = {
                 signal: abortController?.signal,
               });
 
+              if (response.status === 401) {
+                notifyBrowserUnauthorized("auth.message_session_expired");
+                throw new Error("SSE unauthorized");
+              }
+
               if (!response.ok || !response.body) {
                 throw new Error(`SSE stream failed with HTTP ${response.status}`);
               }
@@ -578,6 +678,8 @@ export const serverApi = {
                 return;
               }
 
+              // Browser log streaming should self-heal on transient backend restarts. The
+              // explicit timer also prevents recursive immediate reconnect storms on failure.
               console.warn("[SSE] Connection error, reconnecting...", error);
               abortController?.abort();
               abortController = null;

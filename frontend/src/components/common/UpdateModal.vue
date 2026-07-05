@@ -4,7 +4,8 @@ import SLModal from "@components/common/SLModal.vue";
 import SLButton from "@components/common/SLButton.vue";
 import { useUpdateStore } from "@stores/updateStore";
 import { i18n } from "@language";
-import { downloadUpdate, installUpdate, onDownloadProgress } from "@api/update";
+import { desktopUpdaterApi } from "@api/updateDesktop";
+import { isBrowserEnv } from "@api/tauri";
 import { serverApi } from "@api/server";
 import type { ServerStatus } from "@type/common";
 import type { UnlistenFn } from "@tauri-apps/api/event";
@@ -16,6 +17,7 @@ interface ForceStopFailureItem {
 }
 
 const updateStore = useUpdateStore();
+const isBrowserMode = isBrowserEnv();
 
 const showInstallRiskConfirm = ref(false);
 const activeServerNames = ref<string[]>([]);
@@ -23,6 +25,14 @@ let unlistenProgress: UnlistenFn | null = null;
 const isInstallLaunching = computed(() => updateStore.status === "installing");
 
 const buttonState = computed(() => {
+  if (isBrowserMode) {
+    return {
+      text: i18n.t("about.go_download"),
+      variant: "primary" as const,
+      disabled: !updateStore.updateInfo?.download_url,
+    };
+  }
+
   if (updateStore.status === "downloading") {
     return {
       text: `${i18n.t("about.update_downloading")} ${progressPercent.value}%`,
@@ -56,7 +66,11 @@ const progressPercent = computed(() => {
 });
 
 onMounted(async () => {
-  unlistenProgress = await onDownloadProgress((progress) => {
+  if (isBrowserMode) {
+    return;
+  }
+
+  unlistenProgress = await desktopUpdaterApi.onDownloadProgress((progress) => {
     const percent =
       progress.percent ?? (progress.total > 0 ? (progress.downloaded / progress.total) * 100 : 0);
     updateStore.setDownloading(percent);
@@ -87,9 +101,21 @@ async function handleUpdateClick() {
     return;
   }
 
+  if (isBrowserMode) {
+    const opened = window.open(
+      updateStore.updateInfo.download_url,
+      "_blank",
+      "noopener,noreferrer",
+    );
+    if (!opened) {
+      window.location.href = updateStore.updateInfo.download_url;
+    }
+    return;
+  }
+
   try {
     updateStore.setDownloading(0);
-    const filePath = await downloadUpdate(
+    const filePath = await desktopUpdaterApi.download(
       updateStore.updateInfo.download_url,
       updateStore.updateInfo.sha256,
       updateStore.updateInfo.latest_version,
@@ -131,6 +157,10 @@ async function getActiveServerNames(): Promise<string[]> {
 }
 
 async function handleInstallClick() {
+  if (isBrowserMode) {
+    return;
+  }
+
   if (!updateStore.downloadedFilePath || !updateStore.updateInfo) {
     return;
   }
@@ -162,7 +192,10 @@ async function performInstall() {
   updateStore.setInstalling();
 
   try {
-    await installUpdate(updateStore.downloadedFilePath, updateStore.updateInfo.latest_version);
+    await desktopUpdaterApi.install(
+      updateStore.downloadedFilePath,
+      updateStore.updateInfo.latest_version,
+    );
     window.close();
   } catch (error) {
     console.error("Install failed:", error);
@@ -171,6 +204,10 @@ async function performInstall() {
 }
 
 async function handleForceAutoUpdate() {
+  if (isBrowserMode) {
+    return;
+  }
+
   if (isInstallLaunching.value) {
     return;
   }

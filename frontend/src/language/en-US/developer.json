@@ -46,5 +46,78 @@
   "host": "Device Name",
   "cpu": "Processor",
   "memory": "Memory",
-  "process_count": "Process Count"
+  "process_count": "Process Count",
+  "next": {
+    "eyebrow": "Developer Tools",
+    "page_title": "Developer Tools",
+    "page_description": "",
+    "nav_aria_label": "Developer sections",
+    "summary": {
+      "browser": "Browser",
+      "desktop": "Desktop",
+      "environment": "Environment",
+      "log_count": "Log entries",
+      "system_status": "System status",
+      "ready": "Ready",
+      "waiting": "Waiting"
+    },
+    "sections": {
+      "overview": {
+        "label": "Overview",
+        "description": ""
+      },
+      "logs": {
+        "label": "Logs",
+        "description": ""
+      },
+      "tools": {
+        "label": "Tools",
+        "description": ""
+      },
+      "other": {
+        "label": "Other",
+        "description": ""
+      }
+    },
+    "overview": {
+      "title": "Environment Summary",
+      "description": ""
+    },
+    "logs": {
+      "title": "Logs",
+      "description": ""
+    },
+    "tools": {
+      "title": "Tools",
+      "description": "",
+      "toast": {
+        "title": "Toast Test",
+        "description": "Show a message with one tap.",
+        "success_button": "Show Success",
+        "error_button": "Show Error",
+        "warning_button": "Show Warning",
+        "info_button": "Show Info",
+        "success_message": "Action completed",
+        "error_message": "Action failed, try again",
+        "warning_message": "Please confirm this action first",
+        "info_message": "Loading the latest status"
+      },
+      "banner": {
+        "title": "Announcement Test",
+        "description": "Click a button to open the announcement window.",
+        "info_button": "Show Announcement",
+        "warning_button": "Show Warning Announcement",
+        "error_button": "Show Error Announcement",
+        "clear_button": "Close Announcement",
+        "info_message": "There is a new status update",
+        "warning_message": "This action needs another check",
+        "error_message": "The current state needs attention"
+      }
+    },
+    "other": {
+      "title": "Other",
+      "description": "",
+      "warning": "This area contains high-risk actions."
+    }
+  }
 }

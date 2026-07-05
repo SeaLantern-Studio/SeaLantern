@@ -1,13 +1,13 @@
 ---
 module-name: sea-lantern
-update-time: 2026-06-06
+update-time: 2026-07-05
 description: Main Tauri host crate for SeaLantern desktop runtime, command surface, plugins, services, and host integration.
 tag: ["tauri-host", "commands", "services", "plugins", "host-runtime"]
 ---
 
 If this file becomes outdated, update it in the same change and tell the user what changed.
 
-## Tauri Host
+## Module Purpose
 
 `sea-lantern` is the main host crate for the desktop app and headless-host entry surface.
 
@@ -41,26 +41,32 @@ This crate should not absorb shared pure logic that belongs in backend core crat
     - `utils/`
   - `Cargo.toml`
 
-## Module Info
+## Key Files
 
-[`backend/tauri-host/src/lib.rs`](../tauri-host/src/lib.rs): Main library entry for SeaLantern host runtime. | Host bootstrap surface.
+[`src/lib.rs`](src/lib.rs): Main library entry for SeaLantern host runtime.
 - `run` -> `fn()`: Starts the desktop and Tauri host runtime.
 - `run_headless_http` -> `fn()`: Starts the headless HTTP host path used by Docker and external hosts.
 
-[`backend/tauri-host/src/main.rs`](../tauri-host/src/main.rs): Desktop executable entrypoint. | Thin binary wrapper.
-- `main` -> `fn(sea_lantern_lib::run())`: Starts the main desktop host.
+[`src/main.rs`](src/main.rs): Desktop executable entrypoint.
+- Thin binary wrapper for the main desktop host.
 
-[`backend/tauri-host/src/commands/`](../tauri-host/src/commands): Tauri command surface consumed by frontend code and host adapters. | Host API layer.
+[`src/commands/`](src/commands): Tauri command surface consumed by frontend code and host adapters.
+- Host API layer.
 
-[`backend/tauri-host/src/services/`](../tauri-host/src/services): Host-side business services, managers, and runtime orchestration. | Main app logic layer.
+[`src/services/`](src/services): Host-side business services, managers, and runtime orchestration.
+- Main app logic layer.
 
-[`backend/tauri-host/src/plugins/`](../tauri-host/src/plugins): SeaLantern plugin runtime, plugin APIs, and plugin manager logic. | Host plugin subsystem.
+[`src/plugins/`](src/plugins): SeaLantern plugin runtime, plugin APIs, and plugin manager logic.
+- Host plugin subsystem.
 
-[`backend/tauri-host/src/runtime/`](../tauri-host/src/runtime): High-level runtime bootstrap and command catalog wiring. | App bootstrap details.
+[`src/runtime/`](src/runtime): High-level runtime bootstrap and command catalog wiring.
+- App bootstrap details.
 
-[`backend/tauri-host/src/models/`](../tauri-host/src/models): Host-facing data models and serialization payloads. | App model layer.
+[`src/models/`](src/models): Host-facing data models and serialization payloads.
+- App model layer.
 
-[`backend/tauri-host/src/utils/`](../tauri-host/src/utils): Host utility modules, CLI helpers, and adapters. | App support layer.
+[`src/utils/`](src/utils): Host utility modules, CLI helpers, and adapters.
+- App support layer.
 
 ## Stable Boundaries
 
