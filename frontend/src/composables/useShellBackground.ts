@@ -2,7 +2,7 @@ import type { CSSProperties } from "vue";
 import { computed } from "vue";
 import type { WindowEffect } from "@api/settings";
 import { useSettingsStore } from "@stores/settingsStore";
-import { isWindowsPlatform } from "@utils/platform";
+import { isLinuxPlatform, isMacOSPlatform, isWindowsPlatform } from "@utils/platform";
 
 const WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED = true;
 
@@ -22,6 +22,8 @@ function resolveBackgroundSize(size: string): string {
 export function useShellBackground() {
   const settingsStore = useSettingsStore();
   const isWindows = isWindowsPlatform();
+  const isMacOS = isMacOSPlatform();
+  const isLinux = isLinuxPlatform();
 
   const backgroundImage = computed(() => settingsStore.backgroundImage || "");
   const backgroundOpacity = computed(() => settingsStore.backgroundOpacity ?? 0.3);
@@ -33,6 +35,8 @@ export function useShellBackground() {
   );
 
   const hasBackgroundImage = computed(() => Boolean(backgroundImage.value));
+  const supportsTransparentWindowBackdrop =
+    isMacOS || (isWindows && !WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED);
   const backgroundStyle = computed<CSSProperties>(() => {
     if (!backgroundImage.value) {
       return {};
@@ -50,7 +54,8 @@ export function useShellBackground() {
 
   const hasTransparentWindowBackdrop = computed(
     () =>
-      !(isWindows && WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED) &&
+      !isLinux &&
+      supportsTransparentWindowBackdrop &&
       (windowEffect.value !== "off" || !backgroundImage.value),
   );
 

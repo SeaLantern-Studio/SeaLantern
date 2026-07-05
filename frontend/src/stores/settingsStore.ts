@@ -13,7 +13,7 @@ import {
   type WindowEffect,
 } from "@api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { isWindowsPlatform } from "@utils/platform";
+import { isLinuxPlatform, isMacOSPlatform, isWindowsPlatform } from "@utils/platform";
 import {
   applyColors,
   applyDeveloperMode,
@@ -155,6 +155,8 @@ export const useSettingsStore = defineStore("settings", () => {
   const isLoading = ref(false);
   const loadError = ref<string | null>(null);
   const isWindows = isWindowsPlatform();
+  const isMacOS = isMacOSPlatform();
+  const isLinux = isLinuxPlatform();
 
   let loadPromise: Promise<void> | null = null;
   let appearanceApplyQueue: Promise<void> = Promise.resolve();
@@ -195,9 +197,12 @@ export const useSettingsStore = defineStore("settings", () => {
 
   function applyWindowEffectAttributes(nextSettings: AppSettings): void {
     const effect = (nextSettings.window_effect || "off") as WindowEffect;
-    const nativeWindowEffectEnabled = !(isWindows && WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED);
+    const nativeWindowEffectEnabled =
+      isMacOS || (isWindows && !WINDOWS_NATIVE_WINDOW_EFFECTS_DISABLED);
     const hasBackgroundImage = Boolean(nextSettings.background_image);
-    const enabled = nativeWindowEffectEnabled
+    const enabled = isLinux
+      ? false
+      : nativeWindowEffectEnabled
       ? effect !== "off" || !hasBackgroundImage
       : effect !== "off" && hasBackgroundImage;
     document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");

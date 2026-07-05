@@ -6154,7 +6154,7 @@ dependencies = [
  "sha2 0.10.9",
  "shlex",
  "sl-libscv",
- "sl-server-flavor-core 0.2.1",
+ "sl-server-flavor-core",
  "sl-server-info",
  "sysinfo",
  "tar",
@@ -6283,7 +6283,7 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "serde",
- "sl-server-core-taxonomy 0.1.1",
+ "sl-server-core-taxonomy",
  "tar",
  "tempfile",
  "uuid",
@@ -6302,7 +6302,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shlex",
- "sl-server-core-taxonomy 0.1.1",
+ "sl-server-core-taxonomy",
  "tempfile",
 ]
 
@@ -6323,7 +6323,7 @@ dependencies = [
  "sea-lantern-server-installer-core",
  "serde",
  "serde_yaml",
- "sl-server-flavor-core 0.2.1",
+ "sl-server-flavor-core",
  "tempfile",
  "zip",
 ]
@@ -6814,14 +6814,10 @@ checksum = "646c83fa33d75e56c3a8b6eba7c77dc5a5be51c0de8a4ebe35629fdaa2d99f85"
 dependencies = [
  "serde",
  "serde_json",
- "sl-server-core-taxonomy 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "sl-server-flavor-core 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sl-server-core-taxonomy",
+ "sl-server-flavor-core",
  "toml_edit 0.22.27",
 ]
-
-[[package]]
-name = "sl-server-core-taxonomy"
-version = "0.1.1"
 
 [[package]]
 name = "sl-server-core-taxonomy"
@@ -6832,26 +6828,21 @@ checksum = "62f7b9792a823e98d394008b91cd217aff789235c3b2f41a943240a05803c278"
 [[package]]
 name = "sl-server-flavor-core"
 version = "0.2.1"
-dependencies = [
- "sl-server-core-taxonomy 0.1.1",
-]
-
-[[package]]
-name = "sl-server-flavor-core"
-version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1922a226bd9624751d47064fd190276170e542c9df44f4f2d47c7919189202d8"
 dependencies = [
- "sl-server-core-taxonomy 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sl-server-core-taxonomy",
 ]
 
 [[package]]
 name = "sl-server-info"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdb9dd8c517689d968a2cd760079beeb788b01627882628732e3c7765a9239ab"
 dependencies = [
  "rcon",
  "regex",
- "sl-server-core-taxonomy 0.1.1",
+ "sl-server-core-taxonomy",
  "tokio",
 ]
 

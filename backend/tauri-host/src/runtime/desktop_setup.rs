@@ -13,6 +13,8 @@ use std::collections::HashMap;
 #[cfg(any(feature = "plugin-local-runtime", feature = "plugin-runtime-bridge"))]
 use std::sync::RwLock;
 use tauri::Manager;
+#[cfg(target_os = "linux")]
+use tauri::window::Color;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
 
@@ -87,6 +89,20 @@ pub(crate) fn apply_platform_window_style(app: &tauri::App) {
             theme_pref,
         ) {
             eprintln!("Failed to apply fallback Windows window effect: {}", e);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    if let Some(window) = app.get_webview_window("main") {
+        let settings = crate::services::global::settings_manager().get();
+        let background = match settings.theme.as_str() {
+            "dark" => Some(Color(15, 17, 23, 255)),
+            "light" => Some(Color(248, 250, 252, 255)),
+            _ => Some(Color(248, 250, 252, 255)),
+        };
+
+        if let Err(e) = window.set_background_color(background) {
+            eprintln!("Failed to apply Linux opaque window background: {}", e);
         }
     }
 }
