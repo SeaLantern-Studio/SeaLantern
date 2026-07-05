@@ -73,9 +73,14 @@ pub(super) fn notify_context_menu_show(
         {
             continue;
         }
-        manager
-            .runtime_driver_for(info)
-            .notify_context_menu_show(manager, id, context, target_data, x, y);
+        manager.runtime_driver_for(info).notify_context_menu_show(
+            manager,
+            id,
+            context,
+            target_data,
+            x,
+            y,
+        );
     }
 }
 

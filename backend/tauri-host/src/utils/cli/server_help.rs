@@ -70,7 +70,7 @@ pub(super) fn build_server_help_text() -> String {
         "  SEALANTERN_SERVERS_CONTAINER_ROOT    SeaLantern 容器内可见的 servers 根目录",
         "  SEALANTERN_SERVERS_HOST_ROOT         Docker 实际应挂载的宿主机 servers 根目录",
         "  STATIC_DIR=<path>                    指定 Web 静态资源目录",
-        "  VITE_HTTP_AUTH_TOKEN=<token>         浏览器前端访问 Headless HTTP 时使用的 Bearer Token",
+        "  SEALANTERN_WEB_AUTH_RECOVERY_TOKEN=<token>  浏览器 Web auth 的恢复令牌；仅在 /api/auth/recovery/reset 恢复链路使用",
         "",
         "示例:",
         "  sealantern server list",

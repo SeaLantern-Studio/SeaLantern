@@ -271,7 +271,9 @@ pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_create_server_defaults, build_host_capabilities_from_flags, HostBuildFlavor};
+    use super::{
+        build_create_server_defaults, build_host_capabilities_from_flags, HostBuildFlavor,
+    };
     use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId};
     use crate::models::settings::AppSettings;
     use crate::services::java_detector::JavaInfo;

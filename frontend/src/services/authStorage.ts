@@ -1,4 +1,4 @@
-export type BrowserAuthSource = "runtime" | "session" | "local" | "env";
+export type BrowserAuthSource = "runtime" | "session" | "local";
 
 export interface BrowserAuthCandidate {
   token: string;
@@ -86,10 +86,7 @@ export function persistToken(token: string, rememberBrowser: boolean): BrowserAu
   return "session";
 }
 
-export function readCandidateTokens(options: {
-  envToken?: string | null;
-  includeEnv?: boolean;
-}): BrowserAuthCandidate[] {
+export function readCandidateTokens(): BrowserAuthCandidate[] {
   const result: BrowserAuthCandidate[] = [];
   const seen = new Set<string>();
 
@@ -105,10 +102,6 @@ export function readCandidateTokens(options: {
 
   pushCandidate(readSessionToken(), "session");
   pushCandidate(readRememberedToken(), "local");
-
-  if (options.includeEnv !== false) {
-    pushCandidate(options.envToken ?? null, "env");
-  }
 
   return result;
 }

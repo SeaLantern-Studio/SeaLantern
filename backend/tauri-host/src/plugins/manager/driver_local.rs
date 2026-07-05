@@ -322,10 +322,7 @@ impl PluginRuntimeDriver for LuaLocalPluginDriver {
         plugin_id: &str,
         _confirmation: Option<crate::models::plugin::PluginEnableConfirmation>,
     ) -> Result<crate::models::plugin::PluginEnableResult, String> {
-        Err(format!(
-            "Plugin '{}' requires the 'plugin-local-runtime' feature",
-            plugin_id
-        ))
+        Err(format!("Plugin '{}' requires the 'plugin-local-runtime' feature", plugin_id))
     }
 
     fn disable(
@@ -333,10 +330,7 @@ impl PluginRuntimeDriver for LuaLocalPluginDriver {
         _manager: &mut PluginManager,
         plugin_id: &str,
     ) -> Result<Vec<String>, String> {
-        Err(format!(
-            "Plugin '{}' requires the 'plugin-local-runtime' feature",
-            plugin_id
-        ))
+        Err(format!("Plugin '{}' requires the 'plugin-local-runtime' feature", plugin_id))
     }
 
     fn notify_page_changed(&self, _manager: &PluginManager, _plugin_id: &str, _path: &str) {}
@@ -372,9 +366,6 @@ impl PluginRuntimeDriver for LuaLocalPluginDriver {
         _item_id: &str,
         _target_data: serde_json::Value,
     ) -> Result<(), String> {
-        Err(format!(
-            "Plugin '{}' requires the 'plugin-local-runtime' feature",
-            plugin_id
-        ))
+        Err(format!("Plugin '{}' requires the 'plugin-local-runtime' feature", plugin_id))
     }
 }

@@ -40,8 +40,13 @@ fn command_registry_includes_wrapped_settings_contract_commands() {
 
     assert!(commands.contains(&"change_data_dir".to_string()));
     assert!(commands.contains(&"change_plugin_dir".to_string()));
-    assert!(commands.contains(&"save_settings_with_diff".to_string()));
-    assert!(commands.contains(&"import_settings".to_string()));
+    assert!(commands.contains(&"get_web_settings".to_string()));
+    assert!(commands.contains(&"save_web_settings".to_string()));
+    assert!(commands.contains(&"update_web_settings_partial".to_string()));
+    assert!(commands.contains(&"import_web_settings".to_string()));
+    assert!(!commands.contains(&"get_settings".to_string()));
+    assert!(!commands.contains(&"save_settings_with_diff".to_string()));
+    assert!(!commands.contains(&"import_settings".to_string()));
 }
 
 #[tokio::test]

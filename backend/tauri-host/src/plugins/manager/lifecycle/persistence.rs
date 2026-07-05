@@ -122,10 +122,9 @@ pub(in crate::plugins::manager) fn disable_all_plugins_for_shutdown(manager: &mu
 mod tests {
     use super::{auto_enable_plugins_checked, load_enabled_plugin_ids_checked};
     use crate::models::plugin::{
-        PluginActions, PluginAuthor, PluginDistributionClass, PluginExecutionClass,
-        PluginInfo, PluginIntegrityStatus, PluginManifest, PluginPermissionProfile,
-        PluginReviewStatus, PluginRuntimeKind, PluginSource, PluginTrustLevelDisplay,
-        PluginTrustedPolicySource,
+        PluginActions, PluginAuthor, PluginDistributionClass, PluginExecutionClass, PluginInfo,
+        PluginIntegrityStatus, PluginManifest, PluginPermissionProfile, PluginReviewStatus,
+        PluginRuntimeKind, PluginSource, PluginTrustLevelDisplay, PluginTrustedPolicySource,
     };
     use crate::plugins::manager::PluginManager;
     use crate::plugins::manager::PluginState;
@@ -257,17 +256,17 @@ mod tests {
         let plugin_id = plugin.manifest.id.clone();
         manager.plugins.insert(plugin_id.clone(), plugin);
 
-        std::fs::write(
-            data_dir.join("enabled_plugins.json"),
-            format!("[\"{}\"]", plugin_id),
-        )
-        .expect("enabled plugins file should exist");
+        std::fs::write(data_dir.join("enabled_plugins.json"), format!("[\"{}\"]", plugin_id))
+            .expect("enabled plugins file should exist");
 
         auto_enable_plugins_checked(&mut manager).expect("auto-enable should not fail");
 
         assert!(manager
             .plugins()
             .get(&plugin_id)
-            .is_some_and(|info| matches!(info.state, crate::models::plugin::PluginState::Disabled)));
+            .is_some_and(|info| matches!(
+                info.state,
+                crate::models::plugin::PluginState::Disabled
+            )));
     }
 }

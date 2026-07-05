@@ -279,7 +279,6 @@ pub(crate) fn install_plugin_runtime_bridge(
             }
         });
     }
-
 }
 
 #[cfg(test)]
@@ -308,5 +307,4 @@ mod tests {
 
         assert!(error.contains("data"));
     }
-
 }

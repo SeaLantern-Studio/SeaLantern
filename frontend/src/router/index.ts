@@ -384,7 +384,7 @@ router.beforeEach(async (to) => {
   if (bridgeToken && to.meta.authRequired === true) {
     try {
       const exchanged = await exchangeNextBridgeToken(bridgeToken);
-      const accepted = await authStore.login(exchanged.token, false);
+      const accepted = await authStore.acceptSession(exchanged, false);
 
       if (accepted) {
         return buildRouteWithoutBridgeToken(to);

@@ -3,6 +3,7 @@ use crate::services::events::{
     AppEventEnvelope, EventConsumer, EventConsumerKind, EventConsumerMetadata, ServerEventEnvelope,
     ServerEventSubscription,
 };
+use crate::services::web_auth::WebAuthService;
 use axum::http::StatusCode;
 use sea_lantern_runtime::HeadlessHttpConfig;
 use serde::{Deserialize, Serialize};
@@ -100,6 +101,7 @@ pub(crate) struct AppState {
     /// 命令名到处理函数的注册表
     pub(super) command_registry: Arc<CommandRegistry>,
     pub(super) config: Arc<HeadlessHttpConfig>,
+    pub(super) web_auth: Arc<WebAuthService>,
 }
 
 /// `/api/{command}` 的请求体

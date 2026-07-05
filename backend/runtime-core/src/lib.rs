@@ -16,7 +16,7 @@ pub use headless_http::{
     default_headless_http_config, default_headless_http_config_checked,
     describe_http_security_configuration, format_token_reference, log_headless_http_ready,
     log_headless_http_static_dir, prepare_headless_http_listener, HeadlessHttpConfig,
-    HTTP_AUTH_TOKEN_ENV, HTTP_CORS_ORIGINS_ENV,
+    HTTP_AUTH_TOKEN_ENV, HTTP_CORS_ORIGINS_ENV, WEB_AUTH_RECOVERY_TOKEN_ENV,
 };
 pub use headless_runtime::{run_tokio_service, TokioServiceConfig};
 pub use http_bind::{

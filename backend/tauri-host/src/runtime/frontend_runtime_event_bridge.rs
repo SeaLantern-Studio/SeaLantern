@@ -129,12 +129,7 @@ pub(crate) fn install_frontend_runtime_event_bridge(app: &tauri::App) {
                     }
                     (
                         ServerEventKind::LifecycleStartFallback,
-                        ServerEventPayload::Lifecycle {
-                            detail,
-                            from_mode,
-                            to_mode,
-                            ..
-                        },
+                        ServerEventPayload::Lifecycle { detail, from_mode, to_mode, .. },
                     ) => {
                         server_app_handle
                             .emit(
@@ -226,9 +221,7 @@ pub(crate) fn install_frontend_runtime_event_bridge(app: &tauri::App) {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        build_server_start_fallback_event, ServerStartFallbackEvent,
-    };
+    use super::{build_server_start_fallback_event, ServerStartFallbackEvent};
     use crate::services::events::{
         EventScope, ServerEventEnvelope, ServerEventKind, ServerEventPayload,
     };

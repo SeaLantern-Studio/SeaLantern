@@ -35,12 +35,12 @@ mod server;
 pub(crate) mod shared;
 #[cfg(feature = "plugin-local-runtime")]
 mod storage;
+#[cfg(not(feature = "plugin-local-runtime"))]
+mod stub;
 #[cfg(feature = "plugin-local-runtime")]
 mod system;
 #[cfg(feature = "plugin-local-runtime")]
 mod ui;
-#[cfg(not(feature = "plugin-local-runtime"))]
-mod stub;
 
 #[cfg(feature = "plugin-local-runtime")]
 pub use core::PluginRuntime;

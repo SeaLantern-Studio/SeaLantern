@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, shallowRef, useTemplateRef } from "vue";
+import { storeToRefs } from "pinia";
 import { useRoute, useRouter } from "vue-router";
 import { ShieldCheck } from "@lucide/vue";
 import { i18n } from "@language";
@@ -11,7 +12,9 @@ import { useAuthStore } from "@stores/authStore";
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const token = shallowRef("");
+const { currentFlow } = storeToRefs(authStore);
+const primaryValue = shallowRef("");
+const secondaryValue = shallowRef("");
 const rememberBrowser = shallowRef(false);
 const revealCredential = shallowRef(false);
 const formRef = useTemplateRef<InstanceType<typeof AuthEntryForm>>("formRef");
@@ -21,28 +24,96 @@ const instanceHost = computed(() => window.location.host);
 const errorMessage = computed(() =>
   authStore.lastErrorCode ? resolveErrorMessage(authStore.lastErrorCode) : null,
 );
-const isSubmitting = computed(() => authStore.isSubmitting);
+const isSubmitting = computed(() => authStore.isSubmitting || authStore.isLoadingAuthStatus);
+const panelEyebrow = computed(() => {
+  if (currentFlow.value === "setup_pending") {
+    return i18n.t("auth.status_setup_pending");
+  }
+
+  if (currentFlow.value === "recovery_active") {
+    return i18n.t("auth.status_recovery_active");
+  }
+
+  return i18n.t("auth.status_headless");
+});
+const panelHeading = computed(() => {
+  if (currentFlow.value === "setup_pending") {
+    return i18n.t("auth.setup_heading");
+  }
+
+  if (currentFlow.value === "recovery_active") {
+    return i18n.t("auth.recovery_heading");
+  }
+
+  return i18n.t("auth.login_heading");
+});
+const panelDescription = computed(() => {
+  if (currentFlow.value === "setup_pending") {
+    return i18n.t("auth.setup_description");
+  }
+
+  if (currentFlow.value === "recovery_active") {
+    return i18n.t("auth.recovery_description");
+  }
+
+  return i18n.t("auth.login_description");
+});
 
 async function handleSubmit(): Promise<void> {
-  const success = await authStore.login(token.value, rememberBrowser.value);
+  let success = false;
+
+  if (currentFlow.value === "setup_pending") {
+    success = await authStore.initializePassword(
+      primaryValue.value,
+      secondaryValue.value,
+      rememberBrowser.value,
+    );
+  } else if (currentFlow.value === "recovery_active") {
+    success = await authStore.resetRecovery(
+      primaryValue.value,
+      secondaryValue.value,
+      rememberBrowser.value,
+    );
+  } else {
+    success = await authStore.loginWithPassword(primaryValue.value, rememberBrowser.value);
+  }
+
   if (!success) {
     formRef.value?.focusInput();
     return;
   }
 
+  primaryValue.value = "";
+  secondaryValue.value = "";
   void router.replace(redirectTarget.value);
 }
 
-async function handlePaste(): Promise<void> {
+async function handlePastePrimary(): Promise<void> {
   try {
-    token.value = await navigator.clipboard.readText();
+    primaryValue.value = await navigator.clipboard.readText();
   } catch {
     // clipboard access may be blocked in some browsers
   }
 }
 
-onMounted(() => {
+async function initializeView(): Promise<void> {
+  const hydrated = await authStore.hydrate();
+  if (hydrated && authStore.isAuthenticated) {
+    void router.replace(redirectTarget.value);
+    return;
+  }
+
+  try {
+    await authStore.refreshAuthStatus(true);
+  } catch {
+    // store already exposes the unreachable message through lastErrorCode when needed later
+  }
+
   formRef.value?.focusInput();
+}
+
+onMounted(() => {
+  void initializeView();
 });
 </script>
 
@@ -55,9 +126,9 @@ onMounted(() => {
         </div>
 
         <div class="next-auth-page__copy">
-          <span class="next-auth-page__eyebrow">{{ i18n.t("auth.status_headless") }}</span>
-          <h1>{{ i18n.t("auth.heading") }}</h1>
-          <p>{{ i18n.t("auth.description") }}</p>
+          <span class="next-auth-page__eyebrow">{{ panelEyebrow }}</span>
+          <h1>{{ panelHeading }}</h1>
+          <p>{{ panelDescription }}</p>
           <div class="next-auth-page__instance">
             <span>{{ i18n.t("auth.identity_label") }}</span>
             <strong>{{ instanceHost }}</strong>
@@ -68,18 +139,21 @@ onMounted(() => {
       <div class="next-auth-page__form-card">
         <AuthEntryForm
           ref="formRef"
-          :token="token"
+          :mode="currentFlow"
+          :primary-value="primaryValue"
+          :secondary-value="secondaryValue"
           :remember-browser="rememberBrowser"
           :submitting="isSubmitting"
           :can-clear-saved="authStore.hasSavedCredential"
           :error-message="errorMessage"
           :reveal-credential="revealCredential"
-          @update:token="token = $event"
+          @update:primary-value="primaryValue = $event"
+          @update:secondary-value="secondaryValue = $event"
           @update:remember-browser="rememberBrowser = $event"
           @toggle-reveal="revealCredential = !revealCredential"
           @submit="handleSubmit"
           @clear-saved="authStore.clearSavedTokens()"
-          @paste="handlePaste"
+          @paste-primary="handlePastePrimary"
         />
       </div>
     </section>

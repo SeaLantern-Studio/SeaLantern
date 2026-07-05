@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, useTemplateRef } from "vue";
-import { Eye, EyeOff, KeyRound } from "@lucide/vue";
+import { Eye, EyeOff, KeyRound, LockKeyhole } from "@lucide/vue";
 import { i18n } from "@language";
 import SLCheckbox from "@components/common/SLCheckbox.vue";
 import SLInput from "@components/common/SLInput.vue";
 
 interface Props {
-  token: string;
+  mode: "setup_pending" | "initialized" | "recovery_active";
+  primaryValue: string;
+  secondaryValue: string;
   rememberBrowser: boolean;
   submitting: boolean;
   canClearSaved: boolean;
@@ -17,22 +19,85 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  "update:token": [value: string];
+  "update:primaryValue": [value: string];
+  "update:secondaryValue": [value: string];
   "update:rememberBrowser": [value: boolean];
   toggleReveal: [];
   submit: [];
   clearSaved: [];
-  paste: [];
+  pastePrimary: [];
 }>();
 
-const tokenInputRef = useTemplateRef<InstanceType<typeof SLInput>>("tokenInput");
-const tokenType = computed(() => (props.revealCredential ? "text" : "password"));
+const primaryInputRef = useTemplateRef<InstanceType<typeof SLInput>>("primaryInput");
+const secondaryInputRef = useTemplateRef<InstanceType<typeof SLInput>>("secondaryInput");
+const credentialType = computed(() => (props.revealCredential ? "text" : "password"));
 const revealLabel = computed(() =>
   props.revealCredential ? i18n.t("auth.hide") : i18n.t("auth.show"),
 );
+const primaryLabel = computed(() => {
+  if (props.mode === "setup_pending") {
+    return i18n.t("auth.setup_token_label");
+  }
+
+  if (props.mode === "recovery_active") {
+    return i18n.t("auth.recovery_token_label");
+  }
+
+  return i18n.t("auth.password_label");
+});
+const primaryPlaceholder = computed(() => {
+  if (props.mode === "setup_pending") {
+    return i18n.t("auth.setup_token_placeholder");
+  }
+
+  if (props.mode === "recovery_active") {
+    return i18n.t("auth.recovery_token_placeholder");
+  }
+
+  return i18n.t("auth.password_placeholder");
+});
+const primaryHelp = computed(() => {
+  if (props.mode === "setup_pending") {
+    return i18n.t("auth.setup_token_help");
+  }
+
+  if (props.mode === "recovery_active") {
+    return i18n.t("auth.recovery_token_help");
+  }
+
+  return i18n.t("auth.password_help");
+});
+const secondaryVisible = computed(() => props.mode !== "initialized");
+const secondaryLabel = computed(() =>
+  props.mode === "recovery_active"
+    ? i18n.t("auth.new_password_label")
+    : i18n.t("auth.password_label"),
+);
+const secondaryPlaceholder = computed(() =>
+  props.mode === "recovery_active"
+    ? i18n.t("auth.new_password_placeholder")
+    : i18n.t("auth.password_placeholder"),
+);
+const secondaryHelp = computed(() =>
+  props.mode === "recovery_active"
+    ? i18n.t("auth.new_password_help")
+    : i18n.t("auth.password_help"),
+);
+const submitLabel = computed(() => {
+  if (props.mode === "setup_pending") {
+    return i18n.t("auth.submit_setup");
+  }
+
+  if (props.mode === "recovery_active") {
+    return i18n.t("auth.submit_recovery");
+  }
+
+  return i18n.t("auth.submit_login");
+});
 
 defineExpose({
-  focusInput: () => tokenInputRef.value?.focus(),
+  focusInput: () => primaryInputRef.value?.focus(),
+  focusSecondaryInput: () => secondaryInputRef.value?.focus(),
 });
 </script>
 
@@ -40,17 +105,17 @@ defineExpose({
   <form class="next-auth-form" @submit.prevent="emit('submit')">
     <div class="next-auth-form__field-block">
       <div class="next-auth-form__field-meta">
-        <span class="next-auth-form__field-label">{{ i18n.t("auth.token_label") }}</span>
-        <p class="next-auth-form__field-help">{{ i18n.t("auth.token_help") }}</p>
+        <span class="next-auth-form__field-label">{{ primaryLabel }}</span>
+        <p class="next-auth-form__field-help">{{ primaryHelp }}</p>
       </div>
 
       <SLInput
-        ref="tokenInput"
-        :model-value="token"
-        :type="tokenType"
-        :placeholder="i18n.t('auth.token_placeholder')"
+        ref="primaryInput"
+        :model-value="primaryValue"
+        :type="credentialType"
+        :placeholder="primaryPlaceholder"
         :disabled="submitting"
-        @update:model-value="emit('update:token', $event)"
+        @update:model-value="emit('update:primaryValue', $event)"
       >
         <template #prefix>
           <KeyRound :size="16" class="next-auth-form__field-icon" />
@@ -69,10 +134,30 @@ defineExpose({
       </SLInput>
 
       <div class="next-auth-form__actions-inline">
-        <button class="next-auth-form__ghost-action" type="button" @click="emit('paste')">
+        <button class="next-auth-form__ghost-action" type="button" @click="emit('pastePrimary')">
           {{ i18n.t("auth.paste") }}
         </button>
       </div>
+    </div>
+
+    <div v-if="secondaryVisible" class="next-auth-form__field-block">
+      <div class="next-auth-form__field-meta">
+        <span class="next-auth-form__field-label">{{ secondaryLabel }}</span>
+        <p class="next-auth-form__field-help">{{ secondaryHelp }}</p>
+      </div>
+
+      <SLInput
+        ref="secondaryInput"
+        :model-value="secondaryValue"
+        :type="credentialType"
+        :placeholder="secondaryPlaceholder"
+        :disabled="submitting"
+        @update:model-value="emit('update:secondaryValue', $event)"
+      >
+        <template #prefix>
+          <LockKeyhole :size="16" class="next-auth-form__field-icon" />
+        </template>
+      </SLInput>
     </div>
 
     <div class="next-auth-form__remember-block">
@@ -91,7 +176,7 @@ defineExpose({
 
     <div class="next-auth-form__footer">
       <button class="next-auth-form__submit" type="submit" :disabled="submitting">
-        {{ i18n.t("auth.submit") }}
+        {{ submitLabel }}
       </button>
 
       <button

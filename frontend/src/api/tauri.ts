@@ -23,7 +23,6 @@ export const isBrowserEnv = (): boolean => {
 // HTTP API 基础 URL（Docker 模式下使用）
 // 使用相对路径，这样在 Docker 环境下浏览器会自动使用当前页面的域名
 export const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || "";
-const HTTP_AUTH_TOKEN = import.meta.env.VITE_HTTP_AUTH_TOKEN || "";
 
 interface HttpApiErrorDetail {
   code?: string;
@@ -47,18 +46,14 @@ export interface NextBridgeIssueResponse {
 }
 
 export interface NextBridgeExchangeResponse {
+  session_token: string;
   token: string;
   expires_at: number;
-  purpose: "next_browser_session";
-}
-
-export function readBrowserEnvAuthToken(): string | null {
-  const token = HTTP_AUTH_TOKEN.trim();
-  return token ? token : null;
+  purpose: "browser_session";
 }
 
 export function readBrowserAuthToken(): string | null {
-  return getBrowserRuntimeToken() ?? readPersistedBrowserToken() ?? readBrowserEnvAuthToken();
+  return getBrowserRuntimeToken() ?? readPersistedBrowserToken();
 }
 
 export { notifyBrowserUnauthorized };

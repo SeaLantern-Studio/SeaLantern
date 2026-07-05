@@ -46,8 +46,7 @@ pub struct PluginManager {
 
 impl PluginManager {
     fn plugin_runtime_is_available_for(&self, plugin: &PluginInfo) -> bool {
-        !matches!(plugin.runtime, PluginRuntimeKind::Lua)
-            || local_plugin_runtime_feature_enabled()
+        !matches!(plugin.runtime, PluginRuntimeKind::Lua) || local_plugin_runtime_feature_enabled()
     }
 
     fn plugin_runtime_unavailable_error(&self, plugin: &PluginInfo) -> String {
@@ -382,7 +381,11 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        if !self.metadata_driver_for(plugin).metadata_capabilities().has_icon {
+        if !self
+            .metadata_driver_for(plugin)
+            .metadata_capabilities()
+            .has_icon
+        {
             return Ok(String::new());
         }
         self.metadata_driver_for(plugin).get_icon(self, plugin)
@@ -394,7 +397,11 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        if !self.metadata_driver_for(plugin).metadata_capabilities().has_css {
+        if !self
+            .metadata_driver_for(plugin)
+            .metadata_capabilities()
+            .has_css
+        {
             return Ok(String::new());
         }
         self.metadata_driver_for(plugin).get_css(self, plugin)
@@ -430,13 +437,18 @@ impl PluginManager {
             .plugins
             .get(plugin_id)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
-        Ok(self.metadata_driver_for(plugin).collect_update_version(plugin))
+        Ok(self
+            .metadata_driver_for(plugin)
+            .collect_update_version(plugin))
     }
 
     pub fn collect_update_versions(&self) -> Vec<(String, String)> {
         self.plugins
             .values()
-            .filter_map(|plugin| self.metadata_driver_for(plugin).collect_update_version(plugin))
+            .filter_map(|plugin| {
+                self.metadata_driver_for(plugin)
+                    .collect_update_version(plugin)
+            })
             .collect()
     }
 
@@ -563,13 +575,8 @@ impl PluginManager {
         {
             return Err(format!("Plugin '{}' does not support context menu callbacks", plugin_id));
         }
-        self.runtime_driver_for(plugin).dispatch_context_menu_callback(
-            self,
-            plugin_id,
-            context,
-            item_id,
-            target_data,
-        )
+        self.runtime_driver_for(plugin)
+            .dispatch_context_menu_callback(self, plugin_id, context, item_id, target_data)
     }
 }
 
