@@ -50,6 +50,7 @@ struct BrowserAuthStatusEnvelope {
     password_login_enabled: bool,
     session: BrowserSessionMeta,
     next_bridge: NextBridgeMeta,
+    totp: TotpStatusEnvelope,
 }
 
 #[derive(Serialize)]
@@ -61,6 +62,14 @@ struct BrowserSessionMeta {
 struct NextBridgeMeta {
     enabled: bool,
     exchange_ttl_seconds: u64,
+}
+
+#[derive(Serialize)]
+pub(super) struct TotpStatusEnvelope {
+    state: &'static str,
+    required_on_login: bool,
+    can_setup: bool,
+    can_disable: bool,
 }
 
 #[derive(Serialize)]
@@ -102,9 +111,27 @@ pub(super) async fn get_auth_status(State(state): State<AppState>) -> impl IntoR
             enabled: true,
             exchange_ttl_seconds: snapshot.next_bridge_exchange_ttl_seconds,
         },
+        totp: reserved_totp_status(),
     };
 
     (StatusCode::OK, Json(ApiResponse::success(serde_json::json!(payload)))).into_response()
+}
+
+pub(super) async fn get_totp_status() -> impl IntoResponse {
+    (StatusCode::OK, Json(ApiResponse::success(serde_json::json!(reserved_totp_status()))))
+        .into_response()
+}
+
+pub(super) async fn begin_totp_setup() -> impl IntoResponse {
+    reserved_totp_not_implemented_response()
+}
+
+pub(super) async fn confirm_totp_setup() -> impl IntoResponse {
+    reserved_totp_not_implemented_response()
+}
+
+pub(super) async fn disable_totp() -> impl IntoResponse {
+    reserved_totp_not_implemented_response()
 }
 
 pub(super) async fn initialize_browser_auth(
@@ -204,6 +231,32 @@ fn unauthorized_response() -> Response {
                 message: "Unauthorized".to_string(),
                 args: None,
                 error_kind: Some("unauthorized".to_string()),
+            },
+        )),
+    )
+        .into_response()
+}
+
+fn reserved_totp_status() -> TotpStatusEnvelope {
+    TotpStatusEnvelope {
+        state: "reserved",
+        required_on_login: false,
+        can_setup: false,
+        can_disable: false,
+    }
+}
+
+fn reserved_totp_not_implemented_response() -> Response {
+    let message = "TOTP endpoint is reserved and not implemented";
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Json(ApiResponse::error_with_detail(
+            message.to_string(),
+            ApiErrorDetail {
+                code: "common.message_unknown_error".to_string(),
+                message: message.to_string(),
+                args: None,
+                error_kind: Some("not_implemented".to_string()),
             },
         )),
     )

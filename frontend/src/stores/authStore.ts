@@ -25,6 +25,7 @@ import {
   type BrowserAuthBaseState,
   type BrowserAuthContractStatus,
   type BrowserSessionPayload,
+  createDefaultBrowserTotpContractStatus,
 } from "../services/authProbe";
 import {
   AUTH_ROUTE_NAME,
@@ -60,6 +61,7 @@ function createDefaultAuthContractStatus(): BrowserAuthContractStatus {
       enabled: false,
       exchange_ttl_seconds: 0,
     },
+    totp: createDefaultBrowserTotpContractStatus(),
   };
 }
 
@@ -89,6 +91,7 @@ export const useAuthStore = defineStore("auth", () => {
   const currentFlow = computed<BrowserAuthFlow>(() =>
     resolveBrowserAuthFlow(authContractStatus.value),
   );
+  const totpContractStatus = computed(() => authContractStatus.value.totp);
 
   let routerRef: Router | null = null;
   let unauthorizedCleanup: (() => void) | null = null;
@@ -391,6 +394,7 @@ export const useAuthStore = defineStore("auth", () => {
     lastErrorCode,
     hasSavedCredential,
     authContractStatus,
+    totpContractStatus,
     isAuthenticated,
     isSubmitting,
     isLoadingAuthStatus,

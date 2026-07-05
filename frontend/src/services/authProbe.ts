@@ -4,6 +4,15 @@ export type BrowserAuthBaseState = "uninitialized" | "setup_pending" | "initiali
 
 export type BrowserAuthState = BrowserAuthBaseState | "recovery_active";
 
+export type BrowserTotpContractState = "reserved";
+
+export interface BrowserTotpContractStatus {
+  state: BrowserTotpContractState;
+  required_on_login: boolean;
+  can_setup: boolean;
+  can_disable: boolean;
+}
+
 export interface BrowserAuthContractStatus {
   state: BrowserAuthState;
   base_state: BrowserAuthBaseState;
@@ -17,6 +26,7 @@ export interface BrowserAuthContractStatus {
     enabled: boolean;
     exchange_ttl_seconds: number;
   };
+  totp: BrowserTotpContractStatus;
 }
 
 export interface BrowserSessionPayload {
@@ -31,6 +41,15 @@ export type AuthProbeResult =
   | { status: "ok" }
   | { status: "unauthorized" }
   | { status: "unreachable" };
+
+export function createDefaultBrowserTotpContractStatus(): BrowserTotpContractStatus {
+  return {
+    state: "reserved",
+    required_on_login: false,
+    can_setup: false,
+    can_disable: false,
+  };
+}
 
 function createAuthUnreachableError() {
   return {

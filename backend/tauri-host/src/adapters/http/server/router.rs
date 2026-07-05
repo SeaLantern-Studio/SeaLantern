@@ -1,7 +1,8 @@
 use super::{
     api::{handle_api_command, list_api_endpoints},
     auth::{
-        build_cors_layer, get_auth_status, initialize_browser_auth, login_browser_auth,
+        begin_totp_setup, build_cors_layer, confirm_totp_setup, disable_totp, get_auth_status,
+        get_totp_status, initialize_browser_auth, login_browser_auth,
         recovery_reset_browser_auth, require_browser_session_auth,
     },
     event_stream::handle_runtime_event_stream,
@@ -59,9 +60,13 @@ pub(super) fn build_http_app(state: AppState, static_dir: Option<String>) -> Rou
     let mut app = Router::new()
         .route("/health", get(|| async { "OK" }))
         .route("/api/auth/status", get(get_auth_status))
+        .route("/api/auth/totp/status", get(get_totp_status))
         .route("/api/auth/setup/initialize", post(initialize_browser_auth))
         .route("/api/auth/login", post(login_browser_auth))
         .route("/api/auth/recovery/reset", post(recovery_reset_browser_auth))
+        .route("/api/auth/totp/setup/begin", post(begin_totp_setup))
+        .route("/api/auth/totp/setup/confirm", post(confirm_totp_setup))
+        .route("/api/auth/totp/disable", post(disable_totp))
         .route("/api/auth/next-bridge/exchange", post(exchange_next_bridge_token))
         .merge(protected_routes)
         .layer(build_cors_layer(&state.config.cors_allowed_origins))

@@ -445,6 +445,34 @@ mod tests {
                 .and_then(|value| value.as_bool()),
             Some(false)
         );
+        assert_eq!(
+            initial_status
+                .get("totp")
+                .and_then(|value| value.get("state"))
+                .and_then(|value| value.as_str()),
+            Some("reserved")
+        );
+        assert_eq!(
+            initial_status
+                .get("totp")
+                .and_then(|value| value.get("required_on_login"))
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            initial_status
+                .get("totp")
+                .and_then(|value| value.get("can_setup"))
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            initial_status
+                .get("totp")
+                .and_then(|value| value.get("can_disable"))
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
 
         let initialize_response = app
             .clone()
@@ -543,6 +571,13 @@ mod tests {
                 .get("password_login_enabled")
                 .and_then(|value| value.as_bool()),
             Some(true)
+        );
+        assert_eq!(
+            initialized_status
+                .get("totp")
+                .and_then(|value| value.get("state"))
+                .and_then(|value| value.as_str()),
+            Some("reserved")
         );
 
         let login_response = app
@@ -778,6 +813,71 @@ mod tests {
             .expect("replay response");
 
         assert_eq!(replay_response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn totp_reserved_routes_expose_honest_contracts_over_http() {
+        let upload_dir = tempfile::tempdir().expect("tempdir");
+        let app = test_app(upload_dir.path().to_path_buf());
+
+        let status_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/auth/totp/status")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .expect("totp status response");
+
+        assert_eq!(status_response.status(), StatusCode::OK);
+        let status_payload = response_payload(status_response).await;
+        let status_data = status_payload.data.expect("totp status data");
+        assert_eq!(status_data.get("state").and_then(|value| value.as_str()), Some("reserved"));
+        assert_eq!(
+            status_data
+                .get("required_on_login")
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            status_data.get("can_setup").and_then(|value| value.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            status_data
+                .get("can_disable")
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+
+        for route in [
+            "/api/auth/totp/setup/begin",
+            "/api/auth/totp/setup/confirm",
+            "/api/auth/totp/disable",
+        ] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri(route)
+                        .header(header::CONTENT_TYPE, "application/json")
+                        .body(Body::from("{}"))
+                        .unwrap(),
+                )
+                .await
+                .expect("reserved totp mutation response");
+
+            assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED, "route {}", route);
+            let payload = response_payload(response).await;
+            assert_eq!(payload.success, false, "route {}", route);
+            let error_detail = payload.error_detail.expect("error detail");
+            assert_eq!(error_detail.error_kind.as_deref(), Some("not_implemented"));
+            assert!(error_detail.message.contains("reserved"));
+        }
     }
 
     #[test]
