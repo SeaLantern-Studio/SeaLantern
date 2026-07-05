@@ -79,6 +79,7 @@ pub(crate) fn desktop_handler(
         extensions_commands::get_server_extensions_summary,
         system_commands::get_system_info,
         system_commands::get_host_capabilities,
+        system_commands::get_desktop_web_status,
         system_commands::get_server_resource_usage,
         system_commands::list_event_consumers,
         system_commands::get_event_consumer,

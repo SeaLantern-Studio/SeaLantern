@@ -42,6 +42,7 @@ impl Default for AppSettings {
             language: "zh-CN".to_string(),
             locale_layer_order: default_locale_layer_order(),
             developer_mode: false,
+            enable_desktop_web_ui: false,
             close_action: "ask".to_string(),
             last_run_path: String::new(),
             minimal_mode: false,

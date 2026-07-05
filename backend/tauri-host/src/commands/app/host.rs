@@ -35,6 +35,15 @@ pub struct HostCapabilities {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+pub struct DesktopWebStatus {
+    pub enabled: bool,
+    pub running: bool,
+    pub bind_addr: String,
+    pub url: String,
+    pub static_dir_available: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct CreateServerDefaults {
     pub default_run_path: String,
     pub suggested_run_path: String,
@@ -124,6 +133,22 @@ pub fn get_host_capabilities() -> Result<HostCapabilities, String> {
 }
 
 #[tauri::command]
+pub fn get_desktop_web_status(app: tauri::AppHandle) -> Result<DesktopWebStatus, String> {
+    let enabled = crate::services::global::settings_manager()
+        .get()
+        .enable_desktop_web_ui;
+    let snapshot = crate::services::desktop_web::snapshot_desktop_web_status(&app);
+
+    Ok(DesktopWebStatus {
+        enabled,
+        running: snapshot.running,
+        url: crate::services::desktop_web::resolve_desktop_web_url(&snapshot.bind_addr),
+        bind_addr: snapshot.bind_addr,
+        static_dir_available: snapshot.static_dir_available,
+    })
+}
+
+#[tauri::command]
 pub fn get_server_resource_usage(server_id: String) -> Result<serde_json::Value, String> {
     resources::get_server_resource_usage(server_id)
 }
@@ -139,7 +164,9 @@ pub fn get_event_consumer(name: String) -> Result<Option<EventConsumerRegistryEn
 }
 
 #[tauri::command]
-pub fn get_recent_app_operation_events(limit: Option<usize>) -> Result<Vec<AppEventEnvelope>, String> {
+pub fn get_recent_app_operation_events(
+    limit: Option<usize>,
+) -> Result<Vec<AppEventEnvelope>, String> {
     Ok(crate::services::global::event_manager().recent_app_events(limit))
 }
 

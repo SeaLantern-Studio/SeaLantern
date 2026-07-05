@@ -1,8 +1,10 @@
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
+import { systemApi, type DesktopWebStatus } from "@api/system";
 import { useGlobalMessage } from "@composables/useMessage";
 import { i18n } from "@language";
 import { useI18nStore } from "@stores/i18nStore";
 import { useSettingsStore } from "@stores/settingsStore";
+import { isBrowserEnv } from "@api/tauri";
 import { normalizeAppError } from "@utils/appError";
 
 type CloseAction = "ask" | "minimize" | "close";
@@ -11,7 +13,8 @@ type GeneralSettingField =
   | "closeAction"
   | "closeServersOnExit"
   | "closeServersOnUpdate"
-  | "autoAcceptEula";
+  | "autoAcceptEula"
+  | "enableDesktopWebUi";
 
 function resolveCloseAction(value: string | undefined): CloseAction {
   if (value === "minimize" || value === "close") {
@@ -27,6 +30,10 @@ export function useGeneralSettingsSection() {
   const globalMessage = useGlobalMessage();
 
   const bootstrapping = computed(() => !settingsStore.isLoaded || settingsStore.isLoading);
+  const showDesktopWebToggle = computed(() => !isBrowserEnv());
+  const desktopWebStatus = ref<DesktopWebStatus | null>(null);
+  const desktopWebStatusLoading = ref(false);
+  const desktopWebStatusError = ref(false);
 
   const state = reactive({
     language: "zh-CN",
@@ -34,6 +41,7 @@ export function useGeneralSettingsSection() {
     closeServersOnExit: true,
     closeServersOnUpdate: true,
     autoAcceptEula: false,
+    enableDesktopWebUi: false,
   });
 
   const pending = reactive<Record<GeneralSettingField, boolean>>({
@@ -42,6 +50,7 @@ export function useGeneralSettingsSection() {
     closeServersOnExit: false,
     closeServersOnUpdate: false,
     autoAcceptEula: false,
+    enableDesktopWebUi: false,
   });
 
   const closeActionOptions = computed(() => [
@@ -55,6 +64,24 @@ export function useGeneralSettingsSection() {
       value: option.code,
     }));
   });
+  const desktopWebStatusLabel = computed(() => {
+    if (desktopWebStatusLoading.value && !desktopWebStatus.value) {
+      return i18n.t("settings.desktop_web_ui_status_loading");
+    }
+
+    if (desktopWebStatusError.value && !desktopWebStatus.value) {
+      return i18n.t("settings.desktop_web_ui_status_error");
+    }
+
+    return desktopWebStatus.value?.running
+      ? i18n.t("settings.desktop_web_ui_status_running")
+      : i18n.t("settings.desktop_web_ui_status_stopped");
+  });
+  const desktopWebUrl = computed(() => desktopWebStatus.value?.url ?? "");
+  const canCopyDesktopWebUrl = computed(() => desktopWebUrl.value.length > 0);
+  const desktopWebStaticDirMissing = computed(
+    () => !!desktopWebStatus.value && !desktopWebStatus.value.static_dir_available,
+  );
 
   watch(
     () =>
@@ -64,8 +91,16 @@ export function useGeneralSettingsSection() {
         settingsStore.settings.close_servers_on_exit,
         settingsStore.settings.close_servers_on_update,
         settingsStore.settings.auto_accept_eula,
+        settingsStore.settings.enable_desktop_web_ui,
       ] as const,
-    ([language, closeAction, closeServersOnExit, closeServersOnUpdate, autoAcceptEula]) => {
+    ([
+      language,
+      closeAction,
+      closeServersOnExit,
+      closeServersOnUpdate,
+      autoAcceptEula,
+      enableDesktopWebUi,
+    ]) => {
       if (!pending.language) {
         state.language = language || i18nStore.currentLocale;
       }
@@ -85,9 +120,62 @@ export function useGeneralSettingsSection() {
       if (!pending.autoAcceptEula) {
         state.autoAcceptEula = autoAcceptEula;
       }
+
+      if (!pending.enableDesktopWebUi) {
+        state.enableDesktopWebUi = enableDesktopWebUi;
+      }
     },
     { immediate: true },
   );
+
+  watch(
+    () => [showDesktopWebToggle.value, settingsStore.isLoaded] as const,
+    ([visible, loaded]) => {
+      if (!visible || !loaded) {
+        return;
+      }
+
+      void refreshDesktopWebStatus(true);
+    },
+    { immediate: true },
+  );
+
+  async function refreshDesktopWebStatus(silent = true): Promise<void> {
+    if (!showDesktopWebToggle.value) {
+      return;
+    }
+
+    desktopWebStatusLoading.value = true;
+    desktopWebStatusError.value = false;
+
+    try {
+      desktopWebStatus.value = await systemApi.getDesktopWebStatus();
+    } catch (error) {
+      desktopWebStatusError.value = true;
+
+      if (!silent) {
+        const normalized = normalizeAppError(error);
+        globalMessage.error(normalized.message || i18n.t("common.message_unknown_error"));
+      }
+    } finally {
+      desktopWebStatusLoading.value = false;
+    }
+  }
+
+  async function copyDesktopWebUrl(): Promise<void> {
+    const url = desktopWebUrl.value;
+    if (!url) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      globalMessage.success(i18n.t("settings.desktop_web_ui_url_copied"));
+    } catch (error) {
+      const normalized = normalizeAppError(error);
+      globalMessage.error(normalized.message || i18n.t("common.message_unknown_error"));
+    }
+  }
 
   async function saveField(
     field: GeneralSettingField,
@@ -115,6 +203,10 @@ export function useGeneralSettingsSection() {
           return;
         case "autoAcceptEula":
           await settingsStore.updatePartial({ auto_accept_eula: nextValue as boolean });
+          return;
+        case "enableDesktopWebUi":
+          await settingsStore.updatePartial({ enable_desktop_web_ui: nextValue as boolean });
+          await refreshDesktopWebStatus(true);
           return;
       }
     } catch (error) {
@@ -212,16 +304,41 @@ export function useGeneralSettingsSection() {
     );
   }
 
+  function updateEnableDesktopWebUi(nextValue: boolean): void {
+    const previousValue = state.enableDesktopWebUi;
+
+    void saveField(
+      "enableDesktopWebUi",
+      nextValue,
+      () => {
+        state.enableDesktopWebUi = nextValue;
+      },
+      () => {
+        state.enableDesktopWebUi = previousValue;
+      },
+    );
+  }
+
   return {
     bootstrapping,
+    showDesktopWebToggle,
     pending,
     state,
     languageOptions,
     closeActionOptions,
+    desktopWebStatusLoading,
+    desktopWebStatusError,
+    desktopWebStatusLabel,
+    desktopWebUrl,
+    canCopyDesktopWebUrl,
+    desktopWebStaticDirMissing,
     updateLanguage,
     updateCloseAction,
     updateCloseServersOnExit,
     updateCloseServersOnUpdate,
     updateAutoAcceptEula,
+    updateEnableDesktopWebUi,
+    copyDesktopWebUrl,
+    refreshDesktopWebStatus,
   };
 }

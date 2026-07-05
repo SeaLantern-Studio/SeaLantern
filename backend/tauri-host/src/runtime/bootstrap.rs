@@ -64,6 +64,14 @@ pub(crate) fn run_desktop() {
 
             app.manage(plugin_setup.manager);
 
+            let desktop_web_enabled = crate::services::global::settings_manager()
+                .get()
+                .enable_desktop_web_ui;
+            crate::services::desktop_web::sync_desktop_web_server(
+                app.handle(),
+                desktop_web_enabled,
+            )?;
+
             desktop_setup::install_frontend_watchdog(app.handle().clone());
 
             desktop_shell::setup_tray(app)?;

@@ -120,10 +120,7 @@ pub(super) async fn handle_api_command(
             );
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error_with_detail(
-                    error.clone(),
-                    ApiErrorDetail::runtime(error),
-                )),
+                Json(ApiResponse::error_with_detail(error.clone(), ApiErrorDetail::runtime(error))),
             )
                 .into_response()
         }

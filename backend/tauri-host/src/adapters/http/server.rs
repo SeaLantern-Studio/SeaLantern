@@ -905,7 +905,9 @@ mod tests {
             Some(false)
         );
         assert_eq!(
-            status_data.get("can_setup").and_then(|value| value.as_bool()),
+            status_data
+                .get("can_setup")
+                .and_then(|value| value.as_bool()),
             Some(false)
         );
         assert_eq!(

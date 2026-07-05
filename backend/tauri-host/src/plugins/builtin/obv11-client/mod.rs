@@ -17,8 +17,8 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpListener;
@@ -154,17 +154,11 @@ fn log_plugin_error(function: &str, message: &str) {
 }
 
 fn log_enable_stage(function: &str, plugin_id: &str, stage: &str, message: &str) {
-    log_plugin_info(
-        function,
-        &format!("plugin_id={} stage={} {}", plugin_id, stage, message),
-    );
+    log_plugin_info(function, &format!("plugin_id={} stage={} {}", plugin_id, stage, message));
 }
 
 fn log_enable_failure(function: &str, plugin_id: &str, stage: &str, error: &str) {
-    log_plugin_error(
-        function,
-        &format!("plugin_id={} stage={} error={}", plugin_id, stage, error),
-    );
+    log_plugin_error(function, &format!("plugin_id={} stage={} error={}", plugin_id, stage, error));
 }
 
 fn startup_error(plugin_id: &str, stage: &str, error: impl Into<String>) -> String {
@@ -467,108 +461,108 @@ fn start_runtime_thread(runtime: Arc<RuntimeSnapshot>) -> Result<RuntimeHandle, 
         "startup_thread_prepare",
         &format!("listen_addr={}", runtime.settings.listen_addr),
     );
-    let addr: SocketAddr =
-        runtime.settings.listen_addr.parse().map_err(|e| {
-            startup_error(
-                &runtime.plugin_id,
-                "listen_addr_parse_failed",
-                format!("invalid listen_addr '{}': {}", runtime.settings.listen_addr, e),
-            )
-        })?;
+    let addr: SocketAddr = runtime.settings.listen_addr.parse().map_err(|e| {
+        startup_error(
+            &runtime.plugin_id,
+            "listen_addr_parse_failed",
+            format!("invalid listen_addr '{}': {}", runtime.settings.listen_addr, e),
+        )
+    })?;
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let (startup_tx, startup_rx) = mpsc::sync_channel(1);
     let snapshot = Arc::clone(&runtime);
     let thread = std::thread::Builder::new()
         .name(format!("obv11-startup-{}", runtime.plugin_id))
         .spawn(move || {
-        log_enable_stage(
-            "start_runtime_thread",
-            &snapshot.plugin_id,
-            "startup_thread_spawned",
-            &format!("listen_addr={addr}"),
-        );
-        let rt = match tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-        {
-            Ok(rt) => rt,
-            Err(error) => {
-                let message = startup_error(
-                    &snapshot.plugin_id,
-                    "tokio_runtime_build_failed",
-                    format!("failed to build tokio runtime: {}", error),
-                );
-                let _ = startup_tx.send(Err(message));
-                return;
-            }
-        };
-        log_enable_stage(
-            "start_runtime_thread",
-            &snapshot.plugin_id,
-            "tokio_runtime_built",
-            "startup runtime ready",
-        );
-        rt.block_on(async move {
-            let state = HttpAppState { runtime: Arc::clone(&snapshot) };
-            let app = Router::new()
-                .route("/health", get(|| async { "OK" }))
-                .route("/api/{action}", get(handle_http_action).post(handle_http_action))
-                .route("/api", get(handle_ws_api))
-                .route("/event", get(handle_ws_event))
-                .route("/", get(handle_ws_universal))
-                .with_state(state);
             log_enable_stage(
                 "start_runtime_thread",
                 &snapshot.plugin_id,
-                "listener_bind_requested",
+                "startup_thread_spawned",
                 &format!("listen_addr={addr}"),
             );
-            let listener = match TcpListener::bind(addr).await {
-                Ok(listener) => listener,
+            let rt = match tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(rt) => rt,
                 Err(error) => {
                     let message = startup_error(
                         &snapshot.plugin_id,
-                        "listener_bind_failed",
-                        format!("bind failed: {}", error),
+                        "tokio_runtime_build_failed",
+                        format!("failed to build tokio runtime: {}", error),
                     );
                     let _ = startup_tx.send(Err(message));
                     return;
                 }
             };
-
             log_enable_stage(
                 "start_runtime_thread",
                 &snapshot.plugin_id,
-                "startup_handshake_succeeded",
-                &format!("listen_addr={addr}"),
+                "tokio_runtime_built",
+                "startup runtime ready",
             );
-            let _ = startup_tx.send(Ok(()));
-
-            emit_debug(&snapshot, "http_server_bound", &format!("addr={addr}"));
-            let poll_runtime = Arc::clone(&snapshot);
-            let poll_task = tokio::spawn(async move { poll_config_changes(poll_runtime).await });
-
-            let server = axum::serve(listener, app).with_graceful_shutdown(async {
-                let _ = shutdown_rx.await;
-            });
-            if let Err(error) = server.await {
-                log_enable_failure(
-                    "start_runtime_thread",
-                    &snapshot.plugin_id,
-                    "runtime_closed",
-                    &format!("server exited: {}", error),
-                );
-            } else {
+            rt.block_on(async move {
+                let state = HttpAppState { runtime: Arc::clone(&snapshot) };
+                let app = Router::new()
+                    .route("/health", get(|| async { "OK" }))
+                    .route("/api/{action}", get(handle_http_action).post(handle_http_action))
+                    .route("/api", get(handle_ws_api))
+                    .route("/event", get(handle_ws_event))
+                    .route("/", get(handle_ws_universal))
+                    .with_state(state);
                 log_enable_stage(
                     "start_runtime_thread",
                     &snapshot.plugin_id,
-                    "runtime_closed",
-                    "runtime closed after shutdown",
+                    "listener_bind_requested",
+                    &format!("listen_addr={addr}"),
                 );
-            }
-            poll_task.abort();
-        });
-    })
+                let listener = match TcpListener::bind(addr).await {
+                    Ok(listener) => listener,
+                    Err(error) => {
+                        let message = startup_error(
+                            &snapshot.plugin_id,
+                            "listener_bind_failed",
+                            format!("bind failed: {}", error),
+                        );
+                        let _ = startup_tx.send(Err(message));
+                        return;
+                    }
+                };
+
+                log_enable_stage(
+                    "start_runtime_thread",
+                    &snapshot.plugin_id,
+                    "startup_handshake_succeeded",
+                    &format!("listen_addr={addr}"),
+                );
+                let _ = startup_tx.send(Ok(()));
+
+                emit_debug(&snapshot, "http_server_bound", &format!("addr={addr}"));
+                let poll_runtime = Arc::clone(&snapshot);
+                let poll_task =
+                    tokio::spawn(async move { poll_config_changes(poll_runtime).await });
+
+                let server = axum::serve(listener, app).with_graceful_shutdown(async {
+                    let _ = shutdown_rx.await;
+                });
+                if let Err(error) = server.await {
+                    log_enable_failure(
+                        "start_runtime_thread",
+                        &snapshot.plugin_id,
+                        "runtime_closed",
+                        &format!("server exited: {}", error),
+                    );
+                } else {
+                    log_enable_stage(
+                        "start_runtime_thread",
+                        &snapshot.plugin_id,
+                        "runtime_closed",
+                        "runtime closed after shutdown",
+                    );
+                }
+                poll_task.abort();
+            });
+        })
         .map_err(|error| {
             startup_error(
                 &runtime.plugin_id,
@@ -1144,8 +1138,8 @@ mod tests {
 
     #[test]
     fn start_runtime_thread_surfaces_bind_failures() {
-        let occupied = std::net::TcpListener::bind("127.0.0.1:0")
-            .expect("occupied listener should bind");
+        let occupied =
+            std::net::TcpListener::bind("127.0.0.1:0").expect("occupied listener should bind");
         let addr = occupied
             .local_addr()
             .expect("occupied listener should expose local addr");
@@ -1165,8 +1159,8 @@ mod tests {
 
     #[test]
     fn start_runtime_thread_bind_failure_does_not_register_runtime() {
-        let occupied = std::net::TcpListener::bind("127.0.0.1:0")
-            .expect("occupied listener should bind");
+        let occupied =
+            std::net::TcpListener::bind("127.0.0.1:0").expect("occupied listener should bind");
         let addr = occupied
             .local_addr()
             .expect("occupied listener should expose local addr");

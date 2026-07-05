@@ -118,7 +118,10 @@ pub(super) async fn get_auth_status(State(state): State<AppState>) -> impl IntoR
 }
 
 pub(super) async fn get_totp_status() -> impl IntoResponse {
-    (StatusCode::OK, Json(ApiResponse::success(serde_json::json!(reserved_totp_status()))))
+    (
+        StatusCode::OK,
+        Json(ApiResponse::success(serde_json::json!(reserved_totp_status()))),
+    )
         .into_response()
 }
 

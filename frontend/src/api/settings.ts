@@ -90,6 +90,7 @@ export interface AppSettings {
   locale_layer_order: string[];
   locales_base_url?: string;
   developer_mode: boolean;
+  enable_desktop_web_ui: boolean;
   close_action: string;
   last_run_path: string;
   minimal_mode: boolean;
@@ -136,6 +137,7 @@ export interface PartialSettings {
   language?: string;
   locale_layer_order?: string[];
   developer_mode?: boolean;
+  enable_desktop_web_ui?: boolean;
   close_action?: string;
   last_run_path?: string;
   minimal_mode?: boolean;
@@ -276,6 +278,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   language: "zh-CN",
   locale_layer_order: [],
   developer_mode: false,
+  enable_desktop_web_ui: false,
   close_action: "ask",
   last_run_path: "",
   minimal_mode: false,

@@ -130,6 +130,7 @@ const defaultSettings: AppSettings = {
   language: "zh-CN",
   locale_layer_order: [],
   developer_mode: false,
+  enable_desktop_web_ui: false,
   close_action: "ask",
   last_run_path: "",
   minimal_mode: false,

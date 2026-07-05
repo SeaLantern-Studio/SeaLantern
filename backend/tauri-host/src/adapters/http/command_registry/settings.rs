@@ -373,10 +373,14 @@ fn handle_save_web_settings(
                 }),
             },
         );
-        let result = settings_commands::update_settings_partial(partial)?;
+        let result = crate::services::global::settings_manager().update_partial(partial)?;
         let payload = WebUpdateSettingsResult {
             settings: map_web_settings(result.settings),
-            changed_groups: result.changed_groups,
+            changed_groups: result
+                .changed_groups
+                .into_iter()
+                .map(|group| format!("{:?}", group))
+                .collect(),
         };
         serde_json::to_value(payload).map_err(|e| e.to_string())
     })
@@ -388,11 +392,15 @@ fn handle_update_web_settings_partial(
     Box::pin(async move {
         let patch: WebSettingsPatchDto = parse_wrapped_or_root(params, "partial")?;
         let current = settings_commands::get_settings();
-        let result =
-            settings_commands::update_settings_partial(apply_web_settings_patch(&current, patch))?;
+        let result = crate::services::global::settings_manager()
+            .update_partial(apply_web_settings_patch(&current, patch))?;
         let payload = WebUpdateSettingsResult {
             settings: map_web_settings(result.settings),
-            changed_groups: result.changed_groups,
+            changed_groups: result
+                .changed_groups
+                .into_iter()
+                .map(|group| format!("{:?}", group))
+                .collect(),
         };
         serde_json::to_value(payload).map_err(|e| e.to_string())
     })
@@ -402,7 +410,7 @@ fn handle_reset_web_settings(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let result = settings_commands::reset_settings()?;
+        let result = crate::services::global::settings_manager().reset()?;
         serde_json::to_value(map_web_settings(result)).map_err(|e| e.to_string())
     })
 }
@@ -423,8 +431,8 @@ fn handle_import_web_settings(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let json: String = parse_wrapped_or_root(params, "json")?;
-        let settings: WebSettingsDto =
-            serde_json::from_str(&json).map_err(|e| invalid_request(format!("Invalid JSON: {}", e)))?;
+        let settings: WebSettingsDto = serde_json::from_str(&json)
+            .map_err(|e| invalid_request(format!("Invalid JSON: {}", e)))?;
         let current = settings_commands::get_settings();
         let partial = apply_web_settings_patch(
             &current,
@@ -472,7 +480,7 @@ fn handle_import_web_settings(
                 }),
             },
         );
-        let result = settings_commands::update_settings_partial(partial)?;
+        let result = crate::services::global::settings_manager().update_partial(partial)?;
         serde_json::to_value(map_web_settings(result.settings)).map_err(|e| e.to_string())
     })
 }

@@ -2,8 +2,8 @@ use super::{
     api::{handle_api_command, list_api_endpoints},
     auth::{
         begin_totp_setup, build_cors_layer, confirm_totp_setup, disable_totp, get_auth_status,
-        get_totp_status, initialize_browser_auth, login_browser_auth,
-        recovery_reset_browser_auth, require_browser_session_auth,
+        get_totp_status, initialize_browser_auth, login_browser_auth, recovery_reset_browser_auth,
+        require_browser_session_auth,
     },
     event_stream::handle_runtime_event_stream,
     log_stream::handle_log_stream,

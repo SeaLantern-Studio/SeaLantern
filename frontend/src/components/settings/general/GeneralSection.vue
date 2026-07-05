@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SLCard from "@components/common/SLCard.vue";
+import SLButton from "@components/common/SLButton.vue";
 import SLSelect from "@components/common/SLSelect.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import { i18n } from "@language";
@@ -7,15 +8,22 @@ import { useGeneralSettingsSection } from "@src/pages/settings/useGeneralSetting
 
 const {
   bootstrapping,
+  showDesktopWebToggle,
   pending,
   state,
   languageOptions,
   closeActionOptions,
+  desktopWebStatusLabel,
+  desktopWebUrl,
+  canCopyDesktopWebUrl,
+  desktopWebStaticDirMissing,
   updateLanguage,
   updateCloseAction,
   updateCloseServersOnExit,
   updateCloseServersOnUpdate,
   updateAutoAcceptEula,
+  updateEnableDesktopWebUi,
+  copyDesktopWebUrl,
 } = useGeneralSettingsSection();
 </script>
 
@@ -137,6 +145,55 @@ const {
           />
         </div>
       </section>
+
+      <section v-if="showDesktopWebToggle" class="general-section__item">
+        <div class="general-section__copy">
+          <span class="general-section__item-title">{{ i18n.t("settings.desktop_web_ui") }}</span>
+          <p class="general-section__item-description">
+            {{ i18n.t("settings.desktop_web_ui_desc") }}
+          </p>
+          <div class="general-section__meta">
+            <div class="general-section__meta-row">
+              <span class="general-section__meta-label">
+                {{ i18n.t("settings.desktop_web_ui_status") }}
+              </span>
+              <span class="general-section__meta-value">{{ desktopWebStatusLabel }}</span>
+            </div>
+            <div class="general-section__meta-row">
+              <span class="general-section__meta-label">
+                {{ i18n.t("settings.desktop_web_ui_url") }}
+              </span>
+              <span class="general-section__meta-value general-section__meta-value--mono">
+                {{ desktopWebUrl || "-" }}
+              </span>
+              <SLButton
+                variant="secondary"
+                size="sm"
+                :disabled="!canCopyDesktopWebUrl"
+                @click="copyDesktopWebUrl"
+              >
+                {{ i18n.t("settings.desktop_web_ui_copy_url") }}
+              </SLButton>
+            </div>
+          </div>
+          <p v-if="desktopWebStaticDirMissing" class="general-section__item-description">
+            {{ i18n.t("settings.desktop_web_ui_static_dir_missing") }}
+          </p>
+        </div>
+
+        <div class="general-section__control general-section__control--switch">
+          <span
+            v-if="pending.enableDesktopWebUi"
+            class="general-section__saving-indicator"
+            aria-hidden="true"
+          />
+          <SLSwitch
+            :model-value="state.enableDesktopWebUi"
+            :disabled="bootstrapping || pending.enableDesktopWebUi"
+            @update:model-value="updateEnableDesktopWebUi"
+          />
+        </div>
+      </section>
     </div>
   </SLCard>
 </template>
@@ -200,6 +257,34 @@ const {
   color: var(--sl-text-secondary);
   font-size: 0.82rem;
   line-height: 1.45;
+}
+
+.general-section__meta {
+  display: grid;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.general-section__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.general-section__meta-label {
+  color: var(--sl-text-tertiary, var(--sl-text-secondary));
+}
+
+.general-section__meta-value {
+  color: var(--sl-text-primary);
+}
+
+.general-section__meta-value--mono {
+  font-family: var(--sl-font-mono, "SFMono-Regular", Consolas, "Liberation Mono", monospace);
+  word-break: break-all;
 }
 
 .general-section__control {

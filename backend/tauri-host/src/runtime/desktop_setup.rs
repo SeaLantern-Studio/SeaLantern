@@ -12,9 +12,9 @@ use crate::plugins::runtime::PluginRuntime;
 use std::collections::HashMap;
 #[cfg(any(feature = "plugin-local-runtime", feature = "plugin-runtime-bridge"))]
 use std::sync::RwLock;
-use tauri::Manager;
 #[cfg(target_os = "linux")]
 use tauri::window::Color;
+use tauri::Manager;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
 

@@ -7,6 +7,7 @@ impl AppSettings {
         if self.close_servers_on_exit != other.close_servers_on_exit
             || self.close_servers_on_update != other.close_servers_on_update
             || self.auto_accept_eula != other.auto_accept_eula
+            || self.enable_desktop_web_ui != other.enable_desktop_web_ui
             || self.close_action != other.close_action
             || self.language != other.language
             || self.locale_layer_order != other.locale_layer_order

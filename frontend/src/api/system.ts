@@ -1,4 +1,4 @@
-import { tauriInvoke } from "@api/tauri";
+import { tauriInvoke, tauriInvokeDesktop } from "@api/tauri";
 import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 import type { JavaInfo } from "@api/java";
 import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
@@ -130,6 +130,14 @@ export interface HostCapabilities {
   plugin_runtime: HostPluginRuntimeCapabilities;
 }
 
+export interface DesktopWebStatus {
+  enabled: boolean;
+  running: boolean;
+  bind_addr: string;
+  url: string;
+  static_dir_available: boolean;
+}
+
 export const systemApi = {
   async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
     if (!isUploadSupported()) {
@@ -167,6 +175,10 @@ export const systemApi = {
 
   async getHostCapabilities(): Promise<HostCapabilities> {
     return tauriInvoke("get_host_capabilities");
+  },
+
+  async getDesktopWebStatus(): Promise<DesktopWebStatus> {
+    return tauriInvokeDesktop("get_desktop_web_status");
   },
 
   async getServerResourceUsage(serverId: string): Promise<ServerResourceUsage> {

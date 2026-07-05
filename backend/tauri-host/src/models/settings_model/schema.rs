@@ -259,6 +259,9 @@ pub struct AppSettings {
     #[serde(default = "default_false")]
     pub developer_mode: bool,
 
+    #[serde(default = "default_false")]
+    pub enable_desktop_web_ui: bool,
+
     #[serde(default = "default_close_action")]
     pub close_action: String,
 
@@ -373,6 +376,8 @@ pub struct PartialSettings {
     pub locale_layer_order: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub developer_mode: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_desktop_web_ui: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub close_action: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

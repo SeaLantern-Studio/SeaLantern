@@ -471,8 +471,11 @@ pub fn change_plugin_dir(request: ChangePluginDirRequest) -> Result<PluginDirCha
 /// # Returns
 ///
 /// 保存成功时返回 `Ok(())`
-pub fn save_settings(settings: AppSettings) -> Result<(), String> {
-    global::settings_manager().update(settings)
+pub fn save_settings(settings: AppSettings, app: AppHandle) -> Result<(), String> {
+    let enable_desktop_web_ui = settings.enable_desktop_web_ui;
+    global::settings_manager().update(settings)?;
+    crate::services::desktop_web::sync_desktop_web_server(&app, enable_desktop_web_ui)?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -485,8 +488,15 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
 /// # Returns
 ///
 /// 返回新的完整设置和变化分组
-pub fn save_settings_with_diff(settings: AppSettings) -> Result<UpdateSettingsResult, String> {
+pub fn save_settings_with_diff(
+    settings: AppSettings,
+    app: AppHandle,
+) -> Result<UpdateSettingsResult, String> {
     let result = global::settings_manager().update_with_diff(settings)?;
+    crate::services::desktop_web::sync_desktop_web_server(
+        &app,
+        result.settings.enable_desktop_web_ui,
+    )?;
     Ok(UpdateSettingsResult {
         settings: result.settings,
         changed_groups: result
@@ -507,8 +517,15 @@ pub fn save_settings_with_diff(settings: AppSettings) -> Result<UpdateSettingsRe
 /// # Returns
 ///
 /// 返回合并后的设置和变化分组
-pub fn update_settings_partial(partial: PartialSettings) -> Result<UpdateSettingsResult, String> {
+pub fn update_settings_partial(
+    partial: PartialSettings,
+    app: AppHandle,
+) -> Result<UpdateSettingsResult, String> {
     let result = global::settings_manager().update_partial(partial)?;
+    crate::services::desktop_web::sync_desktop_web_server(
+        &app,
+        result.settings.enable_desktop_web_ui,
+    )?;
     Ok(UpdateSettingsResult {
         settings: result.settings,
         changed_groups: result
@@ -521,8 +538,10 @@ pub fn update_settings_partial(partial: PartialSettings) -> Result<UpdateSetting
 
 #[tauri::command]
 /// 重置设置为默认值
-pub fn reset_settings() -> Result<AppSettings, String> {
-    global::settings_manager().reset()
+pub fn reset_settings(app: AppHandle) -> Result<AppSettings, String> {
+    let settings = global::settings_manager().reset()?;
+    crate::services::desktop_web::sync_desktop_web_server(&app, settings.enable_desktop_web_ui)?;
+    Ok(settings)
 }
 
 #[tauri::command]
@@ -542,9 +561,10 @@ pub fn export_settings() -> Result<String, String> {
 /// # Returns
 ///
 /// 导入成功时返回新的完整设置
-pub fn import_settings(json: String) -> Result<AppSettings, String> {
+pub fn import_settings(json: String, app: AppHandle) -> Result<AppSettings, String> {
     let s: AppSettings = serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
     global::settings_manager().update(s.clone())?;
+    crate::services::desktop_web::sync_desktop_web_server(&app, s.enable_desktop_web_ui)?;
     Ok(s)
 }
 
@@ -608,7 +628,10 @@ pub fn export_personalization_package(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn import_personalization_package(path: String) -> Result<ImportPersonalizationResult, String> {
+pub fn import_personalization_package(
+    path: String,
+    app: AppHandle,
+) -> Result<ImportPersonalizationResult, String> {
     let source_path = PathBuf::from(path.trim());
     if !source_path.exists() {
         return Err(format!("Personalization package not found: {}", source_path.display()));
@@ -663,6 +686,10 @@ pub fn import_personalization_package(path: String) -> Result<ImportPersonalizat
     }
 
     let result = global::settings_manager().update_with_diff(next_settings)?;
+    crate::services::desktop_web::sync_desktop_web_server(
+        &app,
+        result.settings.enable_desktop_web_ui,
+    )?;
     let (imported_plugins, skipped_plugins) = import_personalization_plugins(manifest.plugins);
 
     Ok(ImportPersonalizationResult {

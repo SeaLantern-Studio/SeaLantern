@@ -155,6 +155,9 @@ impl AppSettings {
         if let Some(v) = partial.developer_mode {
             self.developer_mode = v;
         }
+        if let Some(v) = partial.enable_desktop_web_ui {
+            self.enable_desktop_web_ui = v;
+        }
         if let Some(ref v) = partial.close_action {
             self.close_action = v.clone();
         }
