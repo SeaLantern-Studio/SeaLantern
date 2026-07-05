@@ -1,4 +1,7 @@
 import NextHomeAttentionCardRenderer from "@src/components/home/renderers/NextHomeAttentionCardRenderer.vue";
+import NextHomeCpuUsageSpotlightCardRenderer from "@src/components/home/renderers/NextHomeCpuUsageSpotlightCardRenderer.vue";
+import NextHomeInstanceCountSpotlightCardRenderer from "@src/components/home/renderers/NextHomeInstanceCountSpotlightCardRenderer.vue";
+import NextHomeMemoryUsageSpotlightCardRenderer from "@src/components/home/renderers/NextHomeMemoryUsageSpotlightCardRenderer.vue";
 import NextHomeMissingCardRenderer from "@src/components/home/renderers/NextHomeMissingCardRenderer.vue";
 import NextHomeOperationsCardRenderer from "@src/components/home/renderers/NextHomeOperationsCardRenderer.vue";
 import NextHomePluginCardRenderer from "@src/components/home/renderers/NextHomePluginCardRenderer.vue";
@@ -22,6 +25,9 @@ export const NEXT_HOME_BUILTIN_CARD_RENDERERS: NextHomeCardRendererRegistry = {
   "summary-band": NextHomeSummaryCardRenderer,
   "operations-band": NextHomeOperationsCardRenderer,
   "system-overview": NextHomeSystemOverviewCardRenderer,
+  "cpu-usage-spotlight": NextHomeCpuUsageSpotlightCardRenderer,
+  "memory-usage-spotlight": NextHomeMemoryUsageSpotlightCardRenderer,
+  "instance-count-spotlight": NextHomeInstanceCountSpotlightCardRenderer,
   "workspace-band": NextHomeWorkspaceCardRenderer,
   "attention-band": NextHomeAttentionCardRenderer,
 };

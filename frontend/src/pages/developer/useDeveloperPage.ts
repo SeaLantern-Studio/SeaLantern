@@ -5,7 +5,7 @@ import { useSettingsStore } from "@stores/settingsStore";
 import { i18n } from "@language";
 import { NEXT_SETTINGS_ROUTE_NAME } from "@src/router/pageMeta";
 import type { WorkbenchFactItem } from "@src/components/workbench/WorkbenchFactGrid.vue";
-import type { DeveloperBannerTone } from "@composables/useDeveloperTools";
+import type { DeveloperAnnouncementTone } from "@composables/useDeveloperTools";
 
 export type DeveloperSectionId = "overview" | "logs" | "tools" | "other";
 
@@ -64,7 +64,7 @@ export function useDeveloperPage() {
     downloadingUpdate,
     triggeringCrash,
     updateUrl,
-    activeBanner,
+    activeAnnouncement,
     logError,
     systemError,
     isBrowserMode,
@@ -81,8 +81,8 @@ export function useDeveloperPage() {
     showTestErrorToast,
     showTestWarningToast,
     showTestInfoToast,
-    showTestBanner,
-    clearTestBanner,
+    showTestAnnouncement,
+    clearTestAnnouncement,
   } = useDeveloperTools({
     enabled: () => developerEnabled.value,
   });
@@ -95,7 +95,9 @@ export function useDeveloperPage() {
   });
 
   const currentSection = computed(() => {
-    return sectionItems.value.find((item) => item.id === activeSectionId.value) ?? sectionItems.value[0];
+    return (
+      sectionItems.value.find((item) => item.id === activeSectionId.value) ?? sectionItems.value[0]
+    );
   });
 
   const summaryFacts = computed<WorkbenchFactItem[]>(() => {
@@ -119,14 +121,21 @@ export function useDeveloperPage() {
       },
       {
         label: i18n.t("developer.next.summary.system_status"),
-        value: systemInfo.value ? i18n.t("developer.next.summary.ready") : i18n.t("developer.next.summary.waiting"),
+        value: systemInfo.value
+          ? i18n.t("developer.next.summary.ready")
+          : i18n.t("developer.next.summary.waiting"),
         tone: systemInfo.value ? "success" : "default",
       },
     ];
   });
 
   function selectSection(sectionId: string): void {
-    if (sectionId === "overview" || sectionId === "logs" || sectionId === "tools" || sectionId === "other") {
+    if (
+      sectionId === "overview" ||
+      sectionId === "logs" ||
+      sectionId === "tools" ||
+      sectionId === "other"
+    ) {
       activeSectionId.value = sectionId;
     }
   }
@@ -160,8 +169,8 @@ export function useDeveloperPage() {
     }
   }
 
-  function triggerBannerTest(tone: DeveloperBannerTone): void {
-    showTestBanner(tone);
+  function triggerAnnouncementTest(tone: DeveloperAnnouncementTone): void {
+    showTestAnnouncement(tone);
   }
 
   watch(
@@ -198,7 +207,7 @@ export function useDeveloperPage() {
     downloadingUpdate,
     triggeringCrash,
     updateUrl,
-    activeBanner,
+    activeAnnouncement,
     logError,
     systemError,
     isBrowserMode,
@@ -216,8 +225,8 @@ export function useDeveloperPage() {
     setSelectedLogModule,
     setUpdateUrl,
     triggerToastTest,
-    triggerBannerTest,
-    clearTestBanner,
+    triggerAnnouncementTest,
+    clearTestAnnouncement,
     consoleDisplay,
   };
 }

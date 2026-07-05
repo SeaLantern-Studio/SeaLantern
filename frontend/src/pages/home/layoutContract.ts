@@ -12,6 +12,9 @@ export type NextHomeBuiltinCardKind =
   | "summary-band"
   | "operations-band"
   | "system-overview"
+  | "cpu-usage-spotlight"
+  | "memory-usage-spotlight"
+  | "instance-count-spotlight"
   | "workspace-band"
   | "attention-band";
 
@@ -56,6 +59,7 @@ export interface NextHomeCardLayoutMeta {
   resizable: boolean;
   movable: boolean;
   removable: boolean;
+  autoHeight?: boolean;
   maxInstances?: number;
   provider?: "builtin" | "plugin";
   pluginRendererKey?: string | null;
@@ -111,6 +115,61 @@ export const NEXT_HOME_CARD_LAYOUTS: Record<NextHomeBuiltinCardKind, NextHomeCar
     resizable: true,
     movable: true,
     removable: true,
+    autoHeight: true,
+    maxInstances: 1,
+    provider: "builtin",
+    pluginRendererKey: null,
+  },
+  "cpu-usage-spotlight": {
+    id: "cpu-usage-spotlight",
+    titleKey: "shell.home_card_cpu_usage_title",
+    section: "operations",
+    minCols: 4,
+    defaultCols: 4,
+    maxCols: 6,
+    minRows: 3,
+    defaultRows: 3,
+    maxRows: 6,
+    resizable: true,
+    movable: true,
+    removable: true,
+    autoHeight: true,
+    maxInstances: 1,
+    provider: "builtin",
+    pluginRendererKey: null,
+  },
+  "memory-usage-spotlight": {
+    id: "memory-usage-spotlight",
+    titleKey: "shell.home_card_memory_usage_title",
+    section: "operations",
+    minCols: 4,
+    defaultCols: 4,
+    maxCols: 6,
+    minRows: 3,
+    defaultRows: 3,
+    maxRows: 6,
+    resizable: true,
+    movable: true,
+    removable: true,
+    autoHeight: true,
+    maxInstances: 1,
+    provider: "builtin",
+    pluginRendererKey: null,
+  },
+  "instance-count-spotlight": {
+    id: "instance-count-spotlight",
+    titleKey: "shell.home_card_instance_count_title",
+    section: "workspace",
+    minCols: 4,
+    defaultCols: 4,
+    maxCols: 6,
+    minRows: 3,
+    defaultRows: 3,
+    maxRows: 5,
+    resizable: true,
+    movable: true,
+    removable: true,
+    autoHeight: true,
     maxInstances: 1,
     provider: "builtin",
     pluginRendererKey: null,
@@ -128,6 +187,7 @@ export const NEXT_HOME_CARD_LAYOUTS: Record<NextHomeBuiltinCardKind, NextHomeCar
     resizable: true,
     movable: true,
     removable: false,
+    autoHeight: true,
     maxInstances: 1,
     provider: "builtin",
     pluginRendererKey: null,
@@ -145,6 +205,7 @@ export const NEXT_HOME_CARD_LAYOUTS: Record<NextHomeBuiltinCardKind, NextHomeCar
     resizable: true,
     movable: true,
     removable: true,
+    autoHeight: true,
     maxInstances: 1,
     provider: "builtin",
     pluginRendererKey: null,

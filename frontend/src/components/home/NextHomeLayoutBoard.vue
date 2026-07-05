@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, shallowRef } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, shallowRef, watch } from "vue";
 import {
   HOME_GRID_COLUMNS,
   HOME_GRID_GAP,
@@ -59,6 +59,7 @@ const emit = defineEmits<{
       rowSpan?: number;
     },
   ];
+  autoHeightSync: [payload: { instanceId: string; rowSpan: number }];
   removeInstance: [instanceId: string];
   deployCard: [payload: BoardDropPayload];
 }>();
@@ -67,6 +68,9 @@ const boardRef = shallowRef<HTMLElement | null>(null);
 const compactMode = shallowRef(typeof window !== "undefined" ? window.innerWidth < 960 : false);
 const dragPreview = shallowRef<DragPreview | null>(null);
 const dragActiveId = shallowRef<string | null>(null);
+const itemRefs = new Map<string, HTMLElement>();
+const resizeObservers = new Map<string, ResizeObserver>();
+let autoHeightSyncFrame: number | null = null;
 
 const orderedInstances = computed(() =>
   [...props.instances].toSorted((left, right) => {
@@ -105,15 +109,96 @@ function getCardStyle(instance: NextHomeCardInstance): Record<string, string> {
   if (compactMode.value) return { gridColumn: "1 / -1", gridRow: "auto" };
   const metrics = getBoardMetrics();
   if (!metrics) return {};
+  const meta = props.registry[instance.kind];
   return {
     position: "absolute",
     left: `${metrics.toLeft(instance.x)}px`,
     top: `${metrics.toTop(instance.y)}px`,
     width: `${metrics.toWidth(instance.width)}px`,
-    height: `${metrics.toHeight(instance.height)}px`,
+    ...(meta?.autoHeight
+      ? { minHeight: `${metrics.toHeight(instance.height)}px` }
+      : { height: `${metrics.toHeight(instance.height)}px` }),
     zIndex: String(instance.zIndex),
     transform: "none",
   };
+}
+
+function measureAutoHeightRowSpan(instanceId: string): number | null {
+  const element = itemRefs.get(instanceId);
+  if (!element) return null;
+  const body = element.querySelector<HTMLElement>(".next-home-editable-card__body");
+  const chrome = element.querySelector<HTMLElement>(".next-home-editable-card__chrome");
+  const source = body ?? element;
+  const contentHeight = source.scrollHeight;
+  if (!Number.isFinite(contentHeight) || contentHeight <= 0) return null;
+
+  const style = window.getComputedStyle(element);
+  const paddingTop = parseFloat(style.paddingTop) || 0;
+  const paddingBottom = parseFloat(style.paddingBottom) || 0;
+  const borderTop = parseFloat(style.borderTopWidth) || 0;
+  const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+  const chromeBottom = chrome
+    ? chrome.offsetTop + chrome.offsetHeight + 12
+    : 0;
+  const totalHeight = Math.max(
+    contentHeight + paddingTop + paddingBottom + borderTop + borderBottom,
+    chromeBottom + paddingBottom + borderBottom,
+  );
+  return Math.max(1, Math.ceil((totalHeight + HOME_GRID_GAP) / (HOME_GRID_ROW_HEIGHT + HOME_GRID_GAP)));
+}
+
+function syncAutoHeightRows(): void {
+  if (compactMode.value || dragActiveId.value) return;
+
+  for (const instance of props.instances) {
+    const meta = props.registry[instance.kind];
+    if (!meta?.autoHeight) continue;
+    const measuredRowSpan = measureAutoHeightRowSpan(instance.instanceId);
+    if (!measuredRowSpan || measuredRowSpan === instance.rowSpan) continue;
+    emit("autoHeightSync", { instanceId: instance.instanceId, rowSpan: measuredRowSpan });
+  }
+}
+
+function scheduleAutoHeightSync(): void {
+  if (typeof window === "undefined") return;
+  if (autoHeightSyncFrame !== null) {
+    window.cancelAnimationFrame(autoHeightSyncFrame);
+  }
+  autoHeightSyncFrame = window.requestAnimationFrame(() => {
+    autoHeightSyncFrame = null;
+    syncAutoHeightRows();
+  });
+}
+
+function cleanupItemObserver(instanceId: string): void {
+  const observer = resizeObservers.get(instanceId);
+  if (!observer) return;
+  observer.disconnect();
+  resizeObservers.delete(instanceId);
+}
+
+function setItemRef(instanceId: string, element: unknown): void {
+  cleanupItemObserver(instanceId);
+  const resolvedElement =
+    element instanceof HTMLElement
+      ? element
+      : typeof element === "object" && element !== null && "$el" in element
+        ? (element as { $el?: unknown }).$el
+        : null;
+
+  if (!(resolvedElement instanceof HTMLElement)) {
+    itemRefs.delete(instanceId);
+    return;
+  }
+
+  itemRefs.set(instanceId, resolvedElement);
+  if (typeof ResizeObserver === "undefined") return;
+  const observer = new ResizeObserver(() => {
+    scheduleAutoHeightSync();
+  });
+  observer.observe(resolvedElement);
+  resizeObservers.set(instanceId, observer);
+  scheduleAutoHeightSync();
 }
 
 function getPreviewStyle(): Record<string, string> | null {
@@ -302,11 +387,44 @@ function handleDrop(event: DragEvent): void {
 onMounted(() => {
   syncCompactMode();
   if (typeof window !== "undefined") window.addEventListener("resize", syncCompactMode);
+  void nextTick(() => {
+    scheduleAutoHeightSync();
+  });
 });
 
 onUnmounted(() => {
-  if (typeof window !== "undefined") window.removeEventListener("resize", syncCompactMode);
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", syncCompactMode);
+    if (autoHeightSyncFrame !== null) {
+      window.cancelAnimationFrame(autoHeightSyncFrame);
+      autoHeightSyncFrame = null;
+    }
+  }
+  for (const instanceId of resizeObservers.keys()) {
+    cleanupItemObserver(instanceId);
+  }
+  itemRefs.clear();
 });
+
+watch(
+  () => props.instances,
+  () => {
+    void nextTick(() => {
+      scheduleAutoHeightSync();
+    });
+  },
+  { deep: true },
+);
+
+watch(
+  () => props.registry,
+  () => {
+    void nextTick(() => {
+      scheduleAutoHeightSync();
+    });
+  },
+  { deep: true },
+);
 </script>
 
 <template>
@@ -326,6 +444,7 @@ onUnmounted(() => {
       <div
         v-for="instance in orderedInstances"
         :key="instance.instanceId"
+        :ref="(element) => setItemRef(instance.instanceId, element)"
         class="next-home-layout-board__item"
         :class="{
           'next-home-layout-board__item--dragging':

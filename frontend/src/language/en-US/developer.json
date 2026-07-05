@@ -103,12 +103,12 @@
         "info_message": "Loading the latest status"
       },
       "banner": {
-        "title": "Banner Test",
-        "description": "Switch the inline banner here.",
-        "info_button": "Show Banner",
-        "warning_button": "Show Warning Banner",
-        "error_button": "Show Error Banner",
-        "clear_button": "Hide Banner",
+        "title": "Announcement Test",
+        "description": "Click a button to open the announcement window.",
+        "info_button": "Show Announcement",
+        "warning_button": "Show Warning Announcement",
+        "error_button": "Show Error Announcement",
+        "clear_button": "Close Announcement",
         "info_message": "There is a new status update",
         "warning_message": "This action needs another check",
         "error_message": "The current state needs attention"

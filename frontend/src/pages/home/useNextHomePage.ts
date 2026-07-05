@@ -341,6 +341,25 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
     ];
   });
 
+  const cpuMetric = computed<NextHomeSystemMetric | null>((): NextHomeSystemMetric | null =>
+    systemMetrics.value.find((metric) => metric.id === "cpu") ?? null,
+  );
+
+  const memoryMetric = computed<NextHomeSystemMetric | null>((): NextHomeSystemMetric | null =>
+    systemMetrics.value.find((metric) => metric.id === "memory") ?? null,
+  );
+
+  const instanceCountMetric = computed<NextHomePageSummaryMetric | null>(() => ({
+    id: "instances",
+    label: i18n.t("shell.home_instance_count_label"),
+    value: String(totalServerCount.value),
+    meta:
+      runningServerCount.value > 0
+        ? i18n.t("shell.home_instance_count_meta_running", { count: runningServerCount.value })
+        : i18n.t("shell.home_instance_count_meta_idle"),
+    tone: runningServerCount.value > 0 ? "primary" : "neutral",
+  }));
+
   function toggleStatsViewMode(): void {
     statsStore.statsViewMode = statsStore.statsViewMode === "gauge" ? "detail" : "gauge";
   }
@@ -466,6 +485,9 @@ export function useNextHomePage(options: UseNextHomePageOptions) {
     cardLayouts,
     summaryMetrics,
     systemMetrics,
+    cpuMetric,
+    memoryMetric,
+    instanceCountMetric,
     featuredServer,
     secondaryServers,
     alertItems,

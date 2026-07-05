@@ -252,6 +252,57 @@ function buildSnapPlacement(
   };
 }
 
+function resolveAutoHeightLayout(
+  registry: NextHomeCardRegistry,
+  current: NextHomeCardInstance[],
+  candidate: NextHomeCardInstance,
+): NextHomeCardInstance[] {
+  const pinned = current
+    .filter((instance) => instance.instanceId !== candidate.instanceId)
+    .map((instance) => ({ ...instance }));
+
+  const result = [...pinned, candidate].toSorted((left, right) => {
+    if (left.instanceId === candidate.instanceId) return -1;
+    if (right.instanceId === candidate.instanceId) return 1;
+    if (left.rowStart !== right.rowStart) return left.rowStart - right.rowStart;
+    if (left.colStart !== right.colStart) return left.colStart - right.colStart;
+    return left.instanceId.localeCompare(right.instanceId);
+  });
+
+  for (let index = 0; index < result.length; index += 1) {
+    let currentInstance = result[index];
+    let guard = 0;
+    while (
+      result.some(
+        (other, otherIndex) => otherIndex < index && intersects(currentInstance, other),
+      ) &&
+      guard < HOME_GRID_MAX_ROWS
+    ) {
+      const blockers = result.filter(
+        (other, otherIndex) => otherIndex < index && intersects(currentInstance, other),
+      );
+      const nextRowStart = blockers.reduce(
+        (maxValue, blocker) => Math.max(maxValue, blocker.rowStart + blocker.rowSpan),
+        currentInstance.rowStart + 1,
+      );
+      const shifted = sanitizeInstance(
+        {
+          ...currentInstance,
+          rowStart: nextRowStart,
+          y: nextRowStart - 1,
+        },
+        registry,
+      );
+      if (!shifted) break;
+      currentInstance = shifted;
+      result[index] = currentInstance;
+      guard += 1;
+    }
+  }
+
+  return result;
+}
+
 export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions) {
   const settingsStore = useSettingsStore();
   const instances = shallowRef<NextHomeCardInstance[]>([]);
@@ -403,7 +454,7 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
       return;
     }
 
-    replaceInstances(instances.value.filter((instance) => instance.instanceId !== instanceId));
+    replaceInstances(instances.value.filter((entry) => entry.instanceId !== instanceId));
     if (selectedInstanceId.value === instanceId) selectedInstanceId.value = null;
   }
 
@@ -497,6 +548,34 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
         rowSpan: size.rowSpan ?? source.rowSpan,
       };
     });
+  }
+
+  function syncAutoHeightInstance(instanceId: string, rowSpan: number): boolean {
+    const source = instances.value.find((instance) => instance.instanceId === instanceId);
+    if (!source) return false;
+    const meta = resolveMeta(registry.value, source.kind);
+    if (!meta?.autoHeight) return false;
+
+    const maxRows = meta.maxRows ?? HOME_GRID_MAX_ROWS;
+    const nextRowSpan = clamp(rowSpan, meta.minRows, maxRows);
+    if (nextRowSpan === source.rowSpan) return false;
+
+    const candidate = sanitizeInstance(
+      {
+        ...source,
+        height: nextRowSpan,
+        rowSpan: nextRowSpan,
+      },
+      registry.value,
+    );
+    if (!candidate) return false;
+
+    const nextInstances = resolveAutoHeightLayout(registry.value, instances.value, candidate).map(
+      (instance) =>
+        instance.instanceId === candidate.instanceId ? { ...instance, zIndex: source.zIndex } : instance,
+    );
+    replaceInstances(nextInstances);
+    return true;
   }
 
   function resetLayout(): void {
@@ -782,6 +861,7 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     removeInstance,
     moveInstance,
     resizeInstance,
+    syncAutoHeightInstance,
     canAddKind,
     resetLayout,
   };

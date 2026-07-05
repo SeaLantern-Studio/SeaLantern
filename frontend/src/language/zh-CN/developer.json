@@ -104,7 +104,7 @@
       },
       "banner": {
         "title": "公告测试",
-        "description": "可以直接在这里切换显示。",
+        "description": "点一下会弹出公告窗口。",
         "info_button": "显示公告",
         "warning_button": "显示警告公告",
         "error_button": "显示错误公告",

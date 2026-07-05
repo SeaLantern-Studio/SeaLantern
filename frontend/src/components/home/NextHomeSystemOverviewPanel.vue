@@ -36,11 +36,14 @@ const toggleTitle = computed(() =>
     ? i18n.t("shell.home_system_toggle_to_detail")
     : i18n.t("shell.home_system_toggle_to_gauge"),
 );
+
+const autoHeight = props.editable === true;
 </script>
 
 <template>
   <article
     class="next-home-system-overview surface-panel"
+    :class="{ 'surface-panel--auto-height': autoHeight }"
     :data-card-id="cardId"
     :data-layout-section="section"
     :data-layout-editable="editable ? 'true' : 'false'"
@@ -111,6 +114,11 @@ const toggleTitle = computed(() =>
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--sl-border) 86%, transparent);
   background: color-mix(in srgb, var(--sl-bg-secondary) 74%, white);
+}
+
+.surface-panel--auto-height {
+  height: auto;
+  max-height: none;
 }
 
 .next-home-system-overview__header {

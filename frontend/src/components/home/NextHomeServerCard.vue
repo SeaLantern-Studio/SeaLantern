@@ -16,37 +16,37 @@ const emit = defineEmits<{
 
 <template>
   <article class="next-home-server-card" :class="{ 'next-home-server-card--featured': featured }">
-    <div class="next-home-server-card__topline">
-      <span class="next-home-server-card__status" :class="`is-${server.statusTone}`">
-        <i class="next-home-server-card__status-dot"></i>
-        {{ server.statusText }}
-      </span>
-      <span class="next-home-server-card__runtime">{{ server.runtimeLabel }}</span>
-    </div>
-
-    <div class="next-home-server-card__body">
+    <div class="next-home-server-card__main">
       <div class="next-home-server-card__title-group">
+        <div class="next-home-server-card__topline">
+          <span class="next-home-server-card__status" :class="`is-${server.statusTone}`">
+            <i class="next-home-server-card__status-dot"></i>
+            {{ server.statusText }}
+          </span>
+          <span class="next-home-server-card__runtime">{{ server.runtimeLabel }}</span>
+        </div>
+
         <h3>{{ server.name }}</h3>
         <p>{{ server.detail }}</p>
       </div>
-
-      <dl class="next-home-server-card__facts">
-        <div>
-          <dt>{{ i18n.t("shell.home_server_port") }}</dt>
-          <dd>{{ server.portLabel }}</dd>
-        </div>
-        <div>
-          <dt>{{ i18n.t("shell.home_server_memory") }}</dt>
-          <dd>{{ server.memoryLabel }}</dd>
-        </div>
-        <div>
-          <dt>{{ i18n.t("shell.home_server_path") }}</dt>
-          <dd :title="server.pathLabel">{{ server.pathLabel }}</dd>
-        </div>
-      </dl>
     </div>
 
-    <div class="next-home-server-card__actions">
+    <dl class="next-home-server-card__facts">
+      <div>
+        <dt>{{ i18n.t("shell.home_server_port") }}</dt>
+        <dd>{{ server.portLabel }}</dd>
+      </div>
+      <div>
+        <dt>{{ i18n.t("shell.home_server_memory") }}</dt>
+        <dd>{{ server.memoryLabel }}</dd>
+      </div>
+      <div>
+        <dt>{{ i18n.t("shell.home_server_path") }}</dt>
+        <dd :title="server.pathLabel">{{ server.pathLabel }}</dd>
+      </div>
+    </dl>
+
+    <div class="next-home-server-card__side">
       <SLButton
         :variant="server.canStart ? 'primary' : 'danger'"
         :loading="server.isBusy"
@@ -67,19 +67,17 @@ const emit = defineEmits<{
 .next-home-server-card {
   min-width: 0;
   display: grid;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1.05fr) auto;
+  align-items: center;
+  gap: 18px;
   padding: 18px 20px;
   border: 1px solid color-mix(in srgb, var(--sl-border) 84%, transparent);
   border-radius: 18px;
   background: color-mix(in srgb, var(--sl-surface) 94%, transparent);
 }
 
-.next-home-server-card--featured {
-  padding: 22px 24px;
-}
-
 .next-home-server-card__topline,
-.next-home-server-card__actions {
+.next-home-server-card__side {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -130,10 +128,17 @@ const emit = defineEmits<{
   font-size: var(--sl-font-size-sm);
 }
 
-.next-home-server-card__body,
+.next-home-server-card__main,
+.next-home-server-card__side,
 .next-home-server-card__title-group {
+  min-width: 0;
   display: grid;
   gap: 10px;
+}
+
+.next-home-server-card__side {
+  justify-items: end;
+  align-content: center;
 }
 
 .next-home-server-card__title-group h3,
@@ -152,6 +157,7 @@ const emit = defineEmits<{
 }
 
 .next-home-server-card__facts {
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
@@ -182,12 +188,23 @@ const emit = defineEmits<{
   white-space: nowrap;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1180px) {
+  .next-home-server-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .next-home-server-card__topline,
-  .next-home-server-card__actions {
+  .next-home-server-card__side {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .next-home-server-card__side {
+    justify-items: start;
+  }
+}
+
+@media (max-width: 767px) {
 
   .next-home-server-card__facts {
     grid-template-columns: 1fr;

@@ -13,7 +13,7 @@ const LOG_POLL_INTERVAL = 1500;
 const SYSTEM_POLL_INTERVAL = 5000;
 const LOG_LIMIT = 300;
 
-export type DeveloperBannerTone = "info" | "warning" | "error";
+export type DeveloperAnnouncementTone = "info" | "warning" | "error";
 
 interface UseDeveloperToolsOptions {
   enabled: () => boolean;
@@ -24,8 +24,9 @@ interface LogFilterOption {
   value: string;
 }
 
-interface DeveloperBannerState {
-  tone: DeveloperBannerTone;
+export interface DeveloperAnnouncementState {
+  tone: DeveloperAnnouncementTone;
+  title: string;
   message: string;
 }
 
@@ -66,7 +67,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
   const systemError = ref<string | null>(null);
   const selectedLogLevel = ref(ALL_LOG_LEVELS);
   const selectedLogModule = ref(ALL_LOG_MODULES);
-  const activeBanner = ref<DeveloperBannerState | null>(null);
+  const activeAnnouncement = ref<DeveloperAnnouncementState | null>(null);
 
   const logLevelOptions = computed<LogFilterOption[]>(() => {
     const levels = Array.from(new Set(logs.value.map((entry) => entry.level))).toSorted();
@@ -144,7 +145,8 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
         version.value = await systemApi.getAppVersion();
         return;
       } catch {
-        version.value = import.meta.env.VITE_APP_VERSION || i18n.t("developer.next.summary.browser");
+        version.value =
+          import.meta.env.VITE_APP_VERSION || i18n.t("developer.next.summary.browser");
         return;
       }
     }
@@ -295,15 +297,16 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     globalMessage.info(i18n.t("developer.next.tools.toast.info_message"));
   }
 
-  function showTestBanner(tone: DeveloperBannerTone) {
-    activeBanner.value = {
+  function showTestAnnouncement(tone: DeveloperAnnouncementTone) {
+    activeAnnouncement.value = {
       tone,
+      title: i18n.t("developer.next.tools.banner.title"),
       message: i18n.t(`developer.next.tools.banner.${tone}_message`),
     };
   }
 
-  function clearTestBanner() {
-    activeBanner.value = null;
+  function clearTestAnnouncement() {
+    activeAnnouncement.value = null;
   }
 
   const logPolling = useSerialPolling({
@@ -370,7 +373,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     downloadingUpdate,
     triggeringCrash,
     updateUrl,
-    activeBanner,
+    activeAnnouncement,
     logError,
     systemError,
     logText,
@@ -399,7 +402,7 @@ export function useDeveloperTools(options: UseDeveloperToolsOptions) {
     showTestErrorToast,
     showTestWarningToast,
     showTestInfoToast,
-    showTestBanner,
-    clearTestBanner,
+    showTestAnnouncement,
+    clearTestAnnouncement,
   };
 }

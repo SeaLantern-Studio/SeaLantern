@@ -21,6 +21,9 @@ export interface NextHomeCardRuntimeContext {
   usingPreviewFallback: boolean;
   summaryMetrics: NextHomePageSummaryMetric[];
   systemMetrics: NextHomeSystemMetric[];
+  cpuMetric: NextHomeSystemMetric | null;
+  memoryMetric: NextHomeSystemMetric | null;
+  instanceCountMetric: NextHomePageSummaryMetric | null;
   statsViewMode: "gauge" | "detail";
   featuredServer: NextHomeServerCardModel | null;
   secondaryServers: NextHomeServerCardModel[];

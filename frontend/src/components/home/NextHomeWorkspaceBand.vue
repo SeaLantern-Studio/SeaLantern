@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { i18n } from "@language";
 import type { NextHomeServerCardModel } from "@src/pages/home/useNextHomePage";
 import NextHomeServerCard from "./NextHomeServerCard.vue";
 
-defineProps<{
+const props = defineProps<{
   featuredServer: NextHomeServerCardModel | null;
   secondaryServers: NextHomeServerCardModel[];
   serverCountLabel: string;
@@ -15,6 +16,14 @@ defineProps<{
   section?: string;
   editable?: boolean;
 }>();
+
+const orderedServers = computed<NextHomeServerCardModel[]>(() => {
+  if (!props.featuredServer) {
+    return props.secondaryServers;
+  }
+
+  return [props.featuredServer, ...props.secondaryServers];
+});
 
 const emit = defineEmits<{
   toggle: [serverId: string];
@@ -38,24 +47,14 @@ const emit = defineEmits<{
       </div>
     </header>
 
-    <div v-if="featuredServer" class="next-home-workspace-band__grid">
+    <div v-if="featuredServer" class="next-home-workspace-band__server-list">
       <NextHomeServerCard
-        class="next-home-workspace-band__featured"
-        :server="featuredServer"
-        :featured="true"
+        v-for="server in orderedServers"
+        :key="server.id"
+        :server="server"
         :preview-dataset="previewDataset"
         @toggle="emit('toggle', $event)"
       />
-
-      <div class="next-home-workspace-band__secondary-list">
-        <NextHomeServerCard
-          v-for="server in secondaryServers"
-          :key="server.id"
-          :server="server"
-          :preview-dataset="previewDataset"
-          @toggle="emit('toggle', $event)"
-        />
-      </div>
     </div>
 
     <div v-else class="next-home-workspace-band__empty surface-panel">
@@ -105,13 +104,7 @@ const emit = defineEmits<{
   line-height: var(--sl-line-height-relaxed);
 }
 
-.next-home-workspace-band__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
-  gap: 16px;
-}
-
-.next-home-workspace-band__secondary-list {
+.next-home-workspace-band__server-list {
   min-width: 0;
   display: grid;
   gap: 16px;
@@ -138,9 +131,4 @@ const emit = defineEmits<{
   line-height: var(--sl-line-height-relaxed);
 }
 
-@media (max-width: 1023px) {
-  .next-home-workspace-band__grid {
-    grid-template-columns: 1fr;
-  }
-}
 </style>

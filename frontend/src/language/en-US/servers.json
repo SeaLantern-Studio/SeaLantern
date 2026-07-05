@@ -13,6 +13,9 @@
         "config": "Config",
         "world": "World"
       },
+      "world": {
+        "developing": "Under development"
+      },
       "players": {
         "ip_bans_title": "IP ban rules",
         "ip_bans_hint": "IP bans are independent from player names. Only backend-readable rules are shown here.",

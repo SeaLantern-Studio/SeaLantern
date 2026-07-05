@@ -60,6 +60,7 @@ const {
   removeInstance,
   moveInstance,
   resizeInstance,
+  syncAutoHeightInstance,
   resetLayout,
 } = layoutEditor;
 
@@ -67,6 +68,9 @@ const {
   isInitialLoading,
   summaryMetrics,
   systemMetrics,
+  cpuMetric,
+  memoryMetric,
+  instanceCountMetric,
   statsViewMode,
   usingPreviewFallback,
   featuredServer,
@@ -98,6 +102,9 @@ const cardRuntimeContext = computed<NextHomeCardRuntimeContext>(() => ({
   usingPreviewFallback: usingPreviewFallback.value,
   summaryMetrics: summaryMetrics.value,
   systemMetrics: systemMetrics.value,
+  cpuMetric: cpuMetric.value,
+  memoryMetric: memoryMetric.value,
+  instanceCountMetric: instanceCountMetric.value,
   statsViewMode: statsViewMode.value,
   featuredServer: featuredServer.value,
   secondaryServers: secondaryServers.value,
@@ -138,6 +145,7 @@ function handleBoardDeploy(payload: {
         @select-instance="selectInstance"
         @move-instance="moveInstance($event.instanceId, $event)"
         @resize-instance="resizeInstance($event.instanceId, $event)"
+        @auto-height-sync="syncAutoHeightInstance($event.instanceId, $event.rowSpan)"
         @remove-instance="removeInstance"
         @deploy-card="handleBoardDeploy"
       >

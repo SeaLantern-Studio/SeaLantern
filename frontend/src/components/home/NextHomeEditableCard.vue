@@ -33,6 +33,8 @@ const emit = defineEmits<{
   resizeStart: [payload: ResizeHandlePayload];
 }>();
 
+const autoHeight = props.meta.autoHeight === true;
+
 function handleSelect(): void {
   emit("select", props.instance.instanceId);
 }
@@ -58,6 +60,7 @@ function handleResizeStart(axis: ResizeHandlePayload["axis"], event: PointerEven
       'next-home-editable-card--selected': selected,
       'next-home-editable-card--compact': compactMode,
       'next-home-editable-card--drag-active': dragActive,
+      'next-home-editable-card--auto-height': autoHeight && !compactMode,
     }"
     @pointerdown="handleSelect"
   >
@@ -106,12 +109,14 @@ function handleResizeStart(axis: ResizeHandlePayload["axis"], event: PointerEven
         class="next-home-editable-card__resize-handle next-home-editable-card__resize-handle--south"
         type="button"
         :title="i18n.t('shell.home_edit_resize_height')"
+        :disabled="autoHeight"
         @pointerdown.stop.prevent="handleResizeStart('vertical', $event)"
       />
       <button
         class="next-home-editable-card__resize-handle next-home-editable-card__resize-handle--corner"
         type="button"
         :title="i18n.t('shell.home_edit_resize_both')"
+        :disabled="autoHeight"
         @pointerdown.stop.prevent="handleResizeStart('both', $event)"
       />
     </template>
@@ -201,11 +206,25 @@ function handleResizeStart(axis: ResizeHandlePayload["axis"], event: PointerEven
   overflow: hidden;
 }
 
+.next-home-editable-card--auto-height {
+  height: auto;
+}
+
+.next-home-editable-card--auto-height .next-home-editable-card__body {
+  height: auto;
+  overflow: visible;
+}
+
 .next-home-editable-card__resize-handle {
   position: absolute;
   z-index: 2;
   opacity: 0.92;
   cursor: pointer;
+}
+
+.next-home-editable-card__resize-handle:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
 }
 
 .next-home-editable-card__resize-handle--east {

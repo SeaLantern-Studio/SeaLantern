@@ -13,6 +13,9 @@
         "config": "配置编辑",
         "world": "世界地图"
       },
+      "world": {
+        "developing": "正在开发"
+      },
       "players": {
         "ip_bans_title": "IP 封禁规则",
         "ip_bans_hint": "IP 封禁独立于玩家名称，仅展示后端可读取的规则。",
