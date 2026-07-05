@@ -227,12 +227,26 @@ pub fn resolve_primary_startup_config_path(
 
 pub fn resolve_primary_port_config_path(server_dir: &Path) -> Result<Option<PathBuf>, String> {
     let discovered = discover_server_config_files_in_dir(server_dir)?;
-    Ok(discovered.iter().find_map(|entry| match entry.known_role {
+    if let Some(path) = discovered.iter().find_map(|entry| match entry.known_role {
         Some(KnownServerConfigRole::Pumpkin | KnownServerConfigRole::ServerProperties) => {
             Some(PathBuf::from(&entry.absolute_path))
         }
         _ => None,
-    }))
+    }) {
+        return Ok(Some(path));
+    }
+
+    let pumpkin_path = server_dir.join("pumpkin.toml");
+    if pumpkin_path.exists() {
+        return Ok(Some(pumpkin_path));
+    }
+
+    let server_properties_path = server_dir.join("server.properties");
+    if server_properties_path.exists() {
+        return Ok(Some(server_properties_path));
+    }
+
+    Ok(None)
 }
 
 pub fn resolve_discovered_config_path(
