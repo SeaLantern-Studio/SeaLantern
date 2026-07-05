@@ -407,7 +407,12 @@ fn test_process_read_output_returns_background_stdout_and_stderr() {
     let launch_result: Table = exec.call((program, args, Some(options))).unwrap();
     let pid: u32 = launch_result.get("pid").unwrap();
 
-    let output = wait_for_background_output(runtime.lua(), &read_output, pid).unwrap();
+    let output = wait_for_background_output_matching(runtime.lua(), &read_output, pid, |table| {
+        let stdout: String = table.get("stdout").unwrap();
+        let stderr: String = table.get("stderr").unwrap();
+        stdout.contains("bg-out") && stderr.contains("bg-err")
+    })
+    .unwrap();
     let stdout: String = output.get("stdout").unwrap();
     let stderr: String = output.get("stderr").unwrap();
     let chunk_seq: u64 = output.get("chunk_seq").unwrap();

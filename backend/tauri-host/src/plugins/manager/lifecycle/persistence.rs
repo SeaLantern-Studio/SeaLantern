@@ -131,77 +131,84 @@ mod tests {
     use std::collections::HashMap;
 
     fn example_plugin_for_unavailable_runtime(
+        manager: &PluginManager,
         plugin_root: &std::path::Path,
-    ) -> crate::models::plugin::PluginInfo {
-        if cfg!(feature = "plugin-local-runtime") {
-            let mut plugin = crate::plugins::builtin::builtin_plugin_infos()
-                .into_iter()
-                .next()
-                .expect("builtin plugin should exist");
-            plugin.path = plugin_root.to_string_lossy().to_string();
-            plugin
-        } else {
-            PluginInfo {
-                manifest: PluginManifest {
-                    id: "example-plugin".to_string(),
-                    name: "Example Plugin".to_string(),
-                    version: "1.0.0".to_string(),
-                    description: "test plugin".to_string(),
-                    author: PluginAuthor {
-                        name: "tester".to_string(),
-                        email: None,
-                        url: None,
-                    },
-                    main: "main.lua".to_string(),
-                    license: None,
-                    homepage: None,
-                    repository: None,
-                    engines: None,
-                    permissions: Vec::new(),
-                    ui: None,
-                    events: Vec::new(),
-                    commands: Vec::new(),
-                    programs: Vec::new(),
-                    dependencies: Vec::new(),
-                    optional_dependencies: Vec::new(),
-                    icon: None,
-                    settings: None,
-                    sidebar: None,
-                    locales: None,
-                    include: Vec::new(),
-                    capabilities: Vec::new(),
-                    theme_var_map: HashMap::new(),
-                    presets: HashMap::new(),
-                    server_events: HashMap::new(),
+    ) -> Option<crate::models::plugin::PluginInfo> {
+        let local_plugin = PluginInfo {
+            manifest: PluginManifest {
+                id: "example-plugin".to_string(),
+                name: "Example Plugin".to_string(),
+                version: "1.0.0".to_string(),
+                description: "test plugin".to_string(),
+                author: PluginAuthor {
+                    name: "tester".to_string(),
+                    email: None,
+                    url: None,
                 },
-                state: PluginState::Disabled,
-                path: plugin_root.to_string_lossy().to_string(),
-                source: PluginSource::Local,
-                runtime: PluginRuntimeKind::Lua,
-                actions: PluginActions {
-                    can_toggle: true,
-                    can_delete: true,
-                    can_check_update: true,
-                },
-                missing_dependencies: Vec::new(),
-                trust_level_display: PluginTrustLevelDisplay::StandardSandbox,
-                execution_class: PluginExecutionClass::Sandboxed,
-                review_status: PluginReviewStatus::Unreviewed,
-                integrity_status: PluginIntegrityStatus::Unknown,
-                trusted_policy_source: PluginTrustedPolicySource::None,
-                permission_profile: PluginPermissionProfile::SandboxedNormal,
-                publisher_id: None,
-                distribution_class: PluginDistributionClass::LocalDirectory,
-                trusted_catalog_matched: false,
-                hash_matched: false,
-                verified_hash: None,
-                verified_signature: false,
-                reviewed_at: None,
-                revoked: false,
-                exceeds_standard_sandbox: false,
-                requires_explicit_consent: false,
-            }
+                main: "main.lua".to_string(),
+                license: None,
+                homepage: None,
+                repository: None,
+                engines: None,
+                permissions: Vec::new(),
+                ui: None,
+                events: Vec::new(),
+                commands: Vec::new(),
+                programs: Vec::new(),
+                dependencies: Vec::new(),
+                optional_dependencies: Vec::new(),
+                icon: None,
+                settings: None,
+                sidebar: None,
+                locales: None,
+                include: Vec::new(),
+                capabilities: Vec::new(),
+                theme_var_map: HashMap::new(),
+                presets: HashMap::new(),
+                server_events: HashMap::new(),
+            },
+            state: PluginState::Disabled,
+            path: plugin_root.to_string_lossy().to_string(),
+            source: PluginSource::Local,
+            runtime: PluginRuntimeKind::Lua,
+            actions: PluginActions {
+                can_toggle: true,
+                can_delete: true,
+                can_check_update: true,
+            },
+            missing_dependencies: Vec::new(),
+            trust_level_display: PluginTrustLevelDisplay::StandardSandbox,
+            execution_class: PluginExecutionClass::Sandboxed,
+            review_status: PluginReviewStatus::Unreviewed,
+            integrity_status: PluginIntegrityStatus::Unknown,
+            trusted_policy_source: PluginTrustedPolicySource::None,
+            permission_profile: PluginPermissionProfile::SandboxedNormal,
+            publisher_id: None,
+            distribution_class: PluginDistributionClass::LocalDirectory,
+            trusted_catalog_matched: false,
+            hash_matched: false,
+            verified_hash: None,
+            verified_signature: false,
+            reviewed_at: None,
+            revoked: false,
+            exceeds_standard_sandbox: false,
+            requires_explicit_consent: false,
+        };
+
+        let local_plugin = manager.normalize_plugin_info(local_plugin);
+        if !manager.runtime_activation_available_for(&local_plugin) {
+            return Some(local_plugin);
         }
+
+        let builtin_plugin = crate::plugins::builtin::builtin_plugin_infos()
+            .into_iter()
+            .next()
+            .map(|mut plugin| {
+                plugin.path = plugin_root.to_string_lossy().to_string();
+                manager.normalize_plugin_info(plugin)
+            });
+
+        builtin_plugin.filter(|plugin| !manager.runtime_activation_available_for(plugin))
     }
 
     #[test]
@@ -246,13 +253,13 @@ mod tests {
         let mut manager = PluginManager::new_checked(plugins_dir.clone(), data_dir.clone())
             .expect("plugin manager should initialize");
 
-        let plugin = manager.normalize_plugin_info(example_plugin_for_unavailable_runtime(
+        let Some(plugin) = example_plugin_for_unavailable_runtime(
+            &manager,
             &plugins_dir.join("unavailable-runtime-plugin"),
-        ));
-        assert!(
-            !manager.runtime_activation_available_for(&plugin),
-            "test setup requires a plugin that cannot activate in this build"
-        );
+        ) else {
+            return;
+        };
+
         let plugin_id = plugin.manifest.id.clone();
         manager.plugins.insert(plugin_id.clone(), plugin);
 

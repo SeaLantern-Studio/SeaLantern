@@ -404,15 +404,14 @@ mod tests {
 
     #[test]
     fn control_state_round_trips_written_private_file() {
-        let _guard = crate::services::server::runtime::local_helper::TEST_ENV_LOCK
-            .lock()
-            .expect("env lock should work");
+        let _guard = crate::test_support::lock_env();
         let temp_dir = tempdir().expect("temp dir should exist");
         let app_data_dir = temp_dir.path().join("app-data");
         std::fs::create_dir_all(&app_data_dir).expect("app data dir should exist");
-        unsafe {
-            std::env::set_var("SEALANTERN_DATA_DIR", &app_data_dir);
-        }
+        let _env_guard = crate::test_support::EnvGuard::set(
+            "SEALANTERN_DATA_DIR",
+            &app_data_dir.to_string_lossy(),
+        );
         let server = test_server(temp_dir.path().join("server").to_string_lossy().to_string());
         let expected = LocalHelperControlState {
             server_id: server.id.clone(),
@@ -435,9 +434,5 @@ mod tests {
                 .expect("control state should deserialize")
                 .expect("control state should exist");
         assert_eq!(actual, expected);
-
-        unsafe {
-            std::env::remove_var("SEALANTERN_DATA_DIR");
-        }
     }
 }
