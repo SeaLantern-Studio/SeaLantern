@@ -457,6 +457,10 @@ export const serverApi = {
     return tauriInvoke("stop_server", { id });
   },
 
+  async restart(id: string): Promise<void> {
+    return tauriInvoke("restart_server", { id });
+  },
+
   async prepareForceStop(id: string): Promise<ForceStopPreparation> {
     const result = await tauriInvoke<ForceStopPreparationRaw>("prepare_force_stop_server", { id });
     return {

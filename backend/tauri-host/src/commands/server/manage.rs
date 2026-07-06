@@ -32,6 +32,12 @@ pub fn force_stop_server(id: String, confirmation_token: String) -> Result<(), S
 }
 
 #[tauri::command]
+/// 重启服务器
+pub fn restart_server(id: String) -> Result<(), String> {
+    runtime::restart_server(id)
+}
+
+#[tauri::command]
 #[allow(clippy::too_many_arguments)]
 /// 新建服务器实例
 pub fn create_server(

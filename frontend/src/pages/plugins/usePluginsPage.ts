@@ -130,6 +130,7 @@ export function usePluginsPage() {
 
   void getHostCapabilities().then((capabilities) => {
     hostCapabilities.value = capabilities;
+    return capabilities;
   });
 
   async function loadPage(manual = false): Promise<void> {

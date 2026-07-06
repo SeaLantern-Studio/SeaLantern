@@ -267,6 +267,31 @@ impl ServerManager {
         )
     }
 
+    pub fn restart_server(&self, id: &str) -> Result<(), String> {
+        let detail = format!("server_id={}", id);
+        logger::log_user_action("server.manager", "restart", &detail);
+        let _ = publish_server_lifecycle(
+            id,
+            ServerEventKind::LifecycleStopRequested,
+            Some("restart_requested".to_string()),
+            None,
+            None,
+            None,
+        );
+        let result = runtime_control::restart_server(self, id);
+        if let Err(error) = &result {
+            let _ = publish_server_lifecycle(
+                id,
+                ServerEventKind::LifecycleRuntimeError,
+                Some("restart_failed".to_string()),
+                Some(error.clone()),
+                None,
+                None,
+            );
+        }
+        log_manager_result("restart", &detail, result)
+    }
+
     pub(crate) fn save(&self) -> Result<(), String> {
         let servers = self.lock_servers()?;
         let data_dir = self.data_dir_value()?;

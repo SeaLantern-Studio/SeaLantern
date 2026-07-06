@@ -47,6 +47,11 @@ pub(super) fn force_stop_server(id: String, confirmation_token: String) -> Resul
     manager().force_stop_server(&id, &confirmation_token)
 }
 
+/// 重启服务器：停服后等待 2 秒再启动
+pub(super) fn restart_server(id: String) -> Result<(), String> {
+    manager().restart_server(&id)
+}
+
 /// 启动服务器，并在需要时向前端发送启动回退事件
 pub(super) fn start_server(app: tauri::AppHandle, id: String) -> Result<(), String> {
     let _ = app;

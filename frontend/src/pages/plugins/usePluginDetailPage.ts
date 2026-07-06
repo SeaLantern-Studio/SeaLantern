@@ -168,6 +168,7 @@ export function usePluginDetailPage() {
 
   void getHostCapabilities().then((capabilities) => {
     hostCapabilities.value = capabilities;
+    return capabilities;
   });
 
   const { showFeedback, clearFeedback } = usePluginMarketFeedback({

@@ -33,6 +33,7 @@
   "server_status_error": "错误",
   "message_server_started": "服务器已启动",
   "message_server_stopped": "服务器已停止",
+  "message_server_restarted": "服务器已重启",
   "message_command_sent": "命令已发送",
   "message_whitelist_added": "已添加到白名单",
   "message_whitelist_removed": "已从白名单移除",

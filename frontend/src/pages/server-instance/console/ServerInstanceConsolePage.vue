@@ -53,6 +53,15 @@ onUnmounted(() => {
           {{ page.primaryActionLabel.value }}
         </SLButton>
         <SLButton
+          v-if="page.canRestart.value"
+          variant="secondary"
+          size="sm"
+          :loading="page.lifecycleSubmitting.value"
+          @click="page.runRestartAction"
+        >
+          {{ i18n.t("console.restart") }}
+        </SLButton>
+        <SLButton
           v-if="page.canForceStop.value"
           variant="danger"
           size="sm"

@@ -40,6 +40,7 @@ pub(crate) fn desktop_handler(
         server_commands::copy_directory_contents,
         server_commands::start_server,
         server_commands::stop_server,
+        server_commands::restart_server,
         server_commands::prepare_force_stop_server,
         server_commands::force_stop_server,
         server_commands::send_command,
