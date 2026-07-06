@@ -1,0 +1,8 @@
+{
+  "groups": {
+    "main": "メイン",
+    "server": "サーバー",
+    "system": "システム"
+  },
+  "collapse_btn": "サイドバーを閉じる"
+}

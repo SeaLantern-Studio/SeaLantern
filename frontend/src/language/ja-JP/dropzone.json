@@ -1,0 +1,8 @@
+{
+  "placeholder": "ファイルをドラッグするかクリックして選択",
+  "support_both": "ファイルとフォルダをサポート",
+  "support_files": "ファイルをサポート",
+  "support_folders": "フォルダをサポート",
+  "error_no_path": "ドロップされたファイルのパスを取得できません",
+  "error_unsupported_type": "サポートされていないファイルタイプです"
+}

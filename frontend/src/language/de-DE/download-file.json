@@ -1,0 +1,23 @@
+{
+  "title": "Benutzerdefinierter Download",
+  "url": "Download-URL",
+  "url_placeholder": "Bitte Download-URL eingeben (http/https)",
+  "save_folder": "Speichern unter",
+  "save_path": "Speicherpfad",
+  "select_folder": "Bitte Ordner auswählen",
+  "pick_folder": "Ordner auswählen",
+  "filename": "Dateiname",
+  "thread_count": "Thread-Anzahl",
+  "thread_count_empty": "Thread-Anzahl darf nicht leer sein",
+  "thread_count_invalid": "Ungültiges Zeichen",
+  "thread_count_positive": "Thread-Anzahl muss eine positive ganze Zahl sein",
+  "thread_count_too_big": "Die Anzahl der Threads darf 256 nicht überschreiten",
+  "cancel": "Abbrechen",
+  "download": "Herunterladen",
+  "browse": "Durchsuchen",
+  "downloading": "Ressource wird heruntergeladen...",
+  "status-finished": "Download abgeschlossen",
+  "failed": "Download fehlgeschlagen",
+  "completed": "Fertiggestellt",
+  "filename_placeholder": "Please enter a file name, for example server.jar"
+}

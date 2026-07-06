@@ -1,0 +1,13 @@
+{
+  "title": "起動ファイルを選択",
+  "scanning": "スキャン中...",
+  "description": "{{count}} 個の実行ファイルを検出しました。使用するファイルを選択してください：",
+  "click_to_select": "リスト内のファイルをクリックして選択",
+  "priority_high": "高優先度",
+  "priority_medium": "中優先度",
+  "priority_low": "低優先度",
+  "recommended": "推奨",
+  "confirm": "選択を確認",
+  "no_files": "{{mode}} タイプの実行ファイルが見つかりません",
+  "check_path": "サーバーフォルダが正しいか確認してください"
+}

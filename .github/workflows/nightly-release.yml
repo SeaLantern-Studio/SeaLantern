@@ -1,0 +1,339 @@
+name: "夜间发布"
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  BETA_BRANCH: beta
+
+jobs:
+  validate-nightly:
+    name: 校验来源并准备 Nightly 元数据
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      display_version: ${{ steps.meta.outputs.display_version }}
+      release_name: ${{ steps.meta.outputs.release_name }}
+      release_body: ${{ steps.meta.outputs.release_body }}
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+    steps:
+      - name: 校验 Nightly 分支配置
+        run: |
+          set -euo pipefail
+
+          if [ -z "$BETA_BRANCH" ]; then
+            echo "❌ BETA_BRANCH 未配置，无法解析 Nightly 构建来源。"
+            exit 1
+          fi
+
+      - name: 检出 beta 分支代码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BETA_BRANCH }}
+          fetch-depth: 0
+
+      - name: 生成 Nightly 标签与 Release 信息
+        id: meta
+        run: |
+          set -euo pipefail
+
+          VERSION="$(grep -m 1 -oP '"version"\s*:\s*"\K[^"]+' frontend/package.json)"
+          if [ -z "$VERSION" ]; then
+            echo "❌ 无法从 frontend/package.json 提取版本号"
+            exit 1
+          fi
+
+          SOURCE_BRANCH="$BETA_BRANCH"
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          DATE_UTC="$(date -u +%Y%m%d)"
+          DATETIME_UTC="$(date -u +%Y%m%dT%H%M%SZ)"
+          DATE_LABEL="$(date -u +%Y-%m-%d)"
+          SHORT_SHA="$(printf '%s' "$SOURCE_SHA" | cut -c1-7)"
+          DISPLAY_VERSION="NightlyBuild-${SHORT_SHA}-${DATETIME_UTC}"
+          TAG="nightly-v${VERSION}-${DATE_UTC}-${SHORT_SHA}"
+          RELEASE_NAME="Sea Lantern Nightly ${DATE_LABEL} (${SOURCE_BRANCH}@${SHORT_SHA})"
+
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            echo "display_version=$DISPLAY_VERSION"
+            echo "release_name=$RELEASE_NAME"
+            echo "source_sha=$SOURCE_SHA"
+            echo "release_body<<EOF"
+            echo "## 下载说明"
+            echo ""
+            echo "这是预览版本，适合想提前体验新内容的用户。"
+            echo ""
+            echo "如果你只想下载后直接运行：Windows 选 portable.zip，Mac 选 portable.tar.gz，Linux 选 AppImage。"
+            echo ""
+            echo "- \`x64-setup.exe\`：Windows 64 位安装包。"
+            echo "- \`x64_en-US.msi\`：Windows 64 位安装包，适合需要 MSI 的场景。"
+            echo "- \`Sea.Lantern_${VERSION}_windows_x64_portable.zip\` / \`Sea.Lantern_${VERSION}_windows_arm64_portable.zip\`：Windows 免安装版，解压后直接运行。"
+            echo "- \`x64.dmg\`：适用于 Intel Mac。"
+            echo "- \`aarch64.dmg\`：适用于 Apple 芯片 Mac。"
+            echo "- \`Sea.Lantern_${VERSION}_macos_x64_portable.tar.gz\` / \`Sea.Lantern_${VERSION}_macos_arm64_portable.tar.gz\`：Mac 免安装版，解压后把 \`.app\` 放到任意位置即可打开。"
+            echo "- \`*.AppImage\`：Linux 免安装版，给文件执行权限后即可直接运行。"
+            echo "- \`*.deb\` / \`*.rpm\`：Linux 安装包。"
+            echo ""
+            echo "本次构建基于 ${SOURCE_BRANCH} 分支提交 ${SHORT_SHA}，仅发布在 GitHub Release。"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 创建或复用 Nightly GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.release_name }}
+          RELEASE_BODY: ${{ steps.meta.outputs.release_body }}
+          SOURCE_SHA: ${{ steps.meta.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "✅ 已存在 Nightly Release，复用标签 $TAG"
+            exit 0
+          fi
+
+          gh release create "$TAG" \
+            --target "$SOURCE_SHA" \
+            --title "$RELEASE_NAME" \
+            --notes "$RELEASE_BODY" \
+            --prerelease
+
+  publish-tauri-nightly:
+    name: 构建并发布 Nightly 桌面端
+    needs: validate-nightly
+    permissions:
+      contents: write
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest"
+            args: "--target aarch64-apple-darwin"
+            asset_arch: "arm64"
+          - platform: "macos-latest"
+            args: "--target x86_64-apple-darwin"
+            asset_arch: "x64"
+          - platform: "ubuntu-22.04"
+            args: ""
+            asset_arch: "x64"
+          - platform: "ubuntu-22.04-arm"
+            args: ""
+            asset_arch: "arm64"
+          - platform: "windows-latest"
+            args: ""
+            asset_arch: "x64"
+          - platform: "windows-11-arm"
+            args: ""
+            asset_arch: "arm64"
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: 检出 beta Nightly 源码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-nightly.outputs.source_sha }}
+
+      - name: 安装系统依赖 (Ubuntu 专用)
+        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils nasm
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml', 'frontend/pnpm-workspace.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: 安装 Rust 工具链 (默认目标)
+        if: ${{ matrix.args == '' }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 安装 Rust 工具链 (macOS 目标)
+        if: ${{ matrix.args != '' }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: 缓存 Rust 编译产物
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: 安装前端依赖 (pnpm)
+        run: |
+          corepack prepare pnpm@11.5.3 --activate
+          pnpm --dir frontend install --frozen-lockfile
+
+      - name: 构建并上传 Nightly 产物
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SEA_LANTERN_BUILD_VERSION: ${{ needs.validate-nightly.outputs.display_version }}
+        with:
+          tagName: ${{ needs.validate-nightly.outputs.tag }}
+          releaseName: ${{ needs.validate-nightly.outputs.release_name }}
+          releaseBody: ${{ needs.validate-nightly.outputs.release_body }}
+          releaseDraft: false
+          prerelease: true
+          args: ${{ matrix.args }} -c backend/tauri-host/tauri.conf.json
+
+      - name: 打包 Windows 免安装版
+        if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.validate-nightly.outputs.tag }}
+          VERSION: ${{ needs.validate-nightly.outputs.version }}
+          ASSET_ARCH: ${{ matrix.asset_arch }}
+        run: |
+          $releaseDir = Get-ChildItem -Path "target", "backend/tauri-host/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\release\\sea-lantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
+            Select-Object -First 1 -ExpandProperty DirectoryName
+
+          if (-not $releaseDir) {
+            throw "未找到 Windows 可执行文件，无法打包免安装版。"
+          }
+
+          $stageDir = Join-Path $env:RUNNER_TEMP "portable-windows-$env:ASSET_ARCH"
+          Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $stageDir | Out-Null
+
+          Copy-Item -LiteralPath (Join-Path $releaseDir "sea-lantern.exe") -Destination $stageDir
+
+          Get-ChildItem -Path $releaseDir -File -Filter "*.dll" -ErrorAction SilentlyContinue |
+            ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $stageDir }
+
+          Copy-Item -LiteralPath "LICENSE", "NOTICE" -Destination $stageDir
+
+          $assetName = "Sea.Lantern_${env:VERSION}_windows_${env:ASSET_ARCH}_portable.zip"
+          $assetPath = Join-Path $env:RUNNER_TEMP $assetName
+          if (Test-Path $assetPath) {
+            Remove-Item -LiteralPath $assetPath -Force
+          }
+
+          Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $assetPath -Force
+          gh release upload $env:TAG $assetPath --clobber
+
+      - name: 打包 macOS 免安装版
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.validate-nightly.outputs.tag }}
+          VERSION: ${{ needs.validate-nightly.outputs.version }}
+          ASSET_ARCH: ${{ matrix.asset_arch }}
+        run: |
+          set -euo pipefail
+
+          SEARCH_ROOTS=()
+          for dir in target backend/tauri-host/target; do
+            if [ -d "$dir" ]; then
+              SEARCH_ROOTS+=("$dir")
+            fi
+          done
+
+          if [ ${#SEARCH_ROOTS[@]} -eq 0 ]; then
+            echo "❌ 未找到 target 目录，无法打包 macOS 免安装版"
+            exit 1
+          fi
+
+          APP_PATH="$(find "${SEARCH_ROOTS[@]}" -type d -name '*.app' -path '*/bundle/*' 2>/dev/null | head -n 1 || true)"
+          APP_ARCHIVE_PATH=""
+          if [ -z "$APP_PATH" ]; then
+            APP_ARCHIVE_PATH="$(find "${SEARCH_ROOTS[@]}" -type f -name '*.app.tar.gz' -path '*/bundle/*' 2>/dev/null | head -n 1 || true)"
+          fi
+
+          if [ -z "$APP_PATH" ] && [ -z "$APP_ARCHIVE_PATH" ]; then
+            echo "❌ 未找到 macOS .app 或 .app.tar.gz 产物，无法打包免安装版"
+            echo "已发现的 bundle 路径:"
+            find "${SEARCH_ROOTS[@]}" -path '*/bundle/*' 2>/dev/null | sort || true
+            exit 1
+          fi
+
+          STAGE_DIR="$RUNNER_TEMP/portable-macos-$ASSET_ARCH"
+          rm -rf "$STAGE_DIR"
+          mkdir -p "$STAGE_DIR"
+
+          if [ -n "$APP_PATH" ]; then
+            cp -R "$APP_PATH" "$STAGE_DIR/"
+            APP_BASENAME="$(basename "$APP_PATH")"
+          else
+            tar -C "$STAGE_DIR" -xzf "$APP_ARCHIVE_PATH"
+            EXTRACTED_APP_PATH="$(find "$STAGE_DIR" -maxdepth 2 -type d -name '*.app' 2>/dev/null | head -n 1 || true)"
+            if [ -z "$EXTRACTED_APP_PATH" ]; then
+              echo "❌ 已找到 $APP_ARCHIVE_PATH，但解压后未发现 .app 目录"
+              find "$STAGE_DIR" -maxdepth 2 2>/dev/null | sort || true
+              exit 1
+            fi
+            APP_BASENAME="$(basename "$EXTRACTED_APP_PATH")"
+          fi
+
+          cp LICENSE NOTICE "$STAGE_DIR/"
+
+          ASSET_NAME="Sea.Lantern_${VERSION}_macos_${ASSET_ARCH}_portable.tar.gz"
+          ASSET_PATH="$RUNNER_TEMP/$ASSET_NAME"
+          tar -C "$STAGE_DIR" -czf "$ASSET_PATH" "$APP_BASENAME" LICENSE NOTICE
+
+          gh release upload "$TAG" "$ASSET_PATH" --clobber
+
+  cleanup-old-nightly:
+    name: 清理旧 Nightly 发布
+    needs:
+      - validate-nightly
+      - publish-tauri-nightly
+    if: ${{ success() }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: 删除当前版本之外的旧 Nightly Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: ${{ needs.validate-nightly.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t NIGHTLY_TAGS < <(
+            gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --paginate --jq '.[] | select(.prerelease and (.tag_name | startswith("nightly-v"))) | .tag_name'
+          )
+
+          deleted=0
+          for tag in "${NIGHTLY_TAGS[@]}"; do
+            if [ "$tag" = "$CURRENT_TAG" ]; then
+              continue
+            fi
+
+            echo "删除旧 Nightly Release: $tag"
+            gh release delete "$tag" --cleanup-tag -y
+            deleted=1
+          done
+
+          if [ "$deleted" -eq 0 ]; then
+            echo "没有需要清理的旧 Nightly Release。"
+          fi

@@ -1,0 +1,8 @@
+{
+  "placeholder": "Kéo tệp vào đây hoặc nhấp để chọn",
+  "support_both": "Hỗ trợ tệp và thư mục",
+  "support_files": "Hỗ trợ tệp",
+  "support_folders": "Hỗ trợ thư mục",
+  "error_no_path": "Không thể lấy đường dẫn tệp đã kéo",
+  "error_unsupported_type": "Loại tệp không được hỗ trợ"
+}

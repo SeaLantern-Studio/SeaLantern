@@ -1,0 +1,23 @@
+{
+  "title": "カスタムダウンロード",
+  "url": "ダウンロードURL",
+  "url_placeholder": "ダウンロードURLを入力してください（http/https）",
+  "save_folder": "保存先",
+  "save_path": "保存先パス",
+  "select_folder": "フォルダを選択してください",
+  "pick_folder": "フォルダを選択",
+  "filename": "ファイル名",
+  "thread_count": "スレッド数",
+  "thread_count_empty": "スレッド数を入力してください",
+  "thread_count_invalid": "無効な文字です",
+  "thread_count_positive": "スレッド数は正の整数で入力してください",
+  "thread_count_too_big": "スレッド数は256を超えることはできません",
+  "cancel": "キャンセル",
+  "download": "ダウンロード",
+  "browse": "参照",
+  "downloading": "リソースをダウンロード中...",
+  "status-finished": "ダウンロード完了",
+  "failed": "ダウンロード失敗",
+  "completed": "完了",
+  "filename_placeholder": "请输入文件名（如 server.jar）"
+}

@@ -1,4 +1,4 @@
-name: "发布"
+name: "正式发布"
 
 on:
   workflow_dispatch:
@@ -28,13 +28,19 @@ on:
       - "v*.*.*"
       - "v*.*.*-beta"
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
+  actions: read
 
 jobs:
   prepare-release:
     name: 准备发布标签并提取版本
     runs-on: ubuntu-22.04
+    timeout-minutes: 10
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       version: ${{ steps.meta.outputs.version }}
@@ -95,6 +101,37 @@ jobs:
           git checkout --detach "$TARGET_SHA"
           echo "✅ 已在 ${SOURCE_BRANCH} HEAD (${TARGET_SHA}) 创建标签: ${RELEASE_TAG}"
 
+      - name: 校验主检查已通过
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const headSha = process.env.GITHUB_SHA;
+            const requiredWorkflowName = '代码检查';
+
+            const response = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              head_sha: headSha,
+              per_page: 20,
+            });
+
+            const passed = response.data.workflow_runs.some((run) =>
+              run.name === requiredWorkflowName &&
+              run.head_sha === headSha &&
+              run.event === 'push' &&
+              run.head_branch === 'main' &&
+              run.status === 'completed' &&
+              run.conclusion === 'success'
+            );
+
+            if (!passed) {
+              core.setFailed(`❌ 提交 ${headSha} 尚未通过 main 分支上的 ${requiredWorkflowName}`);
+              return;
+            }
+
+            core.info(`✅ 提交 ${headSha} 已通过 main 分支上的 ${requiredWorkflowName}`);
+
       - name: 提取版本信息
         id: meta
         env:
@@ -150,26 +187,33 @@ jobs:
     needs: prepare-release
     permissions:
       contents: write
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: "macos-latest"
             args: "--target aarch64-apple-darwin"
+            asset_arch: "arm64"
           - platform: "macos-latest"
             args: "--target x86_64-apple-darwin"
+            asset_arch: "x64"
           - platform: "ubuntu-22.04"
             args: ""
             arch: "amd64"
+            asset_arch: "x64"
           - platform: "ubuntu-22.04-arm"
             args: ""
             arch: "arm64"
+            asset_arch: "arm64"
           - platform: "windows-latest"
             args: ""
             arch: "amd64"
+            asset_arch: "x64"
           - platform: "windows-11-arm"
             args: ""
             arch: "arm64"
+            asset_arch: "arm64"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -192,6 +236,14 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml', 'frontend/pnpm-workspace.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
       - name: 安装 Rust 工具链 (默认目标)
         if: ${{ matrix.args == '' }}
         uses: dtolnay/rust-toolchain@stable
@@ -205,12 +257,12 @@ jobs:
       - name: 缓存 Rust 编译产物
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: ". -> target"
 
       - name: 安装前端依赖 (pnpm)
         run: |
-          corepack prepare pnpm@9.15.9 --activate
-          pnpm install --frozen-lockfile
+          corepack prepare pnpm@11.5.3 --activate
+          pnpm --dir frontend install --frozen-lockfile
 
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0

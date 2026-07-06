@@ -1,0 +1,8 @@
+{
+  "placeholder": "Drop file here or click to select",
+  "support_both": "Supports files and folders",
+  "support_files": "Supports files",
+  "support_folders": "Supports folders",
+  "error_no_path": "Unable to get dropped file path",
+  "error_unsupported_type": "Unsupported file type"
+}

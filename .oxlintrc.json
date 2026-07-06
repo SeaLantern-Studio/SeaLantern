@@ -9,8 +9,19 @@
   "rules": {
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": "off",
-    "import/no-unused-modules": "off",
-    "import/no-unresolved": ["error"],
+    "eslint/no-underscore-dangle": [
+      "warn",
+      {
+        "allow": [
+          "__TAURI__",
+          "__TAURI_INTERNALS__",
+          "__invoke",
+          "_path",
+          "_selectId",
+          "_themeProviderOverrides"
+        ]
+      }
+    ],
     "import/named": ["error"],
     "import/no-unassigned-import": [
       "error",

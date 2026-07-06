@@ -1,0 +1,13 @@
+{
+  "title": "Seleccionar archivo de inicio",
+  "scanning": "Escaneando...",
+  "description": "Se detectaron {{count}} archivos ejecutables, seleccione uno:",
+  "click_to_select": "Haga clic en un archivo de la lista para seleccionarlo",
+  "priority_high": "Alta prioridad",
+  "priority_medium": "Prioridad media",
+  "priority_low": "Baja prioridad",
+  "recommended": "Recomendado",
+  "confirm": "Confirmar selección",
+  "no_files": "No se encontraron archivos ejecutables de tipo {{mode}}",
+  "check_path": "Por favor verifique si la carpeta del servidor es correcta"
+}

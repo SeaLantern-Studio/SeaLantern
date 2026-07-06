@@ -1,0 +1,15 @@
+/* App.vue 全局样式 */
+#app {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: transparent;
+}
+
+.splash-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.splash-fade-leave-to {
+  opacity: 0;
+}

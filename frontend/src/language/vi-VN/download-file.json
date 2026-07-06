@@ -1,0 +1,23 @@
+{
+  "title": "Tải tùy chỉnh",
+  "url": "URL tải xuống",
+  "url_placeholder": "Vui lòng nhập URL tải xuống (http/https)",
+  "save_folder": "Lưu vào",
+  "save_path": "Đường dẫn lưu",
+  "select_folder": "Vui lòng chọn thư mục",
+  "pick_folder": "Chọn thư mục",
+  "filename": "Tên tập tin",
+  "thread_count": "Số luồng",
+  "thread_count_empty": "Số luồng không được để trống",
+  "thread_count_invalid": "Ký tự không hợp lệ",
+  "thread_count_positive": "Số luồng phải là số nguyên dương",
+  "thread_count_too_big": "Số luồng không được vượt quá 256",
+  "cancel": "Hủy",
+  "download": "Tải xuống",
+  "browse": "Duyệt",
+  "downloading": "Đang tải xuống tài nguyên...",
+  "status-finished": "Tải xuống hoàn tất",
+  "failed": "Tải xuống thất bại",
+  "completed": "Đã hoàn thành",
+  "filename_placeholder": "Please enter a file name, for example server.jar"
+}

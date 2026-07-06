@@ -1,0 +1,13 @@
+{
+  "title": "시작 파일 선택",
+  "scanning": "스캔 중...",
+  "description": "{{count}}개의 실행 파일을 감지했습니다. 사용할 파일을 선택하세요:",
+  "click_to_select": "목록에서 파일을 클릭하여 선택",
+  "priority_high": "높은 우선순위",
+  "priority_medium": "중간 우선순위",
+  "priority_low": "낮은 우선순위",
+  "recommended": "추천",
+  "confirm": "선택 확인",
+  "no_files": "{{mode}} 유형의 실행 파일을 찾을 수 없습니다",
+  "check_path": "서버 폴터가 올바른지 확인하세요"
+}

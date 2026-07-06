@@ -1,0 +1,23 @@
+{
+  "title": "Custom Download",
+  "url": "Download URL",
+  "url_placeholder": "Please enter download URL (http/https)",
+  "save_folder": "Save to",
+  "save_path": "Save Path",
+  "filename_placeholder": "Please enter a file name, for example server.jar",
+  "select_folder": "Please select a folder",
+  "pick_folder": "Pick Folder",
+  "filename": "File Name",
+  "thread_count": "Thread Count",
+  "thread_count_empty": "Thread count cannot be empty",
+  "thread_count_invalid": "Invalid character",
+  "thread_count_positive": "Thread count must be a positive integer",
+  "thread_count_too_big": "Thread count cannot exceed 256",
+  "cancel": "Cancel",
+  "download": "Download",
+  "browse": "Browse",
+  "downloading": "Downloading resource...",
+  "status-finished": "Download Finished",
+  "failed": "Download Failed",
+  "completed": "Completed"
+}

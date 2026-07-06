@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "catalog_id": "sealantern-trusted-catalog",
+  "generated_at": "2026-06-29T00:00:00Z",
+  "expires_at": "2026-12-31T23:59:59Z",
+  "issuer": "sealantern",
+  "plugins": []
+}
