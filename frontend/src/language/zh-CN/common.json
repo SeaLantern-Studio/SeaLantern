@@ -78,7 +78,7 @@
   "command_keep_inventory_on": "保留物品 开",
   "command_keep_inventory_off": "保留物品 关",
   "command_mob_griefing_off": "怪物破坏 关",
-  "enter_command": "输入命令... (Tab 补全)",
+  "enter_command": "输入命令... (Tab 补全 / ↑↓ 历史)",
   "select_java_path": "请选择 Java 路径",
   "enter_server_name": "请输入服务器名称",
   "java_64bit": "64位",

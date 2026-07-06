@@ -24,7 +24,7 @@
   "stopped": "Stopped",
   "no_server": "No servers",
   "create_server_first": "Please create and select a server first",
-  "suggestion_hint": "Tab to complete / Up Down to select",
+  "suggestion_hint": "Tab to complete / Up Down for suggestions or history",
   "force_stop": "Force Stop",
   "force_stop_confirm": "Force stopping will kill the server process immediately and may cause data loss. Continue?",
   "force_stop_requested": "Force stop requested",
