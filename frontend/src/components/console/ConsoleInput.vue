@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 
 interface Props {
   consoleFontSize: number;
+  historyCommands: string[];
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: "sendCommand", cmd: string): void;
@@ -21,6 +22,8 @@ const suggestionIndex = ref(0);
 const lastTabOriginalWord = ref("");
 const lastTabWordIndex = ref(-1);
 const tabCycleIndex = ref(0);
+const historyIndex = ref<number | null>(null);
+const draftBeforeHistory = ref("");
 let isCompleting = false;
 
 // 命令树结构：按词层级组织
@@ -261,10 +264,75 @@ function sendCommand() {
   if (!command) return;
   emit("sendCommand", command);
   commandInput.value = "";
+  resetSuggestionState();
+  resetHistoryState();
+}
+
+function resetSuggestionState() {
   showSuggestions.value = false;
+  suggestionIndex.value = 0;
   lastTabOriginalWord.value = "";
   lastTabWordIndex.value = -1;
   tabCycleIndex.value = 0;
+}
+
+function resetHistoryState() {
+  historyIndex.value = null;
+  draftBeforeHistory.value = "";
+}
+
+function moveCursorToEnd() {
+  nextTick(() => {
+    if (!inputRef.value) {
+      return;
+    }
+
+    const cursorPos = commandInput.value.length;
+    inputRef.value.setSelectionRange(cursorPos, cursorPos);
+  });
+}
+
+function applyHistoryValue(value: string) {
+  commandInput.value = value;
+  moveCursorToEnd();
+}
+
+function navigateHistory(direction: "older" | "newer"): boolean {
+  const history = props.historyCommands;
+  if (history.length === 0) {
+    return false;
+  }
+
+  if (direction === "older") {
+    if (historyIndex.value === null) {
+      draftBeforeHistory.value = commandInput.value;
+      historyIndex.value = history.length - 1;
+    } else if (historyIndex.value > 0) {
+      historyIndex.value -= 1;
+    }
+
+    if (historyIndex.value === null) {
+      return false;
+    }
+
+    applyHistoryValue(history[historyIndex.value]);
+    return true;
+  }
+
+  if (historyIndex.value === null) {
+    return false;
+  }
+
+  if (historyIndex.value < history.length - 1) {
+    historyIndex.value += 1;
+    applyHistoryValue(history[historyIndex.value]);
+    return true;
+  }
+
+  historyIndex.value = null;
+  applyHistoryValue(draftBeforeHistory.value);
+  draftBeforeHistory.value = "";
+  return true;
 }
 
 // 执行逐词补全
@@ -350,19 +418,33 @@ function handleKeydown(e: KeyboardEvent) {
   }
 
   if (e.key === "ArrowUp") {
-    e.preventDefault();
-    if (showSuggestions.value && suggestionIndex.value > 0) {
-      suggestionIndex.value--;
-      scrollToActiveSuggestion();
+    if (showSuggestions.value) {
+      e.preventDefault();
+      if (suggestionIndex.value > 0) {
+        suggestionIndex.value--;
+        scrollToActiveSuggestion();
+      }
+      return;
+    }
+
+    if (navigateHistory("older")) {
+      e.preventDefault();
     }
     return;
   }
 
   if (e.key === "ArrowDown") {
-    e.preventDefault();
-    if (showSuggestions.value && suggestionIndex.value < filteredSuggestions.value.length - 1) {
-      suggestionIndex.value++;
-      scrollToActiveSuggestion();
+    if (showSuggestions.value) {
+      e.preventDefault();
+      if (suggestionIndex.value < filteredSuggestions.value.length - 1) {
+        suggestionIndex.value++;
+        scrollToActiveSuggestion();
+      }
+      return;
+    }
+
+    if (navigateHistory("newer")) {
+      e.preventDefault();
     }
     return;
   }
@@ -428,7 +510,15 @@ function onInputChange() {
   lastTabOriginalWord.value = "";
   lastTabWordIndex.value = -1;
   tabCycleIndex.value = 0;
+  historyIndex.value = null;
 }
+
+watch(
+  () => props.historyCommands,
+  () => {
+    resetHistoryState();
+  },
+);
 </script>
 
 <template>

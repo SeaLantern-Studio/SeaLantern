@@ -91,6 +91,7 @@ onUnmounted(() => {
 
         <ConsoleInput
           :console-font-size="page.consoleFontSize.value"
+          :history-commands="page.commandHistory.value"
           @send-command="page.sendCommand"
         />
       </div>

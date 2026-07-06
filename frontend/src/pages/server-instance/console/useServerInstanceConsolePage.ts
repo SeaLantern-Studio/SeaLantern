@@ -4,6 +4,7 @@ import { useConsoleDisplaySettings } from "@composables/useConsoleDisplaySetting
 import { useConsoleLogStream } from "@composables/console/useConsoleLogStream";
 import { useMessage } from "@composables/useMessage";
 import { i18n } from "@language";
+import { useConsoleHistoryStore } from "@stores/consoleHistoryStore";
 import { useNextInstanceWorkspaceContext } from "@src/composables/useNextInstanceWorkspace";
 import type { ServerStatus } from "@type/common";
 import { isActiveServerStatus } from "@utils/serverStatus";
@@ -50,6 +51,7 @@ function canForceStopServer(status: ServerStatus | undefined): boolean {
 export function useServerInstanceConsolePage() {
   const workspace = useNextInstanceWorkspaceContext();
   const message = useMessage();
+  const commandHistoryStore = useConsoleHistoryStore();
   const consoleOutputRef = shallowRef<ConsoleOutputExpose | null>(null);
   const userScrolledUp = shallowRef(false);
   const sendingCommand = shallowRef(false);
@@ -74,6 +76,7 @@ export function useServerInstanceConsolePage() {
     return status ? isActiveServerStatus(status) : false;
   });
   const statusLabel = computed(() => formatConsoleStatusLabel(runtimeStatus.value));
+  const commandHistory = computed(() => commandHistoryStore.getHistory(serverId.value));
   const canStart = computed(() => canStartServer(runtimeStatus.value));
   const canStop = computed(() => canStopServer(runtimeStatus.value));
   const canForceStop = computed(() => canForceStopServer(runtimeStatus.value));
@@ -116,6 +119,7 @@ export function useServerInstanceConsolePage() {
     try {
       stream.appendCommandEcho(serverId.value, command);
       await serverApi.sendCommand(serverId.value, command);
+      commandHistoryStore.pushCommand(serverId.value, command);
       message.showSuccess(i18n.t("common.message_command_sent"));
       userScrolledUp.value = false;
       consoleOutputRef.value?.doScroll();
@@ -227,7 +231,9 @@ export function useServerInstanceConsolePage() {
     consoleFontFamily,
     consoleLetterSpacing,
     maxLogLines,
+    serverId,
     userScrolledUp,
+    commandHistory,
     sendingCommand,
     lifecycleSubmitting,
     isActive,

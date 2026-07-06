@@ -78,7 +78,7 @@
   "command_keep_inventory_on": "Keep Inventory On",
   "command_keep_inventory_off": "Keep Inventory Off",
   "command_mob_griefing_off": "Mob Griefing Off",
-  "enter_command": "Enter command... (Tab to complete)",
+  "enter_command": "Enter command... (Tab to complete / Up Down history)",
   "select_java_path": "Please select Java path",
   "enter_server_name": "Please enter server name",
   "java_64bit": "64-bit",
