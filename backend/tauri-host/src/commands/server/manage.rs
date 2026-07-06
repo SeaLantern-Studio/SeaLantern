@@ -341,7 +341,7 @@ pub fn delete_server_record_only(id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn delete_server_with_files(id: String) -> Result<(), String> {
-    runtime::delete_server_with_files(id)
+    delete_server(id)
 }
 
 #[tauri::command]

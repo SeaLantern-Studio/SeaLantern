@@ -740,11 +740,6 @@ impl ServerManager {
         self.delete_server_internal(id, false)
     }
 
-    /// 删除服务器记录并删除服务器目录
-    pub fn delete_server_with_files(&self, id: &str) -> Result<(), String> {
-        self.delete_server_internal(id, true)
-    }
-
     /// 读取当前正在运行的服务器 ID 列表
     pub fn get_running_server_ids_checked(&self) -> Result<Vec<String>, String> {
         Ok(self

@@ -20,6 +20,7 @@ import {
 } from "@src/utils/serverDeleteConfirmation";
 import {
   DEFAULT_SERVER_DELETE_MODE,
+  isServerDeleteMode,
   type ServerDeleteMode,
 } from "@src/utils/serverDeleteMode";
 import type { ConfirmDialogOption } from "@components/common/confirmDialogTypes";
@@ -177,7 +178,9 @@ function closeDeleteDialog(): void {
 }
 
 function handleDeleteModeUpdate(value: string): void {
-  deleteSelectedMode.value = value as typeof deleteSelectedMode.value;
+  if (isServerDeleteMode(value)) {
+    deleteSelectedMode.value = value;
+  }
 }
 
 async function confirmDeleteServer(): Promise<void> {

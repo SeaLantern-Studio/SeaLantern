@@ -114,27 +114,27 @@ function handleKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
-  <SLModal :visible="visible" :title="title" width="420px" @close="handleClose">
+  <SLModal :visible="props.visible" :title="props.title" width="420px" @close="handleClose">
     <div
       class="confirm-content"
-      :class="{ 'confirm-content--danger': dangerous }"
+      :class="{ 'confirm-content--danger': props.dangerous }"
       @keydown="handleKeydown"
     >
-      <p v-if="message" class="confirm-message" v-html="safeMessage"></p>
+      <p v-if="props.message" class="confirm-message" v-html="safeMessage"></p>
 
       <div v-if="hasOptions" class="confirm-options" role="radiogroup">
         <label
-          v-for="option in options"
+          v-for="option in props.options"
           :key="option.value"
           class="confirm-option"
-          :class="{ 'confirm-option--selected': selectedOption === option.value }"
+          :class="{ 'confirm-option--selected': props.selectedOption === option.value }"
         >
           <input
             class="confirm-option__radio"
             type="radio"
-            :name="`${title}-option`"
+            :name="`${props.title}-option`"
             :value="option.value"
-            :checked="selectedOption === option.value"
+            :checked="props.selectedOption === option.value"
             @change="handleOptionChange(option.value)"
           />
           <span class="confirm-option__body">
@@ -146,24 +146,24 @@ function handleKeydown(event: KeyboardEvent): void {
         </label>
       </div>
 
-      <div v-if="requireInput" class="confirm-input-group">
-        <SLInput ref="inputRef" v-model="inputValue" :placeholder="inputPlaceholder" />
+      <div v-if="props.requireInput" class="confirm-input-group">
+        <SLInput ref="inputRef" v-model="inputValue" :placeholder="props.inputPlaceholder" />
         <p v-if="inputError" class="confirm-error">{{ inputError }}</p>
       </div>
     </div>
 
     <template #footer>
       <div class="confirm-footer">
-        <SLButton variant="secondary" :disabled="loading" @click="handleCancel">
-          {{ cancelText }}
+        <SLButton variant="secondary" :disabled="props.loading" @click="handleCancel">
+          {{ props.cancelText }}
         </SLButton>
         <SLButton
-          :variant="confirmVariant"
-          :loading="loading"
+          :variant="props.confirmVariant"
+          :loading="props.loading"
           :disabled="isConfirmDisabled"
           @click="handleConfirm"
         >
-          {{ confirmText }}
+          {{ props.confirmText }}
         </SLButton>
       </div>
     </template>

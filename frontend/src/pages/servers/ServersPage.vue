@@ -6,6 +6,7 @@ import { i18n } from "@language";
 import ServerListCard from "@src/components/servers/ServerListCard.vue";
 import ServersEmptyState from "@src/components/servers/ServersEmptyState.vue";
 import ServersSummaryBar from "@src/components/servers/ServersSummaryBar.vue";
+import { isServerDeleteMode } from "@src/utils/serverDeleteMode";
 import { useServersPage, type ServersPageTarget } from "./useServersPage";
 
 const {
@@ -41,7 +42,9 @@ async function handleNavigate(payload: {
 }
 
 function handleDeleteModeUpdate(value: string): void {
-  deleteSelectedMode.value = value as typeof deleteSelectedMode.value;
+  if (isServerDeleteMode(value)) {
+    deleteSelectedMode.value = value;
+  }
 }
 </script>
 

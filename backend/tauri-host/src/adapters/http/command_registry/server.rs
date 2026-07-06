@@ -186,7 +186,7 @@ fn handle_delete_server_with_files(
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let req: ServerIdRequest = parse_params(params)?;
-        server_commands::delete_server_with_files(req.id)?;
+        server_commands::delete_server(req.id)?;
         Ok(Value::Null)
     })
 }
