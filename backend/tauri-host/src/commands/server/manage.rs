@@ -335,6 +335,16 @@ pub fn delete_server(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn delete_server_record_only(id: String) -> Result<(), String> {
+    runtime::delete_server_record_only(id)
+}
+
+#[tauri::command]
+pub fn delete_server_with_files(id: String) -> Result<(), String> {
+    delete_server(id)
+}
+
+#[tauri::command]
 pub fn get_server_logs(
     id: String,
     since: usize,

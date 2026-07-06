@@ -694,13 +694,8 @@ impl ServerManager {
         )
     }
 
-    /// 删除服务器记录和对应目录
-    ///
-    /// # Parameters
-    ///
-    /// - `id`: 服务器 ID
-    pub fn delete_server(&self, id: &str) -> Result<(), String> {
-        let detail = format!("server_id={}", id);
+    fn delete_server_internal(&self, id: &str, remove_files: bool) -> Result<(), String> {
+        let detail = format!("server_id={} remove_files={}", id, remove_files);
         logger::log_user_action("server.manager", "delete", &detail);
         let result = (|| {
             let server = self.find_server_clone(id)?;
@@ -712,11 +707,13 @@ impl ServerManager {
 
             server_log_pipeline::shutdown_writer(id);
 
-            let dir = std::path::Path::new(&server.path);
-            if dir.exists() {
-                std::fs::remove_dir_all(dir).map_err(|e| {
-                    manager_t1("server.manager.delete_server_dir_failed", e.to_string())
-                })?;
+            if remove_files {
+                let dir = std::path::Path::new(&server.path);
+                if dir.exists() {
+                    std::fs::remove_dir_all(dir).map_err(|e| {
+                        manager_t1("server.manager.delete_server_dir_failed", e.to_string())
+                    })?;
+                }
             }
 
             self.lock_servers()?.retain(|s| s.id != id);
@@ -727,6 +724,20 @@ impl ServerManager {
         })();
 
         log_manager_result("delete", &detail, result)
+    }
+
+    /// 删除服务器记录和对应目录
+    ///
+    /// # Parameters
+    ///
+    /// - `id`: 服务器 ID
+    pub fn delete_server(&self, id: &str) -> Result<(), String> {
+        self.delete_server_internal(id, true)
+    }
+
+    /// 仅删除服务器记录，保留服务器目录
+    pub fn delete_server_record_only(&self, id: &str) -> Result<(), String> {
+        self.delete_server_internal(id, false)
     }
 
     /// 读取当前正在运行的服务器 ID 列表
@@ -1077,6 +1088,36 @@ mod tests {
             let _ = child.kill();
             let _ = child.wait();
         }
+    }
+
+    #[test]
+    fn delete_server_record_only_keeps_server_dir_and_removes_record() {
+        let _env_lock = lock_env();
+        let temp_dir = tempfile::tempdir().expect("temp dir should exist");
+        let _guard = EnvGuard::set("SEALANTERN_DATA_DIR", &temp_dir.path().to_string_lossy());
+        let server_dir = temp_dir.path().join("record-only-server");
+        std::fs::create_dir_all(&server_dir).expect("server dir should exist");
+        std::fs::write(server_dir.join("server.jar"), b"jar").expect("fixture should write");
+
+        let manager = ServerManager::new();
+        manager
+            .lock_servers()
+            .expect("servers lock should succeed")
+            .push(sample_local_server(
+                server_dir.to_string_lossy().to_string(),
+                server_dir.join("server.jar").to_string_lossy().to_string(),
+                "jar",
+            ));
+
+        manager
+            .delete_server_record_only("local-update-test")
+            .expect("record-only delete should succeed");
+
+        assert!(server_dir.exists(), "server dir should remain after record-only delete");
+        assert!(manager
+            .find_server_clone_optional("local-update-test")
+            .expect("server lookup should succeed")
+            .is_none());
     }
 
     #[test]

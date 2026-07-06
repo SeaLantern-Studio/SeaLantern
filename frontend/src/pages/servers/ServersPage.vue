@@ -6,6 +6,7 @@ import { i18n } from "@language";
 import ServerListCard from "@src/components/servers/ServerListCard.vue";
 import ServersEmptyState from "@src/components/servers/ServersEmptyState.vue";
 import ServersSummaryBar from "@src/components/servers/ServersSummaryBar.vue";
+import { isServerDeleteMode } from "@src/utils/serverDeleteMode";
 import { useServersPage, type ServersPageTarget } from "./useServersPage";
 
 const {
@@ -22,6 +23,8 @@ const {
   deleteExpectedInput,
   deletePromptMessage,
   deleteInputPlaceholder,
+  deleteSelectedMode,
+  deleteModeOptions,
   loadData,
   selectServer,
   navigateToServerTarget,
@@ -36,6 +39,12 @@ async function handleNavigate(payload: {
   target: ServersPageTarget;
 }): Promise<void> {
   await navigateToServerTarget(payload.serverId, payload.target);
+}
+
+function handleDeleteModeUpdate(value: string): void {
+  if (isServerDeleteMode(value)) {
+    deleteSelectedMode.value = value;
+  }
 }
 </script>
 
@@ -109,10 +118,13 @@ async function handleNavigate(payload: {
       :cancelText="i18n.t('common.cancel')"
       :inputPlaceholder="deleteInputPlaceholder"
       :expectedInput="deleteExpectedInput"
+      :options="deleteModeOptions"
+      :selectedOption="deleteSelectedMode"
       :loading="deleteSubmitting"
       confirmVariant="danger"
       dangerous
       requireInput
+      @update:selectedOption="handleDeleteModeUpdate"
       @confirm="confirmDeleteServer"
       @close="closeDeleteDialog"
     />

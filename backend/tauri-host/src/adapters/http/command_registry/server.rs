@@ -19,6 +19,9 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_server_list", handle_get_server_list as CommandHandler);
     builder.register("get_server_status", handle_get_server_status as CommandHandler);
     builder.register("delete_server", handle_delete_server as CommandHandler);
+    builder
+        .register("delete_server_record_only", handle_delete_server_record_only as CommandHandler);
+    builder.register("delete_server_with_files", handle_delete_server_with_files as CommandHandler);
     builder.register("get_server_logs", handle_get_server_logs as CommandHandler);
     builder.register("update_server_name", handle_update_server_name as CommandHandler);
     builder.register("update_server_java_path", handle_update_server_java_path as CommandHandler);
@@ -159,6 +162,26 @@ fn handle_get_server_status(
 }
 
 fn handle_delete_server(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ServerIdRequest = parse_params(params)?;
+        server_commands::delete_server(req.id)?;
+        Ok(Value::Null)
+    })
+}
+
+fn handle_delete_server_record_only(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ServerIdRequest = parse_params(params)?;
+        server_commands::delete_server_record_only(req.id)?;
+        Ok(Value::Null)
+    })
+}
+
+fn handle_delete_server_with_files(
     params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
