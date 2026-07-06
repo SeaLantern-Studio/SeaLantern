@@ -19,6 +19,11 @@ import {
   pickDeleteConfirmationItem,
   shouldUseDeleteConfirmationItem,
 } from "@src/utils/serverDeleteConfirmation";
+import {
+  DEFAULT_SERVER_DELETE_MODE,
+  type ServerDeleteMode,
+} from "@src/utils/serverDeleteMode";
+import type { ConfirmDialogOption } from "@components/common/confirmDialogTypes";
 
 let serversPageLoadedOnce = false;
 
@@ -130,6 +135,20 @@ export function useServersPage() {
   const deleteExpectedInput = shallowRef("");
   const deletePromptMessage = shallowRef("");
   const deleteInputPlaceholder = shallowRef(i18n.t("home.delete_input_placeholder"));
+  const deleteSelectedMode = shallowRef<ServerDeleteMode>(DEFAULT_SERVER_DELETE_MODE);
+
+  const deleteModeOptions = computed<ConfirmDialogOption[]>(() => [
+    {
+      value: "record-only",
+      label: i18n.t("home.delete_mode_record_only"),
+      description: i18n.t("home.delete_mode_record_only_desc"),
+    },
+    {
+      value: "record-and-files",
+      label: i18n.t("home.delete_mode_with_files"),
+      description: i18n.t("home.delete_mode_with_files_desc"),
+    },
+  ]);
 
   function ensureCurrentServer(): void {
     if (
@@ -189,6 +208,7 @@ export function useServersPage() {
         deletePromptMessage.value = i18n.t("home.delete_confirm_message", { server: server.name });
         deleteInputPlaceholder.value = i18n.t("home.delete_input_placeholder");
       }
+      deleteSelectedMode.value = DEFAULT_SERVER_DELETE_MODE;
       deleteDialogVisible.value = true;
       return;
     }
@@ -218,7 +238,11 @@ export function useServersPage() {
 
     deleteSubmitting.value = true;
     try {
-      await serverApi.deleteServer(deletingServerId.value);
+      if (deleteSelectedMode.value === "record-only") {
+        await serverApi.deleteServerRecordOnly(deletingServerId.value);
+      } else {
+        await serverApi.deleteServerWithFiles(deletingServerId.value);
+      }
       deleteDialogVisible.value = false;
       deletingServerId.value = "";
       await loadData(true);
@@ -237,6 +261,7 @@ export function useServersPage() {
     deleteExpectedInput.value = "";
     deletePromptMessage.value = "";
     deleteInputPlaceholder.value = i18n.t("home.delete_input_placeholder");
+    deleteSelectedMode.value = DEFAULT_SERVER_DELETE_MODE;
   }
 
   const serverItems = computed<ServersPageServerItem[]>(() =>
@@ -293,6 +318,8 @@ export function useServersPage() {
     deleteExpectedInput,
     deletePromptMessage,
     deleteInputPlaceholder,
+    deleteSelectedMode,
+    deleteModeOptions,
     loadData,
     selectServer,
     navigateToServerTarget,

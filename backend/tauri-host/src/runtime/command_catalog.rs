@@ -46,6 +46,8 @@ pub(crate) fn desktop_handler(
         server_commands::get_server_list,
         server_commands::get_server_status,
         server_commands::delete_server,
+        server_commands::delete_server_record_only,
+        server_commands::delete_server_with_files,
         server_commands::get_server_logs,
         server_commands::get_local_launch_detail,
         server_commands::get_docker_launch_detail,

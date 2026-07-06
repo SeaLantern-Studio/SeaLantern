@@ -531,6 +531,14 @@ export const serverApi = {
     return tauriInvoke("delete_server", { id });
   },
 
+  async deleteServerRecordOnly(id: string): Promise<void> {
+    return tauriInvoke("delete_server_record_only", { id });
+  },
+
+  async deleteServerWithFiles(id: string): Promise<void> {
+    return tauriInvoke("delete_server_with_files", { id });
+  },
+
   async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
     return tauriInvoke("get_server_logs", { id, since, maxLines });
   },

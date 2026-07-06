@@ -18,6 +18,11 @@ import {
   pickDeleteConfirmationItem,
   shouldUseDeleteConfirmationItem,
 } from "@src/utils/serverDeleteConfirmation";
+import {
+  DEFAULT_SERVER_DELETE_MODE,
+  type ServerDeleteMode,
+} from "@src/utils/serverDeleteMode";
+import type { ConfirmDialogOption } from "@components/common/confirmDialogTypes";
 
 const props = defineProps<{
   section: NextInstanceSection;
@@ -96,8 +101,21 @@ const deleteDialogVisible = shallowRef(false);
 const deleteSubmitting = shallowRef(false);
 const deleteErrorMessage = shallowRef("");
 const deleteConfirmationItem = shallowRef("");
+const deleteSelectedMode = shallowRef<ServerDeleteMode>(DEFAULT_SERVER_DELETE_MODE);
 
 const deleteDialogTitle = computed(() => i18n.t("home.delete_server"));
+const deleteModeOptions = computed<ConfirmDialogOption[]>(() => [
+  {
+    value: "record-only",
+    label: i18n.t("home.delete_mode_record_only"),
+    description: i18n.t("home.delete_mode_record_only_desc"),
+  },
+  {
+    value: "record-and-files",
+    label: i18n.t("home.delete_mode_with_files"),
+    description: i18n.t("home.delete_mode_with_files_desc"),
+  },
+]);
 const deleteUsesConfirmationItem = computed(() => {
   const serverName = workspace.server.value?.name ?? "";
   return shouldUseDeleteConfirmationItem(serverName);
@@ -143,6 +161,7 @@ function openDeleteDialog(): void {
   deleteConfirmationItem.value = deleteUsesConfirmationItem.value
     ? pickDeleteConfirmationItem()
     : "";
+  deleteSelectedMode.value = DEFAULT_SERVER_DELETE_MODE;
   deleteDialogVisible.value = true;
 }
 
@@ -154,6 +173,11 @@ function closeDeleteDialog(): void {
   deleteDialogVisible.value = false;
   deleteErrorMessage.value = "";
   deleteConfirmationItem.value = "";
+  deleteSelectedMode.value = DEFAULT_SERVER_DELETE_MODE;
+}
+
+function handleDeleteModeUpdate(value: string): void {
+  deleteSelectedMode.value = value as typeof deleteSelectedMode.value;
 }
 
 async function confirmDeleteServer(): Promise<void> {
@@ -166,7 +190,11 @@ async function confirmDeleteServer(): Promise<void> {
   deleteErrorMessage.value = "";
 
   try {
-    await serverApi.deleteServer(server.id);
+    if (deleteSelectedMode.value === "record-only") {
+      await serverApi.deleteServerRecordOnly(server.id);
+    } else {
+      await serverApi.deleteServerWithFiles(server.id);
+    }
     workspace.serverStore.setCurrentServer(null);
 
     try {
@@ -271,10 +299,13 @@ onMounted(() => {
       :cancelText="i18n.t('common.cancel')"
       :inputPlaceholder="deleteInputPlaceholder"
       :expectedInput="deleteExpectedInput"
+      :options="deleteModeOptions"
+      :selectedOption="deleteSelectedMode"
       :loading="deleteSubmitting"
       confirmVariant="danger"
       dangerous
       requireInput
+      @update:selectedOption="handleDeleteModeUpdate"
       @confirm="confirmDeleteServer"
       @close="closeDeleteDialog"
     />

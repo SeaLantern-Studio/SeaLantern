@@ -114,6 +114,14 @@ pub(super) fn delete_server(id: String) -> Result<(), String> {
     manager().delete_server(&id)
 }
 
+pub(super) fn delete_server_record_only(id: String) -> Result<(), String> {
+    manager().delete_server_record_only(&id)
+}
+
+pub(super) fn delete_server_with_files(id: String) -> Result<(), String> {
+    manager().delete_server_with_files(&id)
+}
+
 /// 读取服务器日志
 pub(super) fn get_server_logs(
     id: String,

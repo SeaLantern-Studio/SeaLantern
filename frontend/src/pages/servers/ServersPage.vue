@@ -22,6 +22,8 @@ const {
   deleteExpectedInput,
   deletePromptMessage,
   deleteInputPlaceholder,
+  deleteSelectedMode,
+  deleteModeOptions,
   loadData,
   selectServer,
   navigateToServerTarget,
@@ -36,6 +38,10 @@ async function handleNavigate(payload: {
   target: ServersPageTarget;
 }): Promise<void> {
   await navigateToServerTarget(payload.serverId, payload.target);
+}
+
+function handleDeleteModeUpdate(value: string): void {
+  deleteSelectedMode.value = value as typeof deleteSelectedMode.value;
 }
 </script>
 
@@ -109,10 +115,13 @@ async function handleNavigate(payload: {
       :cancelText="i18n.t('common.cancel')"
       :inputPlaceholder="deleteInputPlaceholder"
       :expectedInput="deleteExpectedInput"
+      :options="deleteModeOptions"
+      :selectedOption="deleteSelectedMode"
       :loading="deleteSubmitting"
       confirmVariant="danger"
       dangerous
       requireInput
+      @update:selectedOption="handleDeleteModeUpdate"
       @confirm="confirmDeleteServer"
       @close="closeDeleteDialog"
     />
