@@ -48,6 +48,10 @@ function canForceStopServer(status: ServerStatus | undefined): boolean {
   return status === "Running" || status === "Starting" || status === "Stopping";
 }
 
+function canRestartServer(status: ServerStatus | undefined): boolean {
+  return status === "Running" || status === "Starting" || status === "Stopping";
+}
+
 export function useServerInstanceConsolePage() {
   const workspace = useNextInstanceWorkspaceContext();
   const message = useMessage();
@@ -80,6 +84,7 @@ export function useServerInstanceConsolePage() {
   const canStart = computed(() => canStartServer(runtimeStatus.value));
   const canStop = computed(() => canStopServer(runtimeStatus.value));
   const canForceStop = computed(() => canForceStopServer(runtimeStatus.value));
+  const canRestart = computed(() => canRestartServer(runtimeStatus.value));
   const primaryActionLabel = computed(() =>
     canStart.value ? i18n.t("home.start") : i18n.t("home.stop"),
   );
@@ -147,6 +152,25 @@ export function useServerInstanceConsolePage() {
         message.showSuccess(i18n.t("common.message_server_stopped"));
       }
 
+      await refresh(false);
+    } catch (error) {
+      message.showError(error instanceof Error ? error.message : String(error));
+    } finally {
+      lifecycleSubmitting.value = false;
+    }
+  }
+
+  async function runRestartAction(): Promise<void> {
+    if (!serverId.value || !canRestart.value || lifecycleSubmitting.value) {
+      return;
+    }
+
+    lifecycleSubmitting.value = true;
+    message.clearAll();
+
+    try {
+      await serverApi.restart(serverId.value);
+      message.showSuccess(i18n.t("common.message_server_restarted"));
       await refresh(false);
     } catch (error) {
       message.showError(error instanceof Error ? error.message : String(error));
@@ -238,6 +262,7 @@ export function useServerInstanceConsolePage() {
     lifecycleSubmitting,
     isActive,
     canForceStop,
+    canRestart,
     statusLabel,
     primaryActionLabel,
     primaryActionVariant,
@@ -246,6 +271,7 @@ export function useServerInstanceConsolePage() {
     forceStopSubmitting,
     refresh,
     runPrimaryAction,
+    runRestartAction,
     openForceStopDialog,
     closeForceStopDialog,
     confirmForceStop,

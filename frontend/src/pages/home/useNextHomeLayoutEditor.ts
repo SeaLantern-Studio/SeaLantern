@@ -303,6 +303,10 @@ function resolveAutoHeightLayout(
   return result;
 }
 
+function serializeInstances(value: NextHomeCardInstance[]): string {
+  return JSON.stringify(value);
+}
+
 export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions) {
   const settingsStore = useSettingsStore();
   const instances = shallowRef<NextHomeCardInstance[]>([]);
@@ -589,10 +593,6 @@ export function useNextHomeLayoutEditor(options: UseNextHomeLayoutEditorOptions)
     ).filter((instance): instance is NextHomeCardInstance => instance !== null);
     replaceInstances(sanitizedDefaults);
     selectedInstanceId.value = sanitizedDefaults[0]?.instanceId ?? null;
-  }
-
-  function serializeInstances(value: NextHomeCardInstance[]): string {
-    return JSON.stringify(value);
   }
 
   function sanitizePersistedLayout(

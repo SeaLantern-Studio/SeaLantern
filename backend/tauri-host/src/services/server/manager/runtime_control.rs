@@ -2,6 +2,7 @@
 
 mod force_stop;
 mod request;
+mod restart;
 mod status;
 mod stop;
 
@@ -31,6 +32,11 @@ pub(super) fn force_stop_server(
     confirmation_token: &str,
 ) -> Result<(), String> {
     force_stop::force_stop_server(manager, id, confirmation_token)
+}
+
+/// 停服后等待 2 秒，再重新启动服务器
+pub(super) fn restart_server(manager: &ServerManager, id: &str) -> Result<(), String> {
+    restart::restart_server(manager, id)
 }
 
 /// 发送 `stop` 命令并等待服务器退出

@@ -33,6 +33,7 @@
   "server_status_error": "Error",
   "message_server_started": "Server started",
   "message_server_stopped": "Server stopped",
+  "message_server_restarted": "Server restarted",
   "message_command_sent": "Command sent",
   "message_whitelist_added": "Added to whitelist",
   "message_whitelist_removed": "Removed from whitelist",

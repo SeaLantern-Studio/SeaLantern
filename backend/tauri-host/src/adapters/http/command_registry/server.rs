@@ -15,6 +15,7 @@ pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("import_modpack", handle_import_modpack as CommandHandler);
     builder.register("start_server", handle_start_server as CommandHandler);
     builder.register("stop_server", handle_stop_server as CommandHandler);
+    builder.register("restart_server", handle_restart_server as CommandHandler);
     builder.register("send_command", handle_send_command as CommandHandler);
     builder.register("get_server_list", handle_get_server_list as CommandHandler);
     builder.register("get_server_status", handle_get_server_status as CommandHandler);
@@ -128,6 +129,16 @@ fn handle_stop_server(params: Value) -> futures::future::BoxFuture<'static, Resu
     Box::pin(async move {
         let req: ServerIdRequest = parse_params(params)?;
         server_commands::stop_server(req.id)?;
+        Ok(Value::Null)
+    })
+}
+
+fn handle_restart_server(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let req: ServerIdRequest = parse_params(params)?;
+        server_commands::restart_server(req.id)?;
         Ok(Value::Null)
     })
 }
