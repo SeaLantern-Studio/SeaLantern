@@ -1,6 +1,7 @@
 import { computed, onBeforeUnmount, shallowRef, watch } from "vue";
 import { configApi, type DiscoveredServerConfigFile } from "@api/config";
 import { i18n } from "@language";
+import { extractMotdFromSource, updateMotdInSource } from "@src/features/config-editor/motdFormat";
 import { useNextInstanceWorkspaceContext } from "@src/composables/useNextInstanceWorkspace";
 
 type PendingDiscardAction = { type: "switch"; locator: string } | { type: "reload-current" } | null;
@@ -69,6 +70,8 @@ export function useServerInstanceConfigPage() {
   const errorMessage = shallowRef("");
   const successMessage = shallowRef("");
   const pendingDiscardAction = shallowRef<PendingDiscardAction>(null);
+  const motdEditorVisible = shallowRef(false);
+  const motdDraft = shallowRef("");
   const previewState = shallowRef<ServerInstanceConfigPreviewState>({
     kind: "empty",
     message: i18n.t("config.next_v1.preview_empty"),
@@ -85,6 +88,7 @@ export function useServerInstanceConfigPage() {
   const currentFile = computed(
     () => files.value.find((file) => file.locator === selectedLocator.value) ?? null,
   );
+  const canEditMotd = computed(() => isPrimaryServerProperties(currentFile.value));
   const hasUnsavedChanges = computed(() => draftSource.value !== loadedSource.value);
   const hasFiles = computed(() => files.value.length > 0);
   const previewSource = computed(() => draftSource.value);
@@ -323,8 +327,41 @@ export function useServerInstanceConfigPage() {
     pendingDiscardAction.value = null;
   }
 
+  function syncMotdDraftFromSource(source: string): void {
+    motdDraft.value = extractMotdFromSource(source);
+  }
+
   function updateDraftSource(value: string): void {
     draftSource.value = value;
+    if (motdEditorVisible.value && canEditMotd.value) {
+      syncMotdDraftFromSource(value);
+    }
+  }
+
+  function openMotdEditor(): void {
+    if (!canEditMotd.value) {
+      return;
+    }
+
+    syncMotdDraftFromSource(draftSource.value);
+    motdEditorVisible.value = true;
+  }
+
+  function closeMotdEditor(): void {
+    motdEditorVisible.value = false;
+  }
+
+  function updateMotdDraft(value: string): void {
+    motdDraft.value = value;
+  }
+
+  async function saveMotdDraft(value: string): Promise<void> {
+    draftSource.value = updateMotdInSource(draftSource.value, value);
+    syncMotdDraftFromSource(draftSource.value);
+    await saveCurrentFile();
+    if (!errorMessage.value) {
+      motdEditorVisible.value = false;
+    }
   }
 
   async function refreshFiles(): Promise<void> {
@@ -450,6 +487,13 @@ export function useServerInstanceConfigPage() {
     schedulePreviewRefresh();
   });
 
+  watch(currentFile, (file) => {
+    if (!isPrimaryServerProperties(file)) {
+      motdEditorVisible.value = false;
+      motdDraft.value = "";
+    }
+  });
+
   onBeforeUnmount(() => {
     clearPreviewTimer();
     if (activeSuccessTimer !== null) {
@@ -471,11 +515,18 @@ export function useServerInstanceConfigPage() {
     draftSource,
     previewSource,
     previewState,
+    motdEditorVisible,
+    motdDraft,
+    canEditMotd,
     hasUnsavedChanges,
     errorMessage,
     successMessage,
     discardDialogState,
     updateDraftSource,
+    openMotdEditor,
+    closeMotdEditor,
+    updateMotdDraft,
+    saveMotdDraft,
     requestSwitchFile,
     refreshFiles,
     reloadCurrentFile,

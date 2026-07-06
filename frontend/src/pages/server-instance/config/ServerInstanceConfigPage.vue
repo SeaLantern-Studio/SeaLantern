@@ -5,6 +5,7 @@ import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import ConfigEditorPane from "@src/components/server-instance/config/ConfigEditorPane.vue";
 import ConfigFileList from "@src/components/server-instance/config/ConfigFileList.vue";
 import ConfigPreviewPane from "@src/components/server-instance/config/ConfigPreviewPane.vue";
+import ServerMotdEditorModal from "@src/components/server-instance/config/ServerMotdEditorModal.vue";
 import { useServerInstanceConfigPage } from "./useServerInstanceConfigPage";
 
 const page = useServerInstanceConfigPage();
@@ -21,6 +22,9 @@ const currentFile = computed(() => page.currentFile.value);
 const draftSource = computed(() => page.draftSource.value);
 const loadingCurrentFile = computed(() => page.loadingCurrentFile.value);
 const saving = computed(() => page.saving.value);
+const motdEditorVisible = computed(() => page.motdEditorVisible.value);
+const motdDraft = computed(() => page.motdDraft.value);
+const canEditMotd = computed(() => page.canEditMotd.value);
 const hasUnsavedChanges = computed(() => page.hasUnsavedChanges.value);
 const previewSource = computed(() => page.previewSource.value);
 const previewState = computed(() => page.previewState.value);
@@ -56,7 +60,9 @@ const successMessage = computed(() => page.successMessage.value);
         :loading="loadingCurrentFile"
         :saving="saving"
         :has-unsaved-changes="hasUnsavedChanges"
+        :show-motd-editor-action="canEditMotd"
         @update:model-value="handleDraftSourceUpdate"
+        @open-motd-editor="page.openMotdEditor"
         @reload-current="page.reloadCurrentFile"
         @save-current="page.saveCurrentFile"
       />
@@ -67,6 +73,15 @@ const successMessage = computed(() => page.successMessage.value);
         :preview-state="previewState"
       />
     </div>
+
+    <ServerMotdEditorModal
+      :visible="motdEditorVisible"
+      :value="motdDraft"
+      :saving="saving"
+      @close="page.closeMotdEditor"
+      @update:value="page.updateMotdDraft"
+      @save="page.saveMotdDraft"
+    />
 
     <SLConfirmDialog
       :visible="discardDialogState.visible"

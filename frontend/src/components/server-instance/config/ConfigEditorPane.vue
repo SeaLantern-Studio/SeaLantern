@@ -4,7 +4,7 @@ import { SLBadge, SLButton, SLCard } from "@components/common";
 import ConfigSourceEditor from "@src/features/config-editor/components/ConfigSourceEditor.vue";
 import type { DiscoveredServerConfigFile } from "@api/config";
 import { i18n } from "@language";
-import { RefreshCw, Save } from "@lucide/vue";
+import { Pencil, RefreshCw, Save } from "@lucide/vue";
 
 interface Props {
   file: DiscoveredServerConfigFile | null;
@@ -12,6 +12,7 @@ interface Props {
   loading: boolean;
   saving: boolean;
   hasUnsavedChanges: boolean;
+  showMotdEditorAction?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   "update:modelValue": [value: string];
   "reload-current": [];
   "save-current": [];
+  "open-motd-editor": [];
 }>();
 
 function getKindText(file: DiscoveredServerConfigFile): string {
@@ -87,6 +89,16 @@ const statusText = computed(() => {
             size="small"
             rounded="medium"
           />
+          <SLButton
+            v-if="showMotdEditorAction"
+            variant="secondary"
+            size="sm"
+            :disabled="!file || loading"
+            @click="emit('open-motd-editor')"
+          >
+            <Pencil :size="14" />
+            {{ i18n.t("config.next_v1.motd.open_editor") }}
+          </SLButton>
           <SLButton
             variant="secondary"
             size="sm"
