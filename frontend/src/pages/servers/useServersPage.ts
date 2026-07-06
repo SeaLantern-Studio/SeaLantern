@@ -19,10 +19,7 @@ import {
   pickDeleteConfirmationItem,
   shouldUseDeleteConfirmationItem,
 } from "@src/utils/serverDeleteConfirmation";
-import {
-  DEFAULT_SERVER_DELETE_MODE,
-  type ServerDeleteMode,
-} from "@src/utils/serverDeleteMode";
+import { DEFAULT_SERVER_DELETE_MODE, type ServerDeleteMode } from "@src/utils/serverDeleteMode";
 import type { ConfirmDialogOption } from "@components/common/confirmDialogTypes";
 
 let serversPageLoadedOnce = false;

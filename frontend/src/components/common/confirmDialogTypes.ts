@@ -3,4 +3,3 @@ export interface ConfirmDialogOption {
   label: string;
   description?: string;
 }
-
