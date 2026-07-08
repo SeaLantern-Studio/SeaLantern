@@ -60,7 +60,7 @@ cd SeaLantern
 git switch beta
 ```
 
-If you want to understand the repository structure, frontend/backend boundaries, and main modules, see [Project Structure](../STRUCTURE.md).
+If you want to understand the repository structure, frontend/backend boundaries, and main modules, see [Project Structure](https://docs.ideaflash.cn/en/structure).
 
 Install dependencies and start the desktop development environment:
 ```bash
@@ -153,7 +153,7 @@ Issues / PRs that clearly lack human review, or are low-quality AI-generated con
 
 ## License
 
-[GNU General Public License v3.0](../../LICENSE)
+[GNU General Public License v3.0](LICENSE)
 
 ## Contributors
 
