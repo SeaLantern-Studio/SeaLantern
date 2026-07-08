@@ -1,10 +1,36 @@
 name: "正式发布"
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "基础发布标签，必须是 vx.x.x（例如：v1.2.3）"
+        required: true
+        type: string
+      channel:
+        description: "发布渠道"
+        required: true
+        default: "stable"
+        type: choice
+        options:
+          - stable
+          - beta
+      source_branch:
+        description: "打标签的目标分支 HEAD"
+        required: true
+        default: "main"
+        type: choice
+        options:
+          - main
+          - beta
   push:
     tags:
-      - "v*"
-      - "sea-lantern-v*"
+      - "v*.*.*"
+      - "v*.*.*-beta"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 concurrency:
   group: release-${{ github.ref }}
@@ -15,8 +41,8 @@ permissions:
   actions: read
 
 jobs:
-  validate-tag:
-    name: 校验 Tag 来源并提取版本
+  prepare-release:
+    name: 准备发布标签并提取版本
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
@@ -31,15 +57,85 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 校验 Tag 指向 main 分支提交
+      - name: 手动触发时创建发布标签
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          BASE_TAG: ${{ inputs.tag }}
+          CHANNEL: ${{ inputs.channel }}
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
         run: |
           set -euo pipefail
-          git fetch origin main --no-tags
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "❌ 当前 tag (${GITHUB_REF_NAME}) 对应提交不在 main 分支上"
+
+          if [[ ! "$BASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ 手动发布标签必须是 vx.x.x 格式: $BASE_TAG"
             exit 1
           fi
-          echo "✅ Tag 来源校验通过"
+
+          case "$CHANNEL" in
+            stable)
+              RELEASE_TAG="$BASE_TAG"
+              ;;
+            beta)
+              RELEASE_TAG="${BASE_TAG}-beta"
+              ;;
+            *)
+              echo "❌ 不支持的发布渠道: $CHANNEL"
+              exit 1
+              ;;
+          esac
+
+          case "$SOURCE_BRANCH" in
+            main|beta)
+              ;;
+            *)
+              echo "❌ 不支持的打标签分支: $SOURCE_BRANCH"
+              exit 1
+              ;;
+          esac
+
+          git fetch origin "$SOURCE_BRANCH" --no-tags
+          TARGET_SHA="$(git rev-parse "origin/${SOURCE_BRANCH}")"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "❌ 远端标签已存在: $RELEASE_TAG"
+            exit 1
+          fi
+
+          git tag "$RELEASE_TAG" "$TARGET_SHA"
+          git push origin "refs/tags/${RELEASE_TAG}"
+          git checkout --detach "$TARGET_SHA"
+          echo "✅ 已在 ${SOURCE_BRANCH} HEAD (${TARGET_SHA}) 创建标签: ${RELEASE_TAG}"
+
+      - name: 校验主检查已通过
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const headSha = process.env.GITHUB_SHA;
+            const requiredWorkflowName = '代码检查';
+
+            const response = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              head_sha: headSha,
+              per_page: 20,
+            });
+
+            const passed = response.data.workflow_runs.some((run) =>
+              run.name === requiredWorkflowName &&
+              run.head_sha === headSha &&
+              run.event === 'push' &&
+              run.head_branch === 'main' &&
+              run.status === 'completed' &&
+              run.conclusion === 'success'
+            );
+
+            if (!passed) {
+              core.setFailed(`❌ 提交 ${headSha} 尚未通过 main 分支上的 ${requiredWorkflowName}`);
+              return;
+            }
+
+            core.info(`✅ 提交 ${headSha} 已通过 main 分支上的 ${requiredWorkflowName}`);
 
       - name: 校验主检查已通过
         uses: actions/github-script@v7
@@ -74,6 +170,10 @@ jobs:
 
       - name: 提取版本信息
         id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
@@ -116,7 +216,7 @@ jobs:
 
   publish-tauri:
     name: 构建并发布桌面端
-    needs: validate-tag
+    needs: prepare-release
     permissions:
       contents: write
     timeout-minutes: 90
@@ -151,6 +251,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.tag }}
 
       - name: 安装系统依赖 (Ubuntu 专用)
         if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
