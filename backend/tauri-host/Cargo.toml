@@ -35,8 +35,8 @@ sl-server-info = "0.1.0"
 sl-server-flavor-core = "0.2.1"
 tauri = { version = "2", features = ["protocol-asset", "tray-icon", "macos-private-api"] }
 tauri-plugin-opener = "2"
-tauri-plugin-dialog = "2"
-tauri-plugin-fs = "2.0.0"
+tauri-plugin-dialog = "2.7.1"
+tauri-plugin-fs = "2.5.1"
 tokio-util = "0.7.18"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

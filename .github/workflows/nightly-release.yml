@@ -91,27 +91,6 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: 创建或复用 Nightly GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.meta.outputs.tag }}
-          RELEASE_NAME: ${{ steps.meta.outputs.release_name }}
-          RELEASE_BODY: ${{ steps.meta.outputs.release_body }}
-          SOURCE_SHA: ${{ steps.meta.outputs.source_sha }}
-        run: |
-          set -euo pipefail
-
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "✅ 已存在 Nightly Release，复用标签 $TAG"
-            exit 0
-          fi
-
-          gh release create "$TAG" \
-            --target "$SOURCE_SHA" \
-            --title "$RELEASE_NAME" \
-            --notes "$RELEASE_BODY" \
-            --prerelease
-
   publish-tauri-nightly:
     name: 构建并发布 Nightly 桌面端
     needs: validate-nightly
