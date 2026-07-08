@@ -9,6 +9,8 @@ panic-log/*.log
 
 .tmp*
 .idea/
+.vscode/
+.zed/
 *.log
 .DS_Store
 SETTINGS_VERIFICATION.md
@@ -21,6 +23,7 @@ changelogs/
 .claude/
 .codex
 .trae/
+.skill/
 changelog/
 .review/
 plugin-market/
