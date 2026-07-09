@@ -22,6 +22,7 @@ const {
   updateCloseServersOnExit,
   updateCloseServersOnUpdate,
   updateAutoAcceptEula,
+  updateAutoCheckUpdate,
   updateEnableDesktopWebUi,
   copyDesktopWebUrl,
 } = useGeneralSettingsSection();
@@ -142,6 +143,30 @@ const {
             :model-value="state.autoAcceptEula"
             :disabled="bootstrapping || pending.autoAcceptEula"
             @update:model-value="updateAutoAcceptEula"
+          />
+        </div>
+      </section>
+
+      <section class="general-section__item">
+        <div class="general-section__copy">
+          <span class="general-section__item-title">
+            {{ i18n.t("settings.auto_check_update") }}
+          </span>
+          <p class="general-section__item-description">
+            {{ i18n.t("settings.auto_check_update_desc") }}
+          </p>
+        </div>
+
+        <div class="general-section__control general-section__control--switch">
+          <span
+            v-if="pending.autoCheckUpdate"
+            class="general-section__saving-indicator"
+            aria-hidden="true"
+          />
+          <SLSwitch
+            :model-value="state.autoCheckUpdate"
+            :disabled="bootstrapping || pending.autoCheckUpdate"
+            @update:model-value="updateAutoCheckUpdate"
           />
         </div>
       </section>

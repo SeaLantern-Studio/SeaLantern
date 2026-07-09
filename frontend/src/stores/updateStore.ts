@@ -1,6 +1,33 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { updateMetadataApi, type UpdateInfo } from "@api/update";
+import { useSettingsStore } from "@stores/settingsStore";
+
+const LAST_CHECK_DATE_KEY = "sl_last_update_check_date";
+
+function getTodayString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLastCheckDate(): string | null {
+  try {
+    return localStorage.getItem(LAST_CHECK_DATE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setLastCheckDate(date: string): void {
+  try {
+    localStorage.setItem(LAST_CHECK_DATE_KEY, date);
+  } catch {
+    // ignore
+  }
+}
 
 export type UpdateStatus =
   | "idle"
@@ -105,7 +132,23 @@ export const useUpdateStore = defineStore("update", () => {
       return updateInfo.value;
     }
     hasCheckedOnStartup.value = true;
-    return checkForUpdate(true);
+
+    const settingsStore = useSettingsStore();
+    if (!settingsStore.settings.auto_check_update) {
+      return null;
+    }
+
+    const today = getTodayString();
+    const lastCheck = getLastCheckDate();
+    if (lastCheck === today) {
+      return null;
+    }
+
+    try {
+      return await checkForUpdate(true);
+    } finally {
+      setLastCheckDate(today);
+    }
   }
 
   function setDownloading(progress: number) {

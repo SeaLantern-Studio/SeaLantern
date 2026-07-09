@@ -11,6 +11,7 @@ impl AppSettings {
             || self.close_action != other.close_action
             || self.language != other.language
             || self.locale_layer_order != other.locale_layer_order
+            || self.auto_check_update != other.auto_check_update
         {
             changed.push(SettingsGroup::General);
         }

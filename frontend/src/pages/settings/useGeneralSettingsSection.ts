@@ -14,6 +14,7 @@ type GeneralSettingField =
   | "closeServersOnExit"
   | "closeServersOnUpdate"
   | "autoAcceptEula"
+  | "autoCheckUpdate"
   | "enableDesktopWebUi";
 
 function resolveCloseAction(value: string | undefined): CloseAction {
@@ -41,6 +42,7 @@ export function useGeneralSettingsSection() {
     closeServersOnExit: true,
     closeServersOnUpdate: true,
     autoAcceptEula: false,
+    autoCheckUpdate: true,
     enableDesktopWebUi: false,
   });
 
@@ -50,6 +52,7 @@ export function useGeneralSettingsSection() {
     closeServersOnExit: false,
     closeServersOnUpdate: false,
     autoAcceptEula: false,
+    autoCheckUpdate: false,
     enableDesktopWebUi: false,
   });
 
@@ -91,6 +94,7 @@ export function useGeneralSettingsSection() {
         settingsStore.settings.close_servers_on_exit,
         settingsStore.settings.close_servers_on_update,
         settingsStore.settings.auto_accept_eula,
+        settingsStore.settings.auto_check_update,
         settingsStore.settings.enable_desktop_web_ui,
       ] as const,
     ([
@@ -99,6 +103,7 @@ export function useGeneralSettingsSection() {
       closeServersOnExit,
       closeServersOnUpdate,
       autoAcceptEula,
+      autoCheckUpdate,
       enableDesktopWebUi,
     ]) => {
       if (!pending.language) {
@@ -119,6 +124,10 @@ export function useGeneralSettingsSection() {
 
       if (!pending.autoAcceptEula) {
         state.autoAcceptEula = autoAcceptEula;
+      }
+
+      if (!pending.autoCheckUpdate) {
+        state.autoCheckUpdate = autoCheckUpdate;
       }
 
       if (!pending.enableDesktopWebUi) {
@@ -203,6 +212,9 @@ export function useGeneralSettingsSection() {
           return;
         case "autoAcceptEula":
           await settingsStore.updatePartial({ auto_accept_eula: nextValue as boolean });
+          return;
+        case "autoCheckUpdate":
+          await settingsStore.updatePartial({ auto_check_update: nextValue as boolean });
           return;
         case "enableDesktopWebUi":
           await settingsStore.updatePartial({ enable_desktop_web_ui: nextValue as boolean });
@@ -304,6 +316,21 @@ export function useGeneralSettingsSection() {
     );
   }
 
+  function updateAutoCheckUpdate(nextValue: boolean): void {
+    const previousValue = state.autoCheckUpdate;
+
+    void saveField(
+      "autoCheckUpdate",
+      nextValue,
+      () => {
+        state.autoCheckUpdate = nextValue;
+      },
+      () => {
+        state.autoCheckUpdate = previousValue;
+      },
+    );
+  }
+
   function updateEnableDesktopWebUi(nextValue: boolean): void {
     const previousValue = state.enableDesktopWebUi;
 
@@ -337,6 +364,7 @@ export function useGeneralSettingsSection() {
     updateCloseServersOnExit,
     updateCloseServersOnUpdate,
     updateAutoAcceptEula,
+    updateAutoCheckUpdate,
     updateEnableDesktopWebUi,
     copyDesktopWebUrl,
     refreshDesktopWebStatus,

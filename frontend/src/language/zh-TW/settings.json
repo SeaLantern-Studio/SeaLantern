@@ -4,6 +4,8 @@
   "update_auto_stop": "更新時自動停止伺服器",
   "update_auto_stop_desc": "Sea Lantern 更新前自動停止所有執行中的伺服器，防止更新過程中出現問題",
   "auto_eula": "自動同意 EULA",
+  "auto_check_update": "啟動時自動檢查更新",
+  "auto_check_update_desc": "每天首次啟動時自動檢查 Sea Lantern 是否有新版本",
   "close_action": "關閉行為",
   "close_action_desc": "選擇點擊關閉按鈕時的預設行為",
   "close_action_ask": "詢問",
