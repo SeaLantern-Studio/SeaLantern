@@ -12,7 +12,7 @@
   "update_auto_stop_desc": "Automatically stop all running servers before Sea Lantern updates to prevent issues during the update process",
   "auto_eula": "Auto agree EULA",
   "auto_check_update": "Auto check for updates on startup",
-  "auto_check_update_desc": "Automatically check for new Sea Lantern versions on first launch each day",
+  "auto_check_update_desc": "Automatically check for new Sea Lantern versions on each launch",
   "close_action": "Close Behavior",
   "close_action_desc": "Select behavior when clicking close button",
   "close_action_minimize": "Minimize to Tray",

@@ -89,6 +89,7 @@ export function getInitialFontSize(): number {
 const defaultSettings: AppSettings = {
   close_servers_on_exit: true,
   close_servers_on_update: true,
+  auto_check_update: true,
   auto_accept_eula: false,
   default_max_memory: 4096,
   default_min_memory: 1024,
