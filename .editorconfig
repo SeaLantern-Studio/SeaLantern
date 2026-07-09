@@ -1,6 +1,3 @@
-# EditorConfig 帮助开发者在不同编辑器和 IDE 中保持一致的编码风格
-# https://editorconfig.org
-
 root = true
 
 [*]

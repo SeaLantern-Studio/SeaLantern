@@ -33,7 +33,6 @@ sea-lantern/
 ├── frontend/pnpm-lock.yaml       # pnpm 锁文件
 ├── frontend/pnpm-workspace.yaml  # pnpm 工作区与安装脚本策略
 ├── README.md                     # 中文说明文档
-├── README-en.md                  # 英文说明文档
 ├── rustfmt.toml                  # Rust 格式化配置
 ```
 
@@ -149,7 +148,7 @@ backend/
 └── update-core/                 # 更新检查、下载、挂起安装与安装计划
 ```
 
-每个 crate 根目录现在都应以 `Agents.md` 作为该模块的低上下文说明入口。需要快速判断模块职责时，优先阅读对应 crate 根目录下的 `Agents.md`。
+后端模块职责的简要维护入口保留在 [`backend/AGENTS.md`](../backend/AGENTS.md)。
 
 ## 主宿主结构 `backend/tauri-host/`
 
@@ -299,17 +298,12 @@ backend/tauri-host/src/plugins/runtime/
 
 当前文档目录包括：
 
-- `Agents-Example-Module.md`
-- `Agents.md`
 - `CONTRIBUTING.md`
 - `design/` # 设计方案与设计草案目录
-- `plugin-check/` # 插件 Trusted 审查、校验与相关流程文档
+- `plugin/` # 插件 Lua API、Trusted 审查与运行时说明
 - `STRUCTURE.md`
 - `language-system.md` # 前端 i18n 系统使用说明（原 src/language/README.md）
-- `plugin_api.md`
-- `plugin/` # 按命名空间和单个 API 拆分的插件 Lua API 文档
 - `theme-system.md` # 主题系统使用说明（原 src/themes/README.md）
-- `lua-api/` # 插件运行时各模块 Lua API 聚合文档，作为原始参考来源保留
 
 ### `scripts/`
 
