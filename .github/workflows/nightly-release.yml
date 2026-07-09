@@ -2,7 +2,8 @@ name: "夜间发布"
 
 on:
   schedule:
-    - cron: "0 18 * * *"
+    # 04:00 Asia/Shanghai.
+    - cron: "0 20 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -57,12 +58,12 @@ jobs:
 
           SOURCE_BRANCH="$BETA_BRANCH"
           SOURCE_SHA="$(git rev-parse HEAD)"
-          DATE_UTC="$(date -u +%Y%m%d)"
+          DATE_LOCAL="$(TZ=Asia/Shanghai date +%Y%m%d)"
           DATETIME_UTC="$(date -u +%Y%m%dT%H%M%SZ)"
-          DATE_LABEL="$(date -u +%Y-%m-%d)"
+          DATE_LABEL="$(TZ=Asia/Shanghai date +%Y-%m-%d)"
           SHORT_SHA="$(printf '%s' "$SOURCE_SHA" | cut -c1-7)"
           DISPLAY_VERSION="NightlyBuild-${SHORT_SHA}-${DATETIME_UTC}"
-          TAG="nightly-v${VERSION}-${DATE_UTC}-${SHORT_SHA}"
+          TAG="nightly-${DATE_LOCAL}"
           RELEASE_NAME="Sea Lantern Nightly ${DATE_LABEL} (${SOURCE_BRANCH}@${SHORT_SHA})"
 
           {
@@ -291,7 +292,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: 删除当前版本之外的旧 Nightly Release
+      - name: 删除当前日期之外的旧 Nightly Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT_TAG: ${{ needs.validate-nightly.outputs.tag }}
@@ -299,7 +300,7 @@ jobs:
           set -euo pipefail
 
           mapfile -t NIGHTLY_TAGS < <(
-            gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --paginate --jq '.[] | select(.prerelease and (.tag_name | startswith("nightly-v"))) | .tag_name'
+            gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --paginate --jq '.[] | select(.prerelease and (.tag_name | startswith("nightly-"))) | .tag_name'
           )
 
           deleted=0

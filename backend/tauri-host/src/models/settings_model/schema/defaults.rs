@@ -50,6 +50,7 @@ impl Default for AppSettings {
             plugin_console_allowed_commands: default_allowed_commands(),
             plugin_console_blocked_commands: default_blocked_commands(),
             agreed_to_terms: false,
+            auto_check_update: true,
             onebot_11: OneBot11Settings::default(),
         }
     }

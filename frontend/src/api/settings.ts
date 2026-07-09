@@ -96,6 +96,7 @@ export interface AppSettings {
   minimal_mode: boolean;
   next_home_layout: NextHomeLayoutItem[];
   agreed_to_terms: boolean;
+  auto_check_update: boolean;
   onebot_11: OneBot11Settings;
 }
 
@@ -143,6 +144,7 @@ export interface PartialSettings {
   minimal_mode?: boolean;
   next_home_layout?: NextHomeLayoutItem[];
   agreed_to_terms?: boolean;
+  auto_check_update?: boolean;
   onebot_11?: OneBot11Settings;
 }
 
@@ -231,6 +233,7 @@ interface WebSettingsDto {
   minimal_mode: boolean;
   next_home_layout: NextHomeLayoutItem[];
   agreed_to_terms: boolean;
+  auto_check_update: boolean;
   onebot_11: WebOneBot11SettingsDto;
 }
 
@@ -284,6 +287,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   minimal_mode: false,
   next_home_layout: [],
   agreed_to_terms: false,
+  auto_check_update: true,
   onebot_11: {
     enabled: false,
     api_base_url: "",

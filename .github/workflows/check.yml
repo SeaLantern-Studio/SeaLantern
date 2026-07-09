@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main, beta]
   push:
-    branches: [main]
+    branches: [main, beta]
 
 concurrency:
   group: check-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -29,19 +29,11 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
-              - '.github/workflows/check.yml'
             frontend:
               - 'frontend/**'
               - 'scripts/**'
-              - 'frontend/package.json'
-              - 'frontend/pnpm-lock.yaml'
-              - 'frontend/pnpm-workspace.yaml'
-              - 'frontend/vite.config.ts'
-              - 'frontend/tsconfig*.json'
-              - 'frontend/index.html'
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
-              - '.github/workflows/check.yml'
 
   backend:
     name: 后端检查 (Rust)
@@ -51,11 +43,6 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
-
-      - name: 安装系统依赖
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
 
       - name: 安装 Rust 工具链
         id: rust_setup
@@ -79,6 +66,12 @@ jobs:
 
       - name: 检查代码格式 (Rust)
         run: cargo fmt --all -- --check
+
+      - name: 安装系统依赖
+        timeout-minutes: 15
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
 
       - name: 编译检查 (Rust)
         run: cargo check --workspace
@@ -117,8 +110,7 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: 安装前端依赖
-        run: |
-          pnpm --dir frontend install --frozen-lockfile
+        run: pnpm --dir frontend install --frozen-lockfile
 
       - name: 检查前端格式
         run: pnpm --dir frontend run fmt:check
