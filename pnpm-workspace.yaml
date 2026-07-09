@@ -4,3 +4,6 @@ packages:
 allowBuilds:
   "@parcel/watcher": true
   vue-demi: true
+
+minimumReleaseAgeExclude:
+  - vite@8.1.4
