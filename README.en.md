@@ -60,7 +60,7 @@ cd SeaLantern
 git switch beta
 ```
 
-If you want to understand the repository structure, frontend/backend boundaries, and main modules, see [Project Structure](https://docs.ideaflash.cn/en/structure).
+If you want to understand the repository structure, frontend/backend boundaries, and main modules, see [Project Structure](https://docs.ideaflash.cn/en/structure), also [Front Docs](frontend/README.md) and [Backend Docs](backend/README.md) with your translator.
 
 Install dependencies and start the desktop development environment:
 ```bash

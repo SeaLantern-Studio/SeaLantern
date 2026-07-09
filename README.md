@@ -61,7 +61,7 @@ cd SeaLantern
 git switch beta
 ```
 
-如果你想了解仓库结构、前后端边界和主要模块，请查看 [项目结构说明](https://docs.ideaflash.cn/zh/structure)。
+如果你想了解仓库结构、前后端边界和主要模块，请查看 [项目结构说明](https://docs.ideaflash.cn/zh/structure)，以及 [前端说明](frontend/README.md) 和 [后端说明](backend/README.md)。
 
 安装依赖并启动桌面开发环境：
 
