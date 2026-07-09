@@ -34,6 +34,35 @@ jobs:
         with:
           go-version: "1.23.x"
 
+      - name: 强制同步代码分支到 CNB
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          set -euo pipefail
+
+          if [ -z "$CNB_TOKEN" ]; then
+            echo "❌ secrets.CNB_TOKEN 为空或未配置"
+            exit 1
+          fi
+
+          work_dir="$(mktemp -d)"
+          trap 'rm -rf "$work_dir"; rm -f ~/.git-credentials' EXIT
+
+          git config --global credential.helper store
+          printf 'protocol=https\nhost=cnb.cool\nusername=oauth2\npassword=%s\n\n' \
+            "$CNB_TOKEN" | git credential approve
+
+          git init --bare "$work_dir/source.git"
+          git -C "$work_dir/source.git" remote add source https://github.com/SeaLantern-Studio/SeaLantern.git
+          git -C "$work_dir/source.git" fetch --prune --no-tags source \
+            '+refs/heads/*:refs/heads/*'
+
+          # 只把分支当作镜像强制覆盖；tag 和 release 继续交给 release-sync 处理。
+          git -C "$work_dir/source.git" remote add cnb https://cnb.cool/SeaLantern-studio/SeaLantern.git
+          git -C "$work_dir/source.git" push --force --prune cnb \
+            'refs/heads/*:refs/heads/*'
+
       - name: 克隆 release-sync
         run: git clone --depth 1 https://github.com/SeaLantern-Studio/release-sync.git
 
