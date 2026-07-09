@@ -1,6 +1,6 @@
 use super::*;
 use crate::test_support::{lock_env, EnvGuard};
-use sea_lantern_runtime::find_root_startup_file;
+use runtime::find_root_startup_file;
 use std::fs;
 use std::path::PathBuf;
 

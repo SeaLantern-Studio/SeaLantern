@@ -1,7 +1,7 @@
 use crate::models::server::ServerInstance;
 use crate::services::server::manager::i18n::manager_t1;
 use crate::services::server::manager::startup_support::resolve_effective_startup_config_checked;
-use sea_lantern_server_local_setup_core::{
+use server_local_setup::{
     preview_command as preview_shared_command, resolve_local_launch_target,
     resolve_managed_console_encoding, startup_filename, startup_mode_is_starter,
 };

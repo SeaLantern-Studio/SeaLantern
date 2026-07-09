@@ -7,7 +7,7 @@ use crate::services::global::i18n_service;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::trace_cli_action;
-use sea_lantern_server_local_setup_core::{
+use server_local_setup::{
     detect_startup_mode_from_folder,
     infer_local_create_startup_mode as infer_shared_local_create_startup_mode,
     normalize_cli_startup_mode, resolve_command_path_hint, resolve_custom_entry_hint_path,

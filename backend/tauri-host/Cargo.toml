@@ -1,35 +1,35 @@
 [package]
 name = "sea-lantern"
-version = "1.3.2"
+version.workspace = true
 description = "Minecraft Server Manager"
 authors = ["FPS_Z"]
-edition = "2021"
+edition.workspace = true
 default-run = "sea-lantern"
 
 [lib]
-name = "sea_lantern_lib"
+name = "sea_lantern"
 crate-type = ["lib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-sea_lantern_runtime = { package = "sea-lantern-runtime", path = "../runtime-core" }
-sea_lantern_event_core = { package = "sea-lantern-event-core", path = "../event-core" }
-sea_lantern_i18n_core = { package = "sea-lantern-i18n-core", path = "../i18n-core" }
-sea_lantern_lua_runtime_core = { package = "sea-lantern-lua-runtime-core", path = "../lua-runtime-core", optional = true }
-sea_lantern_java_installer_core = { package = "sea-lantern-java-installer-core", path = "../java-installer-core" }
-sea_lantern_server_download_links_core = { package = "sea-lantern-server-download-links-core", path = "../server-download-links-core" }
-sea_lantern_server_installer_core = { package = "sea-lantern-server-installer-core", path = "../server-installer-core" }
-sea_lantern_server_plugin_core = { package = "sea-lantern-server-plugin-core", path = "../server-plugin-core" }
-sea_lantern_server_local_setup_core = { package = "sea-lantern-server-local-setup-core", path = "../server-local-setup-core" }
-sea_lantern_server_startup_scan_core = { package = "sea-lantern-server-startup-scan-core", path = "../server-startup-scan-core" }
-sea_lantern_server_config_core = { package = "sea-lantern-server-config-core", path = "../server-config-core" }
-sea_lantern_plugin_trust_core = { package = "sea-lantern-plugin-trust-core", path = "../plugin-trust-core" }
-sea_lantern_server_log_core = { package = "sea-lantern-server-log-core", path = "../server-log-core" }
-sea_lantern_starter_links_core = { package = "sea-lantern-starter-links-core", path = "../starter-links-core" }
-sea_lantern_update_core = { package = "sea-lantern-update-core", path = "../update-core" }
-sea_lantern_docker_core = { package = "sea-lantern-docker-core", path = "../docker-core" }
+runtime = { package = "runtime", path = "../runtime" }
+event = { package = "event", path = "../event" }
+i18n = { package = "i18n", path = "../i18n" }
+lua_runtime = { package = "lua-runtime", path = "../lua-runtime", optional = true }
+java_installer = { package = "java-installer", path = "../java-installer" }
+server_download_links = { package = "server-download-links", path = "../server-download-links" }
+server_installer = { package = "server-installer", path = "../server-installer" }
+server_plugin = { package = "server-plugin", path = "../server-plugin" }
+server_local_setup = { package = "server-local-setup", path = "../server-local-setup" }
+server_startup_scan = { package = "server-startup-scan", path = "../server-startup-scan" }
+server_config = { package = "server-config", path = "../server-config" }
+plugin_trust = { package = "plugin-trust", path = "../plugin-trust" }
+server_log = { package = "server-log", path = "../server-log" }
+starter_links = { package = "starter-links", path = "../starter-links" }
+update = { package = "update", path = "../update" }
+docker = { package = "docker", path = "../docker" }
 sl-libscv = "0.1.2"
 sl-server-info = "0.1.0"
 sl-server-flavor-core = "0.2.1"
@@ -102,7 +102,7 @@ default = [
 ]
 docker = ["axum", "tower", "tower-http", "tokio-stream", "mime_guess"]
 online-tunnel = ["dep:sculk"]
-plugin-local-runtime = ["dep:mlua", "dep:sea_lantern_lua_runtime_core"]
+plugin-local-runtime = ["dep:mlua", "dep:lua_runtime"]
 plugin-runtime-bridge = []
 plugin-builtin-runtime = []
 

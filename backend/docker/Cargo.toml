@@ -1,0 +1,13 @@
+[package]
+name = "docker"
+version.workspace = true
+edition.workspace = true
+description = "Shared Docker types and pure helper logic for Sea Lantern"
+
+[lib]
+name = "docker"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+server_config = { package = "server-config", path = "../server-config" }

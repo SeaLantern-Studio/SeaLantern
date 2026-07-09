@@ -36,7 +36,7 @@ pub(super) fn is_container_like_environment() -> bool {
 }
 
 pub(super) fn effective_cli_web_bind_host() -> String {
-    sea_lantern_runtime::resolve_http_bind_host(3000)
+    runtime::resolve_http_bind_host(3000)
 }
 
 #[cfg(test)]

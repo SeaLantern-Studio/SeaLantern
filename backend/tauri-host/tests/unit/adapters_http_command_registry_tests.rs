@@ -1,5 +1,5 @@
 use super::*;
-use sea_lantern_runtime::DispatchResult;
+use runtime::DispatchResult;
 use serde_json::json;
 
 #[test]

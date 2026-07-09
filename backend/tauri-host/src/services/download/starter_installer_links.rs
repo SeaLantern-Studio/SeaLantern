@@ -30,11 +30,11 @@ pub fn fetch_starter_installer_url(
     std::fs::create_dir_all(&data_dir)
         .map_err(|e| download_t1("download.starter.app_data_dir_create_failed", e.to_string()))?;
     let links_file_path = data_dir.join(STARTER_INSTALLER_LINKS_FILE);
-    sea_lantern_starter_links_core::load_or_refresh_starter_links_json(
+    starter_links::load_or_refresh_starter_links_json(
         &links_file_path,
         STARTER_INSTALLER_LINKS_URL,
     )?;
-    sea_lantern_starter_links_core::resolve_installer_url_from_cache_file(
+    starter_links::resolve_installer_url_from_cache_file(
         &links_file_path,
         core_type_key,
         mc_version,

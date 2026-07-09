@@ -3,10 +3,10 @@ use std::path::Path;
 use crate::models::server::{
     AddExistingServerRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
-use sea_lantern_server_config_core::startup::{
+use server_config::startup::{
     ensure_server_path_writable, read_server_port, write_server_startup_config_for_dir,
 };
-use sea_lantern_server_local_setup_core::{
+use server_local_setup::{
     resolve_existing_server_core_type, resolve_existing_server_requested_startup,
     ResolveExistingServerStartupError,
 };

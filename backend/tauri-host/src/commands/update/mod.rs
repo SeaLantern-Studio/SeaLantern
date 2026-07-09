@@ -7,16 +7,16 @@ pub mod install;
 use self::common::{update_t1, update_t2};
 use tauri::{command, AppHandle};
 
-use sea_lantern_update_core::constants::UPDATE_HTTP_USER_AGENT;
-use sea_lantern_update_core::install_support::get_update_cache_dir;
-use sea_lantern_update_core::types::PendingUpdate;
+use update::constants::UPDATE_HTTP_USER_AGENT;
+use update::install_support::get_update_cache_dir;
+use update::types::PendingUpdate;
 
 use crate::utils::app_version;
 
 /// 检查更新
 #[command]
-pub async fn check_update() -> Result<sea_lantern_update_core::types::UpdateInfo, String> {
-    sea_lantern_update_core::check_update(app_version::base_version()).await
+pub async fn check_update() -> Result<update::types::UpdateInfo, String> {
+    update::check_update(app_version::base_version()).await
 }
 
 /// 打开下载链接
@@ -46,7 +46,7 @@ pub async fn download_update(
 
     if let Some(v) = version.as_deref() {
         if let Ok(Some((cnb_url, cnb_hash))) =
-            sea_lantern_update_core::cnb::resolve_download_candidate_by_version(&client, v).await
+            update::cnb::resolve_download_candidate_by_version(&client, v).await
         {
             candidates.push((cnb_url, cnb_hash, "CNB"));
         }

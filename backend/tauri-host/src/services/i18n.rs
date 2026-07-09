@@ -1,3 +1,3 @@
-pub use sea_lantern_i18n_core::I18nService;
+pub use i18n::I18nService;
 #[allow(unused_imports)]
-pub use sea_lantern_i18n_core::LocaleCallbackToken;
+pub use i18n::LocaleCallbackToken;

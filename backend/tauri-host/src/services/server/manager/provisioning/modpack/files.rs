@@ -2,10 +2,10 @@ use std::path::Path;
 
 use super::super::super::fs::copy_dir_recursive;
 use crate::services::server::manager::provisioning::i18n::{provisioning_t, provisioning_t1};
-use sea_lantern_server_installer_core::{
+use server_installer::{
     extract_modpack_archive, should_copy_modpack_source_as_native_server_binary,
 };
-use sea_lantern_server_local_setup_core::{path_is_child_of, paths_equal};
+use server_local_setup::{path_is_child_of, paths_equal};
 
 pub(super) fn prepare_modpack_files(source_path: &Path, run_dir: &Path) -> Result<(), String> {
     let source_file_name = source_path

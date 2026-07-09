@@ -1,5 +1,5 @@
-use sea_lantern_server_config_core::properties::write_properties;
-use sea_lantern_server_config_core::startup::{read_server_port, update_pumpkin_config_if_present};
+use server_config::properties::write_properties;
+use server_config::startup::{read_server_port, update_pumpkin_config_if_present};
 use std::collections::HashMap;
 use std::path::Path;
 

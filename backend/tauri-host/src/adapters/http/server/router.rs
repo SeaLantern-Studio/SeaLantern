@@ -17,7 +17,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use sea_lantern_runtime::log_headless_http_static_dir;
+use runtime::log_headless_http_static_dir;
 use tower_http::services::{ServeDir, ServeFile};
 
 #[cfg(test)]
@@ -27,7 +27,7 @@ use crate::services::web_auth::WebAuthService;
 use crate::adapters::http::command_registry::CommandRegistry;
 
 #[cfg(test)]
-use sea_lantern_runtime::HeadlessHttpConfig;
+use runtime::HeadlessHttpConfig;
 
 #[cfg(test)]
 use std::{path::PathBuf, sync::Arc};

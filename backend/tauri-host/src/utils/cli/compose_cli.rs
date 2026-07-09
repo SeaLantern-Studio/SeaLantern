@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::models::server::{DockerItzgRuntimeConfig, ServerInstance, VolumeMount};
 use crate::services::server::runtime::docker_itzg::resolve_docker_launch_spec;
-use sea_lantern_docker_core::resolve_docker_cpuset;
+use docker::resolve_docker_cpuset;
 
 use super::server_ref::resolve_server_reference;
 use super::server_shared::{trace_compose_action, trace_compose_error};

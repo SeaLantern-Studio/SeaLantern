@@ -5,9 +5,7 @@ use super::context::LaunchContext;
 use super::script_launch_support;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::i18n::manager_t;
-use sea_lantern_server_local_setup_core::{
-    resolve_direct_jar_launch_target, resolve_local_preferred_jar_path,
-};
+use server_local_setup::{resolve_direct_jar_launch_target, resolve_local_preferred_jar_path};
 use std::path::Path;
 use std::process::Command;
 
@@ -59,7 +57,7 @@ pub(crate) fn build_starter_install_command(
     java_cmd.arg("-jar");
     java_cmd.arg(resolve_direct_jar_launch_target(&context.server.path, jar_path));
 
-    let install_args = sea_lantern_server_installer_core::CoreType::starter_install_args(core_key)
+    let install_args = server_installer::CoreType::starter_install_args(core_key)
         .ok_or_else(|| manager_t("server.manager.starter_core_type_unrecognized"))?;
     for arg in install_args.args {
         java_cmd.arg(arg);
@@ -190,9 +188,7 @@ mod tests {
     use crate::models::settings::AppSettings;
     use crate::services::server::manager::common::StartupMode;
     use crate::services::server::manager::runtime_start::launch::context::LaunchContext;
-    use sea_lantern_server_local_setup_core::{
-        resolve_direct_jar_launch_target, ManagedConsoleEncoding,
-    };
+    use server_local_setup::{resolve_direct_jar_launch_target, ManagedConsoleEncoding};
     use std::path::Path;
     use std::process::Command;
     use tempfile::TempDir;

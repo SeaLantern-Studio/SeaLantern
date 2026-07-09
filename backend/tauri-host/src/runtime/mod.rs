@@ -9,11 +9,11 @@ mod plugin_bridge;
 #[path = "plugin_bridge_stub.rs"]
 mod plugin_bridge;
 
-use sea_lantern_runtime::RuntimeMode;
+use runtime::RuntimeMode;
 
 fn exit_with_startup_error(message: impl Into<String>) -> ! {
     let message = message.into();
-    sea_lantern_runtime::log_fatal_ctx("runtime.mod", "exit_with_startup_error", &message);
+    runtime::log_fatal_ctx("runtime.mod", "exit_with_startup_error", &message);
     std::process::exit(1);
 }
 
@@ -24,7 +24,7 @@ fn detect_runtime_mode_or_exit(context: &str) -> RuntimeMode {
 }
 
 fn resolve_headless_bind_or_exit(default_port: u16) -> String {
-    sea_lantern_runtime::resolve_http_bind_addr_checked(default_port).unwrap_or_else(|error| {
+    runtime::resolve_http_bind_addr_checked(default_port).unwrap_or_else(|error| {
         exit_with_startup_error(format!(
             "SeaLantern: invalid headless HTTP bind configuration: {}",
             error
@@ -36,7 +36,7 @@ fn resolve_headless_bind_or_exit(default_port: u16) -> String {
 pub fn run() {
     crate::utils::cli::handle_cli();
 
-    sea_lantern_runtime::init_panic_hook();
+    runtime::init_panic_hook();
 
     match detect_runtime_mode_or_exit("runtime mode configuration") {
         RuntimeMode::HeadlessHttp { bind_addr, static_dir } => {
@@ -48,7 +48,7 @@ pub fn run() {
 
 /// Boots the headless HTTP runtime using the shared runtime-mode detection defaults.
 pub fn run_headless_http() {
-    sea_lantern_runtime::init_panic_hook();
+    runtime::init_panic_hook();
 
     match detect_runtime_mode_or_exit("headless HTTP configuration") {
         RuntimeMode::HeadlessHttp { bind_addr, static_dir } => {
@@ -78,8 +78,8 @@ fn run_desktop() {
 /// - `static_dir`: optional directory used to serve frontend assets
 fn run_headless_http_with_bind(bind_addr: &str, static_dir: Option<String>) {
     let bind_addr = bind_addr.to_string();
-    sea_lantern_runtime::run_tokio_service(
-        sea_lantern_runtime::TokioServiceConfig {
+    runtime::run_tokio_service(
+        runtime::TokioServiceConfig {
             startup_message: format!("SeaLantern: Running in headless HTTP mode at {}", bind_addr),
             runtime_creation_error_prefix:
                 "SeaLantern: Failed to create Tokio runtime for HTTP server",

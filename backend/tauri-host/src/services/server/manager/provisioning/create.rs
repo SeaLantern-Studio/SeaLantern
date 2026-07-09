@@ -3,10 +3,10 @@ use std::path::Path;
 use crate::models::server::{
     CreateServerRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
-use sea_lantern_server_config_core::startup::{
+use server_config::startup::{
     create_server_properties_if_missing, write_server_startup_config_for_dir,
 };
-use sea_lantern_server_local_setup_core::{canonical_core_type, normalize_cli_startup_mode};
+use server_local_setup::{canonical_core_type, normalize_cli_startup_mode};
 
 use super::super::common::{
     current_timestamp_secs, ensure_server_identity_available, validate_server_name,

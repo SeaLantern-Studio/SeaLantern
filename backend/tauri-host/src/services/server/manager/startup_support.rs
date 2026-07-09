@@ -2,14 +2,14 @@ use std::path::Path;
 
 use crate::models::server::ServerInstance;
 use crate::models::settings::AppSettings;
-use sea_lantern_server_config_core::startup::read_server_startup_config_document;
-use sea_lantern_server_config_core::types::ServerStartupConfigDocument;
-use sea_lantern_server_config_core::{
+use server_config::startup::read_server_startup_config_document;
+use server_config::types::ServerStartupConfigDocument;
+use server_config::{
     build_managed_jvm_args_from_input, resolve_effective_startup_config_from_document,
     EffectiveStartupConfig as SharedEffectiveStartupConfig, ManagedJvmBuildInput,
     StartupResolutionDefaults, StartupRuntimeDefaults,
 };
-use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
+use server_local_setup::ManagedConsoleEncoding;
 
 use super::common::StartupMode;
 use super::cpu_policy;
@@ -142,7 +142,7 @@ mod tests {
         ServerInstance, ServerRuntimeConfig,
     };
     use crate::models::settings::AppSettings;
-    use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
+    use server_local_setup::ManagedConsoleEncoding;
     use tempfile::tempdir;
 
     fn test_server(path: String) -> ServerInstance {

@@ -5,7 +5,7 @@ use crate::services::events::{
 };
 use crate::services::web_auth::WebAuthService;
 use axum::http::StatusCode;
-use sea_lantern_runtime::HeadlessHttpConfig;
+use runtime::HeadlessHttpConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;

@@ -66,20 +66,20 @@ git switch beta
 安装依赖并启动桌面开发环境：
 
 ```bash
-pnpm --dir frontend install
-pnpm --dir frontend run tauri:dev
+pnpm install
+pnpm tauri:dev
 ```
 
 只预览前端页面：
 
 ```bash
-pnpm --dir frontend run dev
+pnpm dev
 ```
 
 只启动 HTTP / Docker 后端：
 
 ```bash
-pnpm --dir frontend run dev:http:backend
+pnpm dev:http
 ```
 
 如果你在 Linux 上开发，可能需要先安装 Tauri 相关系统依赖。具体请看 [Tauri Linux 前置要求](https://tauri.app/zh-cn/start/prerequisites/#linux)。
@@ -89,8 +89,8 @@ pnpm --dir frontend run dev:http:backend
 提交前务必跑一次代码检查：
 
 ```bash
-pnpm --dir frontend run lint
-pnpm --dir frontend run build:check
+pnpm lint
+pnpm build:check
 cargo fmt --all -- --check
 cargo check --workspace
 cargo clippy --workspace -- -D warnings

@@ -14,16 +14,29 @@ const scenarioAliases = new Map([
   ['build:desktop-full', { baseCommand: 'build' }],
   ['build:desktop-min', { baseCommand: 'build', cargoArgs: ['--no-default-features'] }],
 ]);
+const helpCommands = new Set(['help', '-h', '--help']);
 
-function splitForwardedArgs(args) {
-  const separatorIndex = args.indexOf('--');
+function printUsage() {
+  console.log('Usage:');
+  console.log('  node scripts/tauri.mjs <scenario> [args...]');
+  console.log('  pnpm tauri:dev');
+  console.log('  pnpm tauri:build');
+  console.log('');
+  console.log('Scenarios:');
+  for (const name of scenarioAliases.keys()) {
+    console.log(`  ${name}`);
+  }
+}
+
+function splitForwardedArgs(inputArgs) {
+  const separatorIndex = inputArgs.indexOf('--');
   if (separatorIndex === -1) {
-    return { tauriArgs: args, cargoArgs: [] };
+    return { tauriArgs: inputArgs, cargoArgs: [] };
   }
 
   return {
-    tauriArgs: args.slice(0, separatorIndex),
-    cargoArgs: args.slice(separatorIndex + 1),
+    tauriArgs: inputArgs.slice(0, separatorIndex),
+    cargoArgs: inputArgs.slice(separatorIndex + 1),
   };
 }
 
@@ -50,12 +63,16 @@ function buildScenarioArgs(command, rest) {
 }
 
 if (args.length === 0) {
-  console.error('Usage: pnpm run tauri <command> [args...]');
-  console.error('Scenarios: dev:desktop-full, dev:desktop-min, build:desktop-full, build:desktop-min');
-  process.exit(1);
+  printUsage();
+  process.exit(0);
 }
 
 const [command, ...rest] = args;
+
+if (helpCommands.has(command)) {
+  printUsage();
+  process.exit(0);
+}
 
 const tauriArgs = buildScenarioArgs(command, rest);
 

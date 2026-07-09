@@ -2,9 +2,9 @@
 // 确保在测试之间不会互相干扰
 
 use mlua::Result as LuaResult;
-use sea_lantern_lib::plugins::api::UiEventHandler;
-use sea_lantern_lib::plugins::api::{new_api_registry, set_ui_event_handler};
-use sea_lantern_lib::plugins::runtime::PluginRuntime;
+use sea_lantern::plugins::api::UiEventHandler;
+use sea_lantern::plugins::api::{new_api_registry, set_ui_event_handler};
+use sea_lantern::plugins::runtime::PluginRuntime;
 use std::collections::HashMap;
 use std::env;
 use std::fs as std_fs;

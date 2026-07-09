@@ -7,7 +7,7 @@ use crate::utils::docker_cli::{
     DockerImageAvailability, DockerImageInspectOutcome,
 };
 use crate::utils::logger;
-use sea_lantern_docker_core::{
+use docker::{
     format_docker_image_reference, validate_docker_itzg_image_compatibility, DockerCommandMode,
 };
 use std::collections::HashMap;

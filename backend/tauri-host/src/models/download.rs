@@ -1,10 +1,8 @@
 use crate::hardcode_data::external_services::COMMON_HTTP_BROWSER_USER_AGENT;
 use crate::utils::constants::DOWNLOAD_LINK_LIST_URL;
 use crate::utils::downloader::SingleThreadDownloader;
-pub(crate) use sea_lantern_server_download_links_core::{
-    BaseDownloadLinks, DownloadLink, TypeDownloadLinks,
-};
 use serde::{Deserialize, Serialize};
+pub(crate) use server_download_links::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
 use tokio::sync::OnceCell;
 use uuid::Uuid;
 
@@ -50,7 +48,7 @@ impl LinkManager {
         let downloader = SingleThreadDownloader::new(COMMON_HTTP_BROWSER_USER_AGENT);
         let response_body = downloader.read_to_string(DOWNLOAD_LINK_LIST_URL).await?;
 
-        sea_lantern_server_download_links_core::parse_base_download_links(&response_body)
+        server_download_links::parse_base_download_links(&response_body)
     }
 
     pub async fn get_server_types() -> Result<Vec<String>, String> {

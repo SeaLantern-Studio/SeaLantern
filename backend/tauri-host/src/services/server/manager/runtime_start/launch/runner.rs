@@ -8,7 +8,7 @@ use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::cpu_policy;
 use crate::services::server::manager::i18n::{manager_t, manager_t1, manager_t2, manager_t3};
-use sea_lantern_server_local_setup_core::{
+use server_local_setup::{
     build_primary_jar_fallback_info, format_fallback_chain_error, format_launch_fallback_log,
     format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
     format_primary_jar_spawn_error_reason, preview_command,
@@ -382,7 +382,7 @@ fn apply_cpu_policy_after_spawn(
 #[cfg(test)]
 mod tests {
     use super::format_output_block_lines;
-    use sea_lantern_server_local_setup_core::{
+    use server_local_setup::{
         build_primary_jar_fallback_info, format_fallback_chain_error, format_launch_fallback_log,
         format_primary_jar_early_exit_reason, format_primary_jar_probe_error_reason,
         format_primary_jar_spawn_error_reason,

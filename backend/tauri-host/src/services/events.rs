@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-pub use sea_lantern_event_core::{
+pub use event::{
     plugin_server_event_subscriptions_map, AppEventEnvelope, AppEventKind, AppEventPayload,
     AppEventSubscriber, AppEventSubscription, EventConsumer, EventConsumerKind,
     EventConsumerMetadata, EventConsumerRegistration, EventManager, EventScope,

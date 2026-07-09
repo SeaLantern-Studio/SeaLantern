@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-pub use sea_lantern_event_core::{
+pub use event::{
     EventConsumerRegistryAppFilterDto, EventConsumerRegistryEntryDto,
     EventConsumerRegistryFilterUpdateRequest, EventConsumerRegistryMetadataDto,
     EventConsumerRegistryMetadataUpdateRequest, EventConsumerRegistryServerFilterDto,
@@ -12,8 +12,8 @@ impl EventConsumerRegistryService {
         Self
     }
 
-    fn registry(&self) -> sea_lantern_event_core::EventConsumerRegistry<'static> {
-        sea_lantern_event_core::EventConsumerRegistry::new(crate::services::global::event_manager())
+    fn registry(&self) -> event::EventConsumerRegistry<'static> {
+        event::EventConsumerRegistry::new(crate::services::global::event_manager())
     }
 
     pub fn list(&self) -> Vec<EventConsumerRegistryEntryDto> {

@@ -27,10 +27,17 @@ const DEFAULT_SYNC_LOCALE = "zh-CN";
 const localeMetadataModules = import.meta.glob<LocaleMetadataModule>("./*/language.json", {
   eager: true,
 });
-const localeGroupModuleLoaders = import.meta.glob<LocaleModule>("./*/*.json");
-const defaultLocaleModules = import.meta.glob<LocaleModule>("./zh-CN/*.json", {
-  eager: true,
-});
+const localeGroupModuleLoaders = import.meta.glob<LocaleModule>([
+  "./*/*.json",
+  "!./*/language.json",
+  "!./zh-CN/*.json",
+]);
+const defaultLocaleModules = import.meta.glob<LocaleModule>(
+  ["./zh-CN/*.json", "!./zh-CN/language.json"],
+  {
+    eager: true,
+  },
+);
 const builtInLocaleMetadata: Record<string, LocaleMetadata> = {};
 const builtInLocaleGroups: Record<string, Record<string, TranslationValue>> = {};
 const builtInLocaleGroupLoaders: Record<string, Record<string, LocaleModuleLoader>> = {};

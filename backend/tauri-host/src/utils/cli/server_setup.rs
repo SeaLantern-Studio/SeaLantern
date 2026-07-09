@@ -15,7 +15,7 @@ use crate::services::global;
 use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::{trace_cli_action, CliServerRuntimeKind};
-use sea_lantern_server_local_setup_core::{
+use server_local_setup::{
     inspect_local_folder, inspect_local_folder_checked, LocalFolderInspection,
 };
 

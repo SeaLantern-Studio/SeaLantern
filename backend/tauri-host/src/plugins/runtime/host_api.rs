@@ -1,4 +1,4 @@
-use sea_lantern_lua_runtime_core::host::runtime_host_api;
+use lua_runtime::host::runtime_host_api;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 
@@ -162,7 +162,7 @@ pub(crate) fn host_emit_permission_log(
 
 pub(crate) fn host_component_mirror_list(
     page_filter: Option<&str>,
-) -> Vec<sea_lantern_lua_runtime_core::host::RuntimeComponentEntry> {
+) -> Vec<lua_runtime::host::RuntimeComponentEntry> {
     runtime_host_api()
         .plugin()
         .component_mirror_list(page_filter)

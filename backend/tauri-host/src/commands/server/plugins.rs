@@ -1,7 +1,7 @@
 use crate::models::server::ServerInstance;
 use crate::services::global;
 use crate::services::server::plugin_manager::{common, ops};
-use sea_lantern_server_plugin_core::{m_PluginConfigFile, m_PluginInfo};
+use server_plugin::{m_PluginConfigFile, m_PluginInfo};
 
 fn server_by_id(server_id: &str) -> Result<ServerInstance, String> {
     let server_manager = global::server_manager();
@@ -21,7 +21,7 @@ pub async fn m_get_plugins(server_id: String) -> Result<Vec<m_PluginInfo>, Strin
     let server = server_by_id(&server_id)?;
     let relative_dir = common::plugin_relative_dir_for_server(&server)?;
     common::ensure_plugin_target_dir_for_server(&server)?;
-    sea_lantern_server_plugin_core::get_plugins_checked_in_dir(&server.path, relative_dir)
+    server_plugin::get_plugins_checked_in_dir(&server.path, relative_dir)
 }
 
 #[tauri::command]
@@ -33,11 +33,7 @@ pub fn m_get_plugin_config_files(
     let server = server_by_id(&server_id)?;
     let relative_dir = common::plugin_relative_dir_for_server(&server)?;
     common::ensure_plugin_target_dir_for_server(&server)?;
-    sea_lantern_server_plugin_core::get_plugin_config_files_in_dir(
-        &server.path,
-        relative_dir,
-        &plugin_name,
-    )
+    server_plugin::get_plugin_config_files_in_dir(&server.path, relative_dir, &plugin_name)
 }
 
 #[tauri::command]

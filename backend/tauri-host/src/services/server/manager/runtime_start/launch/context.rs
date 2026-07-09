@@ -1,9 +1,9 @@
 use super::super::super::common::StartupMode;
 use crate::models::server::ServerInstance;
 use crate::services::server::manager::i18n::{manager_t1, manager_t2};
-use sea_lantern_server_installer_core::resolve_starter_core_key_checked as resolve_shared_starter_core_key;
-use sea_lantern_server_local_setup_core::startup_mode_requires_java;
-use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
+use server_installer::resolve_starter_core_key_checked as resolve_shared_starter_core_key;
+use server_local_setup::startup_mode_requires_java;
+use server_local_setup::ManagedConsoleEncoding;
 
 pub(in crate::services::server::manager::runtime_start) struct LaunchContext<'a> {
     pub server: &'a ServerInstance,
@@ -115,7 +115,7 @@ mod tests {
     };
     use crate::models::settings::AppSettings;
     use crate::services::server::manager::common::StartupMode;
-    use sea_lantern_server_local_setup_core::ManagedConsoleEncoding;
+    use server_local_setup::ManagedConsoleEncoding;
     use std::collections::BTreeMap;
 
     fn test_server(startup_mode: &str, core_type: &str, jar_path: &str) -> ServerInstance {

@@ -1,7 +1,7 @@
 use crate::commands::server::common::{server_t, server_t1};
 use crate::hardcode_data::app_files::SERVER_PATH_PERMISSION_TEST_FILE_NAME;
 use crate::models::server::ValidateServerPathResult;
-use sea_lantern_server_local_setup_core::resolve_local_startup_entry_checked;
+use server_local_setup::resolve_local_startup_entry_checked;
 use std::path::Path;
 
 fn ensure_copy_source_dir_readable(source: &Path, source_dir: &str) -> Result<(), String> {

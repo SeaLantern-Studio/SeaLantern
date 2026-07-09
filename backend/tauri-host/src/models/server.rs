@@ -1,14 +1,14 @@
-pub(crate) use sea_lantern_docker_core::{
+pub(crate) use docker::{
     CreateDockerItzgServerRequest, DockerBackendKind, DockerCommandMode, DockerItzgRuntimeConfig,
     PublishedPort, RconConfig, VolumeMount,
 };
+use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
-pub(crate) use sea_lantern_server_config_core::types::{
+pub(crate) use server_config::types::{
     CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId,
 };
-pub(crate) use sea_lantern_server_installer_core::ParsedServerCoreInfo;
-pub(crate) use sea_lantern_server_startup_scan_core::StartupScanResult;
-use serde::{Deserialize, Serialize};
+pub(crate) use server_installer::ParsedServerCoreInfo;
+pub(crate) use server_startup_scan::StartupScanResult;
 
 fn default_startup_mode() -> String {
     "jar".to_string()

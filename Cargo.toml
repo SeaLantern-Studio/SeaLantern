@@ -1,10 +1,33 @@
 [workspace]
-members = ["backend/tauri-host", "backend/docker-entry", "backend/runtime-core", "backend/update-core", "backend/server-config-core", "backend/starter-links-core", "backend/java-installer-core", "backend/server-download-links-core", "backend/server-installer-core", "backend/server-plugin-core", "backend/server-startup-scan-core", "backend/server-local-setup-core", "backend/server-log-core", "backend/docker-core", "backend/i18n-core", "backend/plugin-trust-core", "backend/event-core", "backend/lua-runtime-core"]
+members = [
+    "backend/tauri-host",
+    "backend/docker-entry",
+    "backend/runtime",
+    "backend/update",
+    "backend/server-config",
+    "backend/starter-links",
+    "backend/java-installer",
+    "backend/server-download-links",
+    "backend/server-installer",
+    "backend/server-plugin",
+    "backend/server-startup-scan",
+    "backend/server-local-setup",
+    "backend/server-log",
+    "backend/docker",
+    "backend/i18n",
+    "backend/plugin-trust",
+    "backend/event",
+    "backend/lua-runtime",
+]
 resolver = "2"
 
-# 优化配置（从 backend/tauri-host/Cargo.toml 移到这里统一管理）
+[workspace.package]
+version = "1.3.0"
+edition = "2021"
+
+# 优化配置
 [profile.release]
-opt-level = "z" # 优化二进制大小
-lto = true # 启用链接时优化
-codegen-units = 1 # 更好的优化，但编译较慢
-strip = true # 移除调试符号
+opt-level = "z"   # 优化二进制大小
+lto = true        # 启用链接时优化
+codegen-units = 1 # 更好的优化，编译较慢
+strip = true      # 移除调试符号

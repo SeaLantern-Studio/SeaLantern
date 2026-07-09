@@ -80,54 +80,55 @@ frontend/                   frontend/
 安装依赖：
 
 ```bash
-pnpm --dir frontend install
+pnpm install
 ```
 
 启动 Tauri 桌面开发环境：
 
 ```bash
-pnpm --dir frontend run tauri:dev
+pnpm tauri:dev
 ```
 
 只启动前端页面：
 
 ```bash
-pnpm --dir frontend run dev
+pnpm dev
 ```
 
 只启动 next shell 指定页面：
 
 ```bash
-pnpm --dir frontend run next
-pnpm --dir frontend run next:servers
-pnpm --dir frontend run next:plugins
-pnpm --dir frontend run next:settings
+cd frontend
+pnpm run next
+pnpm run next:servers
+pnpm run next:plugins
+pnpm run next:settings
 ```
 
 只启动 HTTP / Docker 后端：
 
 ```bash
-pnpm --dir frontend run dev:http:backend
+pnpm dev:http
 ```
 
 提交前检查：
 
 ```bash
-pnpm --dir frontend run lint
-pnpm --dir frontend run build:check
-pnpm --dir frontend run fmt:check
+pnpm lint
+pnpm build:check
+pnpm fmt:check
 ```
 
 检查语言资源：
 
 ```bash
-pnpm --dir frontend run i18n:check
+pnpm i18n:check
 ```
 
 同步语言资源：
 
 ```bash
-pnpm --dir frontend run i18n:sync
+pnpm i18n:sync
 ```
 
 ## 注意事项

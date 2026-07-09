@@ -6,10 +6,8 @@ use crate::models::server::{
 };
 use crate::utils::constants::{DATA_FILE, RUN_PATH_MAP_FILE};
 use crate::utils::logger;
-use sea_lantern_server_local_setup_core::{
-    canonical_core_type, paths_equal, resolve_local_startup_entry_checked,
-};
 use serde::{Deserialize, Serialize};
+use server_local_setup::{canonical_core_type, paths_equal, resolve_local_startup_entry_checked};
 
 use super::i18n::{manager_t, manager_t1};
 

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::models::server::ImportModpackRequest;
 use crate::services::server::manager::provisioning::i18n::{provisioning_t, provisioning_t1};
-use sea_lantern_server_local_setup_core::{
+use server_local_setup::{
     resolve_modpack_run_dir_startup_selection as resolve_shared_modpack_run_dir_startup_selection,
     ModpackStartupSelection, ResolveModpackStartupError,
 };

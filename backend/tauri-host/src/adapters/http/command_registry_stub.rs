@@ -8,7 +8,7 @@ impl CommandRegistry {
         Self
     }
 
-    pub fn get_handler(&self, _command: &str) -> Option<&sea_lantern_runtime::CommandHandler> {
+    pub fn get_handler(&self, _command: &str) -> Option<&runtime::CommandHandler> {
         None
     }
 

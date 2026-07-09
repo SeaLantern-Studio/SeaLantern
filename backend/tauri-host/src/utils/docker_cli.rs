@@ -2,7 +2,7 @@ use std::process::{Command, Output};
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub(crate) use sea_lantern_docker_core::{
+pub(crate) use docker::{
     classify_docker_command_failure, docker_error_indicates_missing_container,
     interpret_docker_image_inspect_outputs, DockerCommandFailureKind, DockerImageAvailability,
     DockerImageInspectOutcome,
@@ -154,12 +154,7 @@ pub(crate) fn render_docker_command_error(
     image_ref: Option<&str>,
     container_name: Option<&str>,
 ) -> String {
-    let message = sea_lantern_docker_core::render_docker_command_error(
-        action,
-        output,
-        image_ref,
-        container_name,
-    );
+    let message = docker::render_docker_command_error(action, output, image_ref, container_name);
 
     logger::log_trace_ctx(
         "utils.docker_cli",
@@ -183,11 +178,7 @@ pub(crate) fn interpret_docker_image_inspect_outputs_for_tests(
     local_output: &Output,
     manifest_output: &Output,
 ) -> Result<DockerImageInspectOutcome, String> {
-    sea_lantern_docker_core::interpret_docker_image_inspect_outputs(
-        image_ref,
-        local_output,
-        manifest_output,
-    )
+    docker::interpret_docker_image_inspect_outputs(image_ref, local_output, manifest_output)
 }
 
 #[cfg(test)]
@@ -197,7 +188,7 @@ mod tests {
         inspect_docker_image_reference_with_runner, render_docker_command_error,
         DOCKER_IMAGE_INSPECT_TIMEOUT_SECS,
     };
-    use sea_lantern_docker_core::{
+    use docker::{
         classify_docker_command_failure, classify_manifest_inspect_outcome,
         format_docker_image_reference, interpret_docker_image_inspect_outputs,
         resolve_docker_image_and_tag, split_docker_image_reference_tag, DockerCommandFailureKind,

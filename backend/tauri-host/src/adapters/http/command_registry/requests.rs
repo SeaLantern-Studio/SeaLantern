@@ -294,8 +294,7 @@ pub(super) struct ReadServerConfigSourceRequest {
     #[serde(default)]
     pub locator: Option<String>,
     #[serde(default)]
-    pub discovery_options:
-        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options: Option<server_config::types::ServerConfigDiscoveryOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -306,8 +305,7 @@ pub(super) struct WriteServerConfigSourceRequest {
     #[serde(default)]
     pub locator: Option<String>,
     #[serde(default)]
-    pub discovery_options:
-        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options: Option<server_config::types::ServerConfigDiscoveryOptions>,
     pub source: String,
 }
 
@@ -319,8 +317,7 @@ pub(super) struct ReadServerConfigDocumentRequest {
     #[serde(default)]
     pub locator: Option<String>,
     #[serde(default)]
-    pub discovery_options:
-        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options: Option<server_config::types::ServerConfigDiscoveryOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -331,8 +328,7 @@ pub(super) struct WriteServerConfigDocumentRequest {
     #[serde(default)]
     pub locator: Option<String>,
     #[serde(default)]
-    pub discovery_options:
-        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options: Option<server_config::types::ServerConfigDiscoveryOptions>,
     pub content: serde_json::Value,
 }
 
@@ -401,8 +397,7 @@ pub(super) struct ServerPathRequest {
 pub(super) struct ListServerConfigFilesRequest {
     pub server_path: String,
     #[serde(default)]
-    pub discovery_options:
-        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options: Option<server_config::types::ServerConfigDiscoveryOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -410,12 +405,11 @@ pub(super) struct ListServerConfigFilesRequest {
 pub(super) struct SearchServerConfigFilesRequest {
     pub server_path: String,
     pub query: String,
-    pub mode: sea_lantern_server_config_core::types::ServerConfigSearchMode,
+    pub mode: server_config::types::ServerConfigSearchMode,
     #[serde(default)]
-    pub scope: Option<sea_lantern_server_config_core::types::ServerConfigSearchScope>,
+    pub scope: Option<server_config::types::ServerConfigSearchScope>,
     #[serde(default)]
-    pub discovery_options:
-        Option<sea_lantern_server_config_core::types::ServerConfigDiscoveryOptions>,
+    pub discovery_options: Option<server_config::types::ServerConfigDiscoveryOptions>,
     #[serde(default)]
     pub limit: Option<usize>,
     #[serde(default)]

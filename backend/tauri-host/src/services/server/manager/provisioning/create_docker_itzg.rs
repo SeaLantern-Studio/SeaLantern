@@ -1,8 +1,8 @@
 use crate::models::server::{CreateDockerItzgServerRequest, ServerInstance, ServerRuntimeConfig};
-use sea_lantern_docker_core::parse_memory_env_value_checked;
-use sea_lantern_server_config_core::startup::ensure_server_path_writable;
-use sea_lantern_server_installer_core::CoreType;
-use sea_lantern_server_local_setup_core::canonical_core_type;
+use docker::parse_memory_env_value_checked;
+use server_config::startup::ensure_server_path_writable;
+use server_installer::CoreType;
+use server_local_setup::canonical_core_type;
 
 use super::super::common::{
     current_timestamp_secs, ensure_server_identity_available, validate_server_name,
@@ -115,7 +115,7 @@ mod tests {
         DockerItzgRuntimeConfig, JvmPresetConfig, ServerRuntimeConfig,
     };
     use crate::services::server::manager::ServerManager;
-    use sea_lantern_docker_core::{parse_memory_env_value, parse_memory_env_value_checked};
+    use docker::{parse_memory_env_value, parse_memory_env_value_checked};
 
     fn isolated_manager(temp_dir: &std::path::Path) -> ServerManager {
         let manager = ServerManager::new();

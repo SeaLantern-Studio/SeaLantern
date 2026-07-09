@@ -9,7 +9,7 @@ pub(super) async fn scan_startup_candidates(
     source_type: String,
 ) -> Result<StartupScanResult, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        sea_lantern_server_startup_scan_core::scan_startup_candidates(
+        server_startup_scan::scan_startup_candidates(
             &source_path,
             &source_type,
             &crate::utils::constants::STARTER_MC_VERSION_OPTIONS,

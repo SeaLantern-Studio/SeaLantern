@@ -19,7 +19,7 @@ pub async fn download_and_install_java<R: tauri::Runtime>(
     cancel_flag: Arc<AtomicBool>,
 ) -> Result<String, String> {
     let app_dir = resolve_java_install_app_dir()?;
-    let java_bin = sea_lantern_java_installer_core::download_and_install_java(
+    let java_bin = java_installer::download_and_install_java(
         &url,
         &version_name,
         &app_dir,

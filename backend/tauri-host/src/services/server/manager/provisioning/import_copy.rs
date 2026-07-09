@@ -3,11 +3,11 @@ use std::path::Path;
 use crate::models::server::{
     ImportServerRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
-use sea_lantern_server_config_core::startup::{
+use server_config::startup::{
     create_server_properties_if_missing, read_server_port, write_server_startup_config_for_dir,
 };
-use sea_lantern_server_installer_core::resolve_imported_server_core_key;
-use sea_lantern_server_local_setup_core::normalize_cli_startup_mode;
+use server_installer::resolve_imported_server_core_key;
+use server_local_setup::normalize_cli_startup_mode;
 
 use super::super::common::{current_timestamp_secs, validate_server_name};
 use super::super::fs::copy_dir_recursive;

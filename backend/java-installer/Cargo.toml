@@ -1,0 +1,31 @@
+[package]
+name = "java-installer"
+version.workspace = true
+edition.workspace = true
+description = "Shared Java runtime download and installation logic for Sea Lantern"
+
+[lib]
+name = "java_installer"
+path = "src/lib.rs"
+test = false
+
+[[test]]
+name = "core_java_runtime_checks"
+path = "tests/core_java_runtime_checks.rs"
+
+[dependencies]
+futures = "0.3.32"
+reqwest = { version = "0.12", features = ["stream"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["fs", "io-util", "time"] }
+
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+flate2 = "1.0"
+tar = "0.4"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+zip = "2.0"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

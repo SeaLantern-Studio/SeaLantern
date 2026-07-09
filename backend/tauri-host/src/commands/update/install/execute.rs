@@ -6,13 +6,13 @@ use crate::services;
 
 use super::INSTALL_IN_PROGRESS;
 #[cfg(target_os = "linux")]
-use sea_lantern_update_core::arch::{get_aur_helper, is_arch_linux};
-use sea_lantern_update_core::install_support::get_pending_update_file;
+use update::arch::{get_aur_helper, is_arch_linux};
+use update::install_support::get_pending_update_file;
 #[cfg(target_os = "windows")]
-use sea_lantern_update_core::install_support::{build_install_launch_plan, InstallLaunchPlan};
-use sea_lantern_update_core::pending::write_pending_update;
+use update::install_support::{build_install_launch_plan, InstallLaunchPlan};
+use update::pending::write_pending_update;
 #[cfg(target_os = "windows")]
-use sea_lantern_update_core::windows_install;
+use update::windows_install;
 
 pub(crate) async fn execute_install(file_path: String, version: String) -> Result<(), String> {
     if INSTALL_IN_PROGRESS.swap(true, Ordering::SeqCst) {

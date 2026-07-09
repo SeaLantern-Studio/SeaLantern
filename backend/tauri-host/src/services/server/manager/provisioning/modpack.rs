@@ -8,8 +8,8 @@ mod startup;
 use std::path::Path;
 
 use crate::models::server::{ImportModpackRequest, ServerInstance};
-use sea_lantern_server_config_core::startup::write_server_startup_config_for_dir;
-use sea_lantern_server_installer_core::should_delay_starter_runtime_file_writes;
+use server_config::startup::write_server_startup_config_for_dir;
+use server_installer::should_delay_starter_runtime_file_writes;
 
 use super::super::common::validate_server_name;
 use super::super::ServerManager;
@@ -75,7 +75,7 @@ pub(super) fn import_modpack(
 #[cfg(test)]
 mod tests {
     use crate::models::server::ImportModpackRequest;
-    use sea_lantern_server_installer_core::should_delay_starter_runtime_file_writes;
+    use server_installer::should_delay_starter_runtime_file_writes;
     use tempfile::tempdir;
 
     fn sample_request() -> ImportModpackRequest {

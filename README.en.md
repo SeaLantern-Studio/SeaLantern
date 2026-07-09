@@ -64,18 +64,18 @@ If you want to understand the repository structure, frontend/backend boundaries,
 
 Install dependencies and start the desktop development environment:
 ```bash
-pnpm --dir frontend install
-pnpm --dir frontend run tauri:dev
+pnpm install
+pnpm tauri:dev
 ```
 
 Preview frontend pages only:
 ```bash
-pnpm --dir frontend run dev
+pnpm dev
 ```
 
 Start the HTTP / Docker backend only:
 ```bash
-pnpm --dir frontend run dev:http:backend
+pnpm dev:http
 ```
 
 If you develop on Linux, you may need to install Tauri system dependencies first. See [Tauri Linux Prerequisites](https://tauri.app/start/prerequisites/#linux).
@@ -84,8 +84,8 @@ If you develop on Linux, you may need to install Tauri system dependencies first
 
 Before submitting, please run the code checks:
 ```bash
-pnpm --dir frontend run lint
-pnpm --dir frontend run build:check
+pnpm lint
+pnpm build:check
 cargo fmt --all -- --check
 cargo check --workspace
 cargo clippy --workspace -- -D warnings

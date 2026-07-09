@@ -1,0 +1,17 @@
+[package]
+name = "server-log"
+version.workspace = true
+edition.workspace = true
+description = "Shared server log persistence, reading, output ingestion, and structured event mapping for Sea Lantern"
+
+[lib]
+name = "server_log"
+path = "src/lib.rs"
+
+[dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+server_local_setup = { package = "server-local-setup", path = "../server-local-setup" }
+sl-server-info = "0.1.0"
+
+[dev-dependencies]
+tempfile = "3"

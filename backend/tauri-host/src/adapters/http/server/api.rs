@@ -7,7 +7,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use sea_lantern_runtime::{is_supported_http_command, DispatchResult};
+use runtime::{is_supported_http_command, DispatchResult};
 
 fn upload_reference_error_kind_for_status(status: StatusCode) -> &'static str {
     if status.is_server_error() {

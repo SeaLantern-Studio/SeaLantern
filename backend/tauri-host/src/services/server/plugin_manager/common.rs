@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use crate::models::server::ServerInstance;
 use crate::utils::path::validate_file_name_only;
-use sea_lantern_server_plugin_core::{ensure_extension_target_dir, resolve_extension_relative_dir};
 use server_flavor_core::ServerExtensionKind;
+use server_plugin::{ensure_extension_target_dir, resolve_extension_relative_dir};
 
 pub(crate) fn ensure_plugin_target_dir_for_server(
     server: &ServerInstance,

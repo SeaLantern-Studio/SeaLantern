@@ -1,21 +1,21 @@
 use crate::utils::logger;
-use sea_lantern_server_config_core::discovery::{
+use server_config::discovery::{
     discover_server_config_files, discover_server_config_files_with_options,
     resolve_discovered_config_path, resolve_discovered_config_path_with_options,
     search_server_config_files as search_server_config_files_core,
     search_server_config_files_with_options,
 };
-use sea_lantern_server_config_core::properties::{
+use server_config::properties::{
     parse_server_properties, parse_server_properties_from_source, preview_properties_write,
     preview_properties_write_from_source, read_properties, read_raw_text, write_properties,
     write_raw_text,
 };
-use sea_lantern_server_config_core::startup::write_server_startup_config;
-use sea_lantern_server_config_core::startup::{
+use server_config::startup::write_server_startup_config;
+use server_config::startup::{
     build_server_properties_path, read_server_startup_config, validate_config_path,
     validate_path_within_server,
 };
-use sea_lantern_server_config_core::types::{
+use server_config::types::{
     DiscoveredServerConfigFile, SLStartupConfig, ServerConfigDiscoveryOptions,
     ServerConfigDocument, ServerConfigFileKind, ServerConfigSearchHit, ServerConfigSearchMode,
     ServerConfigSearchScope, ServerProperties,
@@ -305,9 +305,9 @@ pub fn read_server_properties(server_path: String) -> Result<ServerProperties, S
     let props_path = build_server_properties_path(&server_path)?;
     match parse_server_properties(&props_path) {
         Ok(properties) => Ok(properties),
-        Err(error) if sea_lantern_server_config_core::startup::is_missing_file_error(&error) => {
+        Err(error) if server_config::startup::is_missing_file_error(&error) => {
             trace_missing_server_properties(&server_path, "read_server_properties");
-            Ok(sea_lantern_server_config_core::startup::empty_server_properties())
+            Ok(server_config::startup::empty_server_properties())
         }
         Err(error) => Err(error),
     }
@@ -327,7 +327,7 @@ pub fn read_server_properties_source(server_path: String) -> Result<String, Stri
     let props_path = build_server_properties_path(&server_path)?;
     match read_raw_text(&props_path) {
         Ok(source) => Ok(source),
-        Err(error) if sea_lantern_server_config_core::startup::is_missing_file_error(&error) => {
+        Err(error) if server_config::startup::is_missing_file_error(&error) => {
             trace_missing_server_properties(&server_path, "read_server_properties_source");
             Ok(String::new())
         }
@@ -386,9 +386,7 @@ mod tests {
         write_sl_config,
     };
     use crate::models::server::{CpuPolicyConfig, CpuPolicyMode, JvmPresetConfig, JvmPresetId};
-    use sea_lantern_server_config_core::types::{
-        SLStartupConfig, ServerConfigSearchMode, ServerConfigSearchScope,
-    };
+    use server_config::types::{SLStartupConfig, ServerConfigSearchMode, ServerConfigSearchScope};
     use tempfile::tempdir;
 
     #[test]

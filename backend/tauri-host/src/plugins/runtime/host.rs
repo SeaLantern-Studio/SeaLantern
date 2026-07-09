@@ -4,8 +4,8 @@ use crate::plugins::api::{
     emit_sidebar_event, emit_ui_event,
 };
 use crate::services::global::i18n_service;
-use sea_lantern_i18n_core::LocaleCallbackToken;
-use sea_lantern_lua_runtime_core::host::{
+use i18n::LocaleCallbackToken;
+use lua_runtime::host::{
     install_runtime_host_api, LocaleChangeCallback, RuntimeComponentEntry, RuntimeHostApi,
     RuntimeI18nApi, RuntimePluginApi,
 };

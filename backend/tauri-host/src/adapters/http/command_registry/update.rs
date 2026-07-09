@@ -10,7 +10,7 @@ fn handle_check_update(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let result = sea_lantern_update_core::check_update(app_version::base_version()).await?;
+        let result = update::check_update(app_version::base_version()).await?;
         serde_json::to_value(result).map_err(|e| e.to_string())
     })
 }

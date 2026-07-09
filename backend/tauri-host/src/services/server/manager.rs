@@ -25,11 +25,9 @@ use crate::services::events::{
 use crate::services::server::runtime;
 use crate::utils::logger;
 use crate::utils::server_status::status_blocks_start;
-use sea_lantern_server_config_core::startup::read_server_port;
-use sea_lantern_server_local_setup_core::{
-    normalize_cli_startup_mode, refresh_local_server_core_type,
-};
 use serde::{Deserialize, Serialize};
+use server_config::startup::read_server_port;
+use server_local_setup::{normalize_cli_startup_mode, refresh_local_server_core_type};
 use sl_server_info::log::LogStream;
 
 use super::log_pipeline as server_log_pipeline;

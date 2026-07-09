@@ -11,9 +11,9 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use futures::{SinkExt, StreamExt};
-use sea_lantern_server_config_core::discovery::discover_server_config_files;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use server_config::discovery::discover_server_config_files;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -920,10 +920,8 @@ fn apply_confirmation(expected_action: &str, params: &Value) -> Result<Value, St
                 .cloned()
                 .ok_or_else(|| "config is required".to_string())?;
             let server = global::server_manager().find_server_clone(&ticket.server_id)?;
-            let parsed = serde_json::from_value::<
-                sea_lantern_server_config_core::types::SLStartupConfig,
-            >(config)
-            .map_err(|e| format!("invalid startup config: {}", e))?;
+            let parsed = serde_json::from_value::<server_config::types::SLStartupConfig>(config)
+                .map_err(|e| format!("invalid startup config: {}", e))?;
             crate::commands::server::config::write_sl_config(server.path.clone(), parsed)?;
             Ok(json!({ "ok": true }))
         }

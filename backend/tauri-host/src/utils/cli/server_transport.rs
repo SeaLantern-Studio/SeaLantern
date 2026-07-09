@@ -98,12 +98,10 @@ pub(super) fn start_web_transport(
 
     let join_handle = std::thread::spawn(move || {
         let bind_addr = bind_addr_for_thread;
-        let rt = match sea_lantern_runtime::create_tokio_runtime(
-            sea_lantern_runtime::TokioRuntimeConfig {
-                error_prefix: "无法为 web transport 创建 Tokio runtime",
-                error_hint: Some("这可能是系统资源限制导致的。"),
-            },
-        ) {
+        let rt = match runtime::create_tokio_runtime(runtime::TokioRuntimeConfig {
+            error_prefix: "无法为 web transport 创建 Tokio runtime",
+            error_hint: Some("这可能是系统资源限制导致的。"),
+        }) {
             Ok(rt) => rt,
             Err(message) => {
                 let _ = startup_tx.send(Err(message.clone()));

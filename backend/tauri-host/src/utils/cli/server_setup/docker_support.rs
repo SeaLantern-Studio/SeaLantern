@@ -7,6 +7,7 @@ mod docker_preflight;
 #[path = "docker_request_builder.rs"]
 mod docker_request_builder;
 
+pub(super) use docker::{parse_command_mode, validate_docker_itzg_image_compatibility};
 pub(super) use docker_paths::resolve_docker_data_dir;
 pub(super) use docker_preflight::{
     ensure_docker_environment, preflight_docker_command_mode_support,
@@ -15,14 +16,13 @@ pub(super) use docker_preflight::{
 pub(super) use docker_request_builder::{
     build_docker_create_request, resolve_requested_docker_image,
 };
-pub(super) use sea_lantern_docker_core::{
-    parse_command_mode, validate_docker_itzg_image_compatibility,
-};
 
 #[cfg(test)]
 use crate::utils::cli::server_args::CliServerCommand;
 #[cfg(test)]
 use crate::utils::cli::server_ports::PreparedPorts;
+#[cfg(test)]
+use docker::{format_memory_env_value, parse_docker_backend};
 #[cfg(test)]
 use docker_mounts::{parse_docker_volume_mount, parse_published_port};
 #[cfg(test)]
@@ -32,8 +32,6 @@ use docker_preflight::{
     preflight_docker_command_mode_support_from_outputs_for_tests,
     preflight_docker_image_reference_from_outputs_for_tests,
 };
-#[cfg(test)]
-use sea_lantern_docker_core::{format_memory_env_value, parse_docker_backend};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct DockerCreateDefaults {

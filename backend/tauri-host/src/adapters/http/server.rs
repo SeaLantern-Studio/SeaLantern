@@ -23,7 +23,7 @@ use super::command_registry::CommandRegistry;
 use crate::services::web_auth::WebAuthService;
 use crate::utils::logger::log_error_ctx;
 use router::build_http_app;
-use sea_lantern_runtime::{
+use runtime::{
     default_headless_http_config_checked, log_headless_http_ready, prepare_headless_http_listener,
     HeadlessHttpConfig,
 };
@@ -81,7 +81,7 @@ mod tests {
         body::Body,
         http::{self, header, Request, StatusCode},
     };
-    use sea_lantern_runtime::HeadlessHttpConfig;
+    use runtime::HeadlessHttpConfig;
     use serde_json::Value;
     use std::{
         path::PathBuf,
@@ -461,7 +461,7 @@ mod tests {
     #[tokio::test]
     async fn auth_status_setup_initialize_and_login_flow_work_over_http() {
         let _lock = lock_env();
-        let _recovery_guard = EnvGuard::remove(sea_lantern_runtime::WEB_AUTH_RECOVERY_TOKEN_ENV);
+        let _recovery_guard = EnvGuard::remove(runtime::WEB_AUTH_RECOVERY_TOKEN_ENV);
         let upload_dir = tempfile::tempdir().expect("tempdir");
         let web_auth_path = unique_web_auth_state_path("server-web-auth-setup-flow");
         let web_auth = Arc::new(WebAuthService::new_for_test(web_auth_path, None));
@@ -673,7 +673,7 @@ mod tests {
     async fn auth_status_recovery_reset_and_new_login_flow_work_over_http() {
         let _lock = lock_env();
         let _recovery_guard =
-            EnvGuard::set(sea_lantern_runtime::WEB_AUTH_RECOVERY_TOKEN_ENV, "recovery-secret");
+            EnvGuard::set(runtime::WEB_AUTH_RECOVERY_TOKEN_ENV, "recovery-secret");
         let upload_dir = tempfile::tempdir().expect("tempdir");
         let app = test_app_with_password(upload_dir.path().to_path_buf(), Some("old-password"));
 
@@ -980,7 +980,7 @@ mod tests {
     #[test]
     fn token_log_reference_uses_prefix_and_fingerprint_without_full_value() {
         let token = "12345678-abcdef-full-secret-token";
-        let reference = sea_lantern_runtime::format_token_reference(token);
+        let reference = runtime::format_token_reference(token);
 
         assert!(reference.contains("prefix=12345678"));
         assert!(reference.contains("fingerprint="));
@@ -990,12 +990,12 @@ mod tests {
     #[test]
     fn generated_token_logging_does_not_leak_full_token() {
         let _lock = lock_env();
-        let _auth_guard = EnvGuard::remove(sea_lantern_runtime::HTTP_AUTH_TOKEN_ENV);
-        let _cors_guard = EnvGuard::remove(sea_lantern_runtime::HTTP_CORS_ORIGINS_ENV);
+        let _auth_guard = EnvGuard::remove(runtime::HTTP_AUTH_TOKEN_ENV);
+        let _cors_guard = EnvGuard::remove(runtime::HTTP_CORS_ORIGINS_ENV);
         GLOBAL_LOG_COLLECTOR.clear();
 
         let config = default_http_server_config().expect("default config should build");
-        for message in sea_lantern_runtime::describe_http_security_configuration(&config) {
+        for message in runtime::describe_http_security_configuration(&config) {
             crate::utils::logger::capture_println(message);
         }
 
@@ -1235,8 +1235,8 @@ mod tests {
     async fn cors_is_disabled_by_default_and_whitelist_is_explicit() {
         let app = {
             let _lock = lock_env();
-            let _auth_guard = EnvGuard::remove(sea_lantern_runtime::HTTP_AUTH_TOKEN_ENV);
-            let _cors_guard = EnvGuard::remove(sea_lantern_runtime::HTTP_CORS_ORIGINS_ENV);
+            let _auth_guard = EnvGuard::remove(runtime::HTTP_AUTH_TOKEN_ENV);
+            let _cors_guard = EnvGuard::remove(runtime::HTTP_CORS_ORIGINS_ENV);
 
             let upload_dir = tempfile::tempdir().expect("tempdir");
             test_app(upload_dir.keep())
@@ -1261,8 +1261,7 @@ mod tests {
 
         let app = {
             let _lock = lock_env();
-            let _cors_guard =
-                EnvGuard::set(sea_lantern_runtime::HTTP_CORS_ORIGINS_ENV, "https://example.com");
+            let _cors_guard = EnvGuard::set(runtime::HTTP_CORS_ORIGINS_ENV, "https://example.com");
             build_http_app(
                 AppState {
                     command_registry: Arc::new(CommandRegistry::new()),
@@ -1299,10 +1298,8 @@ mod tests {
     #[test]
     fn default_http_server_config_rejects_invalid_cors_env() {
         let _lock = lock_env();
-        let _cors_guard = EnvGuard::set(
-            sea_lantern_runtime::HTTP_CORS_ORIGINS_ENV,
-            "https://ok.example, bad\nvalue",
-        );
+        let _cors_guard =
+            EnvGuard::set(runtime::HTTP_CORS_ORIGINS_ENV, "https://ok.example, bad\nvalue");
 
         let error = default_http_server_config()
             .expect_err("HTTP server startup config should reject invalid CORS env");

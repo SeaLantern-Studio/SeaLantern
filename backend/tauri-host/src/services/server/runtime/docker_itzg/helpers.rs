@@ -4,13 +4,11 @@ use crate::services::server::manager::startup_support::{
     resolve_effective_startup_config_checked, EffectiveStartupConfig,
 };
 use crate::utils::docker_cli::docker_error_indicates_missing_container;
-use sea_lantern_docker_core::{
+use docker::{
     build_docker_launch_detail as build_shared_docker_launch_detail,
     build_docker_launch_spec as build_shared_docker_launch_spec, DockerEffectiveLaunchConfig,
 };
-pub(crate) use sea_lantern_docker_core::{
-    build_docker_run_args, DockerLaunchDetail, DockerLaunchSpec,
-};
+pub(crate) use docker::{build_docker_run_args, DockerLaunchDetail, DockerLaunchSpec};
 use std::path::Path;
 use std::process::Output;
 
@@ -312,7 +310,7 @@ mod tests {
     };
     use crate::models::settings::AppSettings;
     use crate::services::server::manager::startup_support::resolve_effective_startup_config;
-    use sea_lantern_docker_core::{
+    use docker::{
         build_docker_effective_env, resolve_docker_active_processor_count, resolve_docker_cpuset,
         ActiveProcessorCountDecision,
     };

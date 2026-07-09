@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[allow(unused_imports)]
-pub use sea_lantern_plugin_trust_core::{TrustedCatalogEntry, TrustedCatalogSnapshot};
+pub use plugin_trust::{TrustedCatalogEntry, TrustedCatalogSnapshot};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PluginInstallMetadata {
@@ -51,30 +51,27 @@ pub struct PluginTrustAssessment {
 
 #[allow(dead_code)]
 pub fn bundled_snapshot() -> &'static TrustedCatalogSnapshot {
-    sea_lantern_plugin_trust_core::bundled_snapshot()
+    plugin_trust::bundled_snapshot()
 }
 
 #[allow(dead_code)]
 pub fn install_metadata_path(plugin_dir: &Path) -> std::path::PathBuf {
-    sea_lantern_plugin_trust_core::install_metadata_path(plugin_dir)
+    plugin_trust::install_metadata_path(plugin_dir)
 }
 
 pub fn read_install_metadata(plugin_dir: &Path) -> Option<PluginInstallMetadata> {
-    sea_lantern_plugin_trust_core::read_install_metadata(plugin_dir).map(from_core_install_metadata)
+    plugin_trust::read_install_metadata(plugin_dir).map(from_core_install_metadata)
 }
 
 pub fn write_install_metadata(
     plugin_dir: &Path,
     metadata: &PluginInstallMetadata,
 ) -> Result<(), String> {
-    sea_lantern_plugin_trust_core::write_install_metadata(
-        plugin_dir,
-        &to_core_install_metadata(metadata.clone()),
-    )
+    plugin_trust::write_install_metadata(plugin_dir, &to_core_install_metadata(metadata.clone()))
 }
 
 pub fn compute_plugin_tree_sha256(plugin_dir: &Path) -> Result<String, String> {
-    sea_lantern_plugin_trust_core::compute_plugin_tree_sha256(plugin_dir)
+    plugin_trust::compute_plugin_tree_sha256(plugin_dir)
 }
 
 pub fn apply_runtime_integrity_state(
@@ -82,7 +79,7 @@ pub fn apply_runtime_integrity_state(
     plugin_dir: &Path,
     metadata: &PluginInstallMetadata,
 ) -> Result<PluginInfo, String> {
-    let state = sea_lantern_plugin_trust_core::PluginRuntimeTrustState {
+    let state = plugin_trust::PluginRuntimeTrustState {
         trust_level_display: to_core_trust_level(plugin.trust_level_display.clone()),
         execution_class: to_core_execution_class(plugin.execution_class.clone()),
         review_status: to_core_review_status(plugin.review_status.clone()),
@@ -94,7 +91,7 @@ pub fn apply_runtime_integrity_state(
         requires_explicit_consent: plugin.requires_explicit_consent,
     };
 
-    let state = sea_lantern_plugin_trust_core::apply_runtime_integrity_state(
+    let state = plugin_trust::apply_runtime_integrity_state(
         state,
         plugin_dir,
         &to_core_install_metadata(metadata.clone()),
@@ -113,11 +110,11 @@ pub fn apply_runtime_integrity_state(
 
 #[allow(dead_code)]
 pub fn enable_grants_path(data_dir: &Path) -> std::path::PathBuf {
-    sea_lantern_plugin_trust_core::enable_grants_path(data_dir)
+    plugin_trust::enable_grants_path(data_dir)
 }
 
 pub fn load_enable_grants(data_dir: &Path) -> Result<Vec<PersistedPluginEnableGrant>, String> {
-    sea_lantern_plugin_trust_core::load_enable_grants(data_dir)
+    plugin_trust::load_enable_grants(data_dir)
         .map(|grants| grants.into_iter().map(from_core_grant).collect())
 }
 
@@ -131,28 +128,24 @@ pub fn save_enable_grants(
         .cloned()
         .map(to_core_grant)
         .collect::<Vec<_>>();
-    sea_lantern_plugin_trust_core::save_enable_grants(data_dir, &grants)
+    plugin_trust::save_enable_grants(data_dir, &grants)
 }
 
 #[allow(dead_code)]
 pub fn permissions_fingerprint(permissions: &[String]) -> String {
-    sea_lantern_plugin_trust_core::permissions_fingerprint(permissions)
+    plugin_trust::permissions_fingerprint(permissions)
 }
 
 #[allow(dead_code)]
 pub fn required_grant_scope(plugin: &PluginInfo) -> Option<PluginEnableGrantScope> {
-    sea_lantern_plugin_trust_core::required_grant_scope(&to_core_enable_context(plugin))
-        .map(from_core_grant_scope)
+    plugin_trust::required_grant_scope(&to_core_enable_context(plugin)).map(from_core_grant_scope)
 }
 
 pub fn grant_scope_covers(
     provided: PluginEnableGrantScope,
     required: PluginEnableGrantScope,
 ) -> bool {
-    sea_lantern_plugin_trust_core::grant_scope_covers(
-        to_core_grant_scope(provided),
-        to_core_grant_scope(required),
-    )
+    plugin_trust::grant_scope_covers(to_core_grant_scope(provided), to_core_grant_scope(required))
 }
 
 pub fn evaluate_enable_requirement(
@@ -164,10 +157,8 @@ pub fn evaluate_enable_requirement(
         .cloned()
         .map(to_core_grant)
         .collect::<Vec<_>>();
-    let result = sea_lantern_plugin_trust_core::evaluate_enable_requirement(
-        &to_core_enable_context(plugin),
-        &core_grants,
-    );
+    let result =
+        plugin_trust::evaluate_enable_requirement(&to_core_enable_context(plugin), &core_grants);
 
     PluginEnableResult {
         success: result.success,
@@ -185,7 +176,7 @@ pub fn upsert_enable_grant(
     plugin: &PluginInfo,
     grant_scope: PluginEnableGrantScope,
 ) -> Result<(), String> {
-    sea_lantern_plugin_trust_core::upsert_enable_grant(
+    plugin_trust::upsert_enable_grant(
         data_dir,
         &to_core_enable_context(plugin),
         to_core_grant_scope(grant_scope),
@@ -197,8 +188,8 @@ pub fn assess_plugin(
     distribution_class: PluginDistributionClass,
     archive_sha256: Option<&str>,
 ) -> PluginTrustAssessment {
-    let assessment = sea_lantern_plugin_trust_core::assess_plugin(
-        &sea_lantern_plugin_trust_core::PluginManifestInput {
+    let assessment = plugin_trust::assess_plugin(
+        &plugin_trust::PluginManifestInput {
             id: manifest.id.clone(),
             version: manifest.version.clone(),
             permissions: manifest.permissions.clone(),
@@ -226,10 +217,8 @@ pub fn assess_plugin(
     }
 }
 
-fn to_core_enable_context(
-    plugin: &PluginInfo,
-) -> sea_lantern_plugin_trust_core::PluginEnableContext {
-    sea_lantern_plugin_trust_core::PluginEnableContext {
+fn to_core_enable_context(plugin: &PluginInfo) -> plugin_trust::PluginEnableContext {
+    plugin_trust::PluginEnableContext {
         plugin_id: plugin.manifest.id.clone(),
         version: plugin.manifest.version.clone(),
         permissions: plugin.manifest.permissions.clone(),
@@ -241,19 +230,15 @@ fn to_core_enable_context(
     }
 }
 
-fn to_core_install_metadata(
-    value: PluginInstallMetadata,
-) -> sea_lantern_plugin_trust_core::PluginInstallMetadata {
-    sea_lantern_plugin_trust_core::PluginInstallMetadata {
+fn to_core_install_metadata(value: PluginInstallMetadata) -> plugin_trust::PluginInstallMetadata {
+    plugin_trust::PluginInstallMetadata {
         distribution_class: value.distribution_class.map(to_core_distribution_class),
         archive_sha256: value.archive_sha256,
         installed_tree_sha256: value.installed_tree_sha256,
     }
 }
 
-fn from_core_install_metadata(
-    value: sea_lantern_plugin_trust_core::PluginInstallMetadata,
-) -> PluginInstallMetadata {
+fn from_core_install_metadata(value: plugin_trust::PluginInstallMetadata) -> PluginInstallMetadata {
     PluginInstallMetadata {
         distribution_class: value.distribution_class.map(from_core_distribution_class),
         archive_sha256: value.archive_sha256,
@@ -261,10 +246,8 @@ fn from_core_install_metadata(
     }
 }
 
-fn to_core_grant(
-    value: PersistedPluginEnableGrant,
-) -> sea_lantern_plugin_trust_core::PersistedPluginEnableGrant {
-    sea_lantern_plugin_trust_core::PersistedPluginEnableGrant {
+fn to_core_grant(value: PersistedPluginEnableGrant) -> plugin_trust::PersistedPluginEnableGrant {
+    plugin_trust::PersistedPluginEnableGrant {
         plugin_id: value.plugin_id,
         version: value.version,
         hash: value.hash,
@@ -274,9 +257,7 @@ fn to_core_grant(
     }
 }
 
-fn from_core_grant(
-    value: sea_lantern_plugin_trust_core::PersistedPluginEnableGrant,
-) -> PersistedPluginEnableGrant {
+fn from_core_grant(value: plugin_trust::PersistedPluginEnableGrant) -> PersistedPluginEnableGrant {
     PersistedPluginEnableGrant {
         plugin_id: value.plugin_id,
         version: value.version,
@@ -289,315 +270,207 @@ fn from_core_grant(
 
 fn to_core_distribution_class(
     value: PluginDistributionClass,
-) -> sea_lantern_plugin_trust_core::PluginDistributionClass {
+) -> plugin_trust::PluginDistributionClass {
     match value {
-        PluginDistributionClass::Builtin => {
-            sea_lantern_plugin_trust_core::PluginDistributionClass::Builtin
-        }
-        PluginDistributionClass::Market => {
-            sea_lantern_plugin_trust_core::PluginDistributionClass::Market
-        }
+        PluginDistributionClass::Builtin => plugin_trust::PluginDistributionClass::Builtin,
+        PluginDistributionClass::Market => plugin_trust::PluginDistributionClass::Market,
         PluginDistributionClass::StandardPackage => {
-            sea_lantern_plugin_trust_core::PluginDistributionClass::StandardPackage
+            plugin_trust::PluginDistributionClass::StandardPackage
         }
         PluginDistributionClass::ManualImport => {
-            sea_lantern_plugin_trust_core::PluginDistributionClass::ManualImport
+            plugin_trust::PluginDistributionClass::ManualImport
         }
         PluginDistributionClass::LocalDirectory => {
-            sea_lantern_plugin_trust_core::PluginDistributionClass::LocalDirectory
+            plugin_trust::PluginDistributionClass::LocalDirectory
         }
         PluginDistributionClass::TrustedCatalog => {
-            sea_lantern_plugin_trust_core::PluginDistributionClass::TrustedCatalog
+            plugin_trust::PluginDistributionClass::TrustedCatalog
         }
-        PluginDistributionClass::Unknown => {
-            sea_lantern_plugin_trust_core::PluginDistributionClass::Unknown
-        }
+        PluginDistributionClass::Unknown => plugin_trust::PluginDistributionClass::Unknown,
     }
 }
 
 fn from_core_distribution_class(
-    value: sea_lantern_plugin_trust_core::PluginDistributionClass,
+    value: plugin_trust::PluginDistributionClass,
 ) -> PluginDistributionClass {
     match value {
-        sea_lantern_plugin_trust_core::PluginDistributionClass::Builtin => {
-            PluginDistributionClass::Builtin
-        }
-        sea_lantern_plugin_trust_core::PluginDistributionClass::Market => {
-            PluginDistributionClass::Market
-        }
-        sea_lantern_plugin_trust_core::PluginDistributionClass::StandardPackage => {
+        plugin_trust::PluginDistributionClass::Builtin => PluginDistributionClass::Builtin,
+        plugin_trust::PluginDistributionClass::Market => PluginDistributionClass::Market,
+        plugin_trust::PluginDistributionClass::StandardPackage => {
             PluginDistributionClass::StandardPackage
         }
-        sea_lantern_plugin_trust_core::PluginDistributionClass::ManualImport => {
+        plugin_trust::PluginDistributionClass::ManualImport => {
             PluginDistributionClass::ManualImport
         }
-        sea_lantern_plugin_trust_core::PluginDistributionClass::LocalDirectory => {
+        plugin_trust::PluginDistributionClass::LocalDirectory => {
             PluginDistributionClass::LocalDirectory
         }
-        sea_lantern_plugin_trust_core::PluginDistributionClass::TrustedCatalog => {
+        plugin_trust::PluginDistributionClass::TrustedCatalog => {
             PluginDistributionClass::TrustedCatalog
         }
-        sea_lantern_plugin_trust_core::PluginDistributionClass::Unknown => {
-            PluginDistributionClass::Unknown
-        }
+        plugin_trust::PluginDistributionClass::Unknown => PluginDistributionClass::Unknown,
     }
 }
 
-fn from_core_trust_level(
-    value: sea_lantern_plugin_trust_core::PluginTrustLevelDisplay,
-) -> PluginTrustLevelDisplay {
+fn from_core_trust_level(value: plugin_trust::PluginTrustLevelDisplay) -> PluginTrustLevelDisplay {
     match value {
-        sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Builtin => {
-            PluginTrustLevelDisplay::Builtin
-        }
-        sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Trusted => {
-            PluginTrustLevelDisplay::Trusted
-        }
-        sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::StandardSandbox => {
+        plugin_trust::PluginTrustLevelDisplay::Builtin => PluginTrustLevelDisplay::Builtin,
+        plugin_trust::PluginTrustLevelDisplay::Trusted => PluginTrustLevelDisplay::Trusted,
+        plugin_trust::PluginTrustLevelDisplay::StandardSandbox => {
             PluginTrustLevelDisplay::StandardSandbox
         }
-        sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Unreviewed => {
-            PluginTrustLevelDisplay::Unreviewed
-        }
+        plugin_trust::PluginTrustLevelDisplay::Unreviewed => PluginTrustLevelDisplay::Unreviewed,
     }
 }
 
-fn to_core_trust_level(
-    value: PluginTrustLevelDisplay,
-) -> sea_lantern_plugin_trust_core::PluginTrustLevelDisplay {
+fn to_core_trust_level(value: PluginTrustLevelDisplay) -> plugin_trust::PluginTrustLevelDisplay {
     match value {
-        PluginTrustLevelDisplay::Builtin => {
-            sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Builtin
-        }
-        PluginTrustLevelDisplay::Trusted => {
-            sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Trusted
-        }
+        PluginTrustLevelDisplay::Builtin => plugin_trust::PluginTrustLevelDisplay::Builtin,
+        PluginTrustLevelDisplay::Trusted => plugin_trust::PluginTrustLevelDisplay::Trusted,
         PluginTrustLevelDisplay::StandardSandbox => {
-            sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::StandardSandbox
+            plugin_trust::PluginTrustLevelDisplay::StandardSandbox
         }
-        PluginTrustLevelDisplay::Unreviewed => {
-            sea_lantern_plugin_trust_core::PluginTrustLevelDisplay::Unreviewed
-        }
+        PluginTrustLevelDisplay::Unreviewed => plugin_trust::PluginTrustLevelDisplay::Unreviewed,
     }
 }
 
-fn from_core_execution_class(
-    value: sea_lantern_plugin_trust_core::PluginExecutionClass,
-) -> PluginExecutionClass {
+fn from_core_execution_class(value: plugin_trust::PluginExecutionClass) -> PluginExecutionClass {
     match value {
-        sea_lantern_plugin_trust_core::PluginExecutionClass::BuiltinFull => {
-            PluginExecutionClass::BuiltinFull
-        }
-        sea_lantern_plugin_trust_core::PluginExecutionClass::TrustedFull => {
-            PluginExecutionClass::TrustedFull
-        }
-        sea_lantern_plugin_trust_core::PluginExecutionClass::Sandboxed => {
-            PluginExecutionClass::Sandboxed
-        }
-        sea_lantern_plugin_trust_core::PluginExecutionClass::Restricted => {
-            PluginExecutionClass::Restricted
-        }
+        plugin_trust::PluginExecutionClass::BuiltinFull => PluginExecutionClass::BuiltinFull,
+        plugin_trust::PluginExecutionClass::TrustedFull => PluginExecutionClass::TrustedFull,
+        plugin_trust::PluginExecutionClass::Sandboxed => PluginExecutionClass::Sandboxed,
+        plugin_trust::PluginExecutionClass::Restricted => PluginExecutionClass::Restricted,
     }
 }
 
-fn to_core_execution_class(
-    value: PluginExecutionClass,
-) -> sea_lantern_plugin_trust_core::PluginExecutionClass {
+fn to_core_execution_class(value: PluginExecutionClass) -> plugin_trust::PluginExecutionClass {
     match value {
-        PluginExecutionClass::BuiltinFull => {
-            sea_lantern_plugin_trust_core::PluginExecutionClass::BuiltinFull
-        }
-        PluginExecutionClass::TrustedFull => {
-            sea_lantern_plugin_trust_core::PluginExecutionClass::TrustedFull
-        }
-        PluginExecutionClass::Sandboxed => {
-            sea_lantern_plugin_trust_core::PluginExecutionClass::Sandboxed
-        }
-        PluginExecutionClass::Restricted => {
-            sea_lantern_plugin_trust_core::PluginExecutionClass::Restricted
-        }
+        PluginExecutionClass::BuiltinFull => plugin_trust::PluginExecutionClass::BuiltinFull,
+        PluginExecutionClass::TrustedFull => plugin_trust::PluginExecutionClass::TrustedFull,
+        PluginExecutionClass::Sandboxed => plugin_trust::PluginExecutionClass::Sandboxed,
+        PluginExecutionClass::Restricted => plugin_trust::PluginExecutionClass::Restricted,
     }
 }
 
-fn from_core_review_status(
-    value: sea_lantern_plugin_trust_core::PluginReviewStatus,
-) -> PluginReviewStatus {
+fn from_core_review_status(value: plugin_trust::PluginReviewStatus) -> PluginReviewStatus {
     match value {
-        sea_lantern_plugin_trust_core::PluginReviewStatus::Builtin => PluginReviewStatus::Builtin,
-        sea_lantern_plugin_trust_core::PluginReviewStatus::SealanternReviewed => {
+        plugin_trust::PluginReviewStatus::Builtin => PluginReviewStatus::Builtin,
+        plugin_trust::PluginReviewStatus::SealanternReviewed => {
             PluginReviewStatus::SealanternReviewed
         }
-        sea_lantern_plugin_trust_core::PluginReviewStatus::Unreviewed => {
-            PluginReviewStatus::Unreviewed
-        }
-        sea_lantern_plugin_trust_core::PluginReviewStatus::Revoked => PluginReviewStatus::Revoked,
+        plugin_trust::PluginReviewStatus::Unreviewed => PluginReviewStatus::Unreviewed,
+        plugin_trust::PluginReviewStatus::Revoked => PluginReviewStatus::Revoked,
     }
 }
 
-fn to_core_review_status(
-    value: PluginReviewStatus,
-) -> sea_lantern_plugin_trust_core::PluginReviewStatus {
+fn to_core_review_status(value: PluginReviewStatus) -> plugin_trust::PluginReviewStatus {
     match value {
-        PluginReviewStatus::Builtin => sea_lantern_plugin_trust_core::PluginReviewStatus::Builtin,
+        PluginReviewStatus::Builtin => plugin_trust::PluginReviewStatus::Builtin,
         PluginReviewStatus::SealanternReviewed => {
-            sea_lantern_plugin_trust_core::PluginReviewStatus::SealanternReviewed
+            plugin_trust::PluginReviewStatus::SealanternReviewed
         }
-        PluginReviewStatus::Unreviewed => {
-            sea_lantern_plugin_trust_core::PluginReviewStatus::Unreviewed
-        }
-        PluginReviewStatus::Revoked => sea_lantern_plugin_trust_core::PluginReviewStatus::Revoked,
+        PluginReviewStatus::Unreviewed => plugin_trust::PluginReviewStatus::Unreviewed,
+        PluginReviewStatus::Revoked => plugin_trust::PluginReviewStatus::Revoked,
     }
 }
 
-fn from_core_integrity_status(
-    value: sea_lantern_plugin_trust_core::PluginIntegrityStatus,
-) -> PluginIntegrityStatus {
+fn from_core_integrity_status(value: plugin_trust::PluginIntegrityStatus) -> PluginIntegrityStatus {
     match value {
-        sea_lantern_plugin_trust_core::PluginIntegrityStatus::Bundled => {
-            PluginIntegrityStatus::Bundled
-        }
-        sea_lantern_plugin_trust_core::PluginIntegrityStatus::VerifiedHash => {
-            PluginIntegrityStatus::VerifiedHash
-        }
-        sea_lantern_plugin_trust_core::PluginIntegrityStatus::VerifiedSignature => {
+        plugin_trust::PluginIntegrityStatus::Bundled => PluginIntegrityStatus::Bundled,
+        plugin_trust::PluginIntegrityStatus::VerifiedHash => PluginIntegrityStatus::VerifiedHash,
+        plugin_trust::PluginIntegrityStatus::VerifiedSignature => {
             PluginIntegrityStatus::VerifiedSignature
         }
-        sea_lantern_plugin_trust_core::PluginIntegrityStatus::Unsigned => {
-            PluginIntegrityStatus::Unsigned
-        }
-        sea_lantern_plugin_trust_core::PluginIntegrityStatus::Mismatch => {
-            PluginIntegrityStatus::Mismatch
-        }
-        sea_lantern_plugin_trust_core::PluginIntegrityStatus::Unknown => {
-            PluginIntegrityStatus::Unknown
-        }
+        plugin_trust::PluginIntegrityStatus::Unsigned => PluginIntegrityStatus::Unsigned,
+        plugin_trust::PluginIntegrityStatus::Mismatch => PluginIntegrityStatus::Mismatch,
+        plugin_trust::PluginIntegrityStatus::Unknown => PluginIntegrityStatus::Unknown,
     }
 }
 
-fn to_core_integrity_status(
-    value: PluginIntegrityStatus,
-) -> sea_lantern_plugin_trust_core::PluginIntegrityStatus {
+fn to_core_integrity_status(value: PluginIntegrityStatus) -> plugin_trust::PluginIntegrityStatus {
     match value {
-        PluginIntegrityStatus::Bundled => {
-            sea_lantern_plugin_trust_core::PluginIntegrityStatus::Bundled
-        }
-        PluginIntegrityStatus::VerifiedHash => {
-            sea_lantern_plugin_trust_core::PluginIntegrityStatus::VerifiedHash
-        }
+        PluginIntegrityStatus::Bundled => plugin_trust::PluginIntegrityStatus::Bundled,
+        PluginIntegrityStatus::VerifiedHash => plugin_trust::PluginIntegrityStatus::VerifiedHash,
         PluginIntegrityStatus::VerifiedSignature => {
-            sea_lantern_plugin_trust_core::PluginIntegrityStatus::VerifiedSignature
+            plugin_trust::PluginIntegrityStatus::VerifiedSignature
         }
-        PluginIntegrityStatus::Unsigned => {
-            sea_lantern_plugin_trust_core::PluginIntegrityStatus::Unsigned
-        }
-        PluginIntegrityStatus::Mismatch => {
-            sea_lantern_plugin_trust_core::PluginIntegrityStatus::Mismatch
-        }
-        PluginIntegrityStatus::Unknown => {
-            sea_lantern_plugin_trust_core::PluginIntegrityStatus::Unknown
-        }
+        PluginIntegrityStatus::Unsigned => plugin_trust::PluginIntegrityStatus::Unsigned,
+        PluginIntegrityStatus::Mismatch => plugin_trust::PluginIntegrityStatus::Mismatch,
+        PluginIntegrityStatus::Unknown => plugin_trust::PluginIntegrityStatus::Unknown,
     }
 }
 
 fn from_core_policy_source(
-    value: sea_lantern_plugin_trust_core::PluginTrustedPolicySource,
+    value: plugin_trust::PluginTrustedPolicySource,
 ) -> PluginTrustedPolicySource {
     match value {
-        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::Builtin => {
-            PluginTrustedPolicySource::Builtin
-        }
-        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::BundledSnapshot => {
+        plugin_trust::PluginTrustedPolicySource::Builtin => PluginTrustedPolicySource::Builtin,
+        plugin_trust::PluginTrustedPolicySource::BundledSnapshot => {
             PluginTrustedPolicySource::BundledSnapshot
         }
-        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::RemoteSignedCatalog => {
+        plugin_trust::PluginTrustedPolicySource::RemoteSignedCatalog => {
             PluginTrustedPolicySource::RemoteSignedCatalog
         }
-        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::LocalAttestation => {
+        plugin_trust::PluginTrustedPolicySource::LocalAttestation => {
             PluginTrustedPolicySource::LocalAttestation
         }
-        sea_lantern_plugin_trust_core::PluginTrustedPolicySource::None => {
-            PluginTrustedPolicySource::None
-        }
+        plugin_trust::PluginTrustedPolicySource::None => PluginTrustedPolicySource::None,
     }
 }
 
 fn from_core_permission_profile(
-    value: sea_lantern_plugin_trust_core::PluginPermissionProfile,
+    value: plugin_trust::PluginPermissionProfile,
 ) -> PluginPermissionProfile {
     match value {
-        sea_lantern_plugin_trust_core::PluginPermissionProfile::BuiltinFull => {
-            PluginPermissionProfile::BuiltinFull
-        }
-        sea_lantern_plugin_trust_core::PluginPermissionProfile::TrustedFull => {
-            PluginPermissionProfile::TrustedFull
-        }
-        sea_lantern_plugin_trust_core::PluginPermissionProfile::SandboxedNormal => {
+        plugin_trust::PluginPermissionProfile::BuiltinFull => PluginPermissionProfile::BuiltinFull,
+        plugin_trust::PluginPermissionProfile::TrustedFull => PluginPermissionProfile::TrustedFull,
+        plugin_trust::PluginPermissionProfile::SandboxedNormal => {
             PluginPermissionProfile::SandboxedNormal
         }
-        sea_lantern_plugin_trust_core::PluginPermissionProfile::SandboxedExtended => {
+        plugin_trust::PluginPermissionProfile::SandboxedExtended => {
             PluginPermissionProfile::SandboxedExtended
         }
-        sea_lantern_plugin_trust_core::PluginPermissionProfile::Unreviewed => {
-            PluginPermissionProfile::Unreviewed
-        }
+        plugin_trust::PluginPermissionProfile::Unreviewed => PluginPermissionProfile::Unreviewed,
     }
 }
 
 fn to_core_permission_profile(
     value: PluginPermissionProfile,
-) -> sea_lantern_plugin_trust_core::PluginPermissionProfile {
+) -> plugin_trust::PluginPermissionProfile {
     match value {
-        PluginPermissionProfile::BuiltinFull => {
-            sea_lantern_plugin_trust_core::PluginPermissionProfile::BuiltinFull
-        }
-        PluginPermissionProfile::TrustedFull => {
-            sea_lantern_plugin_trust_core::PluginPermissionProfile::TrustedFull
-        }
+        PluginPermissionProfile::BuiltinFull => plugin_trust::PluginPermissionProfile::BuiltinFull,
+        PluginPermissionProfile::TrustedFull => plugin_trust::PluginPermissionProfile::TrustedFull,
         PluginPermissionProfile::SandboxedNormal => {
-            sea_lantern_plugin_trust_core::PluginPermissionProfile::SandboxedNormal
+            plugin_trust::PluginPermissionProfile::SandboxedNormal
         }
         PluginPermissionProfile::SandboxedExtended => {
-            sea_lantern_plugin_trust_core::PluginPermissionProfile::SandboxedExtended
+            plugin_trust::PluginPermissionProfile::SandboxedExtended
         }
-        PluginPermissionProfile::Unreviewed => {
-            sea_lantern_plugin_trust_core::PluginPermissionProfile::Unreviewed
-        }
+        PluginPermissionProfile::Unreviewed => plugin_trust::PluginPermissionProfile::Unreviewed,
     }
 }
 
-fn from_core_grant_scope(
-    value: sea_lantern_plugin_trust_core::PluginEnableGrantScope,
-) -> PluginEnableGrantScope {
+fn from_core_grant_scope(value: plugin_trust::PluginEnableGrantScope) -> PluginEnableGrantScope {
     match value {
-        sea_lantern_plugin_trust_core::PluginEnableGrantScope::Once => PluginEnableGrantScope::Once,
-        sea_lantern_plugin_trust_core::PluginEnableGrantScope::Version => {
-            PluginEnableGrantScope::Version
-        }
-        sea_lantern_plugin_trust_core::PluginEnableGrantScope::Hash => PluginEnableGrantScope::Hash,
+        plugin_trust::PluginEnableGrantScope::Once => PluginEnableGrantScope::Once,
+        plugin_trust::PluginEnableGrantScope::Version => PluginEnableGrantScope::Version,
+        plugin_trust::PluginEnableGrantScope::Hash => PluginEnableGrantScope::Hash,
     }
 }
 
-fn to_core_grant_scope(
-    value: PluginEnableGrantScope,
-) -> sea_lantern_plugin_trust_core::PluginEnableGrantScope {
+fn to_core_grant_scope(value: PluginEnableGrantScope) -> plugin_trust::PluginEnableGrantScope {
     match value {
-        PluginEnableGrantScope::Once => sea_lantern_plugin_trust_core::PluginEnableGrantScope::Once,
-        PluginEnableGrantScope::Version => {
-            sea_lantern_plugin_trust_core::PluginEnableGrantScope::Version
-        }
-        PluginEnableGrantScope::Hash => sea_lantern_plugin_trust_core::PluginEnableGrantScope::Hash,
+        PluginEnableGrantScope::Once => plugin_trust::PluginEnableGrantScope::Once,
+        PluginEnableGrantScope::Version => plugin_trust::PluginEnableGrantScope::Version,
+        PluginEnableGrantScope::Hash => plugin_trust::PluginEnableGrantScope::Hash,
     }
 }
 
-fn from_core_block_reason(
-    value: sea_lantern_plugin_trust_core::PluginEnableBlockReason,
-) -> PluginEnableBlockReason {
+fn from_core_block_reason(value: plugin_trust::PluginEnableBlockReason) -> PluginEnableBlockReason {
     match value {
-        sea_lantern_plugin_trust_core::PluginEnableBlockReason::UserConfirmationRequired => {
+        plugin_trust::PluginEnableBlockReason::UserConfirmationRequired => {
             PluginEnableBlockReason::UserConfirmationRequired
         }
-        sea_lantern_plugin_trust_core::PluginEnableBlockReason::Revoked => {
-            PluginEnableBlockReason::Revoked
-        }
+        plugin_trust::PluginEnableBlockReason::Revoked => PluginEnableBlockReason::Revoked,
     }
 }

@@ -1,0 +1,12 @@
+[package]
+name = "event"
+version.workspace = true
+edition.workspace = true
+description = "Shared event envelopes, subscriptions, manager, and registry DTOs for Sea Lantern"
+
+[lib]
+name = "event"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }

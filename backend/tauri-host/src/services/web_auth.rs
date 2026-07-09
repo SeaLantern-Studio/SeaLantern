@@ -4,7 +4,7 @@ use argon2::{
     Argon2,
 };
 use rand_core::OsRng;
-use sea_lantern_runtime::{get_or_create_app_data_dir_checked, WEB_AUTH_RECOVERY_TOKEN_ENV};
+use runtime::{get_or_create_app_data_dir_checked, WEB_AUTH_RECOVERY_TOKEN_ENV};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -575,7 +575,7 @@ mod tests {
     };
     use crate::test_support::{lock_env, EnvGuard};
     use crate::utils::logger::GLOBAL_LOG_COLLECTOR;
-    use sea_lantern_runtime::{HTTP_AUTH_TOKEN_ENV, WEB_AUTH_RECOVERY_TOKEN_ENV};
+    use runtime::{HTTP_AUTH_TOKEN_ENV, WEB_AUTH_RECOVERY_TOKEN_ENV};
     use std::{
         path::PathBuf,
         time::{SystemTime, UNIX_EPOCH},

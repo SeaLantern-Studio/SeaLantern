@@ -61,13 +61,13 @@
 
 常见错误场景包括：
 
-- key 为空，见 [`storage.key_empty`](../../backend/i18n-core/locales/zh-CN.json)
-- key 超过长度限制，见 [`storage.key_too_long`](../../backend/i18n-core/locales/zh-CN.json)
-- value 超过大小限制，见 [`storage.value_too_large`](../../backend/i18n-core/locales/zh-CN.json)
-- 总存储超过限制，见 [`storage.total_too_large`](../../backend/i18n-core/locales/zh-CN.json)
-- 存储文件包含非法 JSON，见 [`storage.invalid_json`](../../backend/i18n-core/locales/zh-CN.json)
-- 读取或写入文件失败，见 [`storage.read_failed`](../../backend/i18n-core/locales/zh-CN.json)、[`storage.write_failed`](../../backend/i18n-core/locales/zh-CN.json)
-- 互斥锁获取失败，见 [`storage.lock_failed`](../../backend/i18n-core/locales/zh-CN.json)
+- key 为空，见 [`storage.key_empty`](../../backend/i18n/locales/zh-CN.json)
+- key 超过长度限制，见 [`storage.key_too_long`](../../backend/i18n/locales/zh-CN.json)
+- value 超过大小限制，见 [`storage.value_too_large`](../../backend/i18n/locales/zh-CN.json)
+- 总存储超过限制，见 [`storage.total_too_large`](../../backend/i18n/locales/zh-CN.json)
+- 存储文件包含非法 JSON，见 [`storage.invalid_json`](../../backend/i18n/locales/zh-CN.json)
+- 读取或写入文件失败，见 [`storage.read_failed`](../../backend/i18n/locales/zh-CN.json)、[`storage.write_failed`](../../backend/i18n/locales/zh-CN.json)
+- 互斥锁获取失败，见 [`storage.lock_failed`](../../backend/i18n/locales/zh-CN.json)
 
 例如：
 

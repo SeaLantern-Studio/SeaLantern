@@ -218,7 +218,7 @@ pub(super) fn get_data_dir_checked() -> Result<String, String> {
 mod tests {
     use super::*;
     use crate::test_support::{lock_env, EnvGuard};
-    use sea_lantern_server_local_setup_core::preview_command;
+    use server_local_setup::preview_command;
     use std::process::Command;
     #[cfg(target_os = "windows")]
     use tempfile::TempDir;

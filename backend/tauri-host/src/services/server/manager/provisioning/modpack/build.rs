@@ -3,8 +3,8 @@ use std::path::Path;
 use crate::models::server::{
     ImportModpackRequest, LocalRuntimeConfig, ServerInstance, ServerRuntimeConfig,
 };
-use sea_lantern_server_installer_core::resolve_imported_server_core_key;
-use sea_lantern_server_local_setup_core::{canonical_core_type, ModpackStartupSelection};
+use server_installer::resolve_imported_server_core_key;
+use server_local_setup::{canonical_core_type, ModpackStartupSelection};
 
 pub(super) fn build_modpack_server_instance(
     id: String,
@@ -57,7 +57,7 @@ mod tests {
     use crate::models::server::{CpuPolicyConfig, ImportModpackRequest, JvmPresetConfig};
     use std::path::Path;
 
-    use sea_lantern_server_local_setup_core::ModpackStartupSelection;
+    use server_local_setup::ModpackStartupSelection;
 
     fn sample_request() -> ImportModpackRequest {
         ImportModpackRequest {

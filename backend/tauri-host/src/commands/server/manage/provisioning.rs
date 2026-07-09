@@ -1,8 +1,8 @@
 use super::common::manager;
 use crate::commands::server::common::server_t1;
 use crate::models::server::*;
-use sea_lantern_server_installer_core::parse_server_core_key as parse_shared_server_core_key;
-use sea_lantern_server_installer_core::parse_server_core_type as parse_shared_server_core_type;
+use server_installer::parse_server_core_key as parse_shared_server_core_key;
+use server_installer::parse_server_core_type as parse_shared_server_core_type;
 
 #[allow(clippy::too_many_arguments)]
 /// 创建服务器请求并交给服务层处理

@@ -1,11 +1,11 @@
 //! 服务器日志 host glue：保留事件发布、ServerManager 集成和路径解析，
-//! 纯日志域逻辑由 `sea-lantern-server-log-core` 承担。
+//! 纯日志域逻辑由 `server-log` 承担。
 
 use crate::services::events::{
     publish_server_output_raw, publish_server_output_structured, ServerEventSource,
 };
 use crate::utils::logger;
-use sea_lantern_server_log_core::{
+use server_log::{
     map_domain_event as map_core_domain_event, read_logs,
     spawn_server_output_reader as spawn_reader, OutputReaderHooks, StructuredLogEventFields,
 };
@@ -52,16 +52,16 @@ pub fn clear_server_log_processors() -> Result<(), String> {
 }
 
 pub fn init_db(server_path: &Path) -> Result<(), String> {
-    sea_lantern_server_log_core::init_db(server_path)
+    server_log::init_db(server_path)
 }
 
 pub fn shutdown_writer(server_id: &str) {
-    sea_lantern_server_log_core::shutdown_writer(server_id)
+    server_log::shutdown_writer(server_id)
 }
 
 pub fn append_sealantern_log(server_id: &str, message: &str) -> Result<(), String> {
     let server_path = resolve_server_path(server_id)?;
-    sea_lantern_server_log_core::append_sealantern_log(server_id, &server_path, message)?;
+    server_log::append_sealantern_log(server_id, &server_path, message)?;
     emit_server_log_line_with_stream(server_id, message, LogStream::Unknown);
     Ok(())
 }
@@ -69,7 +69,7 @@ pub fn append_sealantern_log(server_id: &str, message: &str) -> Result<(), Strin
 #[allow(dead_code)]
 pub fn append_server_log(server_id: &str, message: &str) -> Result<(), String> {
     let server_path = resolve_server_path(server_id)?;
-    sea_lantern_server_log_core::append_server_log(server_id, &server_path, message)?;
+    server_log::append_server_log(server_id, &server_path, message)?;
     emit_server_log_line_with_stream(server_id, message, LogStream::Unknown);
     Ok(())
 }

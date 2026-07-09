@@ -1,8 +1,6 @@
 use super::common::RegistryBuilder;
 use super::{config, java, player, plugin, server, settings, system, tunnel, update};
-use sea_lantern_runtime::{
-    dispatch_http_command, CommandRegistry as SharedCommandRegistry, DispatchResult,
-};
+use runtime::{dispatch_http_command, CommandRegistry as SharedCommandRegistry, DispatchResult};
 
 /// 对外暴露的 HTTP 命令表。
 pub struct CommandRegistry {

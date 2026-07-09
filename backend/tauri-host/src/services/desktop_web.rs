@@ -23,7 +23,7 @@ fn state() -> &'static Mutex<Option<DesktopWebState>> {
 }
 
 fn resolve_desktop_web_bind_addr() -> String {
-    sea_lantern_runtime::resolve_http_bind_addr_checked(3000)
+    runtime::resolve_http_bind_addr_checked(3000)
         .unwrap_or_else(|_| DEFAULT_DESKTOP_WEB_BIND_ADDR.to_string())
 }
 

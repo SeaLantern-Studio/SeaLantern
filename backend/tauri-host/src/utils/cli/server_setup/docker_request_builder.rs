@@ -12,13 +12,11 @@ use crate::utils::cli::server_args::CliServerCommand;
 use crate::utils::cli::server_docker::{build_docker_command_transport, default_docker_env};
 use crate::utils::cli::server_ports::PreparedPorts;
 use crate::utils::cli::server_shared::trace_cli_action;
-use sea_lantern_docker_core::{
+use docker::{
     format_memory_env_value, parse_command_mode, parse_docker_backend, resolve_docker_image_and_tag,
 };
-use sea_lantern_server_installer_core::CoreType;
-use sea_lantern_server_local_setup_core::{
-    resolve_docker_create_core_type, resolve_docker_create_mc_version,
-};
+use server_installer::CoreType;
+use server_local_setup::{resolve_docker_create_core_type, resolve_docker_create_mc_version};
 
 fn cli_docker_t(key: &str) -> String {
     i18n_service().t(key)

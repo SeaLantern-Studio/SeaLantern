@@ -1,5 +1,5 @@
-use sea_lantern_server_local_setup_core::canonical_core_type;
 use server_flavor_core::normalize_core_key as normalize_published_core_key;
+use server_local_setup::canonical_core_type;
 
 #[cfg(test)]
 use server_flavor_core::{
@@ -61,7 +61,7 @@ fn extension_dir_for_kind(
     server: &ServerInstance,
     kind: server_flavor_core::ServerExtensionKind,
 ) -> Option<&'static str> {
-    sea_lantern_server_plugin_core::resolve_extension_relative_dir(
+    server_plugin::resolve_extension_relative_dir(
         &server.core_type,
         &server.runtime_kind,
         server.startup_mode_str(),

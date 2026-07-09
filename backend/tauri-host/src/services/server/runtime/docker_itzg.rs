@@ -19,7 +19,7 @@ use crate::utils::docker_cli::{
     docker_executable_path, ensure_docker_command_success, render_docker_command_error,
 };
 use crate::utils::logger;
-use sea_lantern_docker_core::{
+use docker::{
     docker_image_ref, requested_stop_timeout_secs, runtime_env_value, ActiveProcessorCountDecision,
 };
 use sl_server_info::log::LogStream;
@@ -1529,9 +1529,9 @@ mod tests {
                 },
                 &settings,
             );
-        let (env, _) = sea_lantern_docker_core::build_docker_effective_env(
+        let (env, _) = docker::build_docker_effective_env(
             &runtime,
-            &sea_lantern_docker_core::DockerEffectiveLaunchConfig {
+            &docker::DockerEffectiveLaunchConfig {
                 max_memory: effective.max_memory,
                 min_memory: effective.min_memory,
                 jvm_args: effective.jvm_args.clone(),

@@ -1,0 +1,13 @@
+[package]
+name = "lua-runtime"
+version.workspace = true
+edition.workspace = true
+description = "Host-facing runtime boundary for Sea Lantern Lua plugins"
+
+[lib]
+name = "lua_runtime"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

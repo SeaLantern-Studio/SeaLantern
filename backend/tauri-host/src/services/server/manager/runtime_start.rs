@@ -12,7 +12,7 @@ use crate::services::server::log_pipeline as server_log_pipeline;
 use crate::services::server::runtime::{
     RuntimeProcessHandle, RuntimeStartRequest, RuntimeStartResult,
 };
-use sea_lantern_server_local_setup_core::{
+use server_local_setup::{
     resolve_java_paths, resolve_managed_console_encoding, startup_filename,
     startup_mode_requires_java,
 };

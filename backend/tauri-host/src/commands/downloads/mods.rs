@@ -1,8 +1,8 @@
 use crate::services::global;
 use crate::services::mod_manager::ModInfo;
 use crate::utils::path::validate_file_name_only;
-use sea_lantern_server_plugin_core::ensure_extension_target_dir;
 use server_flavor_core::ServerExtensionKind;
+use server_plugin::ensure_extension_target_dir;
 use tauri::command;
 
 #[command]

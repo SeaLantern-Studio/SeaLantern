@@ -1,0 +1,25 @@
+{
+  "name": "sea-lantern-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.3",
+  "scripts": {
+    "dev": "pnpm --dir frontend run dev",
+    "tauri:dev": "node scripts/tauri.mjs dev:desktop-full",
+    "tauri:build": "node scripts/tauri.mjs build:desktop-full",
+    "build": "pnpm --dir frontend run build",
+    "build:check": "pnpm --dir frontend run build:check",
+    "lint": "pnpm --dir frontend run lint",
+    "lint:fix": "pnpm --dir frontend run lint:fix",
+    "fmt": "pnpm --dir frontend run fmt",
+    "fmt:check": "pnpm --dir frontend run fmt:check",
+    "i18n:sync": "pnpm --dir frontend run i18n:sync",
+    "i18n:check": "pnpm --dir frontend run i18n:check",
+    "dev:http": "pnpm --dir frontend run dev:http",
+    "docker:dev": "pnpm --dir frontend run docker:dev",
+    "docker:build": "pnpm --dir frontend run docker:build",
+    "notice": "node scripts/notice.mjs",
+    "sv": "node scripts/version.mjs show",
+    "cv": "node scripts/version.mjs change"
+  }
+}

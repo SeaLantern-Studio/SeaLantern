@@ -4,11 +4,11 @@ use crate::services::server::manager::common::StartupMode;
 use crate::services::server::manager::i18n::manager_t;
 use crate::services::server::manager::i18n::manager_t1;
 use crate::services::server::manager::startup_support::resolve_effective_startup_config_checked;
-use sea_lantern_server_config_core::{
+use server_config::{
     resolve_active_processor_count as resolve_shared_active_processor_count,
     resolve_local_cpu_policy as resolve_shared_local_cpu_policy, ResolvedCpuPolicy,
 };
-use sea_lantern_server_local_setup_core::local_cpu_policy_supported_startup_mode;
+use server_local_setup::local_cpu_policy_supported_startup_mode;
 
 #[cfg(test)]
 use crate::services::server::manager::startup_support::resolve_effective_startup_config;
