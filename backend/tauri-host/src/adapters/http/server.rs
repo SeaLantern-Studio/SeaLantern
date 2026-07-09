@@ -401,7 +401,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         let payload = response_payload(response).await;
-        assert_eq!(payload.success, false);
+        assert!(!payload.success);
         let error = payload.error.expect("error message");
         assert!(error.contains("Invalid parameters:"));
         let error_detail = payload.error_detail.expect("structured error detail");
@@ -433,7 +433,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let payload = response_payload(response).await;
-        assert_eq!(payload.success, false);
+        assert!(!payload.success);
         let error_detail = payload.error_detail.expect("structured error detail");
         assert_eq!(error_detail.code, "common.message_unknown_error");
         assert_eq!(error_detail.error_kind.as_deref(), Some("runtime"));
@@ -459,6 +459,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn auth_status_setup_initialize_and_login_flow_work_over_http() {
         let _lock = lock_env();
         let _recovery_guard = EnvGuard::remove(runtime::WEB_AUTH_RECOVERY_TOKEN_ENV);
@@ -670,6 +671,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn auth_status_recovery_reset_and_new_login_flow_work_over_http() {
         let _lock = lock_env();
         let _recovery_guard =
@@ -937,7 +939,7 @@ mod tests {
 
             assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED, "route {}", route);
             let payload = response_payload(response).await;
-            assert_eq!(payload.success, false, "route {}", route);
+            assert!(!payload.success, "route {}", route);
             let error_detail = payload.error_detail.expect("error detail");
             assert_eq!(error_detail.error_kind.as_deref(), Some("not_implemented"));
             assert!(error_detail.message.contains("reserved"));

@@ -1997,7 +1997,7 @@ mod tests {
         assert!(windows_script_prefers_utf8("jar", &batch));
 
         let gbk = dir.path().join("start.ps1");
-        std::fs::write(&gbk, &[0xC4, 0xE3, 0xBA, 0xC3]).expect("gbk-like bytes should write");
+        std::fs::write(&gbk, [0xC4, 0xE3, 0xBA, 0xC3]).expect("gbk-like bytes should write");
         assert!(!windows_script_prefers_utf8("ps1", &gbk));
     }
 

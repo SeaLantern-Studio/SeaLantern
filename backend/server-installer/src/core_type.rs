@@ -325,6 +325,12 @@ impl FromStr for CoreType {
     }
 }
 
+impl std::fmt::Display for CoreType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{CoreType, StarterInstallArgs, StarterInstallMode};
@@ -411,11 +417,5 @@ mod tests {
             Some(StarterInstallArgs { args: vec!["--install-server", "."] })
         );
         assert_eq!(CoreType::starter_install_args("   "), None);
-    }
-}
-
-impl std::fmt::Display for CoreType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
     }
 }
