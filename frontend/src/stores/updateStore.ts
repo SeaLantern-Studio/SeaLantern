@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { updateMetadataApi, type UpdateInfo } from "@api/update";
+import { useSettingsStore } from "@stores/settingsStore";
 
 export type UpdateStatus =
   | "idle"
@@ -105,6 +106,12 @@ export const useUpdateStore = defineStore("update", () => {
       return updateInfo.value;
     }
     hasCheckedOnStartup.value = true;
+
+    const settingsStore = useSettingsStore();
+    if (!settingsStore.settings.auto_check_update) {
+      return null;
+    }
+
     return checkForUpdate(true);
   }
 

@@ -4,6 +4,7 @@ import { useGlobalMessage } from "@composables/useMessage";
 import { i18n } from "@language";
 import { useI18nStore } from "@stores/i18nStore";
 import { useSettingsStore } from "@stores/settingsStore";
+import { useUpdateStore } from "@stores/updateStore";
 import { isBrowserEnv } from "@api/tauri";
 import { normalizeAppError } from "@utils/appError";
 
@@ -14,6 +15,7 @@ type GeneralSettingField =
   | "closeServersOnExit"
   | "closeServersOnUpdate"
   | "autoAcceptEula"
+  | "autoCheckUpdate"
   | "enableDesktopWebUi";
 
 function resolveCloseAction(value: string | undefined): CloseAction {
@@ -27,6 +29,7 @@ function resolveCloseAction(value: string | undefined): CloseAction {
 export function useGeneralSettingsSection() {
   const settingsStore = useSettingsStore();
   const i18nStore = useI18nStore();
+  const updateStore = useUpdateStore();
   const globalMessage = useGlobalMessage();
 
   const bootstrapping = computed(() => !settingsStore.isLoaded || settingsStore.isLoading);
@@ -41,6 +44,7 @@ export function useGeneralSettingsSection() {
     closeServersOnExit: true,
     closeServersOnUpdate: true,
     autoAcceptEula: false,
+    autoCheckUpdate: true,
     enableDesktopWebUi: false,
   });
 
@@ -50,6 +54,7 @@ export function useGeneralSettingsSection() {
     closeServersOnExit: false,
     closeServersOnUpdate: false,
     autoAcceptEula: false,
+    autoCheckUpdate: false,
     enableDesktopWebUi: false,
   });
 
@@ -91,6 +96,7 @@ export function useGeneralSettingsSection() {
         settingsStore.settings.close_servers_on_exit,
         settingsStore.settings.close_servers_on_update,
         settingsStore.settings.auto_accept_eula,
+        settingsStore.settings.auto_check_update,
         settingsStore.settings.enable_desktop_web_ui,
       ] as const,
     ([
@@ -99,6 +105,7 @@ export function useGeneralSettingsSection() {
       closeServersOnExit,
       closeServersOnUpdate,
       autoAcceptEula,
+      autoCheckUpdate,
       enableDesktopWebUi,
     ]) => {
       if (!pending.language) {
@@ -119,6 +126,10 @@ export function useGeneralSettingsSection() {
 
       if (!pending.autoAcceptEula) {
         state.autoAcceptEula = autoAcceptEula;
+      }
+
+      if (!pending.autoCheckUpdate) {
+        state.autoCheckUpdate = autoCheckUpdate;
       }
 
       if (!pending.enableDesktopWebUi) {
@@ -203,6 +214,9 @@ export function useGeneralSettingsSection() {
           return;
         case "autoAcceptEula":
           await settingsStore.updatePartial({ auto_accept_eula: nextValue as boolean });
+          return;
+        case "autoCheckUpdate":
+          await settingsStore.updatePartial({ auto_check_update: nextValue as boolean });
           return;
         case "enableDesktopWebUi":
           await settingsStore.updatePartial({ enable_desktop_web_ui: nextValue as boolean });
@@ -304,6 +318,21 @@ export function useGeneralSettingsSection() {
     );
   }
 
+  function updateAutoCheckUpdate(nextValue: boolean): void {
+    const previousValue = state.autoCheckUpdate;
+
+    void saveField(
+      "autoCheckUpdate",
+      nextValue,
+      () => {
+        state.autoCheckUpdate = nextValue;
+      },
+      () => {
+        state.autoCheckUpdate = previousValue;
+      },
+    );
+  }
+
   function updateEnableDesktopWebUi(nextValue: boolean): void {
     const previousValue = state.enableDesktopWebUi;
 
@@ -319,6 +348,15 @@ export function useGeneralSettingsSection() {
     );
   }
 
+  async function checkForUpdate(): Promise<void> {
+    try {
+      await updateStore.checkForUpdate();
+    } catch (error) {
+      const normalized = normalizeAppError(error);
+      globalMessage.error(normalized.message || i18n.t("common.message_unknown_error"));
+    }
+  }
+
   return {
     bootstrapping,
     showDesktopWebToggle,
@@ -332,13 +370,16 @@ export function useGeneralSettingsSection() {
     desktopWebUrl,
     canCopyDesktopWebUrl,
     desktopWebStaticDirMissing,
+    updateStore,
     updateLanguage,
     updateCloseAction,
     updateCloseServersOnExit,
     updateCloseServersOnUpdate,
     updateAutoAcceptEula,
+    updateAutoCheckUpdate,
     updateEnableDesktopWebUi,
     copyDesktopWebUrl,
     refreshDesktopWebStatus,
+    checkForUpdate,
   };
 }

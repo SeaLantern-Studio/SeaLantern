@@ -289,6 +289,9 @@ pub struct AppSettings {
     #[serde(default = "default_false")]
     pub agreed_to_terms: bool,
 
+    #[serde(default = "default_true")]
+    pub auto_check_update: bool,
+
     #[serde(default)]
     pub onebot_11: OneBot11Settings,
 }
@@ -398,6 +401,9 @@ pub struct PartialSettings {
     pub plugin_console_blocked_commands: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agreed_to_terms: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_check_update: Option<bool>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub onebot_11: Option<OneBot11Settings>,
