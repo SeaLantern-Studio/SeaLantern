@@ -186,7 +186,12 @@ const {
         <div class="general-section__control">
           <SLButton
             variant="secondary"
-            :disabled="bootstrapping || updateStore.status === 'checking' || updateStore.status === 'downloading' || updateStore.status === 'installing'"
+            :disabled="
+              bootstrapping ||
+              updateStore.status === 'checking' ||
+              updateStore.status === 'downloading' ||
+              updateStore.status === 'installing'
+            "
             @click="checkForUpdate"
           >
             <template v-if="updateStore.status === 'checking'">
