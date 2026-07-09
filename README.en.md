@@ -87,8 +87,8 @@ Before submitting, please run the code checks:
 pnpm lint
 pnpm build:check
 cargo fmt --all -- --check
-cargo check --workspace
-cargo clippy --workspace -- -D warnings
+cargo check --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 For more complete development instructions, see the [Contributing Guide](https://docs.ideaflash.cn/en/dev/CONTRIBUTING).

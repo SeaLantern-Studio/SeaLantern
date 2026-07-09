@@ -92,8 +92,8 @@ pnpm dev:http
 pnpm lint
 pnpm build:check
 cargo fmt --all -- --check
-cargo check --workspace
-cargo clippy --workspace -- -D warnings
+cargo check --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 更完整的开发说明见 [贡献指南](https://docs.ideaflash.cn/zh/dev/CONTRIBUTING)。

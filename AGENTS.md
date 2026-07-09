@@ -94,8 +94,8 @@ pnpm fmt:check
 
 ```bash
 cargo fmt --all -- --check
-cargo check --workspace
-cargo clippy --workspace -- -D warnings
+cargo check --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 桌面集成：

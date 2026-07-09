@@ -94,13 +94,13 @@ cargo fmt --all -- --check
 编译检查：
 
 ```bash
-cargo check --workspace
+cargo check --workspace --all-targets
 ```
 
 Clippy：
 
 ```bash
-cargo clippy --workspace -- -D warnings
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 不管改了什么，最后仍然建议跑 workspace 级别检查。
@@ -173,4 +173,4 @@ cargo clippy --workspace -- -D warnings
 - Keep preview and execution behavior aligned.
 - Do not mix Sea Lantern Lua plugin logic with Minecraft server plugin file scanning.
 - Treat event DTOs, command payloads, serialized fields, and error semantics as frontend-facing contracts.
-- Run `cargo fmt --all -- --check`, `cargo check --workspace`, and `cargo clippy --workspace -- -D warnings` when practical.
+- Run `cargo fmt --all -- --check`, `cargo check --workspace --all-targets`, and `cargo clippy --workspace --all-targets -- -D warnings` when practical.

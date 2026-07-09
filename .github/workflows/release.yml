@@ -170,7 +170,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml', 'frontend/pnpm-workspace.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
@@ -204,7 +204,8 @@ jobs:
           releaseBody: ${{ needs.validate-tag.outputs.release_body }}
           releaseDraft: true
           prerelease: ${{ needs.validate-tag.outputs.prerelease }}
-          args: ${{ matrix.args }} -c backend/tauri-host/tauri.conf.json
+          projectPath: backend/tauri-host
+          args: ${{ matrix.args }}
 
       - name: 打包 Windows 免安装版
         if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'

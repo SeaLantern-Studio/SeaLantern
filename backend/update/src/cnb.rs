@@ -1,6 +1,6 @@
 use crate::asset_selector::{platform_asset_preferences, select_best_asset_by_name};
 use crate::constants::{CNB_BASE_URL, CNB_RELEASES_URL};
-#[cfg(any(all(target_os = "linux", not(debug_assertions)), test))]
+#[cfg(all(target_os = "linux", not(debug_assertions)))]
 use crate::types::UpdateInfo;
 #[cfg(any(all(target_os = "linux", not(debug_assertions)), test))]
 use crate::version::compare_versions_checked;
@@ -54,14 +54,14 @@ struct CnbReleaseListData {
 struct CnbRelease {
     #[serde(rename = "tagRef")]
     tag_ref: String,
-    #[cfg(any(all(target_os = "linux", not(debug_assertions)), test))]
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
     title: Option<String>,
-    #[cfg(any(all(target_os = "linux", not(debug_assertions)), test))]
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
     body: Option<String>,
-    #[cfg(any(all(target_os = "linux", not(debug_assertions)), test))]
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
     #[serde(rename = "publishedAt")]
     published_at: Option<String>,
-    #[cfg(any(all(target_os = "linux", not(debug_assertions)), test))]
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
     #[serde(rename = "createdAt")]
     created_at: Option<String>,
     #[serde(default)]
@@ -90,7 +90,7 @@ fn resolve_version_state(current_version: &str, tag_ref: &str) -> Result<(String
     Ok((latest_version, has_newer_version))
 }
 
-#[cfg(any(all(target_os = "linux", not(debug_assertions)), test))]
+#[cfg(all(target_os = "linux", not(debug_assertions)))]
 fn release_time_key(release: &CnbRelease) -> String {
     release
         .published_at
@@ -156,7 +156,7 @@ fn parse_releases_from_payload(payload: CnbResponse) -> Result<Vec<CnbRelease>, 
         .ok_or_else(|| "CNB response missing releases.list.data".to_string())
 }
 
-#[cfg(any(all(target_os = "linux", not(debug_assertions)), test))]
+#[cfg(all(target_os = "linux", not(debug_assertions)))]
 pub(crate) async fn fetch_release(
     client: &reqwest::Client,
     current_version: &str,
