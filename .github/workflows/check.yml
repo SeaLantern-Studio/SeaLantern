@@ -29,13 +29,11 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
-              - '.github/workflows/check.yml'
             frontend:
               - 'frontend/**'
               - 'scripts/**'
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
-              - '.github/workflows/check.yml'
 
   backend:
     name: 后端检查 (Rust)
@@ -45,11 +43,6 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
-
-      - name: 安装系统依赖
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
 
       - name: 安装 Rust 工具链
         id: rust_setup
@@ -73,6 +66,12 @@ jobs:
 
       - name: 检查代码格式 (Rust)
         run: cargo fmt --all -- --check
+
+      - name: 安装系统依赖
+        timeout-minutes: 15
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
 
       - name: 编译检查 (Rust)
         run: cargo check --workspace
