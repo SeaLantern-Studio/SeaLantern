@@ -1,0 +1,128 @@
+pub(super) fn print_server_help() {
+    println!("{}", build_server_help_text());
+}
+
+pub(super) fn build_server_help_text() -> String {
+    [
+        "用法: sealantern server [名称] [选项]",
+        "",
+        "管理子命令:",
+        "  sealantern server manage-help        只显示管理类子命令速查",
+        "  sealantern server list                列出全部服务器记录",
+        "  sealantern server inspect <target>   查看服务器详情与运行时配置",
+        "  sealantern server status <target>    查看服务器当前状态",
+        "  sealantern server logs <target>      查看最近日志，可配 --lines 50 / --follow / --interval 1000",
+        "  sealantern server send <target> ...  发送控制台命令",
+        "  sealantern server start <target> [--web [port]|--web:port] [--cli]  启动已有服务器，并可附加 Web/CLI transport",
+        "  sealantern server stop <target>      请求停止已有服务器",
+        "  sealantern server force-stop <target> 经过确认后强制终止已有服务器/容器",
+        "  sealantern server restart <target>   先停后启已有服务器",
+        "  sealantern server dedupe-audit      审计历史重复服务器记录，不修改目录或容器",
+        "  sealantern server dedupe-apply      按规则清理可移除的重复记录，仅删除 SeaLantern 记录",
+        "",
+        "基本参数:",
+        "  --name, --n <server-name>            显式指定服务器名；若省略则回退到位置参数、--tag 或 --folder 目录名",
+        "  --folder, --f, --fd <folder>         local 下先判断是否为现有服务端目录：能识别脚本/JAR 则接管，否则作为新建服务器的目标工作目录；docker 下可作为数据挂载源，并尝试从目录名推断名称/核心/版本",
+        "  --runtime, --r <local|docker|auto>   默认 auto；会结合 --jar/--java/--entry/现有本地 --folder 与 Docker 参数判断意图，若两边提示同时存在会直接报冲突",
+        "  --web[:port] / --web <port>          启用 Web 控制台，默认 8888",
+        "  --cli                                启用当前终端的交互 CLI 会话",
+        "  --detach                             创建或接管后只确保启动，不附加 CLI / Web，会立即返回",
+        "  --create-only / --no-start           只创建或接管服务器记录，不执行首次启动，适合预配、离线准备和 smoke",
+        "  -p[:port] / -p <port>                Minecraft 端口，默认 25565",
+        "  --jar <jar-path>                     本地模式直接指定 JAR 或启动文件路径",
+        "  --java, --j <java-path>              直接指定 Java 路径，或使用 %env:JAVA_HOME% / %env:Path%",
+        "  --J                                  仅从环境变量查找 Java，优先 JAVA_HOME，再查 PATH",
+        "  --tag, --t <name>                    服务器标记名，可作为名称兜底",
+        "  --alias <name>                       追加别名，可重复",
+        "  --min <2G|512M> --max <4G|2048M>     控制最小/最大内存",
+        "  --entry <script-or-command>          启动脚本路径或完整启动命令",
+        "  --startup <jar|bat|sh|ps1|starter|custom> 显式指定本地启动方式；与 --entry 类型冲突时会直接报错",
+        "",
+        "Docker 扩展参数:",
+        "  --image <镜像或镜像:标签>            默认 itzg/minecraft-server；也可直接传 itzg/minecraft-server:java21 或私有仓库镜像",
+        "  --image-tag <标签>                   默认 latest；若显式传入，会覆盖 --image 中自带的 tag",
+        "  --data-dir <目录>                    显式指定 Docker 数据目录挂载源",
+        "  --container-name <容器名>            默认 sealantern-<sanitized-name>",
+        "  --docker-backend <cli|engine_api>    当前仅 CLI 路径可实际运行",
+        "  --command-mode <rcon|docker_stdio>   默认 rcon；docker_stdio 依赖镜像内 mc-send-to-console，并要求 itzg 语义下启用 CREATE_CONSOLE_IN_PIPE",
+        "  --env <KEY=VALUE>                    追加 Docker 环境变量，可重复；适合 STOP_DURATION / SETUP_ONLY / DISABLE_HEALTHCHECK / UID；若 command-mode=rcon，RCON_PASSWORD_FILE 还需同时给出 RCON_PASSWORD",
+        "  --mount <src:dst[:ro|rw]>            追加 Docker 挂载，可重复；例如 E:/plugins:/data/plugins:ro",
+        "  --publish <host:container[/proto]>   追加 Docker 端口映射，可重复；例如 24454:24454/udp 或 8123:8123",
+        "",
+        "端口处理:",
+        "  单独的 Web 端口冲突会自动向后顺延；Minecraft 端口冲突会逐次询问是否切换到下一个端口。",
+        "  如果既启用 --web 且 Web / Minecraft 初始端口都冲突，会先询问 Web，再处理 Minecraft。",
+        "",
+        "运行方式:",
+        "  未显式指定 --web 或 --cli 时，默认开启 --cli。",
+        "  若 `[名称]` 已能解析到现有服务器记录，且不再带其他 create 参数，则统一入口默认等价于 `sealantern server start <target> --cli`。",
+        "  --detach 与 --web/--cli 互斥，适合 smoke、脚本和容器终端。",
+        "  --create-only 与 --detach/--web/--cli 互斥，适合只落记录、不触发首次启动的场景。",
+        "  --web 和 --cli 可以共存；Web-only 也会正常创建并启动服务器。",
+        "  在桌面、Headless 和容器环境中，Web 默认仅绑定到本地回环地址；只有显式配置 SEALANTERN_HTTP_BIND 或 SEALANTERN_WEB_BIND 时才会监听外部地址。",
+        "",
+        "容器环境变量:",
+        "  SEALANTERN_HEADLESS_HTTP=1           强制按 Headless Web 入口逻辑运行 CLI Web（不改变默认 loopback 绑定）",
+        "  SEALANTERN_HTTP_BIND=<host[:port]>   显式指定 HTTP 绑定地址；例如 0.0.0.0:3000（仅在需要容器外/远端访问时启用）",
+        "  SEALANTERN_WEB_BIND=<host[:port]>    兼容旧变量名；未设置时默认仍为 loopback",
+        "  SEALANTERN_DATA_DIR=<path>           显式指定 Sea Lantern 数据目录，统一不同可执行位置的服务器记录/配置",
+        "  SEALANTERN_DOCKER_RCON_HOST=<host>   覆盖 Docker RCON 默认宿主地址",
+        "  SEALANTERN_SERVERS_CONTAINER_ROOT    SeaLantern 容器内可见的 servers 根目录",
+        "  SEALANTERN_SERVERS_HOST_ROOT         Docker 实际应挂载的宿主机 servers 根目录",
+        "  STATIC_DIR=<path>                    指定 Web 静态资源目录",
+        "  SEALANTERN_WEB_AUTH_RECOVERY_TOKEN=<token>  浏览器 Web auth 的恢复令牌；仅在 /api/auth/recovery/reset 恢复链路使用",
+        "",
+        "示例:",
+        "  sealantern server list",
+        "  sealantern server inspect paper-docker",
+        "  sealantern server send paper-docker say server is live",
+        "  sealantern server logs paper-docker --lines 50",
+        "  sealantern server logs paper-docker --follow --interval 1000",
+        "  sealantern server force-stop paper-docker",
+        "  sealantern server restart paper-docker",
+        "  sealantern compose generate paper-docker --output E:/deploy/paper-compose.yaml",
+        "  sealantern server paper-docker",
+        "  sealantern server fabric-1.20.1 --mc 1.20.1 --core fabric --jar E:/srv/server.jar --java C:/Java/bin/java.exe -p:25565 -min:2G -max:4G -web:8000",
+        "  sealantern server paper-docker --runtime docker --mc 1.21.1 --core paper --image itzg/minecraft-server --image-tag latest --web 8000 --cli",
+        "  sealantern server paper-docker --runtime docker --mc 1.21.1 --core paper --image itzg/minecraft-server:java21 --create-only",
+        "  sealantern server paper-docker --runtime docker --mc 1.21.1 --core paper --image itzg/minecraft-server --detach",
+        "  sealantern server paper-docker --runtime docker --mc 1.21.1 --core paper --image itzg/minecraft-server --create-only",
+        "  sealantern server cache-server --folder E:/servers/cache --cli",
+        "  sealantern server custom-local --mc 1.20.1 --core fabric --entry \"java -Xmx4G -Xms4G -jar server.jar nogui\" --cli",
+        "",
+        "CLI 会话内命令:",
+        "  /status  查看当前状态",
+        "  /inspect 查看服务器详情与运行时配置",
+        "  /logs    查看最近日志",
+        "  /stop    请求停服",
+        "  /restart 请求重启当前服务器",
+        "  /exit    退出 CLI 会话",
+    ]
+    .join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_server_help_text;
+
+    #[test]
+    fn help_text_mentions_dedupe_management_commands() {
+        let help = build_server_help_text();
+        assert!(help.contains("sealantern server dedupe-audit"));
+        assert!(help.contains("sealantern server dedupe-apply"));
+    }
+
+    #[test]
+    fn help_text_describes_loopback_default_and_explicit_external_bind() {
+        let help = build_server_help_text();
+        assert!(help.contains("Web 默认仅绑定到本地回环地址"));
+        assert!(help.contains("SEALANTERN_WEB_BIND=<host[:port]>"));
+        assert!(help.contains("未设置时默认仍为 loopback"));
+        assert!(help.contains(
+            "只有显式配置 SEALANTERN_HTTP_BIND 或 SEALANTERN_WEB_BIND 时才会监听外部地址"
+        ));
+        assert!(help.contains("SEALANTERN_HTTP_BIND=<host[:port]>"));
+        assert!(help.contains("仅在需要容器外/远端访问时启用"));
+        assert!(!help.contains("默认绑定到 0.0.0.0"));
+    }
+}

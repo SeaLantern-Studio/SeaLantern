@@ -7,16 +7,24 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 
 const files = {
-  packageJson: path.join(rootDir, "package.json"),
-  cargoToml: path.join(rootDir, "src-tauri", "Cargo.toml"),
-  tauriConf: path.join(rootDir, "src-tauri", "tauri.conf.json"),
+  packageJson: path.join(rootDir, "frontend", "package.json"),
+  cargoToml: path.join(rootDir, "backend", "tauri-host", "Cargo.toml"),
+  tauriConf: path.join(rootDir, "backend", "tauri-host", "tauri.conf.json"),
   pkgbuild: path.join(rootDir, "PKGBUILD"),
   srcinfo: path.join(rootDir, ".SRCINFO"),
 };
 
-// 校验输入版本号是否符合语义化版本格式。
+// 校验输入版本号是否符合支持的项目版本格式。
 function isValidVersion(version) {
+  return isValidSemver(version) || isValidNightlyBuildVersion(version);
+}
+
+function isValidSemver(version) {
   return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version);
+}
+
+function isValidNightlyBuildVersion(version) {
+  return /^NightlyBuild-[0-9A-Fa-f]{7,40}-\d{8}T\d{6}Z$/.test(version);
 }
 
 // 判断指定路径的文件是否存在且可访问。
@@ -68,9 +76,9 @@ async function readVersions() {
   const tauriConf = JSON.parse(tauriConfRaw);
 
   const versions = {
-    "package.json": packageJson.version ?? "(未找到)",
-    "src-tauri/Cargo.toml": cargoVersion ?? "(未找到)",
-    "src-tauri/tauri.conf.json": tauriConf.version ?? "(未找到)",
+    "frontend/package.json": packageJson.version ?? "(未找到)",
+    "backend/tauri-host/Cargo.toml": cargoVersion ?? "(未找到)",
+    "backend/tauri-host/tauri.conf.json": tauriConf.version ?? "(未找到)",
   };
 
   if (await exists(files.pkgbuild)) {
@@ -144,9 +152,9 @@ async function updateVersion(version) {
   }
 
   console.log(`已更新核心版本文件为 ${version}：`);
-  console.log("- package.json");
-  console.log("- src-tauri/Cargo.toml");
-  console.log("- src-tauri/tauri.conf.json");
+  console.log("- frontend/package.json");
+  console.log("- backend/tauri-host/Cargo.toml");
+  console.log("- backend/tauri-host/tauri.conf.json");
   if (optionalUpdated.length > 0) {
     console.log(`另外已同步更新：${optionalUpdated.join(", ")}`);
   }
@@ -175,7 +183,15 @@ async function main() {
     }
 
     if (!isValidVersion(value)) {
-      throw new Error(`无效版本号：${value}，请使用语义化版本，例如 1.2.3`);
+      throw new Error(
+        `无效版本号：${value}，请使用语义化版本（如 1.2.3）或 NightlyBuild-{SHORT_SHA}-{DateTime}（如 NightlyBuild-abcdef0-20260617T180000Z）`,
+      );
+    }
+
+    if (!isValidSemver(value)) {
+      throw new Error(
+        `当前 change 命令只能写入语义化版本到项目清单文件；NightlyBuild 版本请通过构建环境注入显示版本，例如 SEA_LANTERN_BUILD_VERSION=${value}`,
+      );
     }
 
     await updateVersion(value);

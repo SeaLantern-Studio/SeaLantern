@@ -2,6 +2,12 @@
 
 本文档基于当前插件运行时实现，汇总 Sea Lantern 提供给 Lua 插件的公开 API、权限门槛与行为限制，便于按照现状开发与排错。
 
+## 文档导航
+
+- 命名空间索引与单个 API 说明页：[`docs/plugin/README.md`](./plugin/README.md)
+- 原始聚合文档：[`docs/lua-api/`](./lua-api/)
+- 本文档：侧重运行时模型、权限边界、前端命令和系统级总览，不替代单个 API 说明页。
+
 ## 目录
 
 - [插件 API 文档](#插件-api-文档)
@@ -71,6 +77,50 @@
 | `sl.console.send(server_id, command)`   | `server_id: string`<br>`command: string` | `boolean` | 发送控制台命令 |
 | `sl.console.get_logs(server_id, count)` | `server_id: string`<br>`count?: number`  | `table`   | 获取控制台日志 |
 | `sl.console.get_status(server_id)`      | `server_id: string`                      | `string`  | 获取服务器状态 |
+
+## Process API
+
+`sl.process` 命名空间需要 `execute_program` 权限。前台执行与后台执行共用同一个入口 `sl.process.exec()`，但只有前台执行会直接返回完整输出内容。除此之外，插件还必须在 `manifest.json` 的 `programs` 字段中显式声明允许执行的程序。
+
+| 方法名                                      | 参数                                                        | 返回值                | 描述                       |
+| ------------------------------------------- | ----------------------------------------------------------- | --------------------- | -------------------------- |
+| `sl.process.exec(program, args?, options?)` | `program: string`<br>`args?: string[]`<br>`options?: table` | `table`               | 执行 manifest 已声明的插件目录内程序 |
+| `sl.process.get(pid)`                       | `pid: number`                                               | `table?`              | 查询后台进程状态           |
+| `sl.process.list()`                         | 无                                                          | `table`               | 列出当前插件拥有的后台进程 |
+| `sl.process.read_output(pid, options?)`     | `pid: number`<br>`options?: table`                          | `string?` 或 `table?` | 读取后台进程输出缓冲       |
+
+### `sl.process.exec()` 前台返回契约
+
+- 未设置 `options.background = true` 时，返回表始终包含：`pid`、`success`、`exit_code`、`stdout`、`stderr`
+- `stdout` 与 `stderr` 都会被完整读取后再返回，避免子进程因管道缓冲写满而阻塞
+- `truncated = true` 仅表示 `stdout` 因输出过大被截断到缓冲上限
+- `stderr_truncated = true` 仅表示 `stderr` 因输出过大被截断到缓冲上限
+- 如果某个截断标记不存在，表示对应输出流这次没有被截断
+- 发生前台超时时仍然直接抛错，不返回结果表；当前行为不会把超时后的部分输出拼进返回值
+
+### `sl.process.exec()` 其他行为
+
+- `manifest.json` 需要声明 `programs`，例如：`"programs": [{ "path": "bin/helper.exe" }]`
+- `program` 必须命中 `manifest.json` 的 `programs[].path` 声明，否则运行时会直接拒绝执行
+- `program` 与 `options.cwd` 都必须通过插件目录沙箱路径校验，不能越出插件目录
+- `options.timeout_ms` 只能用于前台执行，且必须大于 0；实际超时上限不会超过运行时内置的 30 秒限制
+- `options.background = true` 时，不会返回 `stdout` / `stderr`，而是返回后台进程 `pid`
+- 后台输出通过 `sl.process.read_output(pid, options?)` 读取；默认保持旧行为返回 stdout 字符串，需要 stderr 时通过 `options.include_stderr = true` 请求结构化结果
+
+### `sl.process.read_output()` 后台返回契约
+
+- 默认调用 `sl.process.read_output(pid)` 时，保持旧契约：只返回 stdout 字符串；如果当前没有 stdout 可读，则返回 `nil`
+- 显式传入 `sl.process.read_output(pid, { include_stderr = false })` 时，行为与默认调用完全一致，不会切换到结构化结果
+- 默认模式和 `include_stderr = false` 模式都不会消费“只有 stderr 的待读缓冲”；这类输出只会在 `include_stderr = true` 的结构化读取里返回
+- 当调用 `sl.process.read_output(pid, { include_stderr = true })` 时，有输出则返回表，字段至少包括：`stdout`、`stderr`、`chunk_seq`、`updated_at_ms`
+- 在 `include_stderr = true` 模式下，`stdout` 和 `stderr` 任何一边当前有数据，都会一起返回；没有数据的一边返回空字符串
+- `chunk_seq` 是该后台进程结构化输出片段的递增序号；每成功返回一批 `stdout` / `stderr` 后自增一次，便于调用方按读取批次排序
+- `updated_at_ms` 是最近一次采集到这批后台输出的 Unix 毫秒时间戳，用于粗粒度排障时间定位；同一后台进程内只保证非倒退，不保证跨进程可比
+- `truncated = true` 表示本次返回的后台 `stdout` 片段被截断
+- `stderr_truncated = true` 表示本次返回的后台 `stderr` 片段被截断
+- 后台进程退出后，未消费的 `stdout` / `stderr` 缓冲仍会保留，直到被 `read_output` 读取并清空；因此状态查询不会提前吞掉排障输出
+- 在 `include_stderr = true` 模式下，如果两个流当前都没有可读取内容，则返回 `nil`
+- 结构化模式下，返回 `nil` 的空读不会推进 `chunk_seq`，也不会伪造新的 `updated_at_ms`
 
 ## Plugins API
 

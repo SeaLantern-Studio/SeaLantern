@@ -1,0 +1,13 @@
+{
+  "title": "Chọn tệp khởi động",
+  "scanning": "Đang quét...",
+  "description": "Phát hiện {{count}} tệp thực thi, vui lòng chọn một tệp:",
+  "click_to_select": "Nhấp vào tệp trong danh sách để chọn",
+  "priority_high": "Ưu tiên cao",
+  "priority_medium": "Ưu tiên trung bình",
+  "priority_low": "Ưu tiên thấp",
+  "recommended": "Khuyến nghị",
+  "confirm": "Xác nhận lựa chọn",
+  "no_files": "Không tìm thấy tệp thực thi loại {{mode}}",
+  "check_path": "Vui lòng kiểm tra xem thư mục máy chủ có đúng không"
+}

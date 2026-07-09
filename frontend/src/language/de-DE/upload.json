@@ -1,0 +1,12 @@
+{
+  "unsupported": "File upload is not supported in the current environment",
+  "unsupported_detail": "File upload is not supported in the current environment. Use the desktop app or run in browser/Docker mode with upload support.",
+  "failed": "Upload failed",
+  "drop_to_upload": "Release files to upload",
+  "drag_or_click": "Drag files here, or click to choose files",
+  "supported_formats": "Supported formats: {formats}",
+  "max_size_mb": "Maximum size: {size} MB",
+  "uploading": "Uploading...",
+  "file_too_large": "File {file} exceeds the size limit ({size} bytes)",
+  "file_type_unsupported": "Unsupported file type: {file}"
+}

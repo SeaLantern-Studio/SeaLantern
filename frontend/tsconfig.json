@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    /* Path aliases */
+    "paths": {
+      "@src": ["./src"],
+      "@src/*": ["./src/*"],
+      "@api/*": ["./src/api/*"],
+      "@assets/*": ["./src/assets/*"],
+      "@components/*": ["./src/components/*"],
+      "@composables/*": ["./src/composables/*"],
+      "@data/*": ["./src/data/*"],
+      "@language": ["./src/language"],
+      "@language/*": ["./src/language/*"],
+      "@router/*": ["./src/router/*"],
+      "@stores/*": ["./src/stores/*"],
+      "@styles/*": ["./src/styles/*"],
+      "@shared/*": ["../shared/*"],
+      "@themes": ["./src/themes"],
+      "@themes/*": ["./src/themes/*"],
+      "@tauri-host": ["../backend/tauri-host"],
+      "@tauri-host/*": ["../backend/tauri-host/*"],
+      "@type/*": ["./src/types/*"],
+      "@utils/*": ["./src/utils/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

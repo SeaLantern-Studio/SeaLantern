@@ -1,0 +1,34 @@
+{
+  "enable": {
+    "title": "========== Console Demo Plugin Enabled ==========",
+    "no_servers": "No servers found, please add a server in SeaLantern first",
+    "demo_end": "========== Console Demo Demo End =========="
+  },
+  "console": {
+    "status": "[get_status] Get server status:",
+    "server_status": "  Server status: ",
+    "status_running": "Server is running",
+    "status_stopped": "Server is stopped",
+    "status_starting": "Server is starting",
+    "status_stopping": "Server is stopping",
+    "status_error": "Server error",
+    "status_unknown": "Unknown status",
+    "status_desc": "  Status description: ",
+    "status_failed": "  Failed to get status: ",
+    "logs": "[get_logs] Get console logs (last 10):",
+    "no_logs": "(No log records)",
+    "logs_failed": "  Failed to get logs: ",
+    "send": "[send] Send console command:",
+    "trying_send": "  Server is running, trying to send command...",
+    "send_success": "  Command sent successfully: list",
+    "send_result_hint": "  Hint: Command result will appear in server console logs",
+    "send_failed": "  Failed to send command: ",
+    "other_commands": "  Other common command examples (not executed):",
+    "not_running": "  Server is not running (status: {{status}}), cannot send command",
+    "not_running_hint": "  Hint: Please start the server first, then re-enable this plugin to test command sending"
+  },
+  "demo_complete": "========== Console Demo Demo Complete ==========",
+  "disable": {
+    "complete": "Console Demo plugin disabled"
+  }
+}

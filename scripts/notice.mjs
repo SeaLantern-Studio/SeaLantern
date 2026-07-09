@@ -1,9 +1,8 @@
-import { readFile, writeFile, access, unlink } from "node:fs/promises";
+import { readFile, writeFile, access, unlink, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { glob } from "glob";
 import { homedir } from "node:os";
 
 const execAsync = promisify(exec);
@@ -11,13 +10,13 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
-const cargoDir = path.join(rootDir, "src-tauri");
+const cargoDir = path.join(rootDir, "backend", "tauri-host");
 
 const noticeFiles = {
   frontendLicenseJson: path.join(rootDir, "frontend-licenses.json"),
   backendLicenseJson: path.join(rootDir, "backend-licenses.json"),
   noticeFile: path.join(rootDir, "NOTICE"),
-  packageJson: path.join(rootDir, "package.json"),
+  packageJson: path.join(rootDir, "frontend", "package.json"),
 };
 
 async function exists(filePath) {
@@ -54,7 +53,7 @@ async function ensureCargoLicense() {
 async function generateFrontedLicenseJson() {
   const { stdout } = await execAsync(
     "npx license-checker-rseidelsohn --start . --json --production",
-    { cwd: rootDir },
+    { cwd: path.join(rootDir, "frontend") },
   );
   await writeFile(noticeFiles.frontendLicenseJson, stdout, "utf8");
   return JSON.parse(stdout);
@@ -98,19 +97,33 @@ async function readBackendLicenseFile(crate) {
   }
 
   const cargoHome = process.env.CARGO_HOME || path.join(homedir(), ".cargo");
-  const possiblePath = path.join(
-    cargoHome,
-    "registry/src",
-    "index.crates.io-*",
-    crate.name,
-    crate.version,
-    "LICENSE",
-  );
+  const registrySrcDir = path.join(cargoHome, "registry", "src");
 
-  const matchedFiles = await glob(possiblePath);
-  if (matchedFiles.length > 0) {
-    return await readFile(matchedFiles[0], "utf8");
+  if (!(await exists(registrySrcDir))) {
+    return null;
   }
+
+  const registryEntries = await readdir(registrySrcDir, { withFileTypes: true });
+  for (const entry of registryEntries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const crateDir = path.join(registrySrcDir, entry.name, `${crate.name}-${crate.version}`);
+    if (!(await exists(crateDir))) {
+      continue;
+    }
+
+    const crateFiles = await readdir(crateDir, { withFileTypes: true });
+    const licenseFile = crateFiles.find(
+      (file) => file.isFile() && /^(license|copying)([.-]|$)/i.test(file.name),
+    );
+
+    if (licenseFile) {
+      return await readFile(path.join(crateDir, licenseFile.name), "utf8");
+    }
+  }
+
   return null;
 }
 

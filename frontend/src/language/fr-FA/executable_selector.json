@@ -1,0 +1,13 @@
+{
+  "title": "Sélectionner le fichier de démarrage",
+  "scanning": "Analyse...",
+  "description": "{{count}} fichiers exécutables détectés, veuillez en sélectionner un:",
+  "click_to_select": "Cliquez sur un fichier dans la liste pour le sélectionner",
+  "priority_high": "Haute priorité",
+  "priority_medium": "Priorité moyenne",
+  "priority_low": "Basse priorité",
+  "recommended": "Recommandé",
+  "confirm": "Confirmer la sélection",
+  "no_files": "Aucun fichier exécutable de type {{mode}} trouvé",
+  "check_path": "Veuillez vérifier si le dossier du serveur est correct"
+}

@@ -1,0 +1,8 @@
+{
+  "placeholder": "Datei hier ablegen oder klicken zum Auswählen",
+  "support_both": "Unterstützt Dateien und Ordner",
+  "support_files": "Unterstützt Dateien",
+  "support_folders": "Unterstützt Ordner",
+  "error_no_path": "Pfad der abgelegten Datei konnte nicht ermittelt werden",
+  "error_unsupported_type": "Nicht unterstützter Dateityp"
+}

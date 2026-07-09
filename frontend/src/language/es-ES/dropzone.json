@@ -1,0 +1,8 @@
+{
+  "placeholder": "Arrastra un archivo aquí o haz clic para seleccionar",
+  "support_both": "Soporta archivos y carpetas",
+  "support_files": "Soporta archivos",
+  "support_folders": "Soporta carpetas",
+  "error_no_path": "No se pudo obtener la ruta del archivo arrastrado",
+  "error_unsupported_type": "Tipo de archivo no soportado"
+}

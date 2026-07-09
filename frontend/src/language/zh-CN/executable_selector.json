@@ -1,0 +1,13 @@
+{
+  "title": "选择启动文件",
+  "scanning": "正在扫描...",
+  "description": "检测到 {{count}} 个可执行文件，请选择要使用的文件：",
+  "click_to_select": "点击列表中的文件进行选择",
+  "priority_high": "高优先级",
+  "priority_medium": "中优先级",
+  "priority_low": "低优先级",
+  "recommended": "推荐",
+  "confirm": "确认选择",
+  "no_files": "未找到 {{mode}} 类型的可执行文件",
+  "check_path": "请检查服务器目录是否正确"
+}

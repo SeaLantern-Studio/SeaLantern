@@ -1,0 +1,142 @@
+{
+  "next": {
+    "instance": {
+      "eyebrow": "Instance workspace",
+      "brand_fallback": "Instance workspace",
+      "back_to_servers": "Back to servers",
+      "page_subtitle": "Current instance: {server} · {status}",
+      "not_found_title": "Server not found",
+      "not_found_description": "This route does not map to a known server yet, or the list has not refreshed.",
+      "sections": {
+        "console": "Console",
+        "players": "Players",
+        "extensions": "Plugins / Mods",
+        "config": "Config",
+        "world": "World"
+      },
+      "world": {
+        "developing": "Under development"
+      },
+      "players": {
+        "ip_bans_title": "IP ban rules",
+        "ip_bans_hint": "IP bans are independent from player names. Only backend-readable rules are shown here.",
+        "total_label": "Players",
+        "online_label": "Online",
+        "op_label": "OP",
+        "name_bans_label": "Name bans",
+        "ip_bans_label": "IP bans",
+        "summary_live_hint": "Live logs + file summary",
+        "summary_file_only_hint": "File summary only",
+        "status_online": "Online",
+        "status_offline": "Offline",
+        "uuid_label": "UUID",
+        "op_badge": "OP",
+        "name_ban_badge": "Name ban",
+        "ip_ban_badge": "IP ban",
+        "ip_rules_badge": "IP rules exist",
+        "whitelist_badge": "Whitelist"
+      },
+      "extensions": {
+        "detected": "Detected",
+        "missing": "Missing",
+        "plugins_dir": "plugins / plugin dir",
+        "mods_dir": "mods / mod dir",
+        "plugins_count": "Plugin files",
+        "mods_count": "Mod files",
+        "other_count": "Other files",
+        "read_only_hint": "View only. Install, remove, enable, and marketplace actions are out of scope here.",
+        "refresh": "Refresh",
+        "retry": "Retry",
+        "loading_title": "Loading extension summary",
+        "plugins_title": "Plugins",
+        "mods_title": "Mods",
+        "other_title": "Other / Unclassified",
+        "plugins_description": "Files detected under plugins/ or plugin/.",
+        "mods_description": "Files detected under mods/ or mod/.",
+        "other_description": "Top-level extension-like files that are not classified as plugins or mods.",
+        "plugins_empty": "No plugin files were detected in the current instance.",
+        "mods_empty": "No mod files were detected in the current instance.",
+        "other_empty": "No additional extension files were detected in the current instance.",
+        "no_directories_title": "No extension directories detected",
+        "no_directories_description": "This instance does not currently have plugins/plugin or mods/mod directories.",
+        "empty_directories_title": "Extension directories are empty",
+        "empty_directories_description": "Detected extension directories exist, but no files were recognized yet.",
+        "relative_path": "Relative path",
+        "modified_at": "Last modified",
+        "unknown_modified_at": "Unknown",
+        "file_type": "Type",
+        "type_plugin": "Plugin",
+        "type_mod": "Mod",
+        "type_other": "Other",
+        "type_plugin_with_ext": "Plugin · {ext}",
+        "type_mod_with_ext": "Mod · {ext}",
+        "type_other_with_ext": "Other · {ext}",
+        "entries_count": "{count} files"
+      },
+      "placeholder": {
+        "eyebrow": "Instance subpage",
+        "return_to_players": "Return to players",
+        "actions": {
+          "players": "Return to players first to continue checking status and online presence.",
+          "back": "Go back to the server list and switch to another instance."
+        },
+        "track": {
+          "workspace_title": "Ready now",
+          "boundary_title": "Scope now"
+        },
+        "extensions": {
+          "description": "The instance-level plugins / mods entry is reserved here for later directory summaries and extension pages.",
+          "track_workspace": "Instance rail, route, and page scaffold are connected.",
+          "track_boundary": "This round does not expand real plugins / mods content yet."
+        },
+        "config": {
+          "description": "The instance config entry is reserved here for a future next-native config workflow.",
+          "track_workspace": "Instance navigation, title, and context are already in place.",
+          "track_boundary": "This route stays as a placeholder and does not provide a config editor yet."
+        },
+        "world": {
+          "description": "The world entry is reserved here for future world map or world tooling.",
+          "track_workspace": "A stable world route now exists inside instance mode.",
+          "track_boundary": "This round keeps it as a placeholder and does not implement a real map."
+        }
+      }
+    },
+    "error_title": "Couldn't load servers",
+    "close_error": "Close",
+    "retry": "Retry",
+    "loading_title": "Loading servers",
+    "loading_description": "Fetching the list and current status.",
+    "summary": {
+      "total_label": "Servers",
+      "running_label": "Running",
+      "create": "Create server",
+      "import": "Import server",
+      "refresh": "Refresh"
+    },
+    "empty": {
+      "eyebrow": "Servers",
+      "title": "No servers yet",
+      "description": "Create a server or import an existing one to continue.",
+      "create": "Create server",
+      "import": "Import existing server"
+    },
+    "card": {
+      "current": "Current",
+      "runtime": "Runtime",
+      "core": "Core",
+      "path": "Path",
+      "port": "Port",
+      "memory": "Memory",
+      "selected": "Current server",
+      "select": "Set as current server"
+    },
+    "runtime": {
+      "docker": "Docker",
+      "local": "Local",
+      "startup_mode": {
+        "starter": "Starter",
+        "custom": "Custom"
+      }
+    }
+  }
+}

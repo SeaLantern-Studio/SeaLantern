@@ -1,0 +1,349 @@
+import { AppError as StructuredAppError, normalizeAppError } from "@utils/appError";
+import { handleError, AppError, ErrorType } from "@utils/errorHandler";
+import { getBrowserRuntimeToken, notifyBrowserUnauthorized } from "@stores/authRuntime";
+import { readPersistedBrowserToken } from "@src/services/authStorage";
+import { isTauri as detectTauriRuntime } from "@tauri-apps/api/core";
+
+// Tauri 全局类型声明
+declare global {
+  interface Window {
+    __TAURI__?: any;
+    // Tauri v2 始终注入此对象，无需 withGlobalTauri 配置
+    __TAURI_INTERNALS__?: any;
+  }
+}
+
+// 环境检测：判断是否在浏览器环境（Docker 模式）
+// 在当前 Tauri v2 dev 运行时里，直接依赖 window.__TAURI_INTERNALS__ 并不稳定。
+// 统一走官方 @tauri-apps/api/core.isTauri()，避免桌面壳被误判成 browser。
+export const isBrowserEnv = (): boolean => {
+  return typeof window !== "undefined" && !detectTauriRuntime();
+};
+
+// HTTP API 基础 URL（Docker 模式下使用）
+// 使用相对路径，这样在 Docker 环境下浏览器会自动使用当前页面的域名
+export const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+interface HttpApiErrorDetail {
+  code?: string;
+  message?: string;
+  args?: Record<string, unknown>;
+  error_kind?: string;
+}
+
+interface HttpApiEnvelope<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  error_detail?: HttpApiErrorDetail;
+}
+
+export interface NextBridgeIssueResponse {
+  bridge_token: string;
+  expires_at: number;
+  purpose: "next_bridge";
+  target_path: string;
+}
+
+export interface NextBridgeExchangeResponse {
+  session_token: string;
+  token: string;
+  expires_at: number;
+  purpose: "browser_session";
+}
+
+export function readBrowserAuthToken(): string | null {
+  return getBrowserRuntimeToken() ?? readPersistedBrowserToken();
+}
+
+export { notifyBrowserUnauthorized };
+
+export function assertDesktopEnvironment(): void {
+  if (!isBrowserEnv()) {
+    return;
+  }
+
+  const normalized = normalizeAppError({ code: "system.desktop_only_method" });
+  throw new StructuredAppError(normalized.code, normalized.message, normalized.args);
+}
+
+function isStructuredAppError(error: unknown): error is StructuredAppError {
+  return error instanceof StructuredAppError;
+}
+
+function toStructuredPayloadError(error: unknown): StructuredAppError | null {
+  const normalized = normalizeAppError(error);
+  if (normalized.code !== "common.message_unknown_error") {
+    return new StructuredAppError(normalized.code, normalized.message, normalized.args, error);
+  }
+  return null;
+}
+
+export async function ensureBrowserSession(): Promise<void> {
+  if (!isBrowserEnv()) {
+    return;
+  }
+
+  if (!readBrowserAuthToken()) {
+    throw new StructuredAppError(
+      "common.message_unauthorized",
+      normalizeAppError({ code: "common.message_unauthorized" }).message,
+    );
+  }
+}
+
+export async function parseHttpEnvelope<T>(response: Response): Promise<HttpApiEnvelope<T> | null> {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as HttpApiEnvelope<T>;
+  } catch {
+    return {
+      success: false,
+      error: text,
+    };
+  }
+}
+
+export function toStructuredHttpError(
+  payload: HttpApiEnvelope<unknown> | null,
+  fallbackMessage: string,
+): StructuredAppError {
+  const detail = payload?.error_detail;
+  const normalized = normalizeAppError({
+    code: detail?.code,
+    message: payload?.error || detail?.message || fallbackMessage,
+    args: detail?.args,
+    error_kind: detail?.error_kind,
+  });
+
+  return new StructuredAppError(normalized.code, normalized.message, normalized.args);
+}
+
+async function performHttpInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  const url = `${HTTP_API_BASE}/api/${command}`;
+  const token = readBrowserAuthToken();
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ params: args || {} }),
+  });
+
+  const result = await parseHttpEnvelope<T>(response);
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
+    throw toStructuredHttpError(result, `HTTP ${response.status}: request failed`);
+  }
+
+  if (!result?.success) {
+    throw toStructuredHttpError(result, "Unknown error");
+  }
+
+  return result.data as T;
+}
+
+export async function issueNextBridgeToken(targetPath: string): Promise<NextBridgeIssueResponse> {
+  await ensureBrowserSession();
+
+  const token = readBrowserAuthToken();
+  const response = await fetch(`${HTTP_API_BASE}/api/auth/next-bridge/issue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ target_path: targetPath }),
+  });
+
+  const result = await parseHttpEnvelope<NextBridgeIssueResponse>(response);
+  if (!response.ok || !result?.success || !result.data) {
+    if (response.status === 401) {
+      notifyBrowserUnauthorized("auth.message_session_expired");
+    }
+    throw toStructuredHttpError(result, `HTTP ${response.status}: next bridge issue failed`);
+  }
+
+  return result.data;
+}
+
+export async function exchangeNextBridgeToken(
+  bridgeToken: string,
+): Promise<NextBridgeExchangeResponse> {
+  const response = await fetch(`${HTTP_API_BASE}/api/auth/next-bridge/exchange`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ bridge_token: bridgeToken }),
+  });
+
+  const result = await parseHttpEnvelope<NextBridgeExchangeResponse>(response);
+  if (!response.ok || !result?.success || !result.data) {
+    throw toStructuredHttpError(result, `HTTP ${response.status}: next bridge exchange failed`);
+  }
+
+  return result.data;
+}
+
+/**
+ * 通过 HTTP API 调用命令（Docker/浏览器模式）
+ */
+async function httpInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  await ensureBrowserSession();
+  return performHttpInvoke<T>(command, args);
+}
+
+/**
+ * 通过 Tauri invoke 调用命令（原生应用模式）
+ */
+async function tauriInvokeNative<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  // 动态导入，避免在浏览器环境下加载 @tauri-apps/api/core 导致报错
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<T>(command, args);
+}
+
+/**
+ * Tauri 命令调用选项
+ */
+export interface InvokeOptions {
+  /** 是否静默错误（不抛出异常） */
+  silent?: boolean;
+  /** 错误上下文描述 */
+  context?: string;
+  /** 默认返回值（当 silent 为 true 时使用） */
+  defaultValue?: unknown;
+}
+
+/**
+ * 增强的 Tauri 命令调用函数
+ * 提供统一的错误处理和日志记录
+ * 自动检测环境，在浏览器模式下使用 HTTP API，在 Tauri 模式下使用 invoke
+ */
+export async function tauriInvoke<T>(
+  command: string,
+  args?: Record<string, unknown>,
+  options: InvokeOptions = {},
+): Promise<T> {
+  const isHttp = isBrowserEnv();
+
+  try {
+    // 根据环境选择调用方式
+    const result = isHttp
+      ? await httpInvoke<T>(command, args)
+      : await tauriInvokeNative<T>(command, args);
+
+    if (import.meta.env.DEV) {
+      console.debug(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" succeeded`);
+    }
+
+    return result;
+  } catch (error) {
+    if (isStructuredAppError(error)) {
+      if (import.meta.env.DEV) {
+        console.warn(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" failed:`, error);
+      }
+
+      if (!options.silent) {
+        throw error;
+      }
+
+      return options.defaultValue as T;
+    }
+
+    const structuredError = toStructuredPayloadError(error);
+    if (structuredError) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" failed:`,
+          structuredError,
+        );
+      }
+
+      if (!options.silent) {
+        throw structuredError;
+      }
+
+      return options.defaultValue as T;
+    }
+
+    const errorMessage = handleError(error, options.context || command);
+
+    if (import.meta.env.DEV) {
+      console.warn(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" failed:`, errorMessage);
+    }
+
+    if (!options.silent) {
+      throw new AppError(errorMessage, ErrorType.SERVER, options.context);
+    }
+
+    return options.defaultValue as T;
+  }
+}
+
+export async function tauriInvokeDesktop<T>(
+  command: string,
+  args?: Record<string, unknown>,
+  options: InvokeOptions = {},
+): Promise<T> {
+  assertDesktopEnvironment();
+  return tauriInvoke<T>(command, args, options);
+}
+
+/**
+ * 批量 Tauri 命令调用
+ */
+export async function tauriInvokeAll(
+  commands: Array<{
+    command: string;
+    args?: Record<string, unknown>;
+    key?: string;
+  }>,
+  options: InvokeOptions = {},
+): Promise<Record<string, unknown> | unknown[]> {
+  const promises = commands.map(({ command, args, key }) =>
+    tauriInvoke<unknown>(command, args, options).then((result) => ({ key, result })),
+  );
+
+  const results = await Promise.all(promises);
+
+  if (commands.every((c) => c.key !== undefined)) {
+    return results.reduce(
+      (acc, { key, result }) => {
+        acc[key as string] = result;
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    );
+  }
+
+  return results.map((r) => r.result);
+}
+
+/**
+ * 创建带缓存的 Tauri 调用包装器
+ */
+export function createCachedInvoke<T>(command: string, cacheTime: number = 5000) {
+  let cache: { data: T; timestamp: number } | null = null;
+
+  return async (args?: Record<string, unknown>, options?: InvokeOptions): Promise<T> => {
+    const now = Date.now();
+
+    if (cache && now - cache.timestamp < cacheTime) {
+      return cache.data;
+    }
+
+    const data = await tauriInvoke<T>(command, args, options);
+    cache = { data, timestamp: now };
+    return data;
+  };
+}

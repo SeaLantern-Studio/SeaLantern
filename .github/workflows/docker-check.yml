@@ -1,32 +1,36 @@
-name: "Docker 构建检查"
+name: "Docker构建检查"
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, beta]
     paths:
       - "docker/Dockerfile"
       - "docker/docker-compose.yml"
-      - "src-tauri/**"
-      - "src/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
+      - "backend/**"
+      - "frontend/**"
+      - "frontend/package.json"
+      - "frontend/pnpm-lock.yaml"
+      - "frontend/pnpm-workspace.yaml"
       - "Cargo.toml"
       - "Cargo.lock"
-      - "docker-entry/**"
       - ".github/workflows/docker-check.yml"
   push:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - "docker/Dockerfile"
       - "docker/docker-compose.yml"
-      - "src-tauri/**"
-      - "src/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
+      - "backend/**"
+      - "frontend/**"
+      - "frontend/package.json"
+      - "frontend/pnpm-lock.yaml"
+      - "frontend/pnpm-workspace.yaml"
       - "Cargo.toml"
       - "Cargo.lock"
-      - "docker-entry/**"
       - ".github/workflows/docker-check.yml"
+
+concurrency:
+  group: docker-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   docker-build:
@@ -40,13 +44,13 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: 构建 Docker 镜像（测试构建）
-        run: |
-          echo "开始构建 Docker 镜像..."
-          docker build -f docker/Dockerfile --build-arg CARGO_FEATURES=docker -t sealantern:test .
-          echo "Docker 镜像构建成功！"
-
-      - name: 清理测试镜像
-        if: always()
-        run: |
-          docker rmi sealantern:test || true
-          docker system prune -f || true
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          load: false
+          build-args: |
+            CARGO_FEATURES=docker
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

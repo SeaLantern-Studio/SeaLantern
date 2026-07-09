@@ -1,0 +1,23 @@
+{
+  "title": "Téléchargement personnalisé",
+  "url": "URL de téléchargement",
+  "url_placeholder": "Veuillez saisir l’URL de téléchargement (http/https)",
+  "save_folder": "Enregistrer dans",
+  "save_path": "Chemin d'enregistrement",
+  "select_folder": "Veuillez sélectionner un dossier",
+  "pick_folder": "Choisir un dossier",
+  "filename": "Nom du fichier",
+  "thread_count": "Nombre de threads",
+  "thread_count_empty": "Le nombre de threads ne peut pas être vide",
+  "thread_count_invalid": "Caractère invalide",
+  "thread_count_positive": "Le nombre de threads doit être un entier positif",
+  "thread_count_too_big": "Le nombre de threads ne peut pas dépasser 256",
+  "cancel": "Annuler",
+  "download": "Télécharger",
+  "browse": "Parcourir",
+  "downloading": "Téléchargement de la ressource...",
+  "status-finished": "Téléchargement terminé",
+  "failed": "Échec du téléchargement",
+  "completed": "Terminé",
+  "filename_placeholder": "Please enter a file name, for example server.jar"
+}

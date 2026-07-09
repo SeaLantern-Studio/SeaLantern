@@ -1,0 +1,334 @@
+import { tauriInvoke, tauriInvokeDesktop } from "@api/tauri";
+import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
+import type { JavaInfo } from "@api/java";
+import type { CpuPolicyConfig, JvmPresetConfig } from "@type/server";
+import { i18n } from "@language";
+
+export interface CreateServerDefaults {
+  default_run_path: string;
+  suggested_run_path: string;
+  default_max_memory: number;
+  default_min_memory: number;
+  default_port: number;
+  cached_java_list: JavaInfo[];
+  preferred_java_path: string;
+  default_jvm_args: string[];
+  default_cpu_policy: CpuPolicyConfig;
+  default_jvm_preset: JvmPresetConfig;
+}
+
+export interface CpuInfo {
+  name: string;
+  count: number;
+  usage: number;
+}
+
+export interface MemoryInfo {
+  total: number;
+  used: number;
+  available: number;
+  usage: number;
+  app_used: number;
+  server_instances_used: number;
+}
+
+export interface SwapInfo {
+  total: number;
+  used: number;
+  usage: number;
+}
+
+export interface DiskDetail {
+  name: string;
+  mount_point: string;
+  file_system: string;
+  total: number;
+  used: number;
+  available: number;
+  usage: number;
+  is_removable: boolean;
+}
+
+export interface DiskInfo {
+  total: number;
+  used: number;
+  available: number;
+  usage: number;
+  disks?: DiskDetail[];
+  path?: string;
+}
+
+export interface NetworkInterface {
+  name: string;
+  received: number;
+  transmitted: number;
+}
+
+export interface NetworkInfo {
+  total_received: number;
+  total_transmitted: number;
+  interfaces: NetworkInterface[];
+}
+
+export interface SystemInfo {
+  os: string;
+  arch: string;
+  os_name: string;
+  os_version: string;
+  kernel_version: string;
+  host_name: string;
+  cpu: CpuInfo;
+  memory: MemoryInfo;
+  swap: SwapInfo;
+  disk: DiskInfo;
+  network: NetworkInfo;
+  uptime: number;
+  process_count: number;
+}
+
+export interface ServerResourceUsage {
+  server_id: string;
+  server_name: string;
+  status: string;
+  pid: number | null;
+  cpu: CpuInfo;
+  memory: MemoryInfo;
+  disk: DiskInfo;
+}
+
+export interface IPv6TestTarget {
+  target: string;
+  address: string;
+  error: string;
+  error_key?: string;
+  error_args?: Record<string, string>;
+  kind: string;
+}
+
+export interface IPv6TestResult {
+  supported: boolean;
+  message: string;
+  message_key?: string;
+  message_args?: Record<string, string>;
+  detail?: string;
+  detail_key?: string;
+  detail_args?: Record<string, string>;
+  error_kind?: string;
+  targets?: IPv6TestTarget[];
+}
+
+export type HostBuildFlavor = "desktop-full" | "desktop-min" | "custom";
+
+export interface HostPluginRuntimeCapabilities {
+  available: boolean;
+  local_runtime: boolean;
+  ui_bridge: boolean;
+}
+
+export interface HostCapabilities {
+  build_flavor: HostBuildFlavor;
+  plugin_runtime: HostPluginRuntimeCapabilities;
+}
+
+export interface DesktopWebStatus {
+  enabled: boolean;
+  running: boolean;
+  bind_addr: string;
+  url: string;
+  static_dir_available: boolean;
+}
+
+export const systemApi = {
+  async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
+    if (!isUploadSupported()) {
+      throw new Error(i18n.t("system.browser_only_method"));
+    }
+
+    const input = document.createElement("input");
+    input.type = "file";
+    if (accept) {
+      input.accept = accept;
+    }
+
+    const selectedFile = await new Promise<File | null>((resolve) => {
+      input.addEventListener(
+        "change",
+        () => {
+          resolve(input.files?.[0] ?? null);
+        },
+        { once: true },
+      );
+      input.click();
+    });
+
+    if (!selectedFile) {
+      return null;
+    }
+
+    const uploaded = await uploadFile(selectedFile);
+    return uploaded.saved_path;
+  },
+
+  async getSystemInfo(): Promise<SystemInfo> {
+    return tauriInvoke("get_system_info");
+  },
+
+  async getHostCapabilities(): Promise<HostCapabilities> {
+    return tauriInvoke("get_host_capabilities");
+  },
+
+  async getDesktopWebStatus(): Promise<DesktopWebStatus> {
+    return tauriInvokeDesktop("get_desktop_web_status");
+  },
+
+  async getServerResourceUsage(serverId: string): Promise<ServerResourceUsage> {
+    return tauriInvoke("get_server_resource_usage", { serverId });
+  },
+
+  async pickJarFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      return this.pickAndUploadBrowserFile(".jar");
+    }
+    return tauriInvoke("pick_jar_file");
+  },
+
+  async pickArchiveFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      return this.pickAndUploadBrowserFile(".zip,.tar,.tar.gz,.tgz,.jar,.exe");
+    }
+    return tauriInvoke("pick_archive_file");
+  },
+
+  async pickStartupFile(mode: "jar" | "bat" | "sh"): Promise<string | null> {
+    if (isUploadSupported()) {
+      const acceptMap: Record<string, string> = {
+        jar: ".jar",
+        bat: ".bat",
+        sh: ".sh",
+      };
+      const file = await pickFileFromBrowser({ accept: acceptMap[mode] || ".jar" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
+    }
+    return tauriInvoke("pick_startup_file", { mode });
+  },
+
+  async pickServerExecutable(): Promise<{ path: string; mode: "jar" | "bat" | "sh" } | null> {
+    if (isUploadSupported()) {
+      const file = await pickFileFromBrowser({ accept: ".jar,.bat,.sh" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        const ext = file.name.split(".").pop()?.toLowerCase() || "jar";
+        const mode = ext === "bat" ? "bat" : ext === "sh" ? "sh" : "jar";
+        return { path: result.saved_path, mode };
+      }
+      return null;
+    }
+    const result = await tauriInvoke<[string, string] | null>("pick_server_executable");
+    if (result) {
+      return { path: result[0], mode: result[1] as "jar" | "bat" | "sh" };
+    }
+    return null;
+  },
+
+  async pickJavaFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      const file = await pickFileFromBrowser({ accept: ".exe" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
+    }
+    return tauriInvoke("pick_java_file");
+  },
+
+  async pickSaveFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error(i18n.t("system.docker_native_picker_unsupported"));
+    }
+    return tauriInvoke("pick_save_file");
+  },
+
+  async pickPersonalizationExportFile(suggestedName: string): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error(i18n.t("system.docker_personalization_export_unsupported"));
+    }
+    return tauriInvoke("pick_personalization_export_file", { suggestedName });
+  },
+
+  async pickPersonalizationImportFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error(i18n.t("system.docker_personalization_import_unsupported"));
+    }
+    return tauriInvoke("pick_personalization_import_file");
+  },
+
+  async pickFolder(): Promise<string | null> {
+    if (isUploadSupported()) {
+      throw new Error(i18n.t("system.docker_native_picker_unsupported"));
+    }
+    return tauriInvoke("pick_folder");
+  },
+
+  async pickFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      const file = await pickFileFromBrowser();
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
+    }
+    return tauriInvoke("pick_file");
+  },
+
+  async pickImageFile(): Promise<string | null> {
+    if (isUploadSupported()) {
+      const file = await pickFileFromBrowser({ accept: ".png,.jpg,.jpeg,.webp,.gif,.bmp" });
+      if (file && file instanceof File) {
+        const result = await uploadFile(file);
+        return result.saved_path;
+      }
+      return null;
+    }
+    return tauriInvoke("pick_image_file");
+  },
+
+  async openFile(path: string): Promise<void> {
+    if (isUploadSupported()) {
+      throw new Error(i18n.t("system.docker_open_file_unsupported"));
+    }
+    return tauriInvoke("open_file", { path });
+  },
+
+  async openFolder(path: string): Promise<void> {
+    if (isUploadSupported()) {
+      throw new Error(i18n.t("system.docker_open_folder_unsupported"));
+    }
+    return tauriInvoke("open_folder", { path });
+  },
+
+  async getDefaultRunPath(): Promise<string> {
+    return tauriInvoke("get_default_run_path");
+  },
+
+  async getAppVersion(): Promise<string> {
+    return tauriInvoke("get_app_version");
+  },
+
+  async getCreateServerDefaults(): Promise<CreateServerDefaults> {
+    return tauriInvoke("get_create_server_defaults");
+  },
+
+  async getSafeModeStatus(): Promise<boolean> {
+    return tauriInvoke("get_safe_mode_status");
+  },
+
+  async testIPv6Connectivity(): Promise<IPv6TestResult> {
+    return tauriInvoke("test_ipv6_connectivity");
+  },
+};

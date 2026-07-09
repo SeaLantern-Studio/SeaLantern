@@ -1,0 +1,8 @@
+{
+  "placeholder": "拖拽文件到此处或点击选择",
+  "support_both": "支持文件和文件夹",
+  "support_files": "支持文件",
+  "support_folders": "支持文件夹",
+  "error_no_path": "无法获取拖拽的文件路径",
+  "error_unsupported_type": "不支持的文件类型"
+}

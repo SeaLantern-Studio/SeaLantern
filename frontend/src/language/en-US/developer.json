@@ -1,0 +1,123 @@
+{
+  "app_memory": "SeaLantern Memory",
+  "server_instances_memory": "Server Instances Memory",
+  "uptime": "Uptime",
+  "title": "Developer Tools",
+  "subtitle": "View app logs, system details, and common troubleshooting actions",
+  "hero": "This page keeps the current app state visible so you can investigate issues, prepare feedback, or verify local changes.",
+  "disabled_title": "Developer Mode Is Off",
+  "disabled_desc": "Turn on Developer Mode in Settings before opening this page.",
+  "system_title": "System Details",
+  "system_desc": "Basic runtime information for this device and app.",
+  "system_empty": "No information is available yet.",
+  "system_copied": "System details copied",
+  "logs_title": "Live Logs",
+  "logs_desc": "Recent app logs refresh automatically for troubleshooting.",
+  "logs_empty": "No logs yet.",
+  "logs_filtered_empty": "No logs match the current filters.",
+  "logs_copied": "Copied {{count}} log entries",
+  "logs_exported": "Logs exported",
+  "logs_cleared": "Logs cleared",
+  "copy_logs": "Copy Logs",
+  "export_logs": "Export Logs",
+  "clear_logs": "Clear Logs",
+  "log_level_filter": "Level",
+  "log_module_filter": "Module",
+  "all_log_levels": "All levels",
+  "all_log_modules": "All modules",
+  "log_filter_summary": "Showing {{shown}} / {{total}} log entries",
+  "actions_title": "Quick Actions",
+  "actions_desc": "Keep common troubleshooting and test actions in one place.",
+  "system_tools_title": "Share Details",
+  "system_tools_desc": "Copy this device summary before reporting an issue.",
+  "copy_system": "Copy System Details",
+  "update_test_title": "Update Package Test",
+  "update_test_desc": "Check whether a specific update package can be downloaded normally.",
+  "update_test_placeholder": "Enter update package URL",
+  "update_test_button": "Start Test Download",
+  "update_test_started": "Test download started",
+  "crash_test_title": "Crash Log Test",
+  "crash_test_desc": "This immediately triggers a crash so you can confirm crash logs are generated.",
+  "crash_test_unavailable": "This action is only available in local development builds.",
+  "crash_test_button": "Trigger Crash Test",
+  "app_version": "App Version",
+  "os": "Operating System",
+  "kernel": "Kernel Version",
+  "host": "Device Name",
+  "cpu": "Processor",
+  "memory": "Memory",
+  "process_count": "Process Count",
+  "next": {
+    "eyebrow": "Developer Tools",
+    "page_title": "Developer Tools",
+    "page_description": "",
+    "nav_aria_label": "Developer sections",
+    "summary": {
+      "browser": "Browser",
+      "desktop": "Desktop",
+      "environment": "Environment",
+      "log_count": "Log entries",
+      "system_status": "System status",
+      "ready": "Ready",
+      "waiting": "Waiting"
+    },
+    "sections": {
+      "overview": {
+        "label": "Overview",
+        "description": ""
+      },
+      "logs": {
+        "label": "Logs",
+        "description": ""
+      },
+      "tools": {
+        "label": "Tools",
+        "description": ""
+      },
+      "other": {
+        "label": "Other",
+        "description": ""
+      }
+    },
+    "overview": {
+      "title": "Environment Summary",
+      "description": ""
+    },
+    "logs": {
+      "title": "Logs",
+      "description": ""
+    },
+    "tools": {
+      "title": "Tools",
+      "description": "",
+      "toast": {
+        "title": "Toast Test",
+        "description": "Show a message with one tap.",
+        "success_button": "Show Success",
+        "error_button": "Show Error",
+        "warning_button": "Show Warning",
+        "info_button": "Show Info",
+        "success_message": "Action completed",
+        "error_message": "Action failed, try again",
+        "warning_message": "Please confirm this action first",
+        "info_message": "Loading the latest status"
+      },
+      "banner": {
+        "title": "Announcement Test",
+        "description": "Click a button to open the announcement window.",
+        "info_button": "Show Announcement",
+        "warning_button": "Show Warning Announcement",
+        "error_button": "Show Error Announcement",
+        "clear_button": "Close Announcement",
+        "info_message": "There is a new status update",
+        "warning_message": "This action needs another check",
+        "error_message": "The current state needs attention"
+      }
+    },
+    "other": {
+      "title": "Other",
+      "description": "",
+      "warning": "This area contains high-risk actions."
+    }
+  }
+}

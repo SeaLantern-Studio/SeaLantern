@@ -1,0 +1,8 @@
+{
+  "groups": {
+    "main": "Allgemein",
+    "server": "Server",
+    "system": "System"
+  },
+  "collapse_btn": "Seitenleiste einklappen"
+}

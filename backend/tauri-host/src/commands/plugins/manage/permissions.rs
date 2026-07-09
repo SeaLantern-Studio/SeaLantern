@@ -1,0 +1,32 @@
+use super::common::{lock_manager, validate_plugin_id};
+use crate::hardcode_data::plugin_permissions::{get_plugin_permission_list, PluginPermissionInfo};
+use crate::plugins::manager::PluginManager;
+use std::sync::{Arc, Mutex};
+
+// 获取插件已申请的权限列表
+pub(super) fn get_plugin_permissions(
+    plugin_id: String,
+    manager: tauri::State<'_, Arc<Mutex<PluginManager>>>,
+) -> Result<Vec<PluginPermissionInfo>, String> {
+    validate_plugin_id(&plugin_id)?;
+
+    let manager = lock_manager(&manager);
+    let plugin_list = manager.get_plugin_list();
+
+    let plugin = plugin_list
+        .iter()
+        .find(|plugin| plugin.manifest.id == plugin_id)
+        .ok_or_else(|| format!("Plugin '{}' not found", plugin_id))?;
+
+    let plugin_permissions = get_plugin_permission_list()
+        .into_iter()
+        .filter(|permission| {
+            plugin.manifest.permissions.iter().any(|declared| {
+                crate::hardcode_data::plugin_permissions::normalize_permission_id(declared)
+                    == permission.id
+            })
+        })
+        .collect();
+
+    Ok(plugin_permissions)
+}
