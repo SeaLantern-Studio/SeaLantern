@@ -429,10 +429,10 @@ fn scan_linux() -> Vec<PathBuf> {
                 continue;
             }
 
-            if let Some(parent) = entry_path.parent() {
-                if !should_explore_linux(parent) {
-                    continue;
-                }
+            if let Some(parent) = entry_path.parent()
+                && !should_explore_linux(parent)
+            {
+                continue;
             }
 
             #[cfg(unix)]
