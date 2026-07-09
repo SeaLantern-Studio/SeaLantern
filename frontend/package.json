@@ -1,10 +1,6 @@
 {
   "name": "sea-lantern",
-<<<<<<< HEAD
   "version": "1.3.0",
-=======
-  "version": "1.2.0",
->>>>>>> 4ea98bbc3b026839c113d85cd6797c0899ecd0ec
   "private": true,
   "type": "module",
   "scripts": {
