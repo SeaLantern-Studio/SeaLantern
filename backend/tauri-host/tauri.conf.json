@@ -53,10 +53,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+<<<<<<< HEAD
     "resources": [
       "../../LICENSE",
       "../../NOTICE"
     ],
+=======
+    "resources": ["../../LICENSE", "../../NOTICE"],
+>>>>>>> 4ea98bbc3b026839c113d85cd6797c0899ecd0ec
     "windows": {
       "wix": {
         "language": "zh-CN"
