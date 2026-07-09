@@ -122,7 +122,7 @@ Tag 必须能解析出语义化版本号，例如：
 Nightly 与正式版不同：
 
 - 来源分支：`beta`
-- 触发方式：定时任务或手动触发 `夜间发布`
+- 触发方式：每天上海时间 04:00 定时触发，或手动触发 `夜间发布`
 - 不直接把 `NightlyBuild-*` 写回版本清单
 - 通过环境变量 `SEA_LANTERN_BUILD_VERSION` 注入显示版本
 
@@ -135,22 +135,22 @@ NightlyBuild-<SHORT_SHA>-<UTC_DATETIME>
 当前 Nightly tag 格式：
 
 ```text
-nightly-v<SEMVER>-<YYYYMMDD>-<SHORT_SHA>
+nightly-<YYYYMMDD>
 ```
 
 例如：
 
 ```text
-NightlyBuild-abcdef0-20260705T120000Z
-nightly-v1.2.3-20260705-abcdef0
+NightlyBuild-abcdef0-20260705T200000Z
+nightly-20260706
 ```
 
 Nightly workflow 会：
 
-- 基于 `beta` 分支当前提交创建或复用 prerelease；
+- 基于 `beta` 分支当前提交创建或复用当天日期的 prerelease；
 - 构建多平台桌面产物；
 - 上传便携包等资产；
-- 清理旧的 Nightly Release。
+- 构建全部成功后，清理当前日期之外的旧 Nightly Release 和对应 tag。
 
 ## 四、客户端更新来源
 
@@ -199,7 +199,7 @@ git push origin v1.2.3
 NightlyBuild 显示版本应通过构建环境变量注入，例如：
 
 ```text
-SEA_LANTERN_BUILD_VERSION=NightlyBuild-abcdef0-20260705T120000Z
+SEA_LANTERN_BUILD_VERSION=NightlyBuild-abcdef0-20260705T200000Z
 ```
 
 ### 3. 正式发布前先确认 CI 绿灯
@@ -209,4 +209,3 @@ SEA_LANTERN_BUILD_VERSION=NightlyBuild-abcdef0-20260705T120000Z
 - `代码检查` 已通过；
 - 需要的 release 资产说明无误；
 - tag 版本号与清单文件一致。
-
