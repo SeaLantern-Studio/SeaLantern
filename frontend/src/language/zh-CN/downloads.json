@@ -1,0 +1,79 @@
+{
+  "next": {
+    "eyebrow": "下载管理",
+    "page_title": "下载管理",
+    "page_description": "",
+    "nav_aria_label": "下载分组",
+    "cancel_active": "取消当前任务",
+    "error_title": "暂时无法完成下载操作",
+    "summary": {
+      "total_tasks": "任务总数",
+      "active_tasks": "进行中",
+      "completed_tasks": "已完成",
+      "failed_tasks": "失败"
+    },
+    "sections": {
+      "tasks": {
+        "label": "任务",
+        "description": ""
+      },
+      "server": {
+        "label": "新建服务器",
+        "description": ""
+      },
+      "file": {
+        "label": "新建文件",
+        "description": ""
+      }
+    },
+    "tasks": {
+      "current_title": "当前任务",
+      "recent_title": "最近任务",
+      "empty_current_title": "当前没有进行中的任务",
+      "empty_current_description": "开始后会显示在这里。",
+      "empty_recent_title": "最近没有任务",
+      "empty_recent_description": "下载记录会保留在这里。",
+      "empty_all_description": "从新建服务器或新建文件开始。",
+      "target_label": "保存位置",
+      "size_label": "进度",
+      "time_label": "创建时间",
+      "open_create": "进入创建实例",
+      "status_pending": "等待开始",
+      "status_downloading": "下载中",
+      "status_finished": "已完成",
+      "status_failed": "下载失败",
+      "status_cancelled": "已取消",
+      "cancelled_detail": "任务已取消"
+    },
+    "server": {
+      "form_title": "下载服务端",
+      "form_description": "",
+      "summary_title": "提交摘要",
+      "summary_description": "",
+      "save_dir_hint": "下载完成后可继续进入创建实例。",
+      "download_url": "下载地址",
+      "submit": "开始下载",
+      "summary": {
+        "target": "保存位置",
+        "version": "版本",
+        "threads": "线程数",
+        "not_set": "未设置"
+      }
+    },
+    "file": {
+      "form_title": "下载文件",
+      "form_description": "",
+      "summary_title": "提交摘要",
+      "summary_description": "",
+      "save_dir_hint": "选择文件保存目录。",
+      "url_label": "下载地址",
+      "submit": "开始下载",
+      "summary": {
+        "target": "保存位置",
+        "filename": "文件名",
+        "threads": "线程数",
+        "not_set": "未设置"
+      }
+    }
+  }
+}

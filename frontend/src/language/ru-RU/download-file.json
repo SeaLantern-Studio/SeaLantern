@@ -1,0 +1,23 @@
+{
+  "title": "Скачать файл с помощью многопоточного загрузчика",
+  "url": "URL скачивания",
+  "url_placeholder": "Введите URL для скачивания (http/https)",
+  "save_folder": "Сохранить в",
+  "save_path": "Путь сохранения",
+  "select_folder": "Выберите папку",
+  "pick_folder": "Выбрать папку",
+  "filename": "Имя файла",
+  "thread_count": "Количество потоков",
+  "thread_count_empty": "Количество потоков не может быть пустым",
+  "thread_count_invalid": "Недопустимый символ",
+  "thread_count_positive": "Количество потоков должно быть положительным целым числом",
+  "thread_count_too_big": "Количество потоков не может превышать 256",
+  "cancel": "Отмена",
+  "download": "Скачать",
+  "browse": "Обзор",
+  "downloading": "Загрузка ресурса...",
+  "status-finished": "Загрузка завершена",
+  "failed": "Ошибка загрузки",
+  "completed": "Завершено",
+  "filename_placeholder": "Please enter a file name, for example server.jar"
+}

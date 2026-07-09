@@ -1,0 +1,13 @@
+{
+  "title": "Select Startup File",
+  "scanning": "Scanning...",
+  "description": "Found {{count}} executable files, please select one:",
+  "click_to_select": "Click on a file in the list to select",
+  "priority_high": "High Priority",
+  "priority_medium": "Medium Priority",
+  "priority_low": "Low Priority",
+  "recommended": "Recommended",
+  "confirm": "Confirm Selection",
+  "no_files": "No {{mode}} executable files found",
+  "check_path": "Please check if the server directory is correct"
+}

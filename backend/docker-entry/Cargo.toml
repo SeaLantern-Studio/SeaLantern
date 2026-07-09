@@ -1,0 +1,8 @@
+[package]
+name = "docker-entry"
+version.workspace = true
+description = "Docker 容器入口程序"
+edition.workspace = true
+
+[dependencies]
+sea_lantern = { package = "sea-lantern", path = "../tauri-host", features = ["docker"] }

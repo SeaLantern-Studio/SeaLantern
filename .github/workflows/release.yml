@@ -1,4 +1,4 @@
-name: "发布"
+name: "正式发布"
 
 on:
   push:
@@ -6,16 +6,25 @@ on:
       - "v*"
       - "sea-lantern-v*"
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
+  actions: read
 
 jobs:
   validate-tag:
     name: 校验 Tag 来源并提取版本
     runs-on: ubuntu-22.04
+    timeout-minutes: 10
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+      release_name: ${{ steps.meta.outputs.release_name }}
+      release_body: ${{ steps.meta.outputs.release_body }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -32,19 +41,77 @@ jobs:
           fi
           echo "✅ Tag 来源校验通过"
 
+      - name: 校验主检查已通过
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const headSha = process.env.GITHUB_SHA;
+            const requiredWorkflowName = '代码检查';
+
+            const response = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              head_sha: headSha,
+              per_page: 20,
+            });
+
+            const passed = response.data.workflow_runs.some((run) =>
+              run.name === requiredWorkflowName &&
+              run.head_sha === headSha &&
+              run.event === 'push' &&
+              run.head_branch === 'main' &&
+              run.status === 'completed' &&
+              run.conclusion === 'success'
+            );
+
+            if (!passed) {
+              core.setFailed(`❌ 提交 ${headSha} 尚未通过 main 分支上的 ${requiredWorkflowName}`);
+              return;
+            }
+
+            core.info(`✅ 提交 ${headSha} 已通过 main 分支上的 ${requiredWorkflowName}`);
+
       - name: 提取版本信息
         id: meta
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
+          if ! echo "$TAG" | grep -Eq '^(v|sea-lantern-v)[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "❌ 当前 tag 不符合支持的版本格式: $TAG"
+            exit 1
+          fi
           VERSION="$(echo "$TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
           if [ -z "$VERSION" ]; then
             echo "❌ 无法从 tag 提取版本号: $TAG"
             exit 1
           fi
 
+          PRERELEASE=false
+          if echo "$TAG" | grep -Eq '^(v|sea-lantern-v)[0-9]+\.[0-9]+\.[0-9]+-'; then
+            PRERELEASE=true
+          fi
+
+          RELEASE_NAME="Sea Lantern v${VERSION}"
+
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "release_name=$RELEASE_NAME" >> "$GITHUB_OUTPUT"
+          echo "release_body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "## 下载说明" >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "如果你只想下载后直接运行：Windows 选 portable.zip，Mac 选 portable.tar.gz，Linux 选 AppImage。" >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "- \`x64-setup.exe\`：Windows 64 位安装包，双击后按提示安装即可。" >> "$GITHUB_OUTPUT"
+          echo "- \`x64_en-US.msi\`：Windows 64 位安装包，适合手动部署或需要 MSI 的场景。" >> "$GITHUB_OUTPUT"
+          echo "- \`Sea.Lantern_${VERSION}_windows_x64_portable.zip\` / \`Sea.Lantern_${VERSION}_windows_arm64_portable.zip\`：Windows 免安装版，解压后直接运行。" >> "$GITHUB_OUTPUT"
+          echo "- \`x64.dmg\`：适用于 Intel Mac。" >> "$GITHUB_OUTPUT"
+          echo "- \`aarch64.dmg\`：适用于 Apple 芯片 Mac。" >> "$GITHUB_OUTPUT"
+          echo "- \`Sea.Lantern_${VERSION}_macos_x64_portable.tar.gz\` / \`Sea.Lantern_${VERSION}_macos_arm64_portable.tar.gz\`：Mac 免安装版，解压后把 \`.app\` 放到任意位置即可打开。" >> "$GITHUB_OUTPUT"
+          echo "- \`*.AppImage\`：Linux 免安装版，给文件执行权限后即可直接运行。" >> "$GITHUB_OUTPUT"
+          echo "- \`*.deb\` / \`*.rpm\`：Linux 安装包。" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
           echo "✅ 发布版本: $VERSION"
 
   publish-tauri:
@@ -52,26 +119,33 @@ jobs:
     needs: validate-tag
     permissions:
       contents: write
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: "macos-latest"
             args: "--target aarch64-apple-darwin"
+            asset_arch: "arm64"
           - platform: "macos-latest"
             args: "--target x86_64-apple-darwin"
+            asset_arch: "x64"
           - platform: "ubuntu-22.04"
             args: ""
             arch: "amd64"
+            asset_arch: "x64"
           - platform: "ubuntu-22.04-arm"
             args: ""
             arch: "arm64"
+            asset_arch: "arm64"
           - platform: "windows-latest"
             args: ""
             arch: "amd64"
+            asset_arch: "x64"
           - platform: "windows-11-arm"
             args: ""
             arch: "arm64"
+            asset_arch: "arm64"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -92,6 +166,14 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
       - name: 安装 Rust 工具链 (默认目标)
         if: ${{ matrix.args == '' }}
         uses: dtolnay/rust-toolchain@stable
@@ -105,12 +187,12 @@ jobs:
       - name: 缓存 Rust 编译产物
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: ". -> target"
 
       - name: 安装前端依赖 (pnpm)
         run: |
-          corepack prepare pnpm@9.15.9 --activate
-          pnpm install --frozen-lockfile
+          corepack prepare pnpm@11.5.3 --activate
+          pnpm --dir frontend install --frozen-lockfile
 
       - name: 构建并发布
         uses: tauri-apps/tauri-action@v0
@@ -118,11 +200,108 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ needs.validate-tag.outputs.tag }}
-          releaseName: "Sea Lantern v${{ needs.validate-tag.outputs.version }}"
-          releaseBody: |
-            ## 发布 Sea Lantern v${{ needs.validate-tag.outputs.version }}
-
-            自动发布构建产物。
+          releaseName: ${{ needs.validate-tag.outputs.release_name }}
+          releaseBody: ${{ needs.validate-tag.outputs.release_body }}
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ needs.validate-tag.outputs.prerelease }}
+          projectPath: backend/tauri-host
           args: ${{ matrix.args }}
+
+      - name: 打包 Windows 免安装版
+        if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.validate-tag.outputs.tag }}
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+          ASSET_ARCH: ${{ matrix.asset_arch }}
+        run: |
+          $releaseDir = Get-ChildItem -Path "target", "backend/tauri-host/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\release\\sea-lantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
+            Select-Object -First 1 -ExpandProperty DirectoryName
+
+          if (-not $releaseDir) {
+            throw "未找到 Windows 可执行文件，无法打包免安装版。"
+          }
+
+          $stageDir = Join-Path $env:RUNNER_TEMP "portable-windows-$env:ASSET_ARCH"
+          Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $stageDir | Out-Null
+
+          Copy-Item -LiteralPath (Join-Path $releaseDir "sea-lantern.exe") -Destination $stageDir
+
+          Get-ChildItem -Path $releaseDir -File -Filter "*.dll" -ErrorAction SilentlyContinue |
+            ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $stageDir }
+
+          Copy-Item -LiteralPath "LICENSE", "NOTICE" -Destination $stageDir
+
+          $assetName = "Sea.Lantern_${env:VERSION}_windows_${env:ASSET_ARCH}_portable.zip"
+          $assetPath = Join-Path $env:RUNNER_TEMP $assetName
+          if (Test-Path $assetPath) {
+            Remove-Item -LiteralPath $assetPath -Force
+          }
+
+          Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $assetPath -Force
+          gh release upload $env:TAG $assetPath --clobber
+
+      - name: 打包 macOS 免安装版
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.validate-tag.outputs.tag }}
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+          ASSET_ARCH: ${{ matrix.asset_arch }}
+        run: |
+          set -euo pipefail
+
+          SEARCH_ROOTS=()
+          for dir in target backend/tauri-host/target; do
+            if [ -d "$dir" ]; then
+              SEARCH_ROOTS+=("$dir")
+            fi
+          done
+
+          if [ ${#SEARCH_ROOTS[@]} -eq 0 ]; then
+            echo "❌ 未找到 target 目录，无法打包 macOS 免安装版"
+            exit 1
+          fi
+
+          APP_PATH="$(find "${SEARCH_ROOTS[@]}" -type d -name '*.app' -path '*/bundle/*' 2>/dev/null | head -n 1 || true)"
+          APP_ARCHIVE_PATH=""
+          if [ -z "$APP_PATH" ]; then
+            APP_ARCHIVE_PATH="$(find "${SEARCH_ROOTS[@]}" -type f -name '*.app.tar.gz' -path '*/bundle/*' 2>/dev/null | head -n 1 || true)"
+          fi
+
+          if [ -z "$APP_PATH" ] && [ -z "$APP_ARCHIVE_PATH" ]; then
+            echo "❌ 未找到 macOS .app 或 .app.tar.gz 产物，无法打包免安装版"
+            echo "已发现的 bundle 路径:"
+            find "${SEARCH_ROOTS[@]}" -path '*/bundle/*' 2>/dev/null | sort || true
+            exit 1
+          fi
+
+          STAGE_DIR="$RUNNER_TEMP/portable-macos-$ASSET_ARCH"
+          rm -rf "$STAGE_DIR"
+          mkdir -p "$STAGE_DIR"
+
+          if [ -n "$APP_PATH" ]; then
+            cp -R "$APP_PATH" "$STAGE_DIR/"
+            APP_BASENAME="$(basename "$APP_PATH")"
+          else
+            tar -C "$STAGE_DIR" -xzf "$APP_ARCHIVE_PATH"
+            EXTRACTED_APP_PATH="$(find "$STAGE_DIR" -maxdepth 1 -type d -name '*.app' 2>/dev/null | head -n 1 || true)"
+            if [ -z "$EXTRACTED_APP_PATH" ]; then
+              echo "❌ 已找到 $APP_ARCHIVE_PATH，但解压后未发现 .app 目录"
+              find "$STAGE_DIR" -maxdepth 2 2>/dev/null | sort || true
+              exit 1
+            fi
+            APP_BASENAME="$(basename "$EXTRACTED_APP_PATH")"
+          fi
+
+          cp LICENSE NOTICE "$STAGE_DIR/"
+
+          ASSET_NAME="Sea.Lantern_${VERSION}_macos_${ASSET_ARCH}_portable.tar.gz"
+          ASSET_PATH="$RUNNER_TEMP/$ASSET_NAME"
+          tar -C "$STAGE_DIR" -czf "$ASSET_PATH" "$APP_BASENAME" LICENSE NOTICE
+
+          gh release upload "$TAG" "$ASSET_PATH" --clobber

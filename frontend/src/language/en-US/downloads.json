@@ -1,0 +1,79 @@
+{
+  "next": {
+    "eyebrow": "Downloads",
+    "page_title": "Downloads",
+    "page_description": "",
+    "nav_aria_label": "Download sections",
+    "cancel_active": "Cancel active task",
+    "error_title": "Download actions are unavailable right now",
+    "summary": {
+      "total_tasks": "Total tasks",
+      "active_tasks": "Active",
+      "completed_tasks": "Completed",
+      "failed_tasks": "Failed"
+    },
+    "sections": {
+      "tasks": {
+        "label": "Tasks",
+        "description": ""
+      },
+      "server": {
+        "label": "New Server",
+        "description": ""
+      },
+      "file": {
+        "label": "New File",
+        "description": ""
+      }
+    },
+    "tasks": {
+      "current_title": "Current task",
+      "recent_title": "Recent tasks",
+      "empty_current_title": "No active task",
+      "empty_current_description": "New tasks appear here.",
+      "empty_recent_title": "No recent tasks",
+      "empty_recent_description": "Download history stays here.",
+      "empty_all_description": "Start from New Server or New File.",
+      "target_label": "Target",
+      "size_label": "Progress",
+      "time_label": "Created",
+      "open_create": "Open create flow",
+      "status_pending": "Pending",
+      "status_downloading": "Downloading",
+      "status_finished": "Completed",
+      "status_failed": "Failed",
+      "status_cancelled": "Cancelled",
+      "cancelled_detail": "Task cancelled"
+    },
+    "server": {
+      "form_title": "Download Server",
+      "form_description": "",
+      "summary_title": "Summary",
+      "summary_description": "",
+      "save_dir_hint": "When it finishes, you can continue into create instance.",
+      "download_url": "Download URL",
+      "submit": "Start download",
+      "summary": {
+        "target": "Target",
+        "version": "Version",
+        "threads": "Threads",
+        "not_set": "Not set"
+      }
+    },
+    "file": {
+      "form_title": "Download File",
+      "form_description": "",
+      "summary_title": "Summary",
+      "summary_description": "",
+      "save_dir_hint": "Choose where the file should be saved.",
+      "url_label": "Download URL",
+      "submit": "Start download",
+      "summary": {
+        "target": "Target",
+        "filename": "Filename",
+        "threads": "Threads",
+        "not_set": "Not set"
+      }
+    }
+  }
+}

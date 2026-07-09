@@ -1,0 +1,8 @@
+{
+  "groups": {
+    "main": "通用",
+    "server": "伺服器",
+    "system": "系統"
+  },
+  "collapse_btn": "收起側欄"
+}

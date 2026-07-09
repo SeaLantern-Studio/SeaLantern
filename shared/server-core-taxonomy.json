@@ -1,0 +1,233 @@
+{
+  "entries": [
+    {
+      "key": "allay",
+      "label": "AllayMC",
+      "supportsPluginExtensions": true,
+      "aliases": [{ "value": "allaymc" }]
+    },
+    {
+      "key": "airplane",
+      "label": "Airplane",
+      "supportsPluginExtensions": true,
+      "aliases": [
+        { "value": "paperairplane" },
+        { "value": "paper-airplane", "label": "Paper-Airplane" }
+      ]
+    },
+    {
+      "key": "arclight-forge",
+      "label": "Arclight-Forge",
+      "supportsPluginExtensions": true,
+      "aliases": [{ "value": "arclight_forge" }]
+    },
+    {
+      "key": "arclight-neoforge",
+      "label": "Arclight-NeoForge",
+      "supportsPluginExtensions": true,
+      "aliases": [{ "value": "arclight_neoforge" }]
+    },
+    {
+      "key": "bds",
+      "label": "BDS",
+      "aliases": [
+        { "value": "bedrock" },
+        { "value": "bedrock_server" },
+        { "value": "bedrock-server" },
+        { "value": "bedrockdedicatedserver" },
+        { "value": "bedrock_dedicated_server" },
+        { "value": "bedrock-dedicated-server", "label": "Bedrock Dedicated Server" }
+      ]
+    },
+    {
+      "key": "bdsx",
+      "label": "BDSX",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "bukkit",
+      "label": "Bukkit",
+      "supportsPluginExtensions": true,
+      "aliases": [{ "value": "craftbukkit" }]
+    },
+    {
+      "key": "bungeecord",
+      "label": "BungeeCord",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "catserver",
+      "label": "CatServer",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "cuberite",
+      "label": "Cuberite"
+    },
+    {
+      "key": "endstone",
+      "label": "Endstone",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "fabric",
+      "label": "Fabric",
+      "aliases": [
+        { "value": "arclight-fabric", "label": "Arclight-Fabric" },
+        { "value": "banner", "label": "Banner" }
+      ]
+    },
+    {
+      "key": "flamecord",
+      "label": "FlameCord",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "folia",
+      "label": "Folia",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "forge",
+      "label": "Forge",
+      "aliases": [{ "value": "spongeforge", "label": "SpongeForge" }]
+    },
+    {
+      "key": "glowstone",
+      "label": "Glowstone",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "leaves",
+      "label": "Leaves",
+      "supportsPluginExtensions": true,
+      "aliases": [{ "value": "leaf", "label": "Leaf" }]
+    },
+    {
+      "key": "levilamina",
+      "label": "LeviLamina",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "liteloaderbds",
+      "label": "LiteLoaderBDS",
+      "supportsPluginExtensions": true,
+      "aliases": [
+        { "value": "liteloader-bds" },
+        { "value": "liteloader_bds" }
+      ]
+    },
+    {
+      "key": "lightfall",
+      "label": "Lightfall",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "minestom",
+      "label": "Minestom",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "mohist",
+      "label": "Mohist",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "neoforge",
+      "label": "NeoForge"
+    },
+    {
+      "key": "nukkit",
+      "label": "Nukkit",
+      "supportsPluginExtensions": true,
+      "aliases": [
+        { "value": "nukkitx", "label": "NukkitX" },
+        { "value": "cloudburstnukkit" }
+      ]
+    },
+    {
+      "key": "paper",
+      "label": "Paper",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "pocketmine",
+      "label": "PocketMine-MP",
+      "supportsPluginExtensions": true,
+      "aliases": [
+        { "value": "pocketmine-mp" },
+        { "value": "pocketmine_mp" }
+      ]
+    },
+    {
+      "key": "powernukkitx",
+      "label": "PowerNukkitX",
+      "supportsPluginExtensions": true,
+      "aliases": [{ "value": "powernukkit" }]
+    },
+    {
+      "key": "pumpkin",
+      "label": "Pumpkin",
+      "i18nKey": "create.core_type_pumpkin"
+    },
+    {
+      "key": "purpur",
+      "label": "Purpur",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "pufferfish",
+      "label": "Pufferfish",
+      "supportsPluginExtensions": true,
+      "aliases": [
+        { "value": "pufferfish_purpur", "label": "Pufferfish-Purpur" },
+        { "value": "pufferfish-purpur", "label": "Pufferfish-Purpur" }
+      ]
+    },
+    {
+      "key": "quilt",
+      "label": "Quilt"
+    },
+    {
+      "key": "sponge",
+      "label": "Sponge",
+      "supportsPluginExtensions": true,
+      "aliases": [{ "value": "spongevanilla", "label": "SpongeVanilla" }]
+    },
+    {
+      "key": "spigot",
+      "label": "Spigot",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "travertine",
+      "label": "Travertine",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "tuinity",
+      "label": "Tuinity",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "vanilla",
+      "label": "Vanilla",
+      "aliases": [{ "value": "vanilla-snapshot", "label": "Vanilla Snapshot" }]
+    },
+    {
+      "key": "velocity",
+      "label": "Velocity",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "waterfall",
+      "label": "Waterfall",
+      "supportsPluginExtensions": true
+    },
+    {
+      "key": "youer",
+      "label": "Youer",
+      "supportsPluginExtensions": true
+    }
+  ]
+}

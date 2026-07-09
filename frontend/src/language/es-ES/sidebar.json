@@ -1,0 +1,8 @@
+{
+  "groups": {
+    "main": "General",
+    "server": "Servidor",
+    "system": "Sistema"
+  },
+  "collapse_btn": "Contraer barra lateral"
+}

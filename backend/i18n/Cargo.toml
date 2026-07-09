@@ -1,0 +1,12 @@
+[package]
+name = "i18n"
+version.workspace = true
+edition.workspace = true
+description = "Shared backend i18n service and embedded locale assets for Sea Lantern"
+
+[lib]
+name = "i18n"
+path = "src/lib.rs"
+
+[dependencies]
+serde_json = "1"

@@ -1,12 +1,16 @@
 node_modules/
 dist/
-src-tauri/target/
+src-tauri/
 target/
+.pnpm-store/
 
 # panic 崩溃报告日志（忽略文件内容，但保留目录本身由 panic-log/.gitkeep 追踪）
 panic-log/*.log
 
+.tmp*
 .idea/
+.vscode/
+.zed/
 *.log
 .DS_Store
 SETTINGS_VERIFICATION.md
@@ -19,6 +23,7 @@ changelogs/
 .claude/
 .codex
 .trae/
+.skill/
 changelog/
 .review/
 plugin-market/
@@ -30,4 +35,10 @@ plugins-demo/
 
 #docker test
 data/
+!frontend/src/data/
+!frontend/src/data/**
 CLAUDE.md
+
+# smoke test
+target-goal-smoke/
+tmp/

@@ -1,0 +1,13 @@
+{
+  "title": "Startdatei auswählen",
+  "scanning": "Scannen...",
+  "description": "{{count}} ausführbare Dateien erkannt, bitte wählen Sie eine aus:",
+  "click_to_select": "Klicken Sie auf eine Datei in der Liste, um sie auszuwählen",
+  "priority_high": "Hohe Priorität",
+  "priority_medium": "Mittlere Priorität",
+  "priority_low": "Niedrige Priorität",
+  "recommended": "Empfohlen",
+  "confirm": "Auswahl bestätigen",
+  "no_files": "Keine ausführbaren Dateien vom Typ {{mode}} gefunden",
+  "check_path": "Bitte überprüfen Sie, ob der Server-Ordner korrekt ist"
+}

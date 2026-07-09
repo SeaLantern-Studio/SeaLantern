@@ -1,0 +1,22 @@
+{
+  "enable": {
+    "title": "========== Log Demo 插件已启用 =========="
+  },
+  "log": {
+    "debugMessage": "这是一条调试日志 - 仅在有 log 权限时显示",
+    "infoMessage": "这是一条信息日志 - 用于输出一般性信息",
+    "warnMessage": "这是一条警告日志 - 用于提示潜在问题",
+    "errorMessage": "这是一条错误日志 - 用于报告错误情况",
+    "debugModeEnabled": "调试模式已开启，将输出详细日志",
+    "currentPlayers": "当前玩家: {{current}}/{{max}}"
+  },
+  "plugin": {
+    "id": "插件 ID: ",
+    "directory": "插件目录: "
+  },
+  "demoComplete": "========== Log Demo 演示完成 ==========",
+  "disable": {
+    "inProgress": "Log Demo 插件正在禁用...",
+    "complete": "Log Demo 插件已禁用"
+  }
+}

@@ -1,0 +1,19 @@
+[package]
+name = "server-startup-scan"
+version.workspace = true
+edition.workspace = true
+description = "Shared startup candidate scanning logic for Sea Lantern"
+
+[lib]
+name = "server_startup_scan"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+server_installer = { package = "server-installer", path = "../server-installer" }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"
+zip = "2.0"
