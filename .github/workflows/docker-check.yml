@@ -11,6 +11,9 @@ on:
       - "frontend/**"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/docker-check.yml"
 
 concurrency:
@@ -29,7 +32,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: 构建 Docker 镜像（测试构建）
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./docker/Dockerfile

@@ -12,28 +12,28 @@ FROM docker.m.daocloud.io/node:24-alpine AS frontend-builder
 WORKDIR /app
 
 # 安装 pnpm
-RUN npm install -g pnpm@11.5.2
+RUN npm install -g pnpm@11.5.3
 
 # 复制前端依赖文件
-COPY frontend/package.json ./package.json
-COPY frontend/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY frontend/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY frontend/package.json ./frontend/package.json
 
 # 安装依赖
-RUN pnpm install --frozen-lockfile
+RUN pnpm --dir frontend install --frozen-lockfile
 
 # 复制前端构建所需文件（精准 COPY，只复制必要的文件）
-COPY frontend/index.html ./index.html
-COPY frontend/vite.config.ts ./vite.config.ts
-COPY frontend/tsconfig.json ./tsconfig.json
-COPY frontend/tsconfig.node.json ./tsconfig.node.json
-COPY frontend/src/ ./src/
+COPY frontend/index.html ./frontend/index.html
+COPY frontend/vite.config.ts ./frontend/vite.config.ts
+COPY frontend/tsconfig.json ./frontend/tsconfig.json
+COPY frontend/tsconfig.node.json ./frontend/tsconfig.node.json
+COPY frontend/src/ ./frontend/src/
+COPY shared/ ./shared/
 
 # 复制 Tauri 图标（前端构建需要引用）
 COPY backend/tauri-host/icons/ ./backend/tauri-host/icons/
 
 # 构建前端 (vite)
-RUN npm run build
+RUN pnpm --dir frontend run build
 
 # ---------- 阶段 2: Rust 基础镜像 ----------
 FROM docker.m.daocloud.io/debian:bookworm-slim AS rust-base
@@ -62,31 +62,42 @@ WORKDIR /app
 
 # 只复制 Rust 项目相关文件（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
-COPY backend/runtime-core/Cargo.toml ./backend/runtime-core/
-COPY backend/runtime-core/src/ ./backend/runtime-core/src/
-COPY backend/update-core/Cargo.toml ./backend/update-core/
-COPY backend/update-core/src/ ./backend/update-core/src/
-COPY backend/server-config-core/Cargo.toml ./backend/server-config-core/
-COPY backend/server-config-core/src/ ./backend/server-config-core/src/
-COPY backend/starter-links-core/Cargo.toml ./backend/starter-links-core/
-COPY backend/starter-links-core/src/ ./backend/starter-links-core/src/
-COPY backend/java-installer-core/Cargo.toml ./backend/java-installer-core/
-COPY backend/java-installer-core/src/ ./backend/java-installer-core/src/
-COPY backend/server-download-links-core/Cargo.toml ./backend/server-download-links-core/
-COPY backend/server-download-links-core/src/ ./backend/server-download-links-core/src/
-COPY backend/server-installer-core/Cargo.toml ./backend/server-installer-core/
-COPY backend/server-installer-core/src/ ./backend/server-installer-core/src/
-COPY backend/server-plugin-core/Cargo.toml ./backend/server-plugin-core/
-COPY backend/server-plugin-core/src/ ./backend/server-plugin-core/src/
-COPY backend/server-startup-scan-core/Cargo.toml ./backend/server-startup-scan-core/
-COPY backend/server-startup-scan-core/src/ ./backend/server-startup-scan-core/src/
-COPY backend/server-local-setup-core/Cargo.toml ./backend/server-local-setup-core/
-COPY backend/server-local-setup-core/src/ ./backend/server-local-setup-core/src/
-COPY backend/docker-core/Cargo.toml ./backend/docker-core/
-COPY backend/docker-core/src/ ./backend/docker-core/src/
-COPY backend/i18n-core/Cargo.toml ./backend/i18n-core/
-COPY backend/i18n-core/src/ ./backend/i18n-core/src/
-COPY backend/i18n-core/locales/ ./backend/i18n-core/locales/
+COPY shared/ ./shared/
+COPY backend/runtime/Cargo.toml ./backend/runtime/
+COPY backend/runtime/src/ ./backend/runtime/src/
+COPY backend/update/Cargo.toml ./backend/update/
+COPY backend/update/src/ ./backend/update/src/
+COPY backend/server-config/Cargo.toml ./backend/server-config/
+COPY backend/server-config/src/ ./backend/server-config/src/
+COPY backend/starter-links/Cargo.toml ./backend/starter-links/
+COPY backend/starter-links/src/ ./backend/starter-links/src/
+COPY backend/java-installer/Cargo.toml ./backend/java-installer/
+COPY backend/java-installer/src/ ./backend/java-installer/src/
+COPY backend/server-download-links/Cargo.toml ./backend/server-download-links/
+COPY backend/server-download-links/src/ ./backend/server-download-links/src/
+COPY backend/server-installer/Cargo.toml ./backend/server-installer/
+COPY backend/server-installer/src/ ./backend/server-installer/src/
+COPY backend/server-plugin/Cargo.toml ./backend/server-plugin/
+COPY backend/server-plugin/src/ ./backend/server-plugin/src/
+COPY backend/server-startup-scan/Cargo.toml ./backend/server-startup-scan/
+COPY backend/server-startup-scan/src/ ./backend/server-startup-scan/src/
+COPY backend/server-local-setup/Cargo.toml ./backend/server-local-setup/
+COPY backend/server-local-setup/src/ ./backend/server-local-setup/src/
+COPY backend/server-log/Cargo.toml ./backend/server-log/
+COPY backend/server-log/src/ ./backend/server-log/src/
+COPY backend/docker/Cargo.toml ./backend/docker/
+COPY backend/docker/src/ ./backend/docker/src/
+COPY backend/i18n/Cargo.toml ./backend/i18n/
+COPY backend/i18n/src/ ./backend/i18n/src/
+COPY backend/i18n/locales/ ./backend/i18n/locales/
+COPY backend/plugin-trust/Cargo.toml ./backend/plugin-trust/
+COPY backend/plugin-trust/src/ ./backend/plugin-trust/src/
+COPY backend/event/Cargo.toml ./backend/event/
+COPY backend/event/src/ ./backend/event/src/
+COPY backend/lua-runtime/Cargo.toml ./backend/lua-runtime/
+COPY backend/lua-runtime/src/ ./backend/lua-runtime/src/
+COPY backend/vendor/java-manager/Cargo.toml ./backend/vendor/java-manager/
+COPY backend/vendor/java-manager/src/ ./backend/vendor/java-manager/src/
 COPY backend/tauri-host/Cargo.toml ./backend/tauri-host/
 COPY backend/tauri-host/build.rs ./backend/tauri-host/
 COPY backend/tauri-host/src/ ./backend/tauri-host/src/
@@ -129,31 +140,42 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # 只复制 Rust 源代码（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
-COPY backend/runtime-core/Cargo.toml ./backend/runtime-core/
-COPY backend/runtime-core/src/ ./backend/runtime-core/src/
-COPY backend/update-core/Cargo.toml ./backend/update-core/
-COPY backend/update-core/src/ ./backend/update-core/src/
-COPY backend/server-config-core/Cargo.toml ./backend/server-config-core/
-COPY backend/server-config-core/src/ ./backend/server-config-core/src/
-COPY backend/starter-links-core/Cargo.toml ./backend/starter-links-core/
-COPY backend/starter-links-core/src/ ./backend/starter-links-core/src/
-COPY backend/java-installer-core/Cargo.toml ./backend/java-installer-core/
-COPY backend/java-installer-core/src/ ./backend/java-installer-core/src/
-COPY backend/server-download-links-core/Cargo.toml ./backend/server-download-links-core/
-COPY backend/server-download-links-core/src/ ./backend/server-download-links-core/src/
-COPY backend/server-installer-core/Cargo.toml ./backend/server-installer-core/
-COPY backend/server-installer-core/src/ ./backend/server-installer-core/src/
-COPY backend/server-plugin-core/Cargo.toml ./backend/server-plugin-core/
-COPY backend/server-plugin-core/src/ ./backend/server-plugin-core/src/
-COPY backend/server-startup-scan-core/Cargo.toml ./backend/server-startup-scan-core/
-COPY backend/server-startup-scan-core/src/ ./backend/server-startup-scan-core/src/
-COPY backend/server-local-setup-core/Cargo.toml ./backend/server-local-setup-core/
-COPY backend/server-local-setup-core/src/ ./backend/server-local-setup-core/src/
-COPY backend/docker-core/Cargo.toml ./backend/docker-core/
-COPY backend/docker-core/src/ ./backend/docker-core/src/
-COPY backend/i18n-core/Cargo.toml ./backend/i18n-core/
-COPY backend/i18n-core/src/ ./backend/i18n-core/src/
-COPY backend/i18n-core/locales/ ./backend/i18n-core/locales/
+COPY shared/ ./shared/
+COPY backend/runtime/Cargo.toml ./backend/runtime/
+COPY backend/runtime/src/ ./backend/runtime/src/
+COPY backend/update/Cargo.toml ./backend/update/
+COPY backend/update/src/ ./backend/update/src/
+COPY backend/server-config/Cargo.toml ./backend/server-config/
+COPY backend/server-config/src/ ./backend/server-config/src/
+COPY backend/starter-links/Cargo.toml ./backend/starter-links/
+COPY backend/starter-links/src/ ./backend/starter-links/src/
+COPY backend/java-installer/Cargo.toml ./backend/java-installer/
+COPY backend/java-installer/src/ ./backend/java-installer/src/
+COPY backend/server-download-links/Cargo.toml ./backend/server-download-links/
+COPY backend/server-download-links/src/ ./backend/server-download-links/src/
+COPY backend/server-installer/Cargo.toml ./backend/server-installer/
+COPY backend/server-installer/src/ ./backend/server-installer/src/
+COPY backend/server-plugin/Cargo.toml ./backend/server-plugin/
+COPY backend/server-plugin/src/ ./backend/server-plugin/src/
+COPY backend/server-startup-scan/Cargo.toml ./backend/server-startup-scan/
+COPY backend/server-startup-scan/src/ ./backend/server-startup-scan/src/
+COPY backend/server-local-setup/Cargo.toml ./backend/server-local-setup/
+COPY backend/server-local-setup/src/ ./backend/server-local-setup/src/
+COPY backend/server-log/Cargo.toml ./backend/server-log/
+COPY backend/server-log/src/ ./backend/server-log/src/
+COPY backend/docker/Cargo.toml ./backend/docker/
+COPY backend/docker/src/ ./backend/docker/src/
+COPY backend/i18n/Cargo.toml ./backend/i18n/
+COPY backend/i18n/src/ ./backend/i18n/src/
+COPY backend/i18n/locales/ ./backend/i18n/locales/
+COPY backend/plugin-trust/Cargo.toml ./backend/plugin-trust/
+COPY backend/plugin-trust/src/ ./backend/plugin-trust/src/
+COPY backend/event/Cargo.toml ./backend/event/
+COPY backend/event/src/ ./backend/event/src/
+COPY backend/lua-runtime/Cargo.toml ./backend/lua-runtime/
+COPY backend/lua-runtime/src/ ./backend/lua-runtime/src/
+COPY backend/vendor/java-manager/Cargo.toml ./backend/vendor/java-manager/
+COPY backend/vendor/java-manager/src/ ./backend/vendor/java-manager/src/
 COPY backend/tauri-host/Cargo.toml ./backend/tauri-host/
 COPY backend/tauri-host/build.rs ./backend/tauri-host/
 COPY backend/tauri-host/src/ ./backend/tauri-host/src/
@@ -202,10 +224,11 @@ RUN apt-get update && apt-get install -y wget apt-transport-https gnupg && \
 
 # 创建 Java 版本软链接
 RUN mkdir -p /opt/java && \
-    ln -sf /usr/lib/jvm/temurin-8-jdk-amd64 /opt/java/jdk-8 && \
-    ln -sf /usr/lib/jvm/temurin-11-jdk-amd64 /opt/java/jdk-11 && \
-    ln -sf /usr/lib/jvm/temurin-17-jdk-amd64 /opt/java/jdk-17 && \
-    ln -sf /usr/lib/jvm/temurin-21-jdk-amd64 /opt/java/jdk-21 && \
+    for version in 8 11 17 21; do \
+    java_dir="$(find /usr/lib/jvm -maxdepth 1 -type d -name "temurin-${version}-jdk-*" | head -n 1)"; \
+    test -n "$java_dir"; \
+    ln -sf "$java_dir" "/opt/java/jdk-${version}"; \
+    done && \
     useradd -m -u 1000 sealantern
 
 # 从后端构建器复制编译好的二进制程序
