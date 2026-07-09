@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main, beta]
   push:
-    branches: [main]
+    branches: [main, beta]
 
 concurrency:
   group: check-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -33,12 +33,6 @@ jobs:
             frontend:
               - 'frontend/**'
               - 'scripts/**'
-              - 'frontend/package.json'
-              - 'frontend/pnpm-lock.yaml'
-              - 'frontend/pnpm-workspace.yaml'
-              - 'frontend/vite.config.ts'
-              - 'frontend/tsconfig*.json'
-              - 'frontend/index.html'
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
               - '.github/workflows/check.yml'
@@ -117,8 +111,7 @@ jobs:
             ${{ runner.os }}-pnpm-
 
       - name: 安装前端依赖
-        run: |
-          pnpm --dir frontend install --frozen-lockfile
+        run: pnpm --dir frontend install --frozen-lockfile
 
       - name: 检查前端格式
         run: pnpm --dir frontend run fmt:check
