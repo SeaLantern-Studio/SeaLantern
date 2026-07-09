@@ -4,6 +4,7 @@ import { useGlobalMessage } from "@composables/useMessage";
 import { i18n } from "@language";
 import { useI18nStore } from "@stores/i18nStore";
 import { useSettingsStore } from "@stores/settingsStore";
+import { useUpdateStore } from "@stores/updateStore";
 import { isBrowserEnv } from "@api/tauri";
 import { normalizeAppError } from "@utils/appError";
 
@@ -28,6 +29,7 @@ function resolveCloseAction(value: string | undefined): CloseAction {
 export function useGeneralSettingsSection() {
   const settingsStore = useSettingsStore();
   const i18nStore = useI18nStore();
+  const updateStore = useUpdateStore();
   const globalMessage = useGlobalMessage();
 
   const bootstrapping = computed(() => !settingsStore.isLoaded || settingsStore.isLoading);
@@ -346,6 +348,15 @@ export function useGeneralSettingsSection() {
     );
   }
 
+  async function checkForUpdate(): Promise<void> {
+    try {
+      await updateStore.checkForUpdate();
+    } catch (error) {
+      const normalized = normalizeAppError(error);
+      globalMessage.error(normalized.message || i18n.t("common.message_unknown_error"));
+    }
+  }
+
   return {
     bootstrapping,
     showDesktopWebToggle,
@@ -359,6 +370,7 @@ export function useGeneralSettingsSection() {
     desktopWebUrl,
     canCopyDesktopWebUrl,
     desktopWebStaticDirMissing,
+    updateStore,
     updateLanguage,
     updateCloseAction,
     updateCloseServersOnExit,
@@ -368,5 +380,6 @@ export function useGeneralSettingsSection() {
     updateEnableDesktopWebUi,
     copyDesktopWebUrl,
     refreshDesktopWebStatus,
+    checkForUpdate,
   };
 }

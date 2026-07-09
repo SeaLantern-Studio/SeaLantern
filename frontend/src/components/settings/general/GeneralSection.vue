@@ -17,6 +17,7 @@ const {
   desktopWebUrl,
   canCopyDesktopWebUrl,
   desktopWebStaticDirMissing,
+  updateStore,
   updateLanguage,
   updateCloseAction,
   updateCloseServersOnExit,
@@ -25,6 +26,7 @@ const {
   updateAutoCheckUpdate,
   updateEnableDesktopWebUi,
   copyDesktopWebUrl,
+  checkForUpdate,
 } = useGeneralSettingsSection();
 </script>
 
@@ -168,6 +170,32 @@ const {
             :disabled="bootstrapping || pending.autoCheckUpdate"
             @update:model-value="updateAutoCheckUpdate"
           />
+        </div>
+      </section>
+
+      <section class="general-section__item">
+        <div class="general-section__copy">
+          <span class="general-section__item-title">
+            {{ i18n.t("settings.check_update") }}
+          </span>
+          <p class="general-section__item-description">
+            {{ i18n.t("settings.check_update_desc") }}
+          </p>
+        </div>
+
+        <div class="general-section__control">
+          <SLButton
+            variant="secondary"
+            :disabled="bootstrapping || updateStore.status === 'checking' || updateStore.status === 'downloading' || updateStore.status === 'installing'"
+            @click="checkForUpdate"
+          >
+            <template v-if="updateStore.status === 'checking'">
+              {{ i18n.t("settings.checking_update") }}
+            </template>
+            <template v-else>
+              {{ i18n.t("settings.check_update_now") }}
+            </template>
+          </SLButton>
         </div>
       </section>
 
