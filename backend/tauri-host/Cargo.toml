@@ -89,7 +89,7 @@ sha2 = "0.10"
 argon2 = "0.5"
 rand_core = { version = "0.6", features = ["getrandom"] }
 rcon = { version = "0.6", features = ["rt-tokio"] }
-sculk = { version = "0.3.0-rc.1", features = ["persist", "clipboard"], optional = true }
+sculk = { version = "0.3.0", features = ["persist", "clipboard"], optional = true }
 java-manager = { path = "../vendor/java-manager" }
 
 [features]

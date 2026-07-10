@@ -12,7 +12,7 @@ FROM docker.m.daocloud.io/node:24-alpine AS frontend-builder
 WORKDIR /app
 
 # 安装 pnpm
-RUN npm install -g pnpm@11.5.3
+RUN npm install -g pnpm@11.11.0
 
 # 复制前端依赖文件
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

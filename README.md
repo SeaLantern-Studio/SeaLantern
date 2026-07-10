@@ -49,7 +49,7 @@
 | ------- | -------- |
 | Node.js | 22.12.0+ |
 | Rust    | stable   |
-| pnpm    | 11.5.3   |
+| pnpm    | 11.11.0   |
 
 如果你还没有配置开发环境，可以先查看 [环境配置](https://docs.ideaflash.cn/zh/dev/environment)。
 

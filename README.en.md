@@ -49,7 +49,7 @@ Before development, you need:
 | --- | --- |
 | Node.js | 22.12.0+ |
 | Rust | stable |
-| pnpm | 11.5.3 |
+| pnpm | 11.11.0 |
 
 If you have not set up the development environment yet, see [Environment Setup](https://docs.ideaflash.cn/en/dev/environment).
 

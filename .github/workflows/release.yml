@@ -191,7 +191,7 @@ jobs:
 
       - name: 安装前端依赖 (pnpm)
         run: |
-          corepack prepare pnpm@11.5.3 --activate
+          corepack prepare pnpm@11.11.0 --activate
           pnpm --dir frontend install --frozen-lockfile
 
       - name: 构建并发布

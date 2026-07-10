@@ -99,7 +99,7 @@ jobs:
       - name: Prepare PNPM (固定版本)
         run: |
           corepack enable
-          corepack prepare pnpm@11.5.3 --activate
+          corepack prepare pnpm@11.11.0 --activate
 
       - name: 缓存 pnpm 依赖
         uses: actions/cache@v4
