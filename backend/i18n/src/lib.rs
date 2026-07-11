@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Embedded locale tables and runtime i18n service primitives.
 
 mod embedded;

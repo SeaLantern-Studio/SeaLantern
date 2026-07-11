@@ -3,6 +3,7 @@ name = "docker-entry"
 version.workspace = true
 description = "Docker 容器入口程序"
 edition.workspace = true
+license = "GPL-3.0-only"
 
 [dependencies]
 sea_lantern = { package = "sea-lantern", path = "../tauri-host", features = ["docker"] }

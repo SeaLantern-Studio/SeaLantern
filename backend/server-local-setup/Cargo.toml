@@ -2,6 +2,7 @@
 name = "server-local-setup"
 version.workspace = true
 edition.workspace = true
+license = "GPL-3.0-only"
 description = "Shared local server setup path and metadata helpers for Sea Lantern"
 
 [lib]

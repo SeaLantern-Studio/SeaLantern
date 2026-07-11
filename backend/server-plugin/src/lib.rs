@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Shared server-extension and plugin directory helpers.
 
 use std::fs;

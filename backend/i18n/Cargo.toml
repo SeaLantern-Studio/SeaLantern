@@ -2,6 +2,7 @@
 name = "i18n"
 version.workspace = true
 edition.workspace = true
+license = "GPL-3.0-only"
 description = "Shared backend i18n service and embedded locale assets for Sea Lantern"
 
 [lib]

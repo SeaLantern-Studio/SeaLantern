@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Plugin trust, integrity, and enable-consent helpers shared by the host runtime.
 
 mod permissions;

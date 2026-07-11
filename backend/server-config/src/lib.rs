@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Shared server-configuration helpers for startup files, properties, and discovery.
 
 pub mod cpu_policy;

@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Shared server log ingestion, persistence, and structured-event helpers.
 
 mod db;

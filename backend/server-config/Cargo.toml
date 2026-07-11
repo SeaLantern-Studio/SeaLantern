@@ -2,6 +2,7 @@
 name = "server-config"
 version.workspace = true
 edition.workspace = true
+license = "GPL-3.0-only"
 description = "Shared server.properties parsing and rendering logic for Sea Lantern"
 
 [lib]

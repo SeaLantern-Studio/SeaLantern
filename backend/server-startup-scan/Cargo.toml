@@ -2,6 +2,7 @@
 name = "server-startup-scan"
 version.workspace = true
 edition.workspace = true
+license = "GPL-3.0-only"
 description = "Shared startup candidate scanning logic for Sea Lantern"
 
 [lib]

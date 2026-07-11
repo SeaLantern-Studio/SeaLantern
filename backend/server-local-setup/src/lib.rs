@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Shared local-server setup, startup selection, and launch helper logic.
 
 use std::collections::HashMap;

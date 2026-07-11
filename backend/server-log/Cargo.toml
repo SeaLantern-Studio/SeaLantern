@@ -2,6 +2,7 @@
 name = "server-log"
 version.workspace = true
 edition.workspace = true
+license = "GPL-3.0-only"
 description = "Shared server log persistence, reading, output ingestion, and structured event mapping for Sea Lantern"
 
 [lib]

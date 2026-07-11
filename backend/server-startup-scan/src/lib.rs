@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Startup candidate scanning for folders, jars, and extracted modpack archives.
 
 use std::path::Path;

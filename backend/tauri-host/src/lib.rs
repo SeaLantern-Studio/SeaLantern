@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 mod adapters;
 mod commands;
 mod hardcode_data;

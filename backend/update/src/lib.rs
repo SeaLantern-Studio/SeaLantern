@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Shared update-checking helpers used by the desktop and headless hosts.
 
 pub mod arch;

@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Shared runtime utilities for desktop and headless SeaLantern hosts.
 
 //! Shared runtime utilities for desktop and headless SeaLantern hosts.

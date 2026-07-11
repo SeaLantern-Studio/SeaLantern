@@ -2,6 +2,7 @@
 name = "lua-runtime"
 version.workspace = true
 edition.workspace = true
+license = "GPL-3.0-only"
 description = "Host-facing runtime boundary for Sea Lantern Lua plugins"
 
 [lib]

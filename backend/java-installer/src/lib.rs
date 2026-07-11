@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Java runtime download and installation helpers shared by host flows.
 
 mod archive;

@@ -2,6 +2,7 @@
 name = "server-plugin"
 version.workspace = true
 edition.workspace = true
+license = "GPL-3.0-only"
 description = "Shared server plugin parsing and listing logic for Sea Lantern"
 
 [lib]

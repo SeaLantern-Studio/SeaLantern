@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Shared event contracts and registry helpers for backend runtime consumers.
 
 mod events;

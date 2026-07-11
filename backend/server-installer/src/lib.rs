@@ -1,3 +1,4 @@
+// License: GPL-3.0-only. Copyright (C) SeaLantern Studio.
 //! Shared archive and core-detection helpers used during server installation flows.
 
 mod archive;
