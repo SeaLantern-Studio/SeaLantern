@@ -120,9 +120,7 @@ fn handle_check_developer_mode(
     })
 }
 
-fn handle_remove_file(
-    params: Value,
-) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+fn handle_remove_file(params: Value) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
         let path = params
             .get("path")
