@@ -54,14 +54,8 @@ function formatBytes(bytes: number): string {
  * @param mb 内存大小（MB）
  * @returns 格式化后的字符串，如 "2 GB" 或 "512 MB"
  */
-function formatMemoryMB(mb: number): string {
-  if (mb === 0) return "0 MB";
-  if (mb >= 1024 && mb % 1024 === 0) {
-    return `${mb / 1024} GB`;
-  }
-  if (mb >= 1024) {
-    return `${(mb / 1024).toFixed(1)} GB`;
-  }
+function formatMemoryMB(mb: number | undefined): string {
+  if (!mb && mb !== 0) return "-- MB";
   return `${mb} MB`;
 }
 

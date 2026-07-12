@@ -40,7 +40,6 @@ struct LegacyServerInstance {
 
 impl From<LegacyServerInstance> for ServerInstance {
     fn from(value: LegacyServerInstance) -> Self {
-        let _ = (value.max_memory, value.min_memory);
         ServerInstance {
             id: value.id,
             name: value.name,
@@ -54,6 +53,8 @@ impl From<LegacyServerInstance> for ServerInstance {
             java_path: value.java_path,
             jvm_args: value.jvm_args,
             port: value.port,
+            max_memory: value.max_memory.unwrap_or(2048),
+            min_memory: value.min_memory.unwrap_or(512),
             created_at: value.created_at,
             last_started_at: value.last_started_at,
         }

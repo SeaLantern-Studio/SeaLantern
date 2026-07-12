@@ -37,6 +37,8 @@ pub(super) fn build_modpack_server_instance(
         java_path: req.java_path,
         jvm_args: Vec::new(),
         port,
+        max_memory: req.max_memory,
+        min_memory: req.min_memory,
         created_at: super::super::super::common::current_timestamp_secs(),
         last_started_at: None,
     }
