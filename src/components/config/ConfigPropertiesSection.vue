@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import SLSpinner from "@components/common/SLSpinner.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLTooltip from "@components/common/SLTooltip.vue";
 import ConfigCategories from "@components/config/ConfigCategories.vue";
 import ConfigSourceEditor from "@components/config/ConfigSourceEditor.vue";
 import ConfigPropertyEditorControl from "@components/config/ConfigPropertyEditorControl.vue";
@@ -9,7 +7,6 @@ import ConfigComparePanel from "@components/config/ConfigComparePanel.vue";
 import type { ComparePanelRow } from "@views/config/useConfigCompare";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { i18n } from "@language";
-import { RefreshCw, Save } from "lucide-vue-next";
 
 interface Option {
   label: string;
@@ -45,11 +42,6 @@ interface Props {
   sourceDraftText: string;
   compareTargetSourceDraftText: string;
   sourceParseError: string | null;
-  hasUnsavedChanges: boolean;
-  saveStatusText: string;
-  saving: boolean;
-  reloadCurrentTooltipText: string;
-  reloadCompareTooltipText: string;
 }
 
 defineProps<Props>();
@@ -64,9 +56,6 @@ const emit = defineEmits<{
   addSourceValue: [payload: UpdateValuePayload];
   addTargetValue: [payload: UpdateValuePayload];
   updateCompareTargetServer: [value: string | number];
-  reloadCurrent: [];
-  reloadCompare: [];
-  saveProperties: [];
 }>();
 </script>
 
@@ -170,60 +159,6 @@ const emit = defineEmits<{
       <p v-if="sourceParseError" class="source-parse-error">
         {{ sourceParseError }}
       </p>
-    </div>
-  </div>
-
-  <div
-    class="config-floating-actions glass-strong"
-    :class="{ 'config-floating-actions--unsaved': hasUnsavedChanges }"
-  >
-    <div class="floating-status-wrap">
-      <div class="floating-status text-caption">{{ saveStatusText }}</div>
-    </div>
-    <div class="floating-actions-group">
-      <SLTooltip :content="reloadCurrentTooltipText">
-        <SLButton
-          variant="secondary"
-          size="sm"
-          iconOnly
-          class="config-floating-icon-btn"
-          @click="emit('reloadCurrent')"
-        >
-          <RefreshCw :size="16" />
-        </SLButton>
-      </SLTooltip>
-      <SLTooltip v-if="compareMode" :content="reloadCompareTooltipText">
-        <SLButton
-          variant="secondary"
-          size="sm"
-          iconOnly
-          class="config-floating-icon-btn"
-          :loading="compareLoading"
-          :disabled="!compareTargetServerId"
-          @click="emit('reloadCompare')"
-        >
-          <RefreshCw :size="16" />
-        </SLButton>
-      </SLTooltip>
-      <SLButton
-        variant="primary"
-        size="sm"
-        iconOnly
-        class="config-floating-icon-btn"
-        :class="
-          hasUnsavedChanges ? 'config-floating-icon-btn--unsaved' : 'config-floating-icon-btn--idle'
-        "
-        :disabled="!hasUnsavedChanges"
-        :loading="saving"
-        @click="emit('saveProperties')"
-      >
-        <span
-          class="save-icon-wrap"
-          :class="{ 'save-icon-wrap--unsaved': hasUnsavedChanges && !saving }"
-        >
-          <Save :size="16" />
-        </span>
-      </SLButton>
     </div>
   </div>
 </template>

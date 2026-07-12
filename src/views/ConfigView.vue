@@ -8,7 +8,7 @@ import SLTooltip from "@components/common/SLTooltip.vue";
 import { SLTabBar } from "@components/common";
 import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
-import { FileDiff } from "lucide-vue-next";
+import { FileDiff, RefreshCw, Save } from "lucide-vue-next";
 
 import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
 import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
@@ -217,7 +217,9 @@ onActivated(async () => {
 <template>
   <div class="config-view animate-stagger-in">
     <div class="config-layout">
-      <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" vertical />
+      <div class="config-tabbar-sticky">
+        <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" vertical />
+      </div>
       <div class="config-main">
         <div class="config-header">
           <div v-if="activeTab === 'properties'" class="config-properties-header-actions">
@@ -281,11 +283,6 @@ onActivated(async () => {
               :sourceDraftText="propertiesEditor.sourceDraftText.value"
               :compareTargetSourceDraftText="compare.compareTargetSourceDraftText.value"
               :sourceParseError="propertiesEditor.sourceParseError.value"
-              :hasUnsavedChanges="propertiesEditor.hasUnsavedChanges.value"
-              :saveStatusText="propertiesEditor.saveStatusText.value"
-              :saving="propertiesEditor.saving.value"
-              :reloadCurrentTooltipText="propertiesEditor.reloadCurrentTooltipText.value"
-              :reloadCompareTooltipText="propertiesEditor.reloadCompareTooltipText.value"
               @updateCategory="propertiesEditor.handleCategoryChange"
               @updateSearch="propertiesEditor.handleSearchUpdate"
               @updateSourceDraft="propertiesEditor.updateSourceDraft"
@@ -295,9 +292,6 @@ onActivated(async () => {
               @addSourceValue="propertiesEditor.updateValue($event.key, $event.value)"
               @addTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
               @updateCompareTargetServer="compare.handleCompareTargetServerChange"
-              @reloadCurrent="propertiesEditor.reloadPropertiesWithGuard"
-              @reloadCompare="propertiesEditor.reloadComparePropertiesWithGuard"
-              @saveProperties="propertiesEditor.saveProperties"
             />
           </template>
 
@@ -389,6 +383,71 @@ onActivated(async () => {
             </template>
           </SLModal>
         </template>
+
+        <div
+          v-if="activeTab === 'properties'"
+          class="config-floating-actions glass-strong"
+          :class="{ 'config-floating-actions--unsaved': propertiesEditor.hasUnsavedChanges.value }"
+        >
+          <div class="floating-status-wrap">
+            <div class="floating-status text-caption">
+              {{ propertiesEditor.saveStatusText.value }}
+            </div>
+          </div>
+          <div class="floating-actions-group">
+            <SLTooltip :content="propertiesEditor.reloadCurrentTooltipText.value">
+              <SLButton
+                variant="secondary"
+                size="sm"
+                iconOnly
+                class="config-floating-icon-btn"
+                @click="propertiesEditor.reloadPropertiesWithGuard"
+              >
+                <RefreshCw :size="16" />
+              </SLButton>
+            </SLTooltip>
+            <SLTooltip
+              v-if="compare.compareMode.value"
+              :content="propertiesEditor.reloadCompareTooltipText.value"
+            >
+              <SLButton
+                variant="secondary"
+                size="sm"
+                iconOnly
+                class="config-floating-icon-btn"
+                :loading="compare.compareLoading.value"
+                :disabled="!compare.compareTargetServerId.value"
+                @click="propertiesEditor.reloadComparePropertiesWithGuard"
+              >
+                <RefreshCw :size="16" />
+              </SLButton>
+            </SLTooltip>
+            <SLButton
+              variant="primary"
+              size="sm"
+              iconOnly
+              class="config-floating-icon-btn"
+              :class="
+                propertiesEditor.hasUnsavedChanges.value
+                  ? 'config-floating-icon-btn--unsaved'
+                  : 'config-floating-icon-btn--idle'
+              "
+              :disabled="!propertiesEditor.hasUnsavedChanges.value"
+              :loading="propertiesEditor.saving.value"
+              @click="propertiesEditor.saveProperties"
+            >
+              <span
+                class="save-icon-wrap"
+                :class="{
+                  'save-icon-wrap--unsaved':
+                    propertiesEditor.hasUnsavedChanges.value && !propertiesEditor.saving.value,
+                }"
+              >
+                <Save :size="16" />
+              </span>
+            </SLButton>
+          </div>
+        </div>
       </div>
     </div>
   </div>

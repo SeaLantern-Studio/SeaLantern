@@ -120,7 +120,6 @@ function getSelectionBgColor(): string {
   let r = parseInt(m[1], 16),
     g = parseInt(m[2], 16),
     b = parseInt(m[3], 16);
-  // 计算亮度 (ITU-R BT.709)
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
   const shift = luminance > 128 ? -40 : 40;
   r = Math.max(0, Math.min(255, r + shift));
