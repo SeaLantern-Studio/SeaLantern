@@ -10,7 +10,7 @@
   user-select: none;
   position: relative;
   z-index: 100;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: drag;
 }
 
 .app-header.macos-overlay {
@@ -50,7 +50,6 @@
   flex: 1;
   height: 100%;
   min-height: var(--sl-header-height);
-  -webkit-app-region: drag;
 }
 
 .app-header.macos-overlay .header-center {

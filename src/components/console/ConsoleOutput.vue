@@ -112,6 +112,23 @@ function getLevelColor(level: string): string {
   }
 }
 
+/** 选区背景色：根据当前主题背景自动调整 +/-40 亮度 */
+function getSelectionBgColor(): string {
+  const hex = cssVar("--sl-bg", "#0f1117");
+  const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return "rgba(128,128,128,0.3)";
+  let r = parseInt(m[1], 16),
+    g = parseInt(m[2], 16),
+    b = parseInt(m[3], 16);
+  // 计算亮度 (ITU-R BT.709)
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const shift = luminance > 128 ? -40 : 40;
+  r = Math.max(0, Math.min(255, r + shift));
+  g = Math.max(0, Math.min(255, g + shift));
+  b = Math.max(0, Math.min(255, b + shift));
+  return `rgb(${r},${g},${b})`;
+}
+
 function formatLine(line: string): string {
   const parsed = line.match(LOG_REGEX);
   if (parsed) {
@@ -254,7 +271,7 @@ onMounted(() => {
       foreground: cssVar("--sl-text-primary", "#e5e7eb"),
       cursor: "transparent",
       cursorAccent: "transparent",
-      selectionBackground: cssVar("--sl-primary-bg", "#1e3a8a"),
+      selectionBackground: getSelectionBgColor(),
       scrollbarSliderBackground: "rgba(94, 122, 145, 0.18)",
       scrollbarSliderHoverBackground: "rgba(94, 122, 145, 0.34)",
       scrollbarSliderActiveBackground: "rgba(94, 122, 145, 0.48)",
@@ -290,6 +307,15 @@ onMounted(() => {
   window.addEventListener("keydown", handleCopyShortcut);
   document.addEventListener("copy", handleCopyEvent, true);
   keepDisplayOnlyFocus();
+
+  // 监听 data-theme 属性变化，实时更新选区颜色
+  themeObserver = new MutationObserver(() => {
+    updateSelectionTheme();
+  });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
 });
 
 onUnmounted(() => {
@@ -302,6 +328,8 @@ onUnmounted(() => {
   terminalTextarea = null;
   resizeObserver?.disconnect();
   resizeObserver = null;
+  themeObserver?.disconnect();
+  themeObserver = null;
   scrollDisposable?.dispose();
   scrollDisposable = null;
   fitAddon = null;
@@ -350,6 +378,16 @@ watch(
     terminal.options.scrollback = Math.max(100, value || 5000);
   },
 );
+
+// 主题切换时更新选区高亮色
+let themeObserver: MutationObserver | null = null;
+function updateSelectionTheme() {
+  if (!terminal) return;
+  terminal.options.theme = {
+    ...terminal.options.theme,
+    selectionBackground: getSelectionBgColor(),
+  };
+}
 
 watch(
   () => props.userScrolledUp,
