@@ -17,7 +17,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="about-view animate-fade-in-up">
+  <div class="about-view animate-stagger-in">
     <HeroSection :version="version" />
     <ManifestoCard />
     <ContributorWall />

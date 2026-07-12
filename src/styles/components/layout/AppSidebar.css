@@ -89,6 +89,14 @@
   margin-bottom: var(--sl-space-sm);
 }
 
+.nav-separator {
+  margin: var(--sl-space-xs) var(--sl-space-sm);
+  height: 1px;
+  background: var(--sl-border);
+  opacity: 0.5;
+  border-radius: var(--sl-radius-full);
+}
+
 .nav-group-label {
   padding: var(--sl-space-xs) var(--sl-space-sm);
   font-size: 0.6875rem;
@@ -244,6 +252,11 @@
   align-items: center;
   justify-content: center;
   line-height: 0;
+}
+
+.sidebar.collapsed .nav-separator {
+  margin: var(--sl-space-xs) 20%;
+  opacity: 0.3;
 }
 
 .sidebar.sidebar-transitioning .nav-active-indicator {

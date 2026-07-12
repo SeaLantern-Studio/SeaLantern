@@ -151,7 +151,6 @@ const staticNavItems: NavItem[] = [
     label: i18n.t("common.plugins"),
     group: "system",
   },
-
   {
     name: "settings",
     path: "/settings",
@@ -197,9 +196,20 @@ function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem
 }
 
 const navItems = computed<NavItem[]>(() => {
+  // 顺序：main(4项) → server组 → 插件注册项 → system组(个性化、插件管理、设置)
   const result: NavItem[] = [];
 
-  // 收集插件边栏项目
+  // 1. main 组：首页、创建服务器、下载、联机
+  for (const item of staticNavItems) {
+    if (item.group === "main") result.push(item);
+  }
+
+  // 2. server 组：控制台、配置、玩家管理
+  for (const item of staticNavItems) {
+    if (item.group === "server") result.push(item);
+  }
+
+  // 3. 插件注册的导航项（在 main/server 和 system 之间）
   const positioned = pluginStore.sidebarItems
     .filter((i) => !i.isDefault && i.after)
     .map(sidebarItemToNavItem);
@@ -217,24 +227,15 @@ const navItems = computed<NavItem[]>(() => {
     (i) => !i.pluginId || !handledPluginIds.has(i.pluginId),
   );
 
-  // 放在 plugins 和 settings 之间的插件项
-  const pluginItemsBetweenPluginsAndSettings = [
-    ...unpositioned,
-    ...defaultItems,
-    ...remainingPluginItems,
-  ];
+  const pluginRegisteredItems = [...unpositioned, ...defaultItems, ...remainingPluginItems];
+  result.push(...pluginRegisteredItems);
 
-  // 遍历静态导航项，在 plugins 和 settings 之间插入插件边栏项目
-  for (const staticItem of staticNavItems) {
-    result.push(staticItem);
-
-    // 在 plugins 项之后插入插件边栏项目
-    if (staticItem.name === "plugins") {
-      result.push(...pluginItemsBetweenPluginsAndSettings);
-    }
+  // 4. system 组：个性化、插件管理、设置
+  for (const item of staticNavItems) {
+    if (item.group === "system") result.push(item);
   }
 
-  // 处理有 after 定位的插件项（插入到指定位置）
+  // 处理有 after 定位的插件项
   for (const item of positioned) {
     const targetIdx = result.findIndex((r) => r.name === item.after);
     if (targetIdx !== -1) {
@@ -406,17 +407,21 @@ interface NavGroup {
 }
 
 const orderedNavGroups = computed<NavGroup[]>(() => {
+  // 按 group 聚合，连续相同 group 合并
+  // 分组顺序：main → server → plugins-default → plugins-custom → system
   const groups: NavGroup[] = [];
   let currentGroup: NavGroup | null = null;
 
   for (const item of navItems.value) {
-    if (item.group === "plugins-custom") {
+    const effectiveGroup = item.group;
+    if (item.isPlugin && !item.after) {
+      // 插件自定义项单独成组
       groups.push({ group: "plugins-custom", items: [item] });
       currentGroup = null;
       continue;
     }
-    if (!currentGroup || currentGroup.group !== item.group) {
-      currentGroup = { group: item.group, items: [] };
+    if (!currentGroup || currentGroup.group !== effectiveGroup) {
+      currentGroup = { group: effectiveGroup, items: [] };
       groups.push(currentGroup);
     }
     currentGroup.items.push(item);
@@ -483,7 +488,7 @@ function getAppName() {
               <span v-if="!ui.sidebarCollapsed">{{ i18n.t("common.plugins") }}</span>
             </transition>
           </div>
-          <div v-else-if="group.group !== 'main'" class="nav-group-label"></div>
+          <div v-else-if="group.group !== 'main'" class="nav-separator"></div>
 
           <div>
             <div v-for="item in group.items" :key="item.name">

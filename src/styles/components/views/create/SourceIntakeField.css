@@ -4,6 +4,55 @@
   gap: var(--sl-space-sm);
 }
 
+/* ── 服务端选择面板 ── */
+.server-download-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
+
+.server-download-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sl-space-md);
+}
+
+.server-download-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.server-download-field label {
+  font-size: 0.82rem;
+  color: var(--sl-text-tertiary);
+  font-weight: 500;
+}
+
+/* ── 自定义服务端按钮 ── */
+.custom-source-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px dashed var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background: transparent;
+  color: var(--sl-text-tertiary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.custom-source-btn:hover {
+  color: var(--sl-primary);
+  border-color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+}
+
+/* ── 对话框 ── */
 .source-chooser-overlay {
   position: fixed;
   inset: 0;
@@ -111,4 +160,10 @@
   justify-content: center;
   gap: var(--sl-space-sm);
   padding: var(--sl-space-md) var(--sl-space-lg);
+}
+
+@media (max-width: 640px) {
+  .server-download-row {
+    grid-template-columns: 1fr;
+  }
 }

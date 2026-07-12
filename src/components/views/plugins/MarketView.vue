@@ -278,7 +278,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="market-view animate-fade-in-up">
+  <div class="market-view animate-stagger-in">
     <div
       v-if="installFeedback"
       :class="['install-feedback', `install-feedback--${installFeedback.type}`]"

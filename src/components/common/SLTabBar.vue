@@ -19,10 +19,12 @@ interface Props<T = string | null> {
   modelValue: T;
   tabs: TabBarItem<T>[];
   level?: 1 | 2;
+  vertical?: boolean;
 }
 
 const props = withDefaults(defineProps<Props<string | null>>(), {
   level: 1,
+  vertical: false,
 });
 
 const emit = defineEmits<{
@@ -34,7 +36,9 @@ const activeTab = computed({
   set: (value: string | null) => emit("update:modelValue", value),
 });
 
-const { indicatorRef, updatePosition } = useTabIndicator(activeTab);
+const { indicatorRef, updatePosition } = useTabIndicator(activeTab, {
+  vertical: props.vertical,
+});
 
 const localeRef = i18n.getLocaleRef();
 watch(localeRef, () => {
@@ -49,7 +53,10 @@ function selectTab(tab: TabBarItem<string | null>) {
 </script>
 
 <template>
-  <div class="sl-tab-bar" :class="`sl-tab-bar--level-${level}`">
+  <div
+    class="sl-tab-bar"
+    :class="[`sl-tab-bar--level-${level}`, { 'sl-tab-bar--vertical': vertical }]"
+  >
     <!-- Level 1: 下划线风格 -->
     <div v-if="level === 1" class="sl-tab-bar__nav" role="tablist">
       <button
@@ -123,6 +130,16 @@ function selectTab(tab: TabBarItem<string | null>) {
   margin-bottom: var(--sl-space-md);
 }
 
+/* ===== 竖直模式通用 ===== */
+.sl-tab-bar--vertical {
+  flex-direction: column;
+  align-items: stretch;
+  margin-bottom: 0;
+  margin-right: var(--sl-space-lg);
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
 /* ===== Level 1: 下划线风格 ===== */
 .sl-tab-bar__nav {
   display: flex;
@@ -135,6 +152,16 @@ function selectTab(tab: TabBarItem<string | null>) {
 
 .sl-tab-bar__nav::-webkit-scrollbar {
   display: none;
+}
+
+/* 竖直 Level 1: 左边线风格 */
+.sl-tab-bar--vertical .sl-tab-bar__nav {
+  flex-direction: column;
+  border-bottom: none;
+  border-right: 1px solid var(--sl-border-light);
+  overflow-x: visible;
+  overflow-y: auto;
+  gap: 0;
 }
 
 .sl-tab-bar__tab {
@@ -159,6 +186,14 @@ function selectTab(tab: TabBarItem<string | null>) {
   transition: color 0.2s ease;
 }
 
+/* 竖直 Level 1 tab: 左边线替代底边线 */
+.sl-tab-bar--vertical .sl-tab-bar__tab {
+  border-bottom: none;
+  border-left: 2px solid transparent;
+  margin-bottom: 0;
+  margin-right: -1px;
+}
+
 .sl-tab-bar__tab::after {
   content: "";
   position: absolute;
@@ -172,6 +207,16 @@ function selectTab(tab: TabBarItem<string | null>) {
   transition:
     transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.25s ease;
+}
+
+/* 竖直 Level 1 tab 指示器: 左边线 */
+.sl-tab-bar--vertical .sl-tab-bar__tab::after {
+  bottom: auto;
+  left: -1px;
+  top: 50%;
+  width: 2px;
+  height: 100%;
+  transform: translateY(-50%) scaleY(var(--tab-underline-scale));
 }
 
 .sl-tab-bar__tab:hover:not(:disabled):not(.sl-tab-bar__tab--active) {
@@ -258,6 +303,11 @@ function selectTab(tab: TabBarItem<string | null>) {
   padding: var(--sl-space-xs);
 }
 
+/* 竖直 Level 2 药丸 */
+.sl-tab-bar--vertical.sl-tab-bar--level-2 {
+  flex-direction: column;
+}
+
 .sl-tab-bar__tabs {
   display: flex;
   gap: var(--sl-space-xs);
@@ -266,6 +316,11 @@ function selectTab(tab: TabBarItem<string | null>) {
   padding: 0;
   position: relative;
   overflow: visible;
+}
+
+/* 竖直 Level 2 tabs 容器 */
+.sl-tab-bar--vertical .sl-tab-bar__tabs {
+  flex-direction: column;
 }
 
 .sl-tab-bar__indicator {
@@ -281,6 +336,20 @@ function selectTab(tab: TabBarItem<string | null>) {
   transition:
     left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.15s ease;
+}
+
+/* 竖直指示器: top/height 替代 left/width */
+.sl-tab-bar--vertical .sl-tab-bar__indicator {
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: auto;
+  width: auto;
+  height: 0;
+  transition:
+    top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.15s ease;
 }
 
@@ -345,5 +414,11 @@ function selectTab(tab: TabBarItem<string | null>) {
   gap: var(--sl-space-xs);
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* 竖直模式 extra */
+.sl-tab-bar--vertical .sl-tab-bar__extra {
+  margin-left: 0;
+  margin-top: var(--sl-space-xs);
 }
 </style>

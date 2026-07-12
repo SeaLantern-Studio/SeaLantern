@@ -45,12 +45,19 @@ watch(
 </script>
 
 <template>
-  <div class="plugins-page animate-fade-in-up">
-    <SLTabBar v-model="activeTab" :tabs="tabs" :level="1" @update:modelValue="handleTabChange" />
-
-    <div class="tab-content">
-      <PluginsView v-if="activeTab === 'plugins'" />
-      <MarketView v-else-if="activeTab === 'market'" />
+  <div class="plugins-page animate-stagger-in">
+    <div class="plugins-page-layout">
+      <SLTabBar
+        v-model="activeTab"
+        :tabs="tabs"
+        :level="1"
+        vertical
+        @update:modelValue="handleTabChange"
+      />
+      <div class="tab-content">
+        <PluginsView v-if="activeTab === 'plugins'" />
+        <MarketView v-else-if="activeTab === 'market'" />
+      </div>
     </div>
   </div>
 </template>
@@ -63,8 +70,15 @@ watch(
   height: 100%;
 }
 
+.plugins-page-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .tab-content {
   flex: 1;
   overflow: auto;
+  min-width: 0;
 }
 </style>

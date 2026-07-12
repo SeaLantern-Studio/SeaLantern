@@ -3,7 +3,6 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import SLCard from "@components/common/SLCard.vue";
 import SLButton from "@components/common/SLButton.vue";
-import { SLTabBar } from "@components/common";
 import DownloadForm from "@components/views/download/DownloadForm.vue";
 import DownloadServerForm from "@components/views/download/DownloadServerForm.vue";
 import DownloadProgress from "@components/views/download/DownloadProgress.vue";
@@ -19,20 +18,8 @@ const createServerDraftStore = useCreateServerDraftStore();
 const { error: errorMsg, showError, clearError } = useMessage();
 const { loading: submitting, start: startLoading, stop: stopLoading } = useLoading();
 
-// Tab state
-const activeTab = ref<"file" | "server">("server");
+// 追踪下载任务来源
 const taskOriginTab = ref<"file" | "server" | null>(null);
-
-const tabs = computed(() => [
-  { key: "server" as const, label: i18n.t("downloadServerView.title") },
-  { key: "file" as const, label: i18n.t("download-file.title") },
-]);
-
-function handleTabChange(tab: string | null) {
-  if (tab) {
-    activeTab.value = tab as "file" | "server";
-  }
-}
 
 // File download state
 const url = ref("");
@@ -63,15 +50,6 @@ const {
 } = downloadApi.useDownload();
 
 const isDownloading = computed(() => taskInfo.id !== "" && !taskInfo.isFinished);
-const isTaskVisibleForCurrentTab = computed(
-  () => taskInfo.id !== "" && taskOriginTab.value === activeTab.value,
-);
-const isDownloadingCurrentTab = computed(
-  () => isTaskVisibleForCurrentTab.value && !taskInfo.isFinished,
-);
-const isDownloadCompleted = computed(
-  () => isTaskVisibleForCurrentTab.value && taskInfo.isFinished && !taskError.value,
-);
 const loadingAny = computed(() => loadingTypes.value || loadingVersions.value || loadingInfo.value);
 const combinedLoading = computed(() => submitting.value || isDownloading.value || loadingAny.value);
 
@@ -131,23 +109,22 @@ const canServerDownload = computed(() => {
 });
 
 const canGoCreate = computed(() => {
-  return (
-    taskOriginTab.value === "server" &&
-    isTaskVisibleForCurrentTab.value &&
-    taskInfo.isFinished &&
-    !taskError.value
-  );
+  return taskOriginTab.value === "server" && taskInfo.isFinished && !taskError.value;
 });
 
 const fileDownloadButtonLabel = computed(() => {
-  if (isDownloadingCurrentTab.value) return i18n.t("download-file.downloading");
-  if (isDownloadCompleted.value) return i18n.t("downloadServerView.status.finished");
+  if (isDownloading.value && taskOriginTab.value === "file")
+    return i18n.t("download-file.downloading");
+  if (taskInfo.isFinished && taskOriginTab.value === "file" && !taskError.value)
+    return i18n.t("downloadServerView.status.finished");
   return i18n.t("download-file.download");
 });
 
 const serverDownloadButtonLabel = computed(() => {
-  if (isDownloadingCurrentTab.value) return i18n.t("downloadServerView.actions.downloading");
-  if (isDownloadCompleted.value) return i18n.t("downloadServerView.status.finished");
+  if (isDownloading.value && taskOriginTab.value === "server")
+    return i18n.t("downloadServerView.actions.downloading");
+  if (taskInfo.isFinished && taskOriginTab.value === "server" && !taskError.value)
+    return i18n.t("downloadServerView.status.finished");
   return i18n.t("downloadServerView.actions.startDownload");
 });
 
@@ -385,96 +362,93 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="download-view animate-fade-in-up">
+  <div class="download-view animate-stagger-in">
     <div v-if="errorMsg" class="error-banner">
       <span>{{ errorMsg }}</span>
       <button class="error-close" @click="clearError">x</button>
     </div>
 
-    <!-- Tab selection -->
-    <SLTabBar v-model="activeTab" :tabs="tabs" :level="1" @update:modelValue="handleTabChange" />
+    <div class="download-cards">
+      <SLCard :title="i18n.t('downloadServerView.title')">
+        <DownloadServerForm
+          :serverTypeOptions="serverTypeOptions"
+          :versionOptions="versionOptions"
+          :selectedType="selectedType"
+          :selectedVersion="selectedVersion"
+          :filename="serverFilename"
+          :saveDir="serverSaveDir"
+          :threadCount="serverThreadCount"
+          :loadingTypes="loadingTypes"
+          :loadingVersions="loadingVersions"
+          :isDownloading="isDownloading"
+          :savePathPreview="savePathPreview"
+          :infoUrl="info?.url"
+          @update:selectedType="selectedType = $event"
+          @update:selectedVersion="selectedVersion = $event"
+          @update:filename="serverFilename = $event"
+          @update:saveDir="serverSaveDir = $event"
+          @update:threadCount="serverThreadCount = $event"
+          @pickFolder="pickServerFolder"
+        />
+        <div class="card-actions">
+          <SLButton
+            :variant="
+              taskInfo.isFinished && taskOriginTab === 'server' && !taskError
+                ? 'success'
+                : 'primary'
+            "
+            :disabled="!canServerDownload"
+            @click="handleServerDownload"
+            :loading="isDownloading && taskOriginTab === 'server'"
+          >
+            {{ serverDownloadButtonLabel }}
+          </SLButton>
+          <SLButton
+            variant="secondary"
+            :disabled="!canGoCreate"
+            @click="gotoCreatePage(buildServerSavePath())"
+          >
+            {{ i18n.t("downloadServerView.actions.goCreatePage") }}
+          </SLButton>
+        </div>
+      </SLCard>
 
-    <!-- File download tab -->
-    <SLCard v-if="activeTab === 'file'" :title="i18n.t('download-file.title')">
-      <DownloadForm
-        :url="url"
-        :savePath="savePath"
-        :filename="filename"
-        :threadCount="threadCount"
-        :isDownloading="isDownloading"
-        @update:url="url = $event"
-        @update:savePath="savePath = $event"
-        @update:filename="filename = $event"
-        @update:threadCount="threadCount = $event"
-        @checkUrl="checkUrl()"
-        @pickFolder="pickFileFolder"
-        @checkThreadCount="checkThreadCount"
-      />
-    </SLCard>
-
-    <!-- Server download tab -->
-    <SLCard v-else-if="activeTab === 'server'" :title="i18n.t('downloadServerView.title')">
-      <DownloadServerForm
-        :serverTypeOptions="serverTypeOptions"
-        :versionOptions="versionOptions"
-        :selectedType="selectedType"
-        :selectedVersion="selectedVersion"
-        :filename="serverFilename"
-        :saveDir="serverSaveDir"
-        :threadCount="serverThreadCount"
-        :loadingTypes="loadingTypes"
-        :loadingVersions="loadingVersions"
-        :isDownloading="isDownloading"
-        :savePathPreview="savePathPreview"
-        :infoUrl="info?.url"
-        @update:selectedType="selectedType = $event"
-        @update:selectedVersion="selectedVersion = $event"
-        @update:filename="serverFilename = $event"
-        @update:saveDir="serverSaveDir = $event"
-        @update:threadCount="serverThreadCount = $event"
-        @pickFolder="pickServerFolder"
-      />
-    </SLCard>
-
-    <!-- Actions -->
-    <div class="create-actions">
-      <SLButton variant="secondary" size="lg" @click="cancelDownload">
-        {{ i18n.t("download-file.cancel") }}
-      </SLButton>
-      <SLButton
-        v-if="activeTab === 'file'"
-        :variant="isDownloadCompleted ? 'success' : 'primary'"
-        size="lg"
-        :disabled="!canFileDownload"
-        @click="handleFileDownload"
-        :loading="isDownloadingCurrentTab"
-      >
-        {{ fileDownloadButtonLabel }}
-      </SLButton>
-      <SLButton
-        v-else-if="activeTab === 'server'"
-        :variant="isDownloadCompleted ? 'success' : 'primary'"
-        size="lg"
-        :disabled="!canServerDownload"
-        @click="handleServerDownload"
-        :loading="isDownloadingCurrentTab"
-      >
-        {{ serverDownloadButtonLabel }}
-      </SLButton>
-      <SLButton
-        v-if="activeTab === 'server'"
-        variant="secondary"
-        size="lg"
-        :disabled="!canGoCreate"
-        @click="gotoCreatePage(buildServerSavePath())"
-      >
-        {{ i18n.t("downloadServerView.actions.goCreatePage") }}
-      </SLButton>
+      <SLCard :title="i18n.t('download-file.title')">
+        <DownloadForm
+          :url="url"
+          :savePath="savePath"
+          :filename="filename"
+          :threadCount="threadCount"
+          :isDownloading="isDownloading"
+          @update:url="url = $event"
+          @update:savePath="savePath = $event"
+          @update:filename="filename = $event"
+          @update:threadCount="threadCount = $event"
+          @checkUrl="checkUrl()"
+          @pickFolder="pickFileFolder"
+          @checkThreadCount="checkThreadCount"
+        />
+        <div class="card-actions">
+          <SLButton
+            :variant="
+              taskInfo.isFinished && taskOriginTab === 'file' && !taskError ? 'success' : 'primary'
+            "
+            :disabled="!canFileDownload"
+            @click="handleFileDownload"
+            :loading="isDownloading && taskOriginTab === 'file'"
+          >
+            {{ fileDownloadButtonLabel }}
+          </SLButton>
+          <SLButton variant="secondary" @click="cancelDownload">
+            {{ i18n.t("download-file.cancel") }}
+          </SLButton>
+        </div>
+      </SLCard>
     </div>
 
     <!-- Download progress -->
     <Transition name="fade">
-      <div v-if="isTaskVisibleForCurrentTab" class="bottom-progress-area">
+      <div v-if="taskInfo.id !== ''" class="bottom-progress-area">
         <DownloadProgress :taskInfo="taskInfo" :taskError="taskError" :statusLabel="statusLabel" />
       </div>
     </Transition>
@@ -486,8 +460,18 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-lg);
-  max-width: 640px;
-  margin: 0 auto;
+}
+
+.download-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sl-space-lg);
+}
+
+.download-cards .card-actions {
+  display: flex;
+  gap: var(--sl-space-sm);
+  margin-top: var(--sl-space-md);
 }
 
 .error-banner {
@@ -510,32 +494,16 @@ onMounted(() => {
   border: none;
 }
 
-.create-actions {
-  display: flex;
-  justify-content: center;
-  gap: var(--sl-space-md);
-  margin-top: var(--sl-space-md);
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.4s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .bottom-progress-area {
   margin-top: var(--sl-space-lg);
   display: flex;
   justify-content: center;
   width: 100%;
+}
+
+@media (max-width: 780px) {
+  .download-cards {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

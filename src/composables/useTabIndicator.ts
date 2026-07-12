@@ -21,9 +21,11 @@ export function useTabIndicator<T extends string | null>(
     containerSelector?: string;
     /** 激活状态的 CSS 类名 */
     activeClass?: string;
+    /** 竖直模式：指示器使用 top/height */
+    vertical?: boolean;
   } = {},
 ) {
-  const { delay = 50, activeClass = "active" } = options;
+  const { delay = 50, activeClass = "active", vertical = false } = options;
 
   const indicatorRef = ref<HTMLElement | null>(null);
   const position = ref<TabIndicatorPosition>({ left: 0, width: 0 });
@@ -40,14 +42,20 @@ export function useTabIndicator<T extends string | null>(
 
       const activeTabBtn = container.querySelector(`.${activeClass}`);
       if (activeTabBtn) {
-        const { offsetLeft, offsetWidth } = activeTabBtn as HTMLElement;
-        position.value = {
-          left: offsetLeft,
-          width: offsetWidth,
-        };
-
-        indicatorRef.value.style.left = `${offsetLeft}px`;
-        indicatorRef.value.style.width = `${offsetWidth}px`;
+        const el = activeTabBtn as HTMLElement;
+        if (vertical) {
+          const { offsetTop, offsetHeight } = el;
+          indicatorRef.value.style.top = `${offsetTop}px`;
+          indicatorRef.value.style.height = `${offsetHeight}px`;
+        } else {
+          const { offsetLeft, offsetWidth } = el;
+          position.value = {
+            left: offsetLeft,
+            width: offsetWidth,
+          };
+          indicatorRef.value.style.left = `${offsetLeft}px`;
+          indicatorRef.value.style.width = `${offsetWidth}px`;
+        }
       }
     });
   }

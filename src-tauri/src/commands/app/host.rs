@@ -88,3 +88,8 @@ pub fn frontend_heartbeat() -> Result<(), String> {
 pub async fn test_ipv6_connectivity() -> Result<serde_json::Value, String> {
     system_info::test_ipv6_connectivity().await
 }
+
+#[tauri::command]
+pub fn remove_file(path: String) -> Result<(), String> {
+    std::fs::remove_file(&path).map_err(|e| format!("Failed to remove file: {}", e))
+}

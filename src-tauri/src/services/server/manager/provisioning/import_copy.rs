@@ -69,6 +69,8 @@ pub(super) fn import_server(
         java_path: req.java_path,
         jvm_args: Vec::new(),
         port,
+        max_memory: req.max_memory,
+        min_memory: req.min_memory,
         created_at: now,
         last_started_at: None,
     };

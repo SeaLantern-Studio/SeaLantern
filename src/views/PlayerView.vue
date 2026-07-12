@@ -249,49 +249,55 @@ async function handleKick(name: string) {
 </script>
 
 <template>
-  <div class="player-view animate-fade-in-up">
+  <div class="player-view animate-stagger-in">
     <div v-if="!selectedServerId" class="player-empty-state">
       <p class="text-body">{{ i18n.t("players.no_server") }}</p>
     </div>
 
     <template v-else>
-      <div v-if="error" class="player-msg-banner error-banner">
-        <span>{{ error }}</span>
-        <button @click="clearMessage('error')">x</button>
+      <div class="player-msg-row">
+        <div v-if="error" class="player-msg-banner error-banner">
+          <span>{{ error }}</span>
+          <button @click="clearMessage('error')">x</button>
+        </div>
+        <div v-if="success" class="player-msg-banner success-banner">
+          <span>{{ success }}</span>
+        </div>
       </div>
-      <div v-if="success" class="player-msg-banner success-banner">
-        <span>{{ success }}</span>
+
+      <div class="player-content-layout">
+        <PlayerTabs
+          v-model="activeTab"
+          :onlineCount="onlinePlayers.length"
+          :whitelistCount="whitelist.length"
+          :bannedCount="bannedPlayers.length"
+          :opsCount="ops.length"
+        />
+
+        <div class="player-main">
+          <PlayerActionBar
+            v-if="activeTab !== 'online'"
+            :label="getAddLabel()"
+            :disabled="!isRunning"
+            @add="openAddModal"
+            @refresh="loadAll"
+          />
+
+          <PlayerList
+            :loading="loading"
+            :tab="activeTab"
+            :onlinePlayers="onlinePlayers"
+            :whitelist="whitelist"
+            :bannedPlayers="bannedPlayers"
+            :ops="ops"
+            :serverRunning="isRunning"
+            @kick="handleKick"
+            @removeWhitelist="handleRemoveWhitelist"
+            @unban="handleUnban"
+            @removeOp="handleRemoveOp"
+          />
+        </div>
       </div>
-
-      <PlayerTabs
-        v-model="activeTab"
-        :onlineCount="onlinePlayers.length"
-        :whitelistCount="whitelist.length"
-        :bannedCount="bannedPlayers.length"
-        :opsCount="ops.length"
-      />
-
-      <PlayerActionBar
-        v-if="activeTab !== 'online'"
-        :label="getAddLabel()"
-        :disabled="!isRunning"
-        @add="openAddModal"
-        @refresh="loadAll"
-      />
-
-      <PlayerList
-        :loading="loading"
-        :tab="activeTab"
-        :onlinePlayers="onlinePlayers"
-        :whitelist="whitelist"
-        :bannedPlayers="bannedPlayers"
-        :ops="ops"
-        :serverRunning="isRunning"
-        @kick="handleKick"
-        @removeWhitelist="handleRemoveWhitelist"
-        @unban="handleUnban"
-        @removeOp="handleRemoveOp"
-      />
 
       <PlayerModals
         v-model:visible="showAddModal"
@@ -319,6 +325,25 @@ async function handleKick(name: string) {
   align-items: center;
   justify-content: center;
   padding: var(--sl-space-2xl);
+}
+
+.player-content-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.player-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+  min-width: 0;
+}
+
+.player-msg-row {
+  display: flex;
+  gap: var(--sl-space-sm);
 }
 
 .player-msg-banner {

@@ -81,6 +81,7 @@ pub(crate) fn desktop_handler(
         system_commands::get_safe_mode_status,
         system_commands::frontend_heartbeat,
         system_commands::test_ipv6_connectivity,
+        system_commands::remove_file,
         player_commands::get_whitelist,
         player_commands::get_banned_players,
         player_commands::get_ops,

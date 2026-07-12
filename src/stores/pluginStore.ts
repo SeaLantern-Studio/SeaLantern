@@ -114,10 +114,6 @@ function getPluginUiContainer(): HTMLElement {
   return container;
 }
 
-function initSidebarEventListener() {
-  console.log("[PluginSidebar] Event listener disabled");
-}
-
 function removePluginUiElements(pluginId: string) {
   const elements = document.querySelectorAll(`[data-plugin-id="${pluginId}"]`);
   console.log(`[PluginUI] Removing ${elements.length} UI elements for plugin: ${pluginId}`);
@@ -399,8 +395,38 @@ export const usePluginStore = defineStore("plugin", () => {
   }
 
   function collectSidebarItems() {
-    // 已禁用插件注册的侧栏按钮功能
-    sidebarItems.value = [];
+    const items: SidebarItem[] = [];
+
+    for (const plugin of plugins.value) {
+      if (plugin.state !== "enabled") continue;
+
+      // 从 manifest.sidebar 读取侧栏配置
+      const sidebarConfig = plugin.manifest.sidebar;
+      if (sidebarConfig) {
+        items.push({
+          pluginId: plugin.manifest.id,
+          label: sidebarConfig.label,
+          icon: sidebarConfig.icon,
+          mode: sidebarConfig.mode ?? "self",
+          showDependents: sidebarConfig.show_dependents ?? true,
+          priority: sidebarConfig.priority ?? 100,
+          isDefault: true,
+          after: sidebarConfig.after,
+          parent: sidebarConfig.parent,
+        });
+      }
+    }
+
+    // 合并运行时通过 sl.ui.register_sidebar 注册的项
+    const existingIds = new Set(items.map((i) => i.pluginId));
+    for (const existing of sidebarItems.value) {
+      if (!existingIds.has(existing.pluginId)) {
+        items.push(existing);
+      }
+    }
+
+    items.sort((a, b) => a.priority - b.priority);
+    sidebarItems.value = items;
   }
 
   async function installFromZip(zipPath: string): Promise<PluginInstallResult> {
@@ -1380,6 +1406,41 @@ export const usePluginStore = defineStore("plugin", () => {
   function cleanupSidebarEventListener() {
     if (sidebarEventUnlisten) {
       sidebarEventUnlisten();
+      sidebarEventUnlisten = null;
+    }
+  }
+
+  async function initSidebarEventListener() {
+    if (isBrowserEnv()) {
+      return;
+    }
+
+    if (sidebarEventUnlisten) {
+      return;
+    }
+
+    try {
+      sidebarEventUnlisten = await listen<PluginSidebarEvent>("plugin-sidebar-event", (event) => {
+        const { plugin_id, action, label, icon } = event.payload;
+        if (action === "register") {
+          const filtered = sidebarItems.value.filter((item) => item.pluginId !== plugin_id);
+          filtered.push({
+            pluginId: plugin_id,
+            label,
+            icon: icon || undefined,
+            mode: "self",
+            showDependents: true,
+            priority: 100,
+          });
+          filtered.sort((a, b) => a.priority - b.priority);
+          sidebarItems.value = filtered;
+        } else if (action === "unregister") {
+          sidebarItems.value = sidebarItems.value.filter((item) => item.pluginId !== plugin_id);
+        }
+      });
+      console.log("[PluginSidebar] Event listener initialized");
+    } catch (e) {
+      console.error("[PluginSidebar] Failed to initialize event listener:", e);
     }
   }
 

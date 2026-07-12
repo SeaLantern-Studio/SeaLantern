@@ -53,6 +53,13 @@ impl MultiThreadDownloader {
             1
         };
 
+        // 确保目标目录存在
+        if let Some(parent) = std::path::Path::new(output_path).parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| format!("Failed to create download directory: {}", e))?;
+        }
+
         let file = tokio::fs::File::create(output_path)
             .await
             .map_err(|e| e.to_string())?;

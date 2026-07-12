@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 
-export type ServerSourceType = "archive" | "folder" | "";
+export type ServerSourceType = "archive" | "folder" | "download" | "";
 
 export interface CreateServerDraft {
   sourcePath: string;

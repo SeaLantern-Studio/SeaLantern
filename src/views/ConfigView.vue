@@ -215,178 +215,181 @@ onActivated(async () => {
 </script>
 
 <template>
-  <div class="config-view animate-fade-in">
-    <div class="config-header">
-      <div class="config-tabs-row">
-        <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" />
-        <div v-if="activeTab === 'properties'" class="config-properties-header-actions">
-          <SLButton
-            v-if="compare.hasCompareTargets.value"
-            size="sm"
-            :variant="compare.compareMode.value ? 'primary' : 'secondary'"
-            class="config-compare-toggle"
-            @click="compare.handleCompareModeChange(!compare.compareMode.value)"
+  <div class="config-view animate-stagger-in">
+    <div class="config-layout">
+      <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" vertical />
+      <div class="config-main">
+        <div class="config-header">
+          <div v-if="activeTab === 'properties'" class="config-properties-header-actions">
+            <SLButton
+              v-if="compare.hasCompareTargets.value"
+              size="sm"
+              :variant="compare.compareMode.value ? 'primary' : 'secondary'"
+              class="config-compare-toggle"
+              @click="compare.handleCompareModeChange(!compare.compareMode.value)"
+            >
+              <FileDiff :size="16" />
+              {{ i18n.t("config.compare.toggle") }}
+            </SLButton>
+            <SLTabBar
+              class="config-editor-mode-bar"
+              :modelValue="propertiesEditor.editorMode.value"
+              :tabs="editorModeTabs"
+              :level="2"
+              @update:modelValue="propertiesEditor.handleEditorModeChange"
+            />
+          </div>
+        </div>
+
+        <div v-if="!currentServerId" class="empty-state">
+          <p class="text-body">{{ i18n.t("config.no_server") }}</p>
+        </div>
+
+        <template v-else>
+          <div v-if="error" class="error-banner">
+            <span>{{ error }}</span>
+            <button class="banner-close" @click="setError(null)">x</button>
+          </div>
+          <div v-if="successMsg" class="success-banner">
+            <span>{{ i18n.t("config.saved") }}</span>
+          </div>
+
+          <template v-if="activeTab === 'properties'">
+            <ConfigPropertiesSection
+              :editorMode="propertiesEditor.editorMode.value"
+              :loading="propertiesEditor.loading.value"
+              :compareLoading="compare.compareLoading.value"
+              :compareMode="compare.compareMode.value"
+              :hasCompareTargets="compare.hasCompareTargets.value"
+              :compareTargetServerId="compare.compareTargetServerId.value"
+              :compareServerOptions="compare.compareServerOptions.value"
+              :compareDifferenceBadgeText="compare.compareDifferenceBadgeText.value"
+              :comparePanelRows="compare.comparePanelRows.value"
+              :sourceServerName="currentServer?.name || i18n.t('config.compare.source_server')"
+              :targetServerName="
+                compare.compareTargetServer.value?.name || i18n.t('config.compare.target_server')
+              "
+              :categories="propertiesEditor.categories.value"
+              :activeCategory="propertiesEditor.activeCategory.value"
+              :searchQuery="propertiesEditor.searchQuery.value"
+              :filteredEntries="propertiesEditor.filteredEntries.value"
+              :translatedDescriptionByKey="translatedDescriptionByKey"
+              :editValues="propertiesEditor.editValues.value"
+              :numericFieldErrors="propertiesEditor.numericFieldErrors.value"
+              :gamemodeOptions="gamemodeOptions"
+              :difficultyOptions="difficultyOptions"
+              :sourceDraftText="propertiesEditor.sourceDraftText.value"
+              :compareTargetSourceDraftText="compare.compareTargetSourceDraftText.value"
+              :sourceParseError="propertiesEditor.sourceParseError.value"
+              :hasUnsavedChanges="propertiesEditor.hasUnsavedChanges.value"
+              :saveStatusText="propertiesEditor.saveStatusText.value"
+              :saving="propertiesEditor.saving.value"
+              :reloadCurrentTooltipText="propertiesEditor.reloadCurrentTooltipText.value"
+              :reloadCompareTooltipText="propertiesEditor.reloadCompareTooltipText.value"
+              @updateCategory="propertiesEditor.handleCategoryChange"
+              @updateSearch="propertiesEditor.handleSearchUpdate"
+              @updateSourceDraft="propertiesEditor.updateSourceDraft"
+              @updateCompareTargetSourceDraft="propertiesEditor.updateCompareTargetSourceDraft"
+              @updateValue="propertiesEditor.updateValue($event.key, $event.value)"
+              @updateCompareTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
+              @addSourceValue="propertiesEditor.updateValue($event.key, $event.value)"
+              @addTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
+              @updateCompareTargetServer="compare.handleCompareTargetServerChange"
+              @reloadCurrent="propertiesEditor.reloadPropertiesWithGuard"
+              @reloadCompare="propertiesEditor.reloadComparePropertiesWithGuard"
+              @saveProperties="propertiesEditor.saveProperties"
+            />
+          </template>
+
+          <template v-if="activeTab === 'startup'">
+            <ConfigStartupSection
+              :serverPath="serverPath"
+              :defaultMaxMemory="currentServer?.max_memory ?? 2048"
+              :defaultMinMemory="currentServer?.min_memory ?? 512"
+              @saved="handleStartupConfigSaved"
+            />
+          </template>
+
+          <template v-if="activeTab === 'plugins'">
+            <ConfigPluginsSection
+              :plugins="pluginsState.plugins.value"
+              :pluginsLoading="pluginsState.pluginsLoading.value"
+              :selectedPlugin="pluginsState.selectedPlugin.value"
+              @refreshList="pluginsState.loadPlugins"
+              @reloadPlugins="pluginsState.reloadPlugins"
+              @pluginClick="pluginsState.handlePluginClick"
+              @togglePlugin="pluginsState.togglePlugin"
+              @deletePlugin="pluginsState.deletePlugin"
+              @registerPluginRow="pluginsState.registerPluginRow"
+              @openPluginFolder="pluginsState.openPluginFolder"
+              @openConfigFile="pluginsState.openConfigFile"
+            />
+          </template>
+
+          <SLConfirmDialog
+            :visible="propertiesEditor.showDiscardConfirm.value"
+            :title="propertiesEditor.discardConfirmTitle.value"
+            :message="propertiesEditor.discardConfirmMessage.value"
+            :confirmText="i18n.t('config.discard_confirm')"
+            :cancelText="i18n.t('common.cancel')"
+            confirmVariant="danger"
+            @confirm="propertiesEditor.confirmReloadDiscard"
+            @close="
+              propertiesEditor.showDiscardConfirm.value = false;
+              propertiesEditor.pendingReloadSide.value = null;
+            "
+          />
+
+          <SLModal
+            :visible="propertiesEditor.showSaveDiffModal.value"
+            :title="i18n.t('config.diff_modal_title')"
+            :width="configSaveDiffModalWidth"
+            :close-on-overlay="!propertiesEditor.saving.value"
+            @close="propertiesEditor.closeSaveDiffModal"
           >
-            <FileDiff :size="16" />
-            {{ i18n.t("config.compare.toggle") }}
-          </SLButton>
-          <SLTabBar
-            class="config-editor-mode-bar"
-            :modelValue="propertiesEditor.editorMode.value"
-            :tabs="editorModeTabs"
-            :level="2"
-            @update:modelValue="propertiesEditor.handleEditorModeChange"
-          />
-        </div>
-      </div>
-    </div>
-
-    <div v-if="!currentServerId" class="empty-state">
-      <p class="text-body">{{ i18n.t("config.no_server") }}</p>
-    </div>
-
-    <template v-else>
-      <div v-if="error" class="error-banner">
-        <span>{{ error }}</span>
-        <button class="banner-close" @click="setError(null)">x</button>
-      </div>
-      <div v-if="successMsg" class="success-banner">
-        <span>{{ i18n.t("config.saved") }}</span>
-      </div>
-
-      <template v-if="activeTab === 'properties'">
-        <ConfigPropertiesSection
-          :editorMode="propertiesEditor.editorMode.value"
-          :loading="propertiesEditor.loading.value"
-          :compareLoading="compare.compareLoading.value"
-          :compareMode="compare.compareMode.value"
-          :hasCompareTargets="compare.hasCompareTargets.value"
-          :compareTargetServerId="compare.compareTargetServerId.value"
-          :compareServerOptions="compare.compareServerOptions.value"
-          :compareDifferenceBadgeText="compare.compareDifferenceBadgeText.value"
-          :comparePanelRows="compare.comparePanelRows.value"
-          :sourceServerName="currentServer?.name || i18n.t('config.compare.source_server')"
-          :targetServerName="
-            compare.compareTargetServer.value?.name || i18n.t('config.compare.target_server')
-          "
-          :categories="propertiesEditor.categories.value"
-          :activeCategory="propertiesEditor.activeCategory.value"
-          :searchQuery="propertiesEditor.searchQuery.value"
-          :filteredEntries="propertiesEditor.filteredEntries.value"
-          :translatedDescriptionByKey="translatedDescriptionByKey"
-          :editValues="propertiesEditor.editValues.value"
-          :numericFieldErrors="propertiesEditor.numericFieldErrors.value"
-          :gamemodeOptions="gamemodeOptions"
-          :difficultyOptions="difficultyOptions"
-          :sourceDraftText="propertiesEditor.sourceDraftText.value"
-          :compareTargetSourceDraftText="compare.compareTargetSourceDraftText.value"
-          :sourceParseError="propertiesEditor.sourceParseError.value"
-          :hasUnsavedChanges="propertiesEditor.hasUnsavedChanges.value"
-          :saveStatusText="propertiesEditor.saveStatusText.value"
-          :saving="propertiesEditor.saving.value"
-          :reloadCurrentTooltipText="propertiesEditor.reloadCurrentTooltipText.value"
-          :reloadCompareTooltipText="propertiesEditor.reloadCompareTooltipText.value"
-          @updateCategory="propertiesEditor.handleCategoryChange"
-          @updateSearch="propertiesEditor.handleSearchUpdate"
-          @updateSourceDraft="propertiesEditor.updateSourceDraft"
-          @updateCompareTargetSourceDraft="propertiesEditor.updateCompareTargetSourceDraft"
-          @updateValue="propertiesEditor.updateValue($event.key, $event.value)"
-          @updateCompareTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
-          @addSourceValue="propertiesEditor.updateValue($event.key, $event.value)"
-          @addTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
-          @updateCompareTargetServer="compare.handleCompareTargetServerChange"
-          @reloadCurrent="propertiesEditor.reloadPropertiesWithGuard"
-          @reloadCompare="propertiesEditor.reloadComparePropertiesWithGuard"
-          @saveProperties="propertiesEditor.saveProperties"
-        />
-      </template>
-
-      <template v-if="activeTab === 'startup'">
-        <ConfigStartupSection
-          :serverPath="serverPath"
-          :defaultMaxMemory="currentServer?.max_memory ?? 2048"
-          :defaultMinMemory="currentServer?.min_memory ?? 512"
-          @saved="handleStartupConfigSaved"
-        />
-      </template>
-
-      <template v-if="activeTab === 'plugins'">
-        <ConfigPluginsSection
-          :plugins="pluginsState.plugins.value"
-          :pluginsLoading="pluginsState.pluginsLoading.value"
-          :selectedPlugin="pluginsState.selectedPlugin.value"
-          @refreshList="pluginsState.loadPlugins"
-          @reloadPlugins="pluginsState.reloadPlugins"
-          @pluginClick="pluginsState.handlePluginClick"
-          @togglePlugin="pluginsState.togglePlugin"
-          @deletePlugin="pluginsState.deletePlugin"
-          @registerPluginRow="pluginsState.registerPluginRow"
-          @openPluginFolder="pluginsState.openPluginFolder"
-          @openConfigFile="pluginsState.openConfigFile"
-        />
-      </template>
-
-      <SLConfirmDialog
-        :visible="propertiesEditor.showDiscardConfirm.value"
-        :title="propertiesEditor.discardConfirmTitle.value"
-        :message="propertiesEditor.discardConfirmMessage.value"
-        :confirmText="i18n.t('config.discard_confirm')"
-        :cancelText="i18n.t('common.cancel')"
-        confirmVariant="danger"
-        @confirm="propertiesEditor.confirmReloadDiscard"
-        @close="
-          propertiesEditor.showDiscardConfirm.value = false;
-          propertiesEditor.pendingReloadSide.value = null;
-        "
-      />
-
-      <SLModal
-        :visible="propertiesEditor.showSaveDiffModal.value"
-        :title="i18n.t('config.diff_modal_title')"
-        :width="configSaveDiffModalWidth"
-        :close-on-overlay="!propertiesEditor.saving.value"
-        @close="propertiesEditor.closeSaveDiffModal"
-      >
-        <div
-          v-for="diffItem in propertiesEditor.pendingSaveItemsWithStats.value"
-          :key="`${diffItem.serverId}-${diffItem.filePath}`"
-          class="source-diff-block"
-        >
-          <div class="source-diff-title-row text-caption">
-            <span class="source-diff-server">{{ diffItem.serverName }}</span>
-            <SLTooltip :content="diffItem.filePath">
-              <span class="source-diff-path-hint">i</span>
-            </SLTooltip>
-            <span
-              >{{ i18n.t("config.diff_original") }} → {{ i18n.t("config.diff_after_save") }}</span
+            <div
+              v-for="diffItem in propertiesEditor.pendingSaveItemsWithStats.value"
+              :key="`${diffItem.serverId}-${diffItem.filePath}`"
+              class="source-diff-block"
             >
-            <span class="diff-count diff-count-add">+{{ diffItem.additions }}</span>
-            <span class="diff-count diff-count-del">-{{ diffItem.deletions }}</span>
-          </div>
-          <ConfigSourceDiffView
-            :original="diffItem.originalText"
-            :modified="diffItem.modifiedText"
-          />
-        </div>
-        <template #footer>
-          <div class="diff-modal-actions">
-            <SLButton
-              variant="secondary"
-              :disabled="propertiesEditor.saving.value"
-              @click="propertiesEditor.closeSaveDiffModal"
-            >
-              {{ i18n.t("common.cancel") }}
-            </SLButton>
-            <SLButton
-              variant="primary"
-              :loading="propertiesEditor.saving.value"
-              @click="propertiesEditor.confirmSaveProperties"
-            >
-              {{ i18n.t("config.confirm_save") }}
-            </SLButton>
-          </div>
+              <div class="source-diff-title-row text-caption">
+                <span class="source-diff-server">{{ diffItem.serverName }}</span>
+                <SLTooltip :content="diffItem.filePath">
+                  <span class="source-diff-path-hint">i</span>
+                </SLTooltip>
+                <span
+                  >{{ i18n.t("config.diff_original") }} →
+                  {{ i18n.t("config.diff_after_save") }}</span
+                >
+                <span class="diff-count diff-count-add">+{{ diffItem.additions }}</span>
+                <span class="diff-count diff-count-del">-{{ diffItem.deletions }}</span>
+              </div>
+              <ConfigSourceDiffView
+                :original="diffItem.originalText"
+                :modified="diffItem.modifiedText"
+              />
+            </div>
+            <template #footer>
+              <div class="diff-modal-actions">
+                <SLButton
+                  variant="secondary"
+                  :disabled="propertiesEditor.saving.value"
+                  @click="propertiesEditor.closeSaveDiffModal"
+                >
+                  {{ i18n.t("common.cancel") }}
+                </SLButton>
+                <SLButton
+                  variant="primary"
+                  :loading="propertiesEditor.saving.value"
+                  @click="propertiesEditor.confirmSaveProperties"
+                >
+                  {{ i18n.t("config.confirm_save") }}
+                </SLButton>
+              </div>
+            </template>
+          </SLModal>
         </template>
-      </SLModal>
-    </template>
+      </div>
+    </div>
   </div>
 </template>
