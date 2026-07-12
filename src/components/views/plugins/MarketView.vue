@@ -985,7 +985,7 @@ onMounted(() => {
 
 .install-btn-lg {
   padding: 10px 32px;
-  border-radius: 8px;
+  border-radius: var(--sl-radius-md);
   border: none;
   background: var(--sl-primary);
   color: white;
