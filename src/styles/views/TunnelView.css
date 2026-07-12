@@ -106,7 +106,7 @@
   width: 24px;
   height: 24px;
   border: 1px solid var(--sl-border);
-  border-radius: 6px;
+  border-radius: var(--sl-radius-sm);
   background: var(--sl-surface);
   color: var(--sl-text-secondary);
   cursor: pointer;
