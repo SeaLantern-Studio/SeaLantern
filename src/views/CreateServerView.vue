@@ -35,6 +35,9 @@ const {
   creating,
   sourcePath,
   sourceType,
+  serverDownloadType,
+  serverDownloadVersion,
+  isDownloadMode,
   runPath,
   runPathOverwriteRisk,
   coreDetecting,
@@ -124,7 +127,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="create-view animate-fade-in-up">
+  <div class="create-view animate-stagger-in">
     <!-- 拖放提示遮罩 -->
     <div v-if="isDragging" class="create-drop-overlay">
       <div class="drop-hint">
@@ -167,6 +170,8 @@ onBeforeUnmount(() => {
               <SourceIntakeField
                 v-model:source-path="sourcePath"
                 v-model:source-type="sourceType"
+                v-model:server-download-type="serverDownloadType"
+                v-model:server-download-version="serverDownloadVersion"
                 @error="showError"
               />
             </template>

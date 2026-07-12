@@ -23,6 +23,7 @@ pub(super) fn register_handlers(handlers: &mut HashMap<String, CommandHandler>) 
         handle_test_ipv6_connectivity as CommandHandler,
     );
     handlers.insert("frontend_heartbeat".to_string(), handle_frontend_heartbeat as CommandHandler);
+    handlers.insert("remove_file".to_string(), handle_remove_file as CommandHandler);
     handlers.insert("get_logs".to_string(), handle_get_logs as CommandHandler);
     handlers.insert("clear_logs".to_string(), handle_clear_logs as CommandHandler);
     handlers.insert(
@@ -116,5 +117,19 @@ fn handle_check_developer_mode(
     Box::pin(async move {
         serde_json::to_value(logging_commands::check_developer_mode())
             .map_err(|error| error.to_string())
+    })
+}
+
+fn handle_remove_file(
+    params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let path = params
+            .get("path")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| "Missing path".to_string())?
+            .to_string();
+        system_commands::remove_file(path)?;
+        Ok(Value::Null)
     })
 }

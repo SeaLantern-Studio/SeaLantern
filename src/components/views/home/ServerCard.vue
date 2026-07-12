@@ -12,6 +12,7 @@ import {
   editName,
   editLoading,
   formatServerPath,
+  formatMemoryMB,
   getStatusText,
   handleStart,
   handleStop,
@@ -114,7 +115,9 @@ function getStatusClass(status: string | undefined): string {
       <div class="server-meta">
         <span class="meta-tag core-type">{{ server.core_type }}</span>
         <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
-        <span class="meta-tag" @click="handleStartupConfig">{{ server.max_memory }}MB</span>
+        <span class="meta-tag" @click="handleStartupConfig">{{
+          formatMemoryMB(server.max_memory)
+        }}</span>
       </div>
     </div>
 

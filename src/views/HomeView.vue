@@ -65,7 +65,7 @@ function handleCreate() {
 </script>
 
 <template>
-  <div class="home-view animate-fade-in-up">
+  <div class="home-view animate-stagger-in">
     <ErrorBanner :message="actionError" @close="actionError = null" />
 
     <div class="top-row">

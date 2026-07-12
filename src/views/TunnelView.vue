@@ -344,7 +344,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="tunnel-view animate-fade-in-up">
+  <div class="tunnel-view animate-stagger-in">
     <SLCard :title="i18n.t('tunnel.status_title')" variant="solid" padding="md">
       <template #actions>
         <button

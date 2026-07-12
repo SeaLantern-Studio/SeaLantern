@@ -374,7 +374,7 @@ function deleteCommand() {}
 </script>
 
 <template>
-  <div class="console-view animate-fade-in-up">
+  <div class="console-view animate-stagger-in">
     <div class="console-toolbar">
       <div class="toolbar-left">
         <span class="server-name-display">

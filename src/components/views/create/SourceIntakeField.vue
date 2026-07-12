@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import {
   DialogContent,
   DialogDescription,
@@ -8,13 +8,15 @@ import {
   DialogRoot,
   DialogTitle,
 } from "reka-ui";
-import { File, Folder, Plus, X } from "lucide-vue-next";
+import { File, Folder, Plus, X, Upload } from "lucide-vue-next";
 import SLButton from "@components/common/SLButton.vue";
 import SLDropzone from "@components/common/SLDropzone.vue";
+import SLSelect from "@components/common/SLSelect.vue";
 import { systemApi } from "@api/system";
+import { downloadServerApi } from "@api/downloader";
 import { i18n } from "@language";
 
-export type SourceType = "archive" | "folder" | "";
+export type SourceType = "archive" | "folder" | "download" | "";
 
 const props = withDefaults(
   defineProps<{
@@ -30,23 +32,28 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: "update:sourcePath", value: string): void;
   (e: "update:sourceType", value: SourceType): void;
+  (e: "update:serverDownloadType", value: string): void;
+  (e: "update:serverDownloadVersion", value: string): void;
   (e: "error", value: string): void;
 }>();
 
+/* ── 本地文件选择 ── */
 const chooserOpen = ref(false);
 
 const archiveExtensions = [".zip", ".tar", ".tar.gz", ".tgz", ".jar"];
 
 const selectedName = computed(() => getPathName(props.sourcePath));
 const sourceTypeText = computed(() => {
-  if (props.sourceType === "archive") {
-    return i18n.t("create.source_kind_file");
-  }
-  if (props.sourceType === "folder") {
-    return i18n.t("create.source_kind_folder");
-  }
+  if (props.sourceType === "archive") return i18n.t("create.source_kind_file");
+  if (props.sourceType === "folder") return i18n.t("create.source_kind_folder");
+  if (props.sourceType === "download") return i18n.t("create.source_kind_download");
   return i18n.t("create.source_not_selected");
 });
+
+// 是否已选择本地文件（archive 或 folder）
+const hasLocalSource = computed(
+  () => props.sourceType === "archive" || props.sourceType === "folder",
+);
 
 function getPathName(path: string): string {
   const segments = path.split(/[\\/]/).filter(Boolean);
@@ -64,12 +71,9 @@ function setSource(path: string, type: SourceType) {
 }
 
 function handleDrop(path: string) {
-  console.debug("[SourceIntakeField] handleDrop received path", path);
   if (hasArchiveExtension(path)) {
-    console.debug("[SourceIntakeField] Classified dropped path as archive");
     setSource(path, "archive");
   } else {
-    console.debug("[SourceIntakeField] Classified dropped path as folder");
     setSource(path, "folder");
   }
 }
@@ -78,7 +82,7 @@ function handleError(message: string) {
   emit("error", message);
 }
 
-function handleClear() {
+function handleClearLocal() {
   setSource("", "");
 }
 
@@ -102,27 +106,156 @@ async function pickFolder() {
     setSource(selected, "folder");
   }
 }
+
+/* ── 服务端选择 ── */
+const serverTypes = ref<string[]>([]);
+const versions = ref<string[]>([]);
+const selectedType = ref("");
+const selectedVersion = ref("");
+
+const loadingTypes = ref(false);
+const loadingVersions = ref(false);
+
+const serverTypeOptions = computed(() =>
+  serverTypes.value.map((type) => ({ label: type, value: type })),
+);
+
+const versionOptions = computed(() => {
+  return [...versions.value]
+    .toSorted((a, b) => {
+      const aParts = a.split(".").map(Number);
+      const bParts = b.split(".").map(Number);
+      for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+        const aNum = aParts[i] || 0;
+        const bNum = bParts[i] || 0;
+        if (bNum - aNum !== 0) return bNum - aNum;
+      }
+      return 0;
+    })
+    .map((v) => ({ label: v, value: v }));
+});
+
+// 选完类型+版本后，进入下载模式
+const downloadReady = computed(() => selectedType.value && selectedVersion.value);
+
+watch(downloadReady, (ready) => {
+  // 如果已选择了本地文件，不要覆盖
+  if (hasLocalSource.value) return;
+  if (ready) {
+    emit("update:sourceType", "download");
+    emit("update:serverDownloadType", selectedType.value);
+    emit("update:serverDownloadVersion", selectedVersion.value);
+  } else if (props.sourceType === "download") {
+    emit("update:sourceType", "");
+  }
+});
+
+/* ── 加载服务端类型 ── */
+async function loadServerTypes() {
+  loadingTypes.value = true;
+  try {
+    const types = await downloadServerApi.getServerTypes();
+    serverTypes.value = types;
+    if (types.length > 0) selectedType.value = types[0];
+  } catch (e) {
+    emit("error", String(e));
+  } finally {
+    loadingTypes.value = false;
+  }
+}
+
+/* ── 加载版本列表 ── */
+async function loadVersions(serverType: string) {
+  if (!serverType) return;
+  loadingVersions.value = true;
+  versions.value = [];
+  selectedVersion.value = "";
+
+  try {
+    const list = await downloadServerApi.getVersionsByType(serverType);
+    versions.value = list;
+    if (list.length > 0) selectedVersion.value = list[list.length - 1];
+  } catch (e) {
+    emit("error", String(e));
+  } finally {
+    loadingVersions.value = false;
+  }
+}
+
+/* ── 类型联动 ── */
+watch(selectedType, (type) => {
+  if (type) loadVersions(type);
+});
+
+/* ── 初始化 ── */
+onMounted(async () => {
+  await loadServerTypes();
+});
 </script>
 
 <template>
   <div class="source-intake-step">
-    <SLDropzone
-      :model-value="sourcePath"
-      :label="selectedName"
-      :badge="sourceTypeText"
-      :disabled="disabled"
-      :file-extensions="archiveExtensions"
-      :placeholder="i18n.t('create.source_drop_or_click')"
-      @click="openChooser"
-      @drop="handleDrop"
-      @clear="handleClear"
-      @error="handleError"
-    >
-      <template #icon>
-        <Plus :size="20" stroke-width="2.5" />
-      </template>
-    </SLDropzone>
+    <!-- 已选择本地文件时：显示文件名+清除按钮 -->
+    <template v-if="hasLocalSource">
+      <SLDropzone
+        :model-value="sourcePath"
+        :label="selectedName"
+        :badge="sourceTypeText"
+        :disabled="disabled"
+        :file-extensions="archiveExtensions"
+        :placeholder="i18n.t('create.source_drop_or_click')"
+        @click="openChooser"
+        @drop="handleDrop"
+        @clear="handleClearLocal"
+        @error="handleError"
+      >
+        <template #icon>
+          <Plus :size="20" stroke-width="2.5" />
+        </template>
+      </SLDropzone>
+    </template>
 
+    <!-- 未选择本地文件时：显示服务端选择器 -->
+    <template v-else>
+      <div class="server-download-panel">
+        <div class="server-download-row">
+          <div class="server-download-field">
+            <label>{{ i18n.t("downloadServerView.form.type") }}</label>
+            <SLSelect
+              :model-value="selectedType"
+              :options="serverTypeOptions"
+              :placeholder="i18n.t('downloadServerView.form.typePlaceholder')"
+              :disabled="loadingTypes"
+              :loading="loadingTypes"
+              searchable
+              maxHeight="240px"
+              @update:modelValue="selectedType = $event"
+            />
+          </div>
+          <div class="server-download-field">
+            <label>{{ i18n.t("downloadServerView.form.version") }}</label>
+            <SLSelect
+              :model-value="selectedVersion"
+              :options="versionOptions"
+              :placeholder="i18n.t('downloadServerView.form.versionPlaceholder')"
+              :disabled="loadingVersions || !selectedType"
+              :loading="loadingVersions"
+              searchable
+              maxHeight="240px"
+              @update:modelValue="selectedVersion = $event"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 添加自定义服务端按钮 -->
+      <button class="custom-source-btn" @click="chooserOpen = true">
+        <Upload :size="14" />
+        <span>{{ i18n.t("create.add_custom_source") }}</span>
+      </button>
+    </template>
+
+    <!-- 选择文件对话框 -->
     <DialogRoot v-model:open="chooserOpen">
       <DialogPortal>
         <DialogOverlay class="source-chooser-overlay" />

@@ -238,7 +238,7 @@ async function handleBrowseRunPath() {
 </script>
 
 <template>
-  <div class="settings-view animate-fade-in-up">
+  <div class="settings-view animate-stagger-in">
     <div v-if="error" class="msg-banner error-banner">
       <span>{{ error }}</span>
       <button @click="clearError()">x</button>

@@ -50,6 +50,22 @@ function formatBytes(bytes: number): string {
 }
 
 /**
+ * 格式化 MB 为单位的内存大小，自动转为 GB 显示
+ * @param mb 内存大小（MB）
+ * @returns 格式化后的字符串，如 "2 GB" 或 "512 MB"
+ */
+function formatMemoryMB(mb: number): string {
+  if (mb === 0) return "0 MB";
+  if (mb >= 1024 && mb % 1024 === 0) {
+    return `${mb / 1024} GB`;
+  }
+  if (mb >= 1024) {
+    return `${(mb / 1024).toFixed(1)} GB`;
+  }
+  return `${mb} MB`;
+}
+
+/**
  * 格式化服务器路径
  * @param path 完整路径
  * @returns 格式化后的路径（仅显示uuid文件夹名称）
@@ -371,6 +387,7 @@ export {
 
   // 工具函数
   formatBytes,
+  formatMemoryMB,
   formatServerPath,
   getStatusVariant,
   getStatusText,

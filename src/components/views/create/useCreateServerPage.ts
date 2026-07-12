@@ -14,6 +14,7 @@ import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
 import { systemApi } from "@api/system";
+import { downloadServerApi, downloadApi } from "@api/downloader";
 import { useMessage } from "@composables/useMessage";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
@@ -30,7 +31,7 @@ function generateUUID(): string {
   });
 }
 
-type SourceType = "archive" | "folder" | "";
+type SourceType = "archive" | "folder" | "download" | "";
 
 function inferSourceType(path: string): SourceType {
   const lowerPath = path.toLowerCase();
@@ -72,6 +73,8 @@ export function useCreateServerPage() {
 
   const sourcePath = ref("");
   const sourceType = ref<SourceType>("");
+  const serverDownloadType = ref("");
+  const serverDownloadVersion = ref("");
   const runPath = ref("");
 
   const coreDetecting = ref(false);
@@ -111,7 +114,14 @@ export function useCreateServerPage() {
   const onlineMode = ref(true);
   const javaList = ref<JavaInfo[]>([]);
 
-  const hasSource = computed(() => sourcePath.value.trim().length > 0 && sourceType.value !== "");
+  const hasSource = computed(() => {
+    if (sourceType.value === "download")
+      return serverDownloadType.value && serverDownloadVersion.value;
+    return sourcePath.value.trim().length > 0 && sourceType.value !== "";
+  });
+
+  // 下载模式标记
+  const isDownloadMode = computed(() => sourceType.value === "download");
 
   const selectedStartup = computed(
     () => startupCandidates.value.find((item) => item.id === selectedStartupId.value) ?? null,
@@ -130,9 +140,10 @@ export function useCreateServerPage() {
   });
 
   const hasStartupStep = computed(() => {
-    if (!hasPathStep.value || !selectedStartup.value) {
-      return false;
-    }
+    if (!hasPathStep.value) return false;
+    // 下载模式下自动使用 jar 启动模式
+    if (isDownloadMode.value) return true;
+    if (!selectedStartup.value) return false;
     if (selectedStartup.value.mode === "custom") {
       return customStartupCommand.value.trim().length > 0 && !customCommandHasRedirect.value;
     }
@@ -306,6 +317,32 @@ export function useCreateServerPage() {
     if (startupDetectTimer) {
       clearTimeout(startupDetectTimer);
       startupDetectTimer = null;
+    }
+
+    // 下载模式下跳过启动项扫描，使用默认 jar 启动
+    if (type === "download") {
+      startupSyncPending.value = false;
+      startupDetecting.value = false;
+      coreDetecting.value = false;
+      startupCandidates.value = [
+        {
+          id: "jar-direct",
+          mode: "jar",
+          label: i18n.t("create.startup_candidate_jar"),
+          detail: serverDownloadType.value || i18n.t("create.source_core_unknown"),
+          path: "",
+          recommended: 0,
+        },
+      ];
+      selectedStartupId.value = "jar-direct";
+      detectedCoreTypeKey.value = serverDownloadType.value;
+      coreTypeOptions.value = [serverDownloadType.value];
+      selectedCoreType.value = serverDownloadType.value;
+      detectedMcVersion.value = serverDownloadVersion.value;
+      mcVersionOptions.value = [serverDownloadVersion.value];
+      selectedMcVersion.value = serverDownloadVersion.value;
+      mcVersionDetectionFailed.value = false;
+      return;
     }
 
     if (!path.trim() || !type) {
@@ -612,13 +649,96 @@ export function useCreateServerPage() {
     }
 
     startCreating();
+
+    // 临时下载文件路径（下载模式下使用）
+    let tempDownloadPath: string | null = null;
+    let scannedStartup = selectedStartup.value;
+    let scannedStartupMode = mapStartupModeForModpack(selectedStartup?.mode ?? "jar");
+    let scannedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
+    let scannedMcVersion =
+      scannedStartupMode === "starter"
+        ? selectedMcVersion.value.trim() || detectedMcVersion.value.trim()
+        : "";
+
     try {
-      const startup = selectedStartup.value;
-      const startupMode = mapStartupModeForModpack(startup?.mode ?? "jar");
-      const resolvedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
+      // 下载模式：先下载服务端到临时目录，再扫描启动项
+      if (isDownloadMode.value) {
+        try {
+          const info = await downloadServerApi.getDownloadInfo(
+            serverDownloadType.value,
+            serverDownloadVersion.value,
+          );
+          const defaultPath = await systemApi.getDefaultRunPath();
+          const tempDir = `${defaultPath.replace(/[\\/]+$/, "").replace(/\\/g, "/")}/temp`;
+          const fileName = info.fileName || "server.jar";
+          tempDownloadPath = `${tempDir}/${fileName}`;
+
+          // 使用 downloadApi 下载
+          const { taskInfo: dlTask, start: dlStart } = downloadApi.useDownload();
+          await dlStart({
+            url: info.url,
+            savePath: tempDownloadPath,
+            threadCount: 32,
+          });
+
+          // 等待下载完成
+          await new Promise<void>((resolve, reject) => {
+            const checkInterval = setInterval(() => {
+              if (dlTask.isFinished) {
+                clearInterval(checkInterval);
+                if (dlTask.status === "Completed") {
+                  resolve();
+                } else {
+                  reject(
+                    new Error(
+                      typeof dlTask.status === "object" && "Error" in dlTask.status
+                        ? dlTask.status.Error
+                        : i18n.t("downloadServerView.status.failed"),
+                    ),
+                  );
+                }
+              }
+            }, 300);
+          });
+
+          // 下载完成，扫描启动项
+          sourcePath.value = tempDownloadPath;
+          sourceType.value = "archive";
+
+          try {
+            const discovered = await serverApi.scanStartupCandidates(tempDownloadPath, "archive");
+            const bestCandidate = discovered.candidates[0];
+            if (bestCandidate) {
+              scannedStartup = bestCandidate;
+              scannedStartupMode = mapStartupModeForModpack(bestCandidate.mode);
+            }
+            scannedCoreType = discovered.detectedCoreTypeKey || serverDownloadType.value;
+            if (scannedStartupMode === "starter") {
+              scannedMcVersion = discovered.detectedMcVersion || serverDownloadVersion.value;
+            }
+          } catch {
+            // 扫描失败，使用推断的默认参数
+            scannedStartupMode = "jar";
+            scannedCoreType = serverDownloadType.value;
+          }
+        } catch (downloadError) {
+          showError(String(downloadError));
+          stopCreating();
+          return;
+        }
+      }
+
+      const startupMode = isDownloadMode.value
+        ? scannedStartupMode
+        : mapStartupModeForModpack(scannedStartup?.mode ?? "jar");
+      const resolvedCoreType = isDownloadMode.value
+        ? scannedCoreType
+        : selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
       const resolvedMcVersion =
         startupMode === "starter"
-          ? selectedMcVersion.value.trim() || detectedMcVersion.value.trim()
+          ? isDownloadMode.value
+            ? scannedMcVersion
+            : selectedMcVersion.value.trim() || detectedMcVersion.value.trim()
           : "";
       await serverApi.importModpack({
         name: serverName.value.trim(),
@@ -631,10 +751,24 @@ export function useCreateServerPage() {
         onlineMode: onlineMode.value,
         customCommand: startupMode === "custom" ? customStartupCommand.value.trim() : undefined,
         runPath: runPath.value.trim(),
-        startupFilePath: startupMode === "custom" ? undefined : startup?.path,
+        startupFilePath:
+          startupMode === "custom"
+            ? undefined
+            : isDownloadMode.value
+              ? scannedStartup?.path
+              : scannedStartup?.path,
         coreType: resolvedCoreType || undefined,
         mcVersion: resolvedMcVersion || undefined,
       });
+
+      // 创建成功后清理临时下载文件
+      if (tempDownloadPath) {
+        try {
+          await systemApi.removeFile(tempDownloadPath);
+        } catch {
+          // 清理失败不影响主流程
+        }
+      }
 
       await serverstore.refreshList();
       router.push("/");
@@ -677,6 +811,9 @@ export function useCreateServerPage() {
     creating,
     sourcePath,
     sourceType,
+    serverDownloadType,
+    serverDownloadVersion,
+    isDownloadMode,
     runPath,
     runPathOverwriteRisk,
     coreDetecting,

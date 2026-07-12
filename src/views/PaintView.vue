@@ -310,7 +310,7 @@ function clearBackgroundImage() {
 </script>
 
 <template>
-  <div class="settings-view animate-fade-in-up">
+  <div class="settings-view animate-stagger-in">
     <ErrorBanner :message="error" @close="error = null" />
 
     <div v-if="loading" class="loading-state">

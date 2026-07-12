@@ -244,4 +244,9 @@ export const systemApi = {
   async testIPv6Connectivity(): Promise<IPv6TestResult> {
     return tauriInvoke("test_ipv6_connectivity");
   },
+
+  /** 删除指定文件 */
+  async removeFile(path: string): Promise<void> {
+    return tauriInvoke("remove_file", { path });
+  },
 };

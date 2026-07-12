@@ -134,11 +134,9 @@ const backgroundStyle = computed(() => {
       <AppHeader />
       <main class="app-content">
         <router-view v-slot="{ Component }">
-          <transition name="page-fade" mode="out-in">
-            <keep-alive :max="5">
-              <component :is="Component" />
-            </keep-alive>
-          </transition>
+          <keep-alive :max="5">
+            <component :is="Component" />
+          </keep-alive>
         </router-view>
       </main>
     </div>
