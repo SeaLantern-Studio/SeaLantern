@@ -74,35 +74,38 @@ const updatePosition = () => {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
+  // 计算可用空间
+  const spaceBelow = viewportHeight - triggerRect.bottom;
+  const spaceAbove = triggerRect.top;
+  const menuHeight = menuRect.height;
+
+  // 根据 position prop 确定初始方向
+  const preferBottom = props.position === "bottom-start" || props.position === "bottom-end";
+
+  // 自动翻转：当下方空间不足且上方空间更大时翻到上面
+  const openUpward = preferBottom
+    ? spaceBelow < menuHeight + props.offset && spaceAbove > spaceBelow
+    : spaceAbove < menuHeight + props.offset && spaceBelow > spaceAbove;
+
   let top = 0;
   let left = 0;
 
-  switch (props.position) {
-    case "bottom-start":
-      top = triggerRect.bottom + props.offset;
-      left = triggerRect.left;
-      break;
-    case "bottom-end":
-      top = triggerRect.bottom + props.offset;
-      left = triggerRect.right - menuRect.width;
-      break;
-    case "top-start":
-      top = triggerRect.top - menuRect.height - props.offset;
-      left = triggerRect.left;
-      break;
-    case "top-end":
-      top = triggerRect.top - menuRect.height - props.offset;
-      left = triggerRect.right - menuRect.width;
-      break;
+  // 水平对齐
+  const alignEnd = props.position === "bottom-end" || props.position === "top-end";
+  left = alignEnd ? triggerRect.right - menuRect.width : triggerRect.left;
+
+  // 垂直定位
+  if (openUpward) {
+    top = triggerRect.top - menuHeight - props.offset;
+  } else {
+    top = triggerRect.bottom + props.offset;
   }
 
-  if (left < 0) left = 8;
-  if (left + menuRect.width > viewportWidth) left = viewportWidth - menuRect.width - 8;
-  if (top < 0) top = triggerRect.bottom + props.offset;
-  if (top + menuRect.height > viewportHeight) top = viewportHeight - menuRect.height - 8;
-
-  if (top < 8) top = 8;
+  // 视口边界约束
   if (left < 8) left = 8;
+  if (left + menuRect.width > viewportWidth - 8) left = viewportWidth - menuRect.width - 8;
+  if (top + menuHeight > viewportHeight - 8) top = viewportHeight - menuHeight - 8;
+  if (top < 8) top = 8;
 
   menuStyle.value = {
     position: "fixed",
