@@ -291,7 +291,7 @@ onUnmounted(() => {
   width: 100%;
   height: 0.375rem;
   background-color: var(--sl-border);
-  border-radius: 9999px;
+  border-radius: var(--sl-radius-full);
   overflow: hidden;
 }
 

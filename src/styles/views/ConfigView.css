@@ -7,14 +7,18 @@
   --sl-config-badge-padding-inline: 6px;
   --sl-config-diff-count-min-width: 42px;
   --sl-config-status-dot-size: 6px;
-
-  padding-bottom: 104px;
 }
 
 .config-layout {
   display: flex;
   align-items: flex-start;
   gap: var(--sl-space-md);
+}
+
+.config-tabbar-sticky {
+  position: sticky;
+  top: var(--sl-space-md);
+  flex-shrink: 0;
 }
 
 .config-main {
@@ -543,12 +547,11 @@
 }
 
 .config-floating-actions {
-  position: fixed;
-  left: calc(50% + var(--sl-sidebar-width) / 2);
+  position: sticky;
   bottom: var(--sl-config-floating-offset);
-  transform: translateX(-50%);
+  align-self: flex-end;
   width: max-content;
-  max-width: calc(100vw - var(--sl-sidebar-width) - var(--sl-space-lg) * 2);
+  max-width: 100%;
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-lg);
   padding: var(--sl-space-sm) var(--sl-space-md);
@@ -568,11 +571,6 @@
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--sl-primary) 18%, transparent),
     var(--sl-shadow-lg);
-}
-
-.app-main.sidebar-collapsed .config-floating-actions {
-  left: calc(50% + var(--sl-sidebar-collapsed-width) / 2);
-  max-width: calc(100vw - var(--sl-sidebar-collapsed-width) - var(--sl-space-lg) * 2);
 }
 
 .floating-status {

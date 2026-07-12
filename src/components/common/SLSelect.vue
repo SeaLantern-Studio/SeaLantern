@@ -103,7 +103,30 @@ const updateDropdownPosition = () => {
   const spaceAbove = rect.top;
   const gap = 4;
 
-  const openUpward = spaceBelow < dropdownMaxHeight + gap && spaceAbove > spaceBelow;
+  // 测量下拉菜单实际内容高度，而非使用 maxHeight 做翻转判断
+  let dropdownHeight = dropdownMaxHeight;
+  if (dropdownRef.value) {
+    const optionsEl = dropdownRef.value.querySelector(".sl-select-options");
+    if (optionsEl) {
+      // 选项容器的实际内容高度
+      dropdownHeight = Math.min(optionsEl.scrollHeight, dropdownMaxHeight);
+      // 搜索栏高度
+      if (props.searchable) {
+        const searchEl = dropdownRef.value.querySelector(".sl-select-search");
+        if (searchEl) {
+          dropdownHeight += (searchEl as HTMLElement).offsetHeight;
+        } else {
+          dropdownHeight += 42;
+        }
+      }
+    } else {
+      dropdownHeight = Math.min(dropdownRef.value.scrollHeight, dropdownMaxHeight);
+    }
+  }
+  dropdownHeight = Math.max(dropdownHeight, 40);
+
+  // 使用实际高度判断是否需要向上翻转
+  const openUpward = spaceBelow < dropdownHeight + gap && spaceAbove > spaceBelow;
 
   let top: number;
   let left: number;
@@ -113,7 +136,7 @@ const updateDropdownPosition = () => {
     top = rect.top;
   } else {
     left = props.dropdownAlign === "right" ? rect.right - dropdownWidth : rect.left;
-    top = openUpward ? rect.top - dropdownMaxHeight - gap : rect.bottom + gap;
+    top = openUpward ? rect.top - dropdownHeight - gap : rect.bottom + gap;
   }
 
   if (left + dropdownWidth > viewportWidth - gap) {
@@ -123,8 +146,8 @@ const updateDropdownPosition = () => {
     left = gap;
   }
 
-  if (top + dropdownMaxHeight > viewportHeight - gap) {
-    top = viewportHeight - dropdownMaxHeight - gap;
+  if (top + dropdownHeight > viewportHeight - gap) {
+    top = viewportHeight - dropdownHeight - gap;
   }
   if (top < gap) {
     top = gap;
@@ -149,6 +172,10 @@ const toggleDropdown = () => {
     highlightedIndex.value = -1;
     nextTick(() => {
       updateDropdownPosition();
+      // 二次校正：浏览器完成布局后用实际高度重新定位
+      requestAnimationFrame(() => {
+        if (isOpen.value) updateDropdownPosition();
+      });
       if (props.searchable) {
         inputRef.value?.focus();
       }

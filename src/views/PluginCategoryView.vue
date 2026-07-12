@@ -557,7 +557,7 @@ watch(
   height: 36px;
   padding: 2px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--sl-radius-sm);
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
@@ -720,7 +720,7 @@ watch(
   height: 36px;
   padding: 2px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--sl-radius-sm);
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
