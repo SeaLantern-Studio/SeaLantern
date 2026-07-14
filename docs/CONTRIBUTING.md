@@ -10,8 +10,7 @@
 
 对于非项目组织成员，你的PR可贡献范围如下
 
-1. 对于已获得accepted标签的issue，你可以提交PR
-2. 文档、i18n方向且改动极小的
+1. 文档、i18n方向且改动极小的
 
 ⛔对于在可贡献范围以外的PR，项目组**有权直接拒绝**
 
@@ -37,8 +36,8 @@
 
 - **Node.js**: 20+
 - **Rust**: 1.70+
-- **pnpm**: 9.15.9（推荐使用项目指定的包管理器）
-- **Git**: 最新版本
+- **pnpm**: 9.15.9+（推荐使用项目指定的包管理器）
+- **Git**: 建议最新版本
 
 ## 代码规范
 
@@ -47,14 +46,14 @@
 1. **格式化**
 
    ```bash
-   # 提交前必须运行
+   # 提交前最好运行
    cargo fmt --all
    ```
 
 2. **代码检查**
 
    ```bash
-   # 必须通过所有 clippy 检查
+   # 建议通过所有 clippy 检查
    cargo clippy --workspace -- -D warnings
    ```
 
@@ -65,9 +64,10 @@
    - 常量：使用 `SCREAMING_SNAKE_CASE`（如 `MAX_MEMORY`）
 
 4. **注释规范**
-   - 公共 API 必须有文档注释（`///`）
-   - 复杂逻辑需要添加行内注释（`//`）
+   - 公共 API 建议留有文档注释（`///`）
+   - 复杂逻辑建议添加行内注释（`//`）
    - 避免无意义的注释
+   - 避免出现 `Fuck the fmt` 类似的语句
 
 5. **错误处理**
    - 使用 `Result<T, String>` 返回错误
@@ -95,16 +95,16 @@
 
    ```bash
    # 格式化代码
-   pnpm run fmt
+   pnpm --dir frontend run fmt
 
    # 检查格式
-   pnpm run fmt:check
+   pnpm --dir frontend run fmt:check
 
    # Lint 检查
-   pnpm run lint
+   pnpm --dir frontend run lint
 
    # 自动修复 Lint 问题
-   pnpm run lint:fix
+   pnpm --dir frontend run lint:fix
    ```
 
 5. **变量引用检查**
@@ -131,59 +131,19 @@
 - `chore/任务描述` - 杂项任务
 - `docs/文档说明` - 文档更新
 
-### Commit 规范
+### Commit 建议
 
-本仓库强制使用约定式提交（Conventional Commits），格式如下：
+提交信息当前不再由本地 Hook 或 CI 强制校验，但仍建议保持清晰、可读，方便后续审查与回溯。
 
-```
-<type>: <subject>
-<type>(scope): <subject>
-
-Co-Authored-By: 贡献者名 <email>
-```
-
-其中 `type` 必须是小写，并且只能使用：
-
-- `build`: 构建系统或依赖相关（例如 Docker、CI 配置）
-- `ci`: 持续集成配置或脚本变更
-- `feat`: 新功能
-- `fix`: Bug 修复
-- `docs`: 文档更新
-- `style`: 代码格式或空白，不影响功能
-- `refactor`: 重构（既不是修复也不是添加功能）
-- `perf`: 性能优化
-- `test`: 测试相关
-- `types`: 类型定义或声明修改
-- `i18n`: 国际化/本地化内容变更
-- `chore`: 其他杂务（构建、工具链、包升级等）
-- `revert`: 回滚以前的提交
-- `security`: 解决安全问题
-
-提交前会自动执行以下检查：
-
-- `pre-commit`：运行 `lint-staged`，自动格式化暂存区前端文件（`oxfmt`）
-- `commit-msg`：运行 `commitlint`，校验提交信息格式
-- CI：再次校验提交信息，避免 `--no-verify` 绕过本地检查
-
-**示例（符合规范）**：
+推荐使用简洁的约定式风格，例如：
 
 ```
-build(deps): 升级 webpack 到 5.0
-ci(pipelines): 添加 Windows build agent
-feat(plugin): 增加插件下载重试机制
-fix(server): 修复开服路径识别异常
-perf(ui): 优化列表渲染速度
-types(api): 更新返回类型
-i18n(zh-CN): 翻译新增界面文本
-chore(ci): 调整工作流缓存策略
-docs(contributing): 更新提交规范说明
+feat(scope): 新增某项能力
+fix: 修复某个具体问题
+chore: 调整构建或目录结构
 ```
 
-### 提交被拦截时如何处理
-
-1. 看到 `commit-msg script failed`：说明提交信息不符合规范，按提示改为 `type: 描述` 或 `type(scope): 描述`。
-2. 看到 `pre-commit` 执行后有文件变化：重新 `git add` 后再次提交（因为格式化可能修改了暂存文件）。
-3. 想提前自检：运行 `pnpm run fmt:check && pnpm run lint`，再执行 `git commit`。
+提交前建议自行运行必要检查，CI 会在 PR/推送时继续校验代码质量。
 
 ### Pull Request 流程
 
@@ -199,11 +159,11 @@ docs(contributing): 更新提交规范说明
    # 确保代码通过检查
    cargo fmt --all -- --check
    cargo clippy --workspace -- -D warnings
-   pnpm run fmt:check
-   pnpm run lint
-   pnpm run build
+   pnpm --dir frontend run fmt:check
+   pnpm --dir frontend run lint
+   pnpm --dir frontend run build
 
-   # 提交变更（commit-msg 会自动校验）
+   # 提交变更
    git add .
    git commit -m "feat(scope): 你的功能描述"
    ```
@@ -223,7 +183,7 @@ docs(contributing): 更新提交规范说明
 
 ## 代码审查标准
 
-### 必须满足
+### 建议满足
 
 - ✅ 通过所有 CI 检查
 - ✅ 代码格式正确（cargo fmt / oxfmt）
@@ -232,7 +192,7 @@ docs(contributing): 更新提交规范说明
 - ✅ 功能完整且可用
 - ✅ 无明显的性能问题
 
-### 建议满足
+### 推荐满足
 
 - 有适当的注释
 - 有相关测试（如适用）
@@ -244,15 +204,17 @@ docs(contributing): 更新提交规范说明
 ### 如何运行开发环境？
 
 ```bash
-pnpm install
-pnpm run tauri dev
+pnpm --dir frontend install
+pnpm --dir frontend run tauri:dev
 ```
 
 ### 如何构建发布版本？
 
 ```bash
-pnpm run tauri build
+pnpm --dir frontend run tauri:build
 ```
+
+但我们不推荐本地构建用来发布到 Release 中
 
 ### Clippy 检查失败怎么办？
 
@@ -262,6 +224,8 @@ pnpm run tauri build
 4. 如果某些警告不合理，可以使用 `#[allow(clippy::...)]` 标记
 
 ### 格式化检查失败怎么办？
+
+尝试:
 
 ```bash
 cargo fmt --all

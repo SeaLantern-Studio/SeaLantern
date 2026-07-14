@@ -1,6 +1,6 @@
 <div align="center">
   
-<img src="src/assets/logo.svg" alt="logo" width="200" height="200">
+<img src="frontend/src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # 海晶灯（Sea Lantern）
 
@@ -17,7 +17,7 @@
   <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
 </div>
 
-<kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
+<kbd>简体中文</kbd> <kbd>[English](docs/README/README-en.md)</kbd>
 
 ## 有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
@@ -25,20 +25,24 @@
 
 ## 能干什么
 
-- 下载安装服务器核心
-- 控制台实时看日志，直接输命令
-- server.properties 图形化编辑，不用手改文件
-- 白名单、封禁、OP 一键管理
-- 关软件的时候自动帮你停服务器，不会丢存档
-- 检查更新，一键下载新版本
+- [x] 下载服务器核心
+- [x] 客制化开服器体验
+- [ ] Todo: JVM 预设与分享社区
+- [x] 方便直观的更改配置(目前仅支持原版的`server.properties`)
+- [x] 快捷控制台命令
+- [ ] Todo: Cli 模式下让服务器在 Docker 容器化环境下运行
 
 ## 快速开始
 
-> Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击[这里](https://docs.ideaflash.cn/zh/intro)跳转
+> Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击 [这里](https://docs.ideaflash.cn/zh/intro) 跳转
 
-下载 [release](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest) 版本，导入一个服务端 JAR 文件，选一个 Java，点启动。就这么简单。
+下载 [正式版](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)
+
+下载 [开发预览版](https://github.com/SeaLantern-Studio/SeaLantern-Preview/releases/latest)
 
 ## 开发
+
+> 请注意! 我们正在讨论关于 branch 和 fork 变动相关的内容, 开发步骤部分可能随时会有所改变, 例如 GitHub 开发仓库的变动等内容!
 
 你需要 `Node.js 20+` 和 `Rust 1.70+`。
 
@@ -58,44 +62,39 @@ cd SeaLantern
 前端与后端：
 
 ```bash
-pnpm install
-pnpm run tauri dev
+pnpm --dir frontend install
+pnpm --dir frontend run tauri:dev
 ```
 
-部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm run tauri dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
+部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm --dir frontend run tauri:dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
 
 仅前端：
 
 ```bash
-pnpm dev
+pnpm --dir frontend run dev
 ```
-
-构建发布版：
-
-```bash
-pnpm run tauri build
-```
-
-产物在 `src-tauri/target/release/bundle/` 里。
 
 ### 代码质量检查
 
-提交代码前，我们建议运行以下命令来检查代码质量：
+提交代码前，我们**建议**运行以下命令来检查代码质量：
 
 <details><summary>前端检查</summary>
 
 ```bash
 # 代码质量检查
-pnpm run lint
+pnpm --dir frontend run lint
+
+# 类型检查并验证生产构建
+pnpm --dir frontend run build:check
 
 # 自动修复可修复问题
-pnpm run lint:fix
+pnpm --dir frontend run lint:fix
 
 # 格式化代码
-pnpm run fmt
+pnpm --dir frontend run fmt
 
 # 检查代码格式
-pnpm run fmt:check
+pnpm --dir frontend run fmt:check
 ```
 
 </details>
@@ -105,6 +104,9 @@ pnpm run fmt:check
 ```bash
 # 检查代码格式
 cargo fmt --all -- --check
+
+# 编译检查
+cargo check --workspace
 
 # 运行 Clippy 检查
 cargo clippy --workspace -- -D warnings
@@ -117,21 +119,16 @@ cargo fmt --all
 
 项目已配置 CI 自动检查，确保所有提交的代码都符合规范。
 
-### 提交规范自动检查（已启用）
+### 提交检查
 
-- 本地 `pre-commit`：自动对暂存区前端文件执行 `oxfmt`（通过 `lint-staged`）
-- 本地 `commit-msg`：强制提交信息符合 Conventional Commits
-- CI：在 PR/推送时再次校验提交信息与代码质量
-
-允许的提交类型：`build`、`ci`、`feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`types`、`chore`、`revert`、`security`、`i18n`  
-示例：`feat(plugin): 增加插件下载重试机制`
+CI 会在 PR/推送时校验代码质量与相关规范。
 
 ## 技术栈
 
-- **前端**: Vue 3 + TypeScript + Vite + Pinia
+- **前端**: Vue 3 + TypeScript + Vite
 - **后端**: Rust + Tauri 2
-- **样式**: 纯 CSS
-- **通信**: Tauri invoke（前端调 Rust 函数，直接拿返回值）
+- **通信**: Tauri invoke
+- **Docker**: itzg/minecraft-server
 
 没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
 
@@ -140,6 +137,12 @@ cargo fmt --all
 ### 项目结构
 
 详见 [项目结构](docs/STRUCTURE.md)。
+
+### CLI 服务器入口
+
+当前仓库已经提供统一的 `sealantern server ...` CLI 入口，可同时覆盖本地 Java 服务端与 `itzg/minecraft-server` Docker 运行方式。
+
+使用说明见 [CLI 服务器运行指南](docs/cli-server-runtime-guide.md)。
 
 ## 待开发功能
 
@@ -170,41 +173,11 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 3. 提 Pull Request
 4. 你的名字会出现在关于页面的贡献者墙上
 
-我们对AI编程，即`Vibe Coding`有一定限制：仅修复，不重构，不大改，人工审。
-
-- 仅修复：由于目前大部分 AI 的能力局限性，如果要完全依赖 AI 是很不现实的。
-
-- 不重构：AI 的上下文和抽象理解能力都不足以让AI重构已有内容，当然也许会有比较幸运的重构完还能用，但那只是个例。
-
-- 不大改：**不要让 AI 擅自改动任何一个影响巨大内容**。
-
-- 人工审：使用完 AI 一定要人工审查一遍是否有误，如果不会审，可以去群里找管理，要记得有礼貌的提问而不是骚扰管理。
-
 不会写代码也行。说你想要什么功能，或者画个 UI 草图发出来，只要核实有用，都算贡献。
-
-### 添加新功能
-
-假设你要加一个「备份管理」功能：
-
-#### 后端
-
-1. `src-tauri/src/services/` 下建 `backup_manager.rs`，写逻辑
-2. `src-tauri/src/commands/` 下建 `backup.rs`，写 Tauri 命令
-3. 在 `commands/mod.rs` 里加 `pub mod backup`
-4. 在 `lib.rs` 的 `generate_handler!` 宏里注册命令
-
-#### 前端
-
-1. `src/api/` 下建 `backup.ts`，封装 invoke 调用
-2. `src/views/` 下建 `BackupView.vue`，画页面
-3. `src/router/index.ts` 里加路由
-4. `AppSidebar.vue` 的 `navItems` 数组里加一项
-
-前后端各三个文件，路由和侧栏各改一行。
 
 ### i18n 国际化支持指南
 
-Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](src/language/README.md)
+Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](docs/language-system.md)
 
 除了当前已有的常见语言，想要加额外语言，请制作插件。
 

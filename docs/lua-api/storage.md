@@ -1,15 +1,15 @@
 # storage Lua 接口说明
 
-本文档说明插件运行时暴露的 [`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs) Lua 接口，用于保存插件私有的小型结构化数据。该模块基于单个 JSON 存储文件实现，适合保存设置项、运行状态、缓存元数据等键值数据。
+本文档说明插件运行时暴露的 [`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs) Lua 接口，用于保存插件私有的小型结构化数据。该模块基于单个 JSON 存储文件实现，适合保存设置项、运行状态、缓存元数据等键值数据。
 
 ## 接口总览
 
 | Lua 接口                     | 参数                                                                | 返回值       | 说明                                         | 对应实现                                                               |
 | ---------------------------- | ------------------------------------------------------------------- | ------------ | -------------------------------------------- | ---------------------------------------------------------------------- |
-| `sl.storage.get(key)`        | `key: string`                                                       | `any \| nil` | 按键读取存储值；键不存在时返回 `nil`         | [`register()`](../../src-tauri/src/plugins/runtime/storage/read.rs:7)  |
-| `sl.storage.keys()`          | 无                                                                  | `string[]`   | 返回当前所有键名，按字典序排序               | [`register()`](../../src-tauri/src/plugins/runtime/storage/read.rs:7)  |
-| `sl.storage.set(key, value)` | `key: string`，`value: nil \| boolean \| number \| string \| table` | `nil`        | 写入或覆盖一个键值；值会先转换为 JSON 再落盘 | [`register()`](../../src-tauri/src/plugins/runtime/storage/write.rs:8) |
-| `sl.storage.remove(key)`     | `key: string`                                                       | `nil`        | 删除指定键；键不存在时静默忽略               | [`register()`](../../src-tauri/src/plugins/runtime/storage/write.rs:8) |
+| `sl.storage.get(key)`        | `key: string`                                                       | `any \| nil` | 按键读取存储值；键不存在时返回 `nil`         | [`register()`](../../backend/tauri-host/src/plugins/runtime/storage/read.rs:7)  |
+| `sl.storage.keys()`          | 无                                                                  | `string[]`   | 返回当前所有键名，按字典序排序               | [`register()`](../../backend/tauri-host/src/plugins/runtime/storage/read.rs:7)  |
+| `sl.storage.set(key, value)` | `key: string`，`value: nil \| boolean \| number \| string \| table` | `nil`        | 写入或覆盖一个键值；值会先转换为 JSON 再落盘 | [`register()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:8) |
+| `sl.storage.remove(key)`     | `key: string`                                                       | `nil`        | 删除指定键；键不存在时静默忽略               | [`register()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:8) |
 
 ## 使用说明
 
@@ -21,7 +21,7 @@ sl.storage.set("window_width", 1280)
 sl.storage.set("auto_start", true)
 ```
 
-[`sl.storage.set()`](../../src-tauri/src/plugins/runtime/storage/write.rs:13) 会将 Lua 值转换为 JSON 值，转换逻辑见 [`storage_value_from_lua()`](../../src-tauri/src/plugins/runtime/storage/common.rs:104)。
+[`sl.storage.set()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:13) 会将 Lua 值转换为 JSON 值，转换逻辑见 [`storage_value_from_lua()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:104)。
 
 ### 2. 读取简单值
 
@@ -35,7 +35,7 @@ print(width)
 print(autoStart)
 ```
 
-[`sl.storage.get()`](../../src-tauri/src/plugins/runtime/storage/read.rs:12) 在键不存在时返回 `nil`，存在时会将 JSON 值转换回 Lua 值，转换逻辑见 [`lua_value_from_storage()`](../../src-tauri/src/plugins/runtime/storage/common.rs:100)。
+[`sl.storage.get()`](../../backend/tauri-host/src/plugins/runtime/storage/read.rs:12) 在键不存在时返回 `nil`，存在时会将 JSON 值转换回 Lua 值，转换逻辑见 [`lua_value_from_storage()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:100)。
 
 ### 3. 保存 table
 
@@ -48,7 +48,7 @@ sl.storage.set("server_draft", {
 })
 ```
 
-Lua table 会递归转换为 JSON 对象或数组。具体转换由 [`json_value_from_lua()`](../../src-tauri/src/plugins/runtime/shared.rs) 完成，经 [`storage_value_from_lua()`](../../src-tauri/src/plugins/runtime/storage/common.rs:104) 包装后供存储模块使用。
+Lua table 会递归转换为 JSON 对象或数组。具体转换由 [`json_value_from_lua()`](../../backend/tauri-host/src/plugins/runtime/shared.rs) 完成，经 [`storage_value_from_lua()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:104) 包装后供存储模块使用。
 
 ### 4. 读取 table
 
@@ -60,7 +60,7 @@ if draft ~= nil then
 end
 ```
 
-读取时会通过 [`lua_value_from_json()`](../../src-tauri/src/plugins/runtime/shared.rs) 将 JSON 数据恢复为 Lua 值，经 [`lua_value_from_storage()`](../../src-tauri/src/plugins/runtime/storage/common.rs:100) 暴露给运行时接口。
+读取时会通过 [`lua_value_from_json()`](../../backend/tauri-host/src/plugins/runtime/shared.rs) 将 JSON 数据恢复为 Lua 值，经 [`lua_value_from_storage()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:100) 暴露给运行时接口。
 
 ### 5. 获取所有键名
 
@@ -71,7 +71,7 @@ for i, key in ipairs(keys) do
 end
 ```
 
-[`sl.storage.keys()`](../../src-tauri/src/plugins/runtime/storage/read.rs:13) 返回的结果在 Rust 侧经过排序，保证输出顺序稳定，便于 UI 展示与测试断言。
+[`sl.storage.keys()`](../../backend/tauri-host/src/plugins/runtime/storage/read.rs:13) 返回的结果在 Rust 侧经过排序，保证输出顺序稳定，便于 UI 展示与测试断言。
 
 ### 6. 删除键值
 
@@ -80,11 +80,11 @@ sl.storage.remove("theme")
 sl.storage.remove("server_draft")
 ```
 
-[`sl.storage.remove()`](../../src-tauri/src/plugins/runtime/storage/write.rs:14) 删除不存在的键不会报错，最终仍会写回存储文件。
+[`sl.storage.remove()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:14) 删除不存在的键不会报错，最终仍会写回存储文件。
 
 ## 数据模型
 
-[`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs) 不是通用文件系统接口，而是一个面向插件状态保存的 JSON 键值存储。其数据模型等价于：
+[`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs) 不是通用文件系统接口，而是一个面向插件状态保存的 JSON 键值存储。其数据模型等价于：
 
 ```json
 {
@@ -100,47 +100,47 @@ sl.storage.remove("server_draft")
 }
 ```
 
-底层文件路径由 [`StorageContext::new()`](../../src-tauri/src/plugins/runtime/storage/common.rs:21) 构造，默认保存在插件运行时数据目录下的 [`storage.json`](../../src-tauri/src/plugins/runtime/storage/common.rs)。
+底层文件路径由 [`StorageContext::new()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:21) 构造，默认保存在插件运行时数据目录下的 [`storage.json`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs)。
 
 ## 权限模型
 
-[`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs) 属于运行时内建存储能力，不像 [`sl.fs`](../../src-tauri/src/plugins/runtime/filesystem) 那样区分多级 scope 与文件权限。该模块通过固定存储路径、大小限制和 JSON 数据模型来约束能力边界。
+[`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs) 属于运行时内建存储能力，不像 [`sl.fs`](../../backend/tauri-host/src/plugins/runtime/filesystem) 那样区分多级 scope 与文件权限。该模块通过固定存储路径、大小限制和 JSON 数据模型来约束能力边界。
 
-装配入口见 [`setup_storage_namespace()`](../../src-tauri/src/plugins/runtime/storage.rs:17)：
+装配入口见 [`setup_storage_namespace()`](../../backend/tauri-host/src/plugins/runtime/storage.rs:17)：
 
-- 创建 [`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs) 表
-- 注册读接口 [`read::register()`](../../src-tauri/src/plugins/runtime/storage/read.rs:7)
-- 注册写接口 [`write::register()`](../../src-tauri/src/plugins/runtime/storage/write.rs:8)
-- 挂载到 Lua 命名空间 [`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs)
+- 创建 [`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs) 表
+- 注册读接口 [`read::register()`](../../backend/tauri-host/src/plugins/runtime/storage/read.rs:7)
+- 注册写接口 [`write::register()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:8)
+- 挂载到 Lua 命名空间 [`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs)
 
 ## 限制与约束
 
-当前 [`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs) 主要限制如下：
+当前 [`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs) 主要限制如下：
 
 | 限制项        | 规则                                                                                               | 对应实现                                                                                                                                  |
 | ------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 键长度限制    | 单个 key 最长 `256` 字节                                                                           | [`MAX_KEY_LENGTH`](../../src-tauri/src/plugins/runtime/storage/common.rs:10)                                                              |
-| 值大小限制    | 单个 value 序列化后最大 `1MB`                                                                      | [`MAX_VALUE_SIZE`](../../src-tauri/src/plugins/runtime/storage/common.rs:11)                                                              |
-| 总存储限制    | 整个存储文件序列化后最大 `10MB`                                                                    | [`MAX_TOTAL_SIZE`](../../src-tauri/src/plugins/runtime/storage/common.rs:12)                                                              |
-| 空 key 禁止   | key 会先执行 [`trim()`](../../src-tauri/src/plugins/runtime/storage/write.rs:23)，空字符串会报错   | [`set()`](../../src-tauri/src/plugins/runtime/storage/write.rs:19)、[`remove()`](../../src-tauri/src/plugins/runtime/storage/write.rs:55) |
-| JSON 数据边界 | 仅支持可表示为 JSON 的 Lua 值                                                                      | [`storage_value_from_lua()`](../../src-tauri/src/plugins/runtime/storage/common.rs:104)                                                   |
-| 顺序稳定      | [`keys()`](../../src-tauri/src/plugins/runtime/storage/read.rs:32) 返回前会排序                    | [`keys()`](../../src-tauri/src/plugins/runtime/storage/read.rs:32)                                                                        |
-| 原子写入      | 先写临时文件，再 [`rename`](../../src-tauri/src/plugins/runtime/storage/common.rs:94) 替换目标文件 | [`write_storage()`](../../src-tauri/src/plugins/runtime/storage/common.rs:80)                                                             |
-| 并发串行化    | 读写都受同一把互斥锁保护                                                                           | [`with_storage_lock()`](../../src-tauri/src/plugins/runtime/storage/common.rs:37)                                                         |
+| 键长度限制    | 单个 key 最长 `256` 字节                                                                           | [`MAX_KEY_LENGTH`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:10)                                                              |
+| 值大小限制    | 单个 value 序列化后最大 `1MB`                                                                      | [`MAX_VALUE_SIZE`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:11)                                                              |
+| 总存储限制    | 整个存储文件序列化后最大 `10MB`                                                                    | [`MAX_TOTAL_SIZE`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:12)                                                              |
+| 空 key 禁止   | key 会先执行 [`trim()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:23)，空字符串会报错   | [`set()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:19)、[`remove()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:55) |
+| JSON 数据边界 | 仅支持可表示为 JSON 的 Lua 值                                                                      | [`storage_value_from_lua()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:104)                                                   |
+| 顺序稳定      | [`keys()`](../../backend/tauri-host/src/plugins/runtime/storage/read.rs:32) 返回前会排序                    | [`keys()`](../../backend/tauri-host/src/plugins/runtime/storage/read.rs:32)                                                                        |
+| 原子写入      | 先写临时文件，再 [`rename`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:94) 替换目标文件 | [`write_storage()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:80)                                                             |
+| 并发串行化    | 读写都受同一把互斥锁保护                                                                           | [`with_storage_lock()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:37)                                                         |
 
 ## 错误行为
 
-[`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs) 的读写接口在失败时会抛出 Lua runtime error，而不是返回 `false`。
+[`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs) 的读写接口在失败时会抛出 Lua runtime error，而不是返回 `false`。
 
 常见错误场景包括：
 
-- key 为空，见 [`storage.key_empty`](../../src-tauri/locales/zh-CN.json)
-- key 超过长度限制，见 [`storage.key_too_long`](../../src-tauri/locales/zh-CN.json)
-- value 超过大小限制，见 [`storage.value_too_large`](../../src-tauri/locales/zh-CN.json)
-- 总存储超过限制，见 [`storage.total_too_large`](../../src-tauri/locales/zh-CN.json)
-- 存储文件包含非法 JSON，见 [`storage.invalid_json`](../../src-tauri/locales/zh-CN.json)
-- 读取或写入文件失败，见 [`storage.read_failed`](../../src-tauri/locales/zh-CN.json)、[`storage.write_failed`](../../src-tauri/locales/zh-CN.json)
-- 互斥锁获取失败，见 [`storage.lock_failed`](../../src-tauri/locales/zh-CN.json)
+- key 为空，见 [`storage.key_empty`](../../backend/tauri-host/locales/zh-CN.json)
+- key 超过长度限制，见 [`storage.key_too_long`](../../backend/tauri-host/locales/zh-CN.json)
+- value 超过大小限制，见 [`storage.value_too_large`](../../backend/tauri-host/locales/zh-CN.json)
+- 总存储超过限制，见 [`storage.total_too_large`](../../backend/tauri-host/locales/zh-CN.json)
+- 存储文件包含非法 JSON，见 [`storage.invalid_json`](../../backend/tauri-host/locales/zh-CN.json)
+- 读取或写入文件失败，见 [`storage.read_failed`](../../backend/tauri-host/locales/zh-CN.json)、[`storage.write_failed`](../../backend/tauri-host/locales/zh-CN.json)
+- 互斥锁获取失败，见 [`storage.lock_failed`](../../backend/tauri-host/locales/zh-CN.json)
 
 例如：
 
@@ -153,22 +153,22 @@ print(ok)   -- false
 print(err)  -- 存储键不能为空
 ```
 
-## 与 [`sl.fs`](../../src-tauri/src/plugins/runtime/filesystem) 的区别
+## 与 [`sl.fs`](../../backend/tauri-host/src/plugins/runtime/filesystem) 的区别
 
-[`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs) 与 [`sl.fs`](../../src-tauri/src/plugins/runtime/filesystem) 的定位不同：
+[`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs) 与 [`sl.fs`](../../backend/tauri-host/src/plugins/runtime/filesystem) 的定位不同：
 
-- [`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs)：保存小型结构化键值数据
-- [`sl.fs`](../../src-tauri/src/plugins/runtime/filesystem)：读写真实文件与目录
+- [`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs)：保存小型结构化键值数据
+- [`sl.fs`](../../backend/tauri-host/src/plugins/runtime/filesystem)：读写真实文件与目录
 
 选择建议：
 
-- 保存插件配置、开关、上次状态、缓存元数据：使用 [`sl.storage`](../../src-tauri/src/plugins/runtime/storage.rs)
-- 保存文本文件、二进制文件、模板目录、导入导出内容：使用 [`sl.fs`](../../src-tauri/src/plugins/runtime/filesystem)
+- 保存插件配置、开关、上次状态、缓存元数据：使用 [`sl.storage`](../../backend/tauri-host/src/plugins/runtime/storage.rs)
+- 保存文本文件、二进制文件、模板目录、导入导出内容：使用 [`sl.fs`](../../backend/tauri-host/src/plugins/runtime/filesystem)
 
 ## 备注
 
-- [`sl.storage.get()`](../../src-tauri/src/plugins/runtime/storage/read.rs:12) 读取不存在的键时返回 `nil`，不会报错。
-- [`sl.storage.set()`](../../src-tauri/src/plugins/runtime/storage/write.rs:13) 对同名 key 会直接覆盖旧值。
-- [`sl.storage.remove()`](../../src-tauri/src/plugins/runtime/storage/write.rs:14) 删除不存在的 key 时不会报错。
+- [`sl.storage.get()`](../../backend/tauri-host/src/plugins/runtime/storage/read.rs:12) 读取不存在的键时返回 `nil`，不会报错。
+- [`sl.storage.set()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:13) 对同名 key 会直接覆盖旧值。
+- [`sl.storage.remove()`](../../backend/tauri-host/src/plugins/runtime/storage/write.rs:14) 删除不存在的 key 时不会报错。
 - 当前模块底层使用单文件 JSON 存储，适合小体量数据，不适合作为大文件或高频大规模数据写入方案。
-- 为避免文件损坏，当前写入流程已采用临时文件替换策略，见 [`write_storage()`](../../src-tauri/src/plugins/runtime/storage/common.rs:80)。
+- 为避免文件损坏，当前写入流程已采用临时文件替换策略，见 [`write_storage()`](../../backend/tauri-host/src/plugins/runtime/storage/common.rs:80)。
