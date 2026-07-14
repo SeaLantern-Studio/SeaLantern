@@ -5,21 +5,11 @@ on:
   push:
     branches: [main, dev]
 
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  commit_message:
-    name: 提交信息检查 (Commitlint)
-    runs-on: ubuntu-22.04
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: 校验提交信息
-        uses: wagoid/commitlint-github-action@v6
-        with:
-          configFile: commitlint.config.cjs
-
   changes:
     runs-on: ubuntu-22.04
     outputs:
@@ -33,38 +23,39 @@ jobs:
         with:
           filters: |
             backend:
-              - 'src-tauri/**'
+              - 'backend/**'
+              - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'rustfmt.toml'
+              - '.github/workflows/check.yml'
             frontend:
-              - 'src/**'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
-              - 'vite.config.ts'
-              - 'tsconfig*.json'
-              - 'index.html'
-              - 'public/**'
+              - 'frontend/**'
+              - 'scripts/**'
+              - 'frontend/package.json'
+              - 'frontend/pnpm-lock.yaml'
+              - 'frontend/vite.config.ts'
+              - 'frontend/tsconfig*.json'
+              - 'frontend/index.html'
+              - '.oxlintrc.json'
+              - '.oxfmtrc.json'
+              - '.github/workflows/check.yml'
 
   backend:
     name: 后端检查 (Rust)
     needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-22.04
     steps:
-      - name: 后端变更检测
-        run: echo "backend changed=${{ needs.changes.outputs.backend }}"
-
       - name: 检出代码
-        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: actions/checkout@v4
 
       - name: 安装系统依赖
-        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
 
       - name: 安装 Rust 工具链
-        if: ${{ needs.changes.outputs.backend == 'true' }}
         id: rust_setup
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -73,69 +64,65 @@ jobs:
         continue-on-error: true
 
       - name: 重试安装 Rust 工具链
-        if: ${{ steps.rust_setup.outcome == 'failure' && needs.changes.outputs.backend == 'true' }}
+        if: ${{ steps.rust_setup.outcome == 'failure' }}
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           components: rustfmt, clippy
 
       - name: 缓存 Rust 编译产物
-        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: ". -> target"
 
       - name: 检查代码格式 (Rust)
-        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: cargo fmt --all -- --check
 
+      - name: 编译检查 (Rust)
+        run: cargo check --workspace
+
       - name: 运行 Clippy 检查
-        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: cargo clippy --workspace -- -D warnings
+
+      - name: 运行后端测试
+        run: cargo test --workspace
 
   frontend:
     name: 前端检查 (Node)
     needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-22.04
     steps:
-      - name: 前端变更检测
-        run: echo "frontend changed=${{ needs.changes.outputs.frontend }}"
-
       - name: 检出代码
-        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/checkout@v4
 
       - name: 安装 Node.js
-        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
 
       - name: Prepare PNPM (固定版本)
-        if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
           corepack enable
           corepack prepare pnpm@9.15.9 --activate
 
       - name: 缓存 pnpm 依赖
-        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
       - name: 安装前端依赖
-        if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
-          pnpm install --frozen-lockfile
+          pnpm --dir frontend install --frozen-lockfile
 
-      - name: 运行格式化并检查前端 Lint
-        if: ${{ needs.changes.outputs.frontend == 'true' }}
-        run: |
-          pnpm run fmt:check && pnpm run lint
+      - name: 检查前端格式
+        run: pnpm --dir frontend run fmt:check
 
-      - name: 检查前端构建
-        if: ${{ needs.changes.outputs.frontend == 'true' }}
-        run: pnpm run build
+      - name: 检查前端 Lint
+        run: pnpm --dir frontend run lint
+
+      - name: 检查前端类型与构建
+        run: pnpm --dir frontend run build:check
