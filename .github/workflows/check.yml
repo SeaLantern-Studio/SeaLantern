@@ -23,20 +23,20 @@ jobs:
         with:
           filters: |
             backend:
-              - 'backend/**'
+              - 'src-tauri/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
               - '.github/workflows/check.yml'
             frontend:
-              - 'frontend/**'
+              - 'src/**'
               - 'scripts/**'
-              - 'frontend/package.json'
-              - 'frontend/pnpm-lock.yaml'
-              - 'frontend/vite.config.ts'
-              - 'frontend/tsconfig*.json'
-              - 'frontend/index.html'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'vite.config.ts'
+              - 'tsconfig*.json'
+              - 'index.html'
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
               - '.github/workflows/check.yml'
@@ -110,7 +110,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
 

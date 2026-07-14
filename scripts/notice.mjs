@@ -10,13 +10,13 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
-const cargoDir = path.join(rootDir, "backend", "tauri-host");
+const cargoDir = path.join(rootDir, "src-tauri");
 
 const noticeFiles = {
   frontendLicenseJson: path.join(rootDir, "frontend-licenses.json"),
   backendLicenseJson: path.join(rootDir, "backend-licenses.json"),
   noticeFile: path.join(rootDir, "NOTICE"),
-  packageJson: path.join(rootDir, "frontend", "package.json"),
+  packageJson: path.join(rootDir, "package.json"),
 };
 
 async function exists(filePath) {
@@ -53,7 +53,7 @@ async function ensureCargoLicense() {
 async function generateFrontedLicenseJson() {
   const { stdout } = await execAsync(
     "npx license-checker-rseidelsohn --start . --json --production",
-    { cwd: path.join(rootDir, "frontend") },
+    { cwd: rootDir },
   );
   await writeFile(noticeFiles.frontendLicenseJson, stdout, "utf8");
   return JSON.parse(stdout);

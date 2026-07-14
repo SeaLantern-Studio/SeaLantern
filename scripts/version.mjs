@@ -7,9 +7,9 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 
 const files = {
-  packageJson: path.join(rootDir, "frontend", "package.json"),
-  cargoToml: path.join(rootDir, "backend", "tauri-host", "Cargo.toml"),
-  tauriConf: path.join(rootDir, "backend", "tauri-host", "tauri.conf.json"),
+  packageJson: path.join(rootDir, "package.json"),
+  cargoToml: path.join(rootDir, "src-tauri", "Cargo.toml"),
+  tauriConf: path.join(rootDir, "src-tauri", "tauri.conf.json"),
   pkgbuild: path.join(rootDir, "PKGBUILD"),
   srcinfo: path.join(rootDir, ".SRCINFO"),
 };
@@ -68,9 +68,9 @@ async function readVersions() {
   const tauriConf = JSON.parse(tauriConfRaw);
 
   const versions = {
-    "frontend/package.json": packageJson.version ?? "(未找到)",
-    "backend/tauri-host/Cargo.toml": cargoVersion ?? "(未找到)",
-    "backend/tauri-host/tauri.conf.json": tauriConf.version ?? "(未找到)",
+    "package.json": packageJson.version ?? "(未找到)",
+    "src-tauri/Cargo.toml": cargoVersion ?? "(未找到)",
+    "src-tauri/tauri.conf.json": tauriConf.version ?? "(未找到)",
   };
 
   if (await exists(files.pkgbuild)) {
@@ -144,9 +144,9 @@ async function updateVersion(version) {
   }
 
   console.log(`已更新核心版本文件为 ${version}：`);
-  console.log("- frontend/package.json");
-  console.log("- backend/tauri-host/Cargo.toml");
-  console.log("- backend/tauri-host/tauri.conf.json");
+  console.log("- package.json");
+  console.log("- src-tauri/Cargo.toml");
+  console.log("- src-tauri/tauri.conf.json");
   if (optionalUpdated.length > 0) {
     console.log(`另外已同步更新：${optionalUpdated.join(", ")}`);
   }

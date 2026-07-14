@@ -95,16 +95,16 @@
 
    ```bash
    # 格式化代码
-   pnpm --dir frontend run fmt
+   pnpm run fmt
 
    # 检查格式
-   pnpm --dir frontend run fmt:check
+   pnpm run fmt:check
 
    # Lint 检查
-   pnpm --dir frontend run lint
+   pnpm run lint
 
    # 自动修复 Lint 问题
-   pnpm --dir frontend run lint:fix
+   pnpm run lint:fix
    ```
 
 5. **变量引用检查**
@@ -159,9 +159,9 @@ chore: 调整构建或目录结构
    # 确保代码通过检查
    cargo fmt --all -- --check
    cargo clippy --workspace -- -D warnings
-   pnpm --dir frontend run fmt:check
-   pnpm --dir frontend run lint
-   pnpm --dir frontend run build
+   pnpm run fmt:check
+   pnpm run lint
+   pnpm run build
 
    # 提交变更
    git add .
@@ -204,14 +204,14 @@ chore: 调整构建或目录结构
 ### 如何运行开发环境？
 
 ```bash
-pnpm --dir frontend install
-pnpm --dir frontend run tauri:dev
+pnpm install
+pnpm run tauri:dev
 ```
 
 ### 如何构建发布版本？
 
 ```bash
-pnpm --dir frontend run tauri:build
+pnpm run tauri:build
 ```
 
 但我们不推荐本地构建用来发布到 Release 中

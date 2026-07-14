@@ -21,7 +21,7 @@ TAGS NEED 1 ~ 5.
   - {`Cargo.toml`(Optional if this module doesn't has.)}
   - {somethings}
 
-e.g: ../backend/docker-entry/
+e.g: ../docker-entry/
 ```
 - docker-entry
   - src/
@@ -36,9 +36,9 @@ DON'T COPY FROM LINE 19 ~ LINE 27, IT JUST IS AN EXAMPLE!
 [{@`file-path`}]({path-link}): {discription} | {usage}
 - {`function`} -> {output}: {usage}
 
-e.g.: ../backend/docker-entry/
+e.g.: ../docker-entry/
 ```
-[@`backend/docker-entry/src/main.rs`](../backend/docker-entry/src/main.rs): Used to run SeaLantern Http Service from Docker Env.
+[@`docker-entry/src/main.rs`](../docker-entry/src/main.rs): Used to run SeaLantern Http Service from Docker Env.
 - `main` -> fn(sea_lantern_lib::run_headless_http()): Entry interface.
 ```
 

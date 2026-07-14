@@ -1,6 +1,6 @@
 <div align="center">
   
-<img src="frontend/src/assets/logo.svg" alt="logo" width="200" height="200">
+<img src="src/assets/logo.svg" alt="logo" width="200" height="200">
 
 # 海晶灯（Sea Lantern）
 
@@ -62,16 +62,16 @@ cd SeaLantern
 前端与后端：
 
 ```bash
-pnpm --dir frontend install
-pnpm --dir frontend run tauri:dev
+pnpm install
+pnpm run tauri:dev
 ```
 
-部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm --dir frontend run tauri:dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
+部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm run tauri:dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
 
 仅前端：
 
 ```bash
-pnpm --dir frontend run dev
+pnpm run dev
 ```
 
 ### 代码质量检查
@@ -82,19 +82,19 @@ pnpm --dir frontend run dev
 
 ```bash
 # 代码质量检查
-pnpm --dir frontend run lint
+pnpm run lint
 
 # 类型检查并验证生产构建
-pnpm --dir frontend run build:check
+pnpm run build:check
 
 # 自动修复可修复问题
-pnpm --dir frontend run lint:fix
+pnpm run lint:fix
 
 # 格式化代码
-pnpm --dir frontend run fmt
+pnpm run fmt
 
 # 检查代码格式
-pnpm --dir frontend run fmt:check
+pnpm run fmt:check
 ```
 
 </details>

@@ -2,6 +2,7 @@ node_modules/
 dist/
 src-tauri/target/
 target/
+.pnpm-store/
 
 # panic 崩溃报告日志（忽略文件内容，但保留目录本身由 panic-log/.gitkeep 追踪）
 panic-log/*.log
@@ -31,3 +32,7 @@ plugins-demo/
 #docker test
 data/
 CLAUDE.md
+
+# smoke test
+target-goal-smoke/
+tmp/
