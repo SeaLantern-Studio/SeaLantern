@@ -1,25 +1,25 @@
 ---
 module-name: { name }
 update-time: { YYYY-mm-dd }
-discription: { short-discription }
+description: { short-description }
 tag: ["{example-tag-1}", "{example-tag-2}"]
 ---
 
-IF ANY AGENT FIND THESE FILES(Included Example Files) ARE OUTDATE, YOU CAN UPDATE AND REPORT TO USER.
+IF ANY AGENT FINDS THESE FILES (INCLUDING EXAMPLE FILES) ARE OUTDATED, YOU CAN UPDATE THEM AND REPORT TO THE USER.
 
 TAGS NEED 1 ~ 5.
 
 ## {Module Name}
 
-{long-discription}
+{long-description}
 
 ## Module Entry
 
 - {root-folder-name}
   - {folder(e.g.:src)/}
     - {`file`}
-  - {`Cargo.toml`(Optional if this module doesn't has.)}
-  - {somethings}
+  - {`Cargo.toml`(Optional if this module doesn't have it.)}
+  - {other files}
 
 e.g: ../docker-entry/
 
