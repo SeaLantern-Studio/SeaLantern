@@ -8,6 +8,11 @@ use tauri::{
 
 fn reveal_main_window<R: tauri::Runtime, M: Manager<R>>(manager: &M) {
     if let Some(window) = manager.get_webview_window("main") {
+        // Keep all main-window restore paths here so Windows taskbar visibility
+        // stays in sync after a tray minimize.
+        #[cfg(target_os = "windows")]
+        let _ = window.set_skip_taskbar(false);
+
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
@@ -38,35 +43,17 @@ pub(crate) fn handle_single_instance(
     print!("Received second instance with args: {:?}, cwd: {:?}", args, cwd);
 }
 
-pub(crate) fn handle_builder_tray_click(app: &tauri::AppHandle, event: &TrayIconEvent) {
-    if let TrayIconEvent::Click { button, button_state, .. } = event {
-        if *button == MouseButton::Left && *button_state == MouseButtonState::Up {
-            if let Some(window) = app.get_webview_window("main") {
-                match window.is_visible() {
-                    Ok(is_visible) => {
-                        if is_visible {
-                            let _ = window.hide();
-                        } else {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
-                    Err(_) => {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                }
-            }
-        }
-    }
-}
-
 pub(crate) fn handle_close_requested(window: &tauri::Window, api: &tauri::CloseRequestApi) {
     let settings = services::global::settings_manager().get();
 
     match settings.close_action.as_str() {
         "minimize" => {
             api.prevent_close();
+            // The tray icon menu and left-click handlers both route back through
+            // reveal_main_window(), which restores taskbar visibility on Windows.
+            #[cfg(target_os = "windows")]
+            let _ = window.set_skip_taskbar(true);
+
             let _ = window.hide();
         }
         "close" => {

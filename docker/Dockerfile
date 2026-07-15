@@ -15,13 +15,17 @@ WORKDIR /app
 RUN npm install -g pnpm@9.15.9
 
 # 复制前端依赖文件
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./package.json
+COPY pnpm-lock.yaml ./pnpm-lock.yaml
 
 # 安装依赖
 RUN pnpm install --frozen-lockfile
 
 # 复制前端构建所需文件（精准 COPY，只复制必要的文件）
-COPY index.html vite.config.ts tsconfig.json tsconfig.node.json ./
+COPY index.html ./index.html
+COPY vite.config.ts ./vite.config.ts
+COPY tsconfig.json ./tsconfig.json
+COPY tsconfig.node.json ./tsconfig.node.json
 COPY src/ ./src/
 
 # 复制 Tauri 图标（前端构建需要引用）

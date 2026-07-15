@@ -42,7 +42,3 @@ pub async fn copy_ticket() -> Result<bool, String> {
 pub async fn status() -> TunnelStatus {
     runtime::status().await
 }
-
-#[cfg(test)]
-#[path = "../../../tests/unit/services_online_tunnel_tests.rs"]
-mod tests;

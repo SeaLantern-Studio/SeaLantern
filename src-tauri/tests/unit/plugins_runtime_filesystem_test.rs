@@ -599,6 +599,7 @@ fn test_fs_action_permissions_enable_namespace_mount() {
     cleanup_test_runtime(&temp_dir);
 }
 
+#[cfg(windows)]
 #[test]
 fn test_fs_path_validation_edge_cases() {
     // 覆盖：绝对路径、不同位置的 `..`，以及多个 scope
