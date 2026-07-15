@@ -116,13 +116,13 @@ jobs:
 
       - name: 安装前端依赖
         run: |
-          pnpm --dir frontend install --frozen-lockfile
+          pnpm install --frozen-lockfile
 
       - name: 检查前端格式
-        run: pnpm --dir frontend run fmt:check
+        run: pnpm run fmt:check
 
       - name: 检查前端 Lint
-        run: pnpm --dir frontend run lint
+        run: pnpm run lint
 
       - name: 检查前端类型与构建
-        run: pnpm --dir frontend run build:check
+        run: pnpm run build:check
