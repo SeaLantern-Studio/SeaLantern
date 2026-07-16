@@ -25,6 +25,7 @@ import {
   Link2,
   DownloadIcon,
   Archive,
+  BookOpen,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
@@ -48,6 +49,7 @@ const iconMap: Record<string, LucideIcon> = {
   link2: Link2,
   download: DownloadIcon,
   archive: Archive,
+  book: BookOpen,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -167,6 +169,14 @@ const staticNavItems: NavItem[] = [
     icon: "settings",
     labelKey: "common.settings",
     label: i18n.t("common.settings"),
+    group: "system",
+  },
+  {
+    name: "help",
+    path: "/help",
+    icon: "book",
+    labelKey: "common.help",
+    label: i18n.t("common.help"),
     group: "system",
   },
 ];

@@ -110,6 +110,7 @@
       "save": "保存",
       "plugins": "插件",
       "market": "插件市场",
+      "help": "帮助文档",
       "progress": "进度",
       "minimize": "最小化",
       "maximize": "最大化",
@@ -1250,6 +1251,20 @@
       "load_failed": "加载备份列表失败",
       "settings_saved": "设置已保存",
       "settings_save_failed": "设置保存失败"
+    },
+    "help": {
+      "title": "帮助文档",
+      "sidebar_title": "文档目录",
+      "sections": {
+        "intro": "项目简介",
+        "download": "下载安装",
+        "getting_started": "快速开始",
+        "server_jar": "核心获取",
+        "tutorial": "使用教程",
+        "features": "功能总览",
+        "faq": "常见问题",
+        "contributor": "贡献者"
+      }
     }
   }
 }

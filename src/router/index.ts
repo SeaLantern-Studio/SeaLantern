@@ -92,6 +92,12 @@ const routes = [
     component: () => import("@views/BackupView.vue"),
     meta: { titleKey: "common.backup", icon: "archive" },
   },
+  {
+    path: "/help",
+    name: "help",
+    component: () => import("@views/HelpView.vue"),
+    meta: { titleKey: "common.help", icon: "book" },
+  },
 ];
 const router = createRouter({
   history: createWebHistory(),
