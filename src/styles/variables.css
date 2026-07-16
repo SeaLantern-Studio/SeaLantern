@@ -39,6 +39,13 @@
   --sl-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
   --sl-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
   --sl-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1);
+  /* 立体感阴影 */
+  --sl-shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --sl-shadow-card: 0 1px 4px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --sl-shadow-button: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --sl-shadow-button-hover: 0 2px 6px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --sl-shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  --sl-shadow-input-focus: 0 0 0 3px rgba(14, 165, 233, 0.15);
 
   /* -- Border Radius -- */
   --sl-radius-xs: 4px;
@@ -138,6 +145,13 @@
   --sl-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --sl-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
   --sl-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  /* 立体感阴影（暗色主题） */
+  --sl-shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+  --sl-shadow-card: 0 1px 4px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --sl-shadow-button: 0 1px 3px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --sl-shadow-button-hover: 0 2px 6px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --sl-shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sl-shadow-input-focus: 0 0 0 3px rgba(96, 165, 250, 0.2);
 }
 
 [data-acrylic="true"] {
