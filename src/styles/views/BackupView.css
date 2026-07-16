@@ -27,68 +27,55 @@
   color: var(--sl-text-secondary);
 }
 
-/* 操作区 */
+/* 操作区：立即备份 + 自动备份开关 */
 .backup-actions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--sl-space-lg);
+  flex-direction: column;
+  gap: var(--sl-space-md);
   padding: var(--sl-space-md);
   border-radius: var(--sl-radius-lg);
 }
 
-.backup-action-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-xs);
-}
-
-.backup-action-label {
+.backup-actions-row {
   display: flex;
   align-items: center;
-  gap: var(--sl-space-xs);
-  font-size: var(--sl-text-sm);
-  color: var(--sl-text-secondary);
-}
-
-.backup-switch-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sl-space-sm);
-}
-
-.backup-switch-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-xs);
-  padding: var(--sl-space-xs) var(--sl-space-sm);
-  background: var(--sl-bg);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-sm);
-  font-size: var(--sl-text-sm);
-}
-
-.backup-switch-item span {
-  color: var(--sl-text-secondary);
-}
-
-.backup-action-row {
-  display: flex;
+  justify-content: space-between;
   gap: var(--sl-space-md);
 }
 
-.backup-action-item {
+.backup-create-btn {
+  flex-shrink: 0;
+}
+
+.backup-auto-toggle {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  font-size: var(--sl-text-sm);
+  color: var(--sl-text-secondary);
+}
+
+.backup-interval-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sl-space-sm) 0;
+}
+
+.backup-interval-row label {
+  font-size: var(--sl-text-sm);
+  color: var(--sl-text-secondary);
+}
+
+.backup-interval-input {
+  display: flex;
+  align-items: center;
   gap: var(--sl-space-xs);
 }
 
-.backup-select {
-  min-width: 120px;
-}
-
-.backup-create-btn {
-  margin-left: auto;
+.backup-interval-input span {
+  font-size: var(--sl-text-sm);
+  color: var(--sl-text-tertiary);
 }
 
 /* 设置区 */
@@ -118,11 +105,10 @@
   min-width: 140px;
 }
 
-.backup-setting-item.backup-setting-full {
-  flex: 1 1 100%;
-}
-
 .backup-setting-item label {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
   font-size: var(--sl-text-sm);
   color: var(--sl-text-secondary);
 }
@@ -143,15 +129,41 @@
   border-color: var(--sl-primary);
 }
 
-.backup-interval {
-  display: flex;
-  align-items: center;
-  gap: var(--sl-space-xs);
+.backup-select {
+  min-width: 120px;
 }
 
-.backup-interval span {
+/* 备份内容选择 */
+.backup-contents-section {
+  margin-top: var(--sl-space-md);
+  padding-top: var(--sl-space-md);
+  border-top: 1px solid var(--sl-border);
+}
+
+.backup-contents-label {
   font-size: var(--sl-text-sm);
   color: var(--sl-text-secondary);
+  margin-bottom: var(--sl-space-sm);
+}
+
+.backup-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-md);
+}
+
+.backup-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  font-size: var(--sl-text-sm);
+  color: var(--sl-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.backup-checkbox-item:hover {
+  color: var(--sl-text-primary);
 }
 
 /* 备份列表 */

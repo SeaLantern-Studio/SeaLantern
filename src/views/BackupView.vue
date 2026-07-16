@@ -96,6 +96,7 @@ async function loadSettings() {
     settings.value = s;
     selectedFormat.value = s.defaultFormat;
     selectedCompression.value = s.compressionLevel;
+    selectedContents.value = [...s.autoBackupContents];
   } catch {
     // 使用默认值
   }
@@ -157,12 +158,25 @@ async function deleteBackup(backup: BackupItem) {
 
 async function updateSettings() {
   if (!selectedServerId.value) return;
+  // 同步备份内容到自动备份设置
+  settings.value.autoBackupContents = [...selectedContents.value];
+  settings.value.defaultFormat = selectedFormat.value;
+  settings.value.compressionLevel = selectedCompression.value;
   try {
     await backupApi.updateSettings(selectedServerId.value, settings.value);
     showSuccess(i18n.t("backup.settings_saved"));
   } catch {
     showError(i18n.t("backup.settings_save_failed"));
   }
+}
+
+function toggleContent(value: BackupContentType, enabled: boolean) {
+  if (enabled && !selectedContents.value.includes(value)) {
+    selectedContents.value.push(value);
+  } else if (!enabled) {
+    selectedContents.value = selectedContents.value.filter((c) => c !== value);
+  }
+  updateSettings();
 }
 
 onMounted(async () => {
@@ -197,72 +211,55 @@ watch(
       </h1>
     </div>
 
-    <!-- 操作区 -->
+    <!-- 操作区：立即备份 + 自动备份开关 -->
     <div class="backup-actions glass-strong">
-      <!-- 备份内容选择 -->
-      <div class="backup-action-group">
-        <div class="backup-action-label">{{ i18n.t("backup.select_contents") }}</div>
-        <div class="backup-switch-row">
-          <div v-for="opt in contentOptions" :key="opt.value" class="backup-switch-item">
-            <span>{{ i18n.t(opt.labelKey) }}</span>
-            <SLSwitch
-              :modelValue="selectedContents.includes(opt.value)"
-              size="sm"
-              @update:modelValue="
-                (v: boolean) => {
-                  if (v) selectedContents.push(opt.value);
-                  else selectedContents = selectedContents.filter((c) => c !== opt.value);
-                }
-              "
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- 格式和压缩率 -->
-      <div class="backup-action-row">
-        <div class="backup-action-item">
-          <div class="backup-action-label">
-            <Package :size="14" />
-            {{ i18n.t("backup.format") }}
-          </div>
-          <SLSelect
-            :modelValue="selectedFormat"
-            :options="formatOptions"
-            size="sm"
-            class="backup-select"
-            @update:modelValue="selectedFormat = $event as BackupFormat"
-          />
-        </div>
-        <div class="backup-action-item">
-          <div class="backup-action-label">
-            <Gauge :size="14" />
-            {{ i18n.t("backup.compression") }}
-          </div>
-          <SLSelect
-            :modelValue="selectedCompression"
-            :options="compressionOptions"
-            size="sm"
-            class="backup-select"
-            @update:modelValue="selectedCompression = $event as CompressionLevel"
+      <div class="backup-actions-row">
+        <SLButton
+          variant="primary"
+          :loading="creatingBackup"
+          :disabled="selectedContents.length === 0 || !selectedServerId"
+          class="backup-create-btn"
+          @click="createBackup"
+        >
+          <Archive :size="16" />
+          {{ i18n.t("backup.create_now") }}
+        </SLButton>
+        <div class="backup-auto-toggle">
+          <span>{{ i18n.t("backup.auto_backup") }}</span>
+          <SLSwitch
+            :modelValue="settings.autoBackupEnabled"
+            @update:modelValue="
+              (v: boolean) => {
+                settings.autoBackupEnabled = v;
+                updateSettings();
+              }
+            "
           />
         </div>
       </div>
 
-      <!-- 立即备份按钮 -->
-      <SLButton
-        variant="primary"
-        :loading="creatingBackup"
-        :disabled="selectedContents.length === 0 || !selectedServerId"
-        class="backup-create-btn"
-        @click="createBackup"
-      >
-        <Archive :size="16" />
-        {{ i18n.t("backup.create_now") }}
-      </SLButton>
+      <!-- 自动备份间隔（开关打开时显示） -->
+      <div class="sl-collapse" :class="{ 'sl-collapse--expanded': settings.autoBackupEnabled }">
+        <div class="sl-collapse__content">
+          <div class="backup-interval-row">
+            <label>{{ i18n.t("backup.auto_interval") }}</label>
+            <div class="backup-interval-input">
+              <input
+                v-model.number="settings.autoBackupInterval"
+                type="number"
+                min="1"
+                max="720"
+                class="backup-number-input"
+                @change="updateSettings"
+              />
+              <span>{{ i18n.t("backup.hours") }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 设置区 -->
+    <!-- 备份设置区 -->
     <div class="backup-settings glass-strong">
       <div class="backup-settings-header">{{ i18n.t("backup.settings_title") }}</div>
       <div class="backup-settings-grid">
@@ -278,12 +275,36 @@ watch(
           />
         </div>
         <div class="backup-setting-item">
-          <label>{{ i18n.t("backup.auto_backup") }}</label>
-          <SLCheckbox
-            :modelValue="settings.autoBackupEnabled"
+          <label>
+            <Package :size="14" />
+            {{ i18n.t("backup.format") }}
+          </label>
+          <SLSelect
+            :modelValue="selectedFormat"
+            :options="formatOptions"
+            size="sm"
+            class="backup-select"
             @update:modelValue="
-              (v: boolean) => {
-                settings.autoBackupEnabled = v;
+              (v) => {
+                selectedFormat = v as BackupFormat;
+                updateSettings();
+              }
+            "
+          />
+        </div>
+        <div class="backup-setting-item">
+          <label>
+            <Gauge :size="14" />
+            {{ i18n.t("backup.compression") }}
+          </label>
+          <SLSelect
+            :modelValue="selectedCompression"
+            :options="compressionOptions"
+            size="sm"
+            class="backup-select"
+            @update:modelValue="
+              (v) => {
+                selectedCompression = v as CompressionLevel;
                 updateSettings();
               }
             "
@@ -291,48 +312,17 @@ watch(
         </div>
       </div>
 
-      <!-- 自动备份展开区域 -->
-      <div class="sl-collapse" :class="{ 'sl-collapse--expanded': settings.autoBackupEnabled }">
-        <div class="sl-collapse__content">
-          <div class="backup-settings-grid backup-auto-settings">
-            <div class="backup-setting-item">
-              <label>{{ i18n.t("backup.auto_interval") }}</label>
-              <div class="backup-interval">
-                <input
-                  v-model.number="settings.autoBackupInterval"
-                  type="number"
-                  min="1"
-                  max="720"
-                  class="backup-number-input"
-                  @change="updateSettings"
-                />
-                <span>{{ i18n.t("backup.hours") }}</span>
-              </div>
-            </div>
-            <div class="backup-setting-item backup-setting-full">
-              <label>{{ i18n.t("backup.auto_contents") }}</label>
-              <div class="backup-switch-row">
-                <div v-for="opt in contentOptions" :key="opt.value" class="backup-switch-item">
-                  <span>{{ i18n.t(opt.labelKey) }}</span>
-                  <SLSwitch
-                    :modelValue="settings.autoBackupContents.includes(opt.value)"
-                    size="sm"
-                    @update:modelValue="
-                      (v: boolean) => {
-                        if (v && !settings.autoBackupContents.includes(opt.value))
-                          settings.autoBackupContents.push(opt.value);
-                        else if (!v)
-                          settings.autoBackupContents = settings.autoBackupContents.filter(
-                            (c) => c !== opt.value,
-                          );
-                        updateSettings();
-                      }
-                    "
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+      <!-- 备份内容选择 -->
+      <div class="backup-contents-section">
+        <div class="backup-contents-label">{{ i18n.t("backup.select_contents") }}</div>
+        <div class="backup-checkbox-row">
+          <label v-for="opt in contentOptions" :key="opt.value" class="backup-checkbox-item">
+            <SLCheckbox
+              :modelValue="selectedContents.includes(opt.value)"
+              @update:modelValue="(v: boolean) => toggleContent(opt.value, v)"
+            />
+            <span>{{ i18n.t(opt.labelKey) }}</span>
+          </label>
         </div>
       </div>
     </div>
