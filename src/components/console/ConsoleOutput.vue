@@ -112,7 +112,7 @@ function getLevelColor(level: string): string {
   }
 }
 
-/** 选区背景色：根据当前主题背景自动调整 +/-40 亮度 */
+/** 选区背景色：根据当前主题背景自动调整 +/-25 亮度 */
 function getSelectionBgColor(): string {
   const hex = cssVar("--sl-bg", "#0f1117");
   const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -121,7 +121,7 @@ function getSelectionBgColor(): string {
     g = parseInt(m[2], 16),
     b = parseInt(m[3], 16);
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  const shift = luminance > 128 ? -40 : 40;
+  const shift = luminance > 128 ? -25 : 25;
   r = Math.max(0, Math.min(255, r + shift));
   g = Math.max(0, Math.min(255, g + shift));
   b = Math.max(0, Math.min(255, b + shift));

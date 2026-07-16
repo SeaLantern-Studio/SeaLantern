@@ -164,9 +164,8 @@ useRegisterComponent(id, {
     0 2px 4px rgba(0, 0, 0, 0.1),
     0 4px 8px rgba(0, 0, 0, 0.08);
   transition:
-    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.3s ease,
-    background 0.3s ease;
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s ease;
   will-change: transform;
   z-index: 1;
 }
@@ -206,44 +205,6 @@ useRegisterComponent(id, {
   100% {
     opacity: 0;
     transform: scale(1.15);
-  }
-}
-
-.sl-switch.animating .sl-switch-thumb {
-  animation: thumb-press 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes thumb-press {
-  0% {
-    transform: scale(1);
-  }
-  30% {
-    transform: scale(0.85);
-  }
-  60% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.sl-switch.active.animating .sl-switch-thumb {
-  animation: thumb-press-active 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes thumb-press-active {
-  0% {
-    transform: translateX(var(--thumb-translate)) scale(1);
-  }
-  30% {
-    transform: translateX(var(--thumb-translate)) scale(0.85);
-  }
-  60% {
-    transform: translateX(var(--thumb-translate)) scale(1.05);
-  }
-  100% {
-    transform: translateX(var(--thumb-translate)) scale(1);
   }
 }
 

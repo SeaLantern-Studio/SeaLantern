@@ -164,6 +164,8 @@
 [data-minimal="true"] .animate-stagger-in,
 [data-minimal="true"] .animate-stagger-in > * {
   animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 [data-minimal="true"] * {
@@ -171,4 +173,55 @@
   animation-delay: 0s !important;
   transition-duration: 0s !important;
   transition-delay: 0s !important;
+}
+
+/* 展开/收起动画容器 */
+.sl-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--sl-transition-normal);
+  overflow: hidden;
+}
+
+.sl-collapse.sl-collapse--expanded {
+  grid-template-rows: 1fr;
+}
+
+.sl-collapse__content {
+  overflow: hidden;
+}
+
+/* 淡入淡出过渡 */
+.sl-fade-enter-active,
+.sl-fade-leave-active {
+  transition: opacity var(--sl-transition-normal);
+}
+
+.sl-fade-enter-from,
+.sl-fade-leave-to {
+  opacity: 0;
+}
+
+/* 滑入滑出过渡（上下） */
+.sl-slide-up-enter-active,
+.sl-slide-up-leave-active {
+  transition: all var(--sl-transition-normal);
+}
+
+.sl-slide-up-enter-from,
+.sl-slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+/* 滑入滑出过渡（缩放） */
+.sl-scale-enter-active,
+.sl-scale-leave-active {
+  transition: all var(--sl-transition-normal);
+}
+
+.sl-scale-enter-from,
+.sl-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }

@@ -92,6 +92,7 @@ useRegisterComponent(id, {
   background: var(--sl-surface, #fff);
   border: 1px solid var(--sl-border, #ddd);
   border-radius: var(--sl-radius-sm);
+  box-shadow: var(--sl-shadow-input);
   transition:
     border-color var(--sl-transition-fast),
     box-shadow var(--sl-transition-fast);
@@ -103,7 +104,7 @@ useRegisterComponent(id, {
 
 .sl-input-container:focus-within {
   border-color: var(--sl-primary);
-  box-shadow: 0 0 0 3px var(--sl-primary-bg);
+  box-shadow: var(--sl-shadow-input-focus);
 }
 
 .sl-input {

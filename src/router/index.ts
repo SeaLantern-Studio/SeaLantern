@@ -86,6 +86,12 @@ const routes = [
     component: () => import("../views/DownloadView.vue"),
     meta: { titleKey: "common.download", icon: "download" },
   },
+  {
+    path: "/backup/:id?",
+    name: "backup",
+    component: () => import("@views/BackupView.vue"),
+    meta: { titleKey: "common.backup", icon: "archive" },
+  },
 ];
 const router = createRouter({
   history: createWebHistory(),

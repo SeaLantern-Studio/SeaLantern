@@ -21,6 +21,7 @@
       "console": "Console",
       "config_edit": "Config Edit",
       "player_manage": "Player Manage",
+      "backup": "Backup",
       "tunnel": "Online Tunnel (Beta)",
       "settings": "Settings",
       "personalize": "Personalize",
@@ -1185,6 +1186,40 @@
         "downloading": "Downloading",
         "goCreatePage": "Go to Create Server"
       }
+    },
+    "backup": {
+      "title": "Server Backup",
+      "create_now": "Backup Now",
+      "settings_title": "Backup Settings",
+      "select_contents": "Backup Contents",
+      "auto_contents": "Auto Backup Contents",
+      "content_core": "Server Core",
+      "content_config": "Config Files",
+      "content_plugins": "Plugin Configs",
+      "content_world": "World Data",
+      "content_logs": "Log Files",
+      "format": "Backup Format",
+      "compression": "Compression",
+      "compression_low": "Low (Fast)",
+      "compression_medium": "Medium (Balanced)",
+      "compression_high": "High (Smaller)",
+      "max_backups": "Max Backups",
+      "auto_backup": "Auto Backup",
+      "auto_interval": "Backup Interval",
+      "hours": "hours",
+      "list_title": "Backup List",
+      "empty": "No backups yet",
+      "restore": "Restore",
+      "delete": "Delete",
+      "create_success": "Backup created successfully",
+      "create_failed": "Failed to create backup",
+      "restore_success": "Backup restored successfully",
+      "restore_failed": "Failed to restore backup",
+      "delete_success": "Backup deleted successfully",
+      "delete_failed": "Failed to delete backup",
+      "load_failed": "Failed to load backup list",
+      "settings_saved": "Settings saved",
+      "settings_save_failed": "Failed to save settings"
     }
   }
 }

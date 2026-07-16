@@ -67,14 +67,15 @@
   flex-direction: column;
   gap: var(--sl-space-md);
   border-radius: var(--sl-radius-lg);
-  transition: all 0.3s ease;
+  box-shadow: var(--sl-shadow-card);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
 
 .sl-server-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--sl-shadow-lg);
+  transform: translateY(-2px);
+  box-shadow: var(--sl-shadow-elevated);
   border-color: var(--sl-primary-light);
 }
 

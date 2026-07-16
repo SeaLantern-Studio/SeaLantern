@@ -109,7 +109,7 @@ const cardClasses = computed(() => ({
 .sl-card--solid {
   background: var(--sl-surface, #fff);
   border: 1px solid var(--sl-border, #e2e8f0);
-  box-shadow: var(--sl-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.04));
+  box-shadow: var(--sl-shadow-card);
 }
 
 /* Glass 变体 - 毛玻璃效果 */
@@ -118,7 +118,7 @@ const cardClasses = computed(() => ({
   backdrop-filter: blur(var(--sl-blur-md, 16px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-md, 16px)) saturate(var(--sl-saturate-normal, 180%));
   border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
-  box-shadow: var(--sl-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
+  box-shadow: var(--sl-shadow-elevated);
   will-change: backdrop-filter;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -135,7 +135,7 @@ const cardClasses = computed(() => ({
 .sl-card--elevated {
   background: var(--sl-surface, #fff);
   border: none;
-  box-shadow: var(--sl-shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.12));
+  box-shadow: var(--sl-shadow-elevated);
 }
 
 /* 悬停效果装饰 */
@@ -155,15 +155,13 @@ const cardClasses = computed(() => ({
 }
 
 .sl-card--solid.sl-card--hoverable:hover {
-  box-shadow:
-    var(--sl-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08)),
-    0 0 0 1px var(--sl-primary-bg, rgba(14, 165, 233, 0.1));
+  box-shadow: var(--sl-shadow-elevated);
   transform: translateY(-2px);
   border-color: var(--sl-primary-light, #7dd3fc);
 }
 
 .sl-card--glass.sl-card--hoverable:hover {
-  box-shadow: var(--sl-shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.12));
+  box-shadow: var(--sl-shadow-lg);
   transform: translateY(-2px);
   border-color: var(--sl-primary-light, #7dd3fc);
 }
@@ -174,7 +172,7 @@ const cardClasses = computed(() => ({
 }
 
 .sl-card--elevated.sl-card--hoverable:hover {
-  box-shadow: var(--sl-shadow-xl, 0 12px 32px rgba(0, 0, 0, 0.16));
+  box-shadow: var(--sl-shadow-xl);
   transform: translateY(-4px);
 }
 
@@ -247,15 +245,11 @@ const cardClasses = computed(() => ({
 
 [data-theme="dark"] .sl-card--elevated {
   background: var(--sl-surface, #1e2130);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"] .sl-card--solid.sl-card--hoverable:hover,
 [data-theme="dark"] .sl-card--glass.sl-card--hoverable:hover {
   border-color: var(--sl-primary, #60a5fa);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(96, 165, 250, 0.2);
 }
 
 [data-theme="dark"] .sl-card--outline.sl-card--hoverable:hover {

@@ -1,5 +1,11 @@
 import { tauriInvoke } from "@api/tauri";
 
+/** 备份格式 */
+export type BackupFormat = "zip" | "tar.gz";
+
+/** 压缩率级别 */
+export type CompressionLevel = "low" | "medium" | "high";
+
 /** 备份内容选项 */
 export type BackupContentType = "core" | "config" | "plugins" | "world" | "logs";
 
@@ -8,23 +14,28 @@ export interface BackupItem {
   id: string;
   serverId: string;
   name: string;
-  size: number; // 字节
-  createdAt: string; // ISO 时间
+  format: BackupFormat;
+  size: number;
+  createdAt: string;
   contents: BackupContentType[];
 }
 
 /** 备份设置 */
 export interface BackupSettings {
-  maxBackups: number; // 最多保留备份数
+  maxBackups: number;
   autoBackupEnabled: boolean;
-  autoBackupInterval: number; // 小时数
+  autoBackupInterval: number;
   autoBackupContents: BackupContentType[];
+  defaultFormat: BackupFormat;
+  compressionLevel: CompressionLevel;
 }
 
 /** 创建备份请求 */
 export interface CreateBackupRequest {
   serverId: string;
   contents: BackupContentType[];
+  format: BackupFormat;
+  compressionLevel: CompressionLevel;
   name?: string;
 }
 

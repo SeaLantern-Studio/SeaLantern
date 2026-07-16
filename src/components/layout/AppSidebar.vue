@@ -24,6 +24,7 @@ import {
   Sparkles,
   Link2,
   DownloadIcon,
+  Archive,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
@@ -46,6 +47,7 @@ const iconMap: Record<string, LucideIcon> = {
   sparkles: Sparkles,
   link2: Link2,
   download: DownloadIcon,
+  archive: Archive,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -133,6 +135,14 @@ const staticNavItems: NavItem[] = [
     icon: "users",
     labelKey: "common.player_manage",
     label: i18n.t("common.player_manage"),
+    group: "server",
+  },
+  {
+    name: "backup",
+    path: "/backup",
+    icon: "archive",
+    labelKey: "common.backup",
+    label: i18n.t("common.backup"),
     group: "server",
   },
   {
