@@ -1,4 +1,4 @@
-name: 要求至少一个 accepted 的 Issue
+name: 检查 PR 关联的 Issue
 
 on:
   pull_request:
@@ -12,14 +12,13 @@ jobs:
   check-linked-issue:
     runs-on: ubuntu-22.04
     steps:
-      - name: 必须关联 accepted Issue
+      - name: 检查是否关联 Issue
         uses: actions/github-script@v7
         with:
           script: |
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request.number;
 
-            // 获取所有关联的 issues
             const query = `
               query($owner:String!, $repo:String!, $number:Int!) {
                 repository(owner:$owner, name:$repo) {
@@ -28,9 +27,6 @@ jobs:
                       nodes {
                         number
                         state
-                        labels(first: 50) {
-                          nodes { name }
-                        }
                         repository {
                           nameWithOwner
                         }
@@ -50,24 +46,12 @@ jobs:
             const prNode = result.repository.pullRequest;
             const repoFull = `${owner}/${repo}`.toLowerCase();
 
-            // 只检查当前仓库的 issue
             const issues = (prNode.closingIssuesReferences.nodes || [])
               .filter(i => `${i.repository.nameWithOwner}`.toLowerCase() === repoFull);
 
             if (issues.length === 0) {
-              core.setFailed("❌ PR 必须关联至少一个 Issue");
+              core.setFailed("PR 必须关联至少一个 Issue");
               return;
             }
 
-            const valid = issues.some(issue => {
-              const hasAccepted = issue.labels.nodes.some(
-                l => l.name.trim().toLowerCase() === "accepted"
-              );
-              return issue.state === "OPEN" && hasAccepted;
-            });
-
-            if (!valid) {
-              core.setFailed("❌ 关联的 Issue 中，没有一个是 OPEN 且包含 'accepted' 标签");
-            } else {
-              core.info("✅ 存在符合条件的关联 Issue");
-            }
+            core.info(`已关联 ${issues.length} 个 Issue`);

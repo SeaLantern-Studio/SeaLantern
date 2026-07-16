@@ -17,6 +17,7 @@ import SLSelect from "@components/common/SLSelect.vue";
 import SLSwitch from "@components/common/SLSwitch.vue";
 import SLSpinner from "@components/common/SLSpinner.vue";
 import SLTooltip from "@components/common/SLTooltip.vue";
+import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { Archive, RotateCcw, Trash2, Clock, Package, Gauge } from "lucide-vue-next";
 import "@styles/views/BackupView.css";
 
@@ -318,8 +319,9 @@ watch(
                     size="sm"
                     @update:modelValue="
                       (v: boolean) => {
-                        if (v) settings.autoBackupContents.push(opt.value);
-                        else
+                        if (v && !settings.autoBackupContents.includes(opt.value))
+                          settings.autoBackupContents.push(opt.value);
+                        else if (!v)
                           settings.autoBackupContents = settings.autoBackupContents.filter(
                             (c) => c !== opt.value,
                           );
