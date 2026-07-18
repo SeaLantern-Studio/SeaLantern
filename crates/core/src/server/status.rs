@@ -21,12 +21,7 @@ impl ServerStatus {
     /// Wraps the current state collected by a daemon.
     pub fn from_daemon(daemon: &mut Daemon) -> io::Result<Self> {
         let process_id = daemon.id();
-        let state = match daemon.poll().map_err(|error| {
-            io::Error::new(
-                error.kind(),
-                format!("could not observe daemon process {process_id}: {error}"),
-            )
-        })? {
+        let state = match daemon.poll()? {
             Some(exit_status) => ServerProcessState::Exited(exit_status),
             None => ServerProcessState::Running,
         };
