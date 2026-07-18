@@ -16,6 +16,7 @@ import {
   Cmz_Dropzone,
   Cmz_FormField,
   Cmz_Input,
+  Cmz_Markdown,
   Cmz_Modal,
   Cmz_Progress,
   Cmz_Select,
@@ -59,6 +60,7 @@ app.component("cmz-dropzone", Cmz_Dropzone);
 app.component("cmz-form-field", Cmz_FormField);
 app.component("cmz-input", Cmz_Input);
 app.component("cmz-modal", Cmz_Modal);
+app.component("cmz-markdown", Cmz_Markdown);
 app.component("cmz-progress", Cmz_Progress);
 app.component("cmz-select", Cmz_Select);
 app.component("cmz-spinner", Cmz_Spinner);

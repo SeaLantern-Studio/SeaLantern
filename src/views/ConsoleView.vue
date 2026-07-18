@@ -199,6 +199,12 @@ onActivated(async () => {
   await loadConsoleSettings();
   startThemeObserver();
   startStatsPolling();
+  // 重新激活时重新加载当前服务器日志（可能在其它页面已启动服务器）
+  const sid = serverId.value;
+  if (sid) {
+    await syncLogsOnce(sid);
+    nextTick(() => doScroll());
+  }
 });
 
 watch(
@@ -219,8 +225,17 @@ async function syncLogsOnce(sid: string) {
   consoleOutputRef.value?.clear();
   try {
     const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
-    consoleOutputRef.value?.appendLines(lines);
-  } catch (_e) {}
+    if (lines.length === 0) {
+      consoleOutputRef.value?.appendLines(["[Sea Lantern] 该服务器尚无日志输出，请先启动服务器。"]);
+    } else {
+      consoleOutputRef.value?.appendLines(lines);
+    }
+  } catch (e) {
+    console.warn("加载服务器日志失败:", e);
+    consoleOutputRef.value?.appendLines([
+      "[Sea Lantern] 无法加载此服务器的日志，该服务器可能尚未启动。",
+    ]);
+  }
 }
 
 async function loadConsoleSettings() {
@@ -280,6 +295,9 @@ async function handleStart() {
     await serverApi.start(sid);
     await serverStore.refreshStatus(sid);
     await refreshServerStats();
+    // 启动后重新拉取日志（可能在启动瞬间已有初始日志写入）
+    await syncLogsOnce(sid);
+    nextTick(() => doScroll());
   } catch (e) {
     consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
   } finally {
@@ -383,12 +401,7 @@ function deleteCommand() {}
         <span class="server-name-display">
           {{ currentServer?.name || i18n.t("console.no_server") }}
         </span>
-        <cmz-badge
-          v-if="serverId"
-          dot
-          :text="getStatusText()"
-          :color="statusColor"
-        />
+        <cmz-badge v-if="serverId" dot :text="getStatusText()" :color="statusColor" />
       </div>
       <div class="toolbar-right">
         <div class="action-group primary-actions">

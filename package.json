@@ -45,7 +45,6 @@
     "dompurify": "^3.3.3",
     "echarts": "^6.0.0",
     "lucide-vue-next": "^0.574.0",
-    "marked": "^18.0.6",
     "pinia": "^3.0.4",
     "reka-ui": "^2.9.2",
     "simple-icons": "^16.12.0",

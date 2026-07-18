@@ -77,9 +77,6 @@ importers:
       lucide-vue-next:
         specifier: ^0.574.0
         version: 0.574.0(vue@3.5.30(typescript@5.9.3))
-      marked:
-        specifier: ^18.0.6
-        version: 18.0.6
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.9.3)(vue@3.5.30(typescript@5.9.3))
@@ -1728,11 +1725,6 @@ packages:
 
   markdown-it@14.3.0:
     resolution: {integrity: sha512-RCEsPjR+sr0x+AuYp601tKTkgFG4YEPLCzHST3cQ/fhlJkqAkz1L2/Qbp1j9qw5SBwQHFBoW8+hoN5xssOF0Tw==}
-    hasBin: true
-
-  marked@18.0.6:
-    resolution: {integrity: sha512-MrV5puXBfuiy6wl6DLaq3BtIJQAJToAd5zt/ZKhRfGRAuFPALE7/4Y7jnxRQoEgK/pBgurGqLyAuRgZ2xOjr6w==}
-    engines: {node: '>= 20'}
     hasBin: true
 
   mdurl@2.0.0:
@@ -3783,8 +3775,6 @@ snapshots:
       mdurl: 2.0.0
       punycode.js: 2.3.1
       uc.micro: 2.1.0
-
-  marked@18.0.6: {}
 
   mdurl@2.0.0: {}
 
