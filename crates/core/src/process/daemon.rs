@@ -1,5 +1,13 @@
 use std::io;
 use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus};
+use std::time::Duration;
+
+#[cfg(unix)]
+use std::time::Instant;
+
+const DEFAULT_GRACEFUL_TERMINATION_TIMEOUT: Duration = Duration::from_secs(10);
+#[cfg(unix)]
+const TERMINATION_POLL_INTERVAL: Duration = Duration::from_millis(50);
 
 /// Owns a server process and provides its lifecycle operations.
 pub struct Daemon {
@@ -11,7 +19,7 @@ pub struct Daemon {
 pub enum DaemonTerminationSign {
     ProcessAlreadyExited,
     ProcessStateUnknown,
-    GracefulTerminationFailed,
+    ProcessTreeTerminationFailed,
     ForcedTerminationFailed,
 }
 
@@ -20,7 +28,7 @@ impl DaemonTerminationSign {
         match self {
             Self::ProcessAlreadyExited => "process_already_exited",
             Self::ProcessStateUnknown => "process_state_unknown",
-            Self::GracefulTerminationFailed => "graceful_termination_failed",
+            Self::ProcessTreeTerminationFailed => "process_tree_termination_failed",
             Self::ForcedTerminationFailed => "forced_termination_failed",
         }
     }
@@ -117,16 +125,29 @@ impl Daemon {
     /// If the child has already exited or cannot be inspected, a force-termination attempt is still
     /// made and the method returns an error carrying an abnormal termination sign.
     pub fn terminate_tree(&mut self) -> Result<(), DaemonTerminationError> {
+        self.terminate_tree_with_timeout(DEFAULT_GRACEFUL_TERMINATION_TIMEOUT)
+    }
+
+    /// Terminates the daemon after allowing a bounded Unix process-group shutdown interval.
+    ///
+    /// Windows console process trees require `taskkill /F`; protocol-level graceful shutdown belongs
+    /// to the terminal module before this process-lifecycle operation is invoked.
+    pub fn terminate_tree_with_timeout(
+        &mut self,
+        graceful_timeout: Duration,
+    ) -> Result<(), DaemonTerminationError> {
         let process_id = self.id();
         match self.poll() {
-            Ok(None) => terminate_running_process_tree(&mut self.child).map_err(|source| {
-                termination_error(
-                    DaemonTerminationSign::GracefulTerminationFailed,
-                    process_id,
-                    "the running process tree could not be terminated",
-                    Some(source),
-                )
-            }),
+            Ok(None) => terminate_running_process_tree(&mut self.child, graceful_timeout).map_err(
+                |source| {
+                    termination_error(
+                        DaemonTerminationSign::ProcessTreeTerminationFailed,
+                        process_id,
+                        "the running process tree could not be terminated",
+                        Some(source),
+                    )
+                },
+            ),
             Ok(Some(status)) => self.force_after_abnormal_state(
                 DaemonTerminationSign::ProcessAlreadyExited,
                 format!("the process had already exited with status {status}"),
@@ -178,15 +199,15 @@ fn termination_error(
 }
 
 #[cfg(unix)]
-fn terminate_running_process_tree(child: &mut Child) -> io::Result<()> {
+fn terminate_running_process_tree(child: &mut Child, graceful_timeout: Duration) -> io::Result<()> {
     let process_group_id = child.id();
     signal_process_group(process_group_id, "TERM")?;
-    std::thread::sleep(std::time::Duration::from_millis(300));
 
-    if child.try_wait()?.is_none() {
-        signal_process_group(process_group_id, "KILL")?;
+    if wait_for_exit(child, graceful_timeout)? {
+        return Ok(());
     }
 
+    signal_process_group(process_group_id, "KILL")?;
     child.wait().map(|_| ())
 }
 
@@ -218,24 +239,28 @@ fn signal_process_group(process_group_id: u32, signal: &str) -> io::Result<()> {
 }
 
 #[cfg(windows)]
-fn terminate_running_process_tree(child: &mut Child) -> io::Result<()> {
-    terminate_windows_process_tree(child)
+fn terminate_running_process_tree(
+    child: &mut Child,
+    _graceful_timeout: Duration,
+) -> io::Result<()> {
+    force_terminate_windows_process_tree(child)
 }
 
 #[cfg(windows)]
 fn force_terminate_process_tree(child: &mut Child) -> io::Result<()> {
-    terminate_windows_process_tree(child)
+    force_terminate_windows_process_tree(child)
 }
 
 #[cfg(windows)]
-fn terminate_windows_process_tree(child: &mut Child) -> io::Result<()> {
-    let status = Command::new("taskkill")
-        .args(["/PID", &child.id().to_string(), "/T", "/F"])
-        .status()?;
+fn force_terminate_windows_process_tree(child: &mut Child) -> io::Result<()> {
+    let mut command = Command::new("taskkill");
+    command.args(["/PID", &child.id().to_string(), "/T", "/F"]);
+
+    let status = command.status()?;
 
     if !status.success() {
         return Err(io::Error::other(format!(
-            "taskkill failed for process tree {} with {status}",
+            "taskkill /F failed for process tree {} with {status}",
             child.id()
         )));
     }
@@ -244,7 +269,10 @@ fn terminate_windows_process_tree(child: &mut Child) -> io::Result<()> {
 }
 
 #[cfg(not(any(unix, windows)))]
-fn terminate_running_process_tree(child: &mut Child) -> io::Result<()> {
+fn terminate_running_process_tree(
+    child: &mut Child,
+    _graceful_timeout: Duration,
+) -> io::Result<()> {
     child.kill()?;
     child.wait().map(|_| ())
 }
@@ -253,6 +281,24 @@ fn terminate_running_process_tree(child: &mut Child) -> io::Result<()> {
 fn force_terminate_process_tree(child: &mut Child) -> io::Result<()> {
     child.kill()?;
     child.wait().map(|_| ())
+}
+
+#[cfg(unix)]
+fn wait_for_exit(child: &mut Child, timeout: Duration) -> io::Result<bool> {
+    let started_at = Instant::now();
+
+    loop {
+        if child.try_wait()?.is_some() {
+            return Ok(true);
+        }
+
+        let elapsed = started_at.elapsed();
+        if elapsed >= timeout {
+            return Ok(false);
+        }
+
+        std::thread::sleep(TERMINATION_POLL_INTERVAL.min(timeout.saturating_sub(elapsed)));
+    }
 }
 
 #[cfg(test)]
