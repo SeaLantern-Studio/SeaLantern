@@ -120,7 +120,7 @@ export const contributors: Contributor[] = [
     role: "SeaLantern掌管下载的神",
     avatar: "https://api.rms.net.cn/head/zhu_hao_tian",
     url: {
-      github: "https://github.com/zhu1h1t1",
+      github: "https://github.com/DragonHTDev",
       bilibili: "https://space.bilibili.com/3461582583498915",
     },
   },
