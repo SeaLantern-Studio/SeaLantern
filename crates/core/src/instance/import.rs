@@ -1,5 +1,5 @@
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::instance::{Instance, InstanceError, InstanceSpec};
 
@@ -26,34 +26,19 @@ pub struct InstanceImportPlan {
 pub fn plan_import(
     request: InstanceImportRequest,
 ) -> Result<InstanceImportPlan, InstanceImportError> {
-    let InstanceImportRequest { source_directory, instance } = request;
-    let InstanceSpec {
-        id,
-        name,
-        aliases,
-        core_type,
-        core_version,
-        game_version,
-        directory,
-        port,
-        max_memory_mib,
-        min_memory_mib,
-        created_at_unix_secs,
-        last_started_at_unix_secs,
-        mut launch,
-    } = instance;
+    let InstanceImportRequest { source_directory, mut instance } = request;
 
     if source_directory.as_os_str().is_empty() {
         return Err(InstanceImportError::EmptySourceDirectory);
     }
-    if directory.as_os_str().is_empty() {
+    if instance.directory.as_os_str().is_empty() {
         return Err(InstanceImportError::EmptyDestinationDirectory);
     }
 
-    let source_startup_target = launch
+    let source_startup_target = instance
+        .launch
         .normalize_and_validate()
-        .map_err(InstanceImportError::Instance)?
-        .map(Path::to_path_buf);
+        .map_err(InstanceImportError::Instance)?;
     let startup_target_relative = match source_startup_target {
         Some(source_target) => {
             let relative = source_target.strip_prefix(&source_directory).map_err(|_| {
@@ -69,28 +54,13 @@ pub fn plan_import(
             }
 
             let relative = relative.to_path_buf();
-            launch.startup_target = Some(directory.join(&relative));
+            instance.launch.startup_target = Some(instance.directory.join(&relative));
             Some(relative)
         }
         None => None,
     };
 
-    let instance = Instance::new(InstanceSpec {
-        id,
-        name,
-        aliases,
-        core_type,
-        core_version,
-        game_version,
-        directory,
-        port,
-        max_memory_mib,
-        min_memory_mib,
-        created_at_unix_secs,
-        last_started_at_unix_secs,
-        launch,
-    })
-    .map_err(InstanceImportError::Instance)?;
+    let instance = Instance::new(instance).map_err(InstanceImportError::Instance)?;
 
     Ok(InstanceImportPlan {
         source_directory,
