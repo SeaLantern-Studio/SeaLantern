@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// A stable identifier allocated by the host for a managed instance.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -67,7 +67,7 @@ pub struct LocalLaunch {
 }
 
 impl LocalLaunch {
-    pub(crate) fn normalize_and_validate(&mut self) -> Result<Option<&Path>, InstanceError> {
+    pub(crate) fn normalize_and_validate(&mut self) -> Result<Option<PathBuf>, InstanceError> {
         self.custom_command = self
             .custom_command
             .as_deref()
@@ -91,7 +91,7 @@ impl LocalLaunch {
                 }
                 let startup_target = self
                     .startup_target
-                    .as_deref()
+                    .clone()
                     .ok_or(InstanceError::MissingStartupTarget { mode })?;
                 Ok(Some(startup_target))
             }
