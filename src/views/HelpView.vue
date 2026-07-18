@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { i18n } from "@language";
 import { ExternalLink, Menu, X } from "lucide-vue-next";
-import { fetchDocContent, getDocUrl } from "@utils/docLoader";
+import { helpDocs, introFeatures, introTop, introFooter } from "@data/helpDocs";
 
 // 文档页面配置
 const docPages = [
@@ -19,31 +19,23 @@ const docPages = [
 const currentSection = ref("intro");
 const sidebarOpen = ref(true);
 const isMobile = ref(false);
-const loading = ref(false);
-const contentMd = ref("");
 
-// 从 GitHub 获取原始 Markdown
-async function fetchDoc(key: string) {
-  loading.value = true;
-  contentMd.value = "";
-  try {
-    contentMd.value = await fetchDocContent(key);
-  } catch {
-    contentMd.value = `无法加载文档内容，请检查网络连接或[在浏览器中查看](${getDocUrl(key)})。`;
-  } finally {
-    loading.value = false;
-  }
-}
+// 是否是项目简介页面（需渲染卡片）
+const isIntro = computed(() => currentSection.value === "intro");
+
+// 其他页面直接从静态数据获取内容
+const contentMd = computed(() => (isIntro.value ? "" : (helpDocs[currentSection.value] ?? "")));
 
 // 切换页面
-watch(currentSection, (key) => {
-  fetchDoc(key);
+function switchSection(key: string) {
+  currentSection.value = key;
   if (isMobile.value) sidebarOpen.value = false;
-});
+}
 
 // 在浏览器打开
 function openInBrowser() {
-  window.open(getDocUrl(currentSection.value), "_blank");
+  const url = `https://docs.ideaflash.cn/zh/${currentSection.value}`;
+  window.open(url, "_blank");
 }
 
 // 检测移动端
@@ -55,7 +47,6 @@ function checkMobile() {
 onMounted(() => {
   checkMobile();
   window.addEventListener("resize", checkMobile);
-  fetchDoc(currentSection.value);
 });
 </script>
 
@@ -89,10 +80,20 @@ onMounted(() => {
 
     <!-- 内容区域 -->
     <main class="help-content">
-      <div v-if="loading" class="help-loading">
-        <cmz-spinner size="sm" />
-        <span>加载中...</span>
-      </div>
+      <!-- 项目简介：顶部 + 特性卡片网格 + 底部 -->
+      <template v-if="isIntro">
+        <cmz-markdown :content="introTop" variant="plain" />
+        <h2 class="features-heading">特性</h2>
+        <div class="feature-grid">
+          <div v-for="feature in introFeatures" :key="feature.title" class="feature-card">
+            <h3 class="feature-title">{{ feature.title }}</h3>
+            <p class="feature-desc">{{ feature.desc }}</p>
+            <p class="feature-note">{{ feature.note }}</p>
+          </div>
+        </div>
+        <cmz-markdown :content="introFooter" variant="plain" />
+      </template>
+      <!-- 其他页面 -->
       <cmz-markdown v-else :content="contentMd" variant="plain" />
     </main>
   </div>
@@ -188,6 +189,82 @@ onMounted(() => {
   height: 200px;
   gap: var(--sl-space-md);
   color: var(--sl-text-tertiary);
+}
+
+@media (max-width: 768px) {
+  .help-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    z-index: 50;
+    transform: translateX(-100%);
+    box-shadow: var(--sl-shadow-lg);
+  }
+
+  .help-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .help-content {
+    padding: var(--sl-space-lg);
+    padding-top: calc(48px + var(--sl-space-lg));
+  }
+}
+
+/* 特性卡片网格 */
+.features-heading {
+  font-size: var(--sl-font-size-2xl);
+  font-weight: 600;
+  color: var(--sl-text-primary);
+  margin: var(--sl-space-lg) 0 var(--sl-space-md);
+  padding-bottom: var(--sl-space-sm);
+  border-bottom: 1px solid var(--sl-border-light);
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sl-space-md);
+  margin-bottom: var(--sl-space-lg);
+}
+
+.feature-card {
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-lg);
+  backdrop-filter: blur(var(--sl-blur-sm, 8px));
+  -webkit-backdrop-filter: blur(var(--sl-blur-sm, 8px));
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.feature-card:hover {
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 1px var(--sl-primary);
+}
+
+.feature-title {
+  font-size: var(--sl-font-size-lg);
+  font-weight: 600;
+  color: var(--sl-text-primary);
+  margin: 0 0 var(--sl-space-xs);
+}
+
+.feature-desc {
+  font-size: var(--sl-font-size-sm);
+  color: var(--sl-text-secondary);
+  line-height: 1.6;
+  margin: 0 0 var(--sl-space-xs);
+}
+
+.feature-note {
+  font-size: var(--sl-font-size-xs);
+  color: var(--sl-text-tertiary);
+  line-height: 1.5;
+  margin: 0;
 }
 
 @media (max-width: 768px) {
