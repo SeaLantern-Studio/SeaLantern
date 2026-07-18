@@ -36,6 +36,7 @@ pub enum WindowsConsoleEncoding {
     Gbk,
 }
 
+#[cfg(target_os = "windows")]
 impl WindowsConsoleEncoding {
     fn code_page(self) -> &'static str {
         match self {
