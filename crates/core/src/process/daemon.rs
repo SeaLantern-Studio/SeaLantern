@@ -6,15 +6,78 @@ pub struct Daemon {
     child: Child,
 }
 
+/// Identifies an abnormal daemon-termination outcome for callers and logs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DaemonTerminationSign {
+    ProcessAlreadyExited,
+    ProcessStateUnknown,
+    GracefulTerminationFailed,
+    ForcedTerminationFailed,
+}
+
+impl DaemonTerminationSign {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ProcessAlreadyExited => "process_already_exited",
+            Self::ProcessStateUnknown => "process_state_unknown",
+            Self::GracefulTerminationFailed => "graceful_termination_failed",
+            Self::ForcedTerminationFailed => "forced_termination_failed",
+        }
+    }
+}
+
+/// Describes a failed or anomalous daemon-termination attempt.
+#[derive(Debug)]
+pub struct DaemonTerminationError {
+    sign: DaemonTerminationSign,
+    process_id: u32,
+    message: String,
+    source: Option<io::Error>,
+}
+
+impl DaemonTerminationError {
+    pub fn sign(&self) -> DaemonTerminationSign {
+        self.sign
+    }
+}
+
+impl std::fmt::Display for DaemonTerminationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "daemon process {} termination sign {}: {}",
+            self.process_id,
+            self.sign.as_str(),
+            self.message
+        )?;
+
+        if let Some(source) = &self.source {
+            write!(formatter, ": {source}")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl std::error::Error for DaemonTerminationError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_ref()
+            .map(|source| source as &(dyn std::error::Error + 'static))
+    }
+}
+
 impl Daemon {
     /// Spawns a daemon from a fully configured command.
     pub fn spawn(command: &mut Command) -> io::Result<Self> {
-        command.spawn().map(Self::from_child)
-    }
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
 
-    /// Wraps an already spawned child process.
-    pub fn from_child(child: Child) -> Self {
-        Self { child }
+            command.process_group(0);
+        }
+
+        command.spawn().map(|child| Self { child })
     }
 
     /// Returns the operating-system process identifier.
@@ -49,102 +112,145 @@ impl Daemon {
         self.child.stderr.take()
     }
 
-    /// Terminates the daemon and every process it started.
-    pub fn terminate_tree(&mut self) -> io::Result<()> {
-        if self.poll()?.is_some() {
-            return Ok(());
+    /// Terminates the daemon and every process in its process tree.
+    ///
+    /// If the child has already exited or cannot be inspected, a force-termination attempt is still
+    /// made and the method returns an error carrying an abnormal termination sign.
+    pub fn terminate_tree(&mut self) -> Result<(), DaemonTerminationError> {
+        let process_id = self.id();
+        match self.poll() {
+            Ok(None) => terminate_running_process_tree(&mut self.child).map_err(|source| {
+                termination_error(
+                    DaemonTerminationSign::GracefulTerminationFailed,
+                    process_id,
+                    "the running process tree could not be terminated",
+                    Some(source),
+                )
+            }),
+            Ok(Some(status)) => self.force_after_abnormal_state(
+                DaemonTerminationSign::ProcessAlreadyExited,
+                format!("the process had already exited with status {status}"),
+            ),
+            Err(source) => self.force_after_abnormal_state(
+                DaemonTerminationSign::ProcessStateUnknown,
+                format!("the process state could not be inspected: {source}"),
+            ),
         }
+    }
 
-        terminate_process_tree(&mut self.child)
+    fn force_after_abnormal_state(
+        &mut self,
+        sign: DaemonTerminationSign,
+        state_message: String,
+    ) -> Result<(), DaemonTerminationError> {
+        let process_id = self.id();
+        match force_terminate_process_tree(&mut self.child) {
+            Ok(()) => Err(termination_error(
+                sign,
+                process_id,
+                format!("{state_message}; force termination completed"),
+                None,
+            )),
+            Err(source) => Err(termination_error(
+                DaemonTerminationSign::ForcedTerminationFailed,
+                process_id,
+                format!("{state_message}; force termination failed"),
+                Some(source),
+            )),
+        }
     }
 }
 
+fn termination_error(
+    sign: DaemonTerminationSign,
+    process_id: u32,
+    message: impl Into<String>,
+    source: Option<io::Error>,
+) -> DaemonTerminationError {
+    let error = DaemonTerminationError {
+        sign,
+        process_id,
+        message: message.into(),
+        source,
+    };
+    eprintln!("[sealantern-core][daemon] {error}");
+    error
+}
+
 #[cfg(unix)]
-fn terminate_process_tree(child: &mut Child) -> io::Result<()> {
-    use std::collections::HashSet;
-
-    fn direct_children(parent_pid: u32) -> Vec<u32> {
-        let output = Command::new("pgrep")
-            .arg("-P")
-            .arg(parent_pid.to_string())
-            .output();
-        let Ok(output) = output else {
-            return Vec::new();
-        };
-
-        if !output.status.success() {
-            return Vec::new();
-        }
-
-        String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .filter_map(|line| line.trim().parse().ok())
-            .collect()
-    }
-
-    fn descendants(root_pid: u32) -> Vec<u32> {
-        let mut pending = vec![root_pid];
-        let mut seen = HashSet::new();
-        let mut descendants = Vec::new();
-
-        while let Some(parent_pid) = pending.pop() {
-            for child_pid in direct_children(parent_pid) {
-                if seen.insert(child_pid) {
-                    descendants.push(child_pid);
-                    pending.push(child_pid);
-                }
-            }
-        }
-
-        descendants
-    }
-
-    fn is_alive(pid: u32) -> bool {
-        Command::new("kill")
-            .args(["-0", &pid.to_string()])
-            .status()
-            .map(|status| status.success())
-            .unwrap_or(false)
-    }
-
-    let root_pid = child.id();
-    let mut pids = descendants(root_pid);
-    pids.push(root_pid);
-    pids.sort_unstable();
-    pids.dedup();
-
-    for pid in pids.iter().rev() {
-        let _ = Command::new("kill")
-            .args(["-TERM", &pid.to_string()])
-            .status();
-    }
-
+fn terminate_running_process_tree(child: &mut Child) -> io::Result<()> {
+    let process_group_id = child.id();
+    signal_process_group(process_group_id, "TERM")?;
     std::thread::sleep(std::time::Duration::from_millis(300));
 
-    for pid in pids.iter().rev().filter(|pid| is_alive(**pid)) {
-        let _ = Command::new("kill")
-            .args(["-KILL", &pid.to_string()])
-            .status();
+    if child.try_wait()?.is_none() {
+        signal_process_group(process_group_id, "KILL")?;
     }
 
     child.wait().map(|_| ())
 }
 
+#[cfg(unix)]
+fn force_terminate_process_tree(child: &mut Child) -> io::Result<()> {
+    signal_process_group(child.id(), "KILL")?;
+    child.wait().map(|_| ())
+}
+
+#[cfg(unix)]
+fn signal_process_group(process_group_id: u32, signal: &str) -> io::Result<()> {
+    let status = Command::new("kill")
+        .args([format!("-{signal}"), format!("-{process_group_id}")])
+        .status()
+        .map_err(|source| {
+            io::Error::new(
+                source.kind(),
+                format!("could not send {signal} to process group {process_group_id}: {source}"),
+            )
+        })?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(io::Error::other(format!(
+            "sending {signal} to process group {process_group_id} exited with {status}"
+        )))
+    }
+}
+
 #[cfg(windows)]
-fn terminate_process_tree(child: &mut Child) -> io::Result<()> {
+fn terminate_running_process_tree(child: &mut Child) -> io::Result<()> {
+    terminate_windows_process_tree(child)
+}
+
+#[cfg(windows)]
+fn force_terminate_process_tree(child: &mut Child) -> io::Result<()> {
+    terminate_windows_process_tree(child)
+}
+
+#[cfg(windows)]
+fn terminate_windows_process_tree(child: &mut Child) -> io::Result<()> {
     let status = Command::new("taskkill")
         .args(["/PID", &child.id().to_string(), "/T", "/F"])
         .status()?;
 
     if !status.success() {
-        child.kill()?;
+        return Err(io::Error::other(format!(
+            "taskkill failed for process tree {} with {status}",
+            child.id()
+        )));
     }
 
     child.wait().map(|_| ())
 }
 
 #[cfg(not(any(unix, windows)))]
-fn terminate_process_tree(child: &mut Child) -> io::Result<()> {
+fn terminate_running_process_tree(child: &mut Child) -> io::Result<()> {
+    child.kill()?;
+    child.wait().map(|_| ())
+}
+
+#[cfg(not(any(unix, windows)))]
+fn force_terminate_process_tree(child: &mut Child) -> io::Result<()> {
     child.kill()?;
     child.wait().map(|_| ())
 }
@@ -167,6 +273,20 @@ mod tests {
         command
     }
 
+    #[cfg(unix)]
+    fn long_running_tree_command() -> Command {
+        let mut command = Command::new("sh");
+        command.args(["-c", "sleep 30 & wait"]);
+        command
+    }
+
+    #[cfg(windows)]
+    fn long_running_tree_command() -> Command {
+        let mut command = Command::new("cmd");
+        command.args(["/C", "ping -n 30 127.0.0.1 > NUL"]);
+        command
+    }
+
     #[test]
     fn reports_the_exit_status_of_a_finished_daemon() {
         let mut command = exit_successfully_command();
@@ -174,5 +294,32 @@ mod tests {
 
         assert!(daemon.wait().expect("wait for test process").success());
         assert!(daemon.poll().expect("poll test process").is_some());
+    }
+
+    #[test]
+    fn reports_an_abnormal_sign_for_an_exited_daemon() {
+        let mut command = exit_successfully_command();
+        let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
+        let _ = daemon.wait().expect("wait for test process");
+
+        let error = daemon
+            .terminate_tree()
+            .expect_err("an exited daemon must report an abnormal sign");
+        assert!(matches!(
+            error.sign(),
+            DaemonTerminationSign::ProcessAlreadyExited
+                | DaemonTerminationSign::ForcedTerminationFailed
+        ));
+    }
+
+    #[test]
+    fn terminates_a_running_process_tree() {
+        let mut command = long_running_tree_command();
+        let mut daemon = Daemon::spawn(&mut command).expect("spawn test process tree");
+
+        daemon
+            .terminate_tree()
+            .expect("terminate running process tree");
+        assert!(daemon.poll().expect("poll terminated process").is_some());
     }
 }
