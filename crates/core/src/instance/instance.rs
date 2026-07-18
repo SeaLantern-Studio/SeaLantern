@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// A stable identifier allocated by the host for a managed instance.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -67,7 +67,7 @@ pub struct LocalLaunch {
 }
 
 impl LocalLaunch {
-    fn normalize_and_validate(&mut self) -> Result<(), InstanceError> {
+    pub(crate) fn normalize_and_validate(&mut self) -> Result<Option<&Path>, InstanceError> {
         self.custom_command = self
             .custom_command
             .as_deref()
@@ -83,18 +83,19 @@ impl LocalLaunch {
                 if self.startup_target.is_some() {
                     return Err(InstanceError::UnexpectedStartupTarget { mode: self.startup_mode });
                 }
+                Ok(None)
             }
             mode => {
-                if self.startup_target.is_none() {
-                    return Err(InstanceError::MissingStartupTarget { mode });
-                }
                 if self.custom_command.is_some() {
                     return Err(InstanceError::UnexpectedCustomCommand { mode });
                 }
+                let startup_target = self
+                    .startup_target
+                    .as_deref()
+                    .ok_or(InstanceError::MissingStartupTarget { mode })?;
+                Ok(Some(startup_target))
             }
         }
-
-        Ok(())
     }
 }
 
@@ -144,7 +145,7 @@ impl Instance {
             return Err(InstanceError::EmptyDirectory);
         }
         if spec.port == 0 {
-            return Err(InstanceError::InvalidPort);
+            return Err(InstanceError::UnsupportedPortZero);
         }
         if spec.max_memory_mib != 0
             && spec.min_memory_mib != 0
@@ -183,7 +184,7 @@ pub enum InstanceError {
     EmptyId,
     EmptyName,
     EmptyDirectory,
-    InvalidPort,
+    UnsupportedPortZero,
     InvalidMemoryRange {
         min_memory_mib: u32,
         max_memory_mib: u32,
@@ -209,7 +210,10 @@ impl fmt::Display for InstanceError {
             Self::EmptyId => write!(formatter, "instance ID cannot be empty"),
             Self::EmptyName => write!(formatter, "instance name cannot be empty"),
             Self::EmptyDirectory => write!(formatter, "instance directory cannot be empty"),
-            Self::InvalidPort => write!(formatter, "instance port must be greater than zero"),
+            Self::UnsupportedPortZero => write!(
+                formatter,
+                "port 0 is not supported; managed instances require an explicit port"
+            ),
             Self::InvalidMemoryRange { min_memory_mib, max_memory_mib } => write!(
                 formatter,
                 "minimum memory {min_memory_mib} MiB exceeds maximum memory {max_memory_mib} MiB"
@@ -314,6 +318,16 @@ mod tests {
                 max_memory_mib: 2048,
             }
         );
+    }
+
+    #[test]
+    fn instance_rejects_port_zero_instead_of_requesting_an_ephemeral_port() {
+        let mut spec = base_spec();
+        spec.port = 0;
+
+        let error = Instance::new(spec).expect_err("managed instances require a fixed port");
+
+        assert_eq!(error, InstanceError::UnsupportedPortZero);
     }
 
     #[test]

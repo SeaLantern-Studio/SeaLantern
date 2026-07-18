@@ -1,7 +1,7 @@
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use super::instance::{Instance, InstanceError, InstanceSpec, StartupMode};
+use super::instance::{Instance, InstanceError, InstanceSpec};
 
 /// Input for planning a host-managed local-instance import.
 ///
@@ -24,48 +24,77 @@ pub struct InstanceImportPlan {
 
 /// Builds an import plan without performing filesystem operations.
 pub fn plan_import(
-    mut request: InstanceImportRequest,
+    request: InstanceImportRequest,
 ) -> Result<InstanceImportPlan, InstanceImportError> {
-    if request.source_directory.as_os_str().is_empty() {
+    let InstanceImportRequest { source_directory, instance } = request;
+    let InstanceSpec {
+        id,
+        name,
+        aliases,
+        core_type,
+        core_version,
+        game_version,
+        directory,
+        port,
+        max_memory_mib,
+        min_memory_mib,
+        created_at_unix_secs,
+        last_started_at_unix_secs,
+        mut launch,
+    } = instance;
+
+    if source_directory.as_os_str().is_empty() {
         return Err(InstanceImportError::EmptySourceDirectory);
     }
-
-    let destination_directory = request.instance.directory.clone();
-    if destination_directory.as_os_str().is_empty() {
+    if directory.as_os_str().is_empty() {
         return Err(InstanceImportError::EmptyDestinationDirectory);
     }
 
-    let startup_target_relative = if request.instance.launch.startup_mode == StartupMode::Custom {
-        None
-    } else {
-        let source_target = request
-            .instance
-            .launch
-            .startup_target
-            .as_ref()
-            .ok_or(InstanceImportError::MissingSourceStartupTarget)?;
-        let relative = source_target
-            .strip_prefix(&request.source_directory)
-            .map_err(|_| InstanceImportError::StartupTargetOutsideSource {
-                source_directory: request.source_directory.clone(),
-                startup_target: source_target.clone(),
+    let source_startup_target = launch
+        .normalize_and_validate()
+        .map_err(InstanceImportError::Instance)?
+        .map(Path::to_path_buf);
+    let startup_target_relative = match source_startup_target {
+        Some(source_target) => {
+            let relative = source_target.strip_prefix(&source_directory).map_err(|_| {
+                InstanceImportError::StartupTargetOutsideSource {
+                    source_directory: source_directory.clone(),
+                    startup_target: source_target.clone(),
+                }
             })?;
-        if relative.as_os_str().is_empty() {
-            return Err(InstanceImportError::SourceStartupTargetIsDirectory {
-                source_directory: request.source_directory.clone(),
-            });
-        }
+            if relative.as_os_str().is_empty() {
+                return Err(InstanceImportError::StartupTargetMustBeBelowSource {
+                    source_directory: source_directory.clone(),
+                });
+            }
 
-        let relative = relative.to_path_buf();
-        request.instance.launch.startup_target = Some(destination_directory.join(&relative));
-        Some(relative)
+            let relative = relative.to_path_buf();
+            launch.startup_target = Some(directory.join(&relative));
+            Some(relative)
+        }
+        None => None,
     };
 
-    let instance = Instance::new(request.instance).map_err(InstanceImportError::Instance)?;
+    let instance = Instance::new(InstanceSpec {
+        id,
+        name,
+        aliases,
+        core_type,
+        core_version,
+        game_version,
+        directory,
+        port,
+        max_memory_mib,
+        min_memory_mib,
+        created_at_unix_secs,
+        last_started_at_unix_secs,
+        launch,
+    })
+    .map_err(InstanceImportError::Instance)?;
 
     Ok(InstanceImportPlan {
-        source_directory: request.source_directory,
-        destination_directory,
+        source_directory,
+        destination_directory: instance.directory.clone(),
         startup_target_relative,
         instance,
     })
@@ -76,8 +105,7 @@ pub fn plan_import(
 pub enum InstanceImportError {
     EmptySourceDirectory,
     EmptyDestinationDirectory,
-    MissingSourceStartupTarget,
-    SourceStartupTargetIsDirectory {
+    StartupTargetMustBeBelowSource {
         source_directory: PathBuf,
     },
     StartupTargetOutsideSource {
@@ -96,12 +124,9 @@ impl fmt::Display for InstanceImportError {
             Self::EmptyDestinationDirectory => {
                 write!(formatter, "import destination directory cannot be empty")
             }
-            Self::MissingSourceStartupTarget => {
-                write!(formatter, "import requires a source startup target")
-            }
-            Self::SourceStartupTargetIsDirectory { source_directory } => write!(
+            Self::StartupTargetMustBeBelowSource { source_directory } => write!(
                 formatter,
-                "import startup target must be a file below source directory {}",
+                "import startup target must be a path below source directory {}; the host verifies file type",
                 source_directory.display()
             ),
             Self::StartupTargetOutsideSource { source_directory, startup_target } => write!(
@@ -129,7 +154,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use super::{plan_import, InstanceImportError, InstanceImportRequest};
-    use crate::instance::{InstanceId, InstanceSpec, LocalLaunch, StartupMode};
+    use crate::instance::{InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
 
     fn import_spec(startup_target: Option<PathBuf>, startup_mode: StartupMode) -> InstanceSpec {
         InstanceSpec {
@@ -203,5 +228,22 @@ mod tests {
         assert!(plan.startup_target_relative.is_none());
         assert!(plan.instance.launch.startup_target.is_none());
         assert_eq!(plan.instance.launch.custom_command.as_deref(), Some("launch-custom"));
+    }
+
+    #[test]
+    fn import_uses_the_shared_launch_validation_for_missing_targets() {
+        let request = InstanceImportRequest {
+            source_directory: PathBuf::from("imports/paper"),
+            instance: import_spec(None, StartupMode::Jar),
+        };
+
+        let error = plan_import(request).expect_err("non-custom imports require a startup target");
+
+        assert!(matches!(
+            error,
+            InstanceImportError::Instance(InstanceError::MissingStartupTarget {
+                mode: StartupMode::Jar
+            })
+        ));
     }
 }
