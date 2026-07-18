@@ -219,7 +219,7 @@ watch(
 <template>
   <div class="category-view">
     <div v-if="loading" class="loading-state">
-      <div class="loading-spinner"></div>
+      <cmz-spinner size="sm" />
       <span>{{ i18n.t("common.loading") }}</span>
     </div>
 
@@ -450,22 +450,6 @@ watch(
   justify-content: center;
   padding: 48px;
   color: var(--sl-text-secondary);
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 12px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .category-header {

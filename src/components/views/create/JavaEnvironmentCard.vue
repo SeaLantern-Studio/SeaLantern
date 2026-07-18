@@ -67,7 +67,7 @@ async function pickJavaFile() {
 <template>
   <cmz-card :title="i18n.t('create.java_env')" :subtitle="i18n.t('create.java_scan')">
     <div v-if="loading" class="java-loading">
-      <div class="spinner"></div>
+      <cmz-spinner size="sm" />
       <span>{{ i18n.t("create.scanning") }}</span>
     </div>
     <div v-else-if="javaList.length === 0" class="java-empty">

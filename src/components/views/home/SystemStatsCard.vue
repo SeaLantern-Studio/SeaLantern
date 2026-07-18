@@ -40,7 +40,7 @@ function toggleViewMode() {
     </template>
 
     <div v-if="statsLoading && !systemInfo" class="stats-loading">
-      <div class="spinner"></div>
+      <cmz-spinner size="sm" />
       <span>{{ i18n.t("common.loading") }}</span>
     </div>
 

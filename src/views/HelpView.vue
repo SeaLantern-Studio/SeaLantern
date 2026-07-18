@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
 import { i18n } from "@language";
-import { ExternalLink, Menu, X, Loader } from "lucide-vue-next";
+import { ExternalLink, Menu, X } from "lucide-vue-next";
 import { fetchDocContent, getDocUrl } from "@utils/docLoader";
 
 // 文档页面配置
@@ -90,7 +90,7 @@ onMounted(() => {
     <!-- 内容区域 -->
     <main class="help-content">
       <div v-if="loading" class="help-loading">
-        <Loader :size="24" class="spinner-icon" />
+        <cmz-spinner size="sm" />
         <span>加载中...</span>
       </div>
       <cmz-markdown v-else :content="contentMd" variant="plain" />
@@ -188,16 +188,6 @@ onMounted(() => {
   height: 200px;
   gap: var(--sl-space-md);
   color: var(--sl-text-tertiary);
-}
-
-.spinner-icon {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @media (max-width: 768px) {

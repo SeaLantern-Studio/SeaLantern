@@ -15,7 +15,10 @@
   border: 1px solid transparent;
   cursor: pointer;
   outline: none;
-  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s,
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
     transform 0.1s;
 }
 
@@ -365,7 +368,9 @@
 
 .cmz-card--hoverable {
   cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s;
 }
 
 .cmz-card--hoverable:hover {
@@ -524,7 +529,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s, border-color 0.15s;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
 }
 
 .cmz-checkbox--checked .cmz-checkbox__box {
@@ -550,7 +557,9 @@
   padding: 32px;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
   color: var(--sl-text-secondary);
 }
 
@@ -601,7 +610,6 @@
 .cmz-tab-bar {
   display: flex;
   gap: 0;
-  background: var(--sl-bg);
 }
 
 .cmz-tab-bar__tab {
@@ -612,7 +620,9 @@
   background: none;
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: color 0.2s, border-color 0.2s;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
 }
 
 .cmz-tab-bar__tab:hover {

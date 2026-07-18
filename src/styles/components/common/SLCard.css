@@ -278,30 +278,6 @@
 }
 
 /* 加载状态 */
-.sl-card-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sl-space-sm);
-  min-height: 120px;
-  color: var(--sl-text-tertiary);
-}
-
-.sl-card-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--sl-border);
-  border-top-color: var(--sl-primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* 响应式适配 */
 @media (max-width: 768px) {
   .sl-setting-row {

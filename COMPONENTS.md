@@ -41,12 +41,12 @@ import "cmzya-modern-ui/dist/style.css";
 
 ### 别名映射
 
-| 别名 | 实际组件 |
-|------|---------|
-| `Cmz_Checkbox` | Cmz_Toggle |
-| `Cmz_Switch` | Cmz_Toggle |
-| `Cmz_Textarea` | Cmz_Input |
-| `Cmz_StatusIndicator` | Cmz_Badge |
+| 别名                  | 实际组件   |
+| --------------------- | ---------- |
+| `Cmz_Checkbox`        | Cmz_Toggle |
+| `Cmz_Switch`          | Cmz_Toggle |
+| `Cmz_Textarea`        | Cmz_Input  |
+| `Cmz_StatusIndicator` | Cmz_Badge  |
 
 ---
 
@@ -54,20 +54,20 @@ import "cmzya-modern-ui/dist/style.css";
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| variant | `"solid" \| "outline" \| "ghost"` | `"solid"` | 变体 |
-| size | `"sm" \| "md" \| "lg"` | `"md"` | 尺寸 |
-| color | `string` | `--cmz-primary` | 自定义颜色（传任意 CSS 颜色值） |
-| type | `"button" \| "submit" \| "reset"` | `"button"` | 原生 type |
-| disabled | `boolean` | `false` | 禁用 |
-| loading | `boolean` | `false` | 加载中（显示旋转图标） |
-| iconOnly | `boolean` | `false` | 纯图标模式（去除内边距） |
+| Prop     | 类型                              | 默认值          | 说明                            |
+| -------- | --------------------------------- | --------------- | ------------------------------- |
+| variant  | `"solid" \| "outline" \| "ghost"` | `"solid"`       | 变体                            |
+| size     | `"sm" \| "md" \| "lg"`            | `"md"`          | 尺寸                            |
+| color    | `string`                          | `--cmz-primary` | 自定义颜色（传任意 CSS 颜色值） |
+| type     | `"button" \| "submit" \| "reset"` | `"button"`      | 原生 type                       |
+| disabled | `boolean`                         | `false`         | 禁用                            |
+| loading  | `boolean`                         | `false`         | 加载中（显示旋转图标）          |
+| iconOnly | `boolean`                         | `false`         | 纯图标模式（去除内边距）        |
 
 ### Slots
 
-| Slot | 说明 |
-|------|------|
+| Slot    | 说明            |
+| ------- | --------------- |
 | default | 按钮文字 / 图标 |
 
 ### 示例
@@ -92,26 +92,26 @@ import "cmzya-modern-ui/dist/style.css";
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| modelValue | `string` | `""` | v-model 绑定值 |
-| placeholder | `string` | `""` | 占位文字 |
-| label | `string` | `""` | 标签文字 |
-| disabled | `boolean` | `false` | 禁用 |
-| maxlength | `number` | — | 最大字符数 |
-| multiline | `boolean` | `false` | 是否多行（textarea） |
-| rows | `number` | `4` | 多行行数 |
-| resize | `"none" \| "vertical" \| "horizontal" \| "both"` | `"vertical"` | 多行调整大小 |
-| type | `string` | `"text"` | 输入类型 |
-| min | `number` | — | 数字最小值 |
-| max | `number` | — | 数字最大值 |
-| step | `number` | — | 数字步进 |
-| hideNumberControls | `boolean` | `true` | 隐藏数字上下箭头 |
+| Prop               | 类型                                             | 默认值       | 说明                 |
+| ------------------ | ------------------------------------------------ | ------------ | -------------------- |
+| modelValue         | `string`                                         | `""`         | v-model 绑定值       |
+| placeholder        | `string`                                         | `""`         | 占位文字             |
+| label              | `string`                                         | `""`         | 标签文字             |
+| disabled           | `boolean`                                        | `false`      | 禁用                 |
+| maxlength          | `number`                                         | —            | 最大字符数           |
+| multiline          | `boolean`                                        | `false`      | 是否多行（textarea） |
+| rows               | `number`                                         | `4`          | 多行行数             |
+| resize             | `"none" \| "vertical" \| "horizontal" \| "both"` | `"vertical"` | 多行调整大小         |
+| type               | `string`                                         | `"text"`     | 输入类型             |
+| min                | `number`                                         | —            | 数字最小值           |
+| max                | `number`                                         | —            | 数字最大值           |
+| step               | `number`                                         | —            | 数字步进             |
+| hideNumberControls | `boolean`                                        | `true`       | 隐藏数字上下箭头     |
 
 ### Events
 
-| Event | 参数 | 说明 |
-|-------|------|------|
+| Event             | 参数     | 说明           |
+| ----------------- | -------- | -------------- |
 | update:modelValue | `string` | 输入变化时触发 |
 
 ### 示例
@@ -135,17 +135,17 @@ import "cmzya-modern-ui/dist/style.css";
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| modelValue | `string \| number` | `""` | v-model 绑定值 |
-| variant | `"text" \| "number" \| "select"` | `"text"` | 变体 |
-| placeholder | `string` | `""` | 占位文字 |
-| label | `string` | `""` | 标签文字 |
-| disabled | `boolean` | `false` | 禁用 |
-| options | `SelectOption[]` | — | select 选项列表 |
-| min | `number` | — | number 最小值 |
-| max | `number` | — | number 最大值 |
-| step | `number` | `1` | number 步进 |
+| Prop        | 类型                             | 默认值   | 说明            |
+| ----------- | -------------------------------- | -------- | --------------- |
+| modelValue  | `string \| number`               | `""`     | v-model 绑定值  |
+| variant     | `"text" \| "number" \| "select"` | `"text"` | 变体            |
+| placeholder | `string`                         | `""`     | 占位文字        |
+| label       | `string`                         | `""`     | 标签文字        |
+| disabled    | `boolean`                        | `false`  | 禁用            |
+| options     | `SelectOption[]`                 | —        | select 选项列表 |
+| min         | `number`                         | —        | number 最小值   |
+| max         | `number`                         | —        | number 最大值   |
+| step        | `number`                         | `1`      | number 步进     |
 
 ### SelectOption
 
@@ -161,10 +161,14 @@ interface SelectOption {
 ```vue
 <cmz-field v-model="text" variant="text" placeholder="文本" />
 <cmz-field v-model="num" variant="number" :min="0" :max="100" />
-<cmz-field v-model="sel" variant="select" :options="[
-  { label: '选项A', value: 'a' },
-  { label: '选项B', value: 'b' },
-]" />
+<cmz-field
+  v-model="sel"
+  variant="select"
+  :options="[
+    { label: '选项A', value: 'a' },
+    { label: '选项B', value: 'b' },
+  ]"
+/>
 <cmz-field v-model="text" label="姓名" />
 ```
 
@@ -174,20 +178,20 @@ interface SelectOption {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| modelValue | `string \| number` | — | v-model 绑定值 |
-| options | `SelectOption[]` | **必填** | 选项列表 |
-| label | `string` | — | 标签文字 |
-| placeholder | `string` | `"Select"` | 占位文字 |
-| disabled | `boolean` | `false` | 禁用 |
-| searchable | `boolean` | `false` | 可搜索 |
-| loading | `boolean` | `false` | 加载状态 |
-| maxHeight | `string` | `"280px"` | 下拉面板最大高度 |
-| collapsed | `boolean` | `false` | 紧凑模式 |
-| dropdownAlign | `"left" \| "right"` | `"left"` | 下拉对齐方向 |
-| dropdownWidth | `string` | `"200px"` | 下拉面板宽度 |
-| icon | `Component` | — | 自定义图标组件 |
+| Prop          | 类型                | 默认值     | 说明             |
+| ------------- | ------------------- | ---------- | ---------------- |
+| modelValue    | `string \| number`  | —          | v-model 绑定值   |
+| options       | `SelectOption[]`    | **必填**   | 选项列表         |
+| label         | `string`            | —          | 标签文字         |
+| placeholder   | `string`            | `"Select"` | 占位文字         |
+| disabled      | `boolean`           | `false`    | 禁用             |
+| searchable    | `boolean`           | `false`    | 可搜索           |
+| loading       | `boolean`           | `false`    | 加载状态         |
+| maxHeight     | `string`            | `"280px"`  | 下拉面板最大高度 |
+| collapsed     | `boolean`           | `false`    | 紧凑模式         |
+| dropdownAlign | `"left" \| "right"` | `"left"`   | 下拉对齐方向     |
+| dropdownWidth | `string`            | `"200px"`  | 下拉面板宽度     |
+| icon          | `Component`         | —          | 自定义图标组件   |
 
 ### SelectOption
 
@@ -215,22 +219,22 @@ interface SelectOption {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| modelValue | `boolean` | `false` | v-model 绑定值 |
-| variant | `"checkbox" \| "switch"` | `"switch"` | 变体 |
-| size | `"sm" \| "md" \| "lg"` | `"md"` | 尺寸 |
-| label | `string` | — | 标签文字 |
-| disabled | `boolean` | `false` | 禁用 |
-| indeterminate | `boolean` | `false` | 半选状态（仅 checkbox） |
-| readonly | `boolean` | `false` | 只读 |
+| Prop          | 类型                     | 默认值     | 说明                    |
+| ------------- | ------------------------ | ---------- | ----------------------- |
+| modelValue    | `boolean`                | `false`    | v-model 绑定值          |
+| variant       | `"checkbox" \| "switch"` | `"switch"` | 变体                    |
+| size          | `"sm" \| "md" \| "lg"`   | `"md"`     | 尺寸                    |
+| label         | `string`                 | —          | 标签文字                |
+| disabled      | `boolean`                | `false`    | 禁用                    |
+| indeterminate | `boolean`                | `false`    | 半选状态（仅 checkbox） |
+| readonly      | `boolean`                | `false`    | 只读                    |
 
 ### Events
 
-| Event | 参数 | 说明 |
-|-------|------|------|
-| update:modelValue | `boolean` | v-model |
-| change | `boolean` | 点击变化 |
+| Event             | 参数      | 说明     |
+| ----------------- | --------- | -------- |
+| update:modelValue | `boolean` | v-model  |
+| change            | `boolean` | 点击变化 |
 
 ### 示例
 
@@ -250,30 +254,30 @@ interface SelectOption {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| text | `string` | — | 显示文字 |
-| color | `string` | — | 自定义颜色 |
-| size | `"small" \| "medium" \| "large"` | `"medium"` | 尺寸 |
-| closable | `boolean` | `false` | 可关闭 |
-| maxWidth | `number \| string` | — | 文字最大宽度 |
-| dot | `boolean` | `false` | 圆点模式 |
-| pulse | `boolean` | `false` | 圆点脉冲动画 |
+| Prop     | 类型                             | 默认值     | 说明         |
+| -------- | -------------------------------- | ---------- | ------------ |
+| text     | `string`                         | —          | 显示文字     |
+| color    | `string`                         | —          | 自定义颜色   |
+| size     | `"small" \| "medium" \| "large"` | `"medium"` | 尺寸         |
+| closable | `boolean`                        | `false`    | 可关闭       |
+| maxWidth | `number \| string`               | —          | 文字最大宽度 |
+| dot      | `boolean`                        | `false`    | 圆点模式     |
+| pulse    | `boolean`                        | `false`    | 圆点脉冲动画 |
 
 ### Events
 
-| Event | 参数 | 说明 |
-|-------|------|------|
-| close | — | 点击关闭按钮 |
+| Event | 参数 | 说明         |
+| ----- | ---- | ------------ |
+| close | —    | 点击关闭按钮 |
 
 ### 变体组合
 
-| 组合 | 效果 |
-|------|------|
-| `text="标签"` | 纯文字胶囊 |
-| `dot` | 纯圆点（胶囊缩小包裹圆点） |
-| `dot text="在线"` | 圆点 + 文字组合胶囊 |
-| `dot pulse` | 圆点 + 脉冲动画 |
+| 组合              | 效果                       |
+| ----------------- | -------------------------- |
+| `text="标签"`     | 纯文字胶囊                 |
+| `dot`             | 纯圆点（胶囊缩小包裹圆点） |
+| `dot text="在线"` | 圆点 + 文字组合胶囊        |
+| `dot pulse`       | 圆点 + 脉冲动画            |
 
 ### 示例
 
@@ -296,21 +300,21 @@ interface SelectOption {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| title | `string` | — | 标题 |
-| subtitle | `string` | — | 副标题 |
-| hoverable | `boolean` | `false` | 悬停提升效果 |
-| padding | `"none" \| "xs" \| "sm" \| "md" \| "lg"` | `"md"` | 内边距 |
-| variant | `"solid" \| "glass" \| "outline" \| "elevated"` | `"solid"` | 变体 |
+| Prop      | 类型                                            | 默认值    | 说明         |
+| --------- | ----------------------------------------------- | --------- | ------------ |
+| title     | `string`                                        | —         | 标题         |
+| subtitle  | `string`                                        | —         | 副标题       |
+| hoverable | `boolean`                                       | `false`   | 悬停提升效果 |
+| padding   | `"none" \| "xs" \| "sm" \| "md" \| "lg"`        | `"md"`    | 内边距       |
+| variant   | `"solid" \| "glass" \| "outline" \| "elevated"` | `"solid"` | 变体         |
 
 ### Slots
 
-| Slot | 说明 |
-|------|------|
-| default | 卡片正文 |
-| header | 标题区（替换 title/subtitle） |
-| actions | 标题栏右侧操作区 |
+| Slot    | 说明                          |
+| ------- | ----------------------------- |
+| default | 卡片正文                      |
+| header  | 标题区（替换 title/subtitle） |
+| actions | 标题栏右侧操作区              |
 
 ### 示例
 
@@ -335,32 +339,32 @@ interface SelectOption {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| visible | `boolean` | **必填** | 显示/隐藏 |
-| title | `string` | — | 标题 |
-| width | `string` | `"480px"` | 宽度 |
-| closeOnOverlay | `boolean` | `true` | 点击遮罩关闭 |
-| autoClose | `number` | `0` | 自动关闭毫秒数（0=不自动关） |
-| showCloseButton | `boolean` | `true` | 显示关闭按钮 |
+| Prop            | 类型      | 默认值    | 说明                         |
+| --------------- | --------- | --------- | ---------------------------- |
+| visible         | `boolean` | **必填**  | 显示/隐藏                    |
+| title           | `string`  | —         | 标题                         |
+| width           | `string`  | `"480px"` | 宽度                         |
+| closeOnOverlay  | `boolean` | `true`    | 点击遮罩关闭                 |
+| autoClose       | `number`  | `0`       | 自动关闭毫秒数（0=不自动关） |
+| showCloseButton | `boolean` | `true`    | 显示关闭按钮                 |
 
 ### Events
 
-| Event | 说明 |
-|-------|------|
+| Event | 说明       |
+| ----- | ---------- |
 | close | 关闭时触发 |
 
 ### Slots
 
-| Slot | 说明 |
-|------|------|
-| default | 正文 |
-| header | 标题区 |
+| Slot    | 说明   |
+| ------- | ------ |
+| default | 正文   |
+| header  | 标题区 |
 
 ### 示例
 
 ```vue
-<cmz-modal :visible="show" title="提示" @close="show=false">
+<cmz-modal :visible="show" title="提示" @close="show = false">
   <p>确认删除？</p>
 </cmz-modal>
 
@@ -379,17 +383,21 @@ interface SelectOption {
 
 ### 组件 Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| position | `ToastPosition` | `"top-right"` | 显示位置 |
-| maxVisible | `number` | `5` | 最多同时显示数 |
+| Prop       | 类型            | 默认值        | 说明           |
+| ---------- | --------------- | ------------- | -------------- |
+| position   | `ToastPosition` | `"top-right"` | 显示位置       |
+| maxVisible | `number`        | `5`           | 最多同时显示数 |
 
 ### ToastPosition
 
 ```ts
 type ToastPosition =
-  | "top-right" | "top-left" | "bottom-right" | "bottom-left"
-  | "top-center" | "bottom-center";
+  | "top-right"
+  | "top-left"
+  | "bottom-right"
+  | "bottom-left"
+  | "top-center"
+  | "bottom-center";
 ```
 
 ### useToast 命令式 API
@@ -423,10 +431,10 @@ interface ToastOptions {
   title?: string;
   description?: string;
   type?: "success" | "error" | "warning" | "info" | "loading";
-  color?: string;          // 自定义颜色
-  duration?: number;       // 毫秒，0=常驻，默认根据 type 不同
+  color?: string; // 自定义颜色
+  duration?: number; // 毫秒，0=常驻，默认根据 type 不同
   closable?: boolean;
-  icon?: Component;        // 自定义图标
+  icon?: Component; // 自定义图标
   action?: {
     label: string;
     onClick: () => void;
@@ -452,16 +460,16 @@ interface ToastOptions {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| lines | `ConsoleLine[]` | **必填** | 日志行数据 |
-| showTimestamps | `boolean` | `false` | 是否显示时间戳边框 |
-| autoScroll | `boolean` | `true` | 自动滚动到底部 |
-| maxLines | `number` | `5000` | 显示行数上限 |
-| height | `string` | `"400px"` | 容器高度 |
-| readonly | `boolean` | `false` | 只读模式（隐藏输入框） |
-| placeholder | `string` | `""` | 无日志时的占位文字 |
-| selectionColor | `string` | `""` | 自定义选择高亮色 |
+| Prop           | 类型            | 默认值    | 说明                   |
+| -------------- | --------------- | --------- | ---------------------- |
+| lines          | `ConsoleLine[]` | **必填**  | 日志行数据             |
+| showTimestamps | `boolean`       | `false`   | 是否显示时间戳边框     |
+| autoScroll     | `boolean`       | `true`    | 自动滚动到底部         |
+| maxLines       | `number`        | `5000`    | 显示行数上限           |
+| height         | `string`        | `"400px"` | 容器高度               |
+| readonly       | `boolean`       | `false`   | 只读模式（隐藏输入框） |
+| placeholder    | `string`        | `""`      | 无日志时的占位文字     |
+| selectionColor | `string`        | `""`      | 自定义选择高亮色       |
 
 ### ConsoleLine
 
@@ -478,14 +486,14 @@ interface ConsoleLine {
 
 控制台自动识别行内 `[...]` 括号中的日志级别并渲染为颜色胶囊：
 
-| 级别词 | 胶囊颜色 |
-|--------|---------|
-| INFO | 灰色 |
-| SUCCESS | 绿色 |
-| ERROR / FATAL / CRITICAL / EMERG / ALERT | 红色 |
-| WARN / WARNING | 琥珀 |
-| DEBUG / TRACE / VERBOSE | 紫色 |
-| NOTICE | 青色 |
+| 级别词                                   | 胶囊颜色 |
+| ---------------------------------------- | -------- |
+| INFO                                     | 灰色     |
+| SUCCESS                                  | 绿色     |
+| ERROR / FATAL / CRITICAL / EMERG / ALERT | 红色     |
+| WARN / WARNING                           | 琥珀     |
+| DEBUG / TRACE / VERBOSE                  | 紫色     |
+| NOTICE                                   | 青色     |
 
 时间戳 `[HH:MM:SS]` 自动识别为主题色边框。
 
@@ -495,19 +503,15 @@ interface ConsoleLine {
 
 ### Events
 
-| Event | 参数 | 说明 |
-|-------|------|------|
-| command | `text: string` | 用户输入命令 |
-| clear | — | 清屏（Ctrl+L） |
+| Event   | 参数           | 说明           |
+| ------- | -------------- | -------------- |
+| command | `text: string` | 用户输入命令   |
+| clear   | —              | 清屏（Ctrl+L） |
 
 ### 示例
 
 ```vue
-<cmz-console
-  :lines="logs"
-  @command="handleCommand"
-  :auto-scroll="true"
-/>
+<cmz-console :lines="logs" @command="handleCommand" :auto-scroll="true" />
 ```
 
 ```ts
@@ -527,12 +531,12 @@ const logs = ref([
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| modelValue | `T` | **必填** | 当前激活 key |
-| tabs | `TabBarItem[]` | **必填** | 标签列表 |
-| level | `1 \| 2` | `1` | 层级（1=风格一，2=风格二） |
-| vertical | `boolean` | `false` | 垂直排列 |
+| Prop       | 类型           | 默认值   | 说明                       |
+| ---------- | -------------- | -------- | -------------------------- |
+| modelValue | `T`            | **必填** | 当前激活 key               |
+| tabs       | `TabBarItem[]` | **必填** | 标签列表                   |
+| level      | `1 \| 2`       | `1`      | 层级（1=风格一，2=风格二） |
+| vertical   | `boolean`      | `false`  | 垂直排列                   |
 
 ### TabBarItem
 
@@ -540,11 +544,11 @@ const logs = ref([
 interface TabBarItem<T = string | null> {
   key: T;
   label: string;
-  count?: number | string;       // 徽标数字
-  countTitle?: string;            // 徽标 title
+  count?: number | string; // 徽标数字
+  countTitle?: string; // 徽标 title
   icon?: string;
-  suffixIcon?: Component;         // 右侧图标
-  suffixTitle?: string;           // 右侧图标 title
+  suffixIcon?: Component; // 右侧图标
+  suffixTitle?: string; // 右侧图标 title
   disabled?: boolean;
 }
 ```
@@ -552,11 +556,14 @@ interface TabBarItem<T = string | null> {
 ### 示例
 
 ```vue
-<cmz-tab-bar v-model="active" :tabs="[
-  { key: 'tab1', label: '选项一' },
-  { key: 'tab2', label: '选项二', count: 3 },
-  { key: 'tab3', label: '选项三', disabled: true },
-]" />
+<cmz-tab-bar
+  v-model="active"
+  :tabs="[
+    { key: 'tab1', label: '选项一' },
+    { key: 'tab2', label: '选项二', count: 3 },
+    { key: 'tab3', label: '选项三', disabled: true },
+  ]"
+/>
 
 <cmz-tab-bar v-model="active" :tabs="tabs" level="2" />
 <cmz-tab-bar v-model="active" :tabs="tabs" vertical />
@@ -568,12 +575,12 @@ interface TabBarItem<T = string | null> {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| orientation | `"horizontal" \| "vertical"` | `"horizontal"` | 方向 |
-| label | `string` | — | 带文字的水平分割线 |
-| variant | `"solid" \| "dashed" \| "dotted"` | `"solid"` | 样式 |
-| thickness | `"thin" \| "normal" \| "thick"` | `"normal"` | 粗细 |
+| Prop        | 类型                              | 默认值         | 说明               |
+| ----------- | --------------------------------- | -------------- | ------------------ |
+| orientation | `"horizontal" \| "vertical"`      | `"horizontal"` | 方向               |
+| label       | `string`                          | —              | 带文字的水平分割线 |
+| variant     | `"solid" \| "dashed" \| "dotted"` | `"solid"`      | 样式               |
+| thickness   | `"thin" \| "normal" \| "thick"`   | `"normal"`     | 粗细               |
 
 ### 示例
 
@@ -591,8 +598,8 @@ interface TabBarItem<T = string | null> {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
+| Prop | 类型                   | 默认值 | 说明 |
+| ---- | ---------------------- | ------ | ---- |
 | size | `"sm" \| "md" \| "lg"` | `"md"` | 尺寸 |
 
 ### 示例
@@ -609,13 +616,13 @@ interface TabBarItem<T = string | null> {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| value | `number` | **必填** | 当前进度值 |
-| max | `number` | `100` | 最大值 |
-| label | `string` | — | 左侧标签文字 |
-| showPercent | `boolean` | `true` | 显示百分比 |
-| color | `string` | `--cmz-primary` | 自定义颜色 |
+| Prop        | 类型      | 默认值          | 说明         |
+| ----------- | --------- | --------------- | ------------ |
+| value       | `number`  | **必填**        | 当前进度值   |
+| max         | `number`  | `100`           | 最大值       |
+| label       | `string`  | —               | 左侧标签文字 |
+| showPercent | `boolean` | `true`          | 显示百分比   |
+| color       | `string`  | `--cmz-primary` | 自定义颜色   |
 
 ### 示例
 
@@ -633,32 +640,32 @@ interface TabBarItem<T = string | null> {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| modelValue | `string` | `""` | 绑定值 |
-| label | `string` | `""` | 主标题文字 |
-| subLabel | `string` | `""` | 副标题 |
-| badge | `string` | `""` | 徽标文字 |
-| disabled | `boolean` | `false` | 禁用 |
-| loading | `boolean` | `false` | 加载状态 |
-| acceptFolders | `boolean` | `true` | 接受文件夹 |
-| acceptFiles | `boolean` | `true` | 接受文件 |
-| fileExtensions | `string[]` | `[".zip", ".tar", ...]` | 接受的文件扩展名 |
-| placeholder | `string` | `""` | 占位文字 |
-| clearable | `boolean` | `true` | 可清除 |
-| multiple | `boolean` | `false` | 多选 |
-| isDragging | `boolean` | undefined | 拖拽状态（外部控制） |
+| Prop           | 类型       | 默认值                  | 说明                 |
+| -------------- | ---------- | ----------------------- | -------------------- |
+| modelValue     | `string`   | `""`                    | 绑定值               |
+| label          | `string`   | `""`                    | 主标题文字           |
+| subLabel       | `string`   | `""`                    | 副标题               |
+| badge          | `string`   | `""`                    | 徽标文字             |
+| disabled       | `boolean`  | `false`                 | 禁用                 |
+| loading        | `boolean`  | `false`                 | 加载状态             |
+| acceptFolders  | `boolean`  | `true`                  | 接受文件夹           |
+| acceptFiles    | `boolean`  | `true`                  | 接受文件             |
+| fileExtensions | `string[]` | `[".zip", ".tar", ...]` | 接受的文件扩展名     |
+| placeholder    | `string`   | `""`                    | 占位文字             |
+| clearable      | `boolean`  | `true`                  | 可清除               |
+| multiple       | `boolean`  | `false`                 | 多选                 |
+| isDragging     | `boolean`  | undefined               | 拖拽状态（外部控制） |
 
 ### Events
 
-| Event | 参数 | 说明 |
-|-------|------|------|
-| drop | `path: string` | 文件拖放完成 |
-| dropMultiple | `paths: string[]` | 多文件拖放完成 |
-| clear | — | 清除 |
-| click | — | 点击区域 |
-| error | `message: string` | 错误 |
-| update:isDragging | `boolean` | 拖拽状态变化 |
+| Event             | 参数              | 说明           |
+| ----------------- | ----------------- | -------------- |
+| drop              | `path: string`    | 文件拖放完成   |
+| dropMultiple      | `paths: string[]` | 多文件拖放完成 |
+| clear             | —                 | 清除           |
+| click             | —                 | 点击区域       |
+| error             | `message: string` | 错误           |
+| update:isDragging | `boolean`         | 拖拽状态变化   |
 
 ### 示例
 
@@ -675,11 +682,11 @@ interface TabBarItem<T = string | null> {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| content | `string` | **必填** | 提示文字 |
-| delay | `number` | — | 显示延迟（毫秒） |
-| placement | `"top" \| "bottom" \| "left" \| "right"` | `"top"` | 弹出方向 |
+| Prop      | 类型                                     | 默认值   | 说明             |
+| --------- | ---------------------------------------- | -------- | ---------------- |
+| content   | `string`                                 | **必填** | 提示文字         |
+| delay     | `number`                                 | —        | 显示延迟（毫秒） |
+| placement | `"top" \| "bottom" \| "left" \| "right"` | `"top"`  | 弹出方向         |
 
 ### 示例
 
@@ -697,24 +704,24 @@ interface TabBarItem<T = string | null> {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| content | `string` | **必填** | MD 原文 |
-| roundedTable | `boolean` | `true` | 表格圆角 |
-| codeHighlight | `boolean` | `true` | 代码语法高亮 |
-| sanitized | `boolean` | `true` | 过滤危险 HTML |
-| variant | `"plain" \| "card"` | `"plain"` | 容器样式 |
-| features | `MarkdownFeatures` | 全开 | 特殊语法开关 |
-| listLayout | `"stack" \| "grid"` | `"stack"` | 列表布局 |
-| listGridColumns | `number \| "auto"` | `3` | grid 列数 |
+| Prop            | 类型                | 默认值    | 说明          |
+| --------------- | ------------------- | --------- | ------------- |
+| content         | `string`            | **必填**  | MD 原文       |
+| roundedTable    | `boolean`           | `true`    | 表格圆角      |
+| codeHighlight   | `boolean`           | `true`    | 代码语法高亮  |
+| sanitized       | `boolean`           | `true`    | 过滤危险 HTML |
+| variant         | `"plain" \| "card"` | `"plain"` | 容器样式      |
+| features        | `MarkdownFeatures`  | 全开      | 特殊语法开关  |
+| listLayout      | `"stack" \| "grid"` | `"stack"` | 列表布局      |
+| listGridColumns | `number \| "auto"`  | `3`       | grid 列数     |
 
 ### MarkdownFeatures
 
 ```ts
 interface MarkdownFeatures {
-  alert?: boolean;      // 警示框 !>
-  linkCard?: boolean;   // 链接卡片 =>
-  container?: boolean;  // 容器块 :::
+  alert?: boolean; // 警示框 !>
+  linkCard?: boolean; // 链接卡片 =>
+  container?: boolean; // 容器块 :::
 }
 ```
 
@@ -761,18 +768,18 @@ interface MarkdownFeatures {
 
 ### Props
 
-| Prop | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| label | `string` | — | 标签文字 |
-| required | `boolean` | `false` | 显示必填 * |
-| error | `string` | — | 错误提示 |
-| hint | `string` | — | 提示文字 |
-| labelPosition | `"top" \| "left"` | `"top"` | 标签位置 |
+| Prop          | 类型              | 默认值  | 说明        |
+| ------------- | ----------------- | ------- | ----------- |
+| label         | `string`          | —       | 标签文字    |
+| required      | `boolean`         | `false` | 显示必填 \* |
+| error         | `string`          | —       | 错误提示    |
+| hint          | `string`          | —       | 提示文字    |
+| labelPosition | `"top" \| "left"` | `"top"` | 标签位置    |
 
 ### Slots
 
-| Slot | 说明 |
-|------|------|
+| Slot    | 说明     |
+| ------- | -------- |
 | default | 表单控件 |
 
 ### 示例
@@ -804,47 +811,47 @@ interface MarkdownFeatures {
 ### 颜色
 
 ```css
---cmz-primary: #0ea5e9;          /* 主色 */
---cmz-primary-light: #7dd3fc;    /* 主色 - 浅 */
---cmz-primary-dark: #0369a1;     /* 主色 - 深 */
---cmz-primary-bg: rgba(14,165,233,0.08); /* 主色背景 */
+--cmz-primary: #0ea5e9; /* 主色 */
+--cmz-primary-light: #7dd3fc; /* 主色 - 浅 */
+--cmz-primary-dark: #0369a1; /* 主色 - 深 */
+--cmz-primary-bg: rgba(14, 165, 233, 0.08); /* 主色背景 */
 
---cmz-accent: #06b6d4;           /* 强调色 */
+--cmz-accent: #06b6d4; /* 强调色 */
 --cmz-accent-light: #67e8f9;
 ```
 
 ### 状态色
 
 ```css
---cmz-success: #22c55e;          /* 成功 - 绿色 */
---cmz-success-bg: rgba(34,197,94,0.1);
---cmz-warning: #f59e0b;          /* 警告 - 琥珀 */
---cmz-warning-bg: rgba(245,158,11,0.1);
---cmz-error: #ef4444;            /* 错误 - 红色 */
---cmz-error-bg: rgba(239,68,68,0.1);
---cmz-info: #3b82f6;             /* 信息 - 蓝色 */
---cmz-info-bg: rgba(59,130,246,0.1);
---cmz-debug: #c084fc;            /* 调试 - 紫色 */
---cmz-debug-bg: rgba(192,132,252,0.12);
---cmz-notice: #22d3ee;           /* 注意 - 青色 */
---cmz-notice-bg: rgba(34,211,238,0.1);
+--cmz-success: #22c55e; /* 成功 - 绿色 */
+--cmz-success-bg: rgba(34, 197, 94, 0.1);
+--cmz-warning: #f59e0b; /* 警告 - 琥珀 */
+--cmz-warning-bg: rgba(245, 158, 11, 0.1);
+--cmz-error: #ef4444; /* 错误 - 红色 */
+--cmz-error-bg: rgba(239, 68, 68, 0.1);
+--cmz-info: #3b82f6; /* 信息 - 蓝色 */
+--cmz-info-bg: rgba(59, 130, 246, 0.1);
+--cmz-debug: #c084fc; /* 调试 - 紫色 */
+--cmz-debug-bg: rgba(192, 132, 252, 0.12);
+--cmz-notice: #22d3ee; /* 注意 - 青色 */
+--cmz-notice-bg: rgba(34, 211, 238, 0.1);
 ```
 
 ### 三层背景体系
 
 ```css
---cmz-bg: #eef2f7;               /* 一级：页面底色 */
---cmz-bg-secondary: #ffffff;     /* 二级：卡片/模态框/容器 */
---cmz-bg-tertiary: #f5f7fa;      /* 三级：输入框/标签栏等容器内元素 */
+--cmz-bg: #eef2f7; /* 一级：页面底色 */
+--cmz-bg-secondary: #ffffff; /* 二级：卡片/模态框/容器 */
+--cmz-bg-tertiary: #f5f7fa; /* 三级：输入框/标签栏等容器内元素 */
 ```
 
 ### 文字色
 
 ```css
---cmz-text-primary: #0f172a;     /* 主文字 */
---cmz-text-secondary: #475569;   /* 辅助文字 */
---cmz-text-tertiary: #64748b;    /* 提示文字 */
---cmz-text-inverse: #ffffff;     /* 反色文字 */
+--cmz-text-primary: #0f172a; /* 主文字 */
+--cmz-text-secondary: #475569; /* 辅助文字 */
+--cmz-text-tertiary: #64748b; /* 提示文字 */
+--cmz-text-inverse: #ffffff; /* 反色文字 */
 ```
 
 ### 圆角
@@ -873,22 +880,22 @@ interface MarkdownFeatures {
 ### 字体
 
 ```css
---cmz-font-sans: "...";          /* 无衬线正文 */
---cmz-font-mono: "...";          /* 等宽（代码） */
---cmz-font-display: "...";       /* 展示 */
+--cmz-font-sans: "..."; /* 无衬线正文 */
+--cmz-font-mono: "..."; /* 等宽（代码） */
+--cmz-font-display: "..."; /* 展示 */
 ```
 
 ### 字号
 
 ```css
---cmz-font-size-xs: 0.75rem;     /* 12px */
---cmz-font-size-sm: 0.8125rem;   /* 13px */
---cmz-font-size-base: 0.875rem;  /* 14px */
---cmz-font-size-lg: 1rem;        /* 16px */
---cmz-font-size-xl: 1.125rem;    /* 18px */
---cmz-font-size-2xl: 1.25rem;    /* 20px */
---cmz-font-size-3xl: 1.5rem;     /* 24px */
---cmz-font-size-4xl: 2rem;       /* 32px */
+--cmz-font-size-xs: 0.75rem; /* 12px */
+--cmz-font-size-sm: 0.8125rem; /* 13px */
+--cmz-font-size-base: 0.875rem; /* 14px */
+--cmz-font-size-lg: 1rem; /* 16px */
+--cmz-font-size-xl: 1.125rem; /* 18px */
+--cmz-font-size-2xl: 1.25rem; /* 20px */
+--cmz-font-size-3xl: 1.5rem; /* 24px */
+--cmz-font-size-4xl: 2rem; /* 32px */
 ```
 
 ### 阴影
@@ -906,17 +913,59 @@ interface MarkdownFeatures {
 --cmz-shadow-input-focus;
 ```
 
-### 毛玻璃
+### 毛玻璃 / 丙烯酸 (Acrylic)
+
+毛玻璃背景色（供 `backdrop-filter` 配合使用，自动适应深浅主题）：
 
 ```css
+/* 模糊半径 */
 --cmz-blur-sm: 8px;
 --cmz-blur-md: 16px;
 --cmz-blur-lg: 24px;
 --cmz-blur-xl: 32px;
 --cmz-blur-xxl: 40px;
+/* 饱和度增强 */
 --cmz-saturate-subtle: 150%;
 --cmz-saturate-normal: 180%;
 --cmz-saturate-strong: 200%;
+/* 毛玻璃背景色（卡片级，半透明 + blur 配合使用） */
+--cmz-glass-bg: rgba(255, 255, 255, 0.65); /* 浅色 */
+--cmz-glass-border: rgba(255, 255, 255, 0.45); /* 浅色 */
+/* 丙烯酸（浮层级，更高透明 + 强模糊，适合弹出层/下拉菜单） */
+--cmz-acrylic-bg: rgba(255, 255, 255, 0.55); /* 浅色 */
+--cmz-acrylic-bg-strong: rgba(255, 255, 255, 0.72);
+--cmz-acrylic-border: rgba(255, 255, 255, 0.35);
+--cmz-acrylic-blur: var(--cmz-blur-lg); /* 默认 24px */
+--cmz-acrylic-saturate: var(--cmz-saturate-normal); /* 默认 180% */
+```
+
+深色模式自动切换为：
+
+```css
+--cmz-glass-bg: rgba(30, 33, 48, 0.72);
+--cmz-glass-border: rgba(255, 255, 255, 0.08);
+--cmz-acrylic-bg: rgba(30, 33, 48, 0.62);
+--cmz-acrylic-bg-strong: rgba(30, 33, 48, 0.78);
+--cmz-acrylic-border: rgba(255, 255, 255, 0.06);
+```
+
+使用示例（组件内无需重复定义，直接引用变量即可）：
+
+```css
+/* 浮层毛玻璃 */
+.element {
+  background: var(--cmz-acrylic-bg);
+  backdrop-filter: blur(var(--cmz-acrylic-blur)) saturate(var(--cmz-acrylic-saturate));
+  -webkit-backdrop-filter: blur(var(--cmz-acrylic-blur)) saturate(var(--cmz-acrylic-saturate));
+  border: 1px solid var(--cmz-acrylic-border);
+}
+
+/* 卡片毛玻璃 */
+.card {
+  background: var(--cmz-glass-bg);
+  backdrop-filter: blur(var(--cmz-blur-md)) saturate(var(--cmz-saturate-normal));
+  border: 1px solid var(--cmz-glass-border);
+}
 ```
 
 ### 动画速度
@@ -960,7 +1009,7 @@ interface MarkdownFeatures {
 通过 `<html>` 的 `data-theme` 属性控制：
 
 ```html
-<html data-theme="dark">
+<html data-theme="dark"></html>
 ```
 
 ```js
@@ -987,6 +1036,7 @@ pnpm build  # 输出到 dist/
 ```
 
 输出包含：
+
 - `dist/style.css` — 样式文件
 - `dist/cmzya-modern-ui.mjs` / `.cjs` — JS 入口（含所有组件）
 - `dist/cmzya-modern-ui.js` — UMD

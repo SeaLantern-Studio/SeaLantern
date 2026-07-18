@@ -39,7 +39,7 @@ const handleItemClick = (item: MenuItem) => {
     </div>
     <div class="sl-menu-base-content">
       <template v-for="item in items" :key="item.id">
-        <div v-if="item.divider" class="sl-menu-base-divider" role="separator" />
+        <cmz-divider v-if="item.divider" orientation="horizontal" thickness="thin" />
         <div
           v-else
           class="sl-menu-base-item"
@@ -242,16 +242,6 @@ const handleItemClick = (item: MenuItem) => {
 
 .sl-menu-base-item.danger .sl-menu-base-label {
   color: var(--sl-error, #ef4444);
-}
-
-.sl-menu-base-divider {
-  height: 1px;
-  background: var(--sl-border, rgba(255, 255, 255, 0.08));
-  margin: var(--sl-space-xs, 4px) 0;
-}
-
-[data-theme="light"] .sl-menu-base-divider {
-  background: var(--sl-border, rgba(0, 0, 0, 0.08));
 }
 
 .sl-menu-base-empty {

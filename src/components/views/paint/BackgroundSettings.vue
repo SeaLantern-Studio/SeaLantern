@@ -116,7 +116,7 @@ function handleImageLoad() {
           <div class="bg-image-picker">
             <div v-if="backgroundImage" class="bg-preview">
               <div v-if="bgPreviewLoading && !bgPreviewLoaded" class="bg-preview-loading">
-                <div class="loading-spinner"></div>
+                <cmz-spinner size="sm" />
                 <span>{{ i18n.t("settings.loading_preview") }}</span>
               </div>
               <img
@@ -375,21 +375,6 @@ function handleImageLoad() {
   background: var(--sl-surface);
   color: var(--sl-text-secondary);
   font-size: 0.875rem;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--sl-border);
-  border-top-color: var(--sl-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .bg-animated-badge {

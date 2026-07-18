@@ -342,7 +342,7 @@ onMounted(() => {
     </cmz-tab-bar>
 
     <div v-if="loading" class="market-loading">
-      <div class="loading-spinner"></div>
+      <cmz-spinner size="sm" />
       <span class="loading-text">{{ i18n.t("market.loading") }}</span>
     </div>
 
@@ -440,7 +440,7 @@ onMounted(() => {
             </div>
           </div>
           <div v-if="detailLoading" class="detail-loading">
-            <div class="loading-spinner"></div>
+            <cmz-spinner size="sm" />
           </div>
           <div v-else class="detail-body">
             <p class="detail-desc">
@@ -585,12 +585,6 @@ onMounted(() => {
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .market-loading {
   display: flex;
   align-items: center;
@@ -618,21 +612,6 @@ onMounted(() => {
   color: var(--sl-text-secondary);
   max-width: 640px;
   line-height: 1.5;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--sl-border);
-  border-top-color: var(--sl-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .loading-text {

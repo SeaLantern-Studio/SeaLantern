@@ -177,7 +177,7 @@ watch(
     </div>
 
     <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+      <cmz-spinner size="sm" />
       <span>{{ i18n.t("common.loading") }}</span>
     </div>
 
@@ -363,21 +363,6 @@ watch(
   padding: 64px;
   color: var(--text-secondary);
   gap: 16px;
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--accent-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .plugin-content {

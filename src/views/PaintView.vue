@@ -314,7 +314,7 @@ function clearBackgroundImage() {
     <ErrorBanner :message="error" @close="error = null" />
 
     <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+      <cmz-spinner size="sm" />
       <span>{{ i18n.t("settings.loading") }}</span>
     </div>
 
@@ -399,20 +399,5 @@ function clearBackgroundImage() {
   gap: var(--sl-space-sm);
   padding: var(--sl-space-2xl);
   color: var(--sl-text-tertiary);
-}
-
-.spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--sl-border);
-  border-top-color: var(--sl-primary);
-  border-radius: 50%;
-  animation: sl-spin 0.8s linear infinite;
-}
-
-@keyframes sl-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 </style>

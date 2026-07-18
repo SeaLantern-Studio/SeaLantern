@@ -824,7 +824,11 @@ function goToMarket() {
         />
       </div>
       <div class="toolbar-right">
-        <cmz-button :variant="batchMode ? 'primary' : 'secondary'" size="sm" @click="toggleBatchMode">
+        <cmz-button
+          :variant="batchMode ? 'primary' : 'secondary'"
+          size="sm"
+          @click="toggleBatchMode"
+        >
           {{ i18n.t("plugins.batch_mode") }}
         </cmz-button>
         <cmz-button
@@ -907,7 +911,7 @@ function goToMarket() {
     </div>
 
     <div v-if="pluginStore.loading && pluginStore.plugins.length === 0" class="loading-state">
-      <div class="loading-spinner"></div>
+      <cmz-spinner size="sm" />
       <span class="loading-text">{{ i18n.t("plugins.loading_plugins") }}</span>
     </div>
 
@@ -1239,15 +1243,23 @@ function goToMarket() {
             <cmz-button variant="secondary" size="sm" @click="closeSettings">{{
               i18n.t("plugins.cancel")
             }}</cmz-button>
-            <cmz-button variant="primary" size="sm" :loading="savingSettings" @click="saveSettings">{{
-              i18n.t("plugins.save")
-            }}</cmz-button>
+            <cmz-button
+              variant="primary"
+              size="sm"
+              :loading="savingSettings"
+              @click="saveSettings"
+              >{{ i18n.t("plugins.save") }}</cmz-button
+            >
           </div>
         </div>
       </div>
     </Teleport>
 
-    <cmz-modal :visible="confirmDialog.show" :title="confirmDialog.title" @close="closeConfirmDialog">
+    <cmz-modal
+      :visible="confirmDialog.show"
+      :title="confirmDialog.title"
+      @close="closeConfirmDialog"
+    >
       <p class="dialog-message">{{ confirmDialog.message }}</p>
       <template #footer>
         <cmz-button variant="secondary" size="sm" @click="closeConfirmDialog">{{
@@ -1719,21 +1731,6 @@ function goToMarket() {
   text-align: center;
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--sl-border);
-  border-top-color: var(--sl-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .loading-text {

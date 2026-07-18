@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { FolderOpen, AlertTriangle, CheckCircle, XCircle, Loader2 } from "lucide-vue-next";
+import { FolderOpen, AlertTriangle, CheckCircle, XCircle } from "lucide-vue-next";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
 import {
@@ -117,7 +117,7 @@ const validationStatus = computed(() => {
 
       <!-- 验证中状态 -->
       <div v-else-if="changePathLoading" class="validation-loading">
-        <Loader2 :size="20" class="loading-spinner" />
+        <cmz-spinner size="sm" />
         <span>{{ i18n.t("home.change_path_validating") }}</span>
       </div>
     </div>
@@ -307,19 +307,6 @@ const validationStatus = computed(() => {
   padding: var(--sl-space-md);
   color: var(--sl-text-secondary);
   font-size: 0.875rem;
-}
-
-.loading-spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .modal-actions {
