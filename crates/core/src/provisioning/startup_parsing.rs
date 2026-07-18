@@ -84,12 +84,18 @@ fn logical_script_lines(kind: StartupScriptKind, content: &str) -> Vec<String> {
         let line = line.trim_end();
         if let Some(line) = remove_continuation_marker(kind, line) {
             current.push_str(line);
-            current.push(' ');
+            if !current.is_empty() && !current.chars().last().is_some_and(char::is_whitespace) {
+                current.push(' ');
+            }
             continue;
         }
 
         current.push_str(line);
-        lines.push(std::mem::take(&mut current));
+        if !current.trim().is_empty() {
+            lines.push(std::mem::take(&mut current));
+        } else {
+            current.clear();
+        }
     }
 
     if !current.is_empty() {
@@ -330,7 +336,23 @@ impl std::error::Error for StartupParseError {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{parse_startup_script_content, CoreKind, StartupScriptKind};
+    use super::{logical_script_lines, parse_startup_script_content, CoreKind, StartupScriptKind};
+
+    #[test]
+    fn logical_lines_preserve_existing_continuation_whitespace() {
+        let lines =
+            logical_script_lines(StartupScriptKind::Batch, "java -Xmx2G ^\n-jar paper-1.21.1.jar");
+
+        assert_eq!(lines, vec!["java -Xmx2G -jar paper-1.21.1.jar"]);
+    }
+
+    #[test]
+    fn logical_lines_skip_blank_lines() {
+        let lines =
+            logical_script_lines(StartupScriptKind::Batch, "\n  \njava -jar paper-1.21.1.jar\n\t");
+
+        assert_eq!(lines, vec!["java -jar paper-1.21.1.jar"]);
+    }
 
     #[test]
     fn parses_a_direct_jar_launch_with_velocity_jvm_flags() {
