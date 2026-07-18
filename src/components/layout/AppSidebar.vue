@@ -25,7 +25,6 @@ import {
   DownloadIcon,
   Archive,
   BookOpen,
-  Archive,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
