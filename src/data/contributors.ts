@@ -38,7 +38,7 @@ export const contributors: Contributor[] = [
   },
   {
     name: "CmzYa",
-    role: "统一前端组件，赛博擒矢蝗",
+    role: "统一（md成手搓了）前端组件，赛博擒矢蝗",
     avatar: "https://api.rms.net.cn/head/CmzYa",
     url: {
       github: "https://github.com/CmzYa",
