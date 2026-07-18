@@ -75,6 +75,18 @@
   --cmz-blur-lg: var(--sl-blur-lg);
   --cmz-blur-xl: var(--sl-blur-xl);
   --cmz-blur-xxl: var(--sl-blur-xxl);
+  --cmz-blur-radius: var(--sl-blur-md);
+  --cmz-saturate-subtle: var(--sl-saturate-subtle);
+  --cmz-saturate-normal: var(--sl-saturate-normal);
+  --cmz-saturate-strong: var(--sl-saturate-strong);
+  /* Glass / Acrylic */
+  --cmz-glass-bg: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  --cmz-glass-border: var(--sl-glass-border, rgba(255, 255, 255, 0.5));
+  --cmz-acrylic-bg: var(--sl-acrylic-bg, rgba(255, 255, 255, 0.55));
+  --cmz-acrylic-bg-strong: var(--sl-acrylic-bg-strong, rgba(255, 255, 255, 0.72));
+  --cmz-acrylic-border: var(--sl-acrylic-border, rgba(255, 255, 255, 0.35));
+  --cmz-acrylic-blur: var(--sl-blur-lg);
+  --cmz-acrylic-saturate: var(--sl-saturate-normal);
   --cmz-z-dropdown: 100;
   --cmz-z-sticky: 200;
   --cmz-z-tooltip: 500;
@@ -84,4 +96,12 @@
   --cmz-opacity-disabled: 0.4;
   --cmz-opacity-hover: 0.8;
   --cmz-opacity-muted: 0.6;
+  /* CmzYa 特有状态色（项目无对应 --sl-* 变量，使用默认值） */
+  --cmz-debug: #c084fc;
+  --cmz-debug-bg: rgba(192, 132, 252, 0.12);
+  --cmz-notice: #22d3ee;
+  --cmz-notice-bg: rgba(34, 211, 238, 0.1);
+  --cmz-radius-scrollbar: 4px;
+  --cmz-border-width: 1px;
+  --cmz-border-width-bold: 2px;
 }

@@ -1,4 +1,4 @@
-# CmzYa Modern UI — 组件文档
+# CmzYa Modern UI 0.3.1 — 组件文档
 
 ## 概述
 
@@ -1004,22 +1004,59 @@ interface MarkdownFeatures {
 
 ---
 
-## 深浅主题切换
+## 统一控制系统 (useTheme)
 
-通过 `<html>` 的 `data-theme` 属性控制：
+组件库内置了一套全局统一控制系统，通过 **三个 HTML 属性** 驱动：
+
+- `data-theme` — 亮色/暗色
+- `data-acrylic` — 毛玻璃开关
+- `data-animation` — 动画开关
+
+### 命令式用法（推荐）
+
+```ts
+import { useTheme } from "cmzya-modern-ui";
+
+const { theme, acrylic, animation, toggleTheme, toggleAcrylic, toggleAnimation } = useTheme();
+
+// 切换主题
+toggleTheme();
+// 关闭毛玻璃
+toggleAcrylic();
+// 关闭动画
+toggleAnimation();
+```
+
+`useTheme()` 会自动同步到 `<html>` 属性并持久化到 `localStorage`，刷新后保持状态。
+
+### 直接操作 HTML 属性
 
 ```html
-<html data-theme="dark"></html>
+<!-- 亮色 + 毛玻璃 + 动画（默认） -->
+<html>
+  <!-- 暗色 -->
+  <html data-theme="dark">
+    <!-- 关闭毛玻璃 → 所有 backdrop-filter 降级为纯色背景 -->
+    <html data-acrylic="off">
+      <!-- 关闭动画 → 所有 transition/animation 归零 -->
+      <html data-animation="off">
+        <!-- 组合使用 -->
+        <html data-theme="dark" data-acrylic="off" data-animation="off"></html>
+      </html>
+    </html>
+  </html>
+</html>
 ```
 
-```js
-// 切换
-document.documentElement.setAttribute("data-theme", "dark");
-// 切回浅色
-document.documentElement.removeAttribute("data-theme");
-```
+### 控制范围
 
-所有组件颜色在 `[data-theme="dark"]` 下都有对应的暗色值，无需额外配置。
+| 属性             | 值          | 效果                                                            |
+| ---------------- | ----------- | --------------------------------------------------------------- |
+| `data-theme`     | `dark` / 无 | 切换所有组件的深浅色变量                                        |
+| `data-acrylic`   | `off` / 无  | 关闭所有`backdrop-filter` 毛玻璃，改为纯色 `--cmz-bg-secondary` |
+| `data-animation` | `off` / 无  | 强制所有`transition` / `animation` 持续时间为 0                 |
+
+三个属性完全独立，互不依赖，可按需单独使用或组合使用。
 
 ---
 

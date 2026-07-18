@@ -73,64 +73,95 @@
 }
 
 /* 亚克力模式 - 增强模糊效果 */
-[data-acrylic="true"] .glass {
+[data-acrylic="true"] .glass,
+[data-acrylic="on"] .glass,
+[data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"])
+  .glass {
   --sl-glass-bg: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
 }
 
-[data-acrylic="true"] .glass-subtle {
+[data-acrylic="true"] .glass-subtle,
+[data-acrylic="on"] .glass-subtle,
+[data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"])
+  .glass-subtle {
   backdrop-filter: blur(var(--sl-blur-lg, 24px)) saturate(var(--sl-saturate-subtle, 150%));
   -webkit-backdrop-filter: blur(var(--sl-blur-lg, 24px)) saturate(var(--sl-saturate-subtle, 150%));
 }
 
-[data-acrylic="true"] .glass-strong {
+[data-acrylic="true"] .glass-strong,
+[data-acrylic="on"] .glass-strong,
+[data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"])
+  .glass-strong {
   --sl-glass-strong-bg: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(var(--sl-blur-xxl, 40px)) saturate(var(--sl-saturate-strong, 200%));
   -webkit-backdrop-filter: blur(var(--sl-blur-xxl, 40px)) saturate(var(--sl-saturate-strong, 200%));
 }
 
-[data-acrylic="true"] .glass-card {
+[data-acrylic="true"] .glass-card,
+[data-acrylic="on"] .glass-card,
+[data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"])
+  .glass-card {
   --sl-glass-bg: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
 }
 
-[data-theme="dark"][data-acrylic="true"] .glass {
+[data-theme="dark"][data-acrylic="true"] .glass,
+[data-theme="dark"][data-acrylic="on"] .glass,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not(
+    [data-acrylic="on"]
+  )
+  .glass {
   --sl-glass-bg: rgba(15, 17, 23, 0.65);
 }
 
-[data-theme="dark"][data-acrylic="true"] .glass-strong {
+[data-theme="dark"][data-acrylic="true"] .glass-strong,
+[data-theme="dark"][data-acrylic="on"] .glass-strong,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not(
+    [data-acrylic="on"]
+  )
+  .glass-strong {
   --sl-glass-strong-bg: rgba(15, 17, 23, 0.75);
 }
 
-[data-theme="dark"][data-acrylic="true"] .glass-card {
+[data-theme="dark"][data-acrylic="true"] .glass-card,
+[data-theme="dark"][data-acrylic="on"] .glass-card,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not(
+    [data-acrylic="on"]
+  )
+  .glass-card {
   --sl-glass-bg: rgba(26, 29, 40, 0.65);
 }
 
 /* 亚克力关闭时，使用不透明背景 */
-[data-acrylic="false"] .glass {
+[data-acrylic="false"] .glass,
+[data-acrylic="off"] .glass {
   background: var(--sl-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   will-change: auto;
 }
 
-[data-acrylic="false"] .glass-subtle {
+[data-acrylic="false"] .glass-subtle,
+[data-acrylic="off"] .glass-subtle {
   background: var(--sl-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   will-change: auto;
 }
 
-[data-acrylic="false"] .glass-strong {
+[data-acrylic="false"] .glass-strong,
+[data-acrylic="off"] .glass-strong {
   background: var(--sl-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   will-change: auto;
 }
 
-[data-acrylic="false"] .glass-card {
+[data-acrylic="false"] .glass-card,
+[data-acrylic="off"] .glass-card {
   background: var(--sl-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -149,15 +180,42 @@
   }
 
   [data-acrylic="true"] .glass,
+  [data-acrylic="on"] .glass,
+  [data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"])
+    .glass,
   [data-acrylic="true"] .glass-subtle,
+  [data-acrylic="on"] .glass-subtle,
+  [data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"])
+    .glass-subtle,
   [data-acrylic="true"] .glass-strong,
-  [data-acrylic="true"] .glass-card {
+  [data-acrylic="on"] .glass-strong,
+  [data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"])
+    .glass-strong,
+  [data-acrylic="true"] .glass-card,
+  [data-acrylic="on"] .glass-card,
+  [data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"])
+    .glass-card {
     background: rgba(255, 255, 255, 0.95);
   }
 
   [data-theme="dark"][data-acrylic="true"] .glass,
+  [data-theme="dark"][data-acrylic="on"] .glass,
+  [data-theme="dark"][data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not(
+      [data-acrylic="on"]
+    )
+    .glass,
   [data-theme="dark"][data-acrylic="true"] .glass-strong,
-  [data-theme="dark"][data-acrylic="true"] .glass-card {
+  [data-theme="dark"][data-acrylic="on"] .glass-strong,
+  [data-theme="dark"][data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not(
+      [data-acrylic="on"]
+    )
+    .glass-strong,
+  [data-theme="dark"][data-acrylic="true"] .glass-card,
+  [data-theme="dark"][data-acrylic="on"] .glass-card,
+  [data-theme="dark"][data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not(
+      [data-acrylic="on"]
+    )
+    .glass-card {
     background: rgba(30, 33, 48, 0.95);
   }
 }
