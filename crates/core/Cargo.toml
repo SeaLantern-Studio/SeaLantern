@@ -9,3 +9,4 @@ path = "src/lib.rs"
 
 [dependencies]
 tracing = "0.1"
+zip = { version = "2.0", default-features = false, features = ["deflate"] }
