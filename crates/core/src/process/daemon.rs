@@ -194,7 +194,7 @@ fn termination_error(
         message: message.into(),
         source,
     };
-    eprintln!("[sealantern-core][daemon] {error}");
+    crate::observability::daemon_termination_failed(process_id, sign.as_str(), &error);
     error
 }
 

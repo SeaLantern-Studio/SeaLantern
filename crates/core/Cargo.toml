@@ -6,3 +6,6 @@ license = "GPL-3.0-only"
 
 [lib]
 path = "src/lib.rs"
+
+[dependencies]
+tracing = "0.1"
