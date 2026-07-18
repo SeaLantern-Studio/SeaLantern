@@ -66,8 +66,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       cmzya-modern-ui:
-        specifier: ^0.2.4
-        version: 0.2.4(lucide-vue-next@0.574.0(vue@3.5.30(typescript@5.9.3)))(vue@3.5.30(typescript@5.9.3))
+        specifier: ^0.2.5
+        version: 0.2.5(lucide-vue-next@0.574.0(vue@3.5.30(typescript@5.9.3)))(vue@3.5.30(typescript@5.9.3))
       dompurify:
         specifier: ^3.3.3
         version: 3.3.3
@@ -1261,8 +1261,8 @@ packages:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
     engines: {node: '>=12'}
 
-  cmzya-modern-ui@0.2.4:
-    resolution: {integrity: sha512-vJoUCYt4zNsT3INBdRR3r9+4B48a79a1k1a49tU53k4uQKlXXygpoY3hfFoFuarcGeqZiyfqgr8EM1AIdX/+Lw==}
+  cmzya-modern-ui@0.2.5:
+    resolution: {integrity: sha512-YrP2vDz+aXY07WjkIRFISlWIPMbwUlAYhFIkTRGEJYz/ibCHRTNAJIwVbxt2R1zH4EnwGBCjM/sM0KDl17pO+w==}
     peerDependencies:
       lucide-vue-next: ^0.400.0
       vue: ^3.4.0
@@ -3355,7 +3355,7 @@ snapshots:
       strip-ansi: 6.0.1
       wrap-ansi: 7.0.0
 
-  cmzya-modern-ui@0.2.4(lucide-vue-next@0.574.0(vue@3.5.30(typescript@5.9.3)))(vue@3.5.30(typescript@5.9.3)):
+  cmzya-modern-ui@0.2.5(lucide-vue-next@0.574.0(vue@3.5.30(typescript@5.9.3)))(vue@3.5.30(typescript@5.9.3)):
     dependencies:
       highlight.js: 11.11.1
       lucide-vue-next: 0.574.0(vue@3.5.30(typescript@5.9.3))
