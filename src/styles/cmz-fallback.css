@@ -351,19 +351,22 @@
 
 /* === Card === */
 .cmz-card {
-  background: var(--sl-surface) !important;
+  background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-lg, 12px);
   overflow: hidden;
 }
 
-/* 强制卡片的每个variant都使用纯白背景 */
+/* 实色卡片 - 使用 !important 确保 scoped CSS 不会意外覆盖 */
 .cmz-card--outline,
 .cmz-card--solid,
 .cmz-card--shadow,
-.cmz-card--filled,
-.cmz-card--glass {
+.cmz-card--filled {
   background: var(--sl-surface) !important;
+}
+/* 磨玻璃卡片：不使用 !important，让组件自身的 backdrop-filter 生效 */
+.cmz-card--glass {
+  background: var(--cmz-glass-bg, rgba(255, 255, 255, 0.72));
 }
 
 .cmz-card--hoverable {

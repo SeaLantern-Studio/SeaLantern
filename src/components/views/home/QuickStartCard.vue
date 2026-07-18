@@ -9,6 +9,7 @@ const emit = defineEmits<{
 
 <template>
   <cmz-card
+    variant="glass"
     :title="i18n.t('home.title')"
     :subtitle="i18n.t('home.create_first')"
     class="quick-start-card"
