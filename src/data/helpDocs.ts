@@ -688,3 +688,460 @@ Sea Lantern 支持所有标准的 Minecraft 服务器版本，只需使用对应
 感谢所有为 Sea Lantern 做出贡献的开发者。
 详见 [GitHub Contributors](https://github.com/SeaLantern-Studio/SeaLantern/graphs/contributors).`,
 };
+
+/* ========== 功能总览结构化数据 ========== */
+
+export interface FeatureItem {
+  title: string;
+  desc: string;
+}
+
+export const featureItems: FeatureItem[] = [
+  {
+    title: "控制台",
+    desc: "实时查看服务器日志输出，覆盖启动阶段与运行阶段。直接输入命令，支持命令历史记录和快捷命令面板。工具栏提供清空显示、导出日志等常用操作。",
+  },
+  {
+    title: "server.properties 编辑器",
+    desc: "图形化界面编辑配置项，不需要手动改文件。支持分类浏览和搜索筛选，定位配置更快。适合日常参数调整；部分参数仍需重启服务器生效。",
+  },
+  {
+    title: "玩家管理",
+    desc: "在线玩家状态查看、白名单管理、封禁管理、OP 权限管理。支持踢出玩家等常见管理操作。",
+  },
+  {
+    title: "插件系统",
+    desc: "基于 Lua 脚本的插件扩展机制。支持自定义 UI 组件和页面、右键菜单扩展、权限管理面板、运行时沙箱隔离。提供插件市场入口。",
+  },
+  {
+    title: "主题系统",
+    desc: "5 套内置主题：默认、午夜、海洋、玫瑰、日落。支持明暗模式切换、亚克力/毛玻璃效果（Windows）。基于 CSS Variables 的完整设计令牌体系。",
+  },
+  {
+    title: "多语言支持",
+    desc: "内置 10 种语言：简体中文、繁体中文、English、日本語、한국어、Français、Deutsch、Español、Русский、Tiếng Việt。支持运行时切换语言。",
+  },
+  {
+    title: "Java 管理",
+    desc: "自动检测系统中已安装的 Java 运行时。内置 Java 下载器，支持一键安装所需版本。支持手动指定 Java 路径并进行可用性校验。",
+  },
+  {
+    title: "Mod 管理",
+    desc: "查看服务端目录中已安装的 Mod/插件文件。便于排查版本冲突、重复安装和目录问题。当前以本地管理为主。",
+  },
+  {
+    title: "服务器创建",
+    desc: "引导式流程创建新服务器。支持 jar/bat/sh 启动模式，支持导入已有服务器或启动文件。智能检测开服方式，可在创建流程中自动安装整合包。",
+  },
+  {
+    title: "安全退出",
+    desc: "关闭 Sea Lantern 时自动发送安全停止流程，尽量避免强制退出导致的存档损坏风险。",
+  },
+  {
+    title: "自动更新",
+    desc: "检查新版本并展示当前版本与最新版本信息。提供发布说明查看入口与下载跳转。",
+  },
+  {
+    title: "系统托盘",
+    desc: "最小化到系统托盘后可保持后台运行。支持从托盘快速恢复窗口或执行退出。",
+  },
+];
+
+/* ========== 使用教程 - 分段渲染 ========== */
+
+export type TutorialSegment =
+  | { type: "md"; content: string }
+  | { type: "config-cards" }
+  | { type: "plugin-cards" }
+  | { type: "memory-cards" };
+
+/** 将使用教程 MD 按表格位置拆分，表格部分用卡片渲染代替 */
+export function getTutorialSegments(): TutorialSegment[] {
+  const full = helpDocs["tutorial"];
+  // 锚点：标记各表格的起止位置
+  const cStart = full.indexOf("| 配置项 | 说明 | 默认值 |");
+  const cEnd =
+    full.indexOf("| `white-list` | 是否启用白名单 | false |") +
+    "| `white-list` | 是否启用白名单 | false |".length +
+    1;
+  const pStart = full.indexOf("### 常用插件推荐");
+  const pEnd = full.indexOf("### 插件兼容性注意事项");
+  const mStart = full.indexOf("### 内存分配");
+  const mEnd = full.indexOf("### JVM 参数");
+  return [
+    { type: "md", content: full.slice(0, cStart) },
+    { type: "config-cards" },
+    { type: "md", content: full.slice(cEnd, pStart) },
+    { type: "plugin-cards" },
+    { type: "md", content: full.slice(pEnd, mStart) },
+    { type: "memory-cards" },
+    { type: "md", content: full.slice(mEnd) },
+  ];
+}
+
+export interface PluginRecommendation {
+  name: string;
+  desc: string;
+  category: string;
+  url: string;
+}
+
+export const pluginRecommendations: PluginRecommendation[] = [
+  {
+    name: "EssentialsX",
+    desc: "基础指令集（传送、家、经济等）",
+    category: "管理类",
+    url: "https://essentialsx.net/downloads",
+  },
+  {
+    name: "LuckPerms",
+    desc: "权限管理",
+    category: "管理类",
+    url: "https://luckperms.net/download",
+  },
+  {
+    name: "WorldEdit",
+    desc: "强大的地图编辑工具",
+    category: "管理类",
+    url: "https://modrinth.com/plugin/worldedit",
+  },
+  {
+    name: "WorldGuard",
+    desc: "区域保护和权限管理",
+    category: "管理类",
+    url: "https://modrinth.com/plugin/worldguard/version/7.0.11",
+  },
+  {
+    name: "Authme",
+    desc: "提供服务器登录密码保护（离线服务器必加）",
+    category: "安全类",
+    url: "https://www.spigotmc.org/resources/authmereloaded.6269/",
+  },
+  {
+    name: "CoreProtect",
+    desc: "方块日志/回滚",
+    category: "增强类",
+    url: "https://modrinth.com/plugin/coreprotect",
+  },
+  {
+    name: "Multiverse-Core",
+    desc: "多世界管理",
+    category: "增强类",
+    url: "https://modrinth.com/plugin/multiverse-core",
+  },
+  {
+    name: "DiscordSRV",
+    desc: "服务器与 Discord 集成",
+    category: "增强类",
+    url: "https://www.spigotmc.org/resources/discordsrv.18494/",
+  },
+  {
+    name: "Vault",
+    desc: "经济/权限 API（需要配合经济插件使用）",
+    category: "经济系统",
+    url: "https://www.spigotmc.org/resources/vault.34315/",
+  },
+  {
+    name: "Shopkeepers",
+    desc: "商人 NPC 系统",
+    category: "经济系统",
+    url: "https://www.spigotmc.org/resources/shopkeepers.80756/",
+  },
+];
+
+/* ========== 使用教程 - 内存分配建议结构化数据 ========== */
+
+export interface MemorySuggestion {
+  players: string;
+  memory: string;
+  desc: string;
+}
+
+export const memorySuggestions: MemorySuggestion[] = [
+  { players: "1-5 人", memory: "2-4 GB", desc: "小型私人服务器，适合朋友间联机" },
+  { players: "5-15 人", memory: "4-6 GB", desc: "中小型社区服务器" },
+  { players: "15-30 人", memory: "6-8 GB", desc: "中型社区服务器" },
+  { players: "30+ 人", memory: "8 GB+", desc: "大型公开服务器" },
+];
+
+/* ========== 使用教程 - server.properties 常用配置结构化数据 ========== */
+
+export interface ConfigItem {
+  key: string;
+  desc: string;
+  default: string;
+}
+
+export const configItems: ConfigItem[] = [
+  { key: "server-port", desc: "服务器端口", default: "25565" },
+  { key: "max-players", desc: "最大玩家数", default: "20" },
+  { key: "difficulty", desc: "游戏难度", default: "easy" },
+  { key: "gamemode", desc: "默认游戏模式", default: "survival" },
+  { key: "motd", desc: "服务器简介（显示在服务器列表）", default: "A Minecraft Server" },
+  { key: "online-mode", desc: "正版验证", default: "true" },
+  { key: "pvp", desc: "是否允许 PVP", default: "true" },
+  { key: "white-list", desc: "是否启用白名单", default: "false" },
+];
+
+/* ========== 下载页结构化数据 ========== */
+
+export interface DownloadItem {
+  format: string;
+  desc: string;
+  url: string;
+}
+
+export interface DownloadPlatform {
+  name: string;
+  subtitle: string;
+  items: DownloadItem[];
+  notes?: string;
+}
+
+export const downloadPlatforms: DownloadPlatform[] = [
+  {
+    name: "Windows",
+    subtitle: "支持 Windows 10+ / Windows 11",
+    items: [
+      {
+        format: "exe 安装包",
+        desc: "推荐，双击安装",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_x64-setup.exe",
+      },
+      {
+        format: "msi 安装包",
+        desc: "Windows Installer 格式",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_x64_zh-CN.msi",
+      },
+      {
+        format: "exe 安装包 (ARM64)",
+        desc: "适用于 Windows on ARM",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_arm64-setup.exe",
+      },
+      {
+        format: "msi 安装包 (ARM64)",
+        desc: "Windows Installer (ARM64)",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_arm64_zh-CN.msi",
+      },
+    ],
+  },
+  {
+    name: "macOS",
+    subtitle: "macOS 10.15+",
+    items: [
+      {
+        format: "dmg (Apple Silicon)",
+        desc: "M1 / M2 / M3 / M4",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_aarch64.dmg",
+      },
+      {
+        format: "dmg (Intel)",
+        desc: "x64 架构",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_x64.dmg",
+      },
+      {
+        format: "app.tar.gz (Apple Silicon)",
+        desc: "便携压缩包",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_aarch64.app.tar.gz",
+      },
+      {
+        format: "app.tar.gz (Intel)",
+        desc: "便携压缩包",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_x64.app.tar.gz",
+      },
+    ],
+    notes:
+      "dmg 与 app.tar.gz 均未进行 Apple 签名/公证，macOS 可能提示「已损坏，无法打开」。需在终端执行 xattr 命令解除隔离。",
+  },
+  {
+    name: "Linux",
+    subtitle: "Debian / Fedora / Arch / 通用",
+    items: [
+      {
+        format: "deb",
+        desc: "Debian / Ubuntu",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_amd64.deb",
+      },
+      {
+        format: "deb (ARM64)",
+        desc: "Debian / Ubuntu ARM64",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_arm64.deb",
+      },
+      {
+        format: "rpm",
+        desc: "Fedora / RHEL (x86_64)",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern-1.3.0-1.x86_64.rpm",
+      },
+      {
+        format: "rpm (ARM64)",
+        desc: "Fedora / RHEL (aarch64)",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern-1.3.0-1.aarch64.rpm",
+      },
+      {
+        format: "AppImage",
+        desc: "通用格式",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_amd64.AppImage",
+      },
+      {
+        format: "AppImage (ARM64)",
+        desc: "通用格式 (ARM64)",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/Sea.Lantern_1.3.0_aarch64.AppImage",
+      },
+      {
+        format: "pkg.tar.zst",
+        desc: "Arch Linux 可安装包 (x86_64)",
+        url: "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.0/sealantern-1.3.0-1-x86_64.pkg.tar.zst",
+      },
+    ],
+    notes: "Arch Linux 用户可通过 AUR 安装: paru -S sealantern",
+  },
+];
+
+/* ========== 核心获取页结构化数据 ========== */
+
+export interface ServerType {
+  name: string;
+  desc: string;
+  url: string;
+  tags: string[];
+  pros: string[];
+  cons: string[];
+  pluginCompat: string;
+  modCompat: string;
+  performance: number;
+  recommendation: number;
+}
+
+export const serverTypes: ServerType[] = [
+  {
+    name: "Paper",
+    desc: "基于 Spigot 的高性能服务端，是目前最流行的选择。",
+    url: "https://papermc.io/downloads/paper",
+    tags: ["推荐", "高性能"],
+    pros: [
+      "性能远超原版和 Spigot，红石和生物 AI 有优化",
+      "社区活跃，插件兼容性好",
+      "自带反作弊和安全修补",
+      "更新速度快，新版本支持及时",
+    ],
+    cons: [],
+    pluginCompat: "Bukkit / Spigot / Paper",
+    modCompat: "不支持",
+    performance: 3,
+    recommendation: 3,
+  },
+  {
+    name: "Purpur",
+    desc: "基于 Paper 的分支，提供更多配置选项。",
+    url: "https://purpurmc.org/downloads",
+    tags: ["可定制"],
+    pros: ["继承 Paper 全部优势", "提供更多自定义配置选项"],
+    cons: ["配置项过多可能增加维护复杂度"],
+    pluginCompat: "Bukkit / Spigot / Paper",
+    modCompat: "不支持",
+    performance: 3,
+    recommendation: 2,
+  },
+  {
+    name: "Spigot",
+    desc: "老牌的插件服务端，Paper 的上游项目。",
+    url: "https://www.spigotmc.org/wiki/buildtools/",
+    tags: ["经典"],
+    pros: ["插件生态成熟"],
+    cons: ["不提供直接下载，需自行编译", "性能不如 Paper"],
+    pluginCompat: "Bukkit / Spigot",
+    modCompat: "不支持",
+    performance: 2,
+    recommendation: 2,
+  },
+  {
+    name: "Vanilla",
+    desc: "Mojang 官方提供的原版服务端。",
+    url: "https://www.minecraft.net/zh-hans/download/server",
+    tags: ["官方"],
+    pros: ["纯原版体验"],
+    cons: ["不支持插件和 Mod", "性能较低"],
+    pluginCompat: "不支持",
+    modCompat: "不支持",
+    performance: 1,
+    recommendation: 1,
+  },
+  {
+    name: "Forge",
+    desc: "老牌 Mod 服务端，用于运行 Java 版 Forge 端 Mod。",
+    url: "https://files.minecraftforge.net/",
+    tags: ["Mod"],
+    pros: ["Forge Mod 生态成熟"],
+    cons: ["不兼容 Bukkit/Spigot 插件"],
+    pluginCompat: "不支持",
+    modCompat: "Forge Mod",
+    performance: 2,
+    recommendation: 2,
+  },
+  {
+    name: "Fabric",
+    desc: "轻量级 Mod 加载器，启动速度快。",
+    url: "https://fabricmc.net/use/installer/",
+    tags: ["轻量"],
+    pros: ["启动速度快", "更新及时"],
+    cons: ["不兼容 Bukkit/Spigot 插件", "大部分 Mod 还需要 Fabric API"],
+    pluginCompat: "不支持",
+    modCompat: "Fabric Mod",
+    performance: 3,
+    recommendation: 2,
+  },
+  {
+    name: "Pumpkin",
+    desc: "基于 Rust 的新型服务器项目，实验性。",
+    url: "https://pumpkinmc.org/download/",
+    tags: ["实验性", "Rust"],
+    pros: ["性能极强"],
+    cons: ["生态兼容性是主要短板", "与传统 Bukkit/Paper 生态不同"],
+    pluginCompat: "与传统 Bukkit/Paper 生态不同",
+    modCompat: "不支持",
+    performance: 4,
+    recommendation: 2,
+  },
+];
+
+/* ========== 快速开始页结构化数据 ========== */
+
+export interface StepItem {
+  number: number;
+  title: string;
+  content: string;
+  detail?: string;
+}
+
+export const gettingStartedSteps: StepItem[] = [
+  {
+    number: 1,
+    title: "下载安装",
+    content: "获取适合你操作系统的安装包，双击运行即可完成安装。",
+    detail: "支持安装包和 AUR/PPA 等多种安装方式。",
+  },
+  {
+    number: 2,
+    title: "获取服务端核心",
+    content: "下载 Minecraft 服务端 JAR 文件，或导入已有服务器目录/启动脚本。",
+    detail: "推荐使用 Paper — 性能优秀、插件生态丰富。",
+  },
+  {
+    number: 3,
+    title: "配置 Java",
+    content: "软件会自动检测已安装的 Java，缺失时可一键下载安装。",
+    detail: "Minecraft 1.17+ 需要 Java 17，1.20.5+ 需要 Java 21。",
+  },
+  {
+    number: 4,
+    title: "创建服务器",
+    content: "按向导选择导入来源，完成启动方式检测，命名并确认参数。",
+    detail: "首次启动需要同意 Minecraft EULA。",
+  },
+  {
+    number: 5,
+    title: "启动服务器",
+    content: "点击启动按钮，等待控制台显示 Done! 即可连接游玩。",
+    detail: "在 Minecraft 中通过 localhost 连接到你的服务器。",
+  },
+];
