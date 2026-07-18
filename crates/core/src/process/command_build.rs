@@ -111,6 +111,7 @@ pub enum CommandBuildError {
     MissingEntryPath { mode: CommandBuildMode },
     MissingCustomCommand,
     InvalidJavaExecutablePath { path: PathBuf },
+    NonUnicodePath { field: &'static str, path: PathBuf },
     UnsupportedPlatform { mode: CommandBuildMode },
 }
 
@@ -127,6 +128,12 @@ impl fmt::Display for CommandBuildError {
             Self::InvalidJavaExecutablePath { path } => write!(
                 formatter,
                 "could not derive a Java environment from executable path {}",
+                path.display()
+            ),
+            Self::NonUnicodePath { field, path } => write!(
+                formatter,
+                "{} must be valid Unicode before it can be passed to cmd.exe: {}",
+                field,
                 path.display()
             ),
             Self::UnsupportedPlatform { mode } => {
@@ -209,7 +216,7 @@ fn build_batch_command(request: &CommandBuildRequest<'_>) -> Result<Command, Com
         script_path,
         request.windows_console_encoding,
         request.java_environment,
-    );
+    )?;
 
     let mut command = Command::new("cmd");
     command.args(["/d", "/c"]);
@@ -298,23 +305,39 @@ fn build_windows_batch_command_text(
     script_path: &Path,
     console_encoding: WindowsConsoleEncoding,
     java_environment: Option<&JavaEnvironment>,
-) -> String {
-    let script = escape_windows_cmd_argument(&script_path.to_string_lossy());
+) -> Result<String, CommandBuildError> {
+    let script =
+        escape_windows_cmd_argument(windows_command_path(script_path, "batch script path")?);
     let command_prefix = match java_environment {
         Some(java_environment) => format!(
             " & set \"JAVA_HOME={}\" & set \"PATH={};%PATH%\"",
-            escape_windows_cmd_argument(&java_environment.home.to_string_lossy()),
-            escape_windows_cmd_argument(&java_environment.bin.to_string_lossy()),
+            escape_windows_cmd_argument(windows_command_path(
+                &java_environment.home,
+                "JAVA_HOME path",
+            )?),
+            escape_windows_cmd_argument(windows_command_path(
+                &java_environment.bin,
+                "Java bin path"
+            )?),
         ),
         None => String::new(),
     };
 
-    format!(
+    Ok(format!(
         "chcp {}>nul{} & call \"{}\" nogui",
         console_encoding.code_page(),
         command_prefix,
         script,
-    )
+    ))
+}
+
+#[cfg(target_os = "windows")]
+fn windows_command_path<'a>(
+    path: &'a Path,
+    field: &'static str,
+) -> Result<&'a str, CommandBuildError> {
+    path.to_str()
+        .ok_or_else(|| CommandBuildError::NonUnicodePath { field, path: path.to_path_buf() })
 }
 
 #[cfg(target_os = "windows")]
@@ -352,6 +375,11 @@ mod tests {
     use std::ffi::OsString;
     use std::path::Path;
     use std::process::Command;
+
+    #[cfg(target_os = "windows")]
+    use std::os::windows::ffi::OsStringExt;
+    #[cfg(target_os = "windows")]
+    use std::path::PathBuf;
 
     use super::{
         apply_java_environment, build_command, CommandBuildError, CommandBuildMode,
@@ -532,6 +560,21 @@ mod tests {
             ]
         );
         assert!(environment(&command).is_empty());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn batch_command_rejects_a_non_unicode_script_path() {
+        let non_unicode_path = PathBuf::from(OsString::from_wide(&[0xD800]));
+        let mut request = CommandBuildRequest::new(CommandBuildMode::Batch, Path::new("server"));
+        request.entry_path = Some(&non_unicode_path);
+
+        let error = build_command(&request).expect_err("non-Unicode paths cannot form cmd text");
+
+        assert!(matches!(
+            error,
+            CommandBuildError::NonUnicodePath { field: "batch script path", .. }
+        ));
     }
 
     #[cfg(target_os = "windows")]
