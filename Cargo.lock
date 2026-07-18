@@ -5891,6 +5891,7 @@ name = "sealantern-core"
 version = "0.1.0"
 dependencies = [
  "tracing",
+ "zip",
 ]
 
 [[package]]
