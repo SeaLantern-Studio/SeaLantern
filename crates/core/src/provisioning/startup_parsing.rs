@@ -60,8 +60,8 @@ pub fn parse_startup_script_file(path: &Path) -> Result<StartupScriptInfo, Start
 
 /// Parses startup-script content without executing commands or expanding variables.
 pub fn parse_startup_script_content(kind: StartupScriptKind, content: &str) -> StartupScriptInfo {
-    let launches = content
-        .lines()
+    let launches = logical_script_lines(kind, content)
+        .iter()
         .flat_map(|line| split_command_segments(kind, line))
         .filter_map(|segment| parse_java_launch(&segment))
         .collect::<Vec<_>>();
@@ -73,6 +73,47 @@ pub fn parse_startup_script_content(kind: StartupScriptKind, content: &str) -> S
         launches,
         inferred_core,
         minecraft_version,
+    }
+}
+
+fn logical_script_lines(kind: StartupScriptKind, content: &str) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current = String::new();
+
+    for line in content.lines() {
+        let line = line.trim_end();
+        if let Some(line) = remove_continuation_marker(kind, line) {
+            current.push_str(line);
+            current.push(' ');
+            continue;
+        }
+
+        current.push_str(line);
+        lines.push(std::mem::take(&mut current));
+    }
+
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    lines
+}
+
+fn remove_continuation_marker(kind: StartupScriptKind, line: &str) -> Option<&str> {
+    let marker = match kind {
+        StartupScriptKind::Batch => '^',
+        StartupScriptKind::Shell => '\\',
+        StartupScriptKind::PowerShell => '`',
+    };
+    let marker_count = line
+        .chars()
+        .rev()
+        .take_while(|character| *character == marker)
+        .count();
+
+    if marker_count % 2 == 1 {
+        Some(&line[..line.len() - marker.len_utf8()])
+    } else {
+        None
     }
 }
 
@@ -324,6 +365,18 @@ mod tests {
     }
 
     #[test]
+    fn parses_a_multiline_batch_forge_launch() {
+        let content = "java -Xmx4G ^\n  @user_jvm_args.txt ^\n  @libraries/net/minecraftforge/forge/1.20.1-47.2.0/win_args.txt %*";
+
+        let parsed = parse_startup_script_content(StartupScriptKind::Batch, content);
+
+        assert_eq!(parsed.launches.len(), 1);
+        assert_eq!(parsed.inferred_core, CoreKind::Forge);
+        assert_eq!(parsed.launches[0].jvm_arguments, vec!["-Xmx4G"]);
+        assert_eq!(parsed.launches[0].argument_files.len(), 2);
+    }
+
+    #[test]
     fn parses_neoforge_argument_file_launches_before_forge() {
         let content = "java @libraries/net/neoforged/neoforge/1.21.1-21.1.96/win_args.txt";
 
@@ -344,5 +397,23 @@ mod tests {
             Some(PathBuf::from("server files/paper-1.21.1.jar"))
         );
         assert_eq!(parsed.inferred_core, CoreKind::Paper);
+    }
+
+    #[test]
+    fn parses_shell_and_powershell_line_continuations() {
+        let shell = parse_startup_script_content(
+            StartupScriptKind::Shell,
+            concat!("java -Xmx2G ", "\\", "\n", "             -jar paper-1.21.1.jar nogui"),
+        );
+        let powershell = parse_startup_script_content(
+            StartupScriptKind::PowerShell,
+            "java -Xmx2G `\n             -jar paper-1.21.1.jar nogui",
+        );
+
+        for parsed in [shell, powershell] {
+            assert_eq!(parsed.launches.len(), 1);
+            assert_eq!(parsed.launches[0].jvm_arguments, vec!["-Xmx2G"]);
+            assert_eq!(parsed.launches[0].jar_path, Some(PathBuf::from("paper-1.21.1.jar")));
+        }
     }
 }
