@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ChevronDown } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { i18n } from "@language";
 import { computed, ref, watch } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -135,22 +133,22 @@ function handleImageLoad() {
               </div>
               <div class="bg-preview-overlay">
                 <span class="bg-preview-path">{{ backgroundImage.split("\\").pop() }}</span>
-                <SLButton variant="danger" size="sm" @click="emit('clearImage')">{{
+                <cmz-button variant="solid" color="#ef4444" size="sm" @click="emit('clearImage')">{{
                   i18n.t("settings.remove")
-                }}</SLButton>
+                }}</cmz-button>
               </div>
             </div>
-            <SLButton v-else variant="secondary" @click="emit('pickImage')">
+            <cmz-button v-else variant="outline" @click="emit('pickImage')">
               {{ i18n.t("settings.pick_image") }}
-            </SLButton>
-            <SLButton
+            </cmz-button>
+            <cmz-button
               v-if="backgroundImage"
-              variant="secondary"
+              variant="outline"
               size="sm"
               @click="emit('pickImage')"
             >
               {{ i18n.t("settings.replace_image") }}
-            </SLButton>
+            </cmz-button>
           </div>
         </div>
 
@@ -217,7 +215,7 @@ function handleImageLoad() {
             <span class="setting-desc">{{ i18n.t("settings.background_size_desc") }}</span>
           </div>
           <div class="input-lg">
-            <SLSelect
+            <cmz-select
               :model-value="backgroundSize"
               :options="backgroundSizeOptions"
               @update:model-value="handleBackgroundSizeChange"

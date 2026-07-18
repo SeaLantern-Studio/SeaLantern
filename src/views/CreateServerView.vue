@@ -14,8 +14,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { useRouter } from "vue-router";
 import { FileUp } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
-import SLCard from "@components/common/SLCard.vue";
 import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
 import RunPathStep from "@components/views/create/RunPathStep.vue";
 import ServerStartupConfigStep from "@components/views/create/ServerStartupConfigStep.vue";
@@ -141,7 +139,7 @@ onBeforeUnmount(() => {
       <button class="create-error-close" @click="clearError">x</button>
     </div>
 
-    <SLCard class="create-stepper-card" :title="i18n.t('create.title')">
+    <cmz-card class="create-stepper-card" :title="i18n.t('create.title')">
       <StepperRoot
         orientation="vertical"
         :model-value="activeStep"
@@ -238,18 +236,17 @@ onBeforeUnmount(() => {
 
             <template v-else>
               <div class="create-submit-actions">
-                <SLButton variant="secondary" size="lg" @click="router.push('/')">
+                <cmz-button variant="outline" size="lg" @click="router.push('/')">
                   {{ i18n.t("create.cancel") }}
-                </SLButton>
-                <SLButton
-                  variant="primary"
+                </cmz-button>
+                <cmz-button
                   size="lg"
                   :loading="creating"
                   :disabled="!canSubmit || creating"
                   @click="handleSubmit"
                 >
                   {{ i18n.t("create.create") }}
-                </SLButton>
+                </cmz-button>
               </div>
             </template>
           </div>
@@ -257,7 +254,7 @@ onBeforeUnmount(() => {
           <StepperSeparator v-if="item.step < stepItems.length" class="create-stepper-separator" />
         </StepperItem>
       </StepperRoot>
-    </SLCard>
+    </cmz-card>
   </div>
 </template>
 

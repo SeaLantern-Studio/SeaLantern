@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { FolderOpen, Link, FileText, Cpu } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
 
 interface Props {
@@ -34,7 +32,7 @@ function handlePickFolder() {
   <div class="download-form">
     <div class="field">
       <label>{{ i18n.t("download-file.url") }}</label>
-      <SLInput
+      <cmz-input
         :model-value="url"
         type="text"
         :placeholder="i18n.t('download-file.url_placeholder')"
@@ -45,7 +43,7 @@ function handlePickFolder() {
         <template #prefix>
           <Link :size="16" class="input-icon" />
         </template>
-      </SLInput>
+      </cmz-input>
     </div>
 
     <div class="field">
@@ -65,20 +63,20 @@ function handlePickFolder() {
             {{ savePath.replace(/\\/g, "/") || i18n.t("download-file.select_folder") }}
           </div>
         </div>
-        <SLButton
-          variant="secondary"
+        <cmz-button
+          variant="outline"
           size="sm"
           :disabled="isDownloading"
           @click.stop="handlePickFolder"
         >
           {{ i18n.t("download-file.pick_folder") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
 
     <div class="field">
       <label>{{ i18n.t("download-file.filename") }}</label>
-      <SLInput
+      <cmz-input
         :model-value="filename"
         type="text"
         :placeholder="i18n.t('download-file.filename_placeholder')"
@@ -88,12 +86,12 @@ function handlePickFolder() {
         <template #prefix>
           <FileText :size="16" class="input-icon" />
         </template>
-      </SLInput>
+      </cmz-input>
     </div>
 
     <div class="field">
       <label>{{ i18n.t("download-file.thread_count") }}</label>
-      <SLInput
+      <cmz-input
         :model-value="threadCount"
         type="text"
         placeholder="32"
@@ -104,7 +102,7 @@ function handlePickFolder() {
         <template #prefix>
           <Cpu :size="16" class="input-icon" />
         </template>
-      </SLInput>
+      </cmz-input>
     </div>
   </div>
 </template>

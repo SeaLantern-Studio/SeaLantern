@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { i18n } from "@language";
-import { SLTabBar } from "@components/common";
 import PluginsView from "@components/views/plugins/PluginsView.vue";
 import MarketView from "@components/views/plugins/MarketView.vue";
 
@@ -47,7 +46,7 @@ watch(
 <template>
   <div class="plugins-page animate-stagger-in">
     <div class="plugins-page-layout">
-      <SLTabBar
+      <cmz-tab-bar
         v-model="activeTab"
         :tabs="tabs"
         :level="1"

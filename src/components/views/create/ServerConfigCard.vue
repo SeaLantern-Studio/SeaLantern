@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SLCard from "@components/common/SLCard.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
 import { i18n } from "@language";
 
 const props = defineProps<{
@@ -30,10 +27,10 @@ function handleNumberInput(e: Event, type: "maxMemory" | "minMemory" | "port") {
 </script>
 
 <template>
-  <SLCard :title="i18n.t('create.title')">
+  <cmz-card :title="i18n.t('create.title')">
     <div class="form-grid">
       <div class="server-name-row">
-        <SLInput
+        <cmz-input
           :label="i18n.t('create.server_name')"
           :placeholder="i18n.t('create.server_name')"
           :model-value="serverName"
@@ -41,19 +38,19 @@ function handleNumberInput(e: Event, type: "maxMemory" | "minMemory" | "port") {
         />
       </div>
 
-      <SLInput
+      <cmz-input
         :label="i18n.t('create.max_memory')"
         type="text"
         :model-value="maxMemory"
         @input="handleNumberInput($event, 'maxMemory')"
       />
-      <SLInput
+      <cmz-input
         :label="i18n.t('create.min_memory')"
         type="text"
         :model-value="minMemory"
         @input="handleNumberInput($event, 'minMemory')"
       />
-      <SLInput
+      <cmz-input
         :label="i18n.t('settings.default_port')"
         type="text"
         :model-value="port"
@@ -66,7 +63,7 @@ function handleNumberInput(e: Event, type: "maxMemory" | "minMemory" | "port") {
           <span class="online-mode-text">{{
             onlineMode ? i18n.t("create.online_mode_on") : i18n.t("create.online_mode_off")
           }}</span>
-          <SLSwitch
+          <cmz-switch
             :model-value="onlineMode"
             @update:model-value="$emit('update:onlineMode', $event)"
           />
@@ -77,7 +74,7 @@ function handleNumberInput(e: Event, type: "maxMemory" | "minMemory" | "port") {
       <span class="file-hint-icon">i</span>
       <span class="file-hint-text">{{ i18n.t("create.file_hint") }}</span>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>

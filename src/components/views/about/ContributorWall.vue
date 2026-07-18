@@ -2,7 +2,6 @@
 import { ref, computed } from "vue";
 import { AvatarImage, AvatarRoot, AvatarFallback } from "reka-ui";
 import { Plus, Link, ExternalLink, Check } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
 import BrandIcon from "@components/common/BrandIcon.vue";
 import { contributors as contributorsList, type SocialLinks } from "@data/contributors";
 import { i18n } from "@language";
@@ -175,9 +174,9 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
     </div>
 
     <div v-if="hasMore" class="load-more-section">
-      <SLButton variant="ghost" @click="loadMore">
+      <cmz-button variant="ghost" @click="loadMore">
         {{ i18n.t("about.load_more") }} ({{ contributors.length - displayedContributors.length }})
-      </SLButton>
+      </cmz-button>
     </div>
   </div>
 </template>

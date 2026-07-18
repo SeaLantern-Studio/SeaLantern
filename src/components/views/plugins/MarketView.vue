@@ -10,8 +10,6 @@ import {
 import type { MarketPluginInfo } from "@api/plugin";
 import { i18n } from "@language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
-import SLCard from "@components/common/SLCard.vue";
-import { SLTabBar, type TabBarItem } from "@components/common";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
@@ -308,7 +306,7 @@ onMounted(() => {
       </button>
     </div>
 
-    <SLTabBar
+    <cmz-tab-bar
       v-if="allTags.length"
       v-model="selectedTag"
       :tabs="[
@@ -341,7 +339,7 @@ onMounted(() => {
           <RefreshCw :size="14" :class="{ spin: loading }" />
         </button>
       </template>
-    </SLTabBar>
+    </cmz-tab-bar>
 
     <div v-if="loading" class="market-loading">
       <div class="loading-spinner"></div>
@@ -364,10 +362,11 @@ onMounted(() => {
     </div>
 
     <div v-else class="market-grid">
-      <SLCard
+      <cmz-card
         v-for="plugin in filteredPlugins"
         :key="plugin.id"
         class="market-card"
+        hoverable
         @click="showDetail(plugin)"
       >
         <div class="card-icon">
@@ -414,7 +413,7 @@ onMounted(() => {
             </button>
           </div>
         </div>
-      </SLCard>
+      </cmz-card>
     </div>
 
     <Teleport to="body">

@@ -12,15 +12,6 @@ import {
   DialogRoot,
   DialogTitle,
 } from "reka-ui";
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLModal from "@components/common/SLModal.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLCheckbox from "@components/common/SLCheckbox.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLSelect from "@components/common/SLSelect.vue";
-import SLMenu from "@components/common/SLMenu.vue";
-import SLDropzone from "@components/common/SLDropzone.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -833,29 +824,29 @@ function goToMarket() {
         />
       </div>
       <div class="toolbar-right">
-        <SLButton :variant="batchMode ? 'primary' : 'secondary'" size="sm" @click="toggleBatchMode">
+        <cmz-button :variant="batchMode ? 'primary' : 'secondary'" size="sm" @click="toggleBatchMode">
           {{ i18n.t("plugins.batch_mode") }}
-        </SLButton>
-        <SLButton
+        </cmz-button>
+        <cmz-button
           variant="secondary"
           size="sm"
           :loading="checkingAllUpdates"
           @click="handleCheckAllUpdates"
         >
           {{ i18n.t("plugins.check_updates") }}
-        </SLButton>
-        <SLButton
+        </cmz-button>
+        <cmz-button
           variant="secondary"
           size="sm"
           :loading="pluginStore.loading"
           @click="handleRefresh"
         >
           {{ i18n.t("plugins.refresh") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
 
-    <SLDropzone
+    <cmz-dropzone
       class="plugins-dropzone"
       :is-dragging="isDragging"
       :loading="isInstalling"
@@ -870,7 +861,7 @@ function goToMarket() {
       <template #icon>
         <Upload :size="24" :stroke-width="1.5" />
       </template>
-    </SLDropzone>
+    </cmz-dropzone>
 
     <DialogRoot v-model:open="chooserOpen">
       <DialogPortal>
@@ -892,11 +883,11 @@ function goToMarket() {
             {{ i18n.t("plugins.choose_description") }}
           </DialogDescription>
           <div class="plugin-chooser-actions">
-            <SLButton variant="primary" size="lg" class="plugin-chooser-option" @click="pickFile">
+            <cmz-button variant="primary" size="lg" class="plugin-chooser-option" @click="pickFile">
               <File :size="22" />
               <span>{{ i18n.t("plugins.select_file") }}</span>
-            </SLButton>
-            <SLButton
+            </cmz-button>
+            <cmz-button
               variant="secondary"
               size="lg"
               class="plugin-chooser-option"
@@ -904,7 +895,7 @@ function goToMarket() {
             >
               <Folder :size="22" />
               <span>{{ i18n.t("plugins.select_folder") }}</span>
-            </SLButton>
+            </cmz-button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -936,27 +927,27 @@ function goToMarket() {
           }}</span>
         </div>
         <div class="batch-action-right">
-          <SLButton variant="secondary" size="sm" @click="selectAll">
+          <cmz-button variant="secondary" size="sm" @click="selectAll">
             {{ i18n.t("plugins.select_all") }}
-          </SLButton>
-          <SLButton variant="secondary" size="sm" @click="invertSelection">
+          </cmz-button>
+          <cmz-button variant="secondary" size="sm" @click="invertSelection">
             {{ i18n.t("plugins.invert_selection") }}
-          </SLButton>
-          <SLButton variant="secondary" size="sm" @click="deselectAll">
+          </cmz-button>
+          <cmz-button variant="secondary" size="sm" @click="deselectAll">
             {{ i18n.t("plugins.deselect_all") }}
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             variant="danger"
             size="sm"
             :disabled="selectedPlugins.size === 0"
             @click="showBatchDeleteConfirm"
           >
             {{ i18n.t("plugins.batch_delete") }}
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
       <div class="plugin-grid">
-        <SLCard
+        <cmz-card
           v-for="plugin in filteredPlugins"
           :key="plugin.manifest.id"
           class="plugin-card"
@@ -964,7 +955,8 @@ function goToMarket() {
         >
           <div class="plugin-content">
             <label v-if="batchMode" class="plugin-checkbox" @click.stop>
-              <SLCheckbox
+              <cmz-toggle
+                variant="checkbox"
                 :modelValue="selectedPlugins.has(plugin.manifest.id)"
                 @update:modelValue="togglePluginSelection(plugin.manifest.id)"
               />
@@ -1002,9 +994,9 @@ function goToMarket() {
                 position="bottom-end"
                 @select="handleMenuSelect($event, plugin.manifest.id)"
               >
-                <SLButton variant="ghost" icon-only size="sm">
+                <cmz-button variant="ghost" icon-only size="sm">
                   <MoreVertical :size="16" />
-                </SLButton>
+                </cmz-button>
               </SLMenu>
             </div>
             <div class="plugin-main">
@@ -1029,7 +1021,7 @@ function goToMarket() {
                     <span v-if="plugin.manifest.author" class="plugin-author">
                       by {{ plugin.manifest.author.name }}
                     </span>
-                    <SLButton
+                    <cmz-button
                       v-if="plugin.manifest.repository"
                       variant="ghost"
                       icon-only
@@ -1038,7 +1030,7 @@ function goToMarket() {
                       :title="i18n.t('plugins.open_repository')"
                     >
                       <Github :size="14" />
-                    </SLButton>
+                    </cmz-button>
                   </div>
                 </div>
                 <p v-if="plugin.manifest.description" class="plugin-description">
@@ -1066,7 +1058,7 @@ function goToMarket() {
                 {{ getStatusLabel(plugin.state) }}
               </span>
               <div class="plugin-actions">
-                <SLButton
+                <cmz-button
                   v-if="hasSettings(plugin)"
                   variant="ghost"
                   icon-only
@@ -1075,9 +1067,10 @@ function goToMarket() {
                   :title="i18n.t('plugins.settings')"
                 >
                   <Settings :size="16" />
-                </SLButton>
-                <SLSwitch
+                </cmz-button>
+                <cmz-toggle
                   v-if="!safeMode"
+                  variant="switch"
                   :modelValue="isPluginEnabled(plugin.state)"
                   :disabled="
                     hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
@@ -1098,7 +1091,7 @@ function goToMarket() {
               </div>
             </div>
           </div>
-        </SLCard>
+        </cmz-card>
       </div>
     </div>
 
@@ -1109,9 +1102,9 @@ function goToMarket() {
             <h2 class="modal-title">
               {{ i18n.t("plugins.settings_title", { name: currentSettingsPlugin?.manifest.name }) }}
             </h2>
-            <SLButton variant="ghost" icon-only class="modal-close" @click="closeSettings">
+            <cmz-button variant="ghost" icon-only class="modal-close" @click="closeSettings">
               <X :size="20" />
-            </SLButton>
+            </cmz-button>
           </div>
           <div class="modal-body">
             <div
@@ -1123,28 +1116,29 @@ function goToMarket() {
                 {{ field.label }}
                 <span v-if="field.description" class="setting-desc">{{ field.description }}</span>
               </label>
-              <SLInput v-if="field.type === 'string'" v-model="settingsForm[field.key]" />
+              <cmz-input v-if="field.type === 'string'" v-model="settingsForm[field.key]" />
               <div v-else-if="field.type === 'color'" class="setting-color-field">
                 <input
                   type="color"
                   v-model="settingsForm[field.key]"
                   class="setting-color-picker"
                 />
-                <SLInput v-model="settingsForm[field.key]" />
+                <cmz-input v-model="settingsForm[field.key]" />
               </div>
-              <SLInput
+              <cmz-input
                 v-else-if="field.type === 'number'"
                 v-model="settingsForm[field.key]"
                 type="number"
               />
               <label v-else-if="field.type === 'boolean'" class="setting-toggle">
-                <SLSwitch
+                <cmz-toggle
+                  variant="switch"
                   :modelValue="Boolean(settingsForm[field.key])"
                   @update:modelValue="settingsForm[field.key] = $event"
                   size="sm"
                 />
               </label>
-              <SLSelect
+              <cmz-select
                 v-else-if="field.type === 'select'"
                 v-model="settingsForm[field.key]"
                 :options="field.options || []"
@@ -1242,30 +1236,30 @@ function goToMarket() {
             </div>
           </div>
           <div class="modal-footer">
-            <SLButton variant="secondary" size="sm" @click="closeSettings">{{
+            <cmz-button variant="secondary" size="sm" @click="closeSettings">{{
               i18n.t("plugins.cancel")
-            }}</SLButton>
-            <SLButton variant="primary" size="sm" :loading="savingSettings" @click="saveSettings">{{
+            }}</cmz-button>
+            <cmz-button variant="primary" size="sm" :loading="savingSettings" @click="saveSettings">{{
               i18n.t("plugins.save")
-            }}</SLButton>
+            }}</cmz-button>
           </div>
         </div>
       </div>
     </Teleport>
 
-    <SLModal :visible="confirmDialog.show" :title="confirmDialog.title" @close="closeConfirmDialog">
+    <cmz-modal :visible="confirmDialog.show" :title="confirmDialog.title" @close="closeConfirmDialog">
       <p class="dialog-message">{{ confirmDialog.message }}</p>
       <template #footer>
-        <SLButton variant="secondary" size="sm" @click="closeConfirmDialog">{{
+        <cmz-button variant="secondary" size="sm" @click="closeConfirmDialog">{{
           i18n.t("plugins.cancel")
-        }}</SLButton>
-        <SLButton variant="danger" size="sm" @click="executeConfirmDialog">{{
+        }}</cmz-button>
+        <cmz-button variant="danger" size="sm" @click="executeConfirmDialog">{{
           i18n.t("plugins.delete")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
-    <SLModal
+    <cmz-modal
       :visible="showSingleDeleteDialog"
       :title="i18n.t('plugins.confirm_delete')"
       @close="showSingleDeleteDialog = false"
@@ -1275,32 +1269,32 @@ function goToMarket() {
           {{ i18n.t("plugins.confirm_delete_message", { name: singleDeletePluginName }) }}
         </p>
         <div class="batch-delete-options">
-          <SLButton
+          <cmz-button
             variant="secondary"
             class="batch-delete-option"
             @click="executeSingleDelete(true)"
           >
             <Trash2 class="option-icon delete-with-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_with_data") }}</span>
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             variant="secondary"
             class="batch-delete-option"
             @click="executeSingleDelete(false)"
           >
             <Trash class="option-icon delete-without-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_without_data") }}</span>
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
       <template #footer>
-        <SLButton variant="secondary" size="sm" @click="showSingleDeleteDialog = false">{{
+        <cmz-button variant="secondary" size="sm" @click="showSingleDeleteDialog = false">{{
           i18n.t("plugins.cancel")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
-    <SLModal
+    <cmz-modal
       :visible="showBatchDeleteDialog"
       :title="i18n.t('plugins.confirm_batch_delete')"
       @close="showBatchDeleteDialog = false"
@@ -1310,32 +1304,32 @@ function goToMarket() {
           {{ i18n.t("plugins.confirm_batch_delete_message", { count: selectedPlugins.size }) }}
         </p>
         <div class="batch-delete-options">
-          <SLButton
+          <cmz-button
             variant="secondary"
             class="batch-delete-option"
             @click="executeBatchDelete(true)"
           >
             <Trash2 class="option-icon delete-with-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_with_data") }}</span>
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             variant="secondary"
             class="batch-delete-option"
             @click="executeBatchDelete(false)"
           >
             <Trash class="option-icon delete-without-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_without_data") }}</span>
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
       <template #footer>
-        <SLButton variant="secondary" size="sm" @click="showBatchDeleteDialog = false">{{
+        <cmz-button variant="secondary" size="sm" @click="showBatchDeleteDialog = false">{{
           i18n.t("plugins.cancel")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
-    <SLModal
+    <cmz-modal
       :visible="alertDialog.show"
       :title="alertDialog.title"
       :auto-close="3000"
@@ -1343,11 +1337,11 @@ function goToMarket() {
     >
       <p class="dialog-message">{{ alertDialog.message }}</p>
       <template #footer>
-        <SLButton variant="primary" size="sm" @click="closeAlertDialog">{{
+        <cmz-button variant="primary" size="sm" @click="closeAlertDialog">{{
           i18n.t("plugins.ok")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
     <SLPermissionDialog
       :show="permissionWarning.show"
@@ -1357,7 +1351,7 @@ function goToMarket() {
       @cancel="cancelPermissionWarning"
     />
 
-    <SLModal
+    <cmz-modal
       :visible="showDependencyModal"
       :title="i18n.t('plugins.missing_deps_title')"
       @close="showDependencyModal = false"
@@ -1382,16 +1376,16 @@ function goToMarket() {
         </p>
       </div>
       <template #footer>
-        <SLButton variant="secondary" size="sm" @click="showDependencyModal = false">{{
+        <cmz-button variant="secondary" size="sm" @click="showDependencyModal = false">{{
           i18n.t("plugins.later")
-        }}</SLButton>
-        <SLButton variant="primary" size="sm" @click="goToMarket">{{
+        }}</cmz-button>
+        <cmz-button variant="primary" size="sm" @click="goToMarket">{{
           i18n.t("plugins.go_market")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
-    <SLModal
+    <cmz-modal
       :visible="showBatchResultModal"
       :title="i18n.t('plugins.batch_result_title')"
       @close="showBatchResultModal = false"
@@ -1429,11 +1423,11 @@ function goToMarket() {
         </div>
       </div>
       <template #footer>
-        <SLButton variant="primary" size="sm" @click="showBatchResultModal = false">{{
+        <cmz-button variant="primary" size="sm" @click="showBatchResultModal = false">{{
           i18n.t("plugins.ok")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
   </div>
 </template>
 
@@ -1500,18 +1494,18 @@ function goToMarket() {
   margin-bottom: var(--sl-space-md);
 }
 
-.plugins-dropzone :deep(.sl-dropzone) {
+.plugins-dropzone :deep(.cmz-dropzone) {
   justify-content: center;
   flex-direction: column;
   padding: var(--sl-space-lg);
 }
 
-.plugins-dropzone :deep(.sl-dropzone-content) {
+.plugins-dropzone :deep(.cmz-dropzone-content) {
   align-items: center;
   text-align: center;
 }
 
-.plugins-dropzone :deep(.sl-dropzone-title) {
+.plugins-dropzone :deep(.cmz-dropzone-title) {
   text-align: center;
 }
 

@@ -5,7 +5,6 @@ import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import SLSelect from "@components/common/SLSelect.vue";
 import {
   Home,
   Plus,
@@ -481,7 +480,7 @@ function getAppName() {
     </div>
     <nav class="sidebar-nav">
       <div class="nav-active-indicator" ref="navIndicator"></div>
-      <SLSelect
+      <cmz-select
         v-if="serverOptions.length > 0"
         v-model="currentServerRef"
         :options="serverOptions"

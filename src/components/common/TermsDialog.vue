@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { useAboutLinks } from "@composables/useAboutLinks";
 import { i18n } from "@language";
-import SLButton from "./SLButton.vue";
-import SLModal from "./SLModal.vue";
 
 interface Props {
   visible: boolean;
@@ -28,7 +26,7 @@ function handleOpenTerms() {
 </script>
 
 <template>
-  <SLModal
+  <cmz-modal
     :visible="visible"
     :title="i18n.t('terms.title')"
     :close-on-overlay="false"
@@ -46,12 +44,12 @@ function handleOpenTerms() {
     </div>
     <template #footer>
       <div class="terms-actions">
-        <SLButton variant="primary" @click="handleAgree" style="width: 100%">
+        <cmz-button @click="handleAgree" style="width: 100%">
           {{ i18n.t("terms.agree") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </template>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>

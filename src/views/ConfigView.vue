@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
-import SLButton from "@components/common/SLButton.vue";
-import SLModal from "@components/common/SLModal.vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
-import SLTooltip from "@components/common/SLTooltip.vue";
-import { SLTabBar } from "@components/common";
 import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import { FileDiff, RefreshCw, Save } from "lucide-vue-next";
@@ -218,22 +214,22 @@ onActivated(async () => {
   <div class="config-view animate-stagger-in">
     <div class="config-layout">
       <div class="config-tabbar-sticky">
-        <SLTabBar v-model="activeTab" :tabs="configTabs" :level="1" vertical />
+        <cmz-tab-bar v-model="activeTab" :tabs="configTabs" :level="1" vertical />
       </div>
       <div class="config-main">
         <div class="config-header">
           <div v-if="activeTab === 'properties'" class="config-properties-header-actions">
-            <SLButton
+            <cmz-button
               v-if="compare.hasCompareTargets.value"
               size="sm"
-              :variant="compare.compareMode.value ? 'primary' : 'secondary'"
+              :variant="compare.compareMode.value ? '' : 'outline'"
               class="config-compare-toggle"
               @click="compare.handleCompareModeChange(!compare.compareMode.value)"
             >
               <FileDiff :size="16" />
               {{ i18n.t("config.compare.toggle") }}
-            </SLButton>
-            <SLTabBar
+            </cmz-button>
+            <cmz-tab-bar
               class="config-editor-mode-bar"
               :modelValue="propertiesEditor.editorMode.value"
               :tabs="editorModeTabs"
@@ -334,7 +330,7 @@ onActivated(async () => {
             "
           />
 
-          <SLModal
+          <cmz-modal
             :visible="propertiesEditor.showSaveDiffModal.value"
             :title="i18n.t('config.diff_modal_title')"
             :width="configSaveDiffModalWidth"
@@ -348,9 +344,9 @@ onActivated(async () => {
             >
               <div class="source-diff-title-row text-caption">
                 <span class="source-diff-server">{{ diffItem.serverName }}</span>
-                <SLTooltip :content="diffItem.filePath">
+                <cmz-tooltip :content="diffItem.filePath">
                   <span class="source-diff-path-hint">i</span>
-                </SLTooltip>
+                </cmz-tooltip>
                 <span
                   >{{ i18n.t("config.diff_original") }} →
                   {{ i18n.t("config.diff_after_save") }}</span
@@ -365,23 +361,22 @@ onActivated(async () => {
             </div>
             <template #footer>
               <div class="diff-modal-actions">
-                <SLButton
-                  variant="secondary"
+                <cmz-button
+                  variant="outline"
                   :disabled="propertiesEditor.saving.value"
                   @click="propertiesEditor.closeSaveDiffModal"
                 >
                   {{ i18n.t("common.cancel") }}
-                </SLButton>
-                <SLButton
-                  variant="primary"
+                </cmz-button>
+                <cmz-button
                   :loading="propertiesEditor.saving.value"
                   @click="propertiesEditor.confirmSaveProperties"
                 >
                   {{ i18n.t("config.confirm_save") }}
-                </SLButton>
+                </cmz-button>
               </div>
             </template>
-          </SLModal>
+          </cmz-modal>
         </template>
 
         <div
@@ -395,23 +390,23 @@ onActivated(async () => {
             </div>
           </div>
           <div class="floating-actions-group">
-            <SLTooltip :content="propertiesEditor.reloadCurrentTooltipText.value">
-              <SLButton
-                variant="secondary"
+            <cmz-tooltip :content="propertiesEditor.reloadCurrentTooltipText.value">
+              <cmz-button
+                variant="outline"
                 size="sm"
                 iconOnly
                 class="config-floating-icon-btn"
                 @click="propertiesEditor.reloadPropertiesWithGuard"
               >
                 <RefreshCw :size="16" />
-              </SLButton>
-            </SLTooltip>
-            <SLTooltip
+              </cmz-button>
+            </cmz-tooltip>
+            <cmz-tooltip
               v-if="compare.compareMode.value"
               :content="propertiesEditor.reloadCompareTooltipText.value"
             >
-              <SLButton
-                variant="secondary"
+              <cmz-button
+                variant="outline"
                 size="sm"
                 iconOnly
                 class="config-floating-icon-btn"
@@ -420,10 +415,9 @@ onActivated(async () => {
                 @click="propertiesEditor.reloadComparePropertiesWithGuard"
               >
                 <RefreshCw :size="16" />
-              </SLButton>
-            </SLTooltip>
-            <SLButton
-              variant="primary"
+              </cmz-button>
+            </cmz-tooltip>
+            <cmz-button
               size="sm"
               iconOnly
               class="config-floating-icon-btn"
@@ -445,7 +439,7 @@ onActivated(async () => {
               >
                 <Save :size="16" />
               </span>
-            </SLButton>
+            </cmz-button>
           </div>
         </div>
       </div>

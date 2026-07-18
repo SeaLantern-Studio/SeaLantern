@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { Menu, Gauge } from "lucide-vue-next";
-import SLCard from "@components/common/SLCard.vue";
-import SLProgress from "@components/common/SLProgress.vue";
 import { i18n } from "@language";
 import {
   systemInfo,
@@ -24,7 +22,7 @@ function toggleViewMode() {
 </script>
 
 <template>
-  <SLCard variant="solid" class="stats-card">
+  <cmz-card class="stats-card">
     <template #header>
       <div class="stats-card-header">
         <span class="card-title">{{ i18n.t("home.system_resources") }}</span>
@@ -136,10 +134,10 @@ function toggleViewMode() {
           </span>
           <span class="stat-value">{{ diskUsage }}%</span>
         </div>
-        <SLProgress :value="diskUsage" variant="warning" :showPercent="false" />
+        <cmz-progress :value="diskUsage" color="#f59e0b" :showPercent="false" />
       </div>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>

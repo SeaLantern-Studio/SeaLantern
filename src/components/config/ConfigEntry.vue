@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import SLInput from "@components/common/SLInput.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLBadge from "@components/common/SLBadge.vue";
 import type { ConfigEntry } from "@api/config";
 
 interface Props {
@@ -33,15 +30,15 @@ function isBooleanType(entry: ConfigEntry): boolean {
   <div class="config-entry">
     <div class="entry-header">
       <div class="entry-key">{{ entry.key }}</div>
-      <SLBadge variant="outline" size="sm" class="entry-category">{{ entry.category }}</SLBadge>
+      <cmz-badge variant="outline" size="sm" class="entry-category">{{ entry.category }}</cmz-badge>
     </div>
     <div class="entry-description">{{ entry.description }}</div>
     <div class="entry-value">
       <template v-if="isBooleanType(entry)">
-        <SLSwitch :modelValue="value === 'true'" @update:modelValue="handleSwitchChange" />
+        <cmz-switch :modelValue="value === 'true'" @update:modelValue="handleSwitchChange" />
       </template>
       <template v-else>
-        <SLInput
+        <cmz-input
           :modelValue="value"
           @update:modelValue="handleValueChange"
           :placeholder="entry.default"

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import SLModal from "@components/common/SLModal.vue";
-import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 import { type PermissionMetadata, groupPermissionsByDangerLevel } from "@type/plugin";
 import {
@@ -72,7 +70,7 @@ function handleCancel() {
 </script>
 
 <template>
-  <SLModal :visible="show" @close="handleCancel">
+  <cmz-modal :visible="show" @close="handleCancel">
     <div class="permission-dialog">
       <div class="dialog-header" :class="{ critical: hasCritical }">
         <div class="header-icon" :class="{ critical: hasCritical }">
@@ -139,15 +137,15 @@ function handleCancel() {
       </div>
 
       <div class="dialog-actions">
-        <SLButton variant="secondary" @click="handleCancel">
+        <cmz-button variant="outline" @click="handleCancel">
           {{ i18n.t("plugins.permission.warning_cancel") }}
-        </SLButton>
-        <SLButton :variant="hasCritical ? 'danger' : 'primary'" @click="handleConfirm">
+        </cmz-button>
+        <cmz-button :variant="hasCritical ? 'solid' : 'primary'" :color="hasCritical ? '#ef4444' : undefined" @click="handleConfirm">
           {{ i18n.t("plugins.permission.warning_confirm") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>

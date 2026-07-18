@@ -9,9 +9,6 @@ import {
   DialogTitle,
 } from "reka-ui";
 import { File, Folder, Plus, X, Upload } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
-import SLDropzone from "@components/common/SLDropzone.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { systemApi } from "@api/system";
 import { downloadServerApi } from "@api/downloader";
 import { i18n } from "@language";
@@ -197,7 +194,7 @@ onMounted(async () => {
   <div class="source-intake-step">
     <!-- 已选择本地文件时：显示文件名+清除按钮 -->
     <template v-if="hasLocalSource">
-      <SLDropzone
+      <cmz-dropzone
         :model-value="sourcePath"
         :label="selectedName"
         :badge="sourceTypeText"
@@ -212,7 +209,7 @@ onMounted(async () => {
         <template #icon>
           <Plus :size="20" stroke-width="2.5" />
         </template>
-      </SLDropzone>
+      </cmz-dropzone>
     </template>
 
     <!-- 未选择本地文件时：显示服务端选择器 -->
@@ -221,7 +218,7 @@ onMounted(async () => {
         <div class="server-download-row">
           <div class="server-download-field">
             <label>{{ i18n.t("downloadServerView.form.type") }}</label>
-            <SLSelect
+            <cmz-select
               :model-value="selectedType"
               :options="serverTypeOptions"
               :placeholder="i18n.t('downloadServerView.form.typePlaceholder')"
@@ -234,7 +231,7 @@ onMounted(async () => {
           </div>
           <div class="server-download-field">
             <label>{{ i18n.t("downloadServerView.form.version") }}</label>
-            <SLSelect
+            <cmz-select
               :model-value="selectedVersion"
               :options="versionOptions"
               :placeholder="i18n.t('downloadServerView.form.versionPlaceholder')"
@@ -276,19 +273,19 @@ onMounted(async () => {
             {{ i18n.t("create.source_choose_description_file") }}
           </DialogDescription>
           <div class="source-chooser-actions">
-            <SLButton variant="primary" size="lg" class="source-chooser-option" @click="pickFile">
+            <cmz-button size="lg" class="source-chooser-option" @click="pickFile">
               <File :size="22" />
               <span>{{ i18n.t("create.source_pick_file") }}</span>
-            </SLButton>
-            <SLButton
-              variant="secondary"
+            </cmz-button>
+            <cmz-button
+              variant="outline"
               size="lg"
               class="source-chooser-option"
               @click="pickFolder"
             >
               <Folder :size="22" />
               <span>{{ i18n.t("create.source_pick_folder") }}</span>
-            </SLButton>
+            </cmz-button>
           </div>
         </DialogContent>
       </DialogPortal>

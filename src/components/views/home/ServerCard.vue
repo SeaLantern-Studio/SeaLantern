@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { Pencil, FolderOpen, Check, X } from "lucide-vue-next";
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
 import type { ServerInstance } from "@type/server";
 import { i18n } from "@language";
 import { systemApi } from "@api/system";
@@ -66,7 +64,7 @@ function getStatusClass(status: string | undefined): string {
 </script>
 
 <template>
-  <SLCard variant="glass" hoverable class="server-card">
+  <cmz-card variant="glass" hoverable class="server-card">
     <div class="status-badge-container">
       <div class="status-indicator" :class="getStatusClass(store.statuses[server.id]?.status)">
         <span class="status-dot"></span>
@@ -134,45 +132,45 @@ function getStatusClass(status: string | undefined): string {
 
     <div class="server-card-actions">
       <div class="action-group primary-actions">
-        <SLButton
+        <cmz-button
           v-if="
             store.statuses[server.id]?.status === 'Stopped' ||
             store.statuses[server.id]?.status === 'Error' ||
             !store.statuses[server.id]?.status
           "
-          variant="primary"
           size="sm"
           :loading="actionLoading[server.id]"
           :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
           @click="handleStart(server.id)"
-          >{{ i18n.t("home.start") }}</SLButton
+          >{{ i18n.t("home.start") }}</cmz-button
         >
-        <SLButton
+        <cmz-button
           v-else
-          variant="danger"
+          variant="solid"
+          color="#ef4444"
           size="sm"
           :loading="actionLoading[server.id]"
           :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
           @click="handleStop(server.id)"
-          >{{ i18n.t("home.stop") }}</SLButton
+          >{{ i18n.t("home.stop") }}</cmz-button
         >
       </div>
       <div class="action-group secondary-actions">
-        <SLButton variant="ghost" size="sm" @click="handleConsole">
+        <cmz-button variant="ghost" size="sm" @click="handleConsole">
           {{ i18n.t("common.console") }}
-        </SLButton>
-        <SLButton variant="ghost" size="sm" @click="handleConfig">
+        </cmz-button>
+        <cmz-button variant="ghost" size="sm" @click="handleConfig">
           {{ i18n.t("common.config_edit") }}
-        </SLButton>
-        <SLButton variant="ghost" size="sm" @click="showChangePathModal(server)">
+        </cmz-button>
+        <cmz-button variant="ghost" size="sm" @click="showChangePathModal(server)">
           {{ i18n.t("home.change_path") }}
-        </SLButton>
-        <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
+        </cmz-button>
+        <cmz-button variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
           {{ i18n.t("home.delete") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>
@@ -488,18 +486,18 @@ function getStatusClass(status: string | undefined): string {
   align-items: center;
 }
 
-.primary-actions :deep(.sl-button) {
+.primary-actions :deep(.cmz-button) {
   min-width: 72px;
   border-radius: var(--sl-radius-md);
   transition: all 0.2s ease;
 }
 
-.secondary-actions :deep(.sl-button) {
+.secondary-actions :deep(.cmz-button) {
   border-radius: var(--sl-radius-md);
   transition: all 0.2s ease;
 }
 
-.server-card-actions :deep(.sl-button:hover) {
+.server-card-actions :deep(.cmz-button:hover) {
   transform: translateY(-1px);
 }
 
@@ -532,7 +530,7 @@ function getStatusClass(status: string | undefined): string {
     justify-content: center;
   }
 
-  .action-group :deep(.sl-button) {
+  .action-group :deep(.cmz-button) {
     flex: 1;
   }
 }

@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SLSpinner from "@components/common/SLSpinner.vue";
-import SLBadge from "@components/common/SLBadge.vue";
-import SLButton from "@components/common/SLButton.vue";
 import PlayerAvatar from "./PlayerAvatar.vue";
 import { i18n } from "@language";
 
@@ -29,7 +26,7 @@ const emit = defineEmits<{
   <div class="player-list">
     <!-- Loading State -->
     <div v-if="loading" class="player-list-loading">
-      <SLSpinner />
+      <cmz-spinner />
       <span>{{ i18n.t("common.loading") }}</span>
     </div>
 
@@ -45,12 +42,12 @@ const emit = defineEmits<{
         <PlayerAvatar :name="name" :size="36" />
         <div class="player-info">
           <span class="player-name">{{ name }}</span>
-          <SLBadge :text="i18n.t('players.status_online')" variant="success" />
+          <cmz-badge :text="i18n.t('players.status_online')" color="#22c55e" />
         </div>
         <div class="player-actions">
-          <SLButton variant="ghost" size="sm" @click="emit('kick', name)">{{
+          <cmz-button variant="ghost" size="sm" @click="emit('kick', name)">{{
             i18n.t("players.kick")
-          }}</SLButton>
+          }}</cmz-button>
         </div>
       </div>
     </template>
@@ -67,12 +64,12 @@ const emit = defineEmits<{
           <span class="player-uuid text-mono text-caption">{{ p.uuid }}</span>
         </div>
         <div class="player-actions">
-          <SLButton
+          <cmz-button
             variant="ghost"
             size="sm"
             :disabled="!serverRunning"
             @click="emit('removeWhitelist', p.name)"
-            >{{ i18n.t("players.remove") }}</SLButton
+            >{{ i18n.t("players.remove") }}</cmz-button
           >
         </div>
       </div>
@@ -91,14 +88,14 @@ const emit = defineEmits<{
             >{{ i18n.t("players.reason") }}: {{ p.reason || i18n.t("players.empty") }}</span
           >
         </div>
-        <SLBadge :text="i18n.t('players.ban')" variant="error" />
+        <cmz-badge :text="i18n.t('players.ban')" color="#ef4444" />
         <div class="player-actions">
-          <SLButton
+          <cmz-button
             variant="ghost"
             size="sm"
             :disabled="!serverRunning"
             @click="emit('unban', p.name)"
-            >{{ i18n.t("players.unban") }}</SLButton
+            >{{ i18n.t("players.unban") }}</cmz-button
           >
         </div>
       </div>
@@ -115,14 +112,14 @@ const emit = defineEmits<{
           <span class="player-name">{{ p.name }}</span>
           <span class="text-caption">{{ i18n.t("players.level") }}: {{ p.level }}</span>
         </div>
-        <SLBadge text="OP" variant="warning" />
+        <cmz-badge text="OP" color="#f59e0b" />
         <div class="player-actions">
-          <SLButton
+          <cmz-button
             variant="ghost"
             size="sm"
             :disabled="!serverRunning"
             @click="emit('removeOp', p.name)"
-            >{{ i18n.t("players.deop") }}</SLButton
+            >{{ i18n.t("players.deop") }}</cmz-button
           >
         </div>
       </div>

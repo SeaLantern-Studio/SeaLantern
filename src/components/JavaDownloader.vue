@@ -16,20 +16,19 @@
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
           <div class="download-setting-div">
-            <SLSelect
+            <cmz-select
               v-model="selectedVersion"
               :options="versionOptions"
               :disabled="loadingUrl"
-              size="sm"
             />
-            <SLButton
-              variant="primary"
+            <cmz-button
+              variant="solid"
               class="download-button"
               :loading="loadingUrl"
               @click="startDownload"
             >
               {{ downloadButtonText }}
-            </SLButton>
+            </cmz-button>
           </div>
         </template>
 
@@ -51,7 +50,7 @@
                 ></div>
               </div>
             </div>
-            <SLButton
+            <cmz-button
               size="sm"
               variant="ghost"
               class="cancel-button"
@@ -59,7 +58,7 @@
               @click="cancelDownload"
             >
               <X :size="16" :stroke-width="2" />
-            </SLButton>
+            </cmz-button>
           </div>
         </template>
 
@@ -70,7 +69,7 @@
               <CheckCircle :size="16" />
               <span>{{ i18n.t("settings.java_install_success").replace(":", "") }}</span>
             </div>
-            <SLButton size="sm" variant="ghost" @click="resetState">OK</SLButton>
+            <cmz-button size="sm" variant="ghost" @click="resetState">OK</cmz-button>
           </div>
         </template>
       </div>
@@ -82,9 +81,9 @@
         <AlertCircle class="error-icon" :size="16" />
         <span>{{ errorMessage }}</span>
       </div>
-      <SLButton size="sm" variant="ghost" @click="resetState">
+      <cmz-button size="sm" variant="ghost" @click="resetState">
         {{ i18n.t("common.close_notification") }}
-      </SLButton>
+      </cmz-button>
     </div>
   </div>
 </template>
@@ -94,8 +93,6 @@ import { ref, computed, onUnmounted } from "vue";
 import { i18n } from "@language";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { javaApi } from "@api/java";
-import SLButton from "@components/common/SLButton.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { X, CheckCircle, AlertCircle } from "lucide-vue-next";
 
 const emit = defineEmits(["installed"]);

@@ -2,7 +2,6 @@
 import { ref } from "vue";
 import { systemApi, type IPv6TestResult } from "@api/system";
 import { i18n } from "@language";
-import SLButton from "@components/common/SLButton.vue";
 
 const testing = ref(false);
 const showDetail = ref(false);
@@ -36,9 +35,9 @@ async function testIPv6() {
           <span class="setting-desc">{{ i18n.t("settings.ipv6_test_desc") }}</span>
         </div>
         <div class="setting-control">
-          <SLButton variant="primary" size="sm" :loading="testing" @click="testIPv6">
+          <cmz-button size="sm" :loading="testing" @click="testIPv6">
             {{ testing ? i18n.t("settings.ipv6_testing") : i18n.t("settings.ipv6_test_btn") }}
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
 

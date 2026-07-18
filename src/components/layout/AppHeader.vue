@@ -5,9 +5,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X, ChevronDown, ChevronUp, Copy, Check, Globe } from "lucide-vue-next";
 import { useI18nStore } from "@stores/i18nStore";
 import { i18n } from "@language";
-import SLModal from "@components/common/SLModal.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
@@ -344,7 +341,7 @@ function isActive(code: string) {
   </header>
 
   <!-- 关闭窗口确认模态框 -->
-  <SLModal
+  <cmz-modal
     :visible="showCloseModal"
     :title="i18n.t('home.close_window_title')"
     @close="showCloseModal = false"
@@ -352,17 +349,17 @@ function isActive(code: string) {
     <div class="close-modal-content">
       <p>{{ i18n.t("home.close_window_message") }}</p>
       <div class="remember-option">
-        <SLCheckbox v-model="rememberChoice" :label="i18n.t('home.remember_choice')" />
+        <cmz-checkbox v-model="rememberChoice" :label="i18n.t('home.remember_choice')" />
       </div>
       <div class="close-options">
-        <SLButton variant="secondary" @click="handleCloseOption('minimize')">{{
+        <cmz-button variant="outline" @click="handleCloseOption('minimize')">{{
           i18n.t("home.close_action_minimize")
-        }}</SLButton>
-        <SLButton variant="danger" @click="handleCloseOption('close')">{{
+        }}</cmz-button>
+        <cmz-button variant="danger" @click="handleCloseOption('close')">{{
           i18n.t("home.close_action_close")
-        }}</SLButton>
+        }}</cmz-button>
       </div>
     </div>
-  </SLModal>
+  </cmz-modal>
 </template>
 <style src="@styles/components/layout/AppHeader.css" scoped></style>

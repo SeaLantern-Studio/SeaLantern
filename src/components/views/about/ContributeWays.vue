@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { Code, Feather, Lightbulb, BookOpen, Globe, Rocket } from "lucide-vue-next";
-import SLCard from "@components/common/SLCard.vue";
 import { i18n } from "@language";
 </script>
 
 <template>
-  <SLCard :title="i18n.t('about.contribute_ways')">
+  <cmz-card :title="i18n.t('about.contribute_ways')">
     <div class="contribute-ways">
       <div class="way-item">
         <div class="way-icon">
@@ -62,7 +61,7 @@ import { i18n } from "@language";
         </div>
       </div>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>

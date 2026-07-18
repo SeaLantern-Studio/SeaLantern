@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { AlertTriangle } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLModal from "@components/common/SLModal.vue";
 import { i18n } from "@language";
 
 defineProps<{
@@ -24,15 +21,15 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <SLModal :visible="visible" :title="title" @close="emit('update:visible', false)">
+  <cmz-modal :visible="visible" :title="title" @close="emit('update:visible', false)">
     <div class="player-modal-form">
-      <SLInput
+      <cmz-input
         :label="i18n.t('players.player_name')"
         :placeholder="i18n.t('players.player_id')"
         :modelValue="playerName"
         @update:modelValue="emit('update:playerName', $event)"
       />
-      <SLInput
+      <cmz-input
         v-if="showBanReason"
         :label="i18n.t('players.ban_reason')"
         :placeholder="i18n.t('players.ban_reason_placeholder')"
@@ -47,18 +44,16 @@ const emit = defineEmits<{
       </p>
     </div>
     <template #footer>
-      <SLButton variant="secondary" @click="emit('update:visible', false)">{{
+      <cmz-button variant="outline" @click="emit('update:visible', false)">{{
         i18n.t("players.cancel")
-      }}</SLButton>
-      <SLButton
-        variant="primary"
+      }}</cmz-button>
+      <cmz-button
         :loading="loading"
         :disabled="!serverRunning"
         @click="emit('confirm')"
-        >{{ i18n.t("players.confirm") }}</SLButton
-      >
+        >{{ i18n.t("players.confirm") }}</cmz-button>
     </template>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>

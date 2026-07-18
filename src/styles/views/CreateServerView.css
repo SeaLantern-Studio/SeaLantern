@@ -149,9 +149,6 @@
   gap: var(--sl-space-md);
 }
 
-.create-submit-actions :deep(.sl-button) {
-  min-width: 128px;
-}
 
 @media (max-width: 980px) {
   .create-stepper-separator {

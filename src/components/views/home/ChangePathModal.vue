@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { FolderOpen, AlertTriangle, CheckCircle, XCircle, Loader2 } from "lucide-vue-next";
-import SLModal from "@components/common/SLModal.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLCard from "@components/common/SLCard.vue";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
 import {
@@ -37,7 +34,7 @@ const validationStatus = computed(() => {
 </script>
 
 <template>
-  <SLModal
+  <cmz-modal
     :visible="changePathModalVisible"
     :title="i18n.t('home.change_path_title')"
     @close="closeChangePathModal"
@@ -45,12 +42,12 @@ const validationStatus = computed(() => {
   >
     <div class="change-path-content">
       <!-- 警告提示 -->
-      <SLCard variant="outline" class="warning-card">
+      <cmz-card variant="outline" class="warning-card">
         <div class="warning-content">
           <AlertTriangle :size="20" class="warning-icon" />
           <span class="warning-text">{{ i18n.t("home.change_path_warning") }}</span>
         </div>
-      </SLCard>
+      </cmz-card>
 
       <!-- 当前路径 -->
       <div class="path-section">
@@ -69,15 +66,15 @@ const validationStatus = computed(() => {
               selectedNewPath || i18n.t("home.change_path_select_folder")
             }}</code>
           </div>
-          <SLButton
-            variant="secondary"
+          <cmz-button
+            variant="outline"
             size="sm"
             @click="selectNewPath"
             :loading="changePathLoading"
           >
             <FolderOpen :size="16" />
             {{ i18n.t("add_existing.browse") }}
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
 
@@ -128,20 +125,20 @@ const validationStatus = computed(() => {
     <!-- 底部按钮 -->
     <template #footer>
       <div class="modal-actions">
-        <SLButton variant="ghost" @click="closeChangePathModal" :disabled="changePathLoading">
+        <cmz-button variant="ghost" @click="closeChangePathModal" :disabled="changePathLoading">
           {{ i18n.t("home.change_path_cancel") }}
-        </SLButton>
-        <SLButton
-          variant="primary"
+        </cmz-button>
+        <cmz-button
+          variant="solid"
           @click="confirmChangePath"
           :loading="changePathLoading"
           :disabled="!canConfirm"
         >
           {{ i18n.t("home.change_path_confirm") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </template>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>

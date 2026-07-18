@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
 import DownloadForm from "@components/views/download/DownloadForm.vue";
 import DownloadServerForm from "@components/views/download/DownloadServerForm.vue";
 import DownloadProgress from "@components/views/download/DownloadProgress.vue";
@@ -369,7 +367,7 @@ onMounted(() => {
     </div>
 
     <div class="download-cards">
-      <SLCard :title="i18n.t('downloadServerView.title')">
+      <cmz-card :title="i18n.t('downloadServerView.title')">
         <DownloadServerForm
           :serverTypeOptions="serverTypeOptions"
           :versionOptions="versionOptions"
@@ -391,29 +389,34 @@ onMounted(() => {
           @pickFolder="pickServerFolder"
         />
         <div class="card-actions">
-          <SLButton
+          <cmz-button
             :variant="
               taskInfo.isFinished && taskOriginTab === 'server' && !taskError
-                ? 'success'
-                : 'primary'
+                ? 'solid'
+                : undefined
+            "
+            :color="
+              taskInfo.isFinished && taskOriginTab === 'server' && !taskError
+                ? '#22c55e'
+                : undefined
             "
             :disabled="!canServerDownload"
             @click="handleServerDownload"
             :loading="isDownloading && taskOriginTab === 'server'"
           >
             {{ serverDownloadButtonLabel }}
-          </SLButton>
-          <SLButton
-            variant="secondary"
+          </cmz-button>
+          <cmz-button
+            variant="outline"
             :disabled="!canGoCreate"
             @click="gotoCreatePage(buildServerSavePath())"
           >
             {{ i18n.t("downloadServerView.actions.goCreatePage") }}
-          </SLButton>
+          </cmz-button>
         </div>
-      </SLCard>
+      </cmz-card>
 
-      <SLCard :title="i18n.t('download-file.title')">
+      <cmz-card :title="i18n.t('download-file.title')">
         <DownloadForm
           :url="url"
           :savePath="savePath"
@@ -429,21 +432,26 @@ onMounted(() => {
           @checkThreadCount="checkThreadCount"
         />
         <div class="card-actions">
-          <SLButton
+          <cmz-button
             :variant="
-              taskInfo.isFinished && taskOriginTab === 'file' && !taskError ? 'success' : 'primary'
+              taskInfo.isFinished && taskOriginTab === 'file' && !taskError ? 'solid' : undefined
+            "
+            :color="
+              taskInfo.isFinished && taskOriginTab === 'file' && !taskError
+                ? '#22c55e'
+                : undefined
             "
             :disabled="!canFileDownload"
             @click="handleFileDownload"
             :loading="isDownloading && taskOriginTab === 'file'"
           >
             {{ fileDownloadButtonLabel }}
-          </SLButton>
-          <SLButton variant="secondary" @click="cancelDownload">
+          </cmz-button>
+          <cmz-button variant="outline" @click="cancelDownload">
             {{ i18n.t("download-file.cancel") }}
-          </SLButton>
+          </cmz-button>
         </div>
-      </SLCard>
+      </cmz-card>
     </div>
 
     <!-- Download progress -->

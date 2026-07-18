@@ -241,27 +241,6 @@
   flex-shrink: 0;
 }
 
-.plugin-config-section-header .sl-button,
-.plugin-config-file-actions .sl-button {
-  transition: all 0.2s ease;
-  border-radius: var(--sl-radius-md);
-  border: 1px solid var(--sl-border);
-}
-
-.plugin-config-section-header .sl-button:hover,
-.plugin-config-file-actions .sl-button:hover {
-  background: var(--sl-bg-secondary);
-  border-color: var(--sl-primary-light);
-  transform: translateY(-1px);
-  box-shadow: var(--sl-shadow-sm);
-}
-
-.plugin-config-section-header .sl-button:active,
-.plugin-config-file-actions .sl-button:active {
-  transform: translateY(0);
-  box-shadow: var(--sl-shadow-sm);
-}
-
 .plugin-list-actions {
   display: flex;
   gap: 8px;

@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { FolderOpen, FileText, Cpu } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
-import SLSelect from "@components/common/SLSelect.vue";
-import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
 
 interface Props {
@@ -44,7 +41,7 @@ function handlePickFolder() {
         <div class="label-row">
           <label>{{ i18n.t("downloadServerView.form.type") }}</label>
         </div>
-        <SLSelect
+        <cmz-select
           :model-value="selectedType"
           :options="serverTypeOptions"
           :placeholder="i18n.t('downloadServerView.form.typePlaceholder')"
@@ -60,7 +57,7 @@ function handlePickFolder() {
         <div class="label-row">
           <label>{{ i18n.t("downloadServerView.form.version") }}</label>
         </div>
-        <SLSelect
+        <cmz-select
           :model-value="selectedVersion"
           :options="versionOptions"
           :placeholder="i18n.t('downloadServerView.form.versionPlaceholder')"
@@ -74,7 +71,7 @@ function handlePickFolder() {
 
       <div class="field field-full">
         <label>{{ i18n.t("downloadServerView.form.fileName") }}</label>
-        <SLInput
+        <cmz-input
           :model-value="filename"
           type="text"
           :placeholder="i18n.t('downloadServerView.form.fileNamePlaceholder')"
@@ -84,7 +81,7 @@ function handlePickFolder() {
           <template #prefix>
             <FileText :size="16" class="input-icon" />
           </template>
-        </SLInput>
+        </cmz-input>
       </div>
 
       <div class="field field-full">
@@ -106,20 +103,20 @@ function handlePickFolder() {
               }}
             </div>
           </div>
-          <SLButton
-            variant="secondary"
+          <cmz-button
+            variant="outline"
             size="sm"
             :disabled="isDownloading"
             @click.stop="handlePickFolder"
           >
             {{ i18n.t("downloadServerView.actions.pickFolder") }}
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
 
       <div class="field">
         <label>{{ i18n.t("downloadServerView.form.threadCount") }}</label>
-        <SLInput
+        <cmz-input
           :model-value="threadCount"
           type="text"
           :placeholder="i18n.t('downloadServerView.form.threadCountPlaceholder')"
@@ -129,7 +126,7 @@ function handlePickFolder() {
           <template #prefix>
             <Cpu :size="16" class="input-icon" />
           </template>
-        </SLInput>
+        </cmz-input>
       </div>
 
       <div class="field">

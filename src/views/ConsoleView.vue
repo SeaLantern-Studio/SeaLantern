@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, onActivated, nextTick, computed, watch } from "vue";
-import { Cpu, HardDrive, MemoryStick, ArrowDown } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
+import { Cpu, HardDrive, MemoryStick } from "lucide-vue-next";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
-import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
-import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
@@ -98,6 +95,12 @@ const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "st
   if (isStarting.value) return "starting";
   if (isStopping.value) return "stopping";
   return "stopped";
+});
+
+const statusColor = computed(() => {
+  if (isRunning.value) return "#22c55e";
+  if (isStarting.value || isStopping.value) return "#f59e0b";
+  return "#64748b";
 });
 
 const statsSummaryItems = computed(() => [
@@ -380,55 +383,56 @@ function deleteCommand() {}
         <span class="server-name-display">
           {{ currentServer?.name || i18n.t("console.no_server") }}
         </span>
-        <SLStatusIndicator
+        <cmz-badge
           v-if="serverId"
-          :status="serverStatusIndicator"
-          :label="getStatusText()"
+          dot
+          :text="getStatusText()"
+          :color="statusColor"
         />
       </div>
       <div class="toolbar-right">
         <div class="action-group primary-actions">
-          <SLButton
+          <cmz-button
             v-if="isRunning || isStarting"
             type="button"
-            variant="danger"
+            variant="solid"
+            color="#ef4444"
             size="sm"
             :loading="stopLoading"
             :disabled="isStopping || stopLoading || forceStopLoading"
             @click.stop.prevent="handleStop"
           >
             {{ isStarting ? i18n.t("home.stop") : i18n.t("home.stop") }}
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             v-if="isRunning || isStarting || isStopping"
             type="button"
-            variant="secondary"
+            variant="outline"
             size="sm"
             :loading="forceStopLoading"
             :disabled="forceStopLoading || stopLoading"
             @click.stop.prevent="handleForceStop"
           >
             {{ i18n.t("console.force_stop") }}
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             v-else
             type="button"
-            variant="primary"
             size="sm"
             :loading="startLoading"
             :disabled="isStopping || startLoading || forceStopLoading"
             @click.stop.prevent="handleStart"
           >
             {{ i18n.t("home.start") }}
-          </SLButton>
+          </cmz-button>
         </div>
         <div class="action-group secondary-actions">
-          <SLButton variant="secondary" size="sm" @click="exportLogs">{{
+          <cmz-button variant="outline" size="sm" @click="exportLogs">{{
             i18n.t("console.copy_log")
-          }}</SLButton>
-          <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
+          }}</cmz-button>
+          <cmz-button variant="ghost" size="sm" @click="handleClearLogs">{{
             i18n.t("console.clear_log")
-          }}</SLButton>
+          }}</cmz-button>
         </div>
       </div>
     </div>
@@ -454,40 +458,14 @@ function deleteCommand() {}
       </div>
 
       <div class="console-terminal-shell">
-        <div class="console-terminal-section">
-          <div class="console-terminal-toolbar">
-            <div class="console-terminal-title">{{ i18n.t("console.title") }}</div>
-          </div>
-
-          <ConsoleOutput
-            ref="consoleOutputRef"
-            :consoleFontSize="consoleFontSize"
-            :consoleFontFamily="consoleFontFamily"
-            :consoleLetterSpacing="consoleLetterSpacing"
-            :maxLogLines="maxLogLines"
-            :userScrolledUp="userScrolledUp"
-            @scroll="(value) => (userScrolledUp = value)"
-            @scrollToBottom="
-              userScrolledUp = false;
-              doScroll();
-            "
-          />
-
-          <div class="console-input-float">
-            <ConsoleInput :consoleFontSize="consoleFontSize" @sendCommand="sendCommand" />
-            <button
-              v-if="userScrolledUp"
-              type="button"
-              class="scroll-to-bottom-btn"
-              @click="
-                userScrolledUp = false;
-                doScroll();
-              "
-            >
-              <ArrowDown :size="14" />
-            </button>
-          </div>
-        </div>
+        <ConsoleOutput
+          ref="consoleOutputRef"
+          :consoleFontSize="consoleFontSize"
+          :consoleFontFamily="consoleFontFamily"
+          :consoleLetterSpacing="consoleLetterSpacing"
+          :maxLogLines="maxLogLines"
+          @command="sendCommand"
+        />
 
         <div class="console-stats-summary">
           <div

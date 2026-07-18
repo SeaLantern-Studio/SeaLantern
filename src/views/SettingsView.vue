@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import SLSpinner from "@components/common/SLSpinner.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
 import ServerDefaultsCard from "@components/views/settings/ServerDefaultsCard.vue";
 import NetworkSettingsCard from "@components/views/settings/NetworkSettingsCard.vue";
@@ -245,7 +244,7 @@ async function handleBrowseRunPath() {
     </div>
 
     <div v-if="loading" class="loading-state">
-      <SLSpinner />
+      <cmz-spinner />
       <span>{{ i18n.t("settings.loading") }}</span>
     </div>
 

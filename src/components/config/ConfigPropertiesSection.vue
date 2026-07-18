@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import SLSpinner from "@components/common/SLSpinner.vue";
 import ConfigCategories from "@components/config/ConfigCategories.vue";
 import ConfigSourceEditor from "@components/config/ConfigSourceEditor.vue";
 import ConfigPropertyEditorControl from "@components/config/ConfigPropertyEditorControl.vue";
@@ -70,7 +69,7 @@ const emit = defineEmits<{
     />
 
     <div v-if="loading || compareLoading" class="loading-state">
-      <SLSpinner size="lg" />
+      <cmz-spinner size="lg" />
       <span>{{ i18n.t("config.loading") }}</span>
     </div>
 

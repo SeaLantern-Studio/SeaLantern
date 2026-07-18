@@ -1,0 +1,657 @@
+/**
+ * CmzYa 组件 fallback 样式
+ * 确保核心样式始终生效，不受 scoped CSS 或变量缺失影响
+ */
+
+/* === Button === */
+.cmz-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-xs, 4px);
+  font-weight: 500;
+  font-family: var(--sl-font-sans);
+  border-radius: var(--sl-radius-md, 10px);
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s,
+    transform 0.1s;
+}
+
+.cmz-button--sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.cmz-button--md {
+  padding: 8px 20px;
+  font-size: 14px;
+}
+
+.cmz-button--lg {
+  padding: 12px 28px;
+  font-size: 16px;
+}
+
+.cmz-button--solid {
+  background: var(--sl-primary, #0ea5e9);
+  color: #fff;
+  border-color: var(--sl-primary, #0ea5e9);
+}
+
+.cmz-button--solid:hover {
+  background: var(--sl-primary-dark, #0369a1);
+  border-color: var(--sl-primary-dark, #0369a1);
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.3);
+}
+
+.cmz-button--outline {
+  background: transparent;
+  color: var(--sl-primary, #0ea5e9);
+  border-color: var(--sl-primary, #0ea5e9);
+}
+
+.cmz-button--outline:hover {
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.cmz-button--ghost {
+  background: transparent;
+  color: var(--sl-text-secondary, #475569);
+  border-color: transparent;
+}
+
+.cmz-button--ghost:hover {
+  background: var(--sl-bg-tertiary, #e4e9f0);
+  color: var(--sl-primary, #0ea5e9);
+}
+
+.cmz-button--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.cmz-button--icon-only {
+  padding: 0;
+  width: 32px;
+  height: 32px;
+}
+
+/* === Badge === */
+.cmz-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: var(--sl-radius-full, 9999px);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-secondary);
+}
+
+.cmz-badge--dot {
+  padding: 2px 8px;
+  gap: 6px;
+}
+
+.cmz-badge__dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.cmz-badge__dot--pulse {
+  animation: cmz-pulse 2s infinite;
+}
+
+@keyframes cmz-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* === Input === */
+.cmz-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cmz-input-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+}
+
+.cmz-input-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--sl-border, #d8dee8);
+  border-radius: var(--sl-radius-md, 10px);
+  background: var(--sl-surface, #fff);
+  transition: border-color 0.2s;
+}
+
+.cmz-input-container:focus-within {
+  border-color: var(--sl-primary, #0ea5e9);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+}
+
+.cmz-input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: var(--sl-font-sans);
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--sl-text-primary);
+}
+
+.cmz-input-prefix,
+.cmz-input-suffix {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--sl-text-tertiary);
+}
+
+/* === Console === */
+.cmz-console {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--sl-border, #30363d);
+  border-radius: var(--sl-radius-md, 10px);
+  background: var(--sl-bg-secondary, #1e2130);
+  overflow: hidden;
+  font-family: var(--sl-font-mono);
+  font-size: var(--cmz-font-size-base, 14px);
+  height: 100%;
+}
+
+.cmz-console__output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  min-height: 0;
+}
+
+.cmz-console__line {
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.cmz-console__placeholder {
+  color: var(--sl-text-tertiary);
+  font-style: italic;
+  padding: 16px;
+  text-align: center;
+}
+
+.cmz-console__input-area {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--sl-border, #30363d);
+  padding: 4px 8px;
+}
+
+.cmz-console__prompt {
+  color: #a78bfa;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.cmz-console__input {
+  flex: 1;
+  padding: 6px 0;
+  font-size: inherit;
+  font-family: inherit;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--sl-text-primary);
+}
+
+/* === Modal === */
+.cmz-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.cmz-modal {
+  position: relative;
+  z-index: 900;
+  background: var(--sl-bg, #fff);
+  border-radius: var(--sl-radius-lg, 12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  min-width: 320px;
+}
+
+.cmz-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--sl-border-light);
+}
+
+.cmz-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+  margin: 0;
+}
+
+.cmz-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sl-radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--sl-text-tertiary);
+  cursor: pointer;
+}
+
+.cmz-modal-close:hover {
+  background: var(--sl-bg-tertiary);
+  color: var(--sl-text-primary);
+}
+
+.cmz-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.cmz-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--sl-border-light);
+}
+
+/* === Select === */
+.cmz-select {
+  position: relative;
+}
+
+.cmz-select__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-surface);
+  color: var(--sl-text-primary);
+  cursor: pointer;
+}
+
+.cmz-select__trigger:focus {
+  outline: none;
+  border-color: var(--sl-primary);
+}
+
+.cmz-select__options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  margin-top: 4px;
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-surface);
+  box-shadow: var(--sl-shadow-md);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.cmz-select__option {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--sl-text-primary);
+}
+
+.cmz-select__option:hover {
+  background: var(--sl-bg-secondary);
+}
+
+.cmz-select__option--selected {
+  background: var(--sl-primary-bg);
+  color: var(--sl-primary);
+}
+
+/* === Card === */
+.cmz-card {
+  background: var(--sl-surface) !important;
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-lg, 12px);
+  overflow: hidden;
+}
+
+/* 强制卡片的每个variant都使用纯白背景 */
+.cmz-card--outline,
+.cmz-card--solid,
+.cmz-card--shadow,
+.cmz-card--filled,
+.cmz-card--glass {
+  background: var(--sl-surface) !important;
+}
+
+.cmz-card--hoverable {
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.cmz-card--hoverable:hover {
+  box-shadow: var(--sl-shadow-md);
+  transform: translateY(-1px);
+}
+
+.cmz-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--sl-border-light);
+}
+
+.cmz-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+  margin: 0;
+}
+
+.cmz-card-subtitle {
+  font-size: 13px;
+  color: var(--sl-text-tertiary);
+  margin: 4px 0 0;
+}
+
+.cmz-card-body {
+  padding: 16px 20px;
+}
+
+.cmz-card-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--sl-border-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* === Spinner === */
+.cmz-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--sl-border);
+  border-top-color: var(--sl-primary);
+  border-radius: 50%;
+  animation: cmz-spin 0.6s linear infinite;
+}
+
+.cmz-spinner--sm {
+  width: 14px;
+  height: 14px;
+  border-width: 1.5px;
+}
+
+.cmz-spinner--lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+@keyframes cmz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === Progress === */
+.cmz-progress {
+  width: 100%;
+  height: 8px;
+  background: var(--sl-bg-secondary);
+  border-radius: var(--sl-radius-full, 9999px);
+  overflow: hidden;
+}
+
+.cmz-progress__bar {
+  height: 100%;
+  border-radius: var(--sl-radius-full, 9999px);
+  background: var(--sl-primary);
+  transition: width 0.3s ease;
+}
+
+.cmz-progress--indeterminate .cmz-progress__bar {
+  width: 30%;
+  animation: cmz-progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes cmz-progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+/* === Switch (Toggle) === */
+.cmz-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.cmz-switch__track {
+  width: 40px;
+  height: 22px;
+  background: var(--sl-bg-tertiary);
+  border-radius: var(--sl-radius-full, 9999px);
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.cmz-switch--checked .cmz-switch__track {
+  background: var(--sl-primary);
+}
+
+.cmz-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.cmz-switch--checked .cmz-switch__thumb {
+  transform: translateX(18px);
+}
+
+.cmz-switch__label {
+  font-size: 14px;
+  color: var(--sl-text-primary);
+}
+
+/* === Checkbox === */
+.cmz-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.cmz-checkbox__box {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--sl-border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.cmz-checkbox--checked .cmz-checkbox__box {
+  background: var(--sl-primary);
+  border-color: var(--sl-primary);
+}
+
+.cmz-checkbox__check {
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.cmz-checkbox__label {
+  font-size: 14px;
+  color: var(--sl-text-primary);
+}
+
+/* === Dropzone === */
+.cmz-dropzone {
+  border: 2px dashed var(--sl-border);
+  border-radius: var(--sl-radius-lg, 12px);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  color: var(--sl-text-secondary);
+}
+
+.cmz-dropzone:hover {
+  border-color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+}
+
+.cmz-dropzone--active {
+  border-color: var(--sl-primary);
+  background: var(--sl-primary-bg);
+}
+
+.cmz-dropzone__icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  color: var(--sl-text-tertiary);
+}
+
+.cmz-dropzone__text {
+  font-size: 14px;
+}
+
+/* === Form Field === */
+.cmz-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cmz-form-field__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sl-text-secondary);
+}
+
+.cmz-form-field__hint {
+  font-size: 12px;
+  color: var(--sl-text-tertiary);
+}
+
+.cmz-form-field__error {
+  font-size: 12px;
+  color: var(--sl-error);
+}
+
+/* === Tab Bar === */
+.cmz-tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--sl-bg);
+}
+
+.cmz-tab-bar__tab {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--sl-text-secondary);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.cmz-tab-bar__tab:hover {
+  color: var(--sl-text-primary);
+}
+
+.cmz-tab-bar__tab--active {
+  color: var(--sl-primary);
+  border-bottom-color: var(--sl-primary);
+}
+
+/* === Divider === */
+.cmz-divider {
+  border: none;
+  border-top: 1px solid var(--sl-border-light);
+  margin: 16px 0;
+}
+
+.cmz-textarea:focus {
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+}
+
+/* === Textarea (multiline input) === */
+.cmz-textarea {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: var(--sl-font-sans);
+  border: 1px solid var(--sl-border);
+  border-radius: var(--sl-radius-md);
+  background: var(--sl-surface);
+  color: var(--sl-text-primary);
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.cmz-textarea:focus {
+  border-color: var(--sl-primary);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+}

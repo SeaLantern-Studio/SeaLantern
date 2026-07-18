@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { SLTabBar } from "@components/common";
 import { i18n } from "@language";
 
 type PlayerTab = "online" | "whitelist" | "banned" | "ops";
@@ -26,7 +25,7 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <SLTabBar
+  <cmz-tab-bar
     :modelValue="modelValue"
     :tabs="tabs"
     :level="1"
