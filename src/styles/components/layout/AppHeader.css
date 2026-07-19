@@ -5,6 +5,7 @@
   justify-content: space-between;
   height: var(--sl-header-height);
   padding: 0 var(--sl-space-md) 0 var(--sl-space-lg);
+  background: var(--sl-surface);
   border-bottom: 1px solid var(--sl-border-light);
   flex-shrink: 0;
   user-select: none;

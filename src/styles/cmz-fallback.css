@@ -1115,7 +1115,7 @@
 /* === TabBar Level 2 (药丸风格) === */
 .cmz-tab-bar--level-2 {
   gap: 4px;
-  background: var(--sl-bg-tertiary, #f5f7fa);
+  background: var(--sl-surface);
   border: 1px solid var(--sl-border-light, #e8edf3);
   border-radius: var(--sl-radius-md, 10px);
   padding: 4px;
@@ -1227,7 +1227,7 @@
 
 /* TabBar dark mode */
 [data-theme="dark"] .cmz-tab-bar--level-2 {
-  background: var(--sl-bg-tertiary, #242836);
+  background: var(--sl-surface);
   border-color: var(--sl-border-light, rgba(255, 255, 255, 0.05));
 }
 
