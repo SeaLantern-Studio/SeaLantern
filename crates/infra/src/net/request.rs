@@ -4,7 +4,6 @@
 //! 每次重试时使用内部存储的元数据重新构建 `reqwest` 请求，
 //! 避免 `reqwest::Request` 不实现 `Clone` 的问题。
 
-use std::time::Duration;
 
 use reqwest::{IntoUrl, Method, Response};
 use serde::Serialize;
@@ -174,11 +173,15 @@ impl<'a> RequestBuilder<'a> {
 
     /// 指数退避等待。
     async fn sleep(&self, attempt: u32) {
-        let delay = self.retry_policy.base_delay.as_millis() as u64 * 2u64.pow(attempt - 1);
+        let exponent = (attempt - 1).min(63); // 防止移位溢出
+        let delay = self
+            .retry_policy
+            .base_delay
+            .saturating_mul(2u32.saturating_pow(exponent) as u32);
 
-        let delay = delay.min(self.retry_policy.max_delay.as_millis() as u64);
+        let delay = delay.min(self.retry_policy.max_delay);
 
-        tokio::time::sleep(Duration::from_millis(delay)).await;
+        tokio::time::sleep(delay).await;
     }
 }
 

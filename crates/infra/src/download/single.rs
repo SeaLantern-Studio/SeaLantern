@@ -8,7 +8,7 @@ use std::sync::Arc;
 use futures::StreamExt;
 use tokio::io::AsyncWriteExt;
 
-use crate::download::status::DownloadStatus;
+use crate::download::status::{DownloadError, DownloadStatus};
 use crate::net::client::NetClient;
 use crate::observability;
 
@@ -31,7 +31,7 @@ pub async fn stream_download(
     client: &NetClient,
     url: &str,
     output_path: &str,
-) -> Result<Arc<DownloadStatus>, String> {
+) -> Result<Arc<DownloadStatus>, DownloadError> {
     tracing::info!(
         target: observability::DOWNLOAD_TARGET,
         event_name = observability::EVENT_DOWNLOAD_STARTED,
@@ -39,48 +39,37 @@ pub async fn stream_download(
         "stream download started"
     );
 
-    let response = client
-        .get_reqwest_client()
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| {
-            observability::download_failed(url, &e);
-            format!("请求失败: {}", e)
-        })?;
+    let response = client.get_reqwest_client().get(url).send().await?;
 
     if !response.status().is_success() {
         let msg = format!("服务器返回 {}", response.status());
         observability::download_failed(url, &msg);
-        return Err(msg);
+        return Err(DownloadError::Response(
+            response.status().as_u16(),
+            msg,
+        ));
     }
 
     if let Some(parent) = std::path::Path::new(output_path).parent() {
-        tokio::fs::create_dir_all(parent)
-            .await
-            .map_err(|e| format!("创建目录失败: {}", e))?;
+        tokio::fs::create_dir_all(parent).await?;
     }
 
     let total_size = response.content_length().unwrap_or(0);
     let status = Arc::new(DownloadStatus::new(total_size));
 
-    let mut file = tokio::fs::File::create(output_path)
-        .await
-        .map_err(|e| format!("创建文件失败: {}", e))?;
+    let mut file = tokio::fs::File::create(output_path).await?;
 
     let mut stream = response.bytes_stream();
     while let Some(item) = stream.next().await {
         if status.cancelled() {
             let _ = tokio::fs::remove_file(output_path).await;
-            return Err("下载已取消".to_string());
+            return Err(DownloadError::Cancelled("下载已取消".to_string()));
         }
 
-        let chunk = item.map_err(|e| format!("流读取失败: {}", e))?;
+        let chunk = item?;
         let len = chunk.len() as u64;
 
-        file.write_all(&chunk)
-            .await
-            .map_err(|e| format!("写入文件失败: {}", e))?;
+        file.write_all(&chunk).await?;
 
         status
             .downloaded
@@ -111,27 +100,19 @@ pub async fn stream_download(
 /// # Returns
 ///
 /// 返回响应体文本；请求失败或状态码非 2xx 时返回错误描述。
-pub async fn fetch_to_string(client: &NetClient, url: &str) -> Result<String, String> {
-    let response = client
-        .get_reqwest_client()
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| {
-            observability::download_failed(url, &e);
-            format!("请求失败: {}", e)
-        })?;
+pub async fn fetch_to_string(client: &NetClient, url: &str) -> Result<String, DownloadError> {
+    let response = client.get_reqwest_client().get(url).send().await?;
 
     if !response.status().is_success() {
         let msg = format!("服务器返回 {}", response.status());
         observability::download_failed(url, &msg);
-        return Err(msg);
+        return Err(DownloadError::Response(
+            response.status().as_u16(),
+            msg,
+        ));
     }
 
-    let text = response
-        .text()
-        .await
-        .map_err(|e| format!("读取响应体失败: {}", e))?;
+    let text = response.text().await?;
 
     tracing::debug!(
         target: observability::DOWNLOAD_TARGET,
@@ -155,28 +136,19 @@ pub async fn fetch_to_string(client: &NetClient, url: &str) -> Result<String, St
 /// # Returns
 ///
 /// 返回响应体字节数组；请求失败或状态码非 2xx 时返回错误描述。
-pub async fn fetch_to_bytes(client: &NetClient, url: &str) -> Result<Vec<u8>, String> {
-    let response = client
-        .get_reqwest_client()
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| {
-            observability::download_failed(url, &e);
-            format!("请求失败: {}", e)
-        })?;
+pub async fn fetch_to_bytes(client: &NetClient, url: &str) -> Result<Vec<u8>, DownloadError> {
+    let response = client.get_reqwest_client().get(url).send().await?;
 
     if !response.status().is_success() {
         let msg = format!("服务器返回 {}", response.status());
         observability::download_failed(url, &msg);
-        return Err(msg);
+        return Err(DownloadError::Response(
+            response.status().as_u16(),
+            msg,
+        ));
     }
 
-    let bytes = response
-        .bytes()
-        .await
-        .map(|b| b.to_vec())
-        .map_err(|e| format!("读取响应体失败: {}", e))?;
+    let bytes = response.bytes().await.map(|b| b.to_vec())?;
 
     tracing::debug!(
         target: observability::DOWNLOAD_TARGET,

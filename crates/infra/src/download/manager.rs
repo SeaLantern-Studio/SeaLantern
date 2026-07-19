@@ -11,8 +11,9 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::download::multi::Downloader;
-use crate::download::status::{DownloadSnapshot, DownloadStatus};
+use crate::download::status::{DownloadError, DownloadSnapshot, DownloadStatus};
 use crate::net::client::NetClient;
+use crate::observability;
 
 /// 下载任务管理器。
 ///
@@ -66,7 +67,7 @@ impl DownloadManager {
         url: &str,
         output_path: &str,
         thread_count: usize,
-    ) -> Result<Uuid, String> {
+    ) -> Result<Uuid, DownloadError> {
         let status = self
             .downloader
             .download(url, output_path, thread_count)
@@ -76,13 +77,7 @@ impl DownloadManager {
         let mut tasks = self.tasks.write().await;
         tasks.insert(id, status);
 
-        tracing::info!(
-            target: crate::observability::DOWNLOAD_TARGET,
-            event_name = "task_created",
-            task_id = %id,
-            url,
-            "download task created"
-        );
+        observability::task_created(&id, url);
 
         Ok(id)
     }
@@ -165,12 +160,7 @@ impl DownloadManager {
             let mut tasks = self.tasks.write().await;
             tasks.remove(&id);
 
-            tracing::warn!(
-                target: crate::observability::DOWNLOAD_TARGET,
-                event_name = "task_cancelled",
-                task_id = %id,
-                "download task cancelled"
-            );
+            observability::task_cancelled(&id);
         }
     }
 

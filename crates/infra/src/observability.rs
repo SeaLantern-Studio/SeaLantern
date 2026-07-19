@@ -165,3 +165,52 @@ pub fn chunk_failed(url: &str, start: u64, end: u64, error: &dyn Display) {
         "chunk download failed"
     );
 }
+
+/// 事件：下载任务已创建。
+pub const EVENT_TASK_CREATED: &str = "task_created";
+/// 事件：下载任务已取消。
+pub const EVENT_TASK_CANCELLED: &str = "task_cancelled";
+/// 事件：下载被用户取消。
+pub const EVENT_DOWNLOAD_CANCELLED: &str = "download_cancelled";
+/// 事件：下载出错。
+pub const EVENT_DOWNLOAD_ERROR: &str = "download_error";
+
+/// 记录任务创建事件。
+pub fn task_created(task_id: &uuid::Uuid, url: &str) {
+    tracing::info!(
+        target: DOWNLOAD_TARGET,
+        event_name = EVENT_TASK_CREATED,
+        task_id = %task_id,
+        url,
+        "download task created"
+    );
+}
+
+/// 记录任务取消事件。
+pub fn task_cancelled(task_id: &uuid::Uuid) {
+    tracing::warn!(
+        target: DOWNLOAD_TARGET,
+        event_name = EVENT_TASK_CANCELLED,
+        task_id = %task_id,
+        "download task cancelled"
+    );
+}
+
+/// 记录下载被用户取消事件。
+pub fn download_cancelled() {
+    tracing::warn!(
+        target: DOWNLOAD_TARGET,
+        event_name = EVENT_DOWNLOAD_CANCELLED,
+        "download cancelled by user"
+    );
+}
+
+/// 记录下载出错事件。
+pub fn download_error(error: &dyn Display) {
+    tracing::error!(
+        target: DOWNLOAD_TARGET,
+        event_name = EVENT_DOWNLOAD_ERROR,
+        error = %error,
+        "download error"
+    );
+}

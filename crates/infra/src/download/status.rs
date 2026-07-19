@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 
+use crate::net::error::NetError;
 use crate::observability;
 
 /// 下载过程中可能出现的错误。
@@ -19,8 +20,12 @@ pub enum DownloadError {
     Io(std::io::Error),
     /// 服务端返回非预期状态码
     Response(u16, String),
+    /// 网络层错误
+    Net(NetError),
     /// 下载被主动取消
     Cancelled(String),
+    /// 其他错误信息
+    Message(String),
 }
 
 impl std::fmt::Display for DownloadError {
@@ -29,7 +34,9 @@ impl std::fmt::Display for DownloadError {
             DownloadError::Reqwest(e) => write!(f, "请求错误: {}", e),
             DownloadError::Io(e) => write!(f, "IO 错误: {}", e),
             DownloadError::Response(code, body) => write!(f, "服务端返回 {}: {}", code, body),
+            DownloadError::Net(e) => write!(f, "网络错误: {}", e),
             DownloadError::Cancelled(msg) => write!(f, "下载取消: {}", msg),
+            DownloadError::Message(msg) => write!(f, "{}", msg),
         }
     }
 }
@@ -45,6 +52,12 @@ impl From<reqwest::Error> for DownloadError {
 impl From<std::io::Error> for DownloadError {
     fn from(err: std::io::Error) -> Self {
         DownloadError::Io(err)
+    }
+}
+
+impl From<NetError> for DownloadError {
+    fn from(err: NetError) -> Self {
+        DownloadError::Net(err)
     }
 }
 
@@ -97,11 +110,7 @@ impl DownloadStatus {
 
     /// 取消下载。
     pub fn cancel(&self) {
-        tracing::warn!(
-            target: observability::DOWNLOAD_TARGET,
-            event_name = "download_cancelled",
-            "download cancelled by user"
-        );
+        observability::download_cancelled();
         self.cancel_token.cancel();
     }
 
@@ -116,12 +125,7 @@ impl DownloadStatus {
     ///
     /// - `msg`: 错误描述
     pub async fn set_error(&self, msg: String) {
-        tracing::error!(
-            target: observability::DOWNLOAD_TARGET,
-            event_name = "download_error",
-            error = %msg,
-            "download error"
-        );
+        observability::download_error(&msg);
         let mut lock = self.error_message.write().await;
         *lock = Some(msg);
     }

@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::download::status::DownloadStatus;
+use crate::download::status::{DownloadError, DownloadStatus};
 use crate::download::tasks::{spawn_download_tasks, spawn_task_monitor};
 use crate::net::client::NetClient;
 use crate::observability;
@@ -57,26 +57,20 @@ impl Downloader {
         url: &str,
         output_path: &str,
         thread_count: usize,
-    ) -> Result<Arc<DownloadStatus>, String> {
+    ) -> Result<Arc<DownloadStatus>, DownloadError> {
         if thread_count == 0 {
-            return Err("Thread count must be positive".to_string());
+            return Err(DownloadError::Message(
+                "Thread count must be positive".to_string(),
+            ));
         }
 
-        let remote = self
-            .client
-            .probe(url)
-            .await
-            .map_err(|e| format!("探测请求失败: {}", e))?;
+        let remote = self.client.probe(url).await?;
 
         if remote.total_size == 0 {
             if let Some(parent) = std::path::Path::new(output_path).parent() {
-                tokio::fs::create_dir_all(parent)
-                    .await
-                    .map_err(|e| format!("创建目录失败: {}", e))?;
+                tokio::fs::create_dir_all(parent).await?;
             }
-            tokio::fs::File::create(output_path)
-                .await
-                .map_err(|e| format!("创建文件失败: {}", e))?;
+            tokio::fs::File::create(output_path).await?;
             return Ok(Arc::new(DownloadStatus::new(0)));
         }
 
@@ -87,18 +81,12 @@ impl Downloader {
         };
 
         if let Some(parent) = std::path::Path::new(output_path).parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|e| format!("创建下载目录失败: {}", e))?;
+            tokio::fs::create_dir_all(parent).await?;
         }
 
-        let file = tokio::fs::File::create(output_path)
-            .await
-            .map_err(|e| e.to_string())?;
+        let file = tokio::fs::File::create(output_path).await?;
 
-        file.set_len(remote.total_size)
-            .await
-            .map_err(|e| e.to_string())?;
+        file.set_len(remote.total_size).await?;
 
         drop(file);
 

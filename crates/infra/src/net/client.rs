@@ -131,6 +131,7 @@ impl NetClient {
         let mut builder = reqwest::Client::builder()
             .connect_timeout(config.timeout.connect)
             .read_timeout(config.timeout.read)
+            .timeout(config.timeout.total)
             .user_agent(&config.user_agent);
 
         if let Some(ref proxy_url) = config.proxy {
