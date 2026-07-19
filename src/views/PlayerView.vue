@@ -319,12 +319,14 @@ async function handleKick(name: string) {
 
 .player-content-layout {
   display: flex;
+  align-items: flex-start;
   flex: 1;
   min-height: 0;
 }
 
 .player-main {
   flex: 1;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
