@@ -77,11 +77,11 @@ function handleMinimalModeChange(value: boolean) {
 <template>
   <cmz-card :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
     <div class="sl-settings-group">
-      <cmz-form-field
-        :label="i18n.t('settings.theme')"
-        :hint="i18n.t('settings.theme_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.theme") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.theme_desc") }}</span>
+        </div>
         <div class="sl-input-lg">
           <div v-if="isThemeProxied" class="theme-proxied-notice">
             <span class="proxied-text">{{
@@ -95,13 +95,13 @@ function handleMinimalModeChange(value: boolean) {
             @update:model-value="handleThemeChange"
           />
         </div>
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.font_size')"
-        :hint="i18n.t('settings.font_size_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.font_size") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.font_size_desc") }}</span>
+        </div>
         <div class="sl-slider-control">
           <input
             type="range"
@@ -114,13 +114,13 @@ function handleMinimalModeChange(value: boolean) {
           />
           <span class="sl-slider-value">{{ fontSize }}px</span>
         </div>
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.font_family')"
-        :hint="i18n.t('settings.font_family_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.font_family") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.font_family_desc") }}</span>
+        </div>
         <div class="sl-input-lg">
           <cmz-select
             :model-value="fontFamily"
@@ -132,23 +132,23 @@ function handleMinimalModeChange(value: boolean) {
             @update:model-value="handleFontFamilyChange"
           />
         </div>
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.acrylic')"
-        :hint="i18n.t('settings.acrylic_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.acrylic") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
+        </div>
         <cmz-switch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.minimal_mode')"
-        :hint="i18n.t('settings.minimal_mode_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.minimal_mode") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.minimal_mode_desc") }}</span>
+        </div>
         <cmz-switch :model-value="minimalMode" @update:model-value="handleMinimalModeChange" />
-      </cmz-form-field>
+      </div>
 
       <BackgroundSettings
         :background-image="backgroundImage"

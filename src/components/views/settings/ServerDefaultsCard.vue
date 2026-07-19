@@ -31,112 +31,102 @@ const emit = defineEmits<{
     :subtitle="i18n.t('settings.server_defaults_desc')"
   >
     <div class="sl-settings-group">
-      <cmz-form-field
-        :label="i18n.t('settings.default_memory') + ' (MB)'"
-        :hint="i18n.t('settings.max_memory_desc')"
-        label-position="left"
-      >
-        <div class="sl-input-sm">
-          <cmz-input
-            :model-value="maxMemory"
-            type="number"
-            @update:model-value="
-              (v) => {
-                emit('update:maxMemory', v);
-                emit('change');
-              }
-            "
-          />
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.default_memory") }} (MB)</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.max_memory_desc") }}</span>
         </div>
-      </cmz-form-field>
+        <cmz-input
+          :model-value="maxMemory"
+          type="number"
+          @update:model-value="
+            (v) => {
+              emit('update:maxMemory', v);
+              emit('change');
+            }
+          "
+        />
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.min_memory')"
-        :hint="i18n.t('settings.min_memory_desc')"
-        label-position="left"
-      >
-        <div class="sl-input-sm">
-          <cmz-input
-            :model-value="minMemory"
-            type="number"
-            @update:model-value="
-              (v) => {
-                emit('update:minMemory', v);
-                emit('change');
-              }
-            "
-          />
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.min_memory") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.min_memory_desc") }}</span>
         </div>
-      </cmz-form-field>
+        <cmz-input
+          :model-value="minMemory"
+          type="number"
+          @update:model-value="
+            (v) => {
+              emit('update:minMemory', v);
+              emit('change');
+            }
+          "
+        />
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.default_port')"
-        :hint="i18n.t('settings.port_desc')"
-        label-position="left"
-      >
-        <div class="sl-input-sm">
-          <cmz-input
-            :model-value="port"
-            type="number"
-            @update:model-value="
-              (v) => {
-                emit('update:port', v);
-                emit('change');
-              }
-            "
-          />
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.default_port") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.port_desc") }}</span>
         </div>
-      </cmz-form-field>
+        <cmz-input
+          :model-value="port"
+          type="number"
+          @update:model-value="
+            (v) => {
+              emit('update:port', v);
+              emit('change');
+            }
+          "
+        />
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.default_java')"
-        :hint="i18n.t('settings.default_java_desc')"
-        label-position="left"
-      >
-        <div class="sl-input-lg">
-          <cmz-input
-            :model-value="defaultJavaPath"
-            :placeholder="i18n.t('settings.default_java_desc')"
-            @update:model-value="
-              (v) => {
-                emit('update:defaultJavaPath', v);
-                emit('change');
-              }
-            "
-          >
-            <template #suffix>
-              <button type="button" class="sl-input-action" @click="emit('browseJavaPath')">
-                {{ i18n.t("settings.browse") }}
-              </button>
-            </template>
-          </cmz-input>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.default_java") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.default_java_desc") }}</span>
         </div>
-      </cmz-form-field>
+        <cmz-input
+          :model-value="defaultJavaPath"
+          :placeholder="i18n.t('settings.default_java_desc')"
+          @update:model-value="
+            (v) => {
+              emit('update:defaultJavaPath', v);
+              emit('change');
+            }
+          "
+        >
+          <template #suffix>
+            <button type="button" class="sl-input-action" @click="emit('browseJavaPath')">
+              {{ i18n.t("settings.browse") }}
+            </button>
+          </template>
+        </cmz-input>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.default_run_path')"
-        :hint="i18n.t('settings.default_run_path_desc')"
-        label-position="left"
-      >
-        <div class="sl-input-lg">
-          <cmz-input
-            :model-value="defaultRunPath"
-            :placeholder="i18n.t('settings.default_run_path_desc')"
-            @update:model-value="
-              (v) => {
-                emit('update:defaultRunPath', v);
-                emit('change');
-              }
-            "
-          >
-            <template #suffix>
-              <button type="button" class="sl-input-action" @click="emit('browseRunPath')">
-                {{ i18n.t("settings.browse") }}
-              </button>
-            </template>
-          </cmz-input>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.default_run_path") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.default_run_path_desc") }}</span>
         </div>
-      </cmz-form-field>
+        <cmz-input
+          :model-value="defaultRunPath"
+          :placeholder="i18n.t('settings.default_run_path_desc')"
+          @update:model-value="
+            (v) => {
+              emit('update:defaultRunPath', v);
+              emit('change');
+            }
+          "
+        >
+          <template #suffix>
+            <button type="button" class="sl-input-action" @click="emit('browseRunPath')">
+              {{ i18n.t("settings.browse") }}
+            </button>
+          </template>
+        </cmz-input>
+      </div>
 
       <JavaDownloader
         @installed="
@@ -147,11 +137,16 @@ const emit = defineEmits<{
         "
       />
 
-      <cmz-form-field :label="i18n.t('settings.jvm_args')" :hint="i18n.t('settings.jvm_args_desc')">
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.jvm_args") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
+        </div>
         <cmz-textarea
           :model-value="defaultJvmArgs"
           :placeholder="i18n.t('settings.jvm_args_placeholder')"
-          :rows="3"
+          rows="4"
+          class="sl-input-lg"
           @update:model-value="
             (v) => {
               emit('update:defaultJvmArgs', v);
@@ -159,7 +154,7 @@ const emit = defineEmits<{
             }
           "
         />
-      </cmz-form-field>
+      </div>
     </div>
   </cmz-card>
 </template>

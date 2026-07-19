@@ -22,11 +22,11 @@ const emit = defineEmits<{
 <template>
   <cmz-card :title="i18n.t('settings.console')" :subtitle="i18n.t('settings.console_desc')">
     <div class="sl-settings-group">
-      <cmz-form-field
-        :label="i18n.t('settings.console_font_size')"
-        :hint="i18n.t('settings.console_font_size_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.console_font_size") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.console_font_size_desc") }}</span>
+        </div>
         <div class="sl-input-sm">
           <cmz-input
             :model-value="consoleFontSize"
@@ -39,13 +39,13 @@ const emit = defineEmits<{
             "
           />
         </div>
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.font_family')"
-        :hint="i18n.t('settings.console_font_family_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.font_family") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.console_font_family_desc") }}</span>
+        </div>
         <div class="sl-input-lg">
           <cmz-select
             :model-value="consoleFontFamily"
@@ -62,13 +62,15 @@ const emit = defineEmits<{
             "
           />
         </div>
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.console_letter_spacing')"
-        :hint="i18n.t('settings.console_letter_spacing_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.console_letter_spacing") }}</span>
+          <span class="settings-entry-desc">{{
+            i18n.t("settings.console_letter_spacing_desc")
+          }}</span>
+        </div>
         <div class="sl-input-sm">
           <cmz-input
             :model-value="consoleLetterSpacing"
@@ -81,13 +83,13 @@ const emit = defineEmits<{
             "
           />
         </div>
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.max_log_lines')"
-        :hint="i18n.t('settings.max_log_lines_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.max_log_lines") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.max_log_lines_desc") }}</span>
+        </div>
         <div class="sl-input-sm">
           <cmz-input
             :model-value="maxLogLines"
@@ -100,7 +102,7 @@ const emit = defineEmits<{
             "
           />
         </div>
-      </cmz-form-field>
+      </div>
     </div>
   </cmz-card>
 </template>

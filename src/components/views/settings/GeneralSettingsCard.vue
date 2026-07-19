@@ -34,11 +34,11 @@ const closeActionOptions = computed(() => [
 <template>
   <cmz-card :title="i18n.t('settings.general')" :subtitle="i18n.t('settings.general_desc')">
     <div class="sl-settings-group">
-      <cmz-form-field
-        :label="i18n.t('settings.auto_stop')"
-        :hint="i18n.t('settings.auto_stop_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.auto_stop") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.auto_stop_desc") }}</span>
+        </div>
         <cmz-switch
           :model-value="closeServersOnExit"
           @update:model-value="
@@ -48,13 +48,13 @@ const closeActionOptions = computed(() => [
             }
           "
         />
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.update_auto_stop')"
-        :hint="i18n.t('settings.update_auto_stop_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.update_auto_stop") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.update_auto_stop_desc") }}</span>
+        </div>
         <cmz-switch
           :model-value="closeServersOnUpdate"
           @update:model-value="
@@ -64,13 +64,13 @@ const closeActionOptions = computed(() => [
             }
           "
         />
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.auto_eula')"
-        :hint="i18n.t('settings.auto_eula_desc')"
-        label-position="left"
-      >
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.auto_eula") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.auto_eula_desc") }}</span>
+        </div>
         <cmz-switch
           :model-value="autoAcceptEula"
           @update:model-value="
@@ -80,21 +80,19 @@ const closeActionOptions = computed(() => [
             }
           "
         />
-      </cmz-form-field>
+      </div>
 
-      <cmz-form-field
-        :label="i18n.t('settings.close_action')"
-        :hint="i18n.t('settings.close_action_desc')"
-        label-position="left"
-      >
-        <div class="sl-input-md">
-          <cmz-select
-            :model-value="closeAction"
-            :options="closeActionOptions"
-            @update:model-value="handleCloseActionChange"
-          />
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.close_action") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.close_action_desc") }}</span>
         </div>
-      </cmz-form-field>
+        <cmz-select
+          :model-value="closeAction"
+          :options="closeActionOptions"
+          @update:model-value="handleCloseActionChange"
+        />
+      </div>
     </div>
   </cmz-card>
 </template>

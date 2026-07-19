@@ -1,10 +1,10 @@
 <template>
   <div class="java-downloader-container">
-    <cmz-form-field
-      :label="i18n.t('settings.java_download')"
-      :hint="i18n.t('settings.java_download_desc')"
-      label-position="left"
-    >
+    <div class="settings-entry">
+      <div class="settings-entry-info">
+        <span class="settings-entry-title">{{ i18n.t("settings.java_download") }}</span>
+        <span class="settings-entry-desc">{{ i18n.t("settings.java_download_desc") }}</span>
+      </div>
       <div class="java-downloader-actions">
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
@@ -66,7 +66,7 @@
           </div>
         </template>
       </div>
-    </cmz-form-field>
+    </div>
 
     <!-- Error Message (Full Width below) -->
     <div v-if="errorMessage" class="error-message">

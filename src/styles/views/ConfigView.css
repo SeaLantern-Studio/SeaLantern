@@ -21,12 +21,8 @@
   flex-shrink: 0;
 }
 
-/* 垂直 Tab 栏 — 覆盖默认的 level-1 下划线样式为浅色侧边栏效果 */
+/* 垂直 Tab 栏 — 与内容区背景融合，去掉卡片感 */
 .config-tabbar-sticky .cmz-tab-bar--vertical {
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-xs);
   min-width: 140px;
 }
 
@@ -34,20 +30,29 @@
   flex-direction: column;
   gap: 2px;
   border-bottom: none;
+  border-right: none;
   flex: 1;
 }
 
 .config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__tab {
   border-bottom: none;
-  border-radius: var(--sl-radius-sm);
+  border-left: 2px solid transparent;
+  border-radius: 0;
   padding: 8px 14px;
   font-size: 0.8125rem;
   justify-content: flex-start;
+  margin-bottom: 0;
+  margin-right: 0;
+}
+
+.config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__tab:after {
+  display: none;
 }
 
 .config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__tab--active {
-  background: var(--sl-primary-bg);
   color: var(--sl-primary);
+  border-left-color: var(--sl-primary);
+  background: var(--sl-primary-bg);
 }
 
 .config-main {

@@ -592,10 +592,6 @@
   gap: 4px;
 }
 
-.cmz-form-field--left {
-  flex-direction: row;
-}
-
 .cmz-form-field__label {
   font-size: 13px;
   font-weight: 500;
@@ -612,10 +608,45 @@
   color: var(--sl-error);
 }
 
-/* 左侧对齐的 form-field 的内容区：控件向右对齐 */
-.cmz-form-field--left .cmz-form-field__content {
-  display: flex !important;
-  justify-content: flex-end;
+/* === 设置页面行布局 — 与配置项风格一致 === */
+.settings-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-md);
+  padding: var(--sl-space-sm) 0;
+  border-bottom: 1px solid var(--sl-border-light);
+}
+
+.settings-entry:last-of-type {
+  border-bottom: none;
+}
+
+.settings-entry-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-entry-title {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--sl-text-primary);
+}
+
+.settings-entry-desc {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--sl-text-tertiary);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* 设置页内的 select 限制宽度，防止标题文字被挤压 */
+.settings-entry .cmz-select {
+  width: auto;
+  min-width: 140px;
+  max-width: 200px;
 }
 
 /* === Tab Bar === */

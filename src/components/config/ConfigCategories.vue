@@ -64,11 +64,18 @@ const tabs = computed(() =>
 
 .search-input :deep(.cmz-input-container) {
   height: 28px;
+  width: 100%;
 }
 
-/* Tab 栏容器溢出处理 */
-.config-categories-bar {
-  overflow-x: auto;
+.search-input {
+  min-width: 100px;
+  max-width: 200px;
   flex-shrink: 1;
+}
+
+/* Tab 栏容器：空间不足时搜索框换行 */
+.config-categories-bar {
+  flex-wrap: wrap;
+  gap: var(--sl-space-xs);
 }
 </style>
