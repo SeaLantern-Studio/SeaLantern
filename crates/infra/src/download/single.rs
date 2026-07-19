@@ -44,10 +44,7 @@ pub async fn stream_download(
     if !response.status().is_success() {
         let msg = format!("服务器返回 {}", response.status());
         observability::download_failed(url, &msg);
-        return Err(DownloadError::Response(
-            response.status().as_u16(),
-            msg,
-        ));
+        return Err(DownloadError::Response(response.status().as_u16(), msg));
     }
 
     if let Some(parent) = std::path::Path::new(output_path).parent() {
@@ -106,10 +103,7 @@ pub async fn fetch_to_string(client: &NetClient, url: &str) -> Result<String, Do
     if !response.status().is_success() {
         let msg = format!("服务器返回 {}", response.status());
         observability::download_failed(url, &msg);
-        return Err(DownloadError::Response(
-            response.status().as_u16(),
-            msg,
-        ));
+        return Err(DownloadError::Response(response.status().as_u16(), msg));
     }
 
     let text = response.text().await?;
@@ -142,10 +136,7 @@ pub async fn fetch_to_bytes(client: &NetClient, url: &str) -> Result<Vec<u8>, Do
     if !response.status().is_success() {
         let msg = format!("服务器返回 {}", response.status());
         observability::download_failed(url, &msg);
-        return Err(DownloadError::Response(
-            response.status().as_u16(),
-            msg,
-        ));
+        return Err(DownloadError::Response(response.status().as_u16(), msg));
     }
 
     let bytes = response.bytes().await.map(|b| b.to_vec())?;

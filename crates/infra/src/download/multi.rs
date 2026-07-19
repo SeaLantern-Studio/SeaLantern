@@ -59,9 +59,7 @@ impl Downloader {
         thread_count: usize,
     ) -> Result<Arc<DownloadStatus>, DownloadError> {
         if thread_count == 0 {
-            return Err(DownloadError::Message(
-                "Thread count must be positive".to_string(),
-            ));
+            return Err(DownloadError::Message("Thread count must be positive".to_string()));
         }
 
         let remote = self.client.probe(url).await?;

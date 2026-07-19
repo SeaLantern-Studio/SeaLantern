@@ -4,7 +4,6 @@
 //! 每次重试时使用内部存储的元数据重新构建 `reqwest` 请求，
 //! 避免 `reqwest::Request` 不实现 `Clone` 的问题。
 
-
 use reqwest::{IntoUrl, Method, Response};
 use serde::Serialize;
 
