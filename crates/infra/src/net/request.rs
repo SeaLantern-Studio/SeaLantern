@@ -176,7 +176,7 @@ impl<'a> RequestBuilder<'a> {
         let delay = self
             .retry_policy
             .base_delay
-            .saturating_mul(2u32.saturating_pow(exponent) as u32);
+            .saturating_mul(2u32.saturating_pow(exponent));
 
         let delay = delay.min(self.retry_policy.max_delay);
 
