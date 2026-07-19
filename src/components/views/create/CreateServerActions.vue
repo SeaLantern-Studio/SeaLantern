@@ -27,20 +27,10 @@ const router = useRouter();
     <cmz-button variant="outline" size="lg" @click="router.push('/')">{{
       i18n.t("create.cancel")
     }}</cmz-button>
-    <cmz-button
-      size="lg"
-      :loading="creating"
-      :disabled="createDisabled"
-      @click="$emit('create')"
-    >
+    <cmz-button size="lg" :loading="creating" :disabled="createDisabled" @click="$emit('create')">
       {{ i18n.t("create.select_and_create") }}
     </cmz-button>
-    <cmz-button
-      size="lg"
-      :loading="creating"
-      :disabled="importDisabled"
-      @click="$emit('import')"
-    >
+    <cmz-button size="lg" :loading="creating" :disabled="importDisabled" @click="$emit('import')">
       {{ i18n.t("create.import_existing") }}
     </cmz-button>
   </div>

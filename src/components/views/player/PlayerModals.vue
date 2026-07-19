@@ -47,11 +47,9 @@ const emit = defineEmits<{
       <cmz-button variant="outline" @click="emit('update:visible', false)">{{
         i18n.t("players.cancel")
       }}</cmz-button>
-      <cmz-button
-        :loading="loading"
-        :disabled="!serverRunning"
-        @click="emit('confirm')"
-        >{{ i18n.t("players.confirm") }}</cmz-button>
+      <cmz-button :loading="loading" :disabled="!serverRunning" @click="emit('confirm')">{{
+        i18n.t("players.confirm")
+      }}</cmz-button>
     </template>
   </cmz-modal>
 </template>

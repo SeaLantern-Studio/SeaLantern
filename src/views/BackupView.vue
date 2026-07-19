@@ -110,11 +110,7 @@ async function createBackup() {
     // 超出最大数量删除旧备份
     if (backups.value.length > settings.value.maxBackups) {
       const toDelete = backups.value.slice(settings.value.maxBackups);
-      for (const b of toDelete) {
-        try {
-          await backupApi.delete(b.id);
-        } catch {}
-      }
+      await Promise.all(toDelete.map((b) => backupApi.delete(b.id).catch(() => {})));
       backups.value = backups.value.slice(0, settings.value.maxBackups);
     }
     toast.success(i18n.t("backup.create_success"));

@@ -149,7 +149,6 @@
   gap: var(--sl-space-md);
 }
 
-
 @media (max-width: 980px) {
   .create-stepper-separator {
     left: 20px;

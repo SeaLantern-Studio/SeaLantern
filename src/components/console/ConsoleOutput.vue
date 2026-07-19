@@ -55,8 +55,7 @@ function parseLine(line: string): ConsoleLineObj {
   if (line.startsWith("[Sea Lantern]")) return { text: line, type: "system" };
   if (line.includes("[ERROR]") || line.includes("ERROR") || line.includes("[STDERR]"))
     return { text: line, type: "error" };
-  if (line.includes("[WARN]") || line.includes("WARNING"))
-    return { text: line, type: "warning" };
+  if (line.includes("[WARN]") || line.includes("WARNING")) return { text: line, type: "warning" };
   return { text: line, type: "output" };
 }
 

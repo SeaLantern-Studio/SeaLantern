@@ -43,9 +43,7 @@ function close() {
     </div>
     <template #footer>
       <cmz-button variant="outline" @click="close">{{ i18n.t("settings.cancel") }}</cmz-button>
-      <cmz-button @click="handleImport">{{
-        i18n.t("settings.confirm_import")
-      }}</cmz-button>
+      <cmz-button @click="handleImport">{{ i18n.t("settings.confirm_import") }}</cmz-button>
     </template>
   </cmz-modal>
 </template>

@@ -1113,7 +1113,7 @@
 }
 
 /* === TabBar Level 2 (药丸风格) === */
-.cmz-tab-bar--level-2 {
+:root .cmz-tab-bar--level-2 {
   gap: 4px;
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light, #e8edf3);
@@ -1226,19 +1226,21 @@
 }
 
 /* TabBar dark mode */
-[data-theme="dark"] .cmz-tab-bar--level-2 {
+:root[data-theme="dark"] .cmz-tab-bar--level-2 {
   background: var(--sl-surface);
   border-color: var(--sl-border-light, rgba(255, 255, 255, 0.05));
 }
 
 /* === 毛玻璃模式对比度增强 === */
 /* 开关（Toggle）在关闭状态下灰色轨道被毛玻璃削弱，提升可见性 */
-[data-acrylic="on"] .cmz-switch__track {
-  background: var(--sl-border);
+[data-acrylic="on"] .cmz-toggle__switch-track {
+  background: var(--sl-bg-tertiary) !important;
+  border: 1px solid var(--sl-border) !important;
 }
 
-[data-acrylic="on"] .cmz-switch--checked .cmz-switch__track {
-  background: var(--sl-primary);
+[data-acrylic="on"] .cmz-toggle--checked .cmz-toggle__switch-track {
+  background: var(--sl-primary) !important;
+  border-color: var(--sl-primary) !important;
 }
 
 /* 输入框背景在毛玻璃下保持不透明 */
@@ -1246,4 +1248,50 @@
 [data-acrylic="on"] .cmz-textarea,
 [data-acrylic="on"] .cmz-select__trigger {
   background: var(--sl-surface);
+}
+
+/* 毛玻璃下禁用开关提升可见性（默认 opacity: 0.4 叠毛玻璃几乎看不清） */
+[data-acrylic="on"] .cmz-toggle--disabled {
+  opacity: 1;
+}
+
+[data-acrylic="on"] .cmz-toggle--disabled .cmz-toggle__switch-track {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--sl-border);
+}
+
+[data-acrylic="on"] .cmz-toggle--disabled .cmz-toggle__switch-thumb {
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px var(--sl-border);
+}
+
+[data-acrylic="on"] .cmz-toggle--disabled.cmz-toggle--checked .cmz-toggle__switch-track {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* 毛玻璃下 Tab 文字对比度 */
+[data-acrylic="on"] .cmz-tab-bar__tab {
+  color: var(--sl-text-secondary);
+}
+
+[data-acrylic="on"] .cmz-tab-bar__tab:hover {
+  color: var(--sl-text-primary);
+}
+
+[data-acrylic="on"] .cmz-tab-bar__tab--active {
+  color: var(--sl-primary);
+}
+
+/* 毛玻璃下二级 Tab 按钮文字 */
+[data-acrylic="on"] .cmz-tab-bar__btn {
+  color: var(--sl-text-secondary);
+}
+
+[data-acrylic="on"] .cmz-tab-bar__btn:hover {
+  color: var(--sl-text-primary);
+}
+
+[data-acrylic="on"] .cmz-tab-bar__btn.active {
+  color: var(--sl-primary);
 }

@@ -83,6 +83,17 @@ function switchSection(key: string) {
   if (isMobile.value) sidebarOpen.value = false;
 }
 
+// FAQ 手风琴展开状态：FAQ 分类标题 → 打开的 panel ID 数组
+const faqOpenState = ref<Record<string, string[]>>({});
+
+function getFaqModel(categoryTitle: string): string[] {
+  return faqOpenState.value[categoryTitle] ?? [];
+}
+
+function updateFaqModel(categoryTitle: string, ids: string[]) {
+  faqOpenState.value[categoryTitle] = ids;
+}
+
 // 在浏览器打开
 function openInBrowser() {
   const url = `https://docs.ideaflash.cn/zh/${currentSection.value}`;
@@ -305,7 +316,11 @@ onMounted(() => {
         <h1 class="page-title">常见问题</h1>
         <div v-for="category in faqCategories" :key="category.title" class="faq-category">
           <h2 class="section-heading">{{ category.title }}</h2>
-          <Cmz_Accordion class="faq-accordion">
+          <Cmz_Accordion
+            class="faq-accordion"
+            :modelValue="getFaqModel(category.title)"
+            @update:modelValue="(v: string[]) => updateFaqModel(category.title, v)"
+          >
             <Cmz_AccordionPanel
               v-for="item in category.items"
               :key="item.question"

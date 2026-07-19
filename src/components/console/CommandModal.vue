@@ -62,10 +62,7 @@ const commandTextModel = computed({
       >
         {{ i18n.t("console.delete") }}
       </cmz-button>
-      <cmz-button
-        @click="emit('save')"
-        :disabled="loading || !commandName || !commandText"
-      >
+      <cmz-button @click="emit('save')" :disabled="loading || !commandName || !commandText">
         {{ i18n.t("console.save") }}
       </cmz-button>
     </template>
