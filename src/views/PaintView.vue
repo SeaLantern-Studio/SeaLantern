@@ -180,7 +180,7 @@ function handleFontFamilyChange() {
 
 function handleAcrylicChange(enabled: boolean) {
   markChanged();
-  document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
+  document.documentElement.setAttribute("data-acrylic", enabled ? "on" : "off");
 }
 
 function handleMinimalModeChange(enabled: boolean) {

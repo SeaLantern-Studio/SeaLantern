@@ -34,7 +34,7 @@ let lastNativeAcrylic: boolean | null = null;
 let appearanceApplyQueue: Promise<void> = Promise.resolve();
 
 function applyAcrylicEffect(enabled: boolean): void {
-  document.documentElement.setAttribute("data-acrylic", enabled ? "true" : "false");
+  document.documentElement.setAttribute("data-acrylic", enabled ? "on" : "off");
 }
 
 function handleSystemThemeChange(): void {

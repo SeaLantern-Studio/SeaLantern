@@ -87,20 +87,18 @@ const handleItemClick = (item: MenuItem) => {
   --sl-glass-border: rgba(255, 255, 255, 0.08);
 }
 
-[data-acrylic="true"] .sl-menu-base,
-[data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]) .sl-menu-base {
+[data-acrylic="on"] .sl-menu-base,
+[data-acrylic]:not([data-acrylic="off"]) .sl-menu-base {
   --sl-glass-bg: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
 }
 
-[data-theme="dark"][data-acrylic="true"] .sl-menu-base,
-[data-theme="dark"][data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"])
-  .sl-menu-base {
+[data-theme="dark"][data-acrylic="on"] .sl-menu-base,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .sl-menu-base {
   --sl-glass-bg: rgba(15, 17, 23, 0.65);
 }
 
-[data-acrylic="false"] .sl-menu-base,
 [data-acrylic="off"] .sl-menu-base {
   background: var(--sl-surface, #ffffff);
   backdrop-filter: none;

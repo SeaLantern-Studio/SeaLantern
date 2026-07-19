@@ -162,26 +162,20 @@
 [data-minimal="true"] .animate-spin,
 [data-minimal="true"] .animate-pulse,
 [data-minimal="true"] .animate-stagger-in,
-[data-minimal="true"] .animate-stagger-in > *,
-[data-animation="off"] .animate-fade-in,
-[data-animation="off"] .animate-fade-in-up,
-[data-animation="off"] .animate-scale-in,
-[data-animation="off"] .animate-spin,
-[data-animation="off"] .animate-pulse,
-[data-animation="off"] .animate-stagger-in,
-[data-animation="off"] .animate-stagger-in > * {
+[data-minimal="true"] .animate-stagger-in > * {
   animation: none !important;
   opacity: 1 !important;
   transform: none !important;
 }
 
-[data-minimal="true"] *,
-[data-animation="off"] * {
+[data-minimal="true"] * {
   animation-duration: 0s !important;
   animation-delay: 0s !important;
   transition-duration: 0s !important;
   transition-delay: 0s !important;
 }
+
+/* data-animation="off" 由 CmzYa 原生管理，无需重复 */
 
 /* 展开/收起动画容器 */
 .sl-collapse {

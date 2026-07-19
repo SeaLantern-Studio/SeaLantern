@@ -154,7 +154,6 @@
   --sl-shadow-input-focus: 0 0 0 3px rgba(96, 165, 250, 0.2);
 }
 
-[data-acrylic="true"],
 [data-acrylic="on"] {
   --sl-bg: rgba(248, 250, 252, 0.65);
   --sl-bg-secondary: rgba(241, 245, 249, 0.55);
@@ -163,26 +162,7 @@
   --sl-surface-hover: rgba(248, 250, 252, 0.75);
 }
 
-[data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not([data-acrylic="on"]) {
-  --sl-bg: rgba(248, 250, 252, 0.65);
-  --sl-bg-secondary: rgba(241, 245, 249, 0.55);
-  --sl-bg-tertiary: rgba(226, 232, 240, 0.45);
-  --sl-surface: rgba(255, 255, 255, 0.65);
-  --sl-surface-hover: rgba(248, 250, 252, 0.75);
-}
-
-[data-theme="dark"][data-acrylic="true"],
 [data-theme="dark"][data-acrylic="on"] {
-  --sl-bg: rgba(15, 17, 23, 0.65);
-  --sl-bg-secondary: rgba(26, 29, 40, 0.55);
-  --sl-bg-tertiary: rgba(36, 40, 54, 0.45);
-  --sl-surface: rgba(30, 33, 48, 0.65);
-  --sl-surface-hover: rgba(40, 44, 62, 0.75);
-}
-
-[data-theme="dark"][data-acrylic]:not([data-acrylic="false"]):not([data-acrylic="off"]):not(
-    [data-acrylic="on"]
-  ) {
   --sl-bg: rgba(15, 17, 23, 0.65);
   --sl-bg-secondary: rgba(26, 29, 40, 0.55);
   --sl-bg-tertiary: rgba(36, 40, 54, 0.45);

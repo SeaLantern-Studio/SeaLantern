@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { i18n } from "@language";
 import { ExternalLink, Menu, X, Download, ChevronRight } from "lucide-vue-next";
+import { Cmz_Accordion, Cmz_AccordionPanel } from "cmzya-modern-ui";
 import {
   helpDocs,
   introFeatures,
@@ -14,6 +15,7 @@ import {
   pluginRecommendations,
   memorySuggestions,
   configItems,
+  faqCategories,
   getTutorialSegments,
   type DownloadPlatform,
   type ServerType,
@@ -22,6 +24,8 @@ import {
   type PluginRecommendation,
   type MemorySuggestion,
   type ConfigItem,
+  type FaqCategory,
+  type FaqItem,
   type TutorialSegment,
 } from "@data/helpDocs";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -45,7 +49,14 @@ const isMobile = ref(false);
 
 // 页面标记（需自定义渲染的页面）
 const pageType = computed<
-  "intro" | "download" | "server-jar" | "getting-started" | "features" | "tutorial" | "other"
+  | "intro"
+  | "download"
+  | "server-jar"
+  | "getting-started"
+  | "features"
+  | "tutorial"
+  | "faq"
+  | "other"
 >(() => {
   const key = currentSection.value;
   if (key === "intro") return "intro";
@@ -54,6 +65,7 @@ const pageType = computed<
   if (key === "getting-started") return "getting-started";
   if (key === "features") return "features";
   if (key === "tutorial") return "tutorial";
+  if (key === "faq") return "faq";
   return "other";
 });
 
@@ -286,6 +298,24 @@ onMounted(() => {
             </div>
           </template>
         </template>
+      </template>
+
+      <!-- 常见问题：Accordion 折叠面板 -->
+      <template v-else-if="pageType === 'faq'">
+        <h1 class="page-title">常见问题</h1>
+        <div v-for="category in faqCategories" :key="category.title" class="faq-category">
+          <h2 class="section-heading">{{ category.title }}</h2>
+          <Cmz_Accordion class="faq-accordion">
+            <Cmz_AccordionPanel
+              v-for="item in category.items"
+              :key="item.question"
+              :id="item.question"
+              :title="item.question"
+            >
+              <cmz-markdown :content="item.answer" variant="plain" />
+            </Cmz_AccordionPanel>
+          </Cmz_Accordion>
+        </div>
       </template>
 
       <!-- 其他页面 -->
@@ -690,6 +720,19 @@ onMounted(() => {
   font-size: var(--sl-font-size-base);
   font-weight: 700;
   flex-shrink: 0;
+}
+
+/* ========== FAQ Accordion ========== */
+.faq-category {
+  margin-bottom: var(--sl-space-lg);
+}
+
+.faq-accordion {
+  margin-bottom: var(--sl-space-md);
+}
+
+.faq-accordion :deep(.cmz-accordion-panel__content-inner) {
+  padding: var(--sl-space-md);
 }
 
 .step-body {
