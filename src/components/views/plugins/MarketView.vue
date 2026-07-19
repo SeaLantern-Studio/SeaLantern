@@ -330,13 +330,9 @@ onMounted(() => {
         >
           <Globe :size="14" />
         </button>
-        <button
-          class="action-btn"
-          @click="loadMarket"
-          :disabled="loading"
-          :title="i18n.t('market.refresh')"
-        >
-          <RefreshCw :size="14" :class="{ spin: loading }" />
+        <cmz-spinner v-if="loading" size="sm" />
+        <button v-else class="action-btn" @click="loadMarket" :title="i18n.t('market.refresh')">
+          <RefreshCw :size="14" />
         </button>
       </template>
     </cmz-tab-bar>
@@ -449,12 +445,18 @@ onMounted(() => {
             <div v-if="pluginDetail?.permissions?.length" class="detail-section">
               <h3>{{ i18n.t("market.permissions") }}</h3>
               <div class="permission-badges">
-                <span
+                <cmz-badge
                   v-for="perm in pluginDetail.permissions"
                   :key="perm"
-                  :class="['perm-badge', `perm-badge--${getPermissionLevel(perm)}`]"
+                  :variant="
+                    getPermissionLevel(perm) === 'critical'
+                      ? 'danger'
+                      : getPermissionLevel(perm) === 'dangerous'
+                        ? 'warning'
+                        : 'default'
+                  "
                   :title="getPermissionDesc(perm)"
-                  >{{ getPermissionLabel(perm) }}</span
+                  >{{ getPermissionLabel(perm) }}</cmz-badge
                 >
               </div>
             </div>
@@ -579,10 +581,6 @@ onMounted(() => {
 .action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.action-btn .spin {
-  animation: spin 1s linear infinite;
 }
 
 .market-loading {
@@ -919,29 +917,6 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.perm-badge {
-  padding: 3px 10px;
-  border-radius: var(--sl-radius-lg);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: default;
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-secondary);
-  border: 1px solid var(--sl-border);
-}
-
-.perm-badge--dangerous {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.perm-badge--critical {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .changelog {

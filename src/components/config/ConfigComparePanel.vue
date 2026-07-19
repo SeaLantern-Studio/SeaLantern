@@ -186,7 +186,7 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
                     <span class="text-caption compare-server-title compare-side-switch-label">{{
                       targetServerName
                     }}</span>
-                    <span class="compare-count-badge">{{ differenceBadgeText }}</span>
+                    <cmz-badge variant="primary">{{ differenceBadgeText }}</cmz-badge>
                   </template>
                 </div>
               </Transition>
@@ -211,7 +211,7 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
       <div class="compare-column-head">
         <div class="compare-server-heading">
           <span class="text-caption compare-server-title">{{ targetServerName }}</span>
-          <span class="compare-count-badge">{{ differenceBadgeText }}</span>
+          <cmz-badge variant="primary">{{ differenceBadgeText }}</cmz-badge>
         </div>
       </div>
     </div>
@@ -229,9 +229,9 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
       <div class="compare-meta">
         <div class="entry-key-row">
           <span class="entry-key text-mono">{{ row.key }}</span>
-          <span v-if="row.different" class="compare-diff-badge">
+          <cmz-badge v-if="row.different" variant="default">
             {{ differentLabel }}
-          </span>
+          </cmz-badge>
         </div>
         <p v-if="row.description" class="entry-desc text-caption">
           {{ row.description }}

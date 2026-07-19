@@ -21,6 +21,35 @@
   flex-shrink: 0;
 }
 
+/* 垂直 Tab 栏 — 覆盖默认的 level-1 下划线样式为浅色侧边栏效果 */
+.config-tabbar-sticky .cmz-tab-bar--vertical {
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-xs);
+  min-width: 140px;
+}
+
+.config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__nav {
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: none;
+  flex: 1;
+}
+
+.config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__tab {
+  border-bottom: none;
+  border-radius: var(--sl-radius-sm);
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  justify-content: flex-start;
+}
+
+.config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__tab--active {
+  background: var(--sl-primary-bg);
+  color: var(--sl-primary);
+}
+
 .config-main {
   flex: 1;
   min-width: 0;
@@ -327,32 +356,6 @@
 .compare-server-title {
   color: var(--sl-text-primary);
   font-weight: 500;
-}
-
-.compare-count-badge {
-  min-width: 20px;
-  height: 20px;
-  padding: 0 var(--sl-config-badge-padding-inline);
-  background: var(--sl-primary-bg);
-  color: var(--sl-primary);
-  border-radius: var(--sl-radius-full);
-  font-size: var(--sl-config-badge-font-size);
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  transform: scale(1.05);
-}
-
-.compare-diff-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: var(--sl-radius-full);
-  font-size: var(--sl-font-size-xs);
-  background: color-mix(in srgb, var(--sl-info) 12%, transparent);
-  color: var(--sl-primary);
 }
 
 .compare-target-select {

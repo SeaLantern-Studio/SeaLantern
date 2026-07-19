@@ -592,6 +592,10 @@
   gap: 4px;
 }
 
+.cmz-form-field--left {
+  flex-direction: row;
+}
+
 .cmz-form-field__label {
   font-size: 13px;
   font-weight: 500;
@@ -606,6 +610,12 @@
 .cmz-form-field__error {
   font-size: 12px;
   color: var(--sl-error);
+}
+
+/* 左侧对齐的 form-field 的内容区：控件向右对齐 */
+.cmz-form-field--left .cmz-form-field__content {
+  display: flex !important;
+  justify-content: flex-end;
 }
 
 /* === Tab Bar === */

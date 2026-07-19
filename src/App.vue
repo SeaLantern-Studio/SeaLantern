@@ -5,14 +5,13 @@ import SplashScreen from "@components/splash/SplashScreen.vue";
 import UpdateModal from "@components/common/UpdateModal.vue";
 import TermsDialog from "@components/common/TermsDialog.vue";
 import SLContextMenu from "@components/common/SLContextMenu.vue";
-import ToastContainer from "@components/common/ToastContainer.vue";
 import { PluginComponentRenderer } from "@components/plugin";
 import { useUpdateStore } from "@stores/updateStore";
 import { useSettingsStore } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
-import { useGlobalMessage } from "@composables/useMessage";
+import { useToast } from "cmzya-modern-ui";
 import { isBrowserEnv } from "@api/tauri";
 import {
   applyTheme,
@@ -57,7 +56,7 @@ const settingsStore = useSettingsStore();
 const pluginStore = usePluginStore();
 const contextMenuStore = useContextMenuStore();
 const serverStore = useServerStore();
-const globalMessage = useGlobalMessage();
+const toast = useToast();
 
 interface ServerStartFallbackEventPayload {
   serverId: string;
@@ -137,10 +136,11 @@ onMounted(async () => {
       "server-start-fallback",
       ({ payload }) => {
         const displayName = payload.serverName || payload.serverId;
-        globalMessage.warning(
-          `Server ${displayName} failed to start via JAR, automatically fell back to ${payload.toMode} mode (${payload.reason})`,
-          5000,
-        );
+        toast.warning({
+          title: `Server ${displayName}`,
+          description: `Failed to start via JAR, fell back to ${payload.toMode} mode (${payload.reason})`,
+          duration: 5000,
+        });
       },
     );
   }
@@ -276,7 +276,7 @@ function handleSettingsUpdate(e: CustomEvent<SettingsUpdateEvent>) {
     />
 
     <PluginComponentRenderer />
-    <ToastContainer />
+    <cmz-toast />
   </template>
   <SLContextMenu />
 </template>

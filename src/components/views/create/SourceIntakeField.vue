@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from "vue";
-import {
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle,
-} from "reka-ui";
-import { File, Folder, Plus, X, Upload } from "lucide-vue-next";
+import { File, Folder, Plus, Upload } from "lucide-vue-next";
 import { systemApi } from "@api/system";
 import { downloadServerApi } from "@api/downloader";
 import { i18n } from "@language";
@@ -253,43 +245,23 @@ onMounted(async () => {
     </template>
 
     <!-- 选择文件对话框 -->
-    <DialogRoot v-model:open="chooserOpen">
-      <DialogPortal>
-        <DialogOverlay class="source-chooser-overlay" />
-        <DialogContent class="source-chooser-content">
-          <div class="source-chooser-header">
-            <DialogTitle class="source-chooser-title">{{
-              i18n.t("create.source_choose_title")
-            }}</DialogTitle>
-            <button
-              class="source-chooser-close"
-              @click="chooserOpen = false"
-              :aria-label="i18n.t('common.close_modal')"
-            >
-              <X :size="18" />
-            </button>
-          </div>
-          <DialogDescription class="source-chooser-description">
-            {{ i18n.t("create.source_choose_description_file") }}
-          </DialogDescription>
-          <div class="source-chooser-actions">
-            <cmz-button size="lg" class="source-chooser-option" @click="pickFile">
-              <File :size="22" />
-              <span>{{ i18n.t("create.source_pick_file") }}</span>
-            </cmz-button>
-            <cmz-button
-              variant="outline"
-              size="lg"
-              class="source-chooser-option"
-              @click="pickFolder"
-            >
-              <Folder :size="22" />
-              <span>{{ i18n.t("create.source_pick_folder") }}</span>
-            </cmz-button>
-          </div>
-        </DialogContent>
-      </DialogPortal>
-    </DialogRoot>
+    <cmz-modal
+      :visible="chooserOpen"
+      :title="i18n.t('create.source_choose_title')"
+      @close="chooserOpen = false"
+    >
+      <p>{{ i18n.t("create.source_choose_description_file") }}</p>
+      <div class="source-chooser-actions">
+        <cmz-button size="lg" class="source-chooser-option" @click="pickFile">
+          <File :size="22" />
+          <span>{{ i18n.t("create.source_pick_file") }}</span>
+        </cmz-button>
+        <cmz-button variant="outline" size="lg" class="source-chooser-option" @click="pickFolder">
+          <Folder :size="22" />
+          <span>{{ i18n.t("create.source_pick_folder") }}</span>
+        </cmz-button>
+      </div>
+    </cmz-modal>
   </div>
 </template>
 

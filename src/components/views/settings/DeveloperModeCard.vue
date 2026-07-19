@@ -17,11 +17,11 @@ const emit = defineEmits<{
     :subtitle="i18n.t('settings.developer_mode_desc')"
   >
     <div class="sl-settings-group">
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
-        </div>
+      <cmz-form-field
+        :label="i18n.t('settings.developer_mode_toggle')"
+        :hint="i18n.t('settings.developer_mode_toggle_desc')"
+        label-position="left"
+      >
         <cmz-switch
           :model-value="developerMode"
           @update:model-value="
@@ -31,7 +31,7 @@ const emit = defineEmits<{
             }
           "
         />
-      </div>
+      </cmz-form-field>
     </div>
   </cmz-card>
 </template>

@@ -4,14 +4,14 @@ import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
-import { useGlobalMessage } from "@composables/useMessage";
+import { useToast } from "cmzya-modern-ui";
 import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;
 
-const globalMessage = useGlobalMessage();
+const toast = useToast();
 type PendingAction = "host" | "join" | "stop" | "generate-ticket";
 const pendingAction = ref<PendingAction | null>(null);
 const status = ref<TunnelStatus | null>(null);
@@ -187,7 +187,7 @@ async function refreshStatus(options?: { silent?: boolean }) {
     const next = await tunnelApi.status();
     applyStatus(next);
   } catch (e) {
-    if (!silent) globalMessage.error(String(e));
+    if (!silent) toast.error(String(e));
   }
 }
 
@@ -195,7 +195,7 @@ async function startHost() {
   if (!beginAction("host")) return;
   const portError = validatePort(hostPort.value, i18n.t("tunnel.host_port"));
   if (portError) {
-    globalMessage.error(portError);
+    toast.error(portError);
     endAction("host");
     return;
   }
@@ -207,9 +207,9 @@ async function startHost() {
         relayUrl: hostRelayUrl.value.trim() || undefined,
       }),
     );
-    globalMessage.success(i18n.t("tunnel.host_started"));
+    toast.success(i18n.t("tunnel.host_started"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("host");
   }
@@ -219,7 +219,7 @@ async function startJoin() {
   if (!beginAction("join")) return;
   const portError = validatePort(joinLocalPort.value, i18n.t("tunnel.join_local_port"));
   if (portError) {
-    globalMessage.error(portError);
+    toast.error(portError);
     endAction("join");
     return;
   }
@@ -231,9 +231,9 @@ async function startJoin() {
         password: joinPassword.value.trim() || undefined,
       }),
     );
-    globalMessage.success(i18n.t("tunnel.join_started"));
+    toast.success(i18n.t("tunnel.join_started"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("join");
   }
@@ -243,9 +243,9 @@ async function stopTunnel() {
   if (!beginAction("stop")) return;
   try {
     applyStatus(await tunnelApi.stop());
-    globalMessage.success(i18n.t("tunnel.tunnel_stopped"));
+    toast.success(i18n.t("tunnel.tunnel_stopped"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("stop");
   }
@@ -256,13 +256,13 @@ async function copyTicket() {
   try {
     const copied = await tunnelApi.copyTicket();
     if (copied) {
-      globalMessage.success(i18n.t("tunnel.ticket_copied"));
+      toast.success(i18n.t("tunnel.ticket_copied"));
       applyStatus(await tunnelApi.status());
     } else {
-      globalMessage.error(i18n.t("tunnel.ticket_copy_failed"));
+      toast.error(i18n.t("tunnel.ticket_copy_failed"));
     }
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   }
 }
 
@@ -270,9 +270,9 @@ async function generateTicket() {
   if (!beginAction("generate-ticket")) return;
   try {
     applyStatus(await tunnelApi.generateTicket());
-    globalMessage.success(i18n.t("tunnel.ticket_generated"));
+    toast.success(i18n.t("tunnel.ticket_generated"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -282,9 +282,9 @@ async function regenerateTicket() {
   if (!beginAction("generate-ticket")) return;
   try {
     applyStatus(await tunnelApi.regenerateTicket());
-    globalMessage.success(i18n.t("tunnel.ticket_regenerated"));
+    toast.success(i18n.t("tunnel.ticket_regenerated"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -466,11 +466,7 @@ onUnmounted(() => {
           </cmz-input>
         </div>
         <div class="card-actions">
-          <cmz-button
-            :disabled="!canStartHost"
-            :loading="hostActionLoading"
-            @click="startHost"
-          >
+          <cmz-button :disabled="!canStartHost" :loading="hostActionLoading" @click="startHost">
             {{ i18n.t("tunnel.start_host") }}
           </cmz-button>
         </div>

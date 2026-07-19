@@ -13,6 +13,7 @@ import {
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { useRouter } from "vue-router";
+import { useToast } from "cmzya-modern-ui";
 import { FileUp } from "lucide-vue-next";
 import JavaEnvironmentStep from "@components/views/create/JavaEnvironmentStep.vue";
 import RunPathStep from "@components/views/create/RunPathStep.vue";
@@ -26,9 +27,6 @@ import {
 } from "@components/views/create/useCreateServerPage";
 
 const {
-  errorMsg,
-  clearError,
-  showError,
   javaLoading,
   creating,
   sourcePath,
@@ -69,6 +67,7 @@ const {
   handleSubmit,
 } = useCreateServerPage();
 
+const toast = useToast();
 const router = useRouter();
 let unlistenCreateViewDragDrop: UnlistenFn | null = null;
 const isDragging = ref(false);
@@ -134,11 +133,6 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="errorMsg" class="create-error-banner">
-      <span>{{ errorMsg }}</span>
-      <button class="create-error-close" @click="clearError">x</button>
-    </div>
-
     <cmz-card class="create-stepper-card" :title="i18n.t('create.title')">
       <StepperRoot
         orientation="vertical"
@@ -170,7 +164,7 @@ onBeforeUnmount(() => {
                 v-model:source-type="sourceType"
                 v-model:server-download-type="serverDownloadType"
                 v-model:server-download-version="serverDownloadVersion"
-                @error="showError"
+                @error="(err) => toast.error(err)"
               />
             </template>
 

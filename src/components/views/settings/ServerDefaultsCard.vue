@@ -31,11 +31,11 @@ const emit = defineEmits<{
     :subtitle="i18n.t('settings.server_defaults_desc')"
   >
     <div class="sl-settings-group">
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.default_memory") }} (MB)</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.max_memory_desc") }}</span>
-        </div>
+      <cmz-form-field
+        :label="i18n.t('settings.default_memory') + ' (MB)'"
+        :hint="i18n.t('settings.max_memory_desc')"
+        label-position="left"
+      >
         <div class="sl-input-sm">
           <cmz-input
             :model-value="maxMemory"
@@ -48,13 +48,13 @@ const emit = defineEmits<{
             "
           />
         </div>
-      </div>
+      </cmz-form-field>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.min_memory") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.min_memory_desc") }}</span>
-        </div>
+      <cmz-form-field
+        :label="i18n.t('settings.min_memory')"
+        :hint="i18n.t('settings.min_memory_desc')"
+        label-position="left"
+      >
         <div class="sl-input-sm">
           <cmz-input
             :model-value="minMemory"
@@ -67,13 +67,13 @@ const emit = defineEmits<{
             "
           />
         </div>
-      </div>
+      </cmz-form-field>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.default_port") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.port_desc") }}</span>
-        </div>
+      <cmz-form-field
+        :label="i18n.t('settings.default_port')"
+        :hint="i18n.t('settings.port_desc')"
+        label-position="left"
+      >
         <div class="sl-input-sm">
           <cmz-input
             :model-value="port"
@@ -86,13 +86,13 @@ const emit = defineEmits<{
             "
           />
         </div>
-      </div>
+      </cmz-form-field>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.default_java") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.default_java_desc") }}</span>
-        </div>
+      <cmz-form-field
+        :label="i18n.t('settings.default_java')"
+        :hint="i18n.t('settings.default_java_desc')"
+        label-position="left"
+      >
         <div class="sl-input-lg">
           <cmz-input
             :model-value="defaultJavaPath"
@@ -111,13 +111,13 @@ const emit = defineEmits<{
             </template>
           </cmz-input>
         </div>
-      </div>
+      </cmz-form-field>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.default_run_path") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.default_run_path_desc") }}</span>
-        </div>
+      <cmz-form-field
+        :label="i18n.t('settings.default_run_path')"
+        :hint="i18n.t('settings.default_run_path_desc')"
+        label-position="left"
+      >
         <div class="sl-input-lg">
           <cmz-input
             :model-value="defaultRunPath"
@@ -136,24 +136,18 @@ const emit = defineEmits<{
             </template>
           </cmz-input>
         </div>
-      </div>
+      </cmz-form-field>
 
-      <div class="sl-setting-row full-width">
-        <JavaDownloader
-          @installed="
-            (path) => {
-              emit('javaInstalled', path);
-              emit('change');
-            }
-          "
-        />
-      </div>
+      <JavaDownloader
+        @installed="
+          (path) => {
+            emit('javaInstalled', path);
+            emit('change');
+          }
+        "
+      />
 
-      <div class="sl-setting-row full-width">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.jvm_args") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
-        </div>
+      <cmz-form-field :label="i18n.t('settings.jvm_args')" :hint="i18n.t('settings.jvm_args_desc')">
         <cmz-textarea
           :model-value="defaultJvmArgs"
           :placeholder="i18n.t('settings.jvm_args_placeholder')"
@@ -165,21 +159,7 @@ const emit = defineEmits<{
             }
           "
         />
-      </div>
+      </cmz-form-field>
     </div>
   </cmz-card>
 </template>
-
-<style scoped>
-.sl-setting-row.full-width {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.sl-setting-row.full-width :deep(.cmz-textarea) {
-  margin-top: var(--sl-space-sm);
-  font-family: var(--sl-font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.6;
-}
-</style>

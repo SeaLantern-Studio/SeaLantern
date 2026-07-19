@@ -40,6 +40,7 @@ const tabs = computed(() =>
     :modelValue="activeCategory"
     :tabs="tabs"
     :level="2"
+    class="config-categories-bar"
     @update:modelValue="emit('updateCategory', $event ?? 'all')"
   >
     <template #extra>
@@ -47,7 +48,7 @@ const tabs = computed(() =>
         :modelValue="searchQuery"
         :placeholder="i18n.t('config.search')"
         @input="emit('updateSearch', $event.target.value)"
-        style="width: 180px"
+        style="min-width: 120px; max-width: 200px"
         class="search-input"
       />
     </template>
@@ -55,6 +56,7 @@ const tabs = computed(() =>
 </template>
 
 <style scoped>
+/* 搜索输入框样式 */
 .search-input :deep(.cmz-input) {
   padding: 6px 12px;
   font-size: 13px;
@@ -62,5 +64,11 @@ const tabs = computed(() =>
 
 .search-input :deep(.cmz-input-container) {
   height: 28px;
+}
+
+/* Tab 栏容器溢出处理 */
+.config-categories-bar {
+  overflow-x: auto;
+  flex-shrink: 1;
 }
 </style>

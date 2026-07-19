@@ -6,7 +6,7 @@ import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/p
 import { TIME, MESSAGES, getMessage } from "@utils/constants";
 import { validatePlayerName, handleError } from "@utils/errorHandler";
 import { i18n } from "@language";
-import { useMessage } from "@composables/useMessage";
+import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
 import PlayerTabs from "@components/views/player/PlayerTabs.vue";
 import PlayerActionBar from "@components/views/player/PlayerActionBar.vue";
@@ -26,7 +26,7 @@ const ops = ref<OpEntry[]>([]);
 const onlinePlayers = ref<string[]>([]);
 
 const { loading, withLoading } = useLoading();
-const { error, success, showError, showSuccess, clear: clearMessage } = useMessage();
+const toast = useToast();
 
 const showAddModal = ref(false);
 const addPlayerName = ref("");
@@ -154,12 +154,12 @@ function openAddModal() {
 async function handleAdd() {
   const validation = validatePlayerName(addPlayerName.value);
   if (!validation.valid) {
-    showError(validation.error || getMessage(MESSAGES.ERROR.INVALID_PLAYER_NAME));
+    toast.error(validation.error || getMessage(MESSAGES.ERROR.INVALID_PLAYER_NAME));
     return;
   }
 
   if (!isRunning.value) {
-    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
+    toast.error(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
 
@@ -169,15 +169,15 @@ async function handleAdd() {
     switch (activeTab.value) {
       case "whitelist":
         await playerApi.addToWhitelist(sid, addPlayerName.value);
-        showSuccess(getMessage(MESSAGES.SUCCESS.WHITELIST_ADDED));
+        toast.success(getMessage(MESSAGES.SUCCESS.WHITELIST_ADDED));
         break;
       case "banned":
         await playerApi.banPlayer(sid, addPlayerName.value, addBanReason.value);
-        showSuccess(getMessage(MESSAGES.SUCCESS.PLAYER_BANNED));
+        toast.success(getMessage(MESSAGES.SUCCESS.PLAYER_BANNED));
         break;
       case "ops":
         await playerApi.addOp(sid, addPlayerName.value);
-        showSuccess(getMessage(MESSAGES.SUCCESS.OP_ADDED));
+        toast.success(getMessage(MESSAGES.SUCCESS.OP_ADDED));
         break;
     }
     showAddModal.value = false;
@@ -185,7 +185,7 @@ async function handleAdd() {
       loadAll();
     }, TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    showError(handleError(e, "AddPlayer"));
+    toast.error(handleError(e, "AddPlayer"));
   } finally {
     addLoading.value = false;
   }
@@ -193,57 +193,57 @@ async function handleAdd() {
 
 async function handleRemoveWhitelist(name: string) {
   if (!isRunning.value) {
-    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
+    toast.error(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
   try {
     await playerApi.removeFromWhitelist(selectedServerId.value, name);
-    showSuccess(getMessage(MESSAGES.SUCCESS.WHITELIST_REMOVED));
+    toast.success(getMessage(MESSAGES.SUCCESS.WHITELIST_REMOVED));
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    showError(handleError(e, "RemoveWhitelist"));
+    toast.error(handleError(e, "RemoveWhitelist"));
   }
 }
 
 async function handleUnban(name: string) {
   if (!isRunning.value) {
-    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
+    toast.error(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
   try {
     await playerApi.unbanPlayer(selectedServerId.value, name);
-    showSuccess(getMessage(MESSAGES.SUCCESS.PLAYER_UNBANNED));
+    toast.success(getMessage(MESSAGES.SUCCESS.PLAYER_UNBANNED));
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    showError(handleError(e, "UnbanPlayer"));
+    toast.error(handleError(e, "UnbanPlayer"));
   }
 }
 
 async function handleRemoveOp(name: string) {
   if (!isRunning.value) {
-    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
+    toast.error(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
   try {
     await playerApi.removeOp(selectedServerId.value, name);
-    showSuccess(getMessage(MESSAGES.SUCCESS.OP_REMOVED));
+    toast.success(getMessage(MESSAGES.SUCCESS.OP_REMOVED));
     setTimeout(() => loadAll(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    showError(handleError(e, "RemoveOp"));
+    toast.error(handleError(e, "RemoveOp"));
   }
 }
 
 async function handleKick(name: string) {
   if (!isRunning.value) {
-    showError(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
+    toast.error(getMessage(MESSAGES.ERROR.SERVER_NOT_RUNNING));
     return;
   }
   try {
     await playerApi.kickPlayer(selectedServerId.value, name);
-    showSuccess(`${name} ${getMessage(MESSAGES.SUCCESS.PLAYER_KICKED)}`);
+    toast.success(`${name} ${getMessage(MESSAGES.SUCCESS.PLAYER_KICKED)}`);
     setTimeout(() => parseOnlinePlayers(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    showError(handleError(e, "KickPlayer"));
+    toast.error(handleError(e, "KickPlayer"));
   }
 }
 </script>
@@ -255,16 +255,6 @@ async function handleKick(name: string) {
     </div>
 
     <template v-else>
-      <div class="player-msg-row">
-        <div v-if="error" class="player-msg-banner error-banner">
-          <span>{{ error }}</span>
-          <button @click="clearMessage('error')">x</button>
-        </div>
-        <div v-if="success" class="player-msg-banner success-banner">
-          <span>{{ success }}</span>
-        </div>
-      </div>
-
       <div class="player-content-layout">
         <PlayerTabs
           v-model="activeTab"
@@ -339,36 +329,5 @@ async function handleKick(name: string) {
   flex-direction: column;
   gap: var(--sl-space-md);
   min-width: 0;
-}
-
-.player-msg-row {
-  display: flex;
-  gap: var(--sl-space-sm);
-}
-
-.player-msg-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-radius: var(--sl-radius-md);
-  font-size: 0.875rem;
-}
-
-.error-banner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: var(--sl-error);
-}
-
-.success-banner {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  color: var(--sl-success);
-}
-
-.player-msg-banner button {
-  font-weight: 600;
-  color: inherit;
 }
 </style>

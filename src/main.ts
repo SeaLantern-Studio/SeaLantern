@@ -24,6 +24,7 @@ import {
   Cmz_Switch,
   Cmz_TabBar,
   Cmz_Textarea,
+  Cmz_Toast,
   Cmz_Toggle,
   Cmz_Tooltip,
 } from "cmzya-modern-ui";
@@ -67,6 +68,7 @@ app.component("cmz-spinner", Cmz_Spinner);
 app.component("cmz-switch", Cmz_Switch);
 app.component("cmz-tab-bar", Cmz_TabBar);
 app.component("cmz-textarea", Cmz_Textarea);
+app.component("cmz-toast", Cmz_Toast);
 app.component("cmz-toggle", Cmz_Toggle);
 app.component("cmz-tooltip", Cmz_Tooltip);
 

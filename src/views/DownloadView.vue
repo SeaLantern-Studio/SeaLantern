@@ -4,7 +4,7 @@ import { useRouter } from "vue-router";
 import DownloadForm from "@components/views/download/DownloadForm.vue";
 import DownloadServerForm from "@components/views/download/DownloadServerForm.vue";
 import DownloadProgress from "@components/views/download/DownloadProgress.vue";
-import { useMessage } from "@composables/useMessage";
+import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
 import { downloadApi, downloadServerApi, type DownloadLink } from "@api/downloader";
 import { systemApi } from "@api/system";
@@ -13,7 +13,7 @@ import { i18n } from "@language";
 
 const router = useRouter();
 const createServerDraftStore = useCreateServerDraftStore();
-const { error: errorMsg, showError, clearError } = useMessage();
+const toast = useToast();
 const { loading: submitting, start: startLoading, stop: stopLoading } = useLoading();
 
 // 追踪下载任务来源
@@ -160,15 +160,15 @@ function checkThreadCount() {
     return false;
   }
   if (!/^-?\d+$/.test(threadCountValue)) {
-    showError(i18n.t("download-file.thread_count_invalid"));
+    toast.error(i18n.t("download-file.thread_count_invalid"));
     return false;
   }
   if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    showError(i18n.t("download-file.thread_count_positive"));
+    toast.error(i18n.t("download-file.thread_count_positive"));
     return false;
   }
   if (parseInt(threadCountValue, 10) > 256) {
-    showError(i18n.t("download-file.thread_count_too_big"));
+    toast.error(i18n.t("download-file.thread_count_too_big"));
     return false;
   }
   return true;
@@ -177,13 +177,12 @@ function checkThreadCount() {
 // Server download methods
 async function loadServerTypes() {
   loadingTypes.value = true;
-  clearError();
   try {
     const types = await downloadServerApi.getServerTypes();
     serverTypes.value = types;
     if (types.length > 0) selectedType.value = types[0];
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   } finally {
     loadingTypes.value = false;
   }
@@ -193,7 +192,6 @@ async function loadServerTypes() {
 async function loadVersionsByType(serverType: string) {
   if (!serverType) return;
   loadingVersions.value = true;
-  clearError();
   versions.value = [];
   selectedVersion.value = "";
   info.value = null;
@@ -204,7 +202,7 @@ async function loadVersionsByType(serverType: string) {
     // 核心修复：后端返回数组升序，最后一个 = 最新版本
     if (list.length > 0) selectedVersion.value = list[list.length - 1];
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   } finally {
     loadingVersions.value = false;
   }
@@ -213,7 +211,6 @@ async function loadVersionsByType(serverType: string) {
 async function loadDownloadInfo(serverType: string, version: string) {
   if (!serverType || !version) return;
   loadingInfo.value = true;
-  clearError();
   info.value = null;
   serverFilename.value = "server.jar";
 
@@ -222,7 +219,7 @@ async function loadDownloadInfo(serverType: string, version: string) {
     info.value = result;
     serverFilename.value = result.fileName;
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   } finally {
     loadingInfo.value = false;
   }
@@ -233,7 +230,7 @@ async function pickServerFolder() {
     const result = await systemApi.pickFolder();
     if (result) serverSaveDir.value = result;
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   }
 }
 
@@ -261,7 +258,7 @@ async function cancelDownload() {
     resetTask();
     taskOriginTab.value = null;
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   } finally {
     stopLoading();
   }
@@ -272,20 +269,19 @@ async function handleFileDownload() {
 
   const threadCountValue = threadCount.value;
   if (threadCountValue == "") {
-    showError(i18n.t("download-file.thread_count_empty"));
+    toast.error(i18n.t("download-file.thread_count_empty"));
     return;
   }
   if (!/^-?\d+$/.test(threadCountValue)) {
-    showError(i18n.t("download-file.thread_count_invalid"));
+    toast.error(i18n.t("download-file.thread_count_invalid"));
     return;
   }
   if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    showError(i18n.t("download-file.thread_count_positive"));
+    toast.error(i18n.t("download-file.thread_count_positive"));
     return;
   }
   const threadCountInt = parseInt(threadCountValue, 10);
 
-  clearError();
   resetTask();
   taskOriginTab.value = "file";
   startLoading();
@@ -298,9 +294,9 @@ async function handleFileDownload() {
       threadCount: threadCountInt,
     });
 
-    if (taskError.value) showError(taskError.value);
+    if (taskError.value) toast.error(taskError.value);
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   } finally {
     stopLoading();
   }
@@ -309,7 +305,6 @@ async function handleFileDownload() {
 async function handleServerDownload() {
   if (!canServerDownload.value || !info.value) return;
 
-  clearError();
   resetTask();
   taskOriginTab.value = "server";
   startLoading();
@@ -324,10 +319,10 @@ async function handleServerDownload() {
     });
 
     if (taskError.value) {
-      showError(taskError.value);
+      toast.error(taskError.value);
     }
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   } finally {
     stopLoading();
   }
@@ -351,7 +346,7 @@ watch(selectedVersion, (val) => {
 });
 
 watch(taskError, (newError) => {
-  if (newError) showError(newError);
+  if (newError) toast.error(newError);
 });
 
 onMounted(() => {
@@ -361,11 +356,6 @@ onMounted(() => {
 
 <template>
   <div class="download-view animate-stagger-in">
-    <div v-if="errorMsg" class="error-banner">
-      <span>{{ errorMsg }}</span>
-      <button class="error-close" @click="clearError">x</button>
-    </div>
-
     <div class="download-cards">
       <cmz-card :title="i18n.t('downloadServerView.title')">
         <DownloadServerForm
@@ -391,9 +381,7 @@ onMounted(() => {
         <div class="card-actions">
           <cmz-button
             :variant="
-              taskInfo.isFinished && taskOriginTab === 'server' && !taskError
-                ? 'solid'
-                : undefined
+              taskInfo.isFinished && taskOriginTab === 'server' && !taskError ? 'solid' : undefined
             "
             :color="
               taskInfo.isFinished && taskOriginTab === 'server' && !taskError
@@ -437,9 +425,7 @@ onMounted(() => {
               taskInfo.isFinished && taskOriginTab === 'file' && !taskError ? 'solid' : undefined
             "
             :color="
-              taskInfo.isFinished && taskOriginTab === 'file' && !taskError
-                ? '#22c55e'
-                : undefined
+              taskInfo.isFinished && taskOriginTab === 'file' && !taskError ? '#22c55e' : undefined
             "
             :disabled="!canFileDownload"
             @click="handleFileDownload"
@@ -480,26 +466,6 @@ onMounted(() => {
   display: flex;
   gap: var(--sl-space-sm);
   margin-top: var(--sl-space-md);
-}
-
-.error-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: var(--sl-radius-md);
-  color: var(--sl-error);
-  font-size: var(--sl-font-size-base);
-}
-
-.error-close {
-  color: var(--sl-error);
-  font-weight: 600;
-  cursor: pointer;
-  background: none;
-  border: none;
 }
 
 .bottom-progress-area {

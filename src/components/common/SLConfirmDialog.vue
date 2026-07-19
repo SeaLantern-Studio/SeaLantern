@@ -18,7 +18,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   title: () => i18n.t("common.confirm_action"),
-  message: "",在·
+  message: "",
   confirmText: () => i18n.t("common.confirm"),
   cancelText: () => i18n.t("common.cancel"),
   confirmVariant: "primary",

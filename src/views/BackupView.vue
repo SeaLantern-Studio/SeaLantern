@@ -11,13 +11,13 @@ import {
 } from "@api/backup";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
-import { useMessage } from "@composables/useMessage";
+import { useToast } from "cmzya-modern-ui";
 import { Archive, RotateCcw, Trash2, Clock, Package, Gauge } from "lucide-vue-next";
 import "@styles/views/BackupView.css";
 
 const serverStore = useServerStore();
 const { loading, withLoading } = useLoading();
-const { error, success, showError, showSuccess } = useMessage();
+const toast = useToast();
 
 const backups = ref<BackupItem[]>([]);
 const settings = ref<BackupSettings>({
@@ -78,7 +78,7 @@ async function loadBackups() {
     try {
       backups.value = await backupApi.list(selectedServerId.value);
     } catch {
-      showError(i18n.t("backup.load_failed"));
+      toast.error(i18n.t("backup.load_failed"));
     }
   });
 }
@@ -117,9 +117,9 @@ async function createBackup() {
       }
       backups.value = backups.value.slice(0, settings.value.maxBackups);
     }
-    showSuccess(i18n.t("backup.create_success"));
+    toast.success(i18n.t("backup.create_success"));
   } catch {
-    showError(i18n.t("backup.create_failed"));
+    toast.error(i18n.t("backup.create_failed"));
   } finally {
     creatingBackup.value = false;
   }
@@ -129,9 +129,9 @@ async function restoreBackup(backup: BackupItem) {
   restoringId.value = backup.id;
   try {
     await backupApi.restore(backup.id);
-    showSuccess(i18n.t("backup.restore_success"));
+    toast.success(i18n.t("backup.restore_success"));
   } catch {
-    showError(i18n.t("backup.restore_failed"));
+    toast.error(i18n.t("backup.restore_failed"));
   } finally {
     restoringId.value = null;
   }
@@ -142,9 +142,9 @@ async function deleteBackup(backup: BackupItem) {
   try {
     await backupApi.delete(backup.id);
     backups.value = backups.value.filter((b) => b.id !== backup.id);
-    showSuccess(i18n.t("backup.delete_success"));
+    toast.success(i18n.t("backup.delete_success"));
   } catch {
-    showError(i18n.t("backup.delete_failed"));
+    toast.error(i18n.t("backup.delete_failed"));
   } finally {
     deletingId.value = null;
   }
@@ -158,9 +158,9 @@ async function updateSettings() {
   settings.value.compressionLevel = selectedCompression.value;
   try {
     await backupApi.updateSettings(selectedServerId.value, settings.value);
-    showSuccess(i18n.t("backup.settings_saved"));
+    toast.success(i18n.t("backup.settings_saved"));
   } catch {
-    showError(i18n.t("backup.settings_save_failed"));
+    toast.error(i18n.t("backup.settings_save_failed"));
   }
 }
 

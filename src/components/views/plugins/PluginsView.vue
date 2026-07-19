@@ -4,14 +4,6 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useRouter } from "vue-router";
-import {
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle,
-} from "reka-ui";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -28,7 +20,6 @@ import {
 import {
   Upload,
   Layers,
-  ShieldAlert,
   MoreVertical,
   Github,
   Settings,
@@ -867,43 +858,23 @@ function goToMarket() {
       </template>
     </cmz-dropzone>
 
-    <DialogRoot v-model:open="chooserOpen">
-      <DialogPortal>
-        <DialogOverlay class="plugin-chooser-overlay" />
-        <DialogContent class="plugin-chooser-content">
-          <div class="plugin-chooser-header">
-            <DialogTitle class="plugin-chooser-title">{{
-              i18n.t("plugins.choose_title")
-            }}</DialogTitle>
-            <button
-              class="plugin-chooser-close"
-              @click="chooserOpen = false"
-              :aria-label="i18n.t('common.close_modal')"
-            >
-              <X :size="18" />
-            </button>
-          </div>
-          <DialogDescription class="plugin-chooser-description">
-            {{ i18n.t("plugins.choose_description") }}
-          </DialogDescription>
-          <div class="plugin-chooser-actions">
-            <cmz-button variant="primary" size="lg" class="plugin-chooser-option" @click="pickFile">
-              <File :size="22" />
-              <span>{{ i18n.t("plugins.select_file") }}</span>
-            </cmz-button>
-            <cmz-button
-              variant="secondary"
-              size="lg"
-              class="plugin-chooser-option"
-              @click="pickFolder"
-            >
-              <Folder :size="22" />
-              <span>{{ i18n.t("plugins.select_folder") }}</span>
-            </cmz-button>
-          </div>
-        </DialogContent>
-      </DialogPortal>
-    </DialogRoot>
+    <cmz-modal
+      :visible="chooserOpen"
+      :title="i18n.t('plugins.choose_title')"
+      @close="chooserOpen = false"
+    >
+      <p>{{ i18n.t("plugins.choose_description") }}</p>
+      <div class="plugin-chooser-actions">
+        <cmz-button variant="primary" size="lg" class="plugin-chooser-option" @click="pickFile">
+          <File :size="22" />
+          <span>{{ i18n.t("plugins.select_file") }}</span>
+        </cmz-button>
+        <cmz-button variant="secondary" size="lg" class="plugin-chooser-option" @click="pickFolder">
+          <Folder :size="22" />
+          <span>{{ i18n.t("plugins.select_folder") }}</span>
+        </cmz-button>
+      </div>
+    </cmz-modal>
 
     <div v-if="pluginStore.error" class="error-banner">
       <span class="error-icon">!</span>
@@ -967,26 +938,28 @@ function goToMarket() {
             </label>
 
             <div class="plugin-card-actions">
-              <div
+              <cmz-badge
                 v-if="pluginStore.updates[plugin.manifest.id]"
-                class="update-badge"
+                dot
                 :title="i18n.t('plugins.update_available')"
-              >
-                <ShieldAlert :size="12" />
-              </div>
+              />
 
-              <div
+              <cmz-badge
                 v-if="hasMissingRequiredDependencies(plugin)"
-                class="dependency-indicator dependency-indicator--required"
+                dot
+                variant="danger"
                 :title="getDependencyTooltip(plugin)"
+                class="dependency-clickable"
                 @click.stop="showMissingDependenciesModal(plugin)"
-              ></div>
-              <div
+              />
+              <cmz-badge
                 v-else-if="hasMissingOptionalDependencies(plugin)"
-                class="dependency-indicator dependency-indicator--optional"
+                dot
+                variant="warning"
                 :title="getDependencyTooltip(plugin)"
+                class="dependency-clickable"
                 @click.stop="showMissingDependenciesModal(plugin)"
-              ></div>
+              />
 
               <PluginPermissionPanel
                 :plugin-id="plugin.manifest.id"
@@ -1519,98 +1492,6 @@ function goToMarket() {
 
 .plugins-dropzone :deep(.cmz-dropzone-title) {
   text-align: center;
-}
-
-.plugin-chooser-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
-  z-index: 3000;
-}
-
-.plugin-chooser-content {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(420px, calc(100vw - 32px));
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-lg);
-  box-shadow: var(--sl-shadow-lg);
-  padding: var(--sl-space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-sm);
-  z-index: 3001;
-}
-
-.plugin-chooser-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sl-space-xs);
-}
-
-.plugin-chooser-title {
-  margin: 0;
-  font-size: var(--sl-font-size-lg);
-  font-weight: 600;
-  color: var(--sl-text-primary);
-}
-
-.plugin-chooser-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--sl-radius-md);
-  border: none;
-  background: transparent;
-  color: var(--sl-text-tertiary);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.plugin-chooser-close::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--sl-error);
-  border-radius: inherit;
-  opacity: 0;
-  transform: scale(0.5);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-
-.plugin-chooser-close:hover {
-  color: var(--sl-error);
-  transform: rotate(90deg);
-}
-
-.plugin-chooser-close:hover::before {
-  opacity: 0.1;
-  transform: scale(1);
-}
-
-.plugin-chooser-close:active {
-  transform: rotate(90deg) scale(0.9);
-}
-
-.plugin-chooser-description {
-  margin: 0;
-  font-size: var(--sl-font-size-base);
-  color: var(--sl-text-secondary);
-  line-height: 1.5;
 }
 
 .plugin-chooser-actions {
@@ -2253,48 +2134,8 @@ function goToMarket() {
   z-index: 10;
 }
 
-.update-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: var(--sl-primary);
-  border-radius: 50%;
-  color: var(--sl-text-inverse);
-}
-
-.dependency-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.dependency-clickable {
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-  flex-shrink: 0;
-}
-
-.dependency-indicator:hover {
-  transform: scale(1.3);
-}
-
-.dependency-indicator--required {
-  background: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
-}
-
-.dependency-indicator--required:hover {
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
-}
-
-.dependency-indicator--optional {
-  background: #f59e0b;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
-}
-
-.dependency-indicator--optional:hover {
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
 }
 
 .header-right {

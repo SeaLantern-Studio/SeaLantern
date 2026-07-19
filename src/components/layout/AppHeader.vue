@@ -317,7 +317,7 @@ function isActive(code: string) {
       </Menu>
 
       <div class="header-status">
-        <span class="status-dot online"></span>
+        <cmz-badge dot pulse variant="success" />
         <span class="status-text">{{ i18n.t("common.app_name") }}</span>
       </div>
 

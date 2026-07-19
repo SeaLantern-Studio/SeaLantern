@@ -79,14 +79,6 @@
   --cmz-saturate-subtle: var(--sl-saturate-subtle);
   --cmz-saturate-normal: var(--sl-saturate-normal);
   --cmz-saturate-strong: var(--sl-saturate-strong);
-  /* Glass / Acrylic */
-  --cmz-glass-bg: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
-  --cmz-glass-border: var(--sl-glass-border, rgba(255, 255, 255, 0.5));
-  --cmz-acrylic-bg: var(--sl-acrylic-bg, rgba(255, 255, 255, 0.55));
-  --cmz-acrylic-bg-strong: var(--sl-acrylic-bg-strong, rgba(255, 255, 255, 0.72));
-  --cmz-acrylic-border: var(--sl-acrylic-border, rgba(255, 255, 255, 0.35));
-  --cmz-acrylic-blur: var(--sl-blur-lg);
-  --cmz-acrylic-saturate: var(--sl-saturate-normal);
   --cmz-z-dropdown: 100;
   --cmz-z-sticky: 200;
   --cmz-z-tooltip: 500;
@@ -104,4 +96,16 @@
   --cmz-radius-scrollbar: 4px;
   --cmz-border-width: 1px;
   --cmz-border-width-bold: 2px;
+}
+
+/* Glass / Acrylic 变量 — 避开 data-acrylic="off"，让 CmzYa 原生关闭指令生效 */
+:root:not([data-acrylic="off"]),
+[data-theme="dark"]:not([data-acrylic="off"]) {
+  --cmz-glass-bg: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  --cmz-glass-border: var(--sl-glass-border, rgba(255, 255, 255, 0.5));
+  --cmz-acrylic-bg: var(--sl-acrylic-bg, rgba(255, 255, 255, 0.55));
+  --cmz-acrylic-bg-strong: var(--sl-acrylic-bg-strong, rgba(255, 255, 255, 0.72));
+  --cmz-acrylic-border: var(--sl-acrylic-border, rgba(255, 255, 255, 0.35));
+  --cmz-acrylic-blur: var(--sl-blur-lg);
+  --cmz-acrylic-saturate: var(--sl-saturate-normal);
 }

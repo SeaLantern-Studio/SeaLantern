@@ -1,17 +1,10 @@
 <template>
   <div class="java-downloader-container">
-    <div class="java-downloader-header">
-      <!-- Left Side: Label & Desc -->
-      <div class="sl-setting-info">
-        <span class="sl-setting-label">
-          {{ i18n.t("settings.java_download") }}
-        </span>
-        <span class="sl-setting-desc">
-          {{ i18n.t("settings.java_download_desc") }}
-        </span>
-      </div>
-
-      <!-- Right Side: Interaction Area -->
+    <cmz-form-field
+      :label="i18n.t('settings.java_download')"
+      :hint="i18n.t('settings.java_download_desc')"
+      label-position="left"
+    >
       <div class="java-downloader-actions">
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
@@ -73,7 +66,7 @@
           </div>
         </template>
       </div>
-    </div>
+    </cmz-form-field>
 
     <!-- Error Message (Full Width below) -->
     <div v-if="errorMessage" class="error-message">
@@ -236,18 +229,12 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.java-downloader-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.25rem 0;
-}
-
 .java-downloader-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .download-setting-div {
