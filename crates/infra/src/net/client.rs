@@ -80,10 +80,8 @@ impl Default for TimeoutPolicy {
 pub struct ClientConfig {
     /// HTTP 代理地址，格式如 `http://127.0.0.1:7890`
     pub proxy: Option<String>,
-    /// 连接超时
-    pub connect_timeout: Duration,
-    /// 读取超时
-    pub read_timeout: Duration,
+    /// 超时策略
+    pub timeout: TimeoutPolicy,
     /// User-Agent
     pub user_agent: String,
     /// 重试策略
@@ -94,8 +92,7 @@ impl Default for ClientConfig {
     fn default() -> Self {
         Self {
             proxy: None,
-            connect_timeout: Duration::from_secs(15),
-            read_timeout: Duration::from_secs(30),
+            timeout: TimeoutPolicy::default(),
             user_agent: String::from("SeaLantern/0.1.0"),
             retry_policy: RetryPolicy::default(),
         }
@@ -132,8 +129,8 @@ impl NetClient {
     /// 返回配置好的 `NetClient` 实例；配置错误时返回 `NetError::Config`
     pub fn from_config(config: &ClientConfig) -> Result<Self, NetError> {
         let mut builder = reqwest::Client::builder()
-            .connect_timeout(config.connect_timeout)
-            .read_timeout(config.read_timeout)
+            .connect_timeout(config.timeout.connect)
+            .read_timeout(config.timeout.read)
             .user_agent(&config.user_agent);
 
         if let Some(ref proxy_url) = config.proxy {
@@ -296,7 +293,8 @@ impl NetBlockingClient {
     /// 返回配置好的 `NetBlockingClient` 实例；配置错误时返回 `NetError::Config`
     pub fn from_config(config: &ClientConfig) -> Result<Self, NetError> {
         let mut builder = reqwest::blocking::Client::builder()
-            .connect_timeout(config.connect_timeout)
+            .connect_timeout(config.timeout.connect)
+            .timeout(config.timeout.total)
             .user_agent(&config.user_agent);
 
         if let Some(ref proxy_url) = config.proxy {
@@ -349,7 +347,7 @@ mod tests {
     fn default_config_has_no_proxy() {
         let config = ClientConfig::default();
         assert!(config.proxy.is_none());
-        assert_eq!(config.connect_timeout, Duration::from_secs(15));
+        assert_eq!(config.timeout.connect, Duration::from_secs(15));
     }
 
     #[test]

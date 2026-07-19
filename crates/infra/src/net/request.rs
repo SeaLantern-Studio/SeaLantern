@@ -107,6 +107,8 @@ impl<'a> RequestBuilder<'a> {
     pub async fn send(self) -> Result<Response, NetError> {
         let max_attempts = self.retry_policy.max_retries + 1; // 首次 + 重试次数
 
+        observability::request_started(&self.url);
+
         for attempt in 1..=max_attempts {
             // 构建 reqwest 请求
             let mut req = self
@@ -144,13 +146,13 @@ impl<'a> RequestBuilder<'a> {
 
                     // 重试用完后的最终响应：成功（2xx/3xx）正常返回，否则转为错误
                     if response.status().is_success() || response.status().is_redirection() {
+                        observability::request_completed(&self.url);
                         return Ok(response);
                     }
                     let status = response.status().as_u16();
-                    return Err(NetError::Response(
-                        status,
-                        format!("HTTP {status}"),
-                    ));
+                    let error = format!("HTTP {status}");
+                    observability::request_failed(&self.url, &error);
+                    return Err(NetError::Response(status, error));
                 }
                 Err(err) => {
                     // 判断是否可重试
@@ -160,7 +162,9 @@ impl<'a> RequestBuilder<'a> {
                         continue;
                     }
 
-                    return Err(convert_reqwest_error(err));
+                    let error = convert_reqwest_error(err);
+                    observability::request_failed(&self.url, &error);
+                    return Err(error);
                 }
             }
         }

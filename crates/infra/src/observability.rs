@@ -42,6 +42,40 @@ pub fn request_retry(url: &str, attempt: u32, error: &dyn Display) {
     );
 }
 
+/// 事件：HTTP 请求已失败。
+pub const EVENT_REQUEST_FAILED: &str = "request_failed";
+
+/// 记录请求开始事件。
+pub fn request_started(url: &str) {
+    tracing::info!(
+        target: NET_TARGET,
+        event_name = EVENT_REQUEST_STARTED,
+        url,
+        "HTTP request started"
+    );
+}
+
+/// 记录请求完成事件。
+pub fn request_completed(url: &str) {
+    tracing::info!(
+        target: NET_TARGET,
+        event_name = EVENT_REQUEST_COMPLETED,
+        url,
+        "HTTP request completed"
+    );
+}
+
+/// 记录请求失败事件。
+pub fn request_failed(url: &str, error: &dyn Display) {
+    tracing::error!(
+        target: NET_TARGET,
+        event_name = EVENT_REQUEST_FAILED,
+        url,
+        error = %error,
+        "HTTP request failed"
+    );
+}
+
 // ── 下载层 ──
 
 /// 下载模块的 tracing 目标。
