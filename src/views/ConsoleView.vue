@@ -77,6 +77,630 @@ const quickCommands = computed(() => [
   { label: i18n.t("common.command_mob_griefing_off"), cmd: "gamerule mobGriefing false" },
 ]);
 
+// 命令补全 MD（Minecraft 原版常用命令）
+const commandCompletionsMd = `
+advancement
+  grant
+    <targets>
+      everything
+      only
+        <advancement>
+          <criterion>
+      from
+        <advancement>
+      until
+        <advancement>
+      through
+        <advancement>
+  revoke
+    <targets>
+      everything
+      only
+        <advancement>
+          <criterion>
+      from
+        <advancement>
+      until
+        <advancement>
+      through
+        <advancement>
+attribute
+  <target>
+    <attribute>
+      get
+        <scale>
+      base
+        get
+          <scale>
+        set
+          <value>
+      modifier
+        add
+          <id> <name> <value> <operation>
+        remove
+          <id>
+        get
+          <id>
+            <scale>
+ban
+  <targets>
+    <reason>
+ban-ip
+  <target>
+    <reason>
+banlist
+  ips
+  players
+bossbar
+  add
+    <id> <name>
+  get
+    <id>
+      max
+      players
+      value
+      visible
+      name
+      color
+      style
+  list
+  remove
+    <id>
+  set
+    <id>
+      color
+        <color>
+      max
+        <max>
+      name
+        <name>
+      players
+        <players>
+      style
+        <style>
+      value
+        <value>
+      visible
+        <visible>
+clear
+  <targets>
+    <item>
+      <max_count>
+clone
+  <begin> <end> <destination>
+    replace
+    masked
+    filtered
+      <block>
+        force
+        move
+        normal
+data
+  get
+    block <targetPos> <path> <scale>
+    entity <target> <path> <scale>
+    storage <source> <path> <scale>
+  merge
+    block <targetPos> <nbt>
+    entity <target> <nbt>
+    storage <target> <nbt>
+  modify
+    block <targetPos> <path> append <value>
+    block <targetPos> <path> insert <index> <value>
+    block <targetPos> <path> merge <value>
+    block <targetPos> <path> prepend <value>
+    block <targetPos> <path> set <value>
+    block <targetPos> <path> remove
+    entity <target> <path> append <value>
+    entity <target> <path> insert <index> <value>
+    entity <target> <path> merge <value>
+    entity <target> <path> prepend <value>
+    entity <target> <path> set <value>
+    entity <target> <path> remove
+    storage <target> <path> append <value>
+    storage <target> <path> insert <index> <value>
+    storage <target> <path> merge <value>
+    storage <target> <path> prepend <value>
+    storage <target> <path> set <value>
+    storage <target> <path> remove
+  remove
+    block <targetPos> <path>
+    entity <target> <path>
+    storage <target> <path>
+datapack
+  list
+    available
+    enabled
+  enable
+    <name>
+      after <existing>
+      before <existing>
+      last
+      first
+  disable
+    <name>
+debug
+  start
+  stop
+  function
+    <name>
+  report
+  clear
+defaultgamemode
+  survival
+  creative
+  adventure
+  spectator
+deop
+  <players>
+difficulty
+  peaceful
+  easy
+  normal
+  hard
+effect
+  clear
+    <targets>
+  give
+    <targets> <effect>
+      <seconds>
+        <amplifier>
+          <hideParticles>
+enchant
+  <targets> <enchantment>
+    <level>
+execute
+  align <axes>
+  anchored eyes
+  anchored feet
+  as <targets>
+  at <targets>
+  facing entity <entity>
+  facing <pos>
+  in <dimension>
+  positioned <pos>
+  rotated <rot>
+  if block <pos> <block>
+  if blocks <start> <end> <destination> all
+  if blocks <start> <end> <destination> masked
+  if entity <targets>
+  if predicate <predicate>
+  if score <target> <targetObjective> <=> <source> <sourceObjective>
+  if score <target> <targetObjective> matches <range>
+  unless block <pos> <block>
+  unless blocks <start> <end> <destination> all
+  unless blocks <start> <end> <destination> masked
+  unless entity <targets>
+  unless predicate <predicate>
+  unless score <target> <targetObjective> <=> <source> <sourceObjective>
+  unless score <target> <targetObjective> matches <range>
+  run <command>
+experience
+  add <targets> <amount>
+    points
+    levels
+  set <targets> <amount>
+    points
+    levels
+  query <targets>
+    points
+    levels
+fill
+  <from> <to> <block>
+    destroy
+    hollow
+    keep
+    outline
+    replace
+      <filter>
+fillbiome
+  <from> <to> <biome>
+forceload
+  add
+    <from>
+      <to>
+  remove
+    <from>
+      <to>
+    all
+  query
+    <pos>
+function
+  <name>
+gamemode
+  survival
+    <player>
+  creative
+    <player>
+  adventure
+    <player>
+  spectator
+    <player>
+gamerule
+  announceAdvancements
+    true
+    false
+  commandBlockOutput
+    true
+    false
+  disableElytraMovementCheck
+    true
+    false
+  disableRaids
+    true
+    false
+  doDaylightCycle
+    true
+    false
+  doEntityDrops
+    true
+    false
+  doFireTick
+    true
+    false
+  doImmediateRespawn
+    true
+    false
+  doInsomnia
+    true
+    false
+  doLimitedCrafting
+    true
+    false
+  doMobLoot
+    true
+    false
+  doMobSpawning
+    true
+    false
+  doPatrolSpawning
+    true
+    false
+  doTileDrops
+    true
+    false
+  doTraderSpawning
+    true
+    false
+  doWeatherCycle
+    true
+    false
+  doVinesSpread
+    true
+    false
+  doWardenSpawning
+    true
+    false
+  drowningDamage
+    true
+    false
+  fallDamage
+    true
+    false
+  fireDamage
+    true
+    false
+  freezeDamage
+    true
+    false
+  keepInventory
+    true
+    false
+  logAdminCommands
+    true
+    false
+  maxCommandChainLength
+    <value>
+  maxEntityCramming
+    <value>
+  mobGriefing
+    true
+    false
+  naturalRegeneration
+    true
+    false
+  playersSleepingPercentage
+    <value>
+  randomTickSpeed
+    <value>
+  reducedDebugInfo
+    true
+    false
+  sendCommandFeedback
+    true
+    false
+  showDeathMessages
+    true
+    false
+  spawnRadius
+    <value>
+  spectatorsGenerateChunks
+    true
+    false
+give
+  <targets> <item>
+    <count>
+help
+  <command>
+item
+  replace
+    entity <targets> <slot> <item>
+      <count>
+    block <pos> <slot> <item>
+      <count>
+  modify
+    entity <targets> <slot> <modifier>
+    block <pos> <slot> <modifier>
+jfr
+  start
+  stop
+kick
+  <targets>
+    <reason>
+kill
+  <targets>
+list
+  uuids
+locate
+  biome <biome>
+  structure <structure>
+  poi <poi_type>
+loot
+  give <targets> <loot_table>
+  fish <loot_table> <pos> <tool>
+  kill <targets>
+  mine <pos> <tool>
+  insert <targetPos> <loot_table>
+  replace entity <targets> <slot> <loot_table>
+  replace block <pos> <slot> <loot_table>
+me
+  <action>
+msg
+  <target>
+    <message>
+particle
+  <name> <pos>
+    <delta_x> <delta_y> <delta_z> <speed> <count>
+      force
+      normal
+      <viewers>
+playsound
+  <sound>
+    master
+    music
+    record
+    weather
+    block
+    hostile
+    neutral
+    player
+    ambient
+    voice
+    <targets>
+      <pos>
+        <volume>
+          <pitch>
+            <minimum_volume>
+publish
+  <port>
+recipe
+  give
+    <targets> <recipe>
+  take
+    <targets> <recipe>
+reload
+ride
+  <target>
+    mount
+      <vehicle>
+    dismount
+    spawn_ride
+      <entity>
+say
+  <message>
+schedule
+  function <function> <time>
+    append
+    replace
+  clear
+    <function>
+scoreboard
+  objectives
+    list
+    add <name> <criteria>
+      <display_name>
+    remove <name>
+    setdisplay <slot> <objective>
+    modify <name> displayname <name>
+    modify <name> rendertype <type>
+  players
+    list
+      <target>
+    set <target> <objective> <score>
+    add <target> <objective> <score>
+    remove <target> <objective> <score>
+    reset <target>
+      <objective>
+    enable <target> <trigger>
+    operation <target> <targetObjective> <operation> <source> <sourceObjective>
+  teams
+    list
+      <team>
+    add <team>
+      <display_name>
+    remove <team>
+    empty <team>
+    join <team> <members>
+    leave <members>
+    modify <team>
+      displayname <name>
+      color <color>
+      friendlyfire <allowed>
+      seeFriendlyInvisibles <visible>
+      nametagVisibility <visibility>
+      deathMessageVisibility <visibility>
+      collisionRule <rule>
+      prefix <prefix>
+      suffix <suffix>
+      seeFriendlyInvisibles <enabled>
+seed
+setblock
+  <pos> <block>
+    destroy
+    keep
+    replace
+setworldspawn
+  <pos>
+    <angle>
+spawnpoint
+  <targets>
+    <pos>
+      <angle>
+spectate
+  <target>
+    <player>
+spreadplayers
+  <center> <spread_distance> <max_range> <max_teams>
+    <teams>
+      <respect_teams>
+stop
+stopsound
+  <targets>
+    *
+    master
+    music
+    record
+    weather
+    block
+    hostile
+    neutral
+    player
+    ambient
+    voice
+    <sound>
+summon
+  <entity>
+    <pos>
+      <nbt>
+tag
+  <targets>
+    add <name>
+    remove <name>
+    list
+team
+  list
+    <team>
+  add <team>
+    <display_name>
+  remove <team>
+  empty <team>
+  join <team> <members>
+  leave <members>
+  modify <team>
+    displayname <name>
+    color <color>
+    friendlyfire <allowed>
+    seeFriendlyInvisibles <visible>
+    nametagVisibility <visibility>
+    deathMessageVisibility <visibility>
+    collisionRule <rule>
+    prefix <prefix>
+    suffix <suffix>
+teammsg
+  <message>
+teleport
+  <destination>
+  <targets> <destination>
+  <targets> <x> <y> <z>
+    <yaw> <pitch>
+tell
+  <target>
+    <message>
+tellraw
+  <targets>
+    <message>
+time
+  set
+    day
+    night
+    midnight
+    noon
+    <time>
+  add
+    <time>
+  query
+    daytime
+    gametime
+    day
+title
+  <targets>
+    title <title>
+    subtitle <subtitle>
+    actionbar <actionbar>
+    times <fadeIn> <stay> <fadeOut>
+    clear
+    reset
+tm
+  <message>
+tp
+  <destination>
+  <targets> <destination>
+  <targets> <x> <y> <z>
+trigger
+  <objective>
+    <value>
+    add <value>
+weather
+  clear
+    <duration>
+  rain
+    <duration>
+  thunder
+    <duration>
+w
+  <target>
+    <message>
+whitelist
+  on
+  off
+  list
+  add <players>
+  remove <players>
+  reload
+worldborder
+  add <distance>
+    <time>
+  set <distance>
+    <time>
+  center <pos>
+  damage
+    buffer <distance>
+    amount <damage_per_block>
+  warning
+    distance <distance>
+    time <time>
+  get
+xp
+  add <targets> <amount>
+    points
+    levels
+  set <targets> <amount>
+    points
+    levels
+  query <targets>
+    points
+    levels
+save-all
+  flush
+save-on
+save-off
+stop
+restart
+list
+tps
+help
+`;
+
 const serverId = computed(() => serverStore.currentServerId || "");
 const currentServer = computed(
   () => serverStore.servers.find((server) => server.id === serverId.value) || null,
@@ -477,6 +1101,8 @@ function deleteCommand() {}
           :consoleFontFamily="consoleFontFamily"
           :consoleLetterSpacing="consoleLetterSpacing"
           :maxLogLines="maxLogLines"
+          :history="commandHistory"
+          :completionMd="commandCompletionsMd"
           @command="sendCommand"
         />
 

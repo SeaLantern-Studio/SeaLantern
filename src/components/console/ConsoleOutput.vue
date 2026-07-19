@@ -8,6 +8,8 @@ interface Props {
   consoleLetterSpacing?: number;
   maxLogLines?: number;
   readonly?: boolean;
+  history?: string[];
+  completionMd?: string;
 }
 
 interface ConsoleLineObj {
@@ -20,6 +22,8 @@ const props = withDefaults(defineProps<Props>(), {
   consoleLetterSpacing: 0,
   maxLogLines: 5000,
   readonly: false,
+  history: () => [],
+  completionMd: "",
 });
 
 const emit = defineEmits<{
@@ -96,6 +100,8 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
     :max-lines="maxLogLines"
     :readonly="readonly"
     :placeholder="i18n.t('console.waiting_for_output')"
+    :history="history"
+    :completion-md="completionMd"
     height="100%"
     @command="(text: string) => emit('command', text)"
   />

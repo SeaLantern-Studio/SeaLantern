@@ -55,6 +55,75 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  /* 拖动/弹飞时保留原位置的占位尺寸 */
+  width: 28px;
+  height: 28px;
+}
+
+/* 拖动/弹飞时的占位元素 */
+.logo-placeholder {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+/* 长按进度环（已改为静默激活，保留样式以防需要） */
+
+/* 激活状态：图标光晕 + 轻微抖动提示可拖动 */
+.logo-armed .logo-icon {
+  animation: logo-armed-pulse 1.2s ease-in-out infinite;
+}
+
+.logo-armed-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.35) 0%, rgba(14, 165, 233, 0) 70%);
+  pointer-events: none;
+  animation: logo-glow-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes logo-armed-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes logo-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* 拖动时禁用文字选中与默认拖拽 */
+.logo-dragging {
+  cursor: grabbing !important;
+}
+
+.logo-dragging .logo-icon {
+  cursor: grabbing !important;
+}
+
+/* 弹力绳 SVG 覆盖层：铺满视口 */
+.elastic-rope-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9998;
 }
 
 .logo-text {

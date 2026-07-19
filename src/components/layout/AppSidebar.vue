@@ -5,6 +5,7 @@ import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
+import { useElasticLogo } from "@composables/useElasticLogo";
 import {
   Home,
   Plus,
@@ -458,6 +459,78 @@ function getAppName() {
   return i18n.t("common.app_name");
 }
 
+// 海景灯图标彩蛋：长按 3 秒可拖动，松手后弹力绳弹飞
+const logoIconRef = ref<HTMLElement | null>(null);
+const elastic = useElasticLogo();
+
+function onLogoMouseDown(e: MouseEvent) {
+  if (!logoIconRef.value) return;
+  elastic.startHold(e, logoIconRef.value);
+}
+
+function onLogoTouchStart(e: TouchEvent) {
+  if (!logoIconRef.value) return;
+  elastic.startHold(e, logoIconRef.value);
+}
+
+// 全局监听拖动（避免鼠标移出元素就丢失）
+function onWindowMouseMove(e: MouseEvent) {
+  if (elastic.isArmed.value && !elastic.isDragging.value) {
+    // 激活后按下左键才开始拖动
+    if (e.buttons === 1) elastic.startDrag(e);
+  } else if (elastic.isDragging.value) {
+    elastic.moveDrag(e);
+  }
+}
+
+function onWindowTouchMove(e: TouchEvent) {
+  if (elastic.isArmed.value && !elastic.isDragging.value) {
+    elastic.startDrag(e);
+  } else if (elastic.isDragging.value) {
+    elastic.moveDrag(e);
+  }
+}
+
+function onWindowMouseUp() {
+  if (elastic.isDragging.value) {
+    elastic.releaseDrag();
+  } else if (elastic.isArmed.value && !elastic.isAnimating.value) {
+    // 已激活但没拖动，单击则取消激活
+    elastic.isArmed.value = false;
+  } else {
+    elastic.cancelHold();
+  }
+}
+
+function onLogoMouseLeave() {
+  // 没激活时鼠标离开就取消长按计时
+  if (!elastic.isArmed.value && !elastic.isAnimating.value) {
+    elastic.cancelHold();
+  }
+}
+
+/** 点击 logo：激活态下不触发导航，避免拖动后被误判为点击 */
+function onLogoClick() {
+  if (elastic.isArmed.value || elastic.isAnimating.value || elastic.isDragging.value) {
+    return;
+  }
+  navigateTo("/");
+}
+
+onMounted(() => {
+  window.addEventListener("mousemove", onWindowMouseMove);
+  window.addEventListener("mouseup", onWindowMouseUp);
+  window.addEventListener("touchmove", onWindowTouchMove, { passive: false });
+  window.addEventListener("touchend", onWindowMouseUp);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("mousemove", onWindowMouseMove);
+  window.removeEventListener("mouseup", onWindowMouseUp);
+  window.removeEventListener("touchmove", onWindowTouchMove);
+  window.removeEventListener("touchend", onWindowMouseUp);
+});
+
 // 图标已按需导入，模板中直接使用组件标签替代映射表
 </script>
 
@@ -470,14 +543,68 @@ function getAppName() {
       'sidebar-transitioning': sidebarTransitioning,
     }"
   >
-    <div class="sidebar-logo" @click="navigateTo('/')">
-      <div class="logo-icon">
-        <img :src="logoSvg" width="28" height="28" :alt="i18n.t('common.app_name')" />
+    <div
+      class="sidebar-logo"
+      :class="{ 'logo-armed': elastic.isArmed.value, 'logo-dragging': elastic.isDragging.value }"
+      @click="onLogoClick"
+    >
+      <div
+        ref="logoIconRef"
+        class="logo-icon"
+        :style="
+          elastic.isDragging.value || elastic.isAnimating.value
+            ? {
+                position: 'fixed',
+                left: elastic.position.value.x - 14 + 'px',
+                top: elastic.position.value.y - 14 + 'px',
+                zIndex: 9999,
+                pointerEvents: 'none',
+              }
+            : {}
+        "
+        @mousedown="onLogoMouseDown"
+        @touchstart="onLogoTouchStart"
+        @mouseleave="onLogoMouseLeave"
+      >
+        <img
+          :src="logoSvg"
+          width="28"
+          height="28"
+          :alt="i18n.t('common.app_name')"
+          draggable="false"
+        />
+        <!-- 激活提示光晕 -->
+        <div v-if="elastic.isArmed.value" class="logo-armed-glow"></div>
       </div>
+      <!-- 拖动/弹飞时保留原占位，避免布局塌陷 -->
+      <div
+        v-if="elastic.isDragging.value || elastic.isAnimating.value"
+        class="logo-placeholder"
+        aria-hidden="true"
+      ></div>
       <transition name="fade">
         <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ getAppName() }}</span>
       </transition>
     </div>
+
+    <!-- 弹力绳 SVG 覆盖层 -->
+    <svg v-if="elastic.isDragging.value || elastic.isAnimating.value" class="elastic-rope-layer">
+      <path
+        :d="elastic.elasticPath()"
+        :stroke="elastic.elasticColor()"
+        :stroke-width="elastic.elasticWidth()"
+        fill="none"
+        stroke-linecap="round"
+      />
+      <!-- 锚点圆环 -->
+      <circle
+        :cx="elastic.anchor.value.x"
+        :cy="elastic.anchor.value.y"
+        r="4"
+        fill="var(--sl-primary, #0ea5e9)"
+        opacity="0.6"
+      />
+    </svg>
     <nav class="sidebar-nav">
       <div class="nav-active-indicator" ref="navIndicator"></div>
       <cmz-select

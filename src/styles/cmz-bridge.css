@@ -96,6 +96,13 @@
   --cmz-radius-scrollbar: 4px;
   --cmz-border-width: 1px;
   --cmz-border-width-bold: 2px;
+  /* 控制台主题 — 使用项目 surface 系列变量 */
+  --cmz-console-bg: var(--sl-surface);
+  --cmz-console-text: var(--sl-text-primary);
+  --cmz-console-text-dim: var(--sl-text-secondary);
+  --cmz-console-text-bright: var(--sl-text-primary);
+  --cmz-console-border: var(--sl-border-light);
+  --cmz-console-timestamp: var(--sl-text-tertiary);
 }
 
 /* Glass / Acrylic 变量 — 避开 data-acrylic="off"，让 CmzYa 原生关闭指令生效 */
