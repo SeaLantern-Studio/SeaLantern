@@ -5901,6 +5901,16 @@ version = "0.1.0"
 [[package]]
 name = "sealantern-infra"
 version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "uuid",
+]
 
 [[package]]
 name = "security-framework"
