@@ -142,8 +142,15 @@ impl<'a> RequestBuilder<'a> {
                         continue;
                     }
 
-                    // 4xx 客户端错误或 2xx/3xx 成功，不重试
-                    return Ok(response);
+                    // 重试用完后的最终响应：成功（2xx/3xx）正常返回，否则转为错误
+                    if response.status().is_success() || response.status().is_redirection() {
+                        return Ok(response);
+                    }
+                    let status = response.status().as_u16();
+                    return Err(NetError::Response(
+                        status,
+                        format!("HTTP {status}"),
+                    ));
                 }
                 Err(err) => {
                     // 判断是否可重试

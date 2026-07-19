@@ -2,19 +2,17 @@
 //!
 //! 管理多个下载任务的创建、进度查询、取消和自动清理。
 //! 内部使用 `HashMap` 存储所有任务，已结束的任务在查询时自动移除。
+//! 每个任务使用 UUID v4 标识，无需担心 ID 溢出或冲突。
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
+use uuid::Uuid;
 
 use crate::download::multi::Downloader;
 use crate::download::status::{DownloadSnapshot, DownloadStatus};
 use crate::net::client::NetClient;
-
-/// 全局自增任务 ID 计数器。从 1 起始，0 作为无效哨兵值。
-static NEXT_TASK_ID: AtomicUsize = AtomicUsize::new(1);
 
 /// 下载任务管理器。
 ///
@@ -34,7 +32,7 @@ pub struct DownloadManager {
     /// 下载器实例
     downloader: Downloader,
     /// 任务集合：ID → 下载状态
-    tasks: Arc<RwLock<HashMap<usize, Arc<DownloadStatus>>>>,
+    tasks: Arc<RwLock<HashMap<Uuid, Arc<DownloadStatus>>>>,
 }
 
 impl DownloadManager {
@@ -52,7 +50,7 @@ impl DownloadManager {
 
     /// 创建下载任务。
     ///
-    /// 启动下载后立即返回任务 ID，下载在后台异步进行。
+    /// 启动下载后立即返回任务 UUID，下载在后台异步进行。
     ///
     /// # Parameters
     ///
@@ -62,18 +60,18 @@ impl DownloadManager {
     ///
     /// # Returns
     ///
-    /// 返回任务 ID（`usize`），后续通过此 ID 查询进度或取消。
+    /// 返回任务 UUID，后续通过此 ID 查询进度或取消。
     pub async fn create(
         &self,
         url: &str,
         output_path: &str,
         thread_count: usize,
-    ) -> Result<usize, String> {
+    ) -> Result<Uuid, String> {
         let status = self
             .downloader
             .download(url, output_path, thread_count)
             .await?;
-        let id = NEXT_TASK_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let id = Uuid::new_v4();
 
         let mut tasks = self.tasks.write().await;
         tasks.insert(id, status);
@@ -81,7 +79,7 @@ impl DownloadManager {
         tracing::info!(
             target: crate::observability::DOWNLOAD_TARGET,
             event_name = "task_created",
-            task_id = id,
+            task_id = %id,
             url,
             "download task created"
         );
@@ -95,12 +93,12 @@ impl DownloadManager {
     ///
     /// # Parameters
     ///
-    /// - `id`: 任务 ID
+    /// - `id`: 任务 UUID
     ///
     /// # Returns
     ///
     /// 任务存在时返回 `Some(DownloadSnapshot)`，不存在返回 `None`。
-    pub async fn get_progress(&self, id: usize) -> Option<DownloadSnapshot> {
+    pub async fn get_progress(&self, id: Uuid) -> Option<DownloadSnapshot> {
         let status = {
             let tasks = self.tasks.read().await;
             tasks.get(&id).cloned()?
@@ -122,8 +120,8 @@ impl DownloadManager {
     /// 查询全部任务进度。
     ///
     /// 返回所有正在进行的任务进度，已结束的任务会被自动清理。
-    pub async fn get_all_progress(&self) -> Vec<(usize, DownloadSnapshot)> {
-        let snapshot: Vec<(usize, Arc<DownloadStatus>)> = {
+    pub async fn get_all_progress(&self) -> Vec<(Uuid, DownloadSnapshot)> {
+        let snapshot: Vec<(Uuid, Arc<DownloadStatus>)> = {
             let tasks = self.tasks.read().await;
             tasks.iter().map(|(id, s)| (*id, s.clone())).collect()
         };
@@ -155,8 +153,8 @@ impl DownloadManager {
     ///
     /// # Parameters
     ///
-    /// - `id`: 任务 ID
-    pub async fn cancel(&self, id: usize) {
+    /// - `id`: 任务 UUID
+    pub async fn cancel(&self, id: Uuid) {
         let status = {
             let tasks = self.tasks.read().await;
             tasks.get(&id).cloned()
@@ -170,7 +168,7 @@ impl DownloadManager {
             tracing::warn!(
                 target: crate::observability::DOWNLOAD_TARGET,
                 event_name = "task_cancelled",
-                task_id = id,
+                task_id = %id,
                 "download task cancelled"
             );
         }
@@ -198,7 +196,7 @@ mod tests {
     async fn cancel_nonexistent_task_does_nothing() {
         let client = NetClient::from_config(&Default::default()).unwrap();
         let manager = DownloadManager::new(client);
-        manager.cancel(999).await;
+        manager.cancel(Uuid::nil()).await;
         assert_eq!(manager.task_count().await, 0);
     }
 
@@ -206,7 +204,7 @@ mod tests {
     async fn get_progress_nonexistent_returns_none() {
         let client = NetClient::from_config(&Default::default()).unwrap();
         let manager = DownloadManager::new(client);
-        let snap = manager.get_progress(999).await;
+        let snap = manager.get_progress(Uuid::nil()).await;
         assert!(snap.is_none());
     }
 }
