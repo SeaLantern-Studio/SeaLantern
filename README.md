@@ -17,7 +17,7 @@
   <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
 </div>
 
-<kbd>简体中文</kbd> <kbd>[English](docs/README/README-en.md)</kbd>
+<kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
 
 ## 有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
@@ -27,10 +27,10 @@
 
 - [x] 下载服务器核心
 - [x] 客制化开服器体验
-- [ ] Todo: JVM 预设与分享社区
+- [ ] JVM 预设与分享社区
 - [x] 方便直观的更改配置(目前仅支持原版的`server.properties`)
 - [x] 快捷控制台命令
-- [ ] Todo: Cli 模式下让服务器在 Docker 容器化环境下运行
+- [ ] Cli 模式下让服务器在 Docker 容器化环境下运行
 
 ## 快速开始
 
@@ -63,10 +63,10 @@ cd SeaLantern
 
 ```bash
 pnpm install
-pnpm run tauri:dev
+pnpm tauri dev
 ```
 
-部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm run tauri:dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
+部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm tauri dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
 
 仅前端：
 
@@ -138,12 +138,6 @@ CI 会在 PR/推送时校验代码质量与相关规范。
 
 详见 [项目结构](docs/STRUCTURE.md)。
 
-### CLI 服务器入口
-
-当前仓库已经提供统一的 `sealantern server ...` CLI 入口，可同时覆盖本地 Java 服务端与 `itzg/minecraft-server` Docker 运行方式。
-
-使用说明见 [CLI 服务器运行指南](docs/cli-server-runtime-guide.md)。
-
 ## 待开发功能
 
 这些功能的位置都预留好了，代码骨架是现成的，等你来写：
@@ -168,7 +162,7 @@ QQ 交流群：**293748695**，欢迎加入讨论！
 
 ### 怎么贡献
 
-1. Fork 这个仓库的`dev`分支
+1. Fork 这个仓库的`beta`分支
 2. 建分支写代码
 3. 提 Pull Request
 4. 你的名字会出现在关于页面的贡献者墙上
