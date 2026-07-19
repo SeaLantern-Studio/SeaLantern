@@ -357,7 +357,6 @@ onMounted(() => {
   width: 220px;
   height: 100%;
   background: var(--sl-bg-elevated);
-  border-right: 1px solid var(--sl-border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;

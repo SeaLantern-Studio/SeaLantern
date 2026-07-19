@@ -1230,3 +1230,20 @@
   background: var(--sl-bg-tertiary, #242836);
   border-color: var(--sl-border-light, rgba(255, 255, 255, 0.05));
 }
+
+/* === 毛玻璃模式对比度增强 === */
+/* 开关（Toggle）在关闭状态下灰色轨道被毛玻璃削弱，提升可见性 */
+[data-acrylic="on"] .cmz-switch__track {
+  background: var(--sl-border);
+}
+
+[data-acrylic="on"] .cmz-switch--checked .cmz-switch__track {
+  background: var(--sl-primary);
+}
+
+/* 输入框背景在毛玻璃下保持不透明 */
+[data-acrylic="on"] .cmz-input-container,
+[data-acrylic="on"] .cmz-textarea,
+[data-acrylic="on"] .cmz-select__trigger {
+  background: var(--sl-surface);
+}

@@ -71,12 +71,14 @@ watch(
 
 .plugins-page-layout {
   display: flex;
+  align-items: flex-start;
   flex: 1;
   min-height: 0;
 }
 
 .tab-content {
   flex: 1;
+  align-self: stretch;
   overflow: auto;
   min-width: 0;
 }

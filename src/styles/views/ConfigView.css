@@ -12,7 +12,7 @@
 .config-layout {
   display: flex;
   align-items: flex-start;
-  gap: var(--sl-space-md);
+  gap: 0;
 }
 
 .config-tabbar-sticky {
@@ -21,38 +21,9 @@
   flex-shrink: 0;
 }
 
-/* 垂直 Tab 栏 — 与内容区背景融合，去掉卡片感 */
+/* 配置页垂直 Tab 栏宽度 */
 .config-tabbar-sticky .cmz-tab-bar--vertical {
   min-width: 140px;
-}
-
-.config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__nav {
-  flex-direction: column;
-  gap: 2px;
-  border-bottom: none;
-  border-right: none;
-  flex: 1;
-}
-
-.config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__tab {
-  border-bottom: none;
-  border-left: 2px solid transparent;
-  border-radius: 0;
-  padding: 8px 14px;
-  font-size: 0.8125rem;
-  justify-content: flex-start;
-  margin-bottom: 0;
-  margin-right: 0;
-}
-
-.config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__tab:after {
-  display: none;
-}
-
-.config-tabbar-sticky .cmz-tab-bar--vertical .cmz-tab-bar__tab--active {
-  color: var(--sl-primary);
-  border-left-color: var(--sl-primary);
-  background: var(--sl-primary-bg);
 }
 
 .config-main {
