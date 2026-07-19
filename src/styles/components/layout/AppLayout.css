@@ -4,7 +4,7 @@
   display: flex;
   width: 100vw;
   height: 100vh;
-  background-color: var(--sl-bg);
+  background-color: var(--sl-bg-secondary);
   overflow: hidden;
 }
 
@@ -32,6 +32,9 @@
   margin-left: var(--sl-sidebar-width);
   transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 0;
+  background: transparent;
+  padding: 0 20px 20px 20px;
+  gap: 12px;
 }
 
 .app-main.macos-native-vibrancy {
@@ -47,4 +50,31 @@
   padding: var(--sl-space-lg);
   overflow-y: auto;
   overflow-x: hidden;
+  background: var(--sl-surface);
+  border-radius: var(--sl-radius-lg);
+  border: 1px solid var(--sl-border);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .app-content {
+  border: 1px solid var(--sl-border);
+  box-shadow: none;
+}
+
+[data-acrylic="on"] .app-content,
+[data-acrylic]:not([data-acrylic="off"]) .app-content {
+  background: var(--sl-surface);
+  backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-normal));
+  border: 1px solid var(--sl-border-light);
+  box-shadow: none;
+}
+
+[data-theme="dark"][data-acrylic="on"] .app-content,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .app-content {
+  box-shadow: none;
+}
+
+.app-main.macos-native-vibrancy .app-content {
+  background: var(--sl-surface);
 }

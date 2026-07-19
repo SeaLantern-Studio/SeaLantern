@@ -267,7 +267,7 @@ async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
-  consoleOutputRef.value?.appendLines(["> " + command]);
+  consoleOutputRef.value?.appendLines([`>>> ${command}`]);
   commandHistory.value.push(command);
   if (commandHistory.value.length > 500) {
     commandHistory.value.splice(0, commandHistory.value.length - 500);

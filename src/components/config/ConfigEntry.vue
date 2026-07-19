@@ -28,11 +28,16 @@ function isBooleanType(entry: ConfigEntry): boolean {
 
 <template>
   <div class="config-entry">
-    <div class="entry-header">
-      <div class="entry-key">{{ entry.key }}</div>
-      <cmz-badge variant="outline" size="sm" class="entry-category">{{ entry.category }}</cmz-badge>
+    <div class="entry-info">
+      <div class="entry-header">
+        <div class="entry-key">{{ entry.key }}</div>
+        <cmz-badge variant="outline" size="sm" class="entry-category">{{
+          entry.category
+        }}</cmz-badge>
+      </div>
+      <div class="entry-description">{{ entry.description }}</div>
+      <div class="entry-default">{{ i18n.t("config.default") }}: {{ entry.default }}</div>
     </div>
-    <div class="entry-description">{{ entry.description }}</div>
     <div class="entry-value">
       <template v-if="isBooleanType(entry)">
         <cmz-switch :modelValue="value === 'true'" @update:modelValue="handleSwitchChange" />
@@ -42,17 +47,20 @@ function isBooleanType(entry: ConfigEntry): boolean {
           :modelValue="value"
           @update:modelValue="handleValueChange"
           :placeholder="entry.default"
-          style="width: 300px"
+          style="width: 280px"
         />
       </template>
     </div>
-    <div class="entry-default">{{ i18n.t("config.default") }}: {{ entry.default }}</div>
   </div>
 </template>
 
 <style scoped>
 .config-entry {
-  padding: var(--sl-space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-lg);
+  padding: var(--sl-space-md) var(--sl-space-lg);
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
@@ -62,34 +70,42 @@ function isBooleanType(entry: ConfigEntry): boolean {
 
 .config-entry:hover {
   border-color: var(--sl-border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.entry-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .entry-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: var(--sl-space-sm);
   margin-bottom: var(--sl-space-xs);
 }
 
 .entry-key {
   font-weight: 600;
   color: var(--sl-text-primary);
+  font-size: 0.9375rem;
 }
 
 .entry-category {
   font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
 .entry-description {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--sl-text-secondary);
-  margin-bottom: var(--sl-space-sm);
   line-height: 1.4;
+  margin-bottom: 4px;
 }
 
 .entry-value {
-  margin-bottom: var(--sl-space-xs);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .entry-default {

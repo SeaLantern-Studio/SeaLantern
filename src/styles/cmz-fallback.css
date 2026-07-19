@@ -137,10 +137,14 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  height: 38px;
   border: 1px solid var(--sl-border, #d8dee8);
   border-radius: var(--sl-radius-md, 10px);
   background: var(--sl-surface, #fff);
-  transition: border-color 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  box-sizing: border-box;
 }
 
 .cmz-input-container:focus-within {
@@ -150,13 +154,15 @@
 
 .cmz-input {
   flex: 1;
-  padding: 8px 12px;
+  padding: 0 12px;
+  height: 100%;
   font-size: 14px;
   font-family: var(--sl-font-sans);
   border: none;
   outline: none;
   background: transparent;
   color: var(--sl-text-primary);
+  line-height: 1;
 }
 
 .cmz-input-prefix,
@@ -305,39 +311,44 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 8px 12px;
+  height: 38px;
+  padding: 0 12px;
   font-size: 14px;
+  line-height: 1;
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   background: var(--sl-surface);
   color: var(--sl-text-primary);
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .cmz-select__trigger:focus {
   outline: none;
   border-color: var(--sl-primary);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
 }
 
 .cmz-select__options {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   z-index: 100;
-  margin-top: 4px;
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   background: var(--sl-surface);
   box-shadow: var(--sl-shadow-md);
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
 }
 
 .cmz-select__option {
-  padding: 8px 12px;
+  padding: 10px 12px;
   cursor: pointer;
   color: var(--sl-text-primary);
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .cmz-select__option:hover {
@@ -644,9 +655,26 @@
 
 /* 设置页内的 select 限制宽度，防止标题文字被挤压 */
 .settings-entry .cmz-select {
-  width: auto;
+  width: 100%;
   min-width: 140px;
-  max-width: 200px;
+  max-width: 240px;
+  flex-shrink: 0;
+}
+
+.settings-entry .cmz-switch {
+  flex-shrink: 0;
+}
+
+.settings-entry .sl-input-sm,
+.settings-entry .sl-input-md,
+.settings-entry .sl-input-lg {
+  flex-shrink: 0;
+}
+
+.settings-entry .sl-slider-control {
+  flex-shrink: 0;
+  min-width: 240px;
+  max-width: 320px;
 }
 
 /* === Tab Bar === */
@@ -686,7 +714,7 @@
 
 /* === Textarea (multiline input) === */
 .cmz-textarea {
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-size: 14px;
   font-family: var(--sl-font-sans);
   border: 1px solid var(--sl-border);
@@ -696,7 +724,11 @@
   outline: none;
   resize: vertical;
   min-height: 80px;
-  transition: border-color 0.2s;
+  line-height: 1.5;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  box-sizing: border-box;
 }
 
 .cmz-textarea:focus {

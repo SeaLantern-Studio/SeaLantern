@@ -463,7 +463,7 @@ function getAppName() {
 
 <template>
   <aside
-    class="sidebar glass-strong"
+    class="sidebar"
     :class="{
       collapsed: ui.sidebarCollapsed,
       'macos-overlay': isMacOS,

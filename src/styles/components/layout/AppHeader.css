@@ -4,9 +4,9 @@
   align-items: center;
   justify-content: space-between;
   height: var(--sl-header-height);
-  padding: 0 var(--sl-space-md) 0 var(--sl-space-lg);
-  background: var(--sl-surface);
-  border-bottom: 1px solid var(--sl-border-light);
+  padding: 0 var(--sl-space-lg) 0 var(--sl-space-lg);
+  background: transparent;
+  border-bottom: none;
   flex-shrink: 0;
   user-select: none;
   position: relative;
@@ -18,25 +18,11 @@
   height: var(--sl-header-height);
   padding-top: 0;
   padding-left: calc(var(--sl-space-lg) + 84px);
-  border-bottom: 1px solid var(--sl-border-light);
-  background: var(--sl-bg);
+  border-bottom: none;
+  background: transparent;
   -webkit-app-region: drag;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-}
-
-[data-theme="dark"] .app-header.macos-overlay {
-  border-bottom: 1px solid var(--sl-border-light);
-}
-
-[data-acrylic="on"] .app-header,
-[data-acrylic]:not([data-acrylic="off"]) .app-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-[data-theme="dark"][data-acrylic="on"] .app-header,
-[data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .app-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .header-right {
@@ -44,9 +30,10 @@
 }
 
 .page-title {
-  font-size: var(--sl-font-size-lg);
-  font-weight: 600;
+  font-size: var(--sl-font-size-xl);
+  font-weight: 700;
   color: var(--sl-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .header-center {
@@ -73,18 +60,21 @@
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  padding: 4px 8px;
-  background: var(--sl-bg-secondary);
+  padding: 6px 12px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-full);
   -webkit-app-region: no-drag;
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
+  box-shadow: var(--sl-shadow-sm);
 }
 
 .status-text {
   font-size: var(--sl-font-size-sm);
-  color: var(--sl-text-secondary);
+  color: var(--sl-text-primary);
+  font-weight: 500;
   cursor: default;
   user-select: none;
   -webkit-user-select: none;

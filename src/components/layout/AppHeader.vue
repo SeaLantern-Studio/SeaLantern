@@ -244,11 +244,7 @@ function isActive(code: string) {
 </script>
 
 <template>
-  <header
-    class="app-header"
-    :class="{ 'macos-overlay': isMacOS, 'glass-strong': !isMacOS }"
-    data-tauri-drag-region
-  >
+  <header class="app-header" :class="{ 'macos-overlay': isMacOS }" data-tauri-drag-region>
     <div class="header-left" v-if="!isMacOS">
       <h2 class="page-title" data-tauri-drag-region>{{ pageTitle }}</h2>
     </div>
