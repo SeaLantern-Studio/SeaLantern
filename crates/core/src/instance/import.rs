@@ -144,6 +144,8 @@ mod tests {
                 startup_mode,
                 startup_target,
                 custom_command: None,
+                custom_executable: None,
+                custom_arguments: Vec::new(),
                 java_executable: Some(PathBuf::from("java")),
                 jvm_arguments: Vec::new(),
             },
@@ -187,7 +189,7 @@ mod tests {
     #[test]
     fn custom_import_needs_no_startup_target() {
         let mut spec = import_spec(None, StartupMode::Custom);
-        spec.launch.custom_command = Some("launch-custom".to_string());
+        spec.launch.custom_command = Some("launch-custom --nogui".to_string());
         let request = InstanceImportRequest {
             source_directory: PathBuf::from("imports/custom"),
             instance: spec,
@@ -197,7 +199,7 @@ mod tests {
 
         assert!(plan.startup_target_relative.is_none());
         assert!(plan.instance.launch.startup_target.is_none());
-        assert_eq!(plan.instance.launch.custom_command.as_deref(), Some("launch-custom"));
+        assert_eq!(plan.instance.launch.custom_command.as_deref(), Some("launch-custom --nogui"));
     }
 
     #[test]

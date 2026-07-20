@@ -62,6 +62,8 @@ pub struct LocalLaunch {
     pub startup_mode: StartupMode,
     pub startup_target: Option<PathBuf>,
     pub custom_command: Option<String>,
+    pub custom_executable: Option<PathBuf>,
+    pub custom_arguments: Vec<OsString>,
     pub java_executable: Option<PathBuf>,
     pub jvm_arguments: Vec<OsString>,
 }
@@ -77,8 +79,19 @@ impl LocalLaunch {
 
         match self.startup_mode {
             StartupMode::Custom => {
-                if self.custom_command.is_none() {
-                    return Err(InstanceError::MissingCustomCommand);
+                let has_command = self.custom_command.is_some();
+                let has_executable = self
+                    .custom_executable
+                    .as_ref()
+                    .is_some_and(|path| !path.as_os_str().is_empty());
+
+                if !has_command && !has_executable {
+                    return Err(InstanceError::MissingCustomLaunch);
+                }
+                if (has_command && has_executable)
+                    || (has_command && !self.custom_arguments.is_empty())
+                {
+                    return Err(InstanceError::ConflictingCustomLaunch);
                 }
                 if self.startup_target.is_some() {
                     return Err(InstanceError::UnexpectedStartupTarget { mode: self.startup_mode });
@@ -86,8 +99,11 @@ impl LocalLaunch {
                 Ok(None)
             }
             mode => {
-                if self.custom_command.is_some() {
-                    return Err(InstanceError::UnexpectedCustomCommand { mode });
+                if self.custom_command.is_some()
+                    || self.custom_executable.is_some()
+                    || !self.custom_arguments.is_empty()
+                {
+                    return Err(InstanceError::UnexpectedCustomLaunch { mode });
                 }
                 let startup_target = self
                     .startup_target
@@ -198,8 +214,9 @@ pub enum InstanceError {
     UnexpectedStartupTarget {
         mode: StartupMode,
     },
-    MissingCustomCommand,
-    UnexpectedCustomCommand {
+    MissingCustomLaunch,
+    ConflictingCustomLaunch,
+    UnexpectedCustomLaunch {
         mode: StartupMode,
     },
 }
@@ -227,9 +244,14 @@ impl fmt::Display for InstanceError {
             Self::UnexpectedStartupTarget { mode } => {
                 write!(formatter, "{} mode must not define a startup target", mode.as_str())
             }
-            Self::MissingCustomCommand => write!(formatter, "custom mode requires a command"),
-            Self::UnexpectedCustomCommand { mode } => {
-                write!(formatter, "{} mode must not define a custom command", mode.as_str())
+            Self::MissingCustomLaunch => {
+                write!(formatter, "custom mode requires a command or executable")
+            }
+            Self::ConflictingCustomLaunch => {
+                write!(formatter, "custom command text and executable arguments cannot be combined")
+            }
+            Self::UnexpectedCustomLaunch { mode } => {
+                write!(formatter, "{} mode must not define custom launch data", mode.as_str())
             }
         }
     }
@@ -279,6 +301,8 @@ mod tests {
                 startup_mode: StartupMode::Jar,
                 startup_target: Some(Path::new("servers/instance-a/server.jar").to_path_buf()),
                 custom_command: None,
+                custom_executable: None,
+                custom_arguments: Vec::new(),
                 java_executable: Some(Path::new("java").to_path_buf()),
                 jvm_arguments: vec![OsString::from("-Xmx4G")],
             },
@@ -331,15 +355,29 @@ mod tests {
     }
 
     #[test]
-    fn custom_launch_requires_a_command_and_no_startup_target() {
+    fn custom_launch_requires_an_executable_and_no_startup_target() {
         let mut spec = base_spec();
         spec.launch.startup_mode = StartupMode::Custom;
         spec.launch.startup_target = None;
-        spec.launch.custom_command = Some("  launch-server  ".to_string());
+        spec.launch.custom_executable = Some(PathBuf::from("launch-server.exe"));
+        spec.launch.custom_arguments = vec![OsString::from("--nogui")];
 
         let instance = Instance::new(spec).expect("custom launch should be valid");
 
-        assert_eq!(instance.launch.custom_command.as_deref(), Some("launch-server"));
+        assert_eq!(instance.launch.custom_executable, Some(PathBuf::from("launch-server.exe")));
+        assert_eq!(instance.launch.custom_arguments, vec![OsString::from("--nogui")]);
+    }
+
+    #[test]
+    fn custom_launch_preserves_legacy_shell_command_text() {
+        let mut spec = base_spec();
+        spec.launch.startup_mode = StartupMode::Custom;
+        spec.launch.startup_target = None;
+        spec.launch.custom_command = Some("  java -jar server.jar  ".to_string());
+
+        let instance = Instance::new(spec).expect("legacy custom command should be valid");
+
+        assert_eq!(instance.launch.custom_command.as_deref(), Some("java -jar server.jar"));
     }
 
     #[test]
