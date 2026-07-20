@@ -14,6 +14,14 @@ pub const FS_TARGET: &str = "sealantern.infra.fs";
 pub const EVENT_ATOMIC_WRITE_FAILED: &str = "atomic_write_failed";
 /// Event: a file lock could not be released.
 pub const EVENT_LOCK_RELEASE_FAILED: &str = "lock_release_failed";
+/// Event: a file system operation failed.
+pub const EVENT_OPERATION_FAILED: &str = "operation_failed";
+/// Event: a cache operation failed.
+pub const EVENT_CACHE_OPERATION_FAILED: &str = "cache_operation_failed";
+/// Event: structured file data could not be encoded or decoded.
+pub const EVENT_SERIALIZATION_FAILED: &str = "serialization_failed";
+/// Event: a file lock could not be acquired.
+pub const EVENT_LOCK_ACQUIRE_FAILED: &str = "lock_acquire_failed";
 
 /// Records an atomic write failure with its destination path.
 pub fn atomic_write_failed(path: &std::path::Path, error: &dyn Display) {
@@ -34,6 +42,59 @@ pub fn lock_release_failed(path: &std::path::Path, error: &dyn Display) {
         path = %path.display(),
         error = %error,
         "file lock release failed"
+    );
+}
+
+/// Records a failed file system operation.
+pub fn operation_failed(operation: &str, path: &std::path::Path, error: &dyn Display) {
+    tracing::error!(
+        target: FS_TARGET,
+        event_name = EVENT_OPERATION_FAILED,
+        operation,
+        path = %path.display(),
+        error = %error,
+        "file system operation failed"
+    );
+}
+
+/// Records a failed cache operation.
+pub fn cache_operation_failed(operation: &str, path: &std::path::Path, error: &dyn Display) {
+    tracing::warn!(
+        target: FS_TARGET,
+        event_name = EVENT_CACHE_OPERATION_FAILED,
+        operation,
+        path = %path.display(),
+        error = %error,
+        "cache operation failed"
+    );
+}
+
+/// Records a structured file serialization failure.
+pub fn serialization_failed(
+    format: &str,
+    operation: &str,
+    path: &std::path::Path,
+    error: &dyn Display,
+) {
+    tracing::error!(
+        target: FS_TARGET,
+        event_name = EVENT_SERIALIZATION_FAILED,
+        format,
+        operation,
+        path = %path.display(),
+        error = %error,
+        "structured file serialization failed"
+    );
+}
+
+/// Records an unsuccessful file lock acquisition.
+pub fn lock_acquire_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::warn!(
+        target: FS_TARGET,
+        event_name = EVENT_LOCK_ACQUIRE_FAILED,
+        path = %path.display(),
+        error = %error,
+        "file lock acquisition failed"
     );
 }
 

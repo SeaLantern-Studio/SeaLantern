@@ -19,35 +19,42 @@ impl FileLock {
     /// Acquires a lock for a resource by creating a sibling .lock file.
     pub fn try_acquire(resource: impl AsRef<Path>) -> Result<Self, FsError> {
         let resource = resource.as_ref();
-        let file_name = resource.file_name().ok_or_else(|| FsError::InvalidPath {
-            path: resource.to_path_buf(),
-            reason: "lock resource has no file name",
-        })?;
-        let path = resource.with_file_name(format!("{}.lock", file_name.to_string_lossy()));
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
+        let result = (|| {
+            let file_name = resource.file_name().ok_or_else(|| FsError::InvalidPath {
+                path: resource.to_path_buf(),
+                reason: "lock resource has no file name",
+            })?;
+            let path = resource.with_file_name(format!("{}.lock", file_name.to_string_lossy()));
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|error| FsError::io("create lock directory", parent, error))?;
+            }
 
-        let mut file = match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
-        {
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                return Err(FsError::AlreadyLocked(path));
+            let mut file = match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+            {
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    return Err(FsError::AlreadyLocked(path));
+                }
+                Err(error) => return Err(FsError::io("create lock file", &path, error)),
+                Ok(file) => file,
+            };
+            {
+                use std::io::Write;
+                if let Err(error) = writeln!(file, "pid={}", std::process::id()) {
+                    drop(file);
+                    let _ = std::fs::remove_file(&path);
+                    return Err(FsError::io("write lock metadata", &path, error));
+                }
             }
-            Err(error) => return Err(error.into()),
-            Ok(file) => file,
-        };
-        {
-            use std::io::Write;
-            if let Err(error) = writeln!(file, "pid={}", std::process::id()) {
-                drop(file);
-                let _ = std::fs::remove_file(&path);
-                return Err(error.into());
-            }
+            Ok(Self { path, released: false })
+        })();
+        if let Err(error) = &result {
+            observability::lock_acquire_failed(resource, error);
         }
-        Ok(Self { path, released: false })
+        result
     }
 
     /// Returns the lock-file path.
@@ -57,9 +64,14 @@ impl FileLock {
 
     /// Releases the lock before the guard is dropped.
     pub fn release(mut self) -> Result<(), FsError> {
-        std::fs::remove_file(&self.path)?;
-        self.released = true;
-        Ok(())
+        let result = std::fs::remove_file(&self.path)
+            .map_err(|error| FsError::io("release lock", &self.path, error));
+        if result.is_ok() {
+            self.released = true;
+        } else if let Err(error) = &result {
+            observability::lock_release_failed(&self.path, error);
+        }
+        result
     }
 }
 
