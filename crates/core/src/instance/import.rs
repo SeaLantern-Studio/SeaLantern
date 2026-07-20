@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use super::instance::{Instance, InstanceError, InstanceSpec};
+use super::model::{Instance, InstanceError, InstanceSpec};
 
 /// Input for planning a host-managed local-instance import.
 ///

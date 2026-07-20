@@ -1,5 +1,5 @@
 pub mod import;
-pub mod instance;
+pub mod model;
 
 pub use import::{plan_import, InstanceImportError, InstanceImportPlan, InstanceImportRequest};
-pub use instance::{Instance, InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
+pub use model::{Instance, InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
