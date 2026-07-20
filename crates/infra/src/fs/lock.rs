@@ -12,6 +12,7 @@ use super::FsError;
 #[derive(Debug)]
 pub struct FileLock {
     path: PathBuf,
+    released: bool,
 }
 
 impl FileLock {
@@ -27,21 +28,26 @@ impl FileLock {
             std::fs::create_dir_all(parent)?;
         }
 
-        match std::fs::OpenOptions::new()
+        let mut file = match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(&path)
         {
-            Ok(mut file) => {
-                use std::io::Write;
-                writeln!(file, "pid={}", std::process::id())?;
-                Ok(Self { path })
-            }
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                Err(FsError::AlreadyLocked(path))
+                return Err(FsError::AlreadyLocked(path));
             }
-            Err(error) => Err(error.into()),
+            Err(error) => return Err(error.into()),
+            Ok(file) => file,
+        };
+        {
+            use std::io::Write;
+            if let Err(error) = writeln!(file, "pid={}", std::process::id()) {
+                drop(file);
+                let _ = std::fs::remove_file(&path);
+                return Err(error.into());
+            }
         }
+        Ok(Self { path, released: false })
     }
 
     /// Returns the lock-file path.
@@ -50,17 +56,20 @@ impl FileLock {
     }
 
     /// Releases the lock before the guard is dropped.
-    pub fn release(self) -> Result<(), FsError> {
+    pub fn release(mut self) -> Result<(), FsError> {
         std::fs::remove_file(&self.path)?;
+        self.released = true;
         Ok(())
     }
 }
 
 impl Drop for FileLock {
     fn drop(&mut self) {
-        if let Err(error) = std::fs::remove_file(&self.path) {
-            if error.kind() != std::io::ErrorKind::NotFound {
-                observability::lock_release_failed(&self.path, &error);
+        if !self.released {
+            if let Err(error) = std::fs::remove_file(&self.path) {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    observability::lock_release_failed(&self.path, &error);
+                }
             }
         }
     }
@@ -78,7 +87,9 @@ mod tests {
 
         assert!(matches!(FileLock::try_acquire(&resource), Err(FsError::AlreadyLocked(_))));
         lock.release().unwrap();
-        FileLock::try_acquire(&resource).unwrap().release().unwrap();
+        let replacement = FileLock::try_acquire(&resource).unwrap();
+        assert!(replacement.path().exists());
+        drop(replacement);
         std::fs::remove_dir_all(root).unwrap();
     }
 }

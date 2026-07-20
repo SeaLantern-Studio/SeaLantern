@@ -1,7 +1,7 @@
 //! File system infrastructure primitives.
 //!
 //! This module deliberately keeps policy out of the infrastructure layer. It
-//! provides safe path handling, bounded reads, durable writes, persistence
+//! provides safe path handling, bounded reads, atomic writes, persistence
 //! formats, and maintenance helpers that higher layers can compose.
 
 mod archive;
@@ -17,7 +17,7 @@ mod path;
 mod persist;
 mod read;
 
-pub use archive::{archive_entry_destination, parse_symbolic_link_target};
+pub use archive::{archive_entry_path, parse_symbolic_link_target};
 pub use atomic::write_atomic;
 pub use cache::FileCache;
 pub use cleanup::{clear_directory, remove_if_exists};

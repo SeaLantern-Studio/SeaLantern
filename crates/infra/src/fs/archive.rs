@@ -1,17 +1,12 @@
-use std::path::{Path, PathBuf};
-
 use super::{FsError, SafeRelativePath};
 
-/// Resolves an archive entry under an existing extraction root.
+/// Parses a portable archive entry path.
 ///
-/// ZIP and TAR adapters should validate every entry with this function before
-/// creating a file, directory, or link. It rejects absolute paths, traversal,
-/// and paths that cross an existing symbolic link.
-pub fn archive_entry_destination(
-    extraction_root: impl AsRef<Path>,
-    entry_name: &str,
-) -> Result<PathBuf, FsError> {
-    SafeRelativePath::parse(entry_name)?.resolve_under(extraction_root)
+/// ZIP and TAR adapters must pass the resulting path to a directory-handle
+/// based extractor. Returning a joined path here would reintroduce a symlink
+/// replacement race between validation and file creation.
+pub fn archive_entry_path(entry_name: &str) -> Result<SafeRelativePath, FsError> {
+    SafeRelativePath::parse(entry_name)
 }
 
 /// Parses a symbolic-link payload from an archive.
@@ -27,9 +22,7 @@ mod tests {
 
     #[test]
     fn rejects_archive_traversal() {
-        let root = crate::fs::test_dir("archive");
-        assert!(archive_entry_destination(&root, "../outside").is_err());
+        assert!(archive_entry_path("../outside").is_err());
         assert!(parse_symbolic_link_target("/absolute").is_err());
-        std::fs::remove_dir_all(root).unwrap();
     }
 }

@@ -28,30 +28,6 @@ impl SafeRelativePath {
     pub fn as_path(&self) -> &Path {
         &self.0
     }
-
-    /// Resolves this path beneath an existing root without traversing symlinks.
-    ///
-    /// This validates the existing path chain. Callers must still avoid
-    /// time-of-check/time-of-use races when operating in hostile directories.
-    pub fn resolve_under(&self, root: impl AsRef<Path>) -> Result<PathBuf, FsError> {
-        let root = root.as_ref().canonicalize()?;
-        let mut destination = root;
-        for component in self.0.components() {
-            let Component::Normal(name) = component else {
-                return Err(invalid(&self.0, "path contains an invalid component"));
-            };
-            destination.push(name);
-            match std::fs::symlink_metadata(&destination) {
-                Ok(metadata) if metadata.file_type().is_symlink() => {
-                    return Err(invalid(&self.0, "path traverses a symbolic link"));
-                }
-                Ok(_) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => return Err(error.into()),
-            }
-        }
-        Ok(destination)
-    }
 }
 
 impl AsRef<Path> for SafeRelativePath {

@@ -12,6 +12,8 @@ default = []
 blocking = ["reqwest/blocking"]
 
 [dependencies]
+atomicwrites = "0.4"
+cap-std = "4"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 tracing = "0.1"
 tokio = { version = "1", features = ["fs", "io-util", "rt", "rt-multi-thread", "macros", "sync", "time"] }

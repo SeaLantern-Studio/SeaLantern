@@ -1,17 +1,19 @@
-use std::path::{Path, PathBuf};
+use std::io::Write;
+use std::path::Path;
 
-use tokio::io::AsyncWriteExt;
+use atomicwrites::{AllowOverwrite, AtomicFile};
+use cap_std::fs::{Dir, OpenOptions};
 use uuid::Uuid;
 
 use crate::observability;
 
-use super::{ensure_parent, FsError};
+use super::{ensure_parent, FsError, SafeRelativePath};
 
-/// Writes a complete file through a sibling temporary file.
+/// Atomically replaces a complete file through a sibling temporary file.
 ///
-/// On Unix, replacing an existing destination uses an atomic rename. Windows
-/// does not allow that rename when the destination exists, so replacement is
-/// durable but has a short non-atomic remove-and-rename interval.
+/// The replacement is delegated to platform-specific operations. It provides
+/// atomic visibility, but does not promise crash durability of the parent
+/// directory entry on every supported file system.
 pub async fn write_atomic(path: impl AsRef<Path>, contents: &[u8]) -> Result<(), FsError> {
     let path = path.as_ref();
     let result = write_atomic_inner(path, contents).await;
@@ -22,57 +24,52 @@ pub async fn write_atomic(path: impl AsRef<Path>, contents: &[u8]) -> Result<(),
 }
 
 async fn write_atomic_inner(path: &Path, contents: &[u8]) -> Result<(), FsError> {
-    let file_name = path.file_name().ok_or_else(|| FsError::InvalidPath {
-        path: path.to_path_buf(),
-        reason: "destination has no file name",
-    })?;
     ensure_parent(path).await?;
+    let destination = path.to_path_buf();
+    let contents = contents.to_vec();
+    tokio::task::spawn_blocking(move || {
+        AtomicFile::new(destination, AllowOverwrite)
+            .write(|file| file.write_all(&contents))
+            .map_err(std::io::Error::from)
+            .map_err(FsError::from)
+    })
+    .await
+    .map_err(|error| FsError::Task(error.to_string()))?
+}
 
-    let temporary = temporary_path(path, file_name);
-    let mut file = tokio::fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(&temporary)
-        .await?;
-
-    let mut write_result = async {
-        file.write_all(contents).await?;
-        file.flush().await?;
-        file.sync_all().await?;
-        Ok::<(), FsError>(())
+/// Writes bytes atomically within a capability-based directory root.
+pub(crate) fn write_atomic_in(
+    root: &Dir,
+    path: &SafeRelativePath,
+    contents: &[u8],
+) -> Result<(), FsError> {
+    let parent = path.as_path().parent().unwrap_or_else(|| Path::new(""));
+    if !parent.as_os_str().is_empty() {
+        root.create_dir_all(parent)?;
     }
-    .await;
-    drop(file);
 
-    if write_result.is_ok() {
-        write_result = replace_file(&temporary, path).await;
-    }
+    let file_name = path
+        .as_path()
+        .file_name()
+        .ok_or_else(|| FsError::InvalidPath {
+            path: path.as_path().to_path_buf(),
+            reason: "destination has no file name",
+        })?;
+    let temporary = parent.join(format!(".{}.{}.tmp", file_name.to_string_lossy(), Uuid::new_v4()));
 
+    let write_result = (|| {
+        let mut options = OpenOptions::new();
+        options.write(true).create_new(true);
+        let mut file = root.open_with(&temporary, &options)?;
+        file.write_all(contents)?;
+        file.sync_all()?;
+        root.rename(&temporary, root, path.as_path())?;
+        Ok(())
+    })();
     if write_result.is_err() {
-        let _ = tokio::fs::remove_file(&temporary).await;
+        let _ = root.remove_file(&temporary);
     }
     write_result
-}
-
-fn temporary_path(destination: &Path, file_name: &std::ffi::OsStr) -> PathBuf {
-    destination.with_file_name(format!(".{}.{}.tmp", file_name.to_string_lossy(), Uuid::new_v4()))
-}
-
-#[cfg(not(windows))]
-async fn replace_file(temporary: &Path, destination: &Path) -> Result<(), FsError> {
-    tokio::fs::rename(temporary, destination).await?;
-    Ok(())
-}
-
-#[cfg(windows)]
-async fn replace_file(temporary: &Path, destination: &Path) -> Result<(), FsError> {
-    match tokio::fs::remove_file(destination).await {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(error.into()),
-    }
-    tokio::fs::rename(temporary, destination).await?;
-    Ok(())
 }
 
 #[cfg(test)]
