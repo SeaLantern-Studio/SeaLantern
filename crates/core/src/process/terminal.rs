@@ -2,7 +2,8 @@ use std::fmt;
 use std::io::{self, Read, Write};
 use std::process::{ChildStderr, ChildStdin, ChildStdout};
 
-use super::Daemon;
+use super::command_build::ConsoleInputPolicy;
+use super::{CommandBuildRequest, Daemon};
 
 /// Identifies one of a daemon's output streams.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,10 +44,13 @@ pub struct Terminal {
 }
 
 impl Terminal {
-    /// Transfers all configured standard streams from a daemon into a terminal handle.
-    pub fn from_daemon(daemon: &mut Daemon) -> Self {
+    /// Transfers configured streams from a daemon according to the request used to launch it.
+    pub fn from_daemon(daemon: &mut Daemon, request: &CommandBuildRequest<'_>) -> Self {
+        let stdin = daemon.take_stdin();
         Self {
-            stdin: daemon.take_stdin(),
+            stdin: matches!(request.console_input_policy(), ConsoleInputPolicy::Enabled)
+                .then_some(stdin)
+                .flatten(),
             stdout: daemon.take_stdout(),
             stderr: daemon.take_stderr(),
         }
@@ -134,7 +138,11 @@ mod tests {
     use std::process::{Command, Stdio};
 
     use super::{Terminal, TerminalOutput, TerminalStream, TerminalWriteError};
-    use crate::process::Daemon;
+    use crate::process::{CommandBuildMode, CommandBuildRequest, Daemon};
+
+    fn request(mode: CommandBuildMode) -> CommandBuildRequest<'static> {
+        CommandBuildRequest::new(mode, std::path::Path::new("server"))
+    }
 
     #[cfg(unix)]
     fn output_command() -> Command {
@@ -183,7 +191,8 @@ mod tests {
         let mut command = output_command();
         command.stdout(Stdio::piped()).stderr(Stdio::piped());
         let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
-        let mut terminal = Terminal::from_daemon(&mut daemon);
+        let request = request(CommandBuildMode::Shell);
+        let mut terminal = Terminal::from_daemon(&mut daemon, &request);
 
         let mut stdout = terminal
             .take_output(TerminalStream::Stdout)
@@ -214,7 +223,8 @@ mod tests {
         let mut command = command_reader_command();
         command.stdin(Stdio::piped()).stdout(Stdio::piped());
         let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
-        let mut terminal = Terminal::from_daemon(&mut daemon);
+        let request = request(CommandBuildMode::DirectJar);
+        let mut terminal = Terminal::from_daemon(&mut daemon, &request);
 
         terminal
             .write_line("say hello")
@@ -236,7 +246,8 @@ mod tests {
         let mut command = exit_successfully_command();
         command.stdin(Stdio::null());
         let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
-        let mut terminal = Terminal::from_daemon(&mut daemon);
+        let request = request(CommandBuildMode::DirectJar);
+        let mut terminal = Terminal::from_daemon(&mut daemon, &request);
 
         let error = terminal
             .write_line("stop")
@@ -252,7 +263,8 @@ mod tests {
         let mut command = output_command();
         command.stdout(Stdio::piped()).stderr(Stdio::null());
         let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
-        let mut terminal = Terminal::from_daemon(&mut daemon);
+        let request = request(CommandBuildMode::Shell);
+        let mut terminal = Terminal::from_daemon(&mut daemon, &request);
         let mut output = terminal
             .take_output(TerminalStream::Stdout)
             .expect("stdout should be available");
@@ -264,6 +276,41 @@ mod tests {
             .read_to_string(&mut text)
             .expect("read terminal output");
         assert!(text.contains("stdout"));
+        let _ = daemon.wait().expect("wait for test process");
+    }
+
+    #[test]
+    fn shell_mode_discards_piped_input() {
+        let mut command = exit_successfully_command();
+        command.stdin(Stdio::piped());
+        let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
+        let request = request(CommandBuildMode::Shell);
+        let mut terminal = Terminal::from_daemon(&mut daemon, &request);
+
+        let error = terminal
+            .write_line("stop")
+            .expect_err("shell mode must not receive console input");
+
+        assert!(matches!(error, TerminalWriteError::InputUnavailable));
+        assert!(!terminal.accepts_input());
+        let _ = daemon.wait().expect("wait for test process");
+    }
+
+    #[test]
+    fn legacy_custom_command_discards_piped_input() {
+        let mut command = exit_successfully_command();
+        command.stdin(Stdio::piped());
+        let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
+        let mut request = request(CommandBuildMode::Custom);
+        request.custom_command = Some("java -jar server.jar");
+        let mut terminal = Terminal::from_daemon(&mut daemon, &request);
+
+        let error = terminal
+            .write_line("stop")
+            .expect_err("legacy custom shell must not receive console input");
+
+        assert!(matches!(error, TerminalWriteError::InputUnavailable));
+        assert!(!terminal.accepts_input());
         let _ = daemon.wait().expect("wait for test process");
     }
 }

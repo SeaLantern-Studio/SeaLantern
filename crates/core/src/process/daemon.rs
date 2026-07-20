@@ -106,7 +106,7 @@ impl Daemon {
     }
 
     /// Transfers standard input ownership to the terminal module.
-    pub fn take_stdin(&mut self) -> Option<ChildStdin> {
+    pub(crate) fn take_stdin(&mut self) -> Option<ChildStdin> {
         self.child.stdin.take()
     }
 

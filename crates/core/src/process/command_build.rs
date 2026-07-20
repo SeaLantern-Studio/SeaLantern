@@ -29,6 +29,13 @@ impl CommandBuildMode {
     }
 }
 
+/// Controls whether a terminal may retain a child process standard-input handle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ConsoleInputPolicy {
+    Enabled,
+    Disabled,
+}
+
 /// The Windows console encoding used when invoking a batch script.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowsConsoleEncoding {
@@ -46,7 +53,7 @@ impl WindowsConsoleEncoding {
     }
 }
 
-/// Java directories injected into script and custom-command environments.
+/// Java directories injected into script and custom-executable environments.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JavaEnvironment {
     pub home: PathBuf,
@@ -76,6 +83,10 @@ impl JavaEnvironment {
 }
 
 /// Input used to construct a process command without host-specific state.
+///
+/// `Custom` mode accepts either legacy shell-backed `custom_command` text or a direct
+/// `custom_executable` with `custom_arguments`. The forms are mutually exclusive, and arguments
+/// are valid only for a direct executable.
 #[derive(Debug)]
 pub struct CommandBuildRequest<'a> {
     pub mode: CommandBuildMode,
@@ -85,6 +96,8 @@ pub struct CommandBuildRequest<'a> {
     pub jvm_arguments: &'a [OsString],
     pub entry_path: Option<&'a Path>,
     pub custom_command: Option<&'a str>,
+    pub custom_executable: Option<&'a Path>,
+    pub custom_arguments: &'a [OsString],
     pub installer_url: Option<&'a str>,
     pub windows_console_encoding: WindowsConsoleEncoding,
 }
@@ -99,8 +112,21 @@ impl<'a> CommandBuildRequest<'a> {
             jvm_arguments: &[],
             entry_path: None,
             custom_command: None,
+            custom_executable: None,
+            custom_arguments: &[],
             installer_url: None,
             windows_console_encoding: WindowsConsoleEncoding::Utf8,
+        }
+    }
+
+    /// Returns the input policy implied by the exact process construction request.
+    pub(crate) fn console_input_policy(&self) -> ConsoleInputPolicy {
+        if matches!(self.mode, CommandBuildMode::DirectJar)
+            || matches!(custom_launch(self), Ok(CustomLaunch::Executable(_)))
+        {
+            ConsoleInputPolicy::Enabled
+        } else {
+            ConsoleInputPolicy::Disabled
         }
     }
 }
@@ -110,7 +136,8 @@ impl<'a> CommandBuildRequest<'a> {
 pub enum CommandBuildError {
     MissingJavaExecutable,
     MissingEntryPath { mode: CommandBuildMode },
-    MissingCustomCommand,
+    MissingCustomLaunch,
+    ConflictingCustomLaunch,
     InvalidJavaExecutablePath { path: PathBuf },
     NonUnicodePath { field: &'static str, path: PathBuf },
     UnsupportedPlatform { mode: CommandBuildMode },
@@ -123,8 +150,11 @@ impl fmt::Display for CommandBuildError {
             Self::MissingEntryPath { mode } => {
                 write!(formatter, "a startup entry path is required for {} mode", mode.as_str())
             }
-            Self::MissingCustomCommand => {
-                write!(formatter, "a non-empty custom command is required")
+            Self::MissingCustomLaunch => {
+                write!(formatter, "a custom command or executable is required")
+            }
+            Self::ConflictingCustomLaunch => {
+                write!(formatter, "custom command text and executable arguments cannot be combined")
             }
             Self::InvalidJavaExecutablePath { path } => write!(
                 formatter,
@@ -185,29 +215,56 @@ fn build_direct_jar_command(
 }
 
 fn build_custom_command(request: &CommandBuildRequest<'_>) -> Result<Command, CommandBuildError> {
-    let custom_command = request
-        .custom_command
-        .map(str::trim)
-        .filter(|command| !command.is_empty())
-        .ok_or(CommandBuildError::MissingCustomCommand)?;
-
-    #[cfg(target_os = "windows")]
-    let mut command = {
-        let mut command = Command::new("cmd");
-        command.args(["/d", "/c", custom_command]);
-        command
-    };
-
-    #[cfg(not(target_os = "windows"))]
-    let mut command = {
-        let mut command = Command::new("sh");
-        command.args(["-c", custom_command]);
-        command
+    let mut command = match custom_launch(request)? {
+        CustomLaunch::Shell(command_text) => shell_command(command_text),
+        CustomLaunch::Executable(executable) => {
+            let mut command = Command::new(executable);
+            command.args(request.custom_arguments);
+            command
+        }
     };
 
     apply_optional_java_environment(&mut command, request.java_environment);
     command.current_dir(request.working_directory);
     Ok(command)
+}
+
+enum CustomLaunch<'a> {
+    Shell(&'a str),
+    Executable(&'a Path),
+}
+
+fn custom_launch<'a>(
+    request: &'a CommandBuildRequest<'a>,
+) -> Result<CustomLaunch<'a>, CommandBuildError> {
+    let custom_command = request
+        .custom_command
+        .map(str::trim)
+        .filter(|command| !command.is_empty());
+    let custom_executable = request
+        .custom_executable
+        .filter(|path| !path.as_os_str().is_empty());
+
+    match (custom_command, custom_executable, request.custom_arguments.is_empty()) {
+        (Some(command), None, true) => Ok(CustomLaunch::Shell(command)),
+        (None, Some(executable), _) => Ok(CustomLaunch::Executable(executable)),
+        (None, None, _) => Err(CommandBuildError::MissingCustomLaunch),
+        _ => Err(CommandBuildError::ConflictingCustomLaunch),
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn shell_command(command_text: &str) -> Command {
+    let mut command = Command::new("cmd");
+    command.args(["/d", "/c", command_text]);
+    command
+}
+
+#[cfg(not(target_os = "windows"))]
+fn shell_command(command_text: &str) -> Command {
+    let mut command = Command::new("sh");
+    command.args(["-c", command_text]);
+    command
 }
 
 #[cfg(target_os = "windows")]
@@ -384,7 +441,7 @@ mod tests {
 
     use super::{
         apply_java_environment, build_command, CommandBuildError, CommandBuildMode,
-        CommandBuildRequest, JavaEnvironment,
+        CommandBuildRequest, ConsoleInputPolicy, JavaEnvironment,
     };
 
     fn arguments(command: &Command) -> Vec<String> {
@@ -454,25 +511,19 @@ mod tests {
     }
 
     #[test]
-    fn custom_command_uses_the_platform_shell_and_java_environment() {
+    fn custom_command_executes_a_program_with_literal_arguments() {
         let java_environment = JavaEnvironment::new("C:/Java/JDK 21", "C:/Java/JDK 21/bin");
         let mut request = CommandBuildRequest::new(CommandBuildMode::Custom, Path::new("server"));
-        request.custom_command = Some("echo launch ready");
+        let custom_executable = Path::new("C:/Servers/launcher.exe");
+        let custom_arguments = vec![OsString::from("--name"), OsString::from("my server")];
+        request.custom_executable = Some(custom_executable);
+        request.custom_arguments = &custom_arguments;
         request.java_environment = Some(&java_environment);
 
         let command = build_command(&request).expect("custom command should build");
 
-        #[cfg(target_os = "windows")]
-        {
-            assert_eq!(command.get_program().to_string_lossy(), "cmd");
-            assert_eq!(arguments(&command), vec!["/d", "/c", "echo launch ready"]);
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            assert_eq!(command.get_program().to_string_lossy(), "sh");
-            assert_eq!(arguments(&command), vec!["-c", "echo launch ready"]);
-        }
+        assert_eq!(command.get_program(), custom_executable);
+        assert_eq!(arguments(&command), vec!["--name", "my server"]);
 
         let environment = environment(&command);
         assert!(environment.iter().any(|(key, value)| {
@@ -484,6 +535,51 @@ mod tests {
                     .as_deref()
                     .is_some_and(|value| value.starts_with("C:/Java/JDK 21/bin"))
         }));
+    }
+
+    #[test]
+    fn legacy_custom_command_still_uses_the_platform_shell() {
+        let mut request = CommandBuildRequest::new(CommandBuildMode::Custom, Path::new("server"));
+        request.custom_command = Some("java -jar server.jar");
+
+        let command = build_command(&request).expect("legacy custom command should build");
+
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(command.get_program().to_string_lossy(), "cmd");
+            assert_eq!(arguments(&command), vec!["/d", "/c", "java -jar server.jar"]);
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            assert_eq!(command.get_program().to_string_lossy(), "sh");
+            assert_eq!(arguments(&command), vec!["-c", "java -jar server.jar"]);
+        }
+
+        assert_eq!(request.console_input_policy(), ConsoleInputPolicy::Disabled);
+    }
+
+    #[test]
+    fn console_input_policy_allows_only_direct_program_requests() {
+        let direct_jar = CommandBuildRequest::new(CommandBuildMode::DirectJar, Path::new("server"));
+        assert_eq!(direct_jar.console_input_policy(), ConsoleInputPolicy::Enabled);
+
+        let custom_executable = Path::new("launcher.exe");
+        let mut direct_custom =
+            CommandBuildRequest::new(CommandBuildMode::Custom, Path::new("server"));
+        direct_custom.custom_executable = Some(custom_executable);
+        assert_eq!(direct_custom.console_input_policy(), ConsoleInputPolicy::Enabled);
+
+        let mut shell_custom =
+            CommandBuildRequest::new(CommandBuildMode::Custom, Path::new("server"));
+        shell_custom.custom_command = Some("java -jar server.jar");
+        assert_eq!(shell_custom.console_input_policy(), ConsoleInputPolicy::Disabled);
+
+        for mode in [CommandBuildMode::Batch, CommandBuildMode::Shell, CommandBuildMode::PowerShell]
+        {
+            let request = CommandBuildRequest::new(mode, Path::new("server"));
+            assert_eq!(request.console_input_policy(), ConsoleInputPolicy::Disabled);
+        }
     }
 
     #[test]
