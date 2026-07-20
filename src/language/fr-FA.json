@@ -121,8 +121,7 @@
       "main": "Général",
       "server": "Serveur",
       "system": "Système"
-    },
-    "collapse_btn": "Réduire la barre latérale"
+    }
   },
 
   "home": {
