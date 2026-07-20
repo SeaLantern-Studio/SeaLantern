@@ -30,7 +30,7 @@ plugins-demo/
 .playwright-mcp/
 
 #docker test
-data/
+/data/
 CLAUDE.md
 
 # smoke test

@@ -11,19 +11,13 @@ import {
 } from "@api/backup";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
-import { useMessage } from "@composables/useMessage";
-import SLButton from "@components/common/SLButton.vue";
-import SLSelect from "@components/common/SLSelect.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLSpinner from "@components/common/SLSpinner.vue";
-import SLTooltip from "@components/common/SLTooltip.vue";
-import SLCheckbox from "@components/common/SLCheckbox.vue";
+import { useToast } from "cmzya-modern-ui";
 import { Archive, RotateCcw, Trash2, Clock, Package, Gauge } from "lucide-vue-next";
 import "@styles/views/BackupView.css";
 
 const serverStore = useServerStore();
 const { loading, withLoading } = useLoading();
-const { error, success, showError, showSuccess } = useMessage();
+const toast = useToast();
 
 const backups = ref<BackupItem[]>([]);
 const settings = ref<BackupSettings>({
@@ -84,7 +78,7 @@ async function loadBackups() {
     try {
       backups.value = await backupApi.list(selectedServerId.value);
     } catch {
-      showError(i18n.t("backup.load_failed"));
+      toast.error(i18n.t("backup.load_failed"));
     }
   });
 }
@@ -116,16 +110,12 @@ async function createBackup() {
     // 超出最大数量删除旧备份
     if (backups.value.length > settings.value.maxBackups) {
       const toDelete = backups.value.slice(settings.value.maxBackups);
-      for (const b of toDelete) {
-        try {
-          await backupApi.delete(b.id);
-        } catch {}
-      }
+      await Promise.all(toDelete.map((b) => backupApi.delete(b.id).catch(() => {})));
       backups.value = backups.value.slice(0, settings.value.maxBackups);
     }
-    showSuccess(i18n.t("backup.create_success"));
+    toast.success(i18n.t("backup.create_success"));
   } catch {
-    showError(i18n.t("backup.create_failed"));
+    toast.error(i18n.t("backup.create_failed"));
   } finally {
     creatingBackup.value = false;
   }
@@ -135,9 +125,9 @@ async function restoreBackup(backup: BackupItem) {
   restoringId.value = backup.id;
   try {
     await backupApi.restore(backup.id);
-    showSuccess(i18n.t("backup.restore_success"));
+    toast.success(i18n.t("backup.restore_success"));
   } catch {
-    showError(i18n.t("backup.restore_failed"));
+    toast.error(i18n.t("backup.restore_failed"));
   } finally {
     restoringId.value = null;
   }
@@ -148,9 +138,9 @@ async function deleteBackup(backup: BackupItem) {
   try {
     await backupApi.delete(backup.id);
     backups.value = backups.value.filter((b) => b.id !== backup.id);
-    showSuccess(i18n.t("backup.delete_success"));
+    toast.success(i18n.t("backup.delete_success"));
   } catch {
-    showError(i18n.t("backup.delete_failed"));
+    toast.error(i18n.t("backup.delete_failed"));
   } finally {
     deletingId.value = null;
   }
@@ -164,9 +154,9 @@ async function updateSettings() {
   settings.value.compressionLevel = selectedCompression.value;
   try {
     await backupApi.updateSettings(selectedServerId.value, settings.value);
-    showSuccess(i18n.t("backup.settings_saved"));
+    toast.success(i18n.t("backup.settings_saved"));
   } catch {
-    showError(i18n.t("backup.settings_save_failed"));
+    toast.error(i18n.t("backup.settings_save_failed"));
   }
 }
 
@@ -214,8 +204,7 @@ watch(
     <!-- 操作区：立即备份 + 自动备份开关 -->
     <div class="backup-actions glass-strong">
       <div class="backup-actions-row">
-        <SLButton
-          variant="primary"
+        <cmz-button
           :loading="creatingBackup"
           :disabled="selectedContents.length === 0 || !selectedServerId"
           class="backup-create-btn"
@@ -223,10 +212,10 @@ watch(
         >
           <Archive :size="16" />
           {{ i18n.t("backup.create_now") }}
-        </SLButton>
+        </cmz-button>
         <div class="backup-auto-toggle">
           <span>{{ i18n.t("backup.auto_backup") }}</span>
-          <SLSwitch
+          <cmz-switch
             :modelValue="settings.autoBackupEnabled"
             @update:modelValue="
               (v: boolean) => {
@@ -239,8 +228,8 @@ watch(
       </div>
 
       <!-- 自动备份间隔（开关打开时显示） -->
-      <div class="sl-collapse" :class="{ 'sl-collapse--expanded': settings.autoBackupEnabled }">
-        <div class="sl-collapse__content">
+      <div class="cmz-collapse" :class="{ 'cmz-collapse--expanded': settings.autoBackupEnabled }">
+        <div class="cmz-collapse__content">
           <div class="backup-interval-row">
             <label>{{ i18n.t("backup.auto_interval") }}</label>
             <div class="backup-interval-input">
@@ -279,7 +268,7 @@ watch(
             <Package :size="14" />
             {{ i18n.t("backup.format") }}
           </label>
-          <SLSelect
+          <cmz-select
             :modelValue="selectedFormat"
             :options="formatOptions"
             size="sm"
@@ -297,7 +286,7 @@ watch(
             <Gauge :size="14" />
             {{ i18n.t("backup.compression") }}
           </label>
-          <SLSelect
+          <cmz-select
             :modelValue="selectedCompression"
             :options="compressionOptions"
             size="sm"
@@ -317,7 +306,7 @@ watch(
         <div class="backup-contents-label">{{ i18n.t("backup.select_contents") }}</div>
         <div class="backup-checkbox-row">
           <label v-for="opt in contentOptions" :key="opt.value" class="backup-checkbox-item">
-            <SLCheckbox
+            <cmz-checkbox
               :modelValue="selectedContents.includes(opt.value)"
               @update:modelValue="(v: boolean) => toggleContent(opt.value, v)"
             />
@@ -331,7 +320,7 @@ watch(
     <div class="backup-list-section glass-strong">
       <div class="backup-list-header">{{ i18n.t("backup.list_title") }}</div>
       <div v-if="loading" class="backup-loading">
-        <SLSpinner size="md" />
+        <cmz-spinner size="md" />
       </div>
       <div v-else-if="backups.length === 0" class="backup-empty">
         {{ i18n.t("backup.empty") }}
@@ -355,9 +344,9 @@ watch(
             </div>
           </div>
           <div class="backup-item-actions">
-            <SLTooltip :content="i18n.t('backup.restore')">
-              <SLButton
-                variant="secondary"
+            <cmz-tooltip :content="i18n.t('backup.restore')">
+              <cmz-button
+                variant="outline"
                 size="sm"
                 iconOnly
                 :loading="restoringId === backup.id"
@@ -365,11 +354,11 @@ watch(
                 @click="restoreBackup(backup)"
               >
                 <RotateCcw :size="16" />
-              </SLButton>
-            </SLTooltip>
-            <SLTooltip :content="i18n.t('backup.delete')">
-              <SLButton
-                variant="secondary"
+              </cmz-button>
+            </cmz-tooltip>
+            <cmz-tooltip :content="i18n.t('backup.delete')">
+              <cmz-button
+                variant="outline"
                 size="sm"
                 iconOnly
                 :loading="deletingId === backup.id"
@@ -378,8 +367,8 @@ watch(
                 @click="deleteBackup(backup)"
               >
                 <Trash2 :size="16" />
-              </SLButton>
-            </SLTooltip>
+              </cmz-button>
+            </cmz-tooltip>
           </div>
         </div>
       </div>

@@ -20,7 +20,7 @@ defineProps<{
     </div>
 
     <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+      <cmz-spinner size="sm" />
       <span>{{ i18n.t("common.loading") }}</span>
     </div>
 

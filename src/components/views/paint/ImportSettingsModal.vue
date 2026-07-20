@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SLModal from "@components/common/SLModal.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLTextarea from "@components/common/SLTextarea.vue";
 import { i18n } from "@language";
 import { ref, watch } from "vue";
 
@@ -35,22 +32,20 @@ function close() {
 </script>
 
 <template>
-  <SLModal :visible="visible" :title="i18n.t('settings.import_settings')" @close="close">
+  <cmz-modal :visible="visible" :title="i18n.t('settings.import_settings')" @close="close">
     <div class="import-form">
       <p class="text-caption">{{ i18n.t("settings.import_desc") }}</p>
-      <SLTextarea
+      <cmz-textarea
         v-model="importJson"
         placeholder='{"close_servers_on_exit": true, ...}'
         :rows="10"
       />
     </div>
     <template #footer>
-      <SLButton variant="secondary" @click="close">{{ i18n.t("settings.cancel") }}</SLButton>
-      <SLButton variant="primary" @click="handleImport">{{
-        i18n.t("settings.confirm_import")
-      }}</SLButton>
+      <cmz-button variant="outline" @click="close">{{ i18n.t("settings.cancel") }}</cmz-button>
+      <cmz-button @click="handleImport">{{ i18n.t("settings.confirm_import") }}</cmz-button>
     </template>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>
@@ -65,7 +60,7 @@ function close() {
   color: var(--sl-text-tertiary);
 }
 
-.import-form :deep(.sl-textarea) {
+.import-form :deep(.cmz-textarea) {
   margin-top: var(--sl-space-sm);
   font-family: var(--sl-font-mono);
   font-size: 0.8125rem;

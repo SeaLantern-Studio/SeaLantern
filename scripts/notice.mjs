@@ -104,27 +104,29 @@ async function readBackendLicenseFile(crate) {
   }
 
   const registryEntries = await readdir(registrySrcDir, { withFileTypes: true });
-  for (const entry of registryEntries) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
+  const subDirs = registryEntries.filter((e) => e.isDirectory());
+  const candidates = subDirs.map((entry) =>
+    path.join(registrySrcDir, entry.name, `${crate.name}-${crate.version}`),
+  );
 
-    const crateDir = path.join(registrySrcDir, entry.name, `${crate.name}-${crate.version}`);
-    if (!(await exists(crateDir))) {
-      continue;
-    }
+  const existResults = await Promise.all(candidates.map((dir) => exists(dir)));
+  const existingDirs = candidates.filter((_, i) => existResults[i]);
 
-    const crateFiles = await readdir(crateDir, { withFileTypes: true });
-    const licenseFile = crateFiles.find(
-      (file) => file.isFile() && /^(license|copying)([.-]|$)/i.test(file.name),
-    );
-
-    if (licenseFile) {
-      return await readFile(path.join(crateDir, licenseFile.name), "utf8");
-    }
-  }
-
-  return null;
+  // 并行读取所有候选目录，找到第一个许可证文件
+  const licenseResults = await Promise.all(
+    existingDirs.map(async (crateDir) => {
+      const crateFiles = await readdir(crateDir, { withFileTypes: true });
+      const licenseFile = crateFiles.find(
+        (file) => file.isFile() && /^(license|copying)([.-]|$)/i.test(file.name),
+      );
+      if (licenseFile) {
+        return await readFile(path.join(crateDir, licenseFile.name), "utf8");
+      }
+      return null;
+    }),
+  );
+  const found = licenseResults.find((r) => r !== null);
+  return found || null;
 }
 
 function formatFrontendDependency(name, version, info, id) {

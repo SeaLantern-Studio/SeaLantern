@@ -4,7 +4,6 @@ import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import { getPermissionMetadata } from "@type/plugin";
 import { Lock } from "lucide-vue-next";
-import { SLModal } from "@components/common";
 
 interface Props {
   pluginId: string;
@@ -361,7 +360,7 @@ function formatTime(timestamp: number): string {
       <span class="permission-btn-text">{{ i18n.t("plugins.permission.panel_btn_text") }}</span>
     </button>
 
-    <SLModal
+    <cmz-modal
       :visible="visible"
       :title="i18n.t('plugins.permission.panel_title')"
       width="min(840px, calc(100vw - 32px))"
@@ -496,7 +495,7 @@ function formatTime(timestamp: number): string {
           </div>
         </div>
       </div>
-    </SLModal>
+    </cmz-modal>
   </div>
 </template>
 

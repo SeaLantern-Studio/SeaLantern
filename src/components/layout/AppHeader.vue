@@ -2,12 +2,21 @@
 import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, ChevronDown, ChevronUp, Copy, Check, Globe } from "lucide-vue-next";
+import {
+  Minus,
+  Square,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
+  Sun,
+  Moon,
+  Monitor,
+  Languages,
+} from "lucide-vue-next";
 import { useI18nStore } from "@stores/i18nStore";
 import { i18n } from "@language";
-import SLModal from "@components/common/SLModal.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLCheckbox from "@components/common/SLCheckbox.vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
@@ -244,14 +253,50 @@ async function handleLanguageClick(locale: string, close?: () => void) {
 function isActive(code: string) {
   return i18nStore.currentLocale == code;
 }
+
+const currentTheme = computed(() => settings.value?.theme || "auto");
+
+const themeIndicatorOffset = computed(() => {
+  const themeOrder = ["auto", "light", "dark"];
+  const idx = themeOrder.indexOf(currentTheme.value);
+  return idx >= 0 ? idx * 26 : 0;
+});
+
+function getEffectiveTheme(theme: string): "light" | "dark" {
+  if (theme === "auto") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return theme as "light" | "dark";
+}
+
+function applyTheme(theme: string) {
+  const effectiveTheme = getEffectiveTheme(theme);
+  document.documentElement.setAttribute("data-theme", effectiveTheme);
+  return effectiveTheme;
+}
+
+function setTheme(theme: string) {
+  if (!settings.value) return;
+  settings.value.theme = theme;
+  applyTheme(theme);
+  saveThemeDebounced();
+}
+
+let themeSaveTimer: ReturnType<typeof setTimeout> | null = null;
+function saveThemeDebounced() {
+  if (themeSaveTimer) clearTimeout(themeSaveTimer);
+  themeSaveTimer = setTimeout(async () => {
+    if (settings.value) {
+      const result = await settingsApi.saveWithDiff(settings.value);
+      dispatchSettingsUpdate(result.changed_groups, result.settings);
+    }
+    themeSaveTimer = null;
+  }, 300);
+}
 </script>
 
 <template>
-  <header
-    class="app-header"
-    :class="{ 'macos-overlay': isMacOS, 'glass-strong': !isMacOS }"
-    data-tauri-drag-region
-  >
+  <header class="app-header" :class="{ 'macos-overlay': isMacOS }" data-tauri-drag-region>
     <div class="header-left" v-if="!isMacOS">
       <h2 class="page-title" data-tauri-drag-region>{{ pageTitle }}</h2>
     </div>
@@ -263,7 +308,7 @@ function isActive(code: string) {
     <div class="header-right">
       <Menu as="div" class="language-selector">
         <MenuButton class="language-button">
-          <Globe class="language-text" :size="16" />
+          <Languages :size="16" />
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
@@ -319,8 +364,42 @@ function isActive(code: string) {
         </MenuItems>
       </Menu>
 
+      <div class="theme-switcher">
+        <div
+          class="theme-indicator"
+          :style="{ transform: `translateX(${themeIndicatorOffset}px)` }"
+        ></div>
+        <button
+          class="theme-btn"
+          :class="{ active: currentTheme === 'auto' }"
+          @click="setTheme('auto')"
+          :title="i18n.t('settings.theme_options.auto')"
+          data-theme-idx="0"
+        >
+          <Monitor :size="16" />
+        </button>
+        <button
+          class="theme-btn"
+          :class="{ active: currentTheme === 'light' }"
+          @click="setTheme('light')"
+          :title="i18n.t('settings.theme_options.light')"
+          data-theme-idx="1"
+        >
+          <Sun :size="16" />
+        </button>
+        <button
+          class="theme-btn"
+          :class="{ active: currentTheme === 'dark' }"
+          @click="setTheme('dark')"
+          :title="i18n.t('settings.theme_options.dark')"
+          data-theme-idx="2"
+        >
+          <Moon :size="16" />
+        </button>
+      </div>
+
       <div class="header-status">
-        <span class="status-dot online"></span>
+        <cmz-badge dot pulse variant="success" />
         <span class="status-text">{{ i18n.t("common.app_name") }}</span>
       </div>
 
@@ -344,7 +423,7 @@ function isActive(code: string) {
   </header>
 
   <!-- 关闭窗口确认模态框 -->
-  <SLModal
+  <cmz-modal
     :visible="showCloseModal"
     :title="i18n.t('home.close_window_title')"
     @close="showCloseModal = false"
@@ -352,17 +431,17 @@ function isActive(code: string) {
     <div class="close-modal-content">
       <p>{{ i18n.t("home.close_window_message") }}</p>
       <div class="remember-option">
-        <SLCheckbox v-model="rememberChoice" :label="i18n.t('home.remember_choice')" />
+        <cmz-checkbox v-model="rememberChoice" :label="i18n.t('home.remember_choice')" />
       </div>
       <div class="close-options">
-        <SLButton variant="secondary" @click="handleCloseOption('minimize')">{{
+        <cmz-button variant="outline" @click="handleCloseOption('minimize')">{{
           i18n.t("home.close_action_minimize")
-        }}</SLButton>
-        <SLButton variant="danger" @click="handleCloseOption('close')">{{
+        }}</cmz-button>
+        <cmz-button variant="danger" @click="handleCloseOption('close')">{{
           i18n.t("home.close_action_close")
-        }}</SLButton>
+        }}</cmz-button>
       </div>
     </div>
-  </SLModal>
+  </cmz-modal>
 </template>
 <style src="@styles/components/layout/AppHeader.css" scoped></style>

@@ -4,7 +4,7 @@ import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
 import { isBrowserEnv } from "@api/tauri";
 import { registerPluginLocale, addPluginTranslations, removePluginTranslations } from "@language";
 import { useComponentRegistry } from "@composables/useComponentRegistry";
-import { useToast } from "@composables/useToast";
+import { useToast } from "cmzya-modern-ui";
 import DOMPurify from "dompurify";
 import * as pluginApi from "@api/plugin";
 import type { BufferedComponentEvent } from "@api/plugin";

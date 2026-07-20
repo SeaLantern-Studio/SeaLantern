@@ -1,7 +1,6 @@
 <script setup lang="ts">
+import { defineAsyncComponent, markRaw } from "vue";
 import { Menu, Gauge } from "lucide-vue-next";
-import SLCard from "@components/common/SLCard.vue";
-import SLProgress from "@components/common/SLProgress.vue";
 import { i18n } from "@language";
 import {
   systemInfo,
@@ -18,13 +17,31 @@ import {
 } from "@utils/statsUtils";
 import { formatBytes } from "@utils/serverUtils";
 
+// 异步加载 ECharts,避免应用启动时立即加载图表栈
+// markRaw 阻止 Vue 对组件实例做响应式代理
+const VChart = markRaw(
+  defineAsyncComponent(async () => {
+    const [{ default: VueECharts }, { use }] = await Promise.all([
+      import("vue-echarts"),
+      import("echarts/core"),
+    ]);
+    const [{ PieChart, LineChart }, { GridComponent }, { CanvasRenderer }] = await Promise.all([
+      import("echarts/charts"),
+      import("echarts/components"),
+      import("echarts/renderers"),
+    ]);
+    use([GridComponent, PieChart, LineChart, CanvasRenderer]);
+    return VueECharts;
+  }),
+);
+
 function toggleViewMode() {
   statsViewMode.value = statsViewMode.value === "gauge" ? "detail" : "gauge";
 }
 </script>
 
 <template>
-  <SLCard variant="solid" class="stats-card">
+  <cmz-card variant="glass" class="stats-card">
     <template #header>
       <div class="stats-card-header">
         <span class="card-title">{{ i18n.t("home.system_resources") }}</span>
@@ -42,7 +59,7 @@ function toggleViewMode() {
     </template>
 
     <div v-if="statsLoading && !systemInfo" class="stats-loading">
-      <div class="spinner"></div>
+      <cmz-spinner size="sm" />
       <span>{{ i18n.t("common.loading") }}</span>
     </div>
 
@@ -136,10 +153,10 @@ function toggleViewMode() {
           </span>
           <span class="stat-value">{{ diskUsage }}%</span>
         </div>
-        <SLProgress :value="diskUsage" variant="warning" :showPercent="false" />
+        <cmz-progress :value="diskUsage" color="#f59e0b" :showPercent="false" />
       </div>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>

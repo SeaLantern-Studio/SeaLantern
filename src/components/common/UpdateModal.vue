@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import SLModal from "@components/common/SLModal.vue";
-import SLButton from "@components/common/SLButton.vue";
 import { useUpdateStore } from "@stores/updateStore";
 import { i18n } from "@language";
 import { downloadUpdate, installUpdate, onDownloadProgress } from "@api/update";
@@ -19,21 +17,21 @@ const buttonState = computed(() => {
   if (updateStore.status === "downloading") {
     return {
       text: `${i18n.t("about.update_downloading")} ${progressPercent.value}%`,
-      variant: "secondary" as const,
+      variant: "outline" as const,
       disabled: true,
     };
   }
   if (updateStore.status === "installing") {
     return {
       text: i18n.t("about.update_installing"),
-      variant: "secondary" as const,
+      variant: "outline" as const,
       disabled: true,
     };
   }
   if (updateStore.status === "downloaded") {
     return {
       text: i18n.t("about.update_restart_install"),
-      variant: "success" as const,
+      variant: "primary" as const,
       disabled: false,
     };
   }
@@ -182,7 +180,7 @@ function closeInstallRiskConfirm() {
 </script>
 
 <template>
-  <SLModal
+  <cmz-modal
     :visible="true"
     :title="
       updateStore.updateInfo
@@ -213,7 +211,7 @@ function closeInstallRiskConfirm() {
       </div>
 
       <div class="update-actions">
-        <SLButton
+        <cmz-button
           class="update-action-btn"
           :variant="buttonState.variant"
           size="md"
@@ -229,12 +227,12 @@ function closeInstallRiskConfirm() {
             />
             <span class="update-btn-label">{{ buttonState.text }}</span>
           </span>
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
-  </SLModal>
+  </cmz-modal>
 
-  <SLModal
+  <cmz-modal
     :visible="showInstallRiskConfirm"
     :title="i18n.t('about.update_running_warning_title')"
     width="520px"
@@ -251,16 +249,17 @@ function closeInstallRiskConfirm() {
       </div>
 
       <div class="install-risk-actions">
-        <SLButton
-          variant="secondary"
+        <cmz-button
+          variant="outline"
           size="sm"
           :disabled="isInstallLaunching"
           @click="closeInstallRiskConfirm"
         >
           {{ i18n.t("about.update_cancel_update") }}
-        </SLButton>
-        <SLButton
-          variant="danger"
+        </cmz-button>
+        <cmz-button
+          variant="solid"
+          color="#ef4444"
           size="md"
           :disabled="isInstallLaunching"
           @click="handleForceAutoUpdate"
@@ -270,10 +269,10 @@ function closeInstallRiskConfirm() {
               ? i18n.t("about.update_installing")
               : i18n.t("about.update_force_auto")
           }}
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>
@@ -442,7 +441,7 @@ function closeInstallRiskConfirm() {
   gap: var(--sl-space-sm);
 }
 
-.install-risk-actions :deep(.sl-button) {
+.install-risk-actions :deep(.cmz-button) {
   width: 100%;
 }
 </style>

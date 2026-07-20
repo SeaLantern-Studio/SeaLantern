@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import SLModal from "@components/common/SLModal.vue";
-import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 import { type PermissionMetadata, groupPermissionsByDangerLevel } from "@type/plugin";
 import {
@@ -72,7 +70,7 @@ function handleCancel() {
 </script>
 
 <template>
-  <SLModal :visible="show" @close="handleCancel">
+  <cmz-modal :visible="show" @close="handleCancel">
     <div class="permission-dialog">
       <div class="dialog-header" :class="{ critical: hasCritical }">
         <div class="header-icon" :class="{ critical: hasCritical }">
@@ -96,18 +94,25 @@ function handleCancel() {
             {{ i18n.t("plugins.permission.danger_dangerous") }}
           </div>
           <div class="perm-row-list">
-            <div
+            <template
               v-for="perm in [...groupedPermissions.critical, ...groupedPermissions.dangerous]"
               :key="perm.id"
-              class="perm-row danger"
-              :title="getPermissionDesc(perm)"
             >
-              <span class="row-dot danger"></span>
-              <span class="row-name">{{ getPermissionName(perm) }}</span>
-              <span v-if="getPermissionDesc(perm)" class="row-tooltip">{{
-                getPermissionDesc(perm)
-              }}</span>
-            </div>
+              <cmz-tooltip
+                v-if="getPermissionDesc(perm)"
+                :content="getPermissionDesc(perm)"
+                placement="top"
+              >
+                <div class="perm-row danger">
+                  <span class="row-dot danger"></span>
+                  <span class="row-name">{{ getPermissionName(perm) }}</span>
+                </div>
+              </cmz-tooltip>
+              <div v-else class="perm-row danger">
+                <span class="row-dot danger"></span>
+                <span class="row-name">{{ getPermissionName(perm) }}</span>
+              </div>
+            </template>
           </div>
         </template>
 
@@ -117,18 +122,22 @@ function handleCancel() {
             {{ i18n.t("plugins.permission.danger_normal") }}
           </div>
           <div class="perm-row-list">
-            <div
-              v-for="perm in groupedPermissions.normal"
-              :key="perm.id"
-              class="perm-row normal"
-              :title="getPermissionDesc(perm)"
-            >
-              <span class="row-dot normal"></span>
-              <span class="row-name">{{ getPermissionName(perm) }}</span>
-              <span v-if="getPermissionDesc(perm)" class="row-tooltip">{{
-                getPermissionDesc(perm)
-              }}</span>
-            </div>
+            <template v-for="perm in groupedPermissions.normal" :key="perm.id">
+              <cmz-tooltip
+                v-if="getPermissionDesc(perm)"
+                :content="getPermissionDesc(perm)"
+                placement="top"
+              >
+                <div class="perm-row normal">
+                  <span class="row-dot normal"></span>
+                  <span class="row-name">{{ getPermissionName(perm) }}</span>
+                </div>
+              </cmz-tooltip>
+              <div v-else class="perm-row normal">
+                <span class="row-dot normal"></span>
+                <span class="row-name">{{ getPermissionName(perm) }}</span>
+              </div>
+            </template>
           </div>
         </template>
       </div>
@@ -139,15 +148,19 @@ function handleCancel() {
       </div>
 
       <div class="dialog-actions">
-        <SLButton variant="secondary" @click="handleCancel">
+        <cmz-button variant="outline" @click="handleCancel">
           {{ i18n.t("plugins.permission.warning_cancel") }}
-        </SLButton>
-        <SLButton :variant="hasCritical ? 'danger' : 'primary'" @click="handleConfirm">
+        </cmz-button>
+        <cmz-button
+          :variant="hasCritical ? 'solid' : 'primary'"
+          :color="hasCritical ? '#ef4444' : undefined"
+          @click="handleConfirm"
+        >
           {{ i18n.t("plugins.permission.warning_confirm") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>
@@ -285,31 +298,6 @@ function handleCancel() {
   font-weight: 500;
   color: var(--sl-text-primary);
   white-space: nowrap;
-}
-
-.row-tooltip {
-  display: none;
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  background: var(--sl-bg-tertiary);
-  border: 1px solid var(--sl-border);
-  color: var(--sl-text-secondary);
-  font-size: 0.75rem;
-  line-height: 1.5;
-  padding: 6px 10px;
-  border-radius: var(--sl-radius-md);
-  width: max-content;
-  max-width: 240px;
-  white-space: normal;
-  word-break: break-all;
-  z-index: 100;
-  box-shadow: var(--sl-shadow-md);
-  pointer-events: none;
-}
-
-.perm-row:hover .row-tooltip {
-  display: block;
 }
 
 .critical-warning {

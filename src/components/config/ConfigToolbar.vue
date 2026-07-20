@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import SLInput from "@components/common/SLInput.vue";
-import SLSpinner from "@components/common/SLSpinner.vue";
 
 interface Props {
   serverPath: string;
@@ -18,7 +16,7 @@ const emit = defineEmits<{
 <template>
   <div class="config-toolbar">
     <div class="toolbar-left">
-      <SLInput
+      <cmz-input
         :modelValue="searchQuery"
         :placeholder="i18n.t('config.search')"
         @input="emit('updateSearch', $event.target.value)"

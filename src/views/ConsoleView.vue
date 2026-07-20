@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onActivated, nextTick, computed, watch } from "vue";
-import { Cpu, HardDrive, MemoryStick, ArrowDown } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  onActivated,
+  onDeactivated,
+  nextTick,
+  computed,
+  watch,
+} from "vue";
+import { Cpu, HardDrive, MemoryStick } from "lucide-vue-next";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
-import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
-import ConsoleInput from "@components/console/ConsoleInput.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
@@ -80,6 +86,630 @@ const quickCommands = computed(() => [
   { label: i18n.t("common.command_mob_griefing_off"), cmd: "gamerule mobGriefing false" },
 ]);
 
+// 命令补全 MD（Minecraft 原版常用命令）
+const commandCompletionsMd = `
+advancement
+  grant
+    <targets>
+      everything
+      only
+        <advancement>
+          <criterion>
+      from
+        <advancement>
+      until
+        <advancement>
+      through
+        <advancement>
+  revoke
+    <targets>
+      everything
+      only
+        <advancement>
+          <criterion>
+      from
+        <advancement>
+      until
+        <advancement>
+      through
+        <advancement>
+attribute
+  <target>
+    <attribute>
+      get
+        <scale>
+      base
+        get
+          <scale>
+        set
+          <value>
+      modifier
+        add
+          <id> <name> <value> <operation>
+        remove
+          <id>
+        get
+          <id>
+            <scale>
+ban
+  <targets>
+    <reason>
+ban-ip
+  <target>
+    <reason>
+banlist
+  ips
+  players
+bossbar
+  add
+    <id> <name>
+  get
+    <id>
+      max
+      players
+      value
+      visible
+      name
+      color
+      style
+  list
+  remove
+    <id>
+  set
+    <id>
+      color
+        <color>
+      max
+        <max>
+      name
+        <name>
+      players
+        <players>
+      style
+        <style>
+      value
+        <value>
+      visible
+        <visible>
+clear
+  <targets>
+    <item>
+      <max_count>
+clone
+  <begin> <end> <destination>
+    replace
+    masked
+    filtered
+      <block>
+        force
+        move
+        normal
+data
+  get
+    block <targetPos> <path> <scale>
+    entity <target> <path> <scale>
+    storage <source> <path> <scale>
+  merge
+    block <targetPos> <nbt>
+    entity <target> <nbt>
+    storage <target> <nbt>
+  modify
+    block <targetPos> <path> append <value>
+    block <targetPos> <path> insert <index> <value>
+    block <targetPos> <path> merge <value>
+    block <targetPos> <path> prepend <value>
+    block <targetPos> <path> set <value>
+    block <targetPos> <path> remove
+    entity <target> <path> append <value>
+    entity <target> <path> insert <index> <value>
+    entity <target> <path> merge <value>
+    entity <target> <path> prepend <value>
+    entity <target> <path> set <value>
+    entity <target> <path> remove
+    storage <target> <path> append <value>
+    storage <target> <path> insert <index> <value>
+    storage <target> <path> merge <value>
+    storage <target> <path> prepend <value>
+    storage <target> <path> set <value>
+    storage <target> <path> remove
+  remove
+    block <targetPos> <path>
+    entity <target> <path>
+    storage <target> <path>
+datapack
+  list
+    available
+    enabled
+  enable
+    <name>
+      after <existing>
+      before <existing>
+      last
+      first
+  disable
+    <name>
+debug
+  start
+  stop
+  function
+    <name>
+  report
+  clear
+defaultgamemode
+  survival
+  creative
+  adventure
+  spectator
+deop
+  <players>
+difficulty
+  peaceful
+  easy
+  normal
+  hard
+effect
+  clear
+    <targets>
+  give
+    <targets> <effect>
+      <seconds>
+        <amplifier>
+          <hideParticles>
+enchant
+  <targets> <enchantment>
+    <level>
+execute
+  align <axes>
+  anchored eyes
+  anchored feet
+  as <targets>
+  at <targets>
+  facing entity <entity>
+  facing <pos>
+  in <dimension>
+  positioned <pos>
+  rotated <rot>
+  if block <pos> <block>
+  if blocks <start> <end> <destination> all
+  if blocks <start> <end> <destination> masked
+  if entity <targets>
+  if predicate <predicate>
+  if score <target> <targetObjective> <=> <source> <sourceObjective>
+  if score <target> <targetObjective> matches <range>
+  unless block <pos> <block>
+  unless blocks <start> <end> <destination> all
+  unless blocks <start> <end> <destination> masked
+  unless entity <targets>
+  unless predicate <predicate>
+  unless score <target> <targetObjective> <=> <source> <sourceObjective>
+  unless score <target> <targetObjective> matches <range>
+  run <command>
+experience
+  add <targets> <amount>
+    points
+    levels
+  set <targets> <amount>
+    points
+    levels
+  query <targets>
+    points
+    levels
+fill
+  <from> <to> <block>
+    destroy
+    hollow
+    keep
+    outline
+    replace
+      <filter>
+fillbiome
+  <from> <to> <biome>
+forceload
+  add
+    <from>
+      <to>
+  remove
+    <from>
+      <to>
+    all
+  query
+    <pos>
+function
+  <name>
+gamemode
+  survival
+    <player>
+  creative
+    <player>
+  adventure
+    <player>
+  spectator
+    <player>
+gamerule
+  announceAdvancements
+    true
+    false
+  commandBlockOutput
+    true
+    false
+  disableElytraMovementCheck
+    true
+    false
+  disableRaids
+    true
+    false
+  doDaylightCycle
+    true
+    false
+  doEntityDrops
+    true
+    false
+  doFireTick
+    true
+    false
+  doImmediateRespawn
+    true
+    false
+  doInsomnia
+    true
+    false
+  doLimitedCrafting
+    true
+    false
+  doMobLoot
+    true
+    false
+  doMobSpawning
+    true
+    false
+  doPatrolSpawning
+    true
+    false
+  doTileDrops
+    true
+    false
+  doTraderSpawning
+    true
+    false
+  doWeatherCycle
+    true
+    false
+  doVinesSpread
+    true
+    false
+  doWardenSpawning
+    true
+    false
+  drowningDamage
+    true
+    false
+  fallDamage
+    true
+    false
+  fireDamage
+    true
+    false
+  freezeDamage
+    true
+    false
+  keepInventory
+    true
+    false
+  logAdminCommands
+    true
+    false
+  maxCommandChainLength
+    <value>
+  maxEntityCramming
+    <value>
+  mobGriefing
+    true
+    false
+  naturalRegeneration
+    true
+    false
+  playersSleepingPercentage
+    <value>
+  randomTickSpeed
+    <value>
+  reducedDebugInfo
+    true
+    false
+  sendCommandFeedback
+    true
+    false
+  showDeathMessages
+    true
+    false
+  spawnRadius
+    <value>
+  spectatorsGenerateChunks
+    true
+    false
+give
+  <targets> <item>
+    <count>
+help
+  <command>
+item
+  replace
+    entity <targets> <slot> <item>
+      <count>
+    block <pos> <slot> <item>
+      <count>
+  modify
+    entity <targets> <slot> <modifier>
+    block <pos> <slot> <modifier>
+jfr
+  start
+  stop
+kick
+  <targets>
+    <reason>
+kill
+  <targets>
+list
+  uuids
+locate
+  biome <biome>
+  structure <structure>
+  poi <poi_type>
+loot
+  give <targets> <loot_table>
+  fish <loot_table> <pos> <tool>
+  kill <targets>
+  mine <pos> <tool>
+  insert <targetPos> <loot_table>
+  replace entity <targets> <slot> <loot_table>
+  replace block <pos> <slot> <loot_table>
+me
+  <action>
+msg
+  <target>
+    <message>
+particle
+  <name> <pos>
+    <delta_x> <delta_y> <delta_z> <speed> <count>
+      force
+      normal
+      <viewers>
+playsound
+  <sound>
+    master
+    music
+    record
+    weather
+    block
+    hostile
+    neutral
+    player
+    ambient
+    voice
+    <targets>
+      <pos>
+        <volume>
+          <pitch>
+            <minimum_volume>
+publish
+  <port>
+recipe
+  give
+    <targets> <recipe>
+  take
+    <targets> <recipe>
+reload
+ride
+  <target>
+    mount
+      <vehicle>
+    dismount
+    spawn_ride
+      <entity>
+say
+  <message>
+schedule
+  function <function> <time>
+    append
+    replace
+  clear
+    <function>
+scoreboard
+  objectives
+    list
+    add <name> <criteria>
+      <display_name>
+    remove <name>
+    setdisplay <slot> <objective>
+    modify <name> displayname <name>
+    modify <name> rendertype <type>
+  players
+    list
+      <target>
+    set <target> <objective> <score>
+    add <target> <objective> <score>
+    remove <target> <objective> <score>
+    reset <target>
+      <objective>
+    enable <target> <trigger>
+    operation <target> <targetObjective> <operation> <source> <sourceObjective>
+  teams
+    list
+      <team>
+    add <team>
+      <display_name>
+    remove <team>
+    empty <team>
+    join <team> <members>
+    leave <members>
+    modify <team>
+      displayname <name>
+      color <color>
+      friendlyfire <allowed>
+      seeFriendlyInvisibles <visible>
+      nametagVisibility <visibility>
+      deathMessageVisibility <visibility>
+      collisionRule <rule>
+      prefix <prefix>
+      suffix <suffix>
+      seeFriendlyInvisibles <enabled>
+seed
+setblock
+  <pos> <block>
+    destroy
+    keep
+    replace
+setworldspawn
+  <pos>
+    <angle>
+spawnpoint
+  <targets>
+    <pos>
+      <angle>
+spectate
+  <target>
+    <player>
+spreadplayers
+  <center> <spread_distance> <max_range> <max_teams>
+    <teams>
+      <respect_teams>
+stop
+stopsound
+  <targets>
+    *
+    master
+    music
+    record
+    weather
+    block
+    hostile
+    neutral
+    player
+    ambient
+    voice
+    <sound>
+summon
+  <entity>
+    <pos>
+      <nbt>
+tag
+  <targets>
+    add <name>
+    remove <name>
+    list
+team
+  list
+    <team>
+  add <team>
+    <display_name>
+  remove <team>
+  empty <team>
+  join <team> <members>
+  leave <members>
+  modify <team>
+    displayname <name>
+    color <color>
+    friendlyfire <allowed>
+    seeFriendlyInvisibles <visible>
+    nametagVisibility <visibility>
+    deathMessageVisibility <visibility>
+    collisionRule <rule>
+    prefix <prefix>
+    suffix <suffix>
+teammsg
+  <message>
+teleport
+  <destination>
+  <targets> <destination>
+  <targets> <x> <y> <z>
+    <yaw> <pitch>
+tell
+  <target>
+    <message>
+tellraw
+  <targets>
+    <message>
+time
+  set
+    day
+    night
+    midnight
+    noon
+    <time>
+  add
+    <time>
+  query
+    daytime
+    gametime
+    day
+title
+  <targets>
+    title <title>
+    subtitle <subtitle>
+    actionbar <actionbar>
+    times <fadeIn> <stay> <fadeOut>
+    clear
+    reset
+tm
+  <message>
+tp
+  <destination>
+  <targets> <destination>
+  <targets> <x> <y> <z>
+trigger
+  <objective>
+    <value>
+    add <value>
+weather
+  clear
+    <duration>
+  rain
+    <duration>
+  thunder
+    <duration>
+w
+  <target>
+    <message>
+whitelist
+  on
+  off
+  list
+  add <players>
+  remove <players>
+  reload
+worldborder
+  add <distance>
+    <time>
+  set <distance>
+    <time>
+  center <pos>
+  damage
+    buffer <distance>
+    amount <damage_per_block>
+  warning
+    distance <distance>
+    time <time>
+  get
+xp
+  add <targets> <amount>
+    points
+    levels
+  set <targets> <amount>
+    points
+    levels
+  query <targets>
+    points
+    levels
+save-all
+  flush
+save-on
+save-off
+stop
+restart
+list
+tps
+help
+`;
+
 const serverId = computed(() => serverStore.currentServerId || "");
 const currentServer = computed(
   () => serverStore.servers.find((server) => server.id === serverId.value) || null,
@@ -98,6 +728,12 @@ const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "st
   if (isStarting.value) return "starting";
   if (isStopping.value) return "stopping";
   return "stopped";
+});
+
+const statusColor = computed(() => {
+  if (isRunning.value) return "#22c55e";
+  if (isStarting.value || isStopping.value) return "#f59e0b";
+  return "#64748b";
 });
 
 const statsSummaryItems = computed(() => [
@@ -172,7 +808,8 @@ onMounted(async () => {
   if (serverId.value) {
     await serverStore.refreshStatus(serverId.value);
     await syncLogsOnce(serverId.value);
-    startStatsPolling();
+    // 仅在服务器运行时启动资源轮询
+    if (isRunning.value) startStatsPolling();
   }
   unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
     const sid = serverId.value;
@@ -195,7 +832,21 @@ onUnmounted(() => {
 onActivated(async () => {
   await loadConsoleSettings();
   startThemeObserver();
-  startStatsPolling();
+  // 仅在服务器运行时启动资源轮询
+  if (isRunning.value) startStatsPolling();
+  // 重新激活时重新加载当前服务器日志（可能在其它页面已启动服务器）
+  const sid = serverId.value;
+  if (sid) {
+    await syncLogsOnce(sid);
+    nextTick(() => doScroll());
+  }
+});
+
+// keep-alive 缓存时 onUnmounted 不会触发,需在 onDeactivated 中暂停资源
+// (unlistenLogLine 与 SETTINGS_UPDATE_EVENT 监听保留,切回时仍可用)
+onDeactivated(() => {
+  stopThemeObserver();
+  stopStatsPolling();
 });
 
 watch(
@@ -207,17 +858,36 @@ watch(
     await serverStore.refreshStatus(sid);
     await syncLogsOnce(sid);
     userScrolledUp.value = false;
-    startStatsPolling();
+    // 仅在服务器运行时启动资源轮询
+    if (isRunning.value) startStatsPolling();
     nextTick(() => doScroll());
   },
 );
+
+// 服务器运行状态切换时启停轮询,停止后不再消耗 CPU/IO
+watch(isRunning, (running) => {
+  if (running) {
+    startStatsPolling();
+  } else {
+    stopStatsPolling();
+  }
+});
 
 async function syncLogsOnce(sid: string) {
   consoleOutputRef.value?.clear();
   try {
     const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
-    consoleOutputRef.value?.appendLines(lines);
-  } catch (_e) {}
+    if (lines.length === 0) {
+      consoleOutputRef.value?.appendLines(["[Sea Lantern] 该服务器尚无日志输出，请先启动服务器。"]);
+    } else {
+      consoleOutputRef.value?.appendLines(lines);
+    }
+  } catch (e) {
+    console.warn("加载服务器日志失败:", e);
+    consoleOutputRef.value?.appendLines([
+      "[Sea Lantern] 无法加载此服务器的日志，该服务器可能尚未启动。",
+    ]);
+  }
 }
 
 async function loadConsoleSettings() {
@@ -249,7 +919,7 @@ async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
-  consoleOutputRef.value?.appendLines(["> " + command]);
+  consoleOutputRef.value?.appendLines([`>>> ${command}`]);
   commandHistory.value.push(command);
   if (commandHistory.value.length > 500) {
     commandHistory.value.splice(0, commandHistory.value.length - 500);
@@ -277,6 +947,9 @@ async function handleStart() {
     await serverApi.start(sid);
     await serverStore.refreshStatus(sid);
     await refreshServerStats();
+    // 启动后重新拉取日志（可能在启动瞬间已有初始日志写入）
+    await syncLogsOnce(sid);
+    nextTick(() => doScroll());
   } catch (e) {
     consoleOutputRef.value?.appendLines(["[ERROR] " + String(e)]);
   } finally {
@@ -380,55 +1053,51 @@ function deleteCommand() {}
         <span class="server-name-display">
           {{ currentServer?.name || i18n.t("console.no_server") }}
         </span>
-        <SLStatusIndicator
-          v-if="serverId"
-          :status="serverStatusIndicator"
-          :label="getStatusText()"
-        />
+        <cmz-badge v-if="serverId" dot :text="getStatusText()" :color="statusColor" />
       </div>
       <div class="toolbar-right">
         <div class="action-group primary-actions">
-          <SLButton
+          <cmz-button
             v-if="isRunning || isStarting"
             type="button"
-            variant="danger"
+            variant="solid"
+            color="#ef4444"
             size="sm"
             :loading="stopLoading"
             :disabled="isStopping || stopLoading || forceStopLoading"
             @click.stop.prevent="handleStop"
           >
             {{ isStarting ? i18n.t("home.stop") : i18n.t("home.stop") }}
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             v-if="isRunning || isStarting || isStopping"
             type="button"
-            variant="secondary"
+            variant="outline"
             size="sm"
             :loading="forceStopLoading"
             :disabled="forceStopLoading || stopLoading"
             @click.stop.prevent="handleForceStop"
           >
             {{ i18n.t("console.force_stop") }}
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             v-else
             type="button"
-            variant="primary"
             size="sm"
             :loading="startLoading"
             :disabled="isStopping || startLoading || forceStopLoading"
             @click.stop.prevent="handleStart"
           >
             {{ i18n.t("home.start") }}
-          </SLButton>
+          </cmz-button>
         </div>
         <div class="action-group secondary-actions">
-          <SLButton variant="secondary" size="sm" @click="exportLogs">{{
+          <cmz-button variant="outline" size="sm" @click="exportLogs">{{
             i18n.t("console.copy_log")
-          }}</SLButton>
-          <SLButton variant="ghost" size="sm" @click="handleClearLogs">{{
+          }}</cmz-button>
+          <cmz-button variant="ghost" size="sm" @click="handleClearLogs">{{
             i18n.t("console.clear_log")
-          }}</SLButton>
+          }}</cmz-button>
         </div>
       </div>
     </div>
@@ -454,40 +1123,16 @@ function deleteCommand() {}
       </div>
 
       <div class="console-terminal-shell">
-        <div class="console-terminal-section">
-          <div class="console-terminal-toolbar">
-            <div class="console-terminal-title">{{ i18n.t("console.title") }}</div>
-          </div>
-
-          <ConsoleOutput
-            ref="consoleOutputRef"
-            :consoleFontSize="consoleFontSize"
-            :consoleFontFamily="consoleFontFamily"
-            :consoleLetterSpacing="consoleLetterSpacing"
-            :maxLogLines="maxLogLines"
-            :userScrolledUp="userScrolledUp"
-            @scroll="(value) => (userScrolledUp = value)"
-            @scrollToBottom="
-              userScrolledUp = false;
-              doScroll();
-            "
-          />
-
-          <div class="console-input-float">
-            <ConsoleInput :consoleFontSize="consoleFontSize" @sendCommand="sendCommand" />
-            <button
-              v-if="userScrolledUp"
-              type="button"
-              class="scroll-to-bottom-btn"
-              @click="
-                userScrolledUp = false;
-                doScroll();
-              "
-            >
-              <ArrowDown :size="14" />
-            </button>
-          </div>
-        </div>
+        <ConsoleOutput
+          ref="consoleOutputRef"
+          :consoleFontSize="consoleFontSize"
+          :consoleFontFamily="consoleFontFamily"
+          :consoleLetterSpacing="consoleLetterSpacing"
+          :maxLogLines="maxLogLines"
+          :history="commandHistory"
+          :completionMd="commandCompletionsMd"
+          @command="sendCommand"
+        />
 
         <div class="console-stats-summary">
           <div

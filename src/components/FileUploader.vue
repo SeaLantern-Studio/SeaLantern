@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { uploadFile, uploadFromDropEvent, isUploadSupported } from "@api/upload";
+import { uploadFile, isUploadSupported } from "@api/upload";
 
 const props = defineProps<{
   /** 是否显示拖拽区域 */
@@ -19,25 +19,20 @@ const emit = defineEmits<{
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
-const isDragging = ref(false);
 const isUploading = ref(false);
 const uploadProgress = ref(0);
 
 // 计算属性：是否支持上传
 const canUpload = computed(() => isUploadSupported());
 
-// 计算属性：拖拽区域样式
-const dropZoneClass = computed(() => ({
-  "border-dashed": true,
-  "border-2": true,
-  "rounded-lg": true,
-  "p-8": true,
-  "text-center": true,
-  "transition-colors": true,
-  "border-gray-300": !isDragging.value,
-  "border-blue-500": isDragging.value,
-  "bg-blue-50": isDragging.value,
-}));
+// 将 accept 字符串转为 fileExtensions 数组供 cmz-dropzone 使用
+const fileExtensions = computed(() => {
+  if (!props.accept) return [];
+  return props.accept
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => t.startsWith("."));
+});
 
 // 点击上传按钮
 const handleClick = () => {
@@ -56,39 +51,6 @@ const handleFileChange = async (event: Event) => {
 
   await uploadSelectedFiles(Array.from(files));
   input.value = ""; // 重置输入
-};
-
-// 处理拖拽开始
-const handleDragStart = () => {
-  if (!canUpload.value) return;
-  isDragging.value = true;
-};
-
-// 处理拖拽结束
-const handleDragEnd = () => {
-  isDragging.value = false;
-};
-
-// 处理拖拽放置
-const handleDrop = async (event: DragEvent) => {
-  if (!canUpload.value) {
-    event.preventDefault();
-    event.stopPropagation();
-    emit("error", "当前环境不支持文件上传");
-    return;
-  }
-
-  isDragging.value = false;
-
-  try {
-    const uploadedFiles = await uploadFromDropEvent(event);
-    uploadedFiles.forEach((file) => {
-      emit("uploaded", file);
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "上传失败";
-    emit("error", message);
-  }
 };
 
 // 上传选中的文件
@@ -161,33 +123,17 @@ defineExpose({
     />
 
     <!-- 拖拽上传区域 -->
-    <div
+    <cmz-dropzone
       v-if="showDropZone && canUpload"
-      :class="dropZoneClass"
+      :placeholder="'拖拽文件到此处，或点击选择文件'"
+      :multiple="multiple ?? false"
+      :file-extensions="fileExtensions"
+      :loading="isUploading"
+      :accept-folders="false"
+      :clearable="false"
       @click="handleClick"
-      @dragenter.prevent="handleDragStart"
-      @dragover.prevent="handleDragStart"
-      @dragleave.prevent="handleDragEnd"
-      @drop="handleDrop"
-    >
-      <div class="flex flex-col items-center gap-2">
-        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-          />
-        </svg>
-        <p class="text-gray-600">
-          {{ isDragging ? "释放文件以上传" : "拖拽文件到此处，或点击选择文件" }}
-        </p>
-        <p v-if="accept" class="text-sm text-gray-400">支持的格式: {{ accept }}</p>
-        <p v-if="maxSize" class="text-sm text-gray-400">
-          最大大小: {{ (maxSize / 1024 / 1024).toFixed(2) }} MB
-        </p>
-      </div>
-    </div>
+      @error="(msg: string) => emit('error', msg)"
+    />
 
     <!-- 上传进度 -->
     <div v-if="isUploading" class="mt-4">

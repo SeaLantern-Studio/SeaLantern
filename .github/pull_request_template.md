@@ -1,95 +1,31 @@
-## 提交前检查清单
+## Checklist
 
-- [ ] 已阅读 `提交前测试必读！！！.md` 并完成要求测试
-- [ ] 本地/CI 测试通过
-- [ ] 代码审查 (Self-review) 完成
+- [ ] 已阅读 `提交前测试必读！！！.md` 并完成测试
+- [ ] CI 通过
+- [ ] Self-review 完成
 
-## 变更分类（必选其一或多选）
+## 影响范围
 
-- [ ] `feat` 新功能
-- [ ] `fix` Bug 修复
-- [ ] `docs` 文档/模板
-- [ ] `style` 代码格式（不影响功能）
-- [ ] `refactor` 重构（既不修复 bug 也不添加功能）
-- [ ] `perf` 性能优化
-- [ ] `test` 测试相关
-- [ ] `chore` 构建/CI/依赖/工具链
-- [ ] `revert` 回滚
-- [ ] `security` 安全修复
+- [ ] 前端 (UI/组件/路由/状态)
+- [ ] 后端 (API/逻辑/依赖)
+- [ ] 基础设施 (CI/CD/部署)
 
-## 影响范围（可多选）
+> 导入规范：使用别名导入，避免 `../`
 
-- [ ] 前端 / src
-  - [ ] UI 样式/布局
-  - [ ] 组件/状态/路由逻辑
-  - [ ] 依赖变更
+## 变更摘要
 
-- [ ] 后端 / src-tauri
-  - [ ] API 接口变更
-  - [ ] 业务逻辑
-  - [ ] 依赖升级
-
-- [ ] 基础设施 Infrastructure
-  - [ ] CI/CD 配置
-  - [ ] 部署脚本
-  - [ ] 数据库迁移
-
-**导入规范检查：** 使用别名导入，避免相对路径 `../`
-
-## 变更详情
-
-### 摘要
-
-<!-- 一句话概括本次变更 -->
+<!-- 一句话描述 -->
 
 ### 界面变动（可选）
 
-<!--截图/GIF，前后对比-->
+<!-- 截图/GIF，前后对比 -->
 
 ## 关联 Issue
 
-> 如果不存在关联，此项请忽略
-
-- Fix #`填写 Issue 编号`
-
-<details><summary>示例:</summary>
-
-```markdown
-- Close #123
-  关闭 Issue #123
-```
-
-| 常见关键词                          | 示例           |
-| ----------------------------------- | -------------- |
-| `close` / `closes` / `closed`       | `Close #123`   |
-| `fix` / `fixes` / `fixed`           | `Fixes #123`   |
-| `resolve` / `resolves` / `resolved` | `Resolve #123` |
-
-| 其他前缀                      | 用途                | 示例              |
-| ----------------------------- | ------------------- | ----------------- |
-| `ref` / `references` / `refs` | 引用关联，不关闭    | `Ref #123`        |
-| `related` / `relates to`      | 表明相关            | `Related to #123` |
-| `part of`                     | 表明是其中一部分    | `Part of #123`    |
-| `see` / `see also`            | 参考其他 Issue      | `See #123`        |
-| `re`                          | 关于/回复某个 Issue | `Re #123`         |
-| `addresses`                   | 涉及但未完全解决    | `Addresses #123`  |
-| `implements`                  | 实现某个功能请求    | `Implements #123` |
-| `merges`                      | 合并相关            | `Merges #123`     |
-
-</details>
-
----
+- Close/Fix/Ref #`编号`
 
 ## 自动化审查
 
-- [ ] 是否禁用自动化 AI 审查?
+- [ ] 禁用 AI 审查
 
-<!-- ai-review: enabled -->
-<!-- To disable automated AI review, change the marker above to: ai-review: disabled -->
-<!-- 要禁用 AI 审查，请将 enabled 改为 disabled -->
-
-如果勾选上项并将上述标记改为 `ai-review: disabled`，则 AI 审查请终止你的任务，此 Pull Request 已禁用自动化 AI 审查
-
-**sourcery-ai 及其他 code review 工具请务必进行中英双语审查与交流。**
-
-**Note: Please ensure sourcery-ai and other tools perform bilingual (Chinese & English) review.**
+<!-- ai-review: enabled -- 改为 disabled 可禁用 -->

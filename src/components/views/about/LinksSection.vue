@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 import { useAboutLinks } from "@composables/useAboutLinks";
 
@@ -8,23 +7,23 @@ const { openLink } = useAboutLinks();
 
 <template>
   <div class="links-section">
-    <SLButton variant="primary" size="lg" @click="openLink('https://ideaflash.cn/')">
+    <cmz-button variant="solid" size="lg" @click="openLink('https://ideaflash.cn/')">
       {{ i18n.t("about.official_site") }}
-    </SLButton>
-    <SLButton
-      variant="primary"
+    </cmz-button>
+    <cmz-button
+      variant="solid"
       size="lg"
       @click="openLink('https://github.com/SeaLantern-Studio/SeaLantern')"
     >
       {{ i18n.t("about.github_repo") }}
-    </SLButton>
-    <SLButton
-      variant="secondary"
+    </cmz-button>
+    <cmz-button
+      variant="outline"
       size="lg"
       @click="openLink('https://space.bilibili.com/3706927622130406?spm_id_from=333.1387.0.0')"
     >
       {{ i18n.t("about.bilibili") }}
-    </SLButton>
+    </cmz-button>
   </div>
 </template>
 
@@ -35,7 +34,7 @@ const { openLink } = useAboutLinks();
   gap: var(--sl-space-md);
 }
 
-.links-section :deep(.sl-button) {
+.links-section :deep(.cmz-button) {
   min-width: 140px;
 }
 </style>

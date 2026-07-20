@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { i18n } from "@language";
-import { SLTabBar } from "@components/common";
-import SLInput from "@components/common/SLInput.vue";
 
 interface Props {
   categories: string[];
@@ -38,31 +36,46 @@ const tabs = computed(() =>
 </script>
 
 <template>
-  <SLTabBar
+  <cmz-tab-bar
     :modelValue="activeCategory"
     :tabs="tabs"
     :level="2"
+    class="config-categories-bar"
     @update:modelValue="emit('updateCategory', $event ?? 'all')"
   >
     <template #extra>
-      <SLInput
+      <cmz-input
         :modelValue="searchQuery"
         :placeholder="i18n.t('config.search')"
         @input="emit('updateSearch', $event.target.value)"
-        style="width: 180px"
+        style="min-width: 120px; max-width: 200px"
         class="search-input"
       />
     </template>
-  </SLTabBar>
+  </cmz-tab-bar>
 </template>
 
 <style scoped>
-.search-input :deep(.sl-input) {
+/* 搜索输入框样式 */
+.search-input :deep(.cmz-input) {
   padding: 6px 12px;
   font-size: 13px;
 }
 
-.search-input :deep(.sl-input-container) {
+.search-input :deep(.cmz-input-container) {
   height: 28px;
+  width: 100%;
+}
+
+.search-input {
+  min-width: 100px;
+  max-width: 200px;
+  flex-shrink: 1;
+}
+
+/* Tab 栏容器：空间不足时搜索框换行 */
+.config-categories-bar {
+  flex-wrap: wrap;
+  gap: var(--sl-space-xs);
 }
 </style>

@@ -2,7 +2,6 @@
 import { ref } from "vue";
 import { systemApi, type IPv6TestResult } from "@api/system";
 import { i18n } from "@language";
-import SLButton from "@components/common/SLButton.vue";
 
 const testing = ref(false);
 const showDetail = ref(false);
@@ -23,23 +22,16 @@ async function testIPv6() {
 </script>
 
 <template>
-  <div class="settings-card">
-    <div class="card-header">
-      <h3>{{ i18n.t("settings.network") }}</h3>
-      <p class="card-desc">{{ i18n.t("settings.network_desc") }}</p>
-    </div>
-
-    <div class="card-content">
-      <div class="setting-item">
-        <div class="setting-info">
-          <span class="setting-label">{{ i18n.t("settings.ipv6_test") }}</span>
-          <span class="setting-desc">{{ i18n.t("settings.ipv6_test_desc") }}</span>
+  <cmz-card :title="i18n.t('settings.network')" :subtitle="i18n.t('settings.network_desc')">
+    <div class="sl-settings-group">
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.ipv6_test") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.ipv6_test_desc") }}</span>
         </div>
-        <div class="setting-control">
-          <SLButton variant="primary" size="sm" :loading="testing" @click="testIPv6">
-            {{ testing ? i18n.t("settings.ipv6_testing") : i18n.t("settings.ipv6_test_btn") }}
-          </SLButton>
-        </div>
+        <cmz-button size="sm" :loading="testing" @click="testIPv6">
+          {{ testing ? i18n.t("settings.ipv6_testing") : i18n.t("settings.ipv6_test_btn") }}
+        </cmz-button>
       </div>
 
       <div v-if="result" class="test-result" :class="result.supported ? 'success' : 'error'">
@@ -83,72 +75,15 @@ async function testIPv6() {
         </div>
       </div>
     </div>
-  </div>
+  </cmz-card>
 </template>
 
 <style scoped>
-.settings-card {
-  background: var(--sl-card-bg);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-lg);
-  overflow: hidden;
-}
-
-.card-header {
-  padding: var(--sl-space-lg);
-  border-bottom: 1px solid var(--sl-border);
-}
-
-.card-header h3 {
-  margin: 0 0 var(--sl-space-xs) 0;
-  font-size: var(--sl-font-size-lg);
-  font-weight: 600;
-  color: var(--sl-text);
-}
-
-.card-desc {
-  margin: 0;
-  font-size: var(--sl-font-size-sm);
-  color: var(--sl-text-secondary);
-}
-
-.card-content {
-  padding: var(--sl-space-lg);
-}
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sl-space-lg);
-}
-
-.setting-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-xs);
-}
-
-.setting-label {
-  font-size: var(--sl-font-size-base);
-  font-weight: 500;
-  color: var(--sl-text);
-}
-
-.setting-desc {
-  font-size: var(--sl-font-size-sm);
-  color: var(--sl-text-secondary);
-}
-
-.setting-control {
-  flex-shrink: 0;
-}
-
 .test-result {
   display: flex;
   align-items: flex-start;
   gap: var(--sl-space-sm);
-  margin-top: var(--sl-space-lg);
+  margin-top: var(--sl-space-md);
   padding: var(--sl-space-md);
   border-radius: var(--sl-radius-md);
   font-size: var(--sl-font-size-sm);
@@ -169,6 +104,7 @@ async function testIPv6() {
 .result-icon {
   font-size: var(--sl-font-size-base);
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .result-body {
@@ -187,6 +123,7 @@ async function testIPv6() {
   display: block;
   font-size: var(--sl-font-size-sm);
   opacity: 0.9;
+  word-break: break-all;
 }
 
 .detail-toggle {

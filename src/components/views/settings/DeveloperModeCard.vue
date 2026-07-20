@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import SLCard from "@components/common/SLCard.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
 import { i18n } from "@language";
 
 defineProps<{
@@ -14,17 +12,19 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <SLCard
+  <cmz-card
     :title="i18n.t('settings.developer_mode')"
     :subtitle="i18n.t('settings.developer_mode_desc')"
   >
     <div class="sl-settings-group">
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.developer_mode_toggle") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.developer_mode_toggle_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.developer_mode_toggle") }}</span>
+          <span class="settings-entry-desc">{{
+            i18n.t("settings.developer_mode_toggle_desc")
+          }}</span>
         </div>
-        <SLSwitch
+        <cmz-switch
           :model-value="developerMode"
           @update:model-value="
             (v) => {
@@ -35,5 +35,5 @@ const emit = defineEmits<{
         />
       </div>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>

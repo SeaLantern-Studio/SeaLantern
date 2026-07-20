@@ -1,22 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLCard from "@components/common/SLCard.vue";
-import SLStatusIndicator from "@components/common/SLStatusIndicator.vue";
-import SLInput from "@components/common/SLInput.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
-import { useGlobalMessage } from "@composables/useMessage";
+import { useToast } from "cmzya-modern-ui";
 import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "lucide-vue-next";
-import SLModal from "@components/common/SLModal.vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;
 
-const globalMessage = useGlobalMessage();
+const toast = useToast();
 type PendingAction = "host" | "join" | "stop" | "generate-ticket";
 const pendingAction = ref<PendingAction | null>(null);
 const status = ref<TunnelStatus | null>(null);
@@ -192,7 +187,7 @@ async function refreshStatus(options?: { silent?: boolean }) {
     const next = await tunnelApi.status();
     applyStatus(next);
   } catch (e) {
-    if (!silent) globalMessage.error(String(e));
+    if (!silent) toast.error(String(e));
   }
 }
 
@@ -200,7 +195,7 @@ async function startHost() {
   if (!beginAction("host")) return;
   const portError = validatePort(hostPort.value, i18n.t("tunnel.host_port"));
   if (portError) {
-    globalMessage.error(portError);
+    toast.error(portError);
     endAction("host");
     return;
   }
@@ -212,9 +207,9 @@ async function startHost() {
         relayUrl: hostRelayUrl.value.trim() || undefined,
       }),
     );
-    globalMessage.success(i18n.t("tunnel.host_started"));
+    toast.success(i18n.t("tunnel.host_started"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("host");
   }
@@ -224,7 +219,7 @@ async function startJoin() {
   if (!beginAction("join")) return;
   const portError = validatePort(joinLocalPort.value, i18n.t("tunnel.join_local_port"));
   if (portError) {
-    globalMessage.error(portError);
+    toast.error(portError);
     endAction("join");
     return;
   }
@@ -236,9 +231,9 @@ async function startJoin() {
         password: joinPassword.value.trim() || undefined,
       }),
     );
-    globalMessage.success(i18n.t("tunnel.join_started"));
+    toast.success(i18n.t("tunnel.join_started"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("join");
   }
@@ -248,9 +243,9 @@ async function stopTunnel() {
   if (!beginAction("stop")) return;
   try {
     applyStatus(await tunnelApi.stop());
-    globalMessage.success(i18n.t("tunnel.tunnel_stopped"));
+    toast.success(i18n.t("tunnel.tunnel_stopped"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("stop");
   }
@@ -261,13 +256,13 @@ async function copyTicket() {
   try {
     const copied = await tunnelApi.copyTicket();
     if (copied) {
-      globalMessage.success(i18n.t("tunnel.ticket_copied"));
+      toast.success(i18n.t("tunnel.ticket_copied"));
       applyStatus(await tunnelApi.status());
     } else {
-      globalMessage.error(i18n.t("tunnel.ticket_copy_failed"));
+      toast.error(i18n.t("tunnel.ticket_copy_failed"));
     }
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   }
 }
 
@@ -275,9 +270,9 @@ async function generateTicket() {
   if (!beginAction("generate-ticket")) return;
   try {
     applyStatus(await tunnelApi.generateTicket());
-    globalMessage.success(i18n.t("tunnel.ticket_generated"));
+    toast.success(i18n.t("tunnel.ticket_generated"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -287,9 +282,9 @@ async function regenerateTicket() {
   if (!beginAction("generate-ticket")) return;
   try {
     applyStatus(await tunnelApi.regenerateTicket());
-    globalMessage.success(i18n.t("tunnel.ticket_regenerated"));
+    toast.success(i18n.t("tunnel.ticket_regenerated"));
   } catch (e) {
-    globalMessage.error(String(e));
+    toast.error(String(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -345,7 +340,7 @@ onUnmounted(() => {
 
 <template>
   <div class="tunnel-view animate-stagger-in">
-    <SLCard :title="i18n.t('tunnel.status_title')" variant="solid" padding="md">
+    <cmz-card :title="i18n.t('tunnel.status_title')" padding="md">
       <template #actions>
         <button
           class="ticket-icon-btn"
@@ -359,7 +354,11 @@ onUnmounted(() => {
       <div class="status-line">
         <span class="status-pill">
           <span class="status-pill-label">{{ i18n.t("tunnel.running") }}:</span>
-          <SLStatusIndicator :status="runningStatusClass" :label="runningStatusText" />
+          <cmz-badge
+            dot
+            :color="runningStatusClass === 'running' ? '#22c55e' : '#9ca3af'"
+            :text="runningStatusText"
+          />
         </span>
         <span class="status-pill">
           <span class="status-pill-label">{{ i18n.t("tunnel.mode") }}:</span>
@@ -391,38 +390,39 @@ onUnmounted(() => {
             <RefreshCw :size="16" />
           </button>
         </span>
-        <SLButton
+        <cmz-button
           v-if="!hasTicket"
-          variant="secondary"
+          variant="outline"
           size="sm"
           :disabled="!canGenerateTicket"
           :loading="generateTicketLoading"
           @click="generateTicket"
         >
           {{ i18n.t("tunnel.generate_ticket") }}
-        </SLButton>
+        </cmz-button>
       </div>
       <div v-if="running" class="status-actions">
-        <SLButton
-          variant="danger"
+        <cmz-button
+          variant="solid"
+          color="#ef4444"
           :disabled="!canStopTunnel"
           :loading="stopActionLoading"
           @click="stopTunnel"
         >
           {{ i18n.t("tunnel.stop") }}
-        </SLButton>
+        </cmz-button>
       </div>
-    </SLCard>
+    </cmz-card>
 
     <div class="tunnel-form-cards">
-      <SLCard :title="i18n.t('tunnel.host_title')" variant="solid" padding="md">
+      <cmz-card :title="i18n.t('tunnel.host_title')" padding="md">
         <div class="form-grid">
-          <SLInput
+          <cmz-input
             v-model="hostPort"
             :label="i18n.t('tunnel.host_port')"
             :disabled="!canEditHostForm"
           />
-          <SLInput
+          <cmz-input
             v-model="hostPassword"
             :type="hostPasswordInputType"
             :label="i18n.t('tunnel.host_password')"
@@ -445,8 +445,8 @@ onUnmounted(() => {
                 <Eye v-else :size="14" />
               </button>
             </template>
-          </SLInput>
-          <SLInput
+          </cmz-input>
+          <cmz-input
             v-model="hostRelayUrl"
             :label="i18n.t('tunnel.host_relay_url')"
             :disabled="!canEditHostForm"
@@ -463,23 +463,18 @@ onUnmounted(() => {
                 <X :size="14" />
               </button>
             </template>
-          </SLInput>
+          </cmz-input>
         </div>
         <div class="card-actions">
-          <SLButton
-            variant="primary"
-            :disabled="!canStartHost"
-            :loading="hostActionLoading"
-            @click="startHost"
-          >
+          <cmz-button :disabled="!canStartHost" :loading="hostActionLoading" @click="startHost">
             {{ i18n.t("tunnel.start_host") }}
-          </SLButton>
+          </cmz-button>
         </div>
-      </SLCard>
+      </cmz-card>
 
-      <SLCard :title="i18n.t('tunnel.join_title')" variant="solid" padding="md">
+      <cmz-card :title="i18n.t('tunnel.join_title')" variant="solid" padding="md">
         <div class="form-grid">
-          <SLInput
+          <cmz-input
             :model-value="joinTicket"
             :label="i18n.t('tunnel.join_ticket')"
             :disabled="!canEditJoinForm"
@@ -497,13 +492,13 @@ onUnmounted(() => {
                 <X :size="14" />
               </button>
             </template>
-          </SLInput>
-          <SLInput
+          </cmz-input>
+          <cmz-input
             v-model="joinLocalPort"
             :label="i18n.t('tunnel.join_local_port')"
             :disabled="!canEditJoinForm"
           />
-          <SLInput
+          <cmz-input
             v-model="joinPassword"
             :type="joinPasswordInputType"
             :label="i18n.t('tunnel.join_password')"
@@ -526,22 +521,22 @@ onUnmounted(() => {
                 <Eye v-else :size="14" />
               </button>
             </template>
-          </SLInput>
+          </cmz-input>
         </div>
         <div class="card-actions">
-          <SLButton
+          <cmz-button
             variant="primary"
             :disabled="!canStartJoin"
             :loading="joinActionLoading"
             @click="startJoin"
           >
             {{ i18n.t("tunnel.start_join") }}
-          </SLButton>
+          </cmz-button>
         </div>
-      </SLCard>
+      </cmz-card>
     </div>
 
-    <SLCard
+    <cmz-card
       v-if="showConnections"
       :title="i18n.t('tunnel.connections_title')"
       variant="solid"
@@ -576,9 +571,9 @@ onUnmounted(() => {
           </tbody>
         </table>
       </div>
-    </SLCard>
+    </cmz-card>
 
-    <SLCard
+    <cmz-card
       class="tunnel-logs-card"
       :title="i18n.t('tunnel.logs_title')"
       variant="solid"
@@ -586,12 +581,12 @@ onUnmounted(() => {
     >
       <template #actions>
         <div class="log-actions">
-          <SLButton variant="secondary" size="sm" @click="copyLogs">
+          <cmz-button variant="outline" size="sm" @click="copyLogs">
             {{ i18n.t("console.copy_log") }}
-          </SLButton>
-          <SLButton variant="ghost" size="sm" @click="clearLogs">
+          </cmz-button>
+          <cmz-button variant="ghost" size="sm" @click="clearLogs">
             {{ i18n.t("console.clear_log") }}
-          </SLButton>
+          </cmz-button>
         </div>
       </template>
       <div class="tunnel-log-console">
@@ -601,6 +596,7 @@ onUnmounted(() => {
           :consoleFontFamily="consoleFontFamily"
           :consoleLetterSpacing="consoleLetterSpacing"
           :maxLogLines="maxLogLines"
+          :readonly="true"
           :userScrolledUp="userScrolledUp"
           @scroll="(value) => (userScrolledUp = value)"
           @scrollToBottom="
@@ -609,9 +605,9 @@ onUnmounted(() => {
           "
         />
       </div>
-    </SLCard>
+    </cmz-card>
 
-    <SLModal
+    <cmz-modal
       :visible="showInfoModal"
       :title="i18n.t('tunnel.info_title')"
       width="420px"
@@ -624,7 +620,7 @@ onUnmounted(() => {
           <span>{{ i18n.t("tunnel.info_github") }}</span>
         </button>
       </div>
-    </SLModal>
+    </cmz-modal>
   </div>
 </template>
 

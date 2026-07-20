@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { RefreshCw } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import type { JavaInfo } from "@api/java";
@@ -63,12 +60,12 @@ async function pickJavaFile() {
         <div v-if="loading" class="java-step-loading">{{ i18n.t("create.scanning") }}</div>
         <div v-else-if="javaList.length === 0" class="java-step-empty">
           <span>{{ i18n.t("create.no_java") }}</span>
-          <SLButton variant="primary" size="sm" @click="$emit('detect')">
+          <cmz-button size="sm" @click="$emit('detect')">
             {{ i18n.t("create.scan") }}
-          </SLButton>
+          </cmz-button>
         </div>
         <div v-else class="java-step-select-row">
-          <SLSelect
+          <cmz-select
             :model-value="selectedJava"
             :options="javaOptions"
             :placeholder="i18n.t('create.select_java')"
@@ -87,17 +84,17 @@ async function pickJavaFile() {
     <div class="java-step-row java-step-row-manual">
       <span class="java-step-label">{{ i18n.t("create.java_path") }}</span>
       <div class="java-step-control">
-        <SLInput
+        <cmz-input
           :model-value="selectedJava"
           :placeholder="i18n.t('create.java_manual')"
           @update:model-value="$emit('update:selectedJava', $event)"
         >
           <template #suffix>
-            <button class="sl-input-action" @click="pickJavaFile">
+            <button class="cmz-input-action" @click="pickJavaFile">
               {{ i18n.t("create.browse") }}
             </button>
           </template>
-        </SLInput>
+        </cmz-input>
       </div>
     </div>
   </div>

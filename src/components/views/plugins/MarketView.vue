@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, shallowRef, computed, onMounted } from "vue";
+import { refDebounced } from "@vueuse/core";
 import { usePluginStore } from "@stores/pluginStore";
 import {
   fetchMarketPlugins,
@@ -10,8 +11,6 @@ import {
 import type { MarketPluginInfo } from "@api/plugin";
 import { i18n } from "@language";
 import { RefreshCw, AlertCircle, Search, Puzzle, X, Globe } from "lucide-vue-next";
-import SLCard from "@components/common/SLCard.vue";
-import { SLTabBar, type TabBarItem } from "@components/common";
 
 type MarketPlugin = MarketPluginInfo & { _path?: string };
 
@@ -25,9 +24,12 @@ const installFeedback = ref<{
   type: "success" | "warning" | "error";
   message: string;
 } | null>(null);
-const marketPlugins = ref<MarketPlugin[]>([]);
+// 大只读列表使用 shallowRef,避免深度响应式追踪
+const marketPlugins = shallowRef<MarketPlugin[]>([]);
 const categories = ref<Record<string, Record<string, string> | string>>({});
 const searchQuery = ref("");
+// 输入防抖 200ms,避免每次按键触发 filteredPlugins 重算
+const searchQueryDebounced = refDebounced(searchQuery, 200);
 const selectedTag = ref<string | null>(null);
 const installing = ref<string | null>(null);
 const selectedPlugin = ref<MarketPlugin | null>(null);
@@ -42,6 +44,14 @@ const marketErrorHint = computed<string>(() => {
   if (!error.value) return "";
   return resolveMarketNetworkHint(error.value);
 });
+
+// 预计算已安装/已启用 id 集合,模板内 O(1) 查询替代 O(n) some/find
+const installedIds = computed<Set<string>>(
+  () => new Set(pluginStore.plugins.map((p) => p.manifest.id)),
+);
+const enabledIds = computed<Set<string>>(
+  () => new Set(pluginStore.plugins.filter((p) => p.state === "enabled").map((p) => p.manifest.id)),
+);
 
 function showInstallFeedback(
   type: "success" | "warning" | "error",
@@ -80,8 +90,9 @@ function resetMarketUrl() {
 
 const filteredPlugins = computed(() => {
   let result = marketPlugins.value;
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
+  // 使用防抖后的搜索词,避免输入过程中频繁过滤
+  const q = searchQueryDebounced.value.toLowerCase();
+  if (q) {
     result = result.filter(
       (p) =>
         resolveI18n(p.name).toLowerCase().includes(q) ||
@@ -110,12 +121,11 @@ function resolveI18n(val: Record<string, string> | string | undefined): string {
 }
 
 function isInstalled(pluginId: string): boolean {
-  return pluginStore.plugins.some((p) => p.manifest.id === pluginId);
+  return installedIds.value.has(pluginId);
 }
 
 function isInstalledAndEnabled(pluginId: string): boolean {
-  const plugin = pluginStore.plugins.find((p) => p.manifest.id === pluginId);
-  return !!plugin && plugin.state === "enabled";
+  return enabledIds.value.has(pluginId);
 }
 
 function getInstallButtonText(pluginId: string): string {
@@ -308,7 +318,7 @@ onMounted(() => {
       </button>
     </div>
 
-    <SLTabBar
+    <cmz-tab-bar
       v-if="allTags.length"
       v-model="selectedTag"
       :tabs="[
@@ -332,19 +342,15 @@ onMounted(() => {
         >
           <Globe :size="14" />
         </button>
-        <button
-          class="action-btn"
-          @click="loadMarket"
-          :disabled="loading"
-          :title="i18n.t('market.refresh')"
-        >
-          <RefreshCw :size="14" :class="{ spin: loading }" />
+        <cmz-spinner v-if="loading" size="sm" />
+        <button v-else class="action-btn" @click="loadMarket" :title="i18n.t('market.refresh')">
+          <RefreshCw :size="14" />
         </button>
       </template>
-    </SLTabBar>
+    </cmz-tab-bar>
 
     <div v-if="loading" class="market-loading">
-      <div class="loading-spinner"></div>
+      <cmz-spinner size="sm" />
       <span class="loading-text">{{ i18n.t("market.loading") }}</span>
     </div>
 
@@ -364,10 +370,17 @@ onMounted(() => {
     </div>
 
     <div v-else class="market-grid">
-      <SLCard
+      <cmz-card
         v-for="plugin in filteredPlugins"
         :key="plugin.id"
+        v-memo="[
+          plugin.id,
+          installing === plugin.id,
+          installedIds.has(plugin.id),
+          enabledIds.has(plugin.id),
+        ]"
         class="market-card"
+        hoverable
         @click="showDetail(plugin)"
       >
         <div class="card-icon">
@@ -414,7 +427,7 @@ onMounted(() => {
             </button>
           </div>
         </div>
-      </SLCard>
+      </cmz-card>
     </div>
 
     <Teleport to="body">
@@ -441,7 +454,7 @@ onMounted(() => {
             </div>
           </div>
           <div v-if="detailLoading" class="detail-loading">
-            <div class="loading-spinner"></div>
+            <cmz-spinner size="sm" />
           </div>
           <div v-else class="detail-body">
             <p class="detail-desc">
@@ -450,12 +463,18 @@ onMounted(() => {
             <div v-if="pluginDetail?.permissions?.length" class="detail-section">
               <h3>{{ i18n.t("market.permissions") }}</h3>
               <div class="permission-badges">
-                <span
+                <cmz-badge
                   v-for="perm in pluginDetail.permissions"
                   :key="perm"
-                  :class="['perm-badge', `perm-badge--${getPermissionLevel(perm)}`]"
+                  :variant="
+                    getPermissionLevel(perm) === 'critical'
+                      ? 'danger'
+                      : getPermissionLevel(perm) === 'dangerous'
+                        ? 'warning'
+                        : 'default'
+                  "
                   :title="getPermissionDesc(perm)"
-                  >{{ getPermissionLabel(perm) }}</span
+                  >{{ getPermissionLabel(perm) }}</cmz-badge
                 >
               </div>
             </div>
@@ -582,16 +601,6 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.action-btn .spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .market-loading {
   display: flex;
   align-items: center;
@@ -619,21 +628,6 @@ onMounted(() => {
   color: var(--sl-text-secondary);
   max-width: 640px;
   line-height: 1.5;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--sl-border);
-  border-top-color: var(--sl-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .loading-text {
@@ -941,29 +935,6 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.perm-badge {
-  padding: 3px 10px;
-  border-radius: var(--sl-radius-lg);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: default;
-  background: var(--sl-bg-tertiary);
-  color: var(--sl-text-secondary);
-  border: 1px solid var(--sl-border);
-}
-
-.perm-badge--dangerous {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.perm-badge--critical {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .changelog {

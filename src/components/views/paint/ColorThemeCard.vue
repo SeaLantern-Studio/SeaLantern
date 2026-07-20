@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import SLCard from "@components/common/SLCard.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { i18n } from "@language";
 import { computed } from "vue";
 import { getThemeOptions } from "@themes";
@@ -25,20 +23,20 @@ function handleColorChange(value: string) {
 </script>
 
 <template>
-  <SLCard>
+  <cmz-card>
     <template #header>
       <div class="color-theme-header">
         <div>
           <h3 class="card-title">{{ i18n.t("settings.color_theme") }}</h3>
           <p class="card-subtitle">{{ i18n.t("settings.color_theme_desc") }}</p>
         </div>
-        <div class="sl-input-lg">
+        <div class="sl-input-md">
           <div v-if="isThemeProxied" class="theme-proxied-notice">
             <span class="proxied-text">{{
               i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
             }}</span>
           </div>
-          <SLSelect
+          <cmz-select
             v-else
             :model-value="color"
             :options="colorOptions"
@@ -47,7 +45,7 @@ function handleColorChange(value: string) {
         </div>
       </div>
     </template>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>

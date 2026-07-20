@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
-import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 
 withDefaults(
@@ -25,27 +24,15 @@ const router = useRouter();
 
 <template>
   <div class="create-actions">
-    <SLButton variant="secondary" size="lg" @click="router.push('/')">{{
+    <cmz-button variant="outline" size="lg" @click="router.push('/')">{{
       i18n.t("create.cancel")
-    }}</SLButton>
-    <SLButton
-      variant="primary"
-      size="lg"
-      :loading="creating"
-      :disabled="createDisabled"
-      @click="$emit('create')"
-    >
+    }}</cmz-button>
+    <cmz-button size="lg" :loading="creating" :disabled="createDisabled" @click="$emit('create')">
       {{ i18n.t("create.select_and_create") }}
-    </SLButton>
-    <SLButton
-      variant="primary"
-      size="lg"
-      :loading="creating"
-      :disabled="importDisabled"
-      @click="$emit('import')"
-    >
+    </cmz-button>
+    <cmz-button size="lg" :loading="creating" :disabled="importDisabled" @click="$emit('import')">
       {{ i18n.t("create.import_existing") }}
-    </SLButton>
+    </cmz-button>
   </div>
 </template>
 
@@ -55,7 +42,7 @@ const router = useRouter();
   justify-content: center;
   gap: var(--sl-space-md);
 }
-.create-actions :deep(.sl-button) {
+.create-actions :deep(.cmz-button) {
   min-width: 120px;
 }
 </style>

@@ -175,6 +175,8 @@
   transition-delay: 0s !important;
 }
 
+/* data-animation="off" 由 CmzYa 原生管理，无需重复 */
+
 /* 展开/收起动画容器 */
 .sl-collapse {
   display: grid;

@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { RefreshCw } from "lucide-vue-next";
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import type { JavaInfo } from "@api/java";
@@ -69,16 +65,16 @@ async function pickJavaFile() {
 </script>
 
 <template>
-  <SLCard :title="i18n.t('create.java_env')" :subtitle="i18n.t('create.java_scan')">
+  <cmz-card :title="i18n.t('create.java_env')" :subtitle="i18n.t('create.java_scan')">
     <div v-if="loading" class="java-loading">
-      <div class="spinner"></div>
+      <cmz-spinner size="sm" />
       <span>{{ i18n.t("create.scanning") }}</span>
     </div>
     <div v-else-if="javaList.length === 0" class="java-empty">
       <p class="text-body">{{ i18n.t("create.no_java") }}</p>
-      <SLButton variant="primary" @click="$emit('detect')" style="margin-top: 12px">
+      <cmz-button @click="$emit('detect')" style="margin-top: 12px">
         {{ i18n.t("create.scan") }}
-      </SLButton>
+      </cmz-button>
     </div>
     <div v-else class="java-select-container">
       <div class="java-header">
@@ -90,7 +86,7 @@ async function pickJavaFile() {
           {{ i18n.t("create.rescan") }}
         </button>
       </div>
-      <SLSelect
+      <cmz-select
         :model-value="selectedJava"
         @update:model-value="$emit('update:selectedJava', $event)"
         :options="javaOptions"
@@ -100,20 +96,20 @@ async function pickJavaFile() {
       />
     </div>
     <div class="java-manual">
-      <SLInput
+      <cmz-input
         :label="i18n.t('create.java_path')"
         :model-value="selectedJava"
         @update:model-value="$emit('update:selectedJava', $event)"
         :placeholder="i18n.t('create.java_manual')"
       >
         <template #suffix>
-          <button class="sl-input-action" @click="pickJavaFile">
+          <button class="cmz-input-action" @click="pickJavaFile">
             {{ i18n.t("create.browse") }}
           </button>
         </template>
-      </SLInput>
+      </cmz-input>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>
