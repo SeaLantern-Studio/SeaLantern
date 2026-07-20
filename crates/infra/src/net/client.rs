@@ -1,14 +1,15 @@
-//! 统一 HTTP 客户端。
+//! Unified HTTP client.
 //!
-//! 解决项目内 `reqwest::Client` 各处各自构建、代理配置无法统一管控的问题。
-//! 提供已加载全局配置（代理、超时、UA 等）的客户端实例，
-//! 上层直接拿来用，不需要关心底层配置细节。
+//! Solves the problem of `reqwest::Client` being constructed ad-hoc across the project
+//! with no centralized proxy configuration management.
+//! Provides a pre-configured client instance with global settings (proxy, timeout, UA, etc.),
+//! so upper layers can use it directly without worrying about underlying configuration details.
 //!
-//! # TODO:完善代理配置
+//! # TODO: Improve proxy configuration
 //!
-//! 由于重构尚未完成，直接读取 SeaLantern 配置文件不可行，
-//! 目前 `from_settings()` 返回默认配置（无代理）。
-//! 待配置模块就绪后，应接入配置模块读取代理、超时等全局设置。
+//! Since the refactoring is not yet complete, reading the SeaLantern config file directly is not feasible.
+//! Currently `from_settings()` returns a default configuration (no proxy).
+//! Once the configuration module is ready, it should be integrated to read proxy, timeout and other global settings.
 
 use std::time::Duration;
 
@@ -19,16 +20,16 @@ use crate::net::error::NetError;
 use crate::net::request::RequestBuilder;
 use crate::observability;
 
-/// 重试策略。
+/// Retry policy.
 ///
-/// 控制请求失败时的重试行为，使用指数退避算法。
+/// Controls retry behavior on request failure using exponential backoff.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct RetryPolicy {
-    /// 最大重试次数（不包含首次请求）
+    /// Maximum number of retries (excluding the initial request)
     pub max_retries: u32,
-    /// 基础等待时间，每次重试翻倍
+    /// Base delay, doubled on each retry
     pub base_delay: Duration,
-    /// 最大等待时间上限
+    /// Upper bound for delay
     pub max_delay: Duration,
 }
 
@@ -42,14 +43,14 @@ impl Default for RetryPolicy {
     }
 }
 
-/// 超时策略。
+/// Timeout policy.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct TimeoutPolicy {
-    /// 连接超时
+    /// Connection timeout
     pub connect: Duration,
-    /// 读取超时
+    /// Read timeout
     pub read: Duration,
-    /// 总体超时
+    /// Total timeout
     pub total: Duration,
 }
 
@@ -63,9 +64,10 @@ impl Default for TimeoutPolicy {
     }
 }
 
-/// 客户端配置。
+/// Client configuration.
 ///
-/// 组装创建 HTTP 客户端所需的所有参数，包括代理、超时、UA 和重试策略。
+/// Assembles all parameters needed to create an HTTP client,
+/// including proxy, timeout, UA, and retry policy.
 ///
 /// # Examples
 ///
@@ -78,13 +80,13 @@ impl Default for TimeoutPolicy {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientConfig {
-    /// HTTP 代理地址，格式如 `http://127.0.0.1:7890`
+    /// HTTP proxy address, format like `http://127.0.0.1:7890`
     pub proxy: Option<String>,
-    /// 超时策略
+    /// Timeout policy
     pub timeout: TimeoutPolicy,
     /// User-Agent
     pub user_agent: String,
-    /// 重试策略
+    /// Retry policy
     pub retry_policy: RetryPolicy,
 }
 
@@ -99,15 +101,15 @@ impl Default for ClientConfig {
     }
 }
 
-/// 异步 HTTP 客户端。
+/// Async HTTP client.
 ///
-/// 封装 `reqwest::Client`，在构建时自动加载代理等全局配置。
-/// 上层通过此结构体发起请求，无需关心底层客户端如何组装。
+/// Wraps `reqwest::Client` and automatically loads global configuration such as proxy at construction.
+/// Upper layers use this struct to make requests without worrying about how the underlying client is assembled.
 ///
 /// # Parameters
 ///
-/// - `inner`: 内部 `reqwest::Client`，实际承载 HTTP 请求
-/// - `retry_policy`: 请求失败时的重试策略
+/// - `inner`: Internal `reqwest::Client` that actually carries out HTTP requests
+/// - `retry_policy`: Retry policy for request failures
 #[derive(Debug, Clone)]
 pub struct NetClient {
     inner: reqwest::Client,
@@ -115,18 +117,18 @@ pub struct NetClient {
 }
 
 impl NetClient {
-    /// 从配置创建客户端。
+    /// Creates a client from configuration.
     ///
-    /// 根据传入的 `ClientConfig` 自动配置代理、超时、UA 等参数。
-    /// 代理格式无效或客户端构建失败时返回 `NetError::Config`。
+    /// Automatically configures proxy, timeout, UA, etc. from the provided `ClientConfig`.
+    /// Returns `NetError::Config` if the proxy format is invalid or client construction fails.
     ///
     /// # Parameters
     ///
-    /// - `config`: 客户端配置，包含代理、超时、UA 和重试策略
+    /// - `config`: Client configuration including proxy, timeout, UA and retry policy
     ///
     /// # Returns
     ///
-    /// 返回配置好的 `NetClient` 实例；配置错误时返回 `NetError::Config`
+    /// Returns a configured `NetClient` instance; returns `NetError::Config` on configuration error
     pub fn from_config(config: &ClientConfig) -> Result<Self, NetError> {
         let mut builder = reqwest::Client::builder()
             .connect_timeout(config.timeout.connect)
@@ -149,72 +151,73 @@ impl NetClient {
         Ok(Self { inner, retry_policy: config.retry_policy })
     }
 
-    /// 使用默认全局配置创建客户端。
+    /// Creates a client with default global configuration.
     ///
-    /// 当前返回无代理的默认配置，待配置模块就绪后将读取全局设置。
+    /// Currently returns a default configuration without proxy;
+    /// will read global settings once the configuration module is ready.
     pub fn new() -> Result<Self, NetError> {
         Self::from_settings()
     }
 
-    /// 从应用全局设置加载客户端配置。
+    /// Loads client configuration from application global settings.
     ///
-    /// 读取 SeaLantern 全局设置中的代理、超时等配置项，
-    /// 并据此创建客户端。
+    /// Reads proxy, timeout and other configuration items from SeaLantern global settings,
+    /// and creates a client accordingly.
     ///
-    /// # TODO:完善代理配置
+    /// # TODO: Improve proxy configuration
     ///
-    /// 接入全局设置读取逻辑，当前返回默认配置。
+    /// Integrate global settings reading; currently returns default configuration.
     pub fn from_settings() -> Result<Self, NetError> {
-        // TODO: 从全局设置读取代理、超时等配置
+        // TODO: read proxy, timeout and other settings from global configuration
         Self::from_config(&ClientConfig::default())
     }
 
-    /// 返回内部的 `reqwest::Client` 引用。
+    /// Returns a reference to the internal `reqwest::Client`.
     ///
-    /// 供上层在需要直接操作 `reqwest::Client` 时使用。
+    /// For use by upper layers that need direct access to `reqwest::Client`.
     pub fn get_reqwest_client(&self) -> &reqwest::Client {
         &self.inner
     }
 
-    /// 返回当前重试策略。
+    /// Returns the current retry policy.
     pub fn retry_policy(&self) -> &RetryPolicy {
         &self.retry_policy
     }
 
-    /// 创建一个 GET 请求构建器。
+    /// Creates a GET request builder.
     ///
     /// # Parameters
     ///
-    /// - `url`: 请求地址
+    /// - `url`: The request URL
     ///
     /// # Returns
     ///
-    /// 返回 `RequestBuilder`，可链式配置 header、重试策略后调用 `.send()`。
+    /// Returns a `RequestBuilder` that can be chained with headers, retry policy, and then `.send()`.
     pub fn get(&self, url: impl reqwest::IntoUrl) -> Result<RequestBuilder<'_>, NetError> {
         RequestBuilder::new(self, Method::GET, url)
     }
 
-    /// 创建一个 POST 请求构建器。
+    /// Creates a POST request builder.
     pub fn post(&self, url: impl reqwest::IntoUrl) -> Result<RequestBuilder<'_>, NetError> {
         RequestBuilder::new(self, Method::POST, url)
     }
 
-    /// 探测远端文件信息。
+    /// Probes a remote file for information.
     ///
-    /// 发送 `Range: bytes=0-0` 请求，判断服务器是否支持分片下载，
-    /// 并获取文件总大小。
+    /// Sends a `Range: bytes=0-0` request to determine whether the server supports
+    /// chunked downloads, and obtains the total file size.
     ///
     /// # Parameters
     ///
-    /// - `url`: 文件下载地址
+    /// - `url`: The file download URL
     ///
     /// # Returns
     ///
-    /// 返回 `RemoteFileInfo`，包含文件总大小和是否支持 Range 分片。
+    /// Returns `RemoteFileInfo` containing the total file size and whether Range is supported.
     ///
     /// # Errors
     ///
-    /// 服务器不支持 Range 且未返回 `Content-Length` 时返回 `NetError::Parse`。
+    /// Returns `NetError::Parse` if the server does not support Range and no `Content-Length` header is present.
     pub async fn probe(&self, url: &str) -> Result<RemoteFileInfo, NetError> {
         let resp = self.get(url)?.header("Range", "bytes=0-0").send().await?;
 
@@ -238,18 +241,18 @@ impl NetClient {
     }
 }
 
-/// 远端文件信息。
+/// Remote file information.
 #[derive(Debug, Clone, Copy)]
 pub struct RemoteFileInfo {
-    /// 文件总大小（字节）
+    /// Total file size (bytes)
     pub total_size: u64,
-    /// 服务器是否支持 Range 分片请求
+    /// Whether the server supports Range requests
     pub supports_range: bool,
 }
 
-/// 从 `Content-Range` 头部解析文件总大小。
+/// Parses the total file size from a `Content-Range` header.
 ///
-/// 格式: `bytes 0-0/12345` → 返回 `Ok(12345)`
+/// Format: `bytes 0-0/12345` -> returns `Ok(12345)`
 fn parse_content_range(headers: &reqwest::header::HeaderMap) -> Result<u64, NetError> {
     let value = headers
         .get(reqwest::header::CONTENT_RANGE)
@@ -265,15 +268,15 @@ fn parse_content_range(headers: &reqwest::header::HeaderMap) -> Result<u64, NetE
     Ok(total)
 }
 
-/// 阻塞 HTTP 客户端。
+/// Blocking HTTP client.
 ///
-/// 与 `NetClient` 功能相同，但使用 `reqwest::blocking` 实现，
-/// 适用于同步代码场景。仅在 `blocking` feature 启用时编译。
+/// Functionally identical to `NetClient`, but implemented using `reqwest::blocking`.
+/// Suitable for synchronous code scenarios. Only compiled when the `blocking` feature is enabled.
 ///
 /// # Parameters
 ///
-/// - `inner`: 内部 `reqwest::blocking::Client`
-/// - `retry_policy`: 请求失败时的重试策略
+/// - `inner`: Internal `reqwest::blocking::Client`
+/// - `retry_policy`: Retry policy for request failures
 #[cfg(feature = "blocking")]
 #[derive(Debug)]
 pub struct NetBlockingClient {
@@ -283,15 +286,15 @@ pub struct NetBlockingClient {
 
 #[cfg(feature = "blocking")]
 impl NetBlockingClient {
-    /// 从配置创建阻塞客户端。
+    /// Creates a blocking client from configuration.
     ///
     /// # Parameters
     ///
-    /// - `config`: 客户端配置，包含代理、超时、UA 和重试策略
+    /// - `config`: Client configuration including proxy, timeout, UA and retry policy
     ///
     /// # Returns
     ///
-    /// 返回配置好的 `NetBlockingClient` 实例；配置错误时返回 `NetError::Config`
+    /// Returns a configured `NetBlockingClient` instance; returns `NetError::Config` on configuration error
     pub fn from_config(config: &ClientConfig) -> Result<Self, NetError> {
         let mut builder = reqwest::blocking::Client::builder()
             .connect_timeout(config.timeout.connect)
@@ -313,28 +316,29 @@ impl NetBlockingClient {
         Ok(Self { inner, retry_policy: config.retry_policy })
     }
 
-    /// 使用默认全局配置创建阻塞客户端。
+    /// Creates a blocking client with default global configuration.
     ///
-    /// 当前返回无代理的默认配置，待配置模块就绪后将读取全局设置。
+    /// Currently returns a default configuration without proxy;
+    /// will read global settings once the configuration module is ready.
     pub fn new() -> Result<Self, NetError> {
         Self::from_settings()
     }
 
-    /// 从应用全局设置加载。
+    /// Loads configuration from application global settings.
     ///
-    /// # TODO:完善代理配置
+    /// # TODO: Improve proxy configuration
     ///
-    /// 接入全局设置读取逻辑，当前返回默认配置。
+    /// Integrate global settings reading; currently returns default configuration.
     pub fn from_settings() -> Result<Self, NetError> {
         Self::from_config(&ClientConfig::default())
     }
 
-    /// 返回内部的 `reqwest::blocking::Client` 引用。
+    /// Returns a reference to the internal `reqwest::blocking::Client`.
     pub fn get_reqwest_client(&self) -> &reqwest::blocking::Client {
         &self.inner
     }
 
-    /// 返回当前重试策略。
+    /// Returns the current retry policy.
     pub fn retry_policy(&self) -> &RetryPolicy {
         &self.retry_policy
     }

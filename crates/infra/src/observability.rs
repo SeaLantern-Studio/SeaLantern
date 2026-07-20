@@ -1,7 +1,7 @@
-//! 日志事件。
+//! Log events for the observability module.
 //!
-//! 定义 `infra` 各模块的 tracing 目标（target）和事件名常量，
-//! 为日志收集和插件系统提供稳定的事件键。
+//! Defines tracing targets and event name constants for `infra` sub-modules,
+//! providing stable event keys for log collection and the plugin system.
 
 use std::fmt::Display;
 
@@ -98,21 +98,21 @@ pub fn lock_acquire_failed(path: &std::path::Path, error: &dyn Display) {
     );
 }
 
-// ── 网络层 ──
+// ── Network layer ──
 
-/// 网络模块的 tracing 目标。
+/// Tracing target for the network module.
 pub const NET_TARGET: &str = "sealantern.infra.net";
 
-/// 事件：HTTP 请求已开始。
+/// Event: an HTTP request has started.
 pub const EVENT_REQUEST_STARTED: &str = "request_started";
-/// 事件：HTTP 请求已成功完成。
+/// Event: an HTTP request has completed successfully.
 pub const EVENT_REQUEST_COMPLETED: &str = "request_completed";
-/// 事件：HTTP 请求正在重试。
+/// Event: an HTTP request is being retried.
 pub const EVENT_REQUEST_RETRY: &str = "request_retry";
-/// 事件：代理配置无效。
+/// Event: the proxy configuration is invalid.
 pub const EVENT_PROXY_CONFIG_INVALID: &str = "proxy_config_invalid";
 
-/// 记录代理配置无效事件。
+/// Records a proxy configuration invalid event.
 pub fn proxy_config_invalid(proxy_url: &str, error: &dyn Display) {
     tracing::error!(
         target: NET_TARGET,
@@ -123,7 +123,7 @@ pub fn proxy_config_invalid(proxy_url: &str, error: &dyn Display) {
     );
 }
 
-/// 记录 HTTP 请求重试事件。
+/// Records an HTTP request retry event.
 pub fn request_retry(url: &str, attempt: u32, error: &dyn Display) {
     tracing::warn!(
         target: NET_TARGET,
@@ -135,10 +135,10 @@ pub fn request_retry(url: &str, attempt: u32, error: &dyn Display) {
     );
 }
 
-/// 事件：HTTP 请求已失败。
+/// Event: an HTTP request has failed.
 pub const EVENT_REQUEST_FAILED: &str = "request_failed";
 
-/// 记录请求开始事件。
+/// Records a request start event.
 pub fn request_started(url: &str) {
     tracing::info!(
         target: NET_TARGET,
@@ -148,7 +148,7 @@ pub fn request_started(url: &str) {
     );
 }
 
-/// 记录请求完成事件。
+/// Records a request completion event.
 pub fn request_completed(url: &str) {
     tracing::info!(
         target: NET_TARGET,
@@ -158,7 +158,7 @@ pub fn request_completed(url: &str) {
     );
 }
 
-/// 记录请求失败事件。
+/// Records a request failure event.
 pub fn request_failed(url: &str, error: &dyn Display) {
     tracing::error!(
         target: NET_TARGET,
@@ -169,25 +169,25 @@ pub fn request_failed(url: &str, error: &dyn Display) {
     );
 }
 
-// ── 下载层 ──
+// ── Download layer ──
 
-/// 下载模块的 tracing 目标。
+/// Tracing target for the download module.
 pub const DOWNLOAD_TARGET: &str = "sealantern.infra.download";
 
-/// 事件：下载已开始。
+/// Event: download has started.
 pub const EVENT_DOWNLOAD_STARTED: &str = "download_started";
-/// 事件：下载已完成。
+/// Event: download has completed.
 pub const EVENT_DOWNLOAD_COMPLETED: &str = "download_completed";
-/// 事件：下载已失败。
+/// Event: download has failed.
 pub const EVENT_DOWNLOAD_FAILED: &str = "download_failed";
-/// 事件：分片下载已开始。
+/// Event: chunk download has started.
 pub const EVENT_CHUNK_STARTED: &str = "chunk_started";
-/// 事件：分片下载已完成。
+/// Event: chunk download has completed.
 pub const EVENT_CHUNK_COMPLETED: &str = "chunk_completed";
-/// 事件：分片下载已失败。
+/// Event: chunk download has failed.
 pub const EVENT_CHUNK_FAILED: &str = "chunk_failed";
 
-/// 记录下载开始事件。
+/// Records a download start event.
 pub fn download_started(url: &str, total_size: u64, thread_count: usize) {
     tracing::info!(
         target: DOWNLOAD_TARGET,
@@ -199,7 +199,7 @@ pub fn download_started(url: &str, total_size: u64, thread_count: usize) {
     );
 }
 
-/// 记录下载完成事件。
+/// Records a download completion event.
 pub fn download_completed(url: &str, total_size: u64, elapsed: u64) {
     tracing::info!(
         target: DOWNLOAD_TARGET,
@@ -211,7 +211,7 @@ pub fn download_completed(url: &str, total_size: u64, elapsed: u64) {
     );
 }
 
-/// 记录下载失败事件。
+/// Records a download failure event.
 pub fn download_failed(url: &str, error: &dyn Display) {
     tracing::error!(
         target: DOWNLOAD_TARGET,
@@ -222,7 +222,7 @@ pub fn download_failed(url: &str, error: &dyn Display) {
     );
 }
 
-/// 记录分片开始事件。
+/// Records a chunk start event.
 pub fn chunk_started(url: &str, start: u64, end: u64) {
     tracing::debug!(
         target: DOWNLOAD_TARGET,
@@ -234,7 +234,7 @@ pub fn chunk_started(url: &str, start: u64, end: u64) {
     );
 }
 
-/// 记录分片完成事件。
+/// Records a chunk completion event.
 pub fn chunk_completed(url: &str, start: u64, end: u64) {
     tracing::debug!(
         target: DOWNLOAD_TARGET,
@@ -246,7 +246,7 @@ pub fn chunk_completed(url: &str, start: u64, end: u64) {
     );
 }
 
-/// 记录分片失败事件。
+/// Records a chunk failure event.
 pub fn chunk_failed(url: &str, start: u64, end: u64, error: &dyn Display) {
     tracing::error!(
         target: DOWNLOAD_TARGET,
@@ -259,16 +259,16 @@ pub fn chunk_failed(url: &str, start: u64, end: u64, error: &dyn Display) {
     );
 }
 
-/// 事件：下载任务已创建。
+/// Event: a download task has been created.
 pub const EVENT_TASK_CREATED: &str = "task_created";
-/// 事件：下载任务已取消。
+/// Event: a download task has been cancelled.
 pub const EVENT_TASK_CANCELLED: &str = "task_cancelled";
-/// 事件：下载被用户取消。
+/// Event: download cancelled by user.
 pub const EVENT_DOWNLOAD_CANCELLED: &str = "download_cancelled";
-/// 事件：下载出错。
+/// Event: download encountered an error.
 pub const EVENT_DOWNLOAD_ERROR: &str = "download_error";
 
-/// 记录任务创建事件。
+/// Records a task creation event.
 pub fn task_created(task_id: &uuid::Uuid, url: &str) {
     tracing::info!(
         target: DOWNLOAD_TARGET,
@@ -279,7 +279,7 @@ pub fn task_created(task_id: &uuid::Uuid, url: &str) {
     );
 }
 
-/// 记录任务取消事件。
+/// Records a task cancellation event.
 pub fn task_cancelled(task_id: &uuid::Uuid) {
     tracing::warn!(
         target: DOWNLOAD_TARGET,
@@ -289,7 +289,7 @@ pub fn task_cancelled(task_id: &uuid::Uuid) {
     );
 }
 
-/// 记录下载被用户取消事件。
+/// Records a download cancelled event.
 pub fn download_cancelled() {
     tracing::warn!(
         target: DOWNLOAD_TARGET,
@@ -298,7 +298,7 @@ pub fn download_cancelled() {
     );
 }
 
-/// 记录下载出错事件。
+/// Records a download error event.
 pub fn download_error(error: &dyn Display) {
     tracing::error!(
         target: DOWNLOAD_TARGET,
