@@ -126,9 +126,6 @@ onMounted(() => {
 
     <!-- 侧栏 TabBar 导航 -->
     <aside class="help-sidebar" :class="{ open: sidebarOpen }">
-      <div class="sidebar-header">
-        <span class="sidebar-title">{{ i18n.t("help.title") }}</span>
-      </div>
       <cmz-tab-bar
         v-model="currentSection"
         :tabs="docPages"
