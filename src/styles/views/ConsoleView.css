@@ -163,6 +163,10 @@
   gap: var(--sl-space-sm);
   flex: 1;
   min-height: 0;
+  /* 极淡渐变作为 blur 素材,让库原生 backdrop-filter 有内容可模糊 */
+  background:
+    radial-gradient(ellipse at 50% 95%, rgba(59, 130, 246, 0.04) 0%, transparent 70%),
+    var(--sl-surface);
 }
 
 .console-terminal-shell .cmz-console {
@@ -171,15 +175,7 @@
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
   overflow: hidden;
-}
-
-/* 输入框毛玻璃效果：强制覆盖，确保 blur 生效且可见 */
-.console-terminal-shell .cmz-console__input-line {
-  backdrop-filter: blur(14px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
-  background: color-mix(in srgb, var(--sl-surface) 60%, transparent) !important;
-  border-color: var(--sl-border-light) !important;
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  /* 控制台背景透明,库原生输入框的 backdrop-filter 才能穿透到后面的渐变 */
+  --console-bg: transparent;
+  background: transparent;
 }
