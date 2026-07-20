@@ -146,7 +146,7 @@ onMounted(() => {
     <main :key="currentSection" class="help-content animate-stagger-in">
       <!-- 项目简介：顶部 + 特性卡片网格 + 底部 -->
       <template v-if="pageType === 'intro'">
-        <cmz-markdown :content="introTop" variant="plain" />
+        <cmz-markdown :content="introTop" variant="glass" />
         <h2 class="section-heading">特性</h2>
         <div class="feature-grid">
           <div v-for="feature in introFeatures" :key="feature.title" class="feature-card">
@@ -155,7 +155,7 @@ onMounted(() => {
             <p class="feature-note">{{ feature.note }}</p>
           </div>
         </div>
-        <cmz-markdown :content="introFooter" variant="plain" />
+        <cmz-markdown :content="introFooter" variant="glass" />
       </template>
 
       <!-- 下载安装：平台卡片 -->
@@ -179,7 +179,7 @@ onMounted(() => {
           </div>
           <p v-if="platform.notes" class="platform-notes">{{ platform.notes }}</p>
         </div>
-        <cmz-markdown :content="helpDocs['download']" variant="plain" />
+        <cmz-markdown :content="helpDocs['download']" variant="glass" />
       </template>
 
       <!-- 核心获取：服务端类型对比卡片 -->
@@ -230,7 +230,7 @@ onMounted(() => {
             </a>
           </div>
         </div>
-        <cmz-markdown :content="helpDocs['server-jar']" variant="plain" />
+        <cmz-markdown :content="helpDocs['server-jar']" variant="glass" />
       </template>
 
       <!-- 快速开始：步骤编号卡片 -->
@@ -246,7 +246,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
-        <cmz-markdown :content="helpDocs['getting-started']" variant="plain" />
+        <cmz-markdown :content="helpDocs['getting-started']" variant="glass" />
       </template>
 
       <!-- 功能总览：特性卡片网格 -->
@@ -265,7 +265,7 @@ onMounted(() => {
       <template v-else-if="pageType === 'tutorial'">
         <template v-for="(seg, idx) in tutorialSegments" :key="idx">
           <!-- MD 段落 -->
-          <cmz-markdown v-if="seg.type === 'md'" :content="seg.content" variant="plain" />
+          <cmz-markdown v-if="seg.type === 'md'" :content="seg.content" variant="glass" />
           <!-- 配置项卡片 -->
           <template v-else-if="seg.type === 'config-cards'">
             <h2 class="section-heading" style="margin-top: var(--sl-space-lg)">常用配置项</h2>
@@ -325,14 +325,14 @@ onMounted(() => {
               :id="item.question"
               :title="item.question"
             >
-              <cmz-markdown :content="item.answer" variant="plain" />
+              <cmz-markdown :content="item.answer" variant="glass" />
             </Cmz_AccordionPanel>
           </Cmz_Accordion>
         </div>
       </template>
 
       <!-- 其他页面 -->
-      <cmz-markdown v-else :content="contentMd" variant="plain" />
+      <cmz-markdown v-else :content="contentMd" variant="glass" />
     </main>
   </div>
 </template>
@@ -438,12 +438,13 @@ onMounted(() => {
 }
 
 .feature-card {
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
+  background: var(--sl-glass-bg);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  border: 1px solid var(--sl-glass-border);
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-lg);
-  backdrop-filter: blur(var(--sl-blur-sm, 8px));
-  -webkit-backdrop-filter: blur(var(--sl-blur-sm, 8px));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -451,7 +452,9 @@ onMounted(() => {
 
 .feature-card:hover {
   border-color: var(--sl-primary);
-  box-shadow: 0 0 0 1px var(--sl-primary);
+  box-shadow:
+    0 0 0 1px var(--sl-primary),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .feature-title {
@@ -495,10 +498,13 @@ onMounted(() => {
 .download-card {
   display: flex;
   flex-direction: column;
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
+  background: var(--sl-glass-bg);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  border: 1px solid var(--sl-glass-border);
   border-radius: var(--sl-radius-md);
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -506,7 +512,9 @@ onMounted(() => {
 
 .download-card:hover {
   border-color: var(--sl-primary);
-  box-shadow: 0 0 0 1px var(--sl-primary);
+  box-shadow:
+    0 0 0 1px var(--sl-primary),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .download-card-body {
@@ -563,12 +571,15 @@ onMounted(() => {
 }
 
 .server-card {
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
+  background: var(--sl-glass-bg);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  border: 1px solid var(--sl-glass-border);
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-lg);
   display: flex;
   flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -576,7 +587,9 @@ onMounted(() => {
 
 .server-card:hover {
   border-color: var(--sl-primary);
-  box-shadow: 0 0 0 1px var(--sl-primary);
+  box-shadow:
+    0 0 0 1px var(--sl-primary),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .server-card-header {
@@ -694,10 +707,13 @@ onMounted(() => {
 .step-card {
   display: flex;
   gap: var(--sl-space-md);
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
+  background: var(--sl-glass-bg);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  border: 1px solid var(--sl-glass-border);
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-lg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -705,7 +721,9 @@ onMounted(() => {
 
 .step-card:hover {
   border-color: var(--sl-primary);
-  box-shadow: 0 0 0 1px var(--sl-primary);
+  box-shadow:
+    0 0 0 1px var(--sl-primary),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .step-number {
@@ -791,13 +809,16 @@ onMounted(() => {
 }
 
 .mini-card {
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
+  background: var(--sl-glass-bg);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  border: 1px solid var(--sl-glass-border);
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-md);
   display: flex;
   flex-direction: column;
   gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -805,7 +826,9 @@ onMounted(() => {
 
 .mini-card:hover {
   border-color: var(--sl-primary);
-  box-shadow: 0 0 0 1px var(--sl-primary);
+  box-shadow:
+    0 0 0 1px var(--sl-primary),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .mini-card-key {
@@ -852,13 +875,16 @@ onMounted(() => {
 }
 
 .plugin-card {
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
+  background: var(--sl-glass-bg);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  border: 1px solid var(--sl-glass-border);
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-md);
   display: flex;
   flex-direction: column;
   gap: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -866,7 +892,9 @@ onMounted(() => {
 
 .plugin-card:hover {
   border-color: var(--sl-primary);
-  box-shadow: 0 0 0 1px var(--sl-primary);
+  box-shadow:
+    0 0 0 1px var(--sl-primary),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .plugin-card-header {
@@ -912,8 +940,10 @@ onMounted(() => {
 }
 
 .memory-card {
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border-light);
+  background: var(--sl-glass-bg);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  border: 1px solid var(--sl-glass-border);
   border-radius: var(--sl-radius-md);
   padding: var(--sl-space-md);
   display: flex;
@@ -921,6 +951,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -928,7 +959,9 @@ onMounted(() => {
 
 .memory-card:hover {
   border-color: var(--sl-primary);
-  box-shadow: 0 0 0 1px var(--sl-primary);
+  box-shadow:
+    0 0 0 1px var(--sl-primary),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .memory-players {

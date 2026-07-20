@@ -175,7 +175,13 @@
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
   overflow: hidden;
-  /* 控制台背景透明,库原生输入框的 backdrop-filter 才能穿透到后面的渐变 */
-  --console-bg: transparent;
+  /* 容器透明让 blur 穿透,body 自己持不透明背景保证日志可读 */
   background: transparent;
+}
+
+/* body 不透明背景仅覆盖内容区,padding 区空出让输入框 blur 穿透到渐变 */
+.console-terminal-shell .cmz-console__body {
+  background: var(--cmz-console-bg, var(--sl-surface));
+  background-clip: content-box;
+  -webkit-background-clip: content-box;
 }
