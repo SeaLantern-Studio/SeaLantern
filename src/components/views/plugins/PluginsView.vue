@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, reactive, computed } from "vue";
+import { refDebounced } from "@vueuse/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -35,11 +36,14 @@ const router = useRouter();
 const pluginStore = usePluginStore();
 const isDragging = ref(false);
 const searchQuery = ref("");
+// 搜索防抖,避免每次按键触发 filteredPlugins 重算
+const searchQueryDebounced = refDebounced(searchQuery, 200);
 const chooserOpen = ref(false);
 const safeMode = ref(false);
 
 const filteredPlugins = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase();
+  // 使用防抖后的搜索词
+  const q = searchQueryDebounced.value.trim().toLowerCase();
   if (!q) return pluginStore.plugins;
   return pluginStore.plugins.filter((p) => {
     const id = p.manifest.id.toLowerCase();
@@ -48,6 +52,92 @@ const filteredPlugins = computed(() => {
     return id.includes(q) || name.includes(q) || stateStr.includes(q);
   });
 });
+
+// 预计算所有插件的依赖缺失信息,避免模板中每张卡片重复 O(m) 遍历
+// 一次构建 O(n+m),模板内查表 O(1)
+interface DependencyInfo {
+  missingRequired: MissingDependency[];
+  missingOptional: MissingDependency[];
+  hasMissingRequired: boolean;
+  hasMissingOptional: boolean;
+  tooltip: string;
+}
+const pluginDependencyInfo = computed<Map<string, DependencyInfo>>(() => {
+  const plugins = pluginStore.plugins;
+  // 先建 id -> plugin 映射,内部查询 O(1)
+  const pluginMap = new Map<string, PluginInfo>();
+  for (const p of plugins) pluginMap.set(p.manifest.id, p);
+
+  const isDepEnabled = (depId: string): boolean => {
+    const dep = pluginMap.get(depId);
+    return !!dep && dep.state === "enabled";
+  };
+
+  const result = new Map<string, DependencyInfo>();
+  for (const plugin of plugins) {
+    const missingRequired: MissingDependency[] = [];
+    const missingOptional: MissingDependency[] = [];
+
+    // 收集 required 缺失(plugin.missing_dependencies + manifest.dependencies)
+    if (plugin.missing_dependencies) {
+      for (const d of plugin.missing_dependencies) {
+        if (!d.required) continue;
+        if (!isDepEnabled(d.id)) missingRequired.push(d);
+      }
+    }
+    if (plugin.manifest.dependencies) {
+      for (const dep of plugin.manifest.dependencies) {
+        const depId = typeof dep === "string" ? dep : dep.id;
+        if (missingRequired.some((m) => m.id === depId)) continue;
+        if (!isDepEnabled(depId)) {
+          missingRequired.push({ id: depId, required: true });
+        }
+      }
+    }
+
+    // 收集 optional 缺失
+    if (plugin.missing_dependencies) {
+      for (const d of plugin.missing_dependencies) {
+        if (d.required) continue;
+        if (!isDepEnabled(d.id)) missingOptional.push(d);
+      }
+    }
+    if (plugin.manifest.optional_dependencies) {
+      for (const dep of plugin.manifest.optional_dependencies) {
+        const depId = typeof dep === "string" ? dep : dep.id;
+        if (missingOptional.some((m) => m.id === depId)) continue;
+        if (!isDepEnabled(depId)) {
+          missingOptional.push({ id: depId, required: false });
+        }
+      }
+    }
+
+    // 预构建 tooltip
+    const parts: string[] = [];
+    if (missingRequired.length > 0) {
+      const names = missingRequired.map((d) => getDepDisplayName(d.id)).join(", ");
+      parts.push(i18n.t("plugins.dep_tooltip.required", { names }));
+    }
+    if (missingOptional.length > 0) {
+      const names = missingOptional.map((d) => getDepDisplayName(d.id)).join(", ");
+      parts.push(i18n.t("plugins.dep_tooltip.optional", { names }));
+    }
+
+    result.set(plugin.manifest.id, {
+      missingRequired,
+      missingOptional,
+      hasMissingRequired: missingRequired.length > 0,
+      hasMissingOptional: missingOptional.length > 0,
+      tooltip: parts.join("\n"),
+    });
+  }
+  return result;
+});
+
+function getDependencyInfo(pluginId: string): DependencyInfo | undefined {
+  return pluginDependencyInfo.value.get(pluginId);
+}
+
 const isInstalling = ref(false);
 let unlistenDragDrop: (() => void) | null = null;
 
@@ -348,106 +438,15 @@ function hasSettings(plugin: PluginInfo): boolean {
   return !!(plugin.manifest.settings && plugin.manifest.settings.length > 0);
 }
 
-function hasMissingRequiredDependencies(plugin: PluginInfo): boolean {
-  if (plugin.missing_dependencies) {
-    const stillMissing = plugin.missing_dependencies.filter((d) => {
-      if (!d.required) return false;
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === d.id);
-      return !depPlugin || depPlugin.state !== "enabled";
-    });
-    if (stillMissing.length > 0) return true;
-  }
-
-  if (plugin.manifest.dependencies && plugin.manifest.dependencies.length > 0) {
-    for (const dep of plugin.manifest.dependencies) {
-      const depId = typeof dep === "string" ? dep : dep.id;
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function getMissingRequiredDependencies(plugin: PluginInfo): MissingDependency[] {
-  const missing: MissingDependency[] = [];
-
-  if (plugin.missing_dependencies) {
-    for (const missingDependency of plugin.missing_dependencies.filter((dep) => dep.required)) {
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === missingDependency.id);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push(missingDependency);
-      }
-    }
-  }
-
-  if (plugin.manifest.dependencies) {
-    for (const dep of plugin.manifest.dependencies) {
-      const depId = typeof dep === "string" ? dep : dep.id;
-
-      if (missing.some((m) => m.id === depId)) continue;
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push({ id: depId, required: true });
-      }
-    }
-  }
-  return missing;
-}
-
-function getMissingOptionalDependencies(plugin: PluginInfo): MissingDependency[] {
-  const missing: MissingDependency[] = [];
-
-  if (plugin.missing_dependencies) {
-    for (const missingDependency of plugin.missing_dependencies.filter((dep) => !dep.required)) {
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === missingDependency.id);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push(missingDependency);
-      }
-    }
-  }
-
-  if (plugin.manifest.optional_dependencies) {
-    for (const dep of plugin.manifest.optional_dependencies) {
-      const depId = typeof dep === "string" ? dep : dep.id;
-
-      if (missing.some((m) => m.id === depId)) continue;
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push({ id: depId, required: false });
-      }
-    }
-  }
-  return missing;
-}
-
-function hasMissingOptionalDependencies(plugin: PluginInfo): boolean {
-  return getMissingOptionalDependencies(plugin).length > 0;
-}
-
-function getDependencyTooltip(plugin: PluginInfo): string {
-  const requiredMissing = getMissingRequiredDependencies(plugin);
-  const optionalMissing = getMissingOptionalDependencies(plugin);
-  const parts: string[] = [];
-
-  if (requiredMissing.length > 0) {
-    const names = requiredMissing.map((d) => getDepDisplayName(d.id)).join(", ");
-    parts.push(i18n.t("plugins.dep_tooltip.required", { names }));
-  }
-  if (optionalMissing.length > 0) {
-    const names = optionalMissing.map((d) => getDepDisplayName(d.id)).join(", ");
-    parts.push(i18n.t("plugins.dep_tooltip.optional", { names }));
-  }
-
-  return parts.join("\n");
-}
-
 function showMissingDependenciesModal(plugin: PluginInfo) {
   installedPluginName.value = plugin.manifest.name;
-  const required = getMissingRequiredDependencies(plugin);
-  const optional = getMissingOptionalDependencies(plugin);
-  missingDependencies.value = [...required, ...optional];
+  // 复用预计算的依赖信息,避免重复遍历
+  const info = getDependencyInfo(plugin.manifest.id);
+  if (info) {
+    missingDependencies.value = [...info.missingRequired, ...info.missingOptional];
+  } else {
+    missingDependencies.value = [];
+  }
   showDependencyModal.value = true;
 }
 
@@ -804,7 +803,7 @@ function goToMarket() {
 </script>
 
 <template>
-  <div class="plugins-view">
+  <div class="plugins-view animate-stagger-in">
     <div class="plugins-toolbar">
       <div class="toolbar-left">
         <input
@@ -925,6 +924,13 @@ function goToMarket() {
         <cmz-card
           v-for="plugin in filteredPlugins"
           :key="plugin.manifest.id"
+          v-memo="[
+            plugin.manifest.id,
+            plugin.state,
+            pluginStore.updates[plugin.manifest.id],
+            batchMode && selectedPlugins.has(plugin.manifest.id),
+            getDependencyInfo(plugin.manifest.id),
+          ]"
           class="plugin-card"
           :class="{ 'plugin-card--selected': batchMode && selectedPlugins.has(plugin.manifest.id) }"
         >
@@ -945,18 +951,18 @@ function goToMarket() {
               />
 
               <cmz-badge
-                v-if="hasMissingRequiredDependencies(plugin)"
+                v-if="getDependencyInfo(plugin.manifest.id)?.hasMissingRequired"
                 dot
                 variant="danger"
-                :title="getDependencyTooltip(plugin)"
+                :title="getDependencyInfo(plugin.manifest.id)?.tooltip"
                 class="dependency-clickable"
                 @click.stop="showMissingDependenciesModal(plugin)"
               />
               <cmz-badge
-                v-else-if="hasMissingOptionalDependencies(plugin)"
+                v-else-if="getDependencyInfo(plugin.manifest.id)?.hasMissingOptional"
                 dot
                 variant="warning"
-                :title="getDependencyTooltip(plugin)"
+                :title="getDependencyInfo(plugin.manifest.id)?.tooltip"
                 class="dependency-clickable"
                 @click.stop="showMissingDependenciesModal(plugin)"
               />
@@ -1050,10 +1056,12 @@ function goToMarket() {
                   variant="switch"
                   :modelValue="isPluginEnabled(plugin.state)"
                   :disabled="
-                    hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
+                    getDependencyInfo(plugin.manifest.id)?.hasMissingRequired &&
+                    !isPluginEnabled(plugin.state)
                   "
                   :title="
-                    hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
+                    getDependencyInfo(plugin.manifest.id)?.hasMissingRequired &&
+                    !isPluginEnabled(plugin.state)
                       ? i18n.t('plugins.missing_required_deps')
                       : ''
                   "

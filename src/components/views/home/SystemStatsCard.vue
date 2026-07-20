@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { defineAsyncComponent, markRaw } from "vue";
 import { Menu, Gauge } from "lucide-vue-next";
 import { i18n } from "@language";
 import {
@@ -15,6 +16,24 @@ import {
   memLineOption,
 } from "@utils/statsUtils";
 import { formatBytes } from "@utils/serverUtils";
+
+// 异步加载 ECharts,避免应用启动时立即加载图表栈
+// markRaw 阻止 Vue 对组件实例做响应式代理
+const VChart = markRaw(
+  defineAsyncComponent(async () => {
+    const [{ default: VueECharts }, { use }] = await Promise.all([
+      import("vue-echarts"),
+      import("echarts/core"),
+    ]);
+    const [{ PieChart, LineChart }, { GridComponent }, { CanvasRenderer }] = await Promise.all([
+      import("echarts/charts"),
+      import("echarts/components"),
+      import("echarts/renderers"),
+    ]);
+    use([GridComponent, PieChart, LineChart, CanvasRenderer]);
+    return VueECharts;
+  }),
+);
 
 function toggleViewMode() {
   statsViewMode.value = statsViewMode.value === "gauge" ? "detail" : "gauge";

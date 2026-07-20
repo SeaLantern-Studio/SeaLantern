@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { Pencil, FolderOpen, Check, X } from "lucide-vue-next";
 import type { ServerInstance } from "@type/server";
 import { i18n } from "@language";
@@ -29,6 +30,12 @@ const props = defineProps<{
 const store = useServerStore();
 const router = useRouter();
 
+// 把 store.statuses[server.id]?.status 集中到一个 computed
+// 避免模板中 6+ 次响应式读取
+const status = computed<string | undefined>(() => store.statuses[props.server.id]?.status);
+const actionLoadingForServer = computed(() => actionLoading.value[props.server.id] === true);
+const isEditing = computed(() => editingServerId.value === props.server.id);
+
 async function handlePathClick(path: string) {
   try {
     await systemApi.openFolder(path);
@@ -52,29 +59,29 @@ function handleStartupConfig() {
   router.push({ path: "/config/" + props.server.id, query: { tab: "startup" } });
 }
 
-function getStatusClass(status: string | undefined): string {
-  return status === "Running"
+function getStatusClass(s: string | undefined): string {
+  return s === "Running"
     ? "running"
-    : status === "Starting"
+    : s === "Starting"
       ? "starting"
-      : status === "Stopping"
+      : s === "Stopping"
         ? "stopping"
         : "stopped";
 }
 </script>
 
 <template>
-  <cmz-card variant="glass" hoverable class="server-card">
+  <cmz-card variant="glass" hoverable class="server-card" :data-server-id="server.id">
     <div class="status-badge-container">
-      <div class="status-indicator" :class="getStatusClass(store.statuses[server.id]?.status)">
+      <div class="status-indicator" :class="getStatusClass(status)">
         <span class="status-dot"></span>
-        <span class="status-label">{{ getStatusText(store.statuses[server.id]?.status) }}</span>
+        <span class="status-label">{{ getStatusText(status) }}</span>
       </div>
     </div>
 
     <div class="server-card-header">
       <div class="server-name-container">
-        <template v-if="editingServerId === server.id">
+        <template v-if="isEditing">
           <div class="inline-edit">
             <input
               type="text"
@@ -133,14 +140,10 @@ function getStatusClass(status: string | undefined): string {
     <div class="server-card-actions">
       <div class="action-group primary-actions">
         <cmz-button
-          v-if="
-            store.statuses[server.id]?.status === 'Stopped' ||
-            store.statuses[server.id]?.status === 'Error' ||
-            !store.statuses[server.id]?.status
-          "
+          v-if="status === 'Stopped' || status === 'Error' || !status"
           size="sm"
-          :loading="actionLoading[server.id]"
-          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
+          :loading="actionLoadingForServer"
+          :disabled="actionLoadingForServer || status === 'Stopping'"
           @click="handleStart(server.id)"
           >{{ i18n.t("home.start") }}</cmz-button
         >
@@ -149,8 +152,8 @@ function getStatusClass(status: string | undefined): string {
           variant="solid"
           color="#ef4444"
           size="sm"
-          :loading="actionLoading[server.id]"
-          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
+          :loading="actionLoadingForServer"
+          :disabled="actionLoadingForServer || status === 'Stopping'"
           @click="handleStop(server.id)"
           >{{ i18n.t("home.stop") }}</cmz-button
         >
@@ -233,6 +236,8 @@ function getStatusClass(status: string | undefined): string {
 .status-indicator.stopping .status-dot {
   background: var(--sl-warning);
   animation: pulse 2s infinite;
+  /* 频繁动画元素提升到独立图层,减少重绘开销 */
+  will-change: transform, opacity;
 }
 
 @keyframes pulse {

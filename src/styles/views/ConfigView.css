@@ -531,7 +531,8 @@
   align-self: flex-end;
   width: max-content;
   max-width: 100%;
-  border: 1px solid var(--sl-border);
+  background: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  border: 1px solid var(--sl-glass-border, rgba(255, 255, 255, 0.5));
   border-radius: var(--sl-radius-lg);
   padding: var(--sl-space-sm) var(--sl-space-md);
   display: grid;
@@ -540,9 +541,35 @@
   align-items: center;
   z-index: 50;
   overflow-x: auto;
+  box-shadow: var(--sl-shadow-md);
+  backdrop-filter: blur(var(--sl-blur-md, 12px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md, 12px)) saturate(var(--sl-saturate-normal, 180%));
   transition:
     border-color var(--sl-transition-normal),
     box-shadow var(--sl-transition-normal);
+  will-change: backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+[data-theme="dark"] .config-floating-actions {
+  background: var(--sl-glass-bg, rgba(0, 0, 0, 0.72));
+  border-color: var(--sl-glass-border, rgba(255, 255, 255, 0.08));
+}
+
+[data-acrylic="on"] .config-floating-actions,
+[data-acrylic]:not([data-acrylic="off"]) .config-floating-actions {
+  background: var(--sl-glass-bg);
+  backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
+}
+
+[data-acrylic="off"] .config-floating-actions {
+  background: var(--sl-surface);
+  border-color: var(--sl-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  will-change: auto;
 }
 
 .config-floating-actions--unsaved {

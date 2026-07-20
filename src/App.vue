@@ -161,18 +161,12 @@ onMounted(async () => {
     // 托盘图标已在 Rust 后端创建，前端不需要再创建
     // 相关代码在 src-tauri/src/lib.rs 的 .setup() 中
 
-    try {
-      await pluginStore.loadPlugins();
-    } catch (pluginErr) {
-      console.warn("Failed to load plugins during startup:", pluginErr);
-    }
-
-    // 加载服务器列表并扫描端口信息
-    try {
-      await serverStore.refreshList();
-    } catch (serverErr) {
-      console.warn("Failed to load servers during startup:", serverErr);
-    }
+    // 插件加载与服务器列表扫描相互独立,并行执行缩短启动时间
+    // 任一失败不影响另一个
+    await Promise.allSettled([
+      pluginStore.loadPlugins().catch((e) => console.warn("Failed to load plugins:", e)),
+      serverStore.refreshList().catch((e) => console.warn("Failed to load servers:", e)),
+    ]);
   } catch (e) {
     console.error("Failed to load settings during startup:", e);
   } finally {

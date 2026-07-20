@@ -142,7 +142,8 @@ onMounted(() => {
     </aside>
 
     <!-- 内容区域 -->
-    <main class="help-content">
+    <!-- :key=currentSection 强制切换章节时重建容器,触发 animate-stagger-in 交错动画 -->
+    <main :key="currentSection" class="help-content animate-stagger-in">
       <!-- 项目简介：顶部 + 特性卡片网格 + 底部 -->
       <template v-if="pageType === 'intro'">
         <cmz-markdown :content="introTop" variant="plain" />

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, shallowRef, computed, onMounted } from "vue";
+import { refDebounced } from "@vueuse/core";
 import { usePluginStore } from "@stores/pluginStore";
 import {
   fetchMarketPlugins,
@@ -23,9 +24,12 @@ const installFeedback = ref<{
   type: "success" | "warning" | "error";
   message: string;
 } | null>(null);
-const marketPlugins = ref<MarketPlugin[]>([]);
+// 大只读列表使用 shallowRef,避免深度响应式追踪
+const marketPlugins = shallowRef<MarketPlugin[]>([]);
 const categories = ref<Record<string, Record<string, string> | string>>({});
 const searchQuery = ref("");
+// 输入防抖 200ms,避免每次按键触发 filteredPlugins 重算
+const searchQueryDebounced = refDebounced(searchQuery, 200);
 const selectedTag = ref<string | null>(null);
 const installing = ref<string | null>(null);
 const selectedPlugin = ref<MarketPlugin | null>(null);
@@ -40,6 +44,14 @@ const marketErrorHint = computed<string>(() => {
   if (!error.value) return "";
   return resolveMarketNetworkHint(error.value);
 });
+
+// 预计算已安装/已启用 id 集合,模板内 O(1) 查询替代 O(n) some/find
+const installedIds = computed<Set<string>>(
+  () => new Set(pluginStore.plugins.map((p) => p.manifest.id)),
+);
+const enabledIds = computed<Set<string>>(
+  () => new Set(pluginStore.plugins.filter((p) => p.state === "enabled").map((p) => p.manifest.id)),
+);
 
 function showInstallFeedback(
   type: "success" | "warning" | "error",
@@ -78,8 +90,9 @@ function resetMarketUrl() {
 
 const filteredPlugins = computed(() => {
   let result = marketPlugins.value;
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
+  // 使用防抖后的搜索词,避免输入过程中频繁过滤
+  const q = searchQueryDebounced.value.toLowerCase();
+  if (q) {
     result = result.filter(
       (p) =>
         resolveI18n(p.name).toLowerCase().includes(q) ||
@@ -108,12 +121,11 @@ function resolveI18n(val: Record<string, string> | string | undefined): string {
 }
 
 function isInstalled(pluginId: string): boolean {
-  return pluginStore.plugins.some((p) => p.manifest.id === pluginId);
+  return installedIds.value.has(pluginId);
 }
 
 function isInstalledAndEnabled(pluginId: string): boolean {
-  const plugin = pluginStore.plugins.find((p) => p.manifest.id === pluginId);
-  return !!plugin && plugin.state === "enabled";
+  return enabledIds.value.has(pluginId);
 }
 
 function getInstallButtonText(pluginId: string): string {
@@ -361,6 +373,12 @@ onMounted(() => {
       <cmz-card
         v-for="plugin in filteredPlugins"
         :key="plugin.id"
+        v-memo="[
+          plugin.id,
+          installing === plugin.id,
+          installedIds.has(plugin.id),
+          enabledIds.has(plugin.id),
+        ]"
         class="market-card"
         hoverable
         @click="showDetail(plugin)"

@@ -808,7 +808,8 @@ onMounted(async () => {
   if (serverId.value) {
     await serverStore.refreshStatus(serverId.value);
     await syncLogsOnce(serverId.value);
-    startStatsPolling();
+    // 仅在服务器运行时启动资源轮询
+    if (isRunning.value) startStatsPolling();
   }
   unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
     const sid = serverId.value;
@@ -831,7 +832,8 @@ onUnmounted(() => {
 onActivated(async () => {
   await loadConsoleSettings();
   startThemeObserver();
-  startStatsPolling();
+  // 仅在服务器运行时启动资源轮询
+  if (isRunning.value) startStatsPolling();
   // 重新激活时重新加载当前服务器日志（可能在其它页面已启动服务器）
   const sid = serverId.value;
   if (sid) {
@@ -856,10 +858,20 @@ watch(
     await serverStore.refreshStatus(sid);
     await syncLogsOnce(sid);
     userScrolledUp.value = false;
-    startStatsPolling();
+    // 仅在服务器运行时启动资源轮询
+    if (isRunning.value) startStatsPolling();
     nextTick(() => doScroll());
   },
 );
+
+// 服务器运行状态切换时启停轮询,停止后不再消耗 CPU/IO
+watch(isRunning, (running) => {
+  if (running) {
+    startStatsPolling();
+  } else {
+    stopStatsPolling();
+  }
+});
 
 async function syncLogsOnce(sid: string) {
   consoleOutputRef.value?.clear();

@@ -28,14 +28,8 @@ import {
   Cmz_Toggle,
   Cmz_Tooltip,
 } from "cmzya-modern-ui";
-import VueECharts from "vue-echarts";
-import { use } from "echarts/core";
-import { PieChart, LineChart } from "echarts/charts";
-import { GridComponent } from "echarts/components";
-import { CanvasRenderer } from "echarts/renderers";
 
-// 注册 ECharts 必要的组件
-use([GridComponent, PieChart, LineChart, CanvasRenderer]);
+// ECharts 已改为按需懒加载,见 src/components/views/home/SystemStatsCard.vue
 
 const HEARTBEAT_INTERVAL = 5000;
 
@@ -71,9 +65,6 @@ app.component("cmz-textarea", Cmz_Textarea);
 app.component("cmz-toast", Cmz_Toast);
 app.component("cmz-toggle", Cmz_Toggle);
 app.component("cmz-tooltip", Cmz_Tooltip);
-
-// 全局注册 vue-echarts
-app.component("v-chart", VueECharts);
 
 if (import.meta.env.DEV) {
   app.config.errorHandler = (err, instance, info) => {

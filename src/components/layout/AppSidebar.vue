@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onMounted, onUnmounted } from "vue";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
@@ -268,51 +268,49 @@ function navigateTo(path: string) {
   router.push(path);
 }
 
+// 导航指示器位置更新:用 rAF 合并多次触发,避免连续 querySelector
+let updateNavIndicatorRafId: number | null = null;
+let cachedSidebarNav: HTMLElement | null = null;
+
 function updateNavIndicator() {
-  nextTick(() => {
+  if (updateNavIndicatorRafId !== null) return;
+  updateNavIndicatorRafId = requestAnimationFrame(() => {
+    updateNavIndicatorRafId = null;
     if (!navIndicator.value) return;
 
-    const activeNavItem = document.querySelector(".nav-item.active");
-    const sidebarNav = document.querySelector(".sidebar-nav");
-
-    if (activeNavItem && sidebarNav && navIndicator.value.parentElement) {
-      // 获取滚动容器和激活项的位置
-      const navItemRect = activeNavItem.getBoundingClientRect();
-      const sidebarNavRect = sidebarNav.getBoundingClientRect();
-
-      // 计算相对于滚动容器的位置（考虑滚动偏移）
-      const top =
-        navItemRect.top - sidebarNavRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
-
-      // 确保导航指示器可见
-      navIndicator.value.style.display = "block";
-
-      // 强制触发重排，确保动画能够正确执行
-      void navIndicator.value.offsetHeight;
-
-      // 使用 requestAnimationFrame 确保动画在正确的时机执行
-      requestAnimationFrame(() => {
-        navIndicator.value!.style.top = `${top}px`;
-      });
+    // 缓存 sidebar-nav 元素,避免每次更新都 querySelector
+    if (!cachedSidebarNav) {
+      cachedSidebarNav = document.querySelector<HTMLElement>(".sidebar-nav");
     }
+    // 使用 scope 内最近的 .nav-item.active,提高查询效率
+    const sidebarNav = cachedSidebarNav;
+    const activeNavItem = sidebarNav?.querySelector<HTMLElement>(".nav-item.active");
+    if (!activeNavItem || !sidebarNav || !navIndicator.value.parentElement) return;
+
+    const navItemRect = activeNavItem.getBoundingClientRect();
+    const sidebarNavRect = sidebarNav.getBoundingClientRect();
+    const top =
+      navItemRect.top - sidebarNavRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
+
+    navIndicator.value.style.display = "block";
+    // 强制重排,确保过渡动画触发
+    void navIndicator.value.offsetHeight;
+    navIndicator.value.style.top = `${top}px`;
   });
 }
 
-// 监听路由变化，更新指示器位置
+// 监听路由变化,使用 flush: 'post' 确保 DOM 更新后再算位置
 watch(
   () => route.path,
   () => {
-    nextTick(() => {
-      updateNavIndicator();
-    });
+    updateNavIndicator();
   },
+  { flush: "post" },
 );
 
 onMounted(async () => {
   await serverStore.refreshList();
-  nextTick(() => {
-    updateNavIndicator();
-  });
+  updateNavIndicator();
 });
 
 function handleServerChange(value: string) {
@@ -352,21 +350,27 @@ watch(
 onMounted(() => {
   window.addEventListener("resize", updateNavIndicator);
 
-  // 监听侧边栏滚动，更新指示器位置
-  const sidebarNav = document.querySelector(".sidebar-nav");
-  if (sidebarNav) {
-    sidebarNav.addEventListener("scroll", updateNavIndicator);
+  // 监听侧边栏滚动，更新指示器位置;复用缓存避免重复 query
+  cachedSidebarNav = document.querySelector<HTMLElement>(".sidebar-nav");
+  if (cachedSidebarNav) {
+    cachedSidebarNav.addEventListener("scroll", updateNavIndicator);
   }
 });
 
 onUnmounted(() => {
+  // 取消未完成的 rAF,避免组件卸载后操作 DOM
+  if (updateNavIndicatorRafId !== null) {
+    cancelAnimationFrame(updateNavIndicatorRafId);
+    updateNavIndicatorRafId = null;
+  }
   window.removeEventListener("resize", updateNavIndicator);
 
   // 移除侧边栏滚动监听
-  const sidebarNav = document.querySelector(".sidebar-nav");
+  const sidebarNav = cachedSidebarNav || document.querySelector(".sidebar-nav");
   if (sidebarNav) {
     sidebarNav.removeEventListener("scroll", updateNavIndicator);
   }
+  cachedSidebarNav = null;
 });
 
 function isActive(path: string): boolean {
