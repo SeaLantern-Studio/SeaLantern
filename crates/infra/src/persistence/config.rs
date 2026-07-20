@@ -21,9 +21,7 @@ pub enum ConfigError {
         message: String,
     },
     /// File extension does not match any supported format.
-    UnsupportedFormat {
-        path: PathBuf,
-    },
+    UnsupportedFormat { path: PathBuf },
 }
 
 impl std::fmt::Display for ConfigError {
@@ -125,17 +123,17 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
 
         let data = if path.exists() {
             let content = read_limited(&path, CONFIG_READ_LIMIT).await?;
-            let text = String::from_utf8(content)
-                .map_err(|e| FsError::serialization("config", "decode UTF-8", &path, e.to_string()))?;
-            format.deserialize(&text).map_err(|e| {
-                FsError::serialization("config", "decode", &path, e.to_string())
-            })?
+            let text = String::from_utf8(content).map_err(|e| {
+                FsError::serialization("config", "decode UTF-8", &path, e.to_string())
+            })?;
+            format
+                .deserialize(&text)
+                .map_err(|e| FsError::serialization("config", "decode", &path, e.to_string()))?
         } else {
             ensure_parent(&path).await?;
-            let content =
-                format.serialize(&default).map_err(|e| {
-                    FsError::serialization("config", "encode", &path, e.to_string())
-                })?;
+            let content = format
+                .serialize(&default)
+                .map_err(|e| FsError::serialization("config", "encode", &path, e.to_string()))?;
             write_atomic(&path, content.as_bytes()).await?;
             default
         };
@@ -149,9 +147,9 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
         let content = read_limited(&path, CONFIG_READ_LIMIT).await?;
         let text = String::from_utf8(content)
             .map_err(|e| FsError::serialization("config", "decode UTF-8", &path, e.to_string()))?;
-        let data = format.deserialize(&text).map_err(|e| {
-            FsError::serialization("config", "decode", &path, e.to_string())
-        })?;
+        let data = format
+            .deserialize(&text)
+            .map_err(|e| FsError::serialization("config", "decode", &path, e.to_string()))?;
         Ok(Self { path, data, format })
     }
 
@@ -163,19 +161,22 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
         if auto_backup && self.path.exists() {
             self.backup().await?;
         }
-        let content = self.format.serialize(&self.data).map_err(|e| {
-            FsError::serialization("config", "encode", &self.path, e.to_string())
-        })?;
+        let content = self
+            .format
+            .serialize(&self.data)
+            .map_err(|e| FsError::serialization("config", "encode", &self.path, e.to_string()))?;
         write_atomic(&self.path, content.as_bytes()).await
     }
 
     pub async fn reload(&mut self) -> Result<(), FsError> {
         let content = read_limited(&self.path, CONFIG_READ_LIMIT).await?;
-        let text = String::from_utf8(content)
-            .map_err(|e| FsError::serialization("config", "decode UTF-8", &self.path, e.to_string()))?;
-        let data: T = self.format.deserialize(&text).map_err(|e| {
-            FsError::serialization("config", "decode", &self.path, e.to_string())
+        let text = String::from_utf8(content).map_err(|e| {
+            FsError::serialization("config", "decode UTF-8", &self.path, e.to_string())
         })?;
+        let data: T = self
+            .format
+            .deserialize(&text)
+            .map_err(|e| FsError::serialization("config", "decode", &self.path, e.to_string()))?;
         self.data = data;
         Ok(())
     }
@@ -197,7 +198,11 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis();
-        let file_name = self.path.file_name().and_then(|n| n.to_str()).unwrap_or("config");
+        let file_name = self
+            .path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("config");
         let backup_name = format!("{}.bak-{}", file_name, timestamp);
         let backup_path = self.path.with_file_name(&backup_name);
         tokio::fs::copy(&self.path, &backup_path)
@@ -228,7 +233,11 @@ mod tests {
 
     impl Default for TestConfig {
         fn default() -> Self {
-            Self { name: "default".into(), port: 25565, enabled: true }
+            Self {
+                name: "default".into(),
+                port: 25565,
+                enabled: true,
+            }
         }
     }
 
@@ -238,7 +247,11 @@ mod tests {
 
     #[test]
     fn config_format_round_trip_json() {
-        let cfg = TestConfig { name: "test".into(), port: 8080, enabled: false };
+        let cfg = TestConfig {
+            name: "test".into(),
+            port: 8080,
+            enabled: false,
+        };
         let json = ConfigFormat::Json.serialize(&cfg).unwrap();
         let restored: TestConfig = ConfigFormat::Json.deserialize(&json).unwrap();
         assert_eq!(cfg, restored);
@@ -246,7 +259,11 @@ mod tests {
 
     #[test]
     fn config_format_round_trip_toml() {
-        let cfg = TestConfig { name: "test".into(), port: 8080, enabled: false };
+        let cfg = TestConfig {
+            name: "test".into(),
+            port: 8080,
+            enabled: false,
+        };
         let toml = ConfigFormat::Toml.serialize(&cfg).unwrap();
         let restored: TestConfig = ConfigFormat::Toml.deserialize(&toml).unwrap();
         assert_eq!(cfg, restored);
@@ -254,7 +271,11 @@ mod tests {
 
     #[test]
     fn config_format_round_trip_yaml() {
-        let cfg = TestConfig { name: "test".into(), port: 8080, enabled: false };
+        let cfg = TestConfig {
+            name: "test".into(),
+            port: 8080,
+            enabled: false,
+        };
         let yaml = ConfigFormat::Yaml.serialize(&cfg).unwrap();
         let restored: TestConfig = ConfigFormat::Yaml.deserialize(&yaml).unwrap();
         assert_eq!(cfg, restored);
@@ -278,7 +299,9 @@ mod tests {
     async fn config_file_load_creates_default() {
         let dir = test_dir("load_default");
         let path = dir.join("settings.json");
-        let cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default()).await.unwrap();
+        let cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default())
+            .await
+            .unwrap();
         assert_eq!(cfg.get().name, "default");
         assert!(path.exists());
         let _ = std::fs::remove_dir_all(&dir);
@@ -288,9 +311,15 @@ mod tests {
     async fn config_file_save_atomic() {
         let dir = test_dir("save_atomic");
         let path = dir.join("settings.json");
-        let mut cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default()).await.unwrap();
+        let mut cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default())
+            .await
+            .unwrap();
 
-        cfg.set(TestConfig { name: "modified".into(), port: 9999, enabled: false });
+        cfg.set(TestConfig {
+            name: "modified".into(),
+            port: 9999,
+            enabled: false,
+        });
         cfg.save(false).await.unwrap();
 
         let loaded = ConfigFile::<TestConfig>::load(&path).await.unwrap();
@@ -303,9 +332,15 @@ mod tests {
     async fn config_file_reload() {
         let dir = test_dir("reload");
         let path = dir.join("settings.json");
-        let mut cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default()).await.unwrap();
+        let mut cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default())
+            .await
+            .unwrap();
 
-        let modified = TestConfig { name: "external".into(), port: 1234, enabled: true };
+        let modified = TestConfig {
+            name: "external".into(),
+            port: 1234,
+            enabled: true,
+        };
         let json = ConfigFormat::Json.serialize(&modified).unwrap();
         std::fs::write(&path, &json).unwrap();
 
@@ -318,15 +353,25 @@ mod tests {
     async fn config_file_backup() {
         let dir = test_dir("backup");
         let path = dir.join("settings.json");
-        let mut cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default()).await.unwrap();
+        let mut cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default())
+            .await
+            .unwrap();
 
-        cfg.set(TestConfig { name: "before".into(), port: 1111, enabled: true });
+        cfg.set(TestConfig {
+            name: "before".into(),
+            port: 1111,
+            enabled: true,
+        });
         cfg.save(false).await.unwrap();
 
         let backup_path = cfg.backup().await.unwrap();
         assert!(backup_path.exists());
 
-        cfg.set(TestConfig { name: "after".into(), port: 2222, enabled: false });
+        cfg.set(TestConfig {
+            name: "after".into(),
+            port: 2222,
+            enabled: false,
+        });
         cfg.save(false).await.unwrap();
 
         std::fs::copy(&backup_path, &path).unwrap();
@@ -339,7 +384,9 @@ mod tests {
     async fn config_file_update_closure() {
         let dir = test_dir("update");
         let path = dir.join("settings.json");
-        let mut cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default()).await.unwrap();
+        let mut cfg = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default())
+            .await
+            .unwrap();
 
         cfg.update(|c| c.port = 8888);
         assert_eq!(cfg.get().port, 8888);
