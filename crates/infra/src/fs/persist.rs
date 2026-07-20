@@ -10,8 +10,9 @@ pub async fn read_json<T: DeserializeOwned>(
     path: impl AsRef<Path>,
     limit: DataLimit,
 ) -> Result<T, FsError> {
+    let path = path.as_ref();
     let bytes = read_limited(path, limit).await?;
-    serde_json::from_slice(&bytes).map_err(|error| FsError::Serialization(error.to_string()))
+    serde_json::from_slice(&bytes).map_err(|error| codec_error("JSON", "decode", path, error))
 }
 
 /// Serializes and atomically writes a JSON file.
@@ -19,8 +20,9 @@ pub async fn write_json_atomic<T: Serialize>(
     path: impl AsRef<Path>,
     value: &T,
 ) -> Result<(), FsError> {
+    let path = path.as_ref();
     let bytes = serde_json::to_vec_pretty(value)
-        .map_err(|error| FsError::Serialization(error.to_string()))?;
+        .map_err(|error| codec_error("JSON", "encode", path, error))?;
     write_atomic(path, &bytes).await
 }
 
@@ -29,9 +31,10 @@ pub async fn read_toml<T: DeserializeOwned>(
     path: impl AsRef<Path>,
     limit: DataLimit,
 ) -> Result<T, FsError> {
+    let path = path.as_ref();
     let text = String::from_utf8(read_limited(path, limit).await?)
-        .map_err(|error| FsError::Serialization(error.to_string()))?;
-    toml::from_str(&text).map_err(|error| FsError::Serialization(error.to_string()))
+        .map_err(|error| codec_error("TOML", "decode UTF-8", path, error))?;
+    toml::from_str(&text).map_err(|error| codec_error("TOML", "decode", path, error))
 }
 
 /// Serializes and atomically writes a TOML file.
@@ -39,8 +42,9 @@ pub async fn write_toml_atomic<T: Serialize>(
     path: impl AsRef<Path>,
     value: &T,
 ) -> Result<(), FsError> {
-    let text =
-        toml::to_string_pretty(value).map_err(|error| FsError::Serialization(error.to_string()))?;
+    let path = path.as_ref();
+    let text = toml::to_string_pretty(value)
+        .map_err(|error| codec_error("TOML", "encode", path, error))?;
     write_atomic(path, text.as_bytes()).await
 }
 
@@ -49,8 +53,9 @@ pub async fn read_yaml<T: DeserializeOwned>(
     path: impl AsRef<Path>,
     limit: DataLimit,
 ) -> Result<T, FsError> {
+    let path = path.as_ref();
     let bytes = read_limited(path, limit).await?;
-    serde_yaml::from_slice(&bytes).map_err(|error| FsError::Serialization(error.to_string()))
+    serde_yaml::from_slice(&bytes).map_err(|error| codec_error("YAML", "decode", path, error))
 }
 
 /// Serializes and atomically writes a YAML file.
@@ -58,9 +63,21 @@ pub async fn write_yaml_atomic<T: Serialize>(
     path: impl AsRef<Path>,
     value: &T,
 ) -> Result<(), FsError> {
+    let path = path.as_ref();
     let text =
-        serde_yaml::to_string(value).map_err(|error| FsError::Serialization(error.to_string()))?;
+        serde_yaml::to_string(value).map_err(|error| codec_error("YAML", "encode", path, error))?;
     write_atomic(path, text.as_bytes()).await
+}
+
+fn codec_error(
+    format: &'static str,
+    operation: &'static str,
+    path: &Path,
+    error: impl std::fmt::Display,
+) -> FsError {
+    let error = FsError::serialization(format, operation, path, error.to_string());
+    crate::observability::serialization_failed(format, operation, path, &error);
+    error
 }
 
 #[cfg(test)]
@@ -92,6 +109,13 @@ mod tests {
         let yaml = root.join("settings.yaml");
         write_yaml_atomic(&yaml, &settings).await.unwrap();
         assert_eq!(read_yaml::<Settings>(&yaml, limit).await.unwrap(), settings);
+
+        let invalid_json = root.join("invalid.json");
+        tokio::fs::write(&invalid_json, b"{").await.unwrap();
+        assert!(matches!(
+            read_json::<Settings>(&invalid_json, limit).await,
+            Err(FsError::Serialization { format: "JSON", operation: "decode", .. })
+        ));
         std::fs::remove_dir_all(root).unwrap();
     }
 }

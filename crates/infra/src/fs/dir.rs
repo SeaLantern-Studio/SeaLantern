@@ -4,7 +4,10 @@ use super::FsError;
 
 /// Creates a directory and all missing ancestors.
 pub async fn ensure_dir(path: impl AsRef<Path>) -> Result<(), FsError> {
-    tokio::fs::create_dir_all(path).await?;
+    let path = path.as_ref();
+    tokio::fs::create_dir_all(path)
+        .await
+        .map_err(|error| FsError::io("create directory", path, error))?;
     Ok(())
 }
 

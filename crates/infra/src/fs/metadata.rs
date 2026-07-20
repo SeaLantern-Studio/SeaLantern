@@ -1,6 +1,8 @@
 use std::path::Path;
 use std::time::SystemTime;
 
+use crate::observability;
+
 use super::FsError;
 
 /// Basic metadata collected without following symbolic links.
@@ -20,15 +22,25 @@ pub struct FileMetadata {
 
 /// Describes a path without following symbolic links.
 pub async fn describe(path: impl AsRef<Path>) -> Result<FileMetadata, FsError> {
-    let metadata = tokio::fs::symlink_metadata(path).await?;
-    let file_type = metadata.file_type();
-    Ok(FileMetadata {
-        size: metadata.len(),
-        modified: metadata.modified().ok(),
-        is_file: file_type.is_file(),
-        is_dir: file_type.is_dir(),
-        is_symlink: file_type.is_symlink(),
-    })
+    let path = path.as_ref();
+    let result = async {
+        let metadata = tokio::fs::symlink_metadata(path)
+            .await
+            .map_err(|error| FsError::io("read file metadata", path, error))?;
+        let file_type = metadata.file_type();
+        Ok(FileMetadata {
+            size: metadata.len(),
+            modified: metadata.modified().ok(),
+            is_file: file_type.is_file(),
+            is_dir: file_type.is_dir(),
+            is_symlink: file_type.is_symlink(),
+        })
+    }
+    .await;
+    if let Err(error) = &result {
+        observability::operation_failed("describe path", path, error);
+    }
+    result
 }
 
 /// Returns a regular file's size.
