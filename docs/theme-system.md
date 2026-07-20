@@ -7,7 +7,7 @@
 ```
 themes/
 ├── index.ts      # 主题加载器和管理 API
-├── types.ts      # 类型定义
+│   （类型定义见 `src/types/theme.ts`）
 ├── default.ts    # 默认主题
 ├── midnight.ts   # 午夜主题
 ├── ocean.ts      # 海洋主题
