@@ -14,6 +14,8 @@ pub enum FsError {
     AlreadyLocked(PathBuf),
     /// Serialization or deserialization failed.
     Serialization(String),
+    /// A blocking file system task could not complete.
+    Task(String),
 }
 
 impl fmt::Display for FsError {
@@ -30,6 +32,7 @@ impl fmt::Display for FsError {
                 write!(f, "file lock is already held: '{}'", path.display())
             }
             Self::Serialization(error) => write!(f, "serialization failed: {error}"),
+            Self::Task(error) => write!(f, "file system task failed: {error}"),
         }
     }
 }

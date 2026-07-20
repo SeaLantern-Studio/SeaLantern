@@ -1,33 +1,45 @@
+use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
-use super::{
-    clear_directory, describe, ensure_dir, read_limited, write_atomic, DataLimit, FsError,
-    SafeRelativePath,
-};
+use cap_std::ambient_authority;
+use cap_std::fs::Dir;
+use cap_std::time::SystemClock;
 
-/// A directory-backed byte cache with safe relative keys.
+use super::atomic::write_atomic_in;
+use super::{DataLimit, FsError, SafeRelativePath};
+
+/// A directory-backed byte cache scoped to an opened directory capability.
 #[derive(Clone, Debug)]
 pub struct FileCache {
-    root: PathBuf,
+    root: Arc<Dir>,
+    root_path: PathBuf,
 }
 
 impl FileCache {
-    /// Creates a cache rooted at the supplied directory.
-    pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+    /// Opens a cache rooted at the supplied directory.
+    ///
+    /// The directory handle, rather than a joined path, is used for every
+    /// cache operation so concurrent symlink replacement cannot escape root.
+    pub fn new(root: impl Into<PathBuf>) -> Result<Self, FsError> {
+        let root_path = root.into();
+        std::fs::create_dir_all(&root_path)?;
+        let root = Dir::open_ambient_dir(&root_path, ambient_authority())?;
+        Ok(Self { root: Arc::new(root), root_path })
     }
 
-    /// Returns the cache root.
+    /// Returns the cache root selected when this cache was opened.
     pub fn root(&self) -> &Path {
-        &self.root
+        &self.root_path
     }
 
     /// Stores bytes under a safe relative key.
     pub async fn put(&self, key: impl AsRef<Path>, bytes: &[u8]) -> Result<(), FsError> {
-        ensure_dir(&self.root).await?;
-        let destination = self.destination(key)?;
-        write_atomic(destination, bytes).await
+        let root = Arc::clone(&self.root);
+        let key = SafeRelativePath::parse(key)?;
+        let bytes = bytes.to_vec();
+        run_blocking(move || write_atomic_in(&root, &key, &bytes)).await
     }
 
     /// Reads cached bytes subject to a caller-defined data limit.
@@ -36,8 +48,9 @@ impl FileCache {
         key: impl AsRef<Path>,
         limit: DataLimit,
     ) -> Result<Option<Vec<u8>>, FsError> {
-        let destination = self.destination(key)?;
-        self.read_optional(&destination, limit).await
+        let root = Arc::clone(&self.root);
+        let key = SafeRelativePath::parse(key)?;
+        run_blocking(move || read_optional(&root, &key, limit)).await
     }
 
     /// Reads an entry only when its modification time is within max_age.
@@ -47,45 +60,95 @@ impl FileCache {
         limit: DataLimit,
         max_age: Duration,
     ) -> Result<Option<Vec<u8>>, FsError> {
-        let destination = self.destination(key)?;
-        let metadata = match describe(&destination).await {
-            Ok(metadata) => metadata,
-            Err(FsError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
-                return Ok(None)
+        let root = Arc::clone(&self.root);
+        let key = SafeRelativePath::parse(key)?;
+        run_blocking(move || {
+            let metadata = match root.symlink_metadata(key.as_path()) {
+                Ok(metadata) => metadata,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+                Err(error) => return Err(error.into()),
+            };
+            if metadata.file_type().is_symlink() {
+                return Err(FsError::InvalidPath {
+                    path: key.as_path().to_path_buf(),
+                    reason: "cache entry must not be a symbolic link",
+                });
             }
-            Err(error) => return Err(error),
-        };
-        if metadata
-            .modified
-            .and_then(|time| time.elapsed().ok())
-            .is_some_and(|age| age > max_age)
-        {
-            return Ok(None);
-        }
-        self.read_optional(&destination, limit).await
+            if metadata
+                .modified()
+                .ok()
+                .and_then(|time| SystemClock::new(ambient_authority()).elapsed(time).ok())
+                .is_some_and(|age| age > max_age)
+            {
+                return Ok(None);
+            }
+            read_optional(&root, &key, limit)
+        })
+        .await
     }
 
     /// Deletes every cached entry but keeps the cache root available.
     pub async fn clear(&self) -> Result<(), FsError> {
-        ensure_dir(&self.root).await?;
-        clear_directory(&self.root).await
+        let root = Arc::clone(&self.root);
+        run_blocking(move || {
+            for entry in root.read_dir(".")? {
+                let entry = entry?;
+                let name = entry.file_name();
+                let metadata = root.symlink_metadata(&name)?;
+                if metadata.file_type().is_dir() && !metadata.file_type().is_symlink() {
+                    root.remove_dir_all(&name)?;
+                } else {
+                    root.remove_file(&name)?;
+                }
+            }
+            Ok(())
+        })
+        .await
+    }
+}
+
+fn read_optional(
+    root: &Dir,
+    key: &SafeRelativePath,
+    limit: DataLimit,
+) -> Result<Option<Vec<u8>>, FsError> {
+    let metadata = match root.symlink_metadata(key.as_path()) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.into()),
+    };
+    if metadata.file_type().is_symlink() {
+        return Err(FsError::InvalidPath {
+            path: key.as_path().to_path_buf(),
+            reason: "cache entry must not be a symbolic link",
+        });
+    }
+    if !metadata.file_type().is_file() {
+        return Err(FsError::InvalidPath {
+            path: key.as_path().to_path_buf(),
+            reason: "cache entry is not a regular file",
+        });
     }
 
-    fn destination(&self, key: impl AsRef<Path>) -> Result<PathBuf, FsError> {
-        SafeRelativePath::parse(key).and_then(|key| key.resolve_under(&self.root))
+    let file = root.open(key.as_path())?;
+    let mut reader = file.take((limit.max_bytes() as u64).saturating_add(1));
+    let mut bytes = Vec::new();
+    reader.read_to_end(&mut bytes)?;
+    if bytes.len() > limit.max_bytes() {
+        return Err(FsError::DataLimitExceeded {
+            path: key.as_path().to_path_buf(),
+            limit: limit.max_bytes(),
+        });
     }
+    Ok(Some(bytes))
+}
 
-    async fn read_optional(
-        &self,
-        destination: &Path,
-        limit: DataLimit,
-    ) -> Result<Option<Vec<u8>>, FsError> {
-        match read_limited(destination, limit).await {
-            Ok(bytes) => Ok(Some(bytes)),
-            Err(FsError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(error),
-        }
-    }
+async fn run_blocking<T: Send + 'static>(
+    task: impl FnOnce() -> Result<T, FsError> + Send + 'static,
+) -> Result<T, FsError> {
+    tokio::task::spawn_blocking(task)
+        .await
+        .map_err(|error| FsError::Task(error.to_string()))?
 }
 
 #[cfg(test)]
@@ -95,7 +158,7 @@ mod tests {
     #[tokio::test]
     async fn round_trips_cached_bytes() {
         let root = crate::fs::test_dir("cache");
-        let cache = FileCache::new(&root);
+        let cache = FileCache::new(&root).unwrap();
         cache.put("entries/item.bin", b"cached").await.unwrap();
 
         assert_eq!(
@@ -113,6 +176,7 @@ mod tests {
                 .unwrap(),
             None
         );
+        drop(cache);
         std::fs::remove_dir_all(root).unwrap();
     }
 }
