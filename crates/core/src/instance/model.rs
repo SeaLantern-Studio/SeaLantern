@@ -93,9 +93,7 @@ impl LocalLaunch {
                 if !has_command && !has_executable {
                     return Err(InstanceError::MissingCustomLaunch);
                 }
-                if (has_command && has_executable)
-                    || (has_command && !self.custom_arguments.is_empty())
-                {
+                if has_command && (has_executable || !self.custom_arguments.is_empty()) {
                     return Err(InstanceError::ConflictingCustomLaunch);
                 }
                 if self.startup_target.is_some() {
