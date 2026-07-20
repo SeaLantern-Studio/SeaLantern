@@ -15,7 +15,7 @@ language/
 ├── ko-KR.json    # 韩语 / Korean
 ├── de-DE.json    # 德语 / German
 ├── es-ES.json    # 西班牙语 / Spanish
-├── fr-FA.json    # 波斯语 / French (Farsi)
+├── fr-FA.json    # 法语 / French
 ├── ru-RU.json    # 俄语 / Russian
 ├── vi-VN.json    # 越南语 / Vietnamese
 └── README.md     # 本文档 / This document (bilingual)
@@ -95,7 +95,9 @@ Follows ISO 639-1 standard, format is `language-region`:
 | ko-KR       | 韩语 / Korean                  |
 | de-DE       | 德语 / German                  |
 | es-ES       | 西班牙语 / Spanish             |
+| fr-FA       | 法语 / French                |
 | ru-RU       | 俄语 / Russian                 |
+| vi-VN       | 越南语 / Vietnamese            |
 
 ## 文件结构 / File Structure
 
@@ -134,11 +136,13 @@ type LanguageFile = TranslationNode & {
 | 方法 / Method               | 说明 / Description                                         |
 | --------------------------- | ---------------------------------------------------------- |
 | `t(key, options?)`          | 获取翻译文本，支持变量插值 / Get translated text           |
+| `te(key)`                   | 检查翻译键是否存在 / Check if translation key exists       |
 | `setLocale(locale)`         | 设置当前语言 / Set current language                        |
 | `getLocale()`               | 获取当前语言代码 / Get current language code               |
 | `getLocaleRef()`            | 获取响应式语言引用 / Get reactive language reference       |
 | `getAvailableLocales()`     | 获取所有支持的语言列表 / Get list of all supported locales |
 | `isSupportedLocale(locale)` | 检查语言是否支持 / Check if locale is supported            |
+| `getTranslations()`         | 获取所有翻译数据 / Get all translation data                |
 
 ### 变量插值 / Variable Interpolation
 
