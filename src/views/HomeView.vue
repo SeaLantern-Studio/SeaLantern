@@ -26,6 +26,44 @@ const store = useServerStore();
 
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+// 页面隐藏时暂停轮询,避免后台无意义 CPU/IO 开销
+let isPageVisible = true;
+
+const refreshAllStatuses = async () => {
+  await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
+};
+
+const startTimers = () => {
+  stopTimers();
+  // 拉长到 5 秒,降低无谓刷新带来的 UI 卡顿
+  statsTimer = setInterval(fetchSystemInfo, 5000);
+  refreshTimer = setInterval(refreshAllStatuses, 5000);
+};
+
+const stopTimers = () => {
+  if (statsTimer) {
+    clearInterval(statsTimer);
+    statsTimer = null;
+  }
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+};
+
+const handleVisibilityChange = () => {
+  const visible = document.visibilityState === "visible";
+  if (visible === isPageVisible) return;
+  isPageVisible = visible;
+  if (visible) {
+    // 重新可见时立即刷新一次并重启轮询
+    fetchSystemInfo();
+    refreshAllStatuses();
+    startTimers();
+  } else {
+    stopTimers();
+  }
+};
 
 onMounted(() => {
   initQuote();
@@ -33,7 +71,7 @@ onMounted(() => {
   const loadServers = async () => {
     try {
       await store.refreshList();
-      await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
+      await refreshAllStatuses();
     } catch (e) {
       console.error("Failed to load servers:", e);
     }
@@ -41,22 +79,17 @@ onMounted(() => {
 
   loadServers();
   fetchSystemInfo();
-
-  statsTimer = setInterval(fetchSystemInfo, 3000);
+  startTimers();
   startQuoteTimer();
-
-  refreshTimer = setInterval(async () => {
-    await Promise.all(store.servers.map((s) => store.refreshStatus(s.id)));
-  }, 3000);
-
   startThemeObserver();
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 
 onUnmounted(() => {
-  if (statsTimer) clearInterval(statsTimer);
-  if (refreshTimer) clearInterval(refreshTimer);
+  stopTimers();
   cleanupQuoteResources();
   cleanupStatsResources();
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 
 function handleCreate() {

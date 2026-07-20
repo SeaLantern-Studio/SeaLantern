@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from "vue";
-import SLSpinner from "@components/common/SLSpinner.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLButton from "@components/common/SLButton.vue";
 import type { m_PluginConfigFile, m_PluginInfo } from "@api/mcs_plugins";
 import { i18n } from "@language";
 import {
@@ -54,31 +51,32 @@ function setPluginRowRef(pluginFileName: string) {
   <div class="plugins-header">
     <h3>{{ i18n.t("config.server_plugins") }}</h3>
     <div class="plugins-header-actions">
-      <SLButton
+      <cmz-button
         @click="emit('refreshList')"
         :loading="pluginsLoading"
-        variant="secondary"
+        variant="outline"
         size="sm"
       >
         <RotateCcw :size="16" />
         {{ i18n.t("config.refresh_list") }}
-      </SLButton>
-      <SLButton
+      </cmz-button>
+      <cmz-button
         @click="emit('reloadPlugins')"
         :loading="pluginsLoading"
-        variant="danger"
+        variant="solid"
+        color="#ef4444"
         size="sm"
         class="reload-btn"
         :title="i18n.t('config.reload_plugins_warning')"
       >
         <RefreshCw :size="14" />
         {{ i18n.t("config.reload_plugins") }}
-      </SLButton>
+      </cmz-button>
     </div>
   </div>
 
   <div v-if="pluginsLoading" class="loading-state">
-    <SLSpinner size="lg" />
+    <cmz-spinner size="lg" />
     <span>{{ i18n.t("config.loading_plugins") }}</span>
   </div>
 
@@ -128,14 +126,14 @@ function setPluginRowRef(pluginFileName: string) {
             <div v-if="plugin.has_config_folder" class="plugin-config-section">
               <div class="plugin-config-section-header">
                 <h5>{{ i18n.t("config.config_files") }}</h5>
-                <SLButton
+                <cmz-button
                   size="sm"
-                  variant="secondary"
+                  variant="outline"
                   @click.stop="emit('openPluginFolder', plugin)"
                 >
                   <FolderOpen :size="14" />
                   {{ i18n.t("common.open_folder") }}
-                </SLButton>
+                </cmz-button>
               </div>
               <div v-if="plugin.config_files.length > 0" class="plugin-config-files-list">
                 <div
@@ -147,10 +145,10 @@ function setPluginRowRef(pluginFileName: string) {
                   <div class="plugin-config-file-name">{{ config.file_name }}</div>
                   <div class="plugin-config-file-type">{{ config.file_type }}</div>
                   <div class="plugin-config-file-actions">
-                    <SLButton size="sm" variant="secondary">
+                    <cmz-button size="sm" variant="outline">
                       <Edit :size="14" />
                       {{ i18n.t("config.open") }}
-                    </SLButton>
+                    </cmz-button>
                   </div>
                 </div>
               </div>
@@ -161,7 +159,7 @@ function setPluginRowRef(pluginFileName: string) {
           </div>
         </div>
         <div class="plugin-list-actions">
-          <SLSwitch
+          <cmz-switch
             :modelValue="plugin.enabled"
             @update:modelValue="emit('togglePlugin', plugin)"
             :title="plugin.enabled ? i18n.t('config.disable') : i18n.t('config.enable')"

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from "vue";
-import SLInput from "@components/common/SLInput.vue";
 import { configApi, type SLStartupConfig } from "@api/config";
 import { i18n } from "@language";
 
@@ -107,7 +106,7 @@ watch([maxMemory, minMemory], () => {
             <p class="entry-desc text-caption">{{ i18n.t("config.max_memory_desc") }}</p>
           </div>
           <div class="entry-control">
-            <SLInput
+            <cmz-input
               :modelValue="String(maxMemory)"
               @update:modelValue="maxMemory = Number($event)"
               type="number"
@@ -125,7 +124,7 @@ watch([maxMemory, minMemory], () => {
             <p class="entry-desc text-caption">{{ i18n.t("config.min_memory_desc") }}</p>
           </div>
           <div class="entry-control">
-            <SLInput
+            <cmz-input
               :modelValue="String(minMemory)"
               @update:modelValue="minMemory = Number($event)"
               type="number"

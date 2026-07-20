@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { i18n } from "@language";
-import SLCard from "@components/common/SLCard.vue";
 </script>
 
 <template>
-  <SLCard>
+  <cmz-card>
     <div class="manifesto">
       <h3 class="manifesto-title">{{ i18n.t("about.manifesto_title") }}</h3>
       <p class="manifesto-text">
@@ -14,7 +13,7 @@ import SLCard from "@components/common/SLCard.vue";
         {{ i18n.t("about.manifesto_text2") }}
       </p>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>

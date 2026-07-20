@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SLCard from "@components/common/SLCard.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLTextarea from "@components/common/SLTextarea.vue";
 import JavaDownloader from "@components/JavaDownloader.vue";
 import { i18n } from "@language";
 
@@ -29,18 +26,18 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <SLCard
+  <cmz-card
     :title="i18n.t('settings.server_defaults')"
     :subtitle="i18n.t('settings.server_defaults_desc')"
   >
     <div class="sl-settings-group">
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.default_memory") }} (MB)</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.max_memory_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.default_memory") }} (MB)</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.max_memory_desc") }}</span>
         </div>
         <div class="sl-input-sm">
-          <SLInput
+          <cmz-input
             :model-value="maxMemory"
             type="number"
             @update:model-value="
@@ -53,13 +50,13 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.min_memory") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.min_memory_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.min_memory") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.min_memory_desc") }}</span>
         </div>
         <div class="sl-input-sm">
-          <SLInput
+          <cmz-input
             :model-value="minMemory"
             type="number"
             @update:model-value="
@@ -72,13 +69,13 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.default_port") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.port_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.default_port") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.port_desc") }}</span>
         </div>
         <div class="sl-input-sm">
-          <SLInput
+          <cmz-input
             :model-value="port"
             type="number"
             @update:model-value="
@@ -91,13 +88,13 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.default_java") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.default_java_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.default_java") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.default_java_desc") }}</span>
         </div>
         <div class="sl-input-lg">
-          <SLInput
+          <cmz-input
             :model-value="defaultJavaPath"
             :placeholder="i18n.t('settings.default_java_desc')"
             @update:model-value="
@@ -112,17 +109,17 @@ const emit = defineEmits<{
                 {{ i18n.t("settings.browse") }}
               </button>
             </template>
-          </SLInput>
+          </cmz-input>
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.default_run_path") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.default_run_path_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.default_run_path") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.default_run_path_desc") }}</span>
         </div>
         <div class="sl-input-lg">
-          <SLInput
+          <cmz-input
             :model-value="defaultRunPath"
             :placeholder="i18n.t('settings.default_run_path_desc')"
             @update:model-value="
@@ -137,30 +134,29 @@ const emit = defineEmits<{
                 {{ i18n.t("settings.browse") }}
               </button>
             </template>
-          </SLInput>
+          </cmz-input>
         </div>
       </div>
 
-      <div class="sl-setting-row full-width">
-        <JavaDownloader
-          @installed="
-            (path) => {
-              emit('javaInstalled', path);
-              emit('change');
-            }
-          "
-        />
-      </div>
+      <JavaDownloader
+        @installed="
+          (path) => {
+            emit('javaInstalled', path);
+            emit('change');
+          }
+        "
+      />
 
-      <div class="sl-setting-row full-width">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.jvm_args") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.jvm_args") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.jvm_args_desc") }}</span>
         </div>
-        <SLTextarea
+        <cmz-textarea
           :model-value="defaultJvmArgs"
           :placeholder="i18n.t('settings.jvm_args_placeholder')"
-          :rows="3"
+          rows="4"
+          class="sl-input-lg"
           @update:model-value="
             (v) => {
               emit('update:defaultJvmArgs', v);
@@ -170,19 +166,5 @@ const emit = defineEmits<{
         />
       </div>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
-
-<style scoped>
-.sl-setting-row.full-width {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.sl-setting-row.full-width :deep(.sl-textarea) {
-  margin-top: var(--sl-space-sm);
-  font-family: var(--sl-font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.6;
-}
-</style>

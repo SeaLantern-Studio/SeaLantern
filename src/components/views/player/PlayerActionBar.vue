@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 
 const props = defineProps<{
@@ -15,12 +14,12 @@ const emit = defineEmits<{
 
 <template>
   <div class="player-action-bar">
-    <SLButton variant="primary" size="sm" :disabled="props.disabled" @click="emit('add')">
+    <cmz-button size="sm" :disabled="props.disabled" @click="emit('add')">
       {{ props.label }}
-    </SLButton>
-    <SLButton variant="ghost" size="sm" @click="emit('refresh')">
+    </cmz-button>
+    <cmz-button variant="ghost" size="sm" @click="emit('refresh')">
       {{ i18n.t("common.refresh") }}
-    </SLButton>
+    </cmz-button>
   </div>
 </template>
 

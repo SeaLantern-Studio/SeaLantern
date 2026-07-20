@@ -15,7 +15,7 @@ import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
 import { systemApi } from "@api/system";
 import { downloadServerApi, downloadApi } from "@api/downloader";
-import { useMessage } from "@composables/useMessage";
+import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
@@ -67,7 +67,7 @@ function logCreateServerDnd(message: string, payload?: unknown) {
 export function useCreateServerPage() {
   const router = useRouter();
   const serverstore = useServerStore();
-  const { error: errorMsg, showError, clearError } = useMessage();
+  const toast = useToast();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
 
@@ -443,7 +443,7 @@ export function useCreateServerPage() {
       settings.cached_java_list = javaList.value;
       await settingsApi.save(settings);
     } catch (error) {
-      showError(String(error));
+      toast.error(String(error));
     } finally {
       stopJavaLoading();
     }
@@ -488,7 +488,7 @@ export function useCreateServerPage() {
   function updateRunPath(nextPath: string) {
     const targetPath = nextPath.trim();
     if (sourceType.value === "folder" && isStrictChildPath(targetPath, sourcePath.value)) {
-      showError(i18n.t("create.path_child_of_source_forbidden"));
+      toast.error(i18n.t("create.path_child_of_source_forbidden"));
       return;
     }
 
@@ -577,7 +577,7 @@ export function useCreateServerPage() {
       mcVersionOptions.value = [];
       selectedMcVersion.value = "";
       mcVersionDetectionFailed.value = false;
-      showError(String(error));
+      toast.error(String(error));
     } finally {
       if (requestId === startupDetectRequestId) {
         coreDetecting.value = false;
@@ -592,32 +592,30 @@ export function useCreateServerPage() {
   }
 
   function validateBeforeSubmit(): boolean {
-    clearError();
-
     if (!hasSource.value) {
-      showError(i18n.t("create.source_required"));
+      toast.error(i18n.t("create.source_required"));
       return false;
     }
     if (runPath.value.trim().length === 0) {
-      showError(i18n.t("create.path_required"));
+      toast.error(i18n.t("create.path_required"));
       return false;
     }
     if (sourceType.value === "folder" && isStrictChildPath(runPath.value, sourcePath.value)) {
-      showError(i18n.t("create.path_child_of_source_forbidden"));
+      toast.error(i18n.t("create.path_child_of_source_forbidden"));
       return false;
     }
     if (!selectedStartup.value) {
-      showError(i18n.t("create.startup_required"));
+      toast.error(i18n.t("create.startup_required"));
       return false;
     }
 
     if (selectedStartup.value.mode === "custom") {
       if (!customStartupCommand.value.trim()) {
-        showError(i18n.t("create.startup_custom_required"));
+        toast.error(i18n.t("create.startup_custom_required"));
         return false;
       }
       if (containsIoRedirection(customStartupCommand.value)) {
-        showError(i18n.t("create.startup_custom_redirect_forbidden"));
+        toast.error(i18n.t("create.startup_custom_redirect_forbidden"));
         return false;
       }
     }
@@ -627,16 +625,16 @@ export function useCreateServerPage() {
       mcVersionDetectionFailed.value &&
       selectedMcVersion.value.trim().length === 0
     ) {
-      showError(i18n.t("create.startup_mc_version_required"));
+      toast.error(i18n.t("create.startup_mc_version_required"));
       return false;
     }
 
     if (!selectedJava.value) {
-      showError(i18n.t("common.select_java_path"));
+      toast.error(i18n.t("common.select_java_path"));
       return false;
     }
     if (!serverName.value.trim()) {
-      showError(i18n.t("common.enter_server_name"));
+      toast.error(i18n.t("common.enter_server_name"));
       return false;
     }
 
@@ -722,7 +720,7 @@ export function useCreateServerPage() {
             scannedCoreType = serverDownloadType.value;
           }
         } catch (downloadError) {
-          showError(String(downloadError));
+          toast.error(String(downloadError));
           stopCreating();
           return;
         }
@@ -773,7 +771,7 @@ export function useCreateServerPage() {
       await serverstore.refreshList();
       router.push("/");
     } catch (error) {
-      showError(String(error));
+      toast.error(String(error));
     } finally {
       stopCreating();
     }
@@ -804,9 +802,6 @@ export function useCreateServerPage() {
   }
 
   return {
-    errorMsg,
-    clearError,
-    showError,
     javaLoading,
     creating,
     sourcePath,

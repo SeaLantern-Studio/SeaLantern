@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { ArrowLeft } from "lucide-vue-next";
-import SLTooltip from "@components/common/SLTooltip.vue";
-import SLSelect from "@components/common/SLSelect.vue";
-import SLButton from "@components/common/SLButton.vue";
 import ConfigPropertyEditorControl from "@components/config/ConfigPropertyEditorControl.vue";
 import { i18n } from "@language";
 
@@ -162,7 +159,7 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
       <div class="compare-column-head compare-column-meta">
         <div class="compare-header-control">
           <span class="text-caption compare-target-label">{{ inlineLabel }}</span>
-          <SLSelect
+          <cmz-select
             :modelValue="compareTargetServerId"
             :options="compareServerOptions"
             :disabled="!hasCompareTargets || compareLoading"
@@ -189,12 +186,12 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
                     <span class="text-caption compare-server-title compare-side-switch-label">{{
                       targetServerName
                     }}</span>
-                    <span class="compare-count-badge">{{ differenceBadgeText }}</span>
+                    <cmz-badge variant="primary">{{ differenceBadgeText }}</cmz-badge>
                   </template>
                 </div>
               </Transition>
             </div>
-            <SLTooltip :content="switchButtonTitle" :delay="500">
+            <cmz-tooltip :content="switchButtonTitle" :delay="500">
               <button
                 type="button"
                 class="compare-side-switch-btn"
@@ -206,7 +203,7 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
                   <ArrowLeft :size="14" />
                 </span>
               </button>
-            </SLTooltip>
+            </cmz-tooltip>
           </template>
           <span v-else class="text-caption compare-server-title">{{ sourceServerName }}</span>
         </div>
@@ -214,7 +211,7 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
       <div class="compare-column-head">
         <div class="compare-server-heading">
           <span class="text-caption compare-server-title">{{ targetServerName }}</span>
-          <span class="compare-count-badge">{{ differenceBadgeText }}</span>
+          <cmz-badge variant="primary">{{ differenceBadgeText }}</cmz-badge>
         </div>
       </div>
     </div>
@@ -232,9 +229,9 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
       <div class="compare-meta">
         <div class="entry-key-row">
           <span class="entry-key text-mono">{{ row.key }}</span>
-          <span v-if="row.different" class="compare-diff-badge">
+          <cmz-badge v-if="row.different" variant="default">
             {{ differentLabel }}
-          </span>
+          </cmz-badge>
         </div>
         <p v-if="row.description" class="entry-desc text-caption">
           {{ row.description }}
@@ -255,15 +252,15 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
                 :difficultyOptions="difficultyOptions"
                 @update:modelValue="emit('updateSourceValue', { key: row.key, value: $event })"
               />
-              <SLButton
+              <cmz-button
                 v-else-if="activeSide === 'source'"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 class="compare-add-property-btn"
                 @click="handleAddMissingProperty(row, 'source')"
               >
                 {{ addPropertyButtonText }}
-              </SLButton>
+              </cmz-button>
               <ConfigPropertyEditorControl
                 v-else-if="row.hasTargetValue"
                 :propertyKey="row.target.key"
@@ -275,15 +272,15 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
                 :difficultyOptions="difficultyOptions"
                 @update:modelValue="emit('updateTargetValue', { key: row.key, value: $event })"
               />
-              <SLButton
+              <cmz-button
                 v-else
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 class="compare-add-property-btn"
                 @click="handleAddMissingProperty(row, 'target')"
               >
                 {{ addPropertyButtonText }}
-              </SLButton>
+              </cmz-button>
             </div>
           </Transition>
         </div>
@@ -301,15 +298,15 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
             :difficultyOptions="difficultyOptions"
             @update:modelValue="emit('updateSourceValue', { key: row.key, value: $event })"
           />
-          <SLButton
+          <cmz-button
             v-else
-            variant="secondary"
+            variant="outline"
             size="sm"
             class="compare-add-property-btn"
             @click="handleAddMissingProperty(row, 'source')"
           >
             {{ addPropertyButtonText }}
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
       <div v-if="!isCompactCompare" class="compare-value-block compare-target-block">
@@ -325,15 +322,15 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
             :difficultyOptions="difficultyOptions"
             @update:modelValue="emit('updateTargetValue', { key: row.key, value: $event })"
           />
-          <SLButton
+          <cmz-button
             v-else
-            variant="secondary"
+            variant="outline"
             size="sm"
             class="compare-add-property-btn"
             @click="handleAddMissingProperty(row, 'target')"
           >
             {{ addPropertyButtonText }}
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
     </div>

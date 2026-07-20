@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onMounted, onUnmounted } from "vue";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
-import SLSelect from "@components/common/SLSelect.vue";
+import { useElasticLogo } from "@composables/useElasticLogo";
 import {
   Home,
   Plus,
@@ -16,7 +16,6 @@ import {
   PaintRoller,
   Info,
   Server,
-  ChevronLeft,
   Blocks,
   Store,
   LayoutDashboard,
@@ -25,6 +24,7 @@ import {
   Link2,
   DownloadIcon,
   Archive,
+  BookOpen,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
@@ -48,6 +48,7 @@ const iconMap: Record<string, LucideIcon> = {
   link2: Link2,
   download: DownloadIcon,
   archive: Archive,
+  book: BookOpen,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -60,10 +61,7 @@ const ui = useUiStore();
 const serverStore = useServerStore();
 const pluginStore = usePluginStore();
 const navIndicator = ref<HTMLElement | null>(null);
-const sidebarTransitioning = ref(false);
 const isMacOS = isMacOSPlatform();
-let indicatorSyncInterval: ReturnType<typeof setInterval> | null = null;
-let indicatorSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 interface NavItem {
   name: string;
@@ -169,6 +167,14 @@ const staticNavItems: NavItem[] = [
     label: i18n.t("common.settings"),
     group: "system",
   },
+  {
+    name: "help",
+    path: "/help",
+    icon: "book",
+    labelKey: "common.help",
+    label: i18n.t("common.help"),
+    group: "system",
+  },
 ];
 
 const pluginNavItems = computed<NavItem[]>(() => {
@@ -262,85 +268,49 @@ function navigateTo(path: string) {
   router.push(path);
 }
 
+// 导航指示器位置更新:用 rAF 合并多次触发,避免连续 querySelector
+let updateNavIndicatorRafId: number | null = null;
+let cachedSidebarNav: HTMLElement | null = null;
+
 function updateNavIndicator() {
-  nextTick(() => {
+  if (updateNavIndicatorRafId !== null) return;
+  updateNavIndicatorRafId = requestAnimationFrame(() => {
+    updateNavIndicatorRafId = null;
     if (!navIndicator.value) return;
 
-    const activeNavItem = document.querySelector(".nav-item.active");
-    const sidebarNav = document.querySelector(".sidebar-nav");
-
-    if (activeNavItem && sidebarNav && navIndicator.value.parentElement) {
-      // 获取滚动容器和激活项的位置
-      const navItemRect = activeNavItem.getBoundingClientRect();
-      const sidebarNavRect = sidebarNav.getBoundingClientRect();
-
-      // 计算相对于滚动容器的位置（考虑滚动偏移）
-      const top =
-        navItemRect.top - sidebarNavRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
-
-      // 确保导航指示器可见
-      navIndicator.value.style.display = "block";
-
-      // 强制触发重排，确保动画能够正确执行
-      void navIndicator.value.offsetHeight;
-
-      // 使用 requestAnimationFrame 确保动画在正确的时机执行
-      requestAnimationFrame(() => {
-        navIndicator.value!.style.top = `${top}px`;
-      });
+    // 缓存 sidebar-nav 元素,避免每次更新都 querySelector
+    if (!cachedSidebarNav) {
+      cachedSidebarNav = document.querySelector<HTMLElement>(".sidebar-nav");
     }
+    // 使用 scope 内最近的 .nav-item.active,提高查询效率
+    const sidebarNav = cachedSidebarNav;
+    const activeNavItem = sidebarNav?.querySelector<HTMLElement>(".nav-item.active");
+    if (!activeNavItem || !sidebarNav || !navIndicator.value.parentElement) return;
+
+    const navItemRect = activeNavItem.getBoundingClientRect();
+    const sidebarNavRect = sidebarNav.getBoundingClientRect();
+    const top =
+      navItemRect.top - sidebarNavRect.top + sidebarNav.scrollTop + (navItemRect.height - 16) / 2;
+
+    navIndicator.value.style.display = "block";
+    // 强制重排,确保过渡动画触发
+    void navIndicator.value.offsetHeight;
+    navIndicator.value.style.top = `${top}px`;
   });
 }
 
-function startIndicatorSyncDuringSidebarTransition() {
-  if (indicatorSyncInterval) {
-    clearInterval(indicatorSyncInterval);
-    indicatorSyncInterval = null;
-  }
-  if (indicatorSyncTimeout) {
-    clearTimeout(indicatorSyncTimeout);
-    indicatorSyncTimeout = null;
-  }
-
-  sidebarTransitioning.value = true;
-  indicatorSyncInterval = setInterval(() => {
-    updateNavIndicator();
-  }, 16);
-
-  indicatorSyncTimeout = setTimeout(() => {
-    if (indicatorSyncInterval) {
-      clearInterval(indicatorSyncInterval);
-      indicatorSyncInterval = null;
-    }
-    sidebarTransitioning.value = false;
-    updateNavIndicator();
-  }, 360);
-}
-
-// 监听侧边栏折叠状态变化，更新指示器位置
-watch(
-  () => ui.sidebarCollapsed,
-  () => {
-    updateNavIndicator();
-    startIndicatorSyncDuringSidebarTransition();
-  },
-);
-
-// 监听路由变化，更新指示器位置
+// 监听路由变化,使用 flush: 'post' 确保 DOM 更新后再算位置
 watch(
   () => route.path,
   () => {
-    nextTick(() => {
-      updateNavIndicator();
-    });
+    updateNavIndicator();
   },
+  { flush: "post" },
 );
 
 onMounted(async () => {
   await serverStore.refreshList();
-  nextTick(() => {
-    updateNavIndicator();
-  });
+  updateNavIndicator();
 });
 
 function handleServerChange(value: string) {
@@ -380,30 +350,27 @@ watch(
 onMounted(() => {
   window.addEventListener("resize", updateNavIndicator);
 
-  // 监听侧边栏滚动，更新指示器位置
-  const sidebarNav = document.querySelector(".sidebar-nav");
-  if (sidebarNav) {
-    sidebarNav.addEventListener("scroll", updateNavIndicator);
+  // 监听侧边栏滚动，更新指示器位置;复用缓存避免重复 query
+  cachedSidebarNav = document.querySelector<HTMLElement>(".sidebar-nav");
+  if (cachedSidebarNav) {
+    cachedSidebarNav.addEventListener("scroll", updateNavIndicator);
   }
 });
 
 onUnmounted(() => {
-  if (indicatorSyncInterval) {
-    clearInterval(indicatorSyncInterval);
-    indicatorSyncInterval = null;
+  // 取消未完成的 rAF,避免组件卸载后操作 DOM
+  if (updateNavIndicatorRafId !== null) {
+    cancelAnimationFrame(updateNavIndicatorRafId);
+    updateNavIndicatorRafId = null;
   }
-  if (indicatorSyncTimeout) {
-    clearTimeout(indicatorSyncTimeout);
-    indicatorSyncTimeout = null;
-  }
-
   window.removeEventListener("resize", updateNavIndicator);
 
   // 移除侧边栏滚动监听
-  const sidebarNav = document.querySelector(".sidebar-nav");
+  const sidebarNav = cachedSidebarNav || document.querySelector(".sidebar-nav");
   if (sidebarNav) {
     sidebarNav.removeEventListener("scroll", updateNavIndicator);
   }
+  cachedSidebarNav = null;
 });
 
 function isActive(path: string): boolean {
@@ -449,33 +416,149 @@ function getAppName() {
   return i18n.t("common.app_name");
 }
 
+// 海景灯图标彩蛋：长按 3 秒可拖动，松手后弹力绳弹飞
+const logoIconRef = ref<HTMLElement | null>(null);
+const elastic = useElasticLogo();
+
+function onLogoMouseDown(e: MouseEvent) {
+  if (!logoIconRef.value) return;
+  elastic.startHold(e, logoIconRef.value);
+}
+
+function onLogoTouchStart(e: TouchEvent) {
+  if (!logoIconRef.value) return;
+  elastic.startHold(e, logoIconRef.value);
+}
+
+// 全局监听拖动（避免鼠标移出元素就丢失）
+function onWindowMouseMove(e: MouseEvent) {
+  if (elastic.isArmed.value && !elastic.isDragging.value) {
+    // 激活后按下左键才开始拖动
+    if (e.buttons === 1) elastic.startDrag(e);
+  } else if (elastic.isDragging.value) {
+    elastic.moveDrag(e);
+  }
+}
+
+function onWindowTouchMove(e: TouchEvent) {
+  if (elastic.isArmed.value && !elastic.isDragging.value) {
+    elastic.startDrag(e);
+  } else if (elastic.isDragging.value) {
+    elastic.moveDrag(e);
+  }
+}
+
+function onWindowMouseUp() {
+  if (elastic.isDragging.value) {
+    elastic.releaseDrag();
+  } else if (elastic.isArmed.value && !elastic.isAnimating.value) {
+    // 已激活但没拖动，单击则取消激活
+    elastic.isArmed.value = false;
+  } else {
+    elastic.cancelHold();
+  }
+}
+
+function onLogoMouseLeave() {
+  // 没激活时鼠标离开就取消长按计时
+  if (!elastic.isArmed.value && !elastic.isAnimating.value) {
+    elastic.cancelHold();
+  }
+}
+
+/** 点击 logo：激活态下不触发导航，避免拖动后被误判为点击 */
+function onLogoClick() {
+  if (elastic.isArmed.value || elastic.isAnimating.value || elastic.isDragging.value) {
+    return;
+  }
+  navigateTo("/");
+}
+
+onMounted(() => {
+  window.addEventListener("mousemove", onWindowMouseMove);
+  window.addEventListener("mouseup", onWindowMouseUp);
+  window.addEventListener("touchmove", onWindowTouchMove, { passive: false });
+  window.addEventListener("touchend", onWindowMouseUp);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("mousemove", onWindowMouseMove);
+  window.removeEventListener("mouseup", onWindowMouseUp);
+  window.removeEventListener("touchmove", onWindowTouchMove);
+  window.removeEventListener("touchend", onWindowMouseUp);
+});
+
 // 图标已按需导入，模板中直接使用组件标签替代映射表
 </script>
 
 <template>
-  <aside
-    class="sidebar glass-strong"
-    :class="{
-      collapsed: ui.sidebarCollapsed,
-      'macos-overlay': isMacOS,
-      'sidebar-transitioning': sidebarTransitioning,
-    }"
-  >
-    <div class="sidebar-logo" @click="navigateTo('/')">
-      <div class="logo-icon">
-        <img :src="logoSvg" width="28" height="28" :alt="i18n.t('common.app_name')" />
+  <aside class="sidebar" :class="{ 'macos-overlay': isMacOS }">
+    <div
+      class="sidebar-logo"
+      :class="{ 'logo-armed': elastic.isArmed.value, 'logo-dragging': elastic.isDragging.value }"
+      @click="onLogoClick"
+    >
+      <div
+        ref="logoIconRef"
+        class="logo-icon"
+        :style="
+          elastic.isDragging.value || elastic.isAnimating.value
+            ? {
+                position: 'fixed',
+                left: elastic.position.value.x - 14 + 'px',
+                top: elastic.position.value.y - 14 + 'px',
+                zIndex: 9999,
+                pointerEvents: 'none',
+              }
+            : {}
+        "
+        @mousedown="onLogoMouseDown"
+        @touchstart="onLogoTouchStart"
+        @mouseleave="onLogoMouseLeave"
+      >
+        <img
+          :src="logoSvg"
+          width="28"
+          height="28"
+          :alt="i18n.t('common.app_name')"
+          draggable="false"
+        />
+        <!-- 激活提示光晕 -->
+        <div v-if="elastic.isArmed.value" class="logo-armed-glow"></div>
       </div>
-      <transition name="fade">
-        <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ getAppName() }}</span>
-      </transition>
+      <!-- 拖动/弹飞时保留原占位，避免布局塌陷 -->
+      <div
+        v-if="elastic.isDragging.value || elastic.isAnimating.value"
+        class="logo-placeholder"
+        aria-hidden="true"
+      ></div>
+      <span class="logo-text">{{ getAppName() }}</span>
     </div>
+
+    <!-- 弹力绳 SVG 覆盖层 -->
+    <svg v-if="elastic.isDragging.value || elastic.isAnimating.value" class="elastic-rope-layer">
+      <path
+        :d="elastic.elasticPath()"
+        :stroke="elastic.elasticColor()"
+        :stroke-width="elastic.elasticWidth()"
+        fill="none"
+        stroke-linecap="round"
+      />
+      <!-- 锚点圆环 -->
+      <circle
+        :cx="elastic.anchor.value.x"
+        :cy="elastic.anchor.value.y"
+        r="4"
+        fill="var(--sl-primary, #0ea5e9)"
+        opacity="0.6"
+      />
+    </svg>
     <nav class="sidebar-nav">
       <div class="nav-active-indicator" ref="navIndicator"></div>
-      <SLSelect
+      <cmz-select
         v-if="serverOptions.length > 0"
         v-model="currentServerRef"
         :options="serverOptions"
-        :collapsed="ui.sidebarCollapsed"
         :icon="Server"
         :placeholder="i18n.t('common.select_server')"
         variant="server"
@@ -487,16 +570,10 @@ function getAppName() {
       <template v-for="(group, gi) in orderedNavGroups" :key="gi">
         <div v-if="group.group !== 'server' || serverOptions.length > 0" class="nav-group">
           <div v-if="group.group === 'plugins-custom'" class="nav-group-label">
-            <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed">{{
-                group.items[0]?.pluginName || group.items[0]?.label
-              }}</span>
-            </transition>
+            <span>{{ group.items[0]?.pluginName || group.items[0]?.label }}</span>
           </div>
           <div v-else-if="group.group === 'plugins-default'" class="nav-group-label">
-            <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed">{{ i18n.t("common.plugins") }}</span>
-            </transition>
+            <span>{{ i18n.t("common.plugins") }}</span>
           </div>
           <div v-else-if="group.group !== 'main'" class="nav-separator"></div>
 
@@ -506,7 +583,6 @@ function getAppName() {
                 class="nav-item"
                 :class="{ active: isActive(item.path) }"
                 @click="navigateTo(item.path)"
-                :title="ui.sidebarCollapsed ? item.label : ''"
               >
                 <img
                   v-if="item.pluginIcon"
@@ -523,11 +599,9 @@ function getAppName() {
                   :size="20"
                   :stroke-width="1.8"
                 />
-                <transition name="fade">
-                  <span v-if="!ui.sidebarCollapsed" class="nav-label">
-                    {{ item.labelKey ? i18n.t(item.labelKey) : item.label }}
-                  </span>
-                </transition>
+                <span class="nav-label">
+                  {{ item.labelKey ? i18n.t(item.labelKey) : item.label }}
+                </span>
               </div>
               <!-- 子项 -->
               <div v-if="item.children?.length" class="nav-children">
@@ -537,7 +611,6 @@ function getAppName() {
                   class="nav-item nav-child-item"
                   :class="{ active: isActive(child.path) }"
                   @click="navigateTo(child.path)"
-                  :title="ui.sidebarCollapsed ? child.label : ''"
                 >
                   <img
                     v-if="child.pluginIcon"
@@ -554,9 +627,7 @@ function getAppName() {
                     :size="16"
                     :stroke-width="1.8"
                   />
-                  <transition name="fade">
-                    <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ child.label }}</span>
-                  </transition>
+                  <span class="nav-label">{{ child.label }}</span>
                 </div>
               </div>
             </div>
@@ -566,35 +637,12 @@ function getAppName() {
 
       <!-- 关于按钮 -->
       <div class="nav-group lower-side">
-        <div
-          class="nav-item"
-          :class="{ active: isActive('/about') }"
-          @click="navigateTo('/about')"
-          :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
-        >
+        <div class="nav-item" :class="{ active: isActive('/about') }" @click="navigateTo('/about')">
           <Info class="nav-icon" :size="20" :stroke-width="1.8" />
-          <transition name="fade">
-            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
-          </transition>
+          <span class="nav-label">{{ i18n.t("common.about") }}</span>
         </div>
       </div>
     </nav>
-
-    <div class="sidebar-footer">
-      <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
-        <ChevronLeft
-          class="nav-icon"
-          :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : '' }"
-          :size="20"
-          :stroke-width="1.8"
-        />
-        <transition name="fade">
-          <span v-if="!ui.sidebarCollapsed" class="nav-label">{{
-            i18n.t("sidebar.collapse_btn")
-          }}</span>
-        </transition>
-      </div>
-    </div>
   </aside>
 </template>
 

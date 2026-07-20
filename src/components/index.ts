@@ -1,47 +1,9 @@
 import type { App } from "vue";
-
-export * from "@components/common";
-
-export * from "@components/layout";
-
-export * from "@components/plugin";
-
-export type { TabBarItem } from "@components/common/SLTabBar.vue";
-
-import {
-  SLBadge,
-  SLButton,
-  SLCard,
-  SLCheckbox,
-  SLContextMenu,
-  SLFormField,
-  SLInput,
-  SLModal,
-  SLProgress,
-  SLSelect,
-  SLSpinner,
-  SLSwitch,
-  SLTabBar,
-  SLTextarea,
-} from "@components/common";
-
+import { SLContextMenu } from "@components/common";
 import { AppHeader, AppLayout, AppSidebar } from "@components/layout";
 
-const components: Record<string, ReturnType<typeof import("vue").defineComponent>> = {
-  SLBadge,
-  SLButton,
-  SLCard,
-  SLCheckbox,
+const components: Record<string, any> = {
   SLContextMenu,
-  SLFormField,
-  SLInput,
-  SLModal,
-  SLProgress,
-  SLSelect,
-  SLSpinner,
-  SLSwitch,
-  SLTabBar,
-  SLTextarea,
   AppHeader,
   AppLayout,
   AppSidebar,

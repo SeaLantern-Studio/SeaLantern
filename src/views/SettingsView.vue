@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import SLSpinner from "@components/common/SLSpinner.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
 import ServerDefaultsCard from "@components/views/settings/ServerDefaultsCard.vue";
 import NetworkSettingsCard from "@components/views/settings/NetworkSettingsCard.vue";
@@ -11,12 +10,11 @@ import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue"
 import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
-import { useMessage, useGlobalMessage } from "@composables/useMessage";
+import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
 import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "@stores/settingsStore";
 
-const { error, showError, clearError } = useMessage();
-const { success: globalSuccess } = useGlobalMessage();
+const toast = useToast();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
 
 const settings = ref<AppSettings | null>(null);
@@ -60,7 +58,6 @@ function syncLocalValues(s: AppSettings) {
 
 async function loadSettings() {
   startLoading();
-  clearError();
   try {
     const s = await settingsApi.get();
     settings.value = s;
@@ -73,7 +70,7 @@ async function loadSettings() {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   } finally {
     stopLoading();
   }
@@ -132,7 +129,6 @@ async function saveSettings() {
   settings.value.color = settings.value.color || "default";
   settings.value.developer_mode = settings.value.developer_mode || false;
 
-  clearError();
   try {
     const result = await settingsApi.saveWithDiff(settings.value);
 
@@ -152,7 +148,7 @@ async function saveSettings() {
 
     dispatchSettingsUpdate(result.changed_groups, result.settings);
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   }
 }
 
@@ -179,7 +175,7 @@ async function resetSettings() {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   }
 }
 
@@ -187,15 +183,15 @@ async function exportSettings() {
   try {
     const json = await settingsApi.exportJson();
     await navigator.clipboard.writeText(json);
-    globalSuccess(i18n.t("settings.export_success"));
+    toast.success(i18n.t("settings.export_success"));
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   }
 }
 
 async function handleImport(json: string) {
   if (!json.trim()) {
-    showError(i18n.t("common.paste_json"));
+    toast.error(i18n.t("common.paste_json"));
     return;
   }
   try {
@@ -209,7 +205,7 @@ async function handleImport(json: string) {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    showError(String(e));
+    toast.error(String(e));
   }
 }
 
@@ -239,13 +235,8 @@ async function handleBrowseRunPath() {
 
 <template>
   <div class="settings-view animate-stagger-in">
-    <div v-if="error" class="msg-banner error-banner">
-      <span>{{ error }}</span>
-      <button @click="clearError()">x</button>
-    </div>
-
     <div v-if="loading" class="loading-state">
-      <SLSpinner />
+      <cmz-spinner />
       <span>{{ i18n.t("settings.loading") }}</span>
     </div>
 
@@ -296,26 +287,6 @@ async function handleBrowseRunPath() {
   max-width: 860px;
   margin: 0 auto;
   padding-bottom: var(--sl-space-2xl);
-}
-
-.msg-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-radius: var(--sl-radius-md);
-  font-size: var(--sl-font-size-base);
-}
-
-.error-banner {
-  background: var(--sl-error-bg);
-  border: 1px solid var(--sl-error);
-  color: var(--sl-error);
-}
-
-.msg-banner button {
-  font-weight: 600;
-  color: inherit;
 }
 
 .loading-state {

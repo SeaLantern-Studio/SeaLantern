@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 
 const emit = defineEmits<{
@@ -13,15 +12,15 @@ const emit = defineEmits<{
   <div class="settings-actions">
     <div class="actions-left"></div>
     <div class="actions-right">
-      <SLButton variant="ghost" size="sm" @click="emit('export')">{{
+      <cmz-button variant="ghost" size="sm" @click="emit('export')">{{
         i18n.t("settings.export")
-      }}</SLButton>
-      <SLButton variant="ghost" size="sm" @click="emit('import')">{{
+      }}</cmz-button>
+      <cmz-button variant="ghost" size="sm" @click="emit('import')">{{
         i18n.t("settings.import")
-      }}</SLButton>
-      <SLButton variant="danger" size="sm" @click="emit('reset')">{{
+      }}</cmz-button>
+      <cmz-button variant="solid" color="#ef4444" size="sm" @click="emit('reset')">{{
         i18n.t("settings.reset")
-      }}</SLButton>
+      }}</cmz-button>
     </div>
   </div>
 </template>

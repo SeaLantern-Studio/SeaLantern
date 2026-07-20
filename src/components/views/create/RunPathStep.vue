@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import SLInput from "@components/common/SLInput.vue";
 import type { SourceType } from "@components/views/create/SourceIntakeField.vue";
 import { getPathName, normalizePathForCompare } from "@components/views/create/startupUtils";
 import { i18n } from "@language";
@@ -51,7 +50,7 @@ const effectivePath = computed(() => {
 
     <div class="run-path-row">
       <span class="run-path-label">{{ i18n.t("create.path_label") }}</span>
-      <SLInput
+      <cmz-input
         class="run-path-input"
         :model-value="runPath"
         :disabled="inputDisabled"
@@ -61,14 +60,14 @@ const effectivePath = computed(() => {
         <template #suffix>
           <button
             type="button"
-            class="sl-input-action"
+            class="cmz-input-action"
             :disabled="inputDisabled"
             @click="emit('pickPath')"
           >
             {{ i18n.t("create.browse") }}
           </button>
         </template>
-      </SLInput>
+      </cmz-input>
     </div>
 
     <p v-if="showOverwriteWarning" class="run-path-overwrite-warning">

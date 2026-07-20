@@ -1,0 +1,118 @@
+/**
+ * CmzYa ↔ SeaLantern CSS 变量桥接
+ * 将 --cmz-* 映射到项目的 --sl-* 变量，确保 CmzYa 组件使用项目主题
+ */
+
+:root,
+[data-theme="dark"] {
+  --cmz-primary: var(--sl-primary);
+  --cmz-primary-light: var(--sl-primary-light);
+  --cmz-primary-dark: var(--sl-primary-dark);
+  --cmz-primary-bg: var(--sl-primary-bg);
+  --cmz-accent: var(--sl-accent);
+  --cmz-accent-light: var(--sl-accent-light);
+  --cmz-bg: var(--sl-bg);
+  --cmz-bg-secondary: var(--sl-bg-secondary);
+  --cmz-bg-tertiary: var(--sl-bg-tertiary);
+  --cmz-border: var(--sl-border);
+  --cmz-border-light: var(--sl-border-light);
+  --cmz-text-primary: var(--sl-text-primary);
+  --cmz-text-secondary: var(--sl-text-secondary);
+  --cmz-text-tertiary: var(--sl-text-tertiary);
+  --cmz-text-inverse: var(--sl-text-inverse);
+  --cmz-success: var(--sl-success);
+  --cmz-success-dark: var(--sl-success);
+  --cmz-success-bg: var(--sl-success-bg);
+  --cmz-warning: var(--sl-warning);
+  --cmz-warning-dark: var(--sl-warning);
+  --cmz-warning-bg: var(--sl-warning-bg);
+  --cmz-error: var(--sl-error);
+  --cmz-error-dark: var(--sl-error);
+  --cmz-error-bg: var(--sl-error-bg);
+  --cmz-info: var(--sl-info);
+  --cmz-info-bg: var(--sl-info-bg);
+  --cmz-overlay: rgba(0, 0, 0, 0.4);
+  --cmz-radius-xs: var(--sl-radius-xs);
+  --cmz-radius-sm: var(--sl-radius-sm);
+  --cmz-radius-md: var(--sl-radius-md);
+  --cmz-radius-lg: var(--sl-radius-lg);
+  --cmz-radius-xl: var(--sl-radius-xl);
+  --cmz-radius-full: var(--sl-radius-full);
+  --cmz-space-xs: var(--sl-space-xs);
+  --cmz-space-sm: var(--sl-space-sm);
+  --cmz-space-md: var(--sl-space-md);
+  --cmz-space-lg: var(--sl-space-lg);
+  --cmz-space-xl: var(--sl-space-xl);
+  --cmz-space-2xl: var(--sl-space-2xl);
+  --cmz-font-sans: var(--sl-font-sans);
+  --cmz-font-mono: var(--sl-font-mono);
+  --cmz-font-display: var(--sl-font-display);
+  --cmz-font-size-xs: var(--sl-font-size-xs);
+  --cmz-font-size-sm: var(--sl-font-size-sm);
+  --cmz-font-size-base: var(--sl-font-size-base);
+  --cmz-font-size-lg: var(--sl-font-size-lg);
+  --cmz-font-size-xl: var(--sl-font-size-xl);
+  --cmz-font-size-2xl: var(--sl-font-size-2xl);
+  --cmz-font-size-3xl: var(--sl-font-size-3xl);
+  --cmz-font-size-4xl: var(--sl-font-size-4xl);
+  --cmz-line-height-tight: var(--sl-line-height-tight);
+  --cmz-line-height-normal: var(--sl-line-height-normal);
+  --cmz-line-height-relaxed: var(--sl-line-height-relaxed);
+  --cmz-transition-fast: var(--sl-transition-fast);
+  --cmz-transition-normal: var(--sl-transition-normal);
+  --cmz-transition-slow: var(--sl-transition-slow);
+  --cmz-shadow-sm: var(--sl-shadow-sm);
+  --cmz-shadow-md: var(--sl-shadow-md);
+  --cmz-shadow-lg: var(--sl-shadow-lg);
+  --cmz-shadow-xl: var(--sl-shadow-xl);
+  --cmz-shadow-card: var(--sl-shadow-card);
+  --cmz-shadow-button: var(--sl-shadow-button);
+  --cmz-shadow-button-hover: var(--sl-shadow-button-hover);
+  --cmz-shadow-input: var(--sl-shadow-input);
+  --cmz-shadow-input-focus: var(--sl-shadow-input-focus);
+  --cmz-blur-sm: var(--sl-blur-sm);
+  --cmz-blur-md: var(--sl-blur-md);
+  --cmz-blur-lg: var(--sl-blur-lg);
+  --cmz-blur-xl: var(--sl-blur-xl);
+  --cmz-blur-xxl: var(--sl-blur-xxl);
+  --cmz-blur-radius: var(--sl-blur-md);
+  --cmz-saturate-subtle: var(--sl-saturate-subtle);
+  --cmz-saturate-normal: var(--sl-saturate-normal);
+  --cmz-saturate-strong: var(--sl-saturate-strong);
+  --cmz-z-dropdown: 100;
+  --cmz-z-sticky: 200;
+  --cmz-z-tooltip: 500;
+  --cmz-z-modal-backdrop: 800;
+  --cmz-z-modal: 900;
+  --cmz-z-toast: 1000;
+  --cmz-opacity-disabled: 0.4;
+  --cmz-opacity-hover: 0.8;
+  --cmz-opacity-muted: 0.6;
+  /* CmzYa 特有状态色（项目无对应 --sl-* 变量，使用默认值） */
+  --cmz-debug: #c084fc;
+  --cmz-debug-bg: rgba(192, 132, 252, 0.12);
+  --cmz-notice: #22d3ee;
+  --cmz-notice-bg: rgba(34, 211, 238, 0.1);
+  --cmz-radius-scrollbar: 4px;
+  --cmz-border-width: 1px;
+  --cmz-border-width-bold: 2px;
+  /* 控制台主题 — 使用项目 surface 系列变量 */
+  --cmz-console-bg: var(--sl-surface);
+  --cmz-console-text: var(--sl-text-primary);
+  --cmz-console-text-dim: var(--sl-text-secondary);
+  --cmz-console-text-bright: var(--sl-text-primary);
+  --cmz-console-border: var(--sl-border-light);
+  --cmz-console-timestamp: var(--sl-text-tertiary);
+}
+
+/* Glass / Acrylic 变量 — 避开 data-acrylic="off"，让 CmzYa 原生关闭指令生效 */
+:root:not([data-acrylic="off"]),
+[data-theme="dark"]:not([data-acrylic="off"]) {
+  --cmz-glass-bg: var(--sl-glass-bg, rgba(255, 255, 255, 0.72));
+  --cmz-glass-border: var(--sl-glass-border, rgba(255, 255, 255, 0.5));
+  --cmz-acrylic-bg: var(--sl-acrylic-bg, rgba(255, 255, 255, 0.55));
+  --cmz-acrylic-bg-strong: var(--sl-acrylic-bg-strong, rgba(255, 255, 255, 0.72));
+  --cmz-acrylic-border: var(--sl-acrylic-border, rgba(255, 255, 255, 0.35));
+  --cmz-acrylic-blur: var(--sl-blur-lg);
+  --cmz-acrylic-saturate: var(--sl-saturate-normal);
+}

@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import SLModal from "@components/common/SLModal.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
 import { i18n } from "@language";
 
 interface Props {
@@ -51,6 +48,17 @@ const isConfirmDisabled = computed(() => {
   return false;
 });
 
+// 映射 SL 的 confirmVariant 到 CmzYa 属性
+const confirmBtnVariant = computed(() => {
+  if (props.confirmVariant === "secondary") return "outline";
+  return "solid";
+});
+
+const confirmBtnColor = computed(() => {
+  if (props.confirmVariant === "danger") return "#ef4444";
+  return undefined;
+});
+
 watch(
   () => props.visible,
   (visible) => {
@@ -86,7 +94,7 @@ function handleKeydown(event: KeyboardEvent): void {
 </script>
 
 <template>
-  <SLModal :visible="visible" :title="title" width="420px" @close="handleClose">
+  <cmz-modal :visible="visible" :title="title" width="420px" @close="handleClose">
     <div
       class="confirm-content"
       :class="{ 'confirm-content--danger': dangerous }"
@@ -95,7 +103,7 @@ function handleKeydown(event: KeyboardEvent): void {
       <p v-if="message" class="confirm-message" v-html="message"></p>
 
       <div v-if="requireInput" class="confirm-input-group">
-        <SLInput
+        <cmz-input
           ref="inputRef"
           v-model="inputValue"
           :placeholder="inputPlaceholder"
@@ -107,21 +115,20 @@ function handleKeydown(event: KeyboardEvent): void {
     </div>
 
     <template #footer>
-      <div class="confirm-footer">
-        <SLButton variant="secondary" :disabled="loading" @click="handleCancel">
-          {{ cancelText }}
-        </SLButton>
-        <SLButton
-          :variant="confirmVariant"
-          :loading="loading"
-          :disabled="isConfirmDisabled"
-          @click="handleConfirm"
-        >
-          {{ confirmText }}
-        </SLButton>
-      </div>
+      <cmz-button variant="outline" :disabled="loading" @click="handleCancel">
+        {{ cancelText }}
+      </cmz-button>
+      <cmz-button
+        :variant="confirmBtnVariant"
+        :color="confirmBtnColor"
+        :loading="loading"
+        :disabled="isConfirmDisabled"
+        @click="handleConfirm"
+      >
+        {{ confirmText }}
+      </cmz-button>
     </template>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>
@@ -150,11 +157,5 @@ function handleKeydown(event: KeyboardEvent): void {
   margin-top: var(--sl-space-xs);
   font-size: 0.75rem;
   color: var(--sl-error);
-}
-
-.confirm-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--sl-space-sm);
 }
 </style>

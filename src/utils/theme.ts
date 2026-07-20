@@ -267,8 +267,10 @@ function blockDevTools(e: KeyboardEvent): void {
 
 /**
  * 应用极简模式到 DOM
+ * 同步设置 data-animation 属性确保 CmzYa 组件库也响应动画关闭
  * @param enabled - 是否启用极简模式
  */
 export function applyMinimalMode(enabled: boolean): void {
   document.documentElement.setAttribute("data-minimal", String(enabled));
+  document.documentElement.setAttribute("data-animation", enabled ? "off" : "on");
 }

@@ -1,26 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, reactive, computed } from "vue";
+import { refDebounced } from "@vueuse/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useRouter } from "vue-router";
-import {
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle,
-} from "reka-ui";
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
-import SLModal from "@components/common/SLModal.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLCheckbox from "@components/common/SLCheckbox.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLSelect from "@components/common/SLSelect.vue";
-import SLMenu from "@components/common/SLMenu.vue";
-import SLDropzone from "@components/common/SLDropzone.vue";
 import PluginPermissionPanel from "@components/plugin/PluginPermissionPanel.vue";
 import SLPermissionDialog from "@components/plugin/SLPermissionDialog.vue";
 import { usePluginStore } from "@stores/pluginStore";
@@ -37,7 +21,6 @@ import {
 import {
   Upload,
   Layers,
-  ShieldAlert,
   MoreVertical,
   Github,
   Settings,
@@ -53,11 +36,14 @@ const router = useRouter();
 const pluginStore = usePluginStore();
 const isDragging = ref(false);
 const searchQuery = ref("");
+// 搜索防抖,避免每次按键触发 filteredPlugins 重算
+const searchQueryDebounced = refDebounced(searchQuery, 200);
 const chooserOpen = ref(false);
 const safeMode = ref(false);
 
 const filteredPlugins = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase();
+  // 使用防抖后的搜索词
+  const q = searchQueryDebounced.value.trim().toLowerCase();
   if (!q) return pluginStore.plugins;
   return pluginStore.plugins.filter((p) => {
     const id = p.manifest.id.toLowerCase();
@@ -66,6 +52,92 @@ const filteredPlugins = computed(() => {
     return id.includes(q) || name.includes(q) || stateStr.includes(q);
   });
 });
+
+// 预计算所有插件的依赖缺失信息,避免模板中每张卡片重复 O(m) 遍历
+// 一次构建 O(n+m),模板内查表 O(1)
+interface DependencyInfo {
+  missingRequired: MissingDependency[];
+  missingOptional: MissingDependency[];
+  hasMissingRequired: boolean;
+  hasMissingOptional: boolean;
+  tooltip: string;
+}
+const pluginDependencyInfo = computed<Map<string, DependencyInfo>>(() => {
+  const plugins = pluginStore.plugins;
+  // 先建 id -> plugin 映射,内部查询 O(1)
+  const pluginMap = new Map<string, PluginInfo>();
+  for (const p of plugins) pluginMap.set(p.manifest.id, p);
+
+  const isDepEnabled = (depId: string): boolean => {
+    const dep = pluginMap.get(depId);
+    return !!dep && dep.state === "enabled";
+  };
+
+  const result = new Map<string, DependencyInfo>();
+  for (const plugin of plugins) {
+    const missingRequired: MissingDependency[] = [];
+    const missingOptional: MissingDependency[] = [];
+
+    // 收集 required 缺失(plugin.missing_dependencies + manifest.dependencies)
+    if (plugin.missing_dependencies) {
+      for (const d of plugin.missing_dependencies) {
+        if (!d.required) continue;
+        if (!isDepEnabled(d.id)) missingRequired.push(d);
+      }
+    }
+    if (plugin.manifest.dependencies) {
+      for (const dep of plugin.manifest.dependencies) {
+        const depId = typeof dep === "string" ? dep : dep.id;
+        if (missingRequired.some((m) => m.id === depId)) continue;
+        if (!isDepEnabled(depId)) {
+          missingRequired.push({ id: depId, required: true });
+        }
+      }
+    }
+
+    // 收集 optional 缺失
+    if (plugin.missing_dependencies) {
+      for (const d of plugin.missing_dependencies) {
+        if (d.required) continue;
+        if (!isDepEnabled(d.id)) missingOptional.push(d);
+      }
+    }
+    if (plugin.manifest.optional_dependencies) {
+      for (const dep of plugin.manifest.optional_dependencies) {
+        const depId = typeof dep === "string" ? dep : dep.id;
+        if (missingOptional.some((m) => m.id === depId)) continue;
+        if (!isDepEnabled(depId)) {
+          missingOptional.push({ id: depId, required: false });
+        }
+      }
+    }
+
+    // 预构建 tooltip
+    const parts: string[] = [];
+    if (missingRequired.length > 0) {
+      const names = missingRequired.map((d) => getDepDisplayName(d.id)).join(", ");
+      parts.push(i18n.t("plugins.dep_tooltip.required", { names }));
+    }
+    if (missingOptional.length > 0) {
+      const names = missingOptional.map((d) => getDepDisplayName(d.id)).join(", ");
+      parts.push(i18n.t("plugins.dep_tooltip.optional", { names }));
+    }
+
+    result.set(plugin.manifest.id, {
+      missingRequired,
+      missingOptional,
+      hasMissingRequired: missingRequired.length > 0,
+      hasMissingOptional: missingOptional.length > 0,
+      tooltip: parts.join("\n"),
+    });
+  }
+  return result;
+});
+
+function getDependencyInfo(pluginId: string): DependencyInfo | undefined {
+  return pluginDependencyInfo.value.get(pluginId);
+}
+
 const isInstalling = ref(false);
 let unlistenDragDrop: (() => void) | null = null;
 
@@ -366,106 +438,15 @@ function hasSettings(plugin: PluginInfo): boolean {
   return !!(plugin.manifest.settings && plugin.manifest.settings.length > 0);
 }
 
-function hasMissingRequiredDependencies(plugin: PluginInfo): boolean {
-  if (plugin.missing_dependencies) {
-    const stillMissing = plugin.missing_dependencies.filter((d) => {
-      if (!d.required) return false;
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === d.id);
-      return !depPlugin || depPlugin.state !== "enabled";
-    });
-    if (stillMissing.length > 0) return true;
-  }
-
-  if (plugin.manifest.dependencies && plugin.manifest.dependencies.length > 0) {
-    for (const dep of plugin.manifest.dependencies) {
-      const depId = typeof dep === "string" ? dep : dep.id;
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function getMissingRequiredDependencies(plugin: PluginInfo): MissingDependency[] {
-  const missing: MissingDependency[] = [];
-
-  if (plugin.missing_dependencies) {
-    for (const missingDependency of plugin.missing_dependencies.filter((dep) => dep.required)) {
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === missingDependency.id);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push(missingDependency);
-      }
-    }
-  }
-
-  if (plugin.manifest.dependencies) {
-    for (const dep of plugin.manifest.dependencies) {
-      const depId = typeof dep === "string" ? dep : dep.id;
-
-      if (missing.some((m) => m.id === depId)) continue;
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push({ id: depId, required: true });
-      }
-    }
-  }
-  return missing;
-}
-
-function getMissingOptionalDependencies(plugin: PluginInfo): MissingDependency[] {
-  const missing: MissingDependency[] = [];
-
-  if (plugin.missing_dependencies) {
-    for (const missingDependency of plugin.missing_dependencies.filter((dep) => !dep.required)) {
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === missingDependency.id);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push(missingDependency);
-      }
-    }
-  }
-
-  if (plugin.manifest.optional_dependencies) {
-    for (const dep of plugin.manifest.optional_dependencies) {
-      const depId = typeof dep === "string" ? dep : dep.id;
-
-      if (missing.some((m) => m.id === depId)) continue;
-      const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-      if (!depPlugin || depPlugin.state !== "enabled") {
-        missing.push({ id: depId, required: false });
-      }
-    }
-  }
-  return missing;
-}
-
-function hasMissingOptionalDependencies(plugin: PluginInfo): boolean {
-  return getMissingOptionalDependencies(plugin).length > 0;
-}
-
-function getDependencyTooltip(plugin: PluginInfo): string {
-  const requiredMissing = getMissingRequiredDependencies(plugin);
-  const optionalMissing = getMissingOptionalDependencies(plugin);
-  const parts: string[] = [];
-
-  if (requiredMissing.length > 0) {
-    const names = requiredMissing.map((d) => getDepDisplayName(d.id)).join(", ");
-    parts.push(i18n.t("plugins.dep_tooltip.required", { names }));
-  }
-  if (optionalMissing.length > 0) {
-    const names = optionalMissing.map((d) => getDepDisplayName(d.id)).join(", ");
-    parts.push(i18n.t("plugins.dep_tooltip.optional", { names }));
-  }
-
-  return parts.join("\n");
-}
-
 function showMissingDependenciesModal(plugin: PluginInfo) {
   installedPluginName.value = plugin.manifest.name;
-  const required = getMissingRequiredDependencies(plugin);
-  const optional = getMissingOptionalDependencies(plugin);
-  missingDependencies.value = [...required, ...optional];
+  // 复用预计算的依赖信息,避免重复遍历
+  const info = getDependencyInfo(plugin.manifest.id);
+  if (info) {
+    missingDependencies.value = [...info.missingRequired, ...info.missingOptional];
+  } else {
+    missingDependencies.value = [];
+  }
   showDependencyModal.value = true;
 }
 
@@ -822,7 +803,7 @@ function goToMarket() {
 </script>
 
 <template>
-  <div class="plugins-view">
+  <div class="plugins-view animate-stagger-in">
     <div class="plugins-toolbar">
       <div class="toolbar-left">
         <input
@@ -833,29 +814,33 @@ function goToMarket() {
         />
       </div>
       <div class="toolbar-right">
-        <SLButton :variant="batchMode ? 'primary' : 'secondary'" size="sm" @click="toggleBatchMode">
+        <cmz-button
+          :variant="batchMode ? 'primary' : 'secondary'"
+          size="sm"
+          @click="toggleBatchMode"
+        >
           {{ i18n.t("plugins.batch_mode") }}
-        </SLButton>
-        <SLButton
+        </cmz-button>
+        <cmz-button
           variant="secondary"
           size="sm"
           :loading="checkingAllUpdates"
           @click="handleCheckAllUpdates"
         >
           {{ i18n.t("plugins.check_updates") }}
-        </SLButton>
-        <SLButton
+        </cmz-button>
+        <cmz-button
           variant="secondary"
           size="sm"
           :loading="pluginStore.loading"
           @click="handleRefresh"
         >
           {{ i18n.t("plugins.refresh") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
 
-    <SLDropzone
+    <cmz-dropzone
       class="plugins-dropzone"
       :is-dragging="isDragging"
       :loading="isInstalling"
@@ -870,45 +855,25 @@ function goToMarket() {
       <template #icon>
         <Upload :size="24" :stroke-width="1.5" />
       </template>
-    </SLDropzone>
+    </cmz-dropzone>
 
-    <DialogRoot v-model:open="chooserOpen">
-      <DialogPortal>
-        <DialogOverlay class="plugin-chooser-overlay" />
-        <DialogContent class="plugin-chooser-content">
-          <div class="plugin-chooser-header">
-            <DialogTitle class="plugin-chooser-title">{{
-              i18n.t("plugins.choose_title")
-            }}</DialogTitle>
-            <button
-              class="plugin-chooser-close"
-              @click="chooserOpen = false"
-              :aria-label="i18n.t('common.close_modal')"
-            >
-              <X :size="18" />
-            </button>
-          </div>
-          <DialogDescription class="plugin-chooser-description">
-            {{ i18n.t("plugins.choose_description") }}
-          </DialogDescription>
-          <div class="plugin-chooser-actions">
-            <SLButton variant="primary" size="lg" class="plugin-chooser-option" @click="pickFile">
-              <File :size="22" />
-              <span>{{ i18n.t("plugins.select_file") }}</span>
-            </SLButton>
-            <SLButton
-              variant="secondary"
-              size="lg"
-              class="plugin-chooser-option"
-              @click="pickFolder"
-            >
-              <Folder :size="22" />
-              <span>{{ i18n.t("plugins.select_folder") }}</span>
-            </SLButton>
-          </div>
-        </DialogContent>
-      </DialogPortal>
-    </DialogRoot>
+    <cmz-modal
+      :visible="chooserOpen"
+      :title="i18n.t('plugins.choose_title')"
+      @close="chooserOpen = false"
+    >
+      <p>{{ i18n.t("plugins.choose_description") }}</p>
+      <div class="plugin-chooser-actions">
+        <cmz-button variant="primary" size="lg" class="plugin-chooser-option" @click="pickFile">
+          <File :size="22" />
+          <span>{{ i18n.t("plugins.select_file") }}</span>
+        </cmz-button>
+        <cmz-button variant="secondary" size="lg" class="plugin-chooser-option" @click="pickFolder">
+          <Folder :size="22" />
+          <span>{{ i18n.t("plugins.select_folder") }}</span>
+        </cmz-button>
+      </div>
+    </cmz-modal>
 
     <div v-if="pluginStore.error" class="error-banner">
       <span class="error-icon">!</span>
@@ -916,7 +881,7 @@ function goToMarket() {
     </div>
 
     <div v-if="pluginStore.loading && pluginStore.plugins.length === 0" class="loading-state">
-      <div class="loading-spinner"></div>
+      <cmz-spinner size="sm" />
       <span class="loading-text">{{ i18n.t("plugins.loading_plugins") }}</span>
     </div>
 
@@ -936,61 +901,71 @@ function goToMarket() {
           }}</span>
         </div>
         <div class="batch-action-right">
-          <SLButton variant="secondary" size="sm" @click="selectAll">
+          <cmz-button variant="secondary" size="sm" @click="selectAll">
             {{ i18n.t("plugins.select_all") }}
-          </SLButton>
-          <SLButton variant="secondary" size="sm" @click="invertSelection">
+          </cmz-button>
+          <cmz-button variant="secondary" size="sm" @click="invertSelection">
             {{ i18n.t("plugins.invert_selection") }}
-          </SLButton>
-          <SLButton variant="secondary" size="sm" @click="deselectAll">
+          </cmz-button>
+          <cmz-button variant="secondary" size="sm" @click="deselectAll">
             {{ i18n.t("plugins.deselect_all") }}
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             variant="danger"
             size="sm"
             :disabled="selectedPlugins.size === 0"
             @click="showBatchDeleteConfirm"
           >
             {{ i18n.t("plugins.batch_delete") }}
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
       <div class="plugin-grid">
-        <SLCard
+        <cmz-card
           v-for="plugin in filteredPlugins"
           :key="plugin.manifest.id"
+          v-memo="[
+            plugin.manifest.id,
+            plugin.state,
+            pluginStore.updates[plugin.manifest.id],
+            batchMode && selectedPlugins.has(plugin.manifest.id),
+            getDependencyInfo(plugin.manifest.id),
+          ]"
           class="plugin-card"
           :class="{ 'plugin-card--selected': batchMode && selectedPlugins.has(plugin.manifest.id) }"
         >
           <div class="plugin-content">
             <label v-if="batchMode" class="plugin-checkbox" @click.stop>
-              <SLCheckbox
+              <cmz-toggle
+                variant="checkbox"
                 :modelValue="selectedPlugins.has(plugin.manifest.id)"
                 @update:modelValue="togglePluginSelection(plugin.manifest.id)"
               />
             </label>
 
             <div class="plugin-card-actions">
-              <div
+              <cmz-badge
                 v-if="pluginStore.updates[plugin.manifest.id]"
-                class="update-badge"
+                dot
                 :title="i18n.t('plugins.update_available')"
-              >
-                <ShieldAlert :size="12" />
-              </div>
+              />
 
-              <div
-                v-if="hasMissingRequiredDependencies(plugin)"
-                class="dependency-indicator dependency-indicator--required"
-                :title="getDependencyTooltip(plugin)"
+              <cmz-badge
+                v-if="getDependencyInfo(plugin.manifest.id)?.hasMissingRequired"
+                dot
+                variant="danger"
+                :title="getDependencyInfo(plugin.manifest.id)?.tooltip"
+                class="dependency-clickable"
                 @click.stop="showMissingDependenciesModal(plugin)"
-              ></div>
-              <div
-                v-else-if="hasMissingOptionalDependencies(plugin)"
-                class="dependency-indicator dependency-indicator--optional"
-                :title="getDependencyTooltip(plugin)"
+              />
+              <cmz-badge
+                v-else-if="getDependencyInfo(plugin.manifest.id)?.hasMissingOptional"
+                dot
+                variant="warning"
+                :title="getDependencyInfo(plugin.manifest.id)?.tooltip"
+                class="dependency-clickable"
                 @click.stop="showMissingDependenciesModal(plugin)"
-              ></div>
+              />
 
               <PluginPermissionPanel
                 :plugin-id="plugin.manifest.id"
@@ -1002,9 +977,9 @@ function goToMarket() {
                 position="bottom-end"
                 @select="handleMenuSelect($event, plugin.manifest.id)"
               >
-                <SLButton variant="ghost" icon-only size="sm">
+                <cmz-button variant="ghost" icon-only size="sm">
                   <MoreVertical :size="16" />
-                </SLButton>
+                </cmz-button>
               </SLMenu>
             </div>
             <div class="plugin-main">
@@ -1029,7 +1004,7 @@ function goToMarket() {
                     <span v-if="plugin.manifest.author" class="plugin-author">
                       by {{ plugin.manifest.author.name }}
                     </span>
-                    <SLButton
+                    <cmz-button
                       v-if="plugin.manifest.repository"
                       variant="ghost"
                       icon-only
@@ -1038,7 +1013,7 @@ function goToMarket() {
                       :title="i18n.t('plugins.open_repository')"
                     >
                       <Github :size="14" />
-                    </SLButton>
+                    </cmz-button>
                   </div>
                 </div>
                 <p v-if="plugin.manifest.description" class="plugin-description">
@@ -1066,7 +1041,7 @@ function goToMarket() {
                 {{ getStatusLabel(plugin.state) }}
               </span>
               <div class="plugin-actions">
-                <SLButton
+                <cmz-button
                   v-if="hasSettings(plugin)"
                   variant="ghost"
                   icon-only
@@ -1075,15 +1050,18 @@ function goToMarket() {
                   :title="i18n.t('plugins.settings')"
                 >
                   <Settings :size="16" />
-                </SLButton>
-                <SLSwitch
+                </cmz-button>
+                <cmz-toggle
                   v-if="!safeMode"
+                  variant="switch"
                   :modelValue="isPluginEnabled(plugin.state)"
                   :disabled="
-                    hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
+                    getDependencyInfo(plugin.manifest.id)?.hasMissingRequired &&
+                    !isPluginEnabled(plugin.state)
                   "
                   :title="
-                    hasMissingRequiredDependencies(plugin) && !isPluginEnabled(plugin.state)
+                    getDependencyInfo(plugin.manifest.id)?.hasMissingRequired &&
+                    !isPluginEnabled(plugin.state)
                       ? i18n.t('plugins.missing_required_deps')
                       : ''
                   "
@@ -1098,7 +1076,7 @@ function goToMarket() {
               </div>
             </div>
           </div>
-        </SLCard>
+        </cmz-card>
       </div>
     </div>
 
@@ -1109,9 +1087,9 @@ function goToMarket() {
             <h2 class="modal-title">
               {{ i18n.t("plugins.settings_title", { name: currentSettingsPlugin?.manifest.name }) }}
             </h2>
-            <SLButton variant="ghost" icon-only class="modal-close" @click="closeSettings">
+            <cmz-button variant="ghost" icon-only class="modal-close" @click="closeSettings">
               <X :size="20" />
-            </SLButton>
+            </cmz-button>
           </div>
           <div class="modal-body">
             <div
@@ -1123,28 +1101,29 @@ function goToMarket() {
                 {{ field.label }}
                 <span v-if="field.description" class="setting-desc">{{ field.description }}</span>
               </label>
-              <SLInput v-if="field.type === 'string'" v-model="settingsForm[field.key]" />
+              <cmz-input v-if="field.type === 'string'" v-model="settingsForm[field.key]" />
               <div v-else-if="field.type === 'color'" class="setting-color-field">
                 <input
                   type="color"
                   v-model="settingsForm[field.key]"
                   class="setting-color-picker"
                 />
-                <SLInput v-model="settingsForm[field.key]" />
+                <cmz-input v-model="settingsForm[field.key]" />
               </div>
-              <SLInput
+              <cmz-input
                 v-else-if="field.type === 'number'"
                 v-model="settingsForm[field.key]"
                 type="number"
               />
               <label v-else-if="field.type === 'boolean'" class="setting-toggle">
-                <SLSwitch
+                <cmz-toggle
+                  variant="switch"
                   :modelValue="Boolean(settingsForm[field.key])"
                   @update:modelValue="settingsForm[field.key] = $event"
                   size="sm"
                 />
               </label>
-              <SLSelect
+              <cmz-select
                 v-else-if="field.type === 'select'"
                 v-model="settingsForm[field.key]"
                 :options="field.options || []"
@@ -1242,30 +1221,38 @@ function goToMarket() {
             </div>
           </div>
           <div class="modal-footer">
-            <SLButton variant="secondary" size="sm" @click="closeSettings">{{
+            <cmz-button variant="secondary" size="sm" @click="closeSettings">{{
               i18n.t("plugins.cancel")
-            }}</SLButton>
-            <SLButton variant="primary" size="sm" :loading="savingSettings" @click="saveSettings">{{
-              i18n.t("plugins.save")
-            }}</SLButton>
+            }}</cmz-button>
+            <cmz-button
+              variant="primary"
+              size="sm"
+              :loading="savingSettings"
+              @click="saveSettings"
+              >{{ i18n.t("plugins.save") }}</cmz-button
+            >
           </div>
         </div>
       </div>
     </Teleport>
 
-    <SLModal :visible="confirmDialog.show" :title="confirmDialog.title" @close="closeConfirmDialog">
+    <cmz-modal
+      :visible="confirmDialog.show"
+      :title="confirmDialog.title"
+      @close="closeConfirmDialog"
+    >
       <p class="dialog-message">{{ confirmDialog.message }}</p>
       <template #footer>
-        <SLButton variant="secondary" size="sm" @click="closeConfirmDialog">{{
+        <cmz-button variant="secondary" size="sm" @click="closeConfirmDialog">{{
           i18n.t("plugins.cancel")
-        }}</SLButton>
-        <SLButton variant="danger" size="sm" @click="executeConfirmDialog">{{
+        }}</cmz-button>
+        <cmz-button variant="danger" size="sm" @click="executeConfirmDialog">{{
           i18n.t("plugins.delete")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
-    <SLModal
+    <cmz-modal
       :visible="showSingleDeleteDialog"
       :title="i18n.t('plugins.confirm_delete')"
       @close="showSingleDeleteDialog = false"
@@ -1275,32 +1262,32 @@ function goToMarket() {
           {{ i18n.t("plugins.confirm_delete_message", { name: singleDeletePluginName }) }}
         </p>
         <div class="batch-delete-options">
-          <SLButton
+          <cmz-button
             variant="secondary"
             class="batch-delete-option"
             @click="executeSingleDelete(true)"
           >
             <Trash2 class="option-icon delete-with-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_with_data") }}</span>
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             variant="secondary"
             class="batch-delete-option"
             @click="executeSingleDelete(false)"
           >
             <Trash class="option-icon delete-without-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_without_data") }}</span>
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
       <template #footer>
-        <SLButton variant="secondary" size="sm" @click="showSingleDeleteDialog = false">{{
+        <cmz-button variant="secondary" size="sm" @click="showSingleDeleteDialog = false">{{
           i18n.t("plugins.cancel")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
-    <SLModal
+    <cmz-modal
       :visible="showBatchDeleteDialog"
       :title="i18n.t('plugins.confirm_batch_delete')"
       @close="showBatchDeleteDialog = false"
@@ -1310,32 +1297,32 @@ function goToMarket() {
           {{ i18n.t("plugins.confirm_batch_delete_message", { count: selectedPlugins.size }) }}
         </p>
         <div class="batch-delete-options">
-          <SLButton
+          <cmz-button
             variant="secondary"
             class="batch-delete-option"
             @click="executeBatchDelete(true)"
           >
             <Trash2 class="option-icon delete-with-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_with_data") }}</span>
-          </SLButton>
-          <SLButton
+          </cmz-button>
+          <cmz-button
             variant="secondary"
             class="batch-delete-option"
             @click="executeBatchDelete(false)"
           >
             <Trash class="option-icon delete-without-data" :size="20" />
             <span class="option-label">{{ i18n.t("plugins.delete_without_data") }}</span>
-          </SLButton>
+          </cmz-button>
         </div>
       </div>
       <template #footer>
-        <SLButton variant="secondary" size="sm" @click="showBatchDeleteDialog = false">{{
+        <cmz-button variant="secondary" size="sm" @click="showBatchDeleteDialog = false">{{
           i18n.t("plugins.cancel")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
-    <SLModal
+    <cmz-modal
       :visible="alertDialog.show"
       :title="alertDialog.title"
       :auto-close="3000"
@@ -1343,11 +1330,11 @@ function goToMarket() {
     >
       <p class="dialog-message">{{ alertDialog.message }}</p>
       <template #footer>
-        <SLButton variant="primary" size="sm" @click="closeAlertDialog">{{
+        <cmz-button variant="primary" size="sm" @click="closeAlertDialog">{{
           i18n.t("plugins.ok")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
     <SLPermissionDialog
       :show="permissionWarning.show"
@@ -1357,7 +1344,7 @@ function goToMarket() {
       @cancel="cancelPermissionWarning"
     />
 
-    <SLModal
+    <cmz-modal
       :visible="showDependencyModal"
       :title="i18n.t('plugins.missing_deps_title')"
       @close="showDependencyModal = false"
@@ -1382,16 +1369,16 @@ function goToMarket() {
         </p>
       </div>
       <template #footer>
-        <SLButton variant="secondary" size="sm" @click="showDependencyModal = false">{{
+        <cmz-button variant="secondary" size="sm" @click="showDependencyModal = false">{{
           i18n.t("plugins.later")
-        }}</SLButton>
-        <SLButton variant="primary" size="sm" @click="goToMarket">{{
+        }}</cmz-button>
+        <cmz-button variant="primary" size="sm" @click="goToMarket">{{
           i18n.t("plugins.go_market")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
 
-    <SLModal
+    <cmz-modal
       :visible="showBatchResultModal"
       :title="i18n.t('plugins.batch_result_title')"
       @close="showBatchResultModal = false"
@@ -1429,11 +1416,11 @@ function goToMarket() {
         </div>
       </div>
       <template #footer>
-        <SLButton variant="primary" size="sm" @click="showBatchResultModal = false">{{
+        <cmz-button variant="primary" size="sm" @click="showBatchResultModal = false">{{
           i18n.t("plugins.ok")
-        }}</SLButton>
+        }}</cmz-button>
       </template>
-    </SLModal>
+    </cmz-modal>
   </div>
 </template>
 
@@ -1500,111 +1487,19 @@ function goToMarket() {
   margin-bottom: var(--sl-space-md);
 }
 
-.plugins-dropzone :deep(.sl-dropzone) {
+.plugins-dropzone :deep(.cmz-dropzone) {
   justify-content: center;
   flex-direction: column;
   padding: var(--sl-space-lg);
 }
 
-.plugins-dropzone :deep(.sl-dropzone-content) {
+.plugins-dropzone :deep(.cmz-dropzone-content) {
   align-items: center;
   text-align: center;
 }
 
-.plugins-dropzone :deep(.sl-dropzone-title) {
+.plugins-dropzone :deep(.cmz-dropzone-title) {
   text-align: center;
-}
-
-.plugin-chooser-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
-  z-index: 3000;
-}
-
-.plugin-chooser-content {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(420px, calc(100vw - 32px));
-  background: var(--sl-surface);
-  border: 1px solid var(--sl-border);
-  border-radius: var(--sl-radius-lg);
-  box-shadow: var(--sl-shadow-lg);
-  padding: var(--sl-space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-sm);
-  z-index: 3001;
-}
-
-.plugin-chooser-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sl-space-xs);
-}
-
-.plugin-chooser-title {
-  margin: 0;
-  font-size: var(--sl-font-size-lg);
-  font-weight: 600;
-  color: var(--sl-text-primary);
-}
-
-.plugin-chooser-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--sl-radius-md);
-  border: none;
-  background: transparent;
-  color: var(--sl-text-tertiary);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.plugin-chooser-close::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--sl-error);
-  border-radius: inherit;
-  opacity: 0;
-  transform: scale(0.5);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-
-.plugin-chooser-close:hover {
-  color: var(--sl-error);
-  transform: rotate(90deg);
-}
-
-.plugin-chooser-close:hover::before {
-  opacity: 0.1;
-  transform: scale(1);
-}
-
-.plugin-chooser-close:active {
-  transform: rotate(90deg) scale(0.9);
-}
-
-.plugin-chooser-description {
-  margin: 0;
-  font-size: var(--sl-font-size-base);
-  color: var(--sl-text-secondary);
-  line-height: 1.5;
 }
 
 .plugin-chooser-actions {
@@ -1725,21 +1620,6 @@ function goToMarket() {
   text-align: center;
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--sl-border);
-  border-top-color: var(--sl-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .loading-text {
@@ -2262,48 +2142,8 @@ function goToMarket() {
   z-index: 10;
 }
 
-.update-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: var(--sl-primary);
-  border-radius: 50%;
-  color: var(--sl-text-inverse);
-}
-
-.dependency-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.dependency-clickable {
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-  flex-shrink: 0;
-}
-
-.dependency-indicator:hover {
-  transform: scale(1.3);
-}
-
-.dependency-indicator--required {
-  background: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
-}
-
-.dependency-indicator--required:hover {
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
-}
-
-.dependency-indicator--optional {
-  background: #f59e0b;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
-}
-
-.dependency-indicator--optional:hover {
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
 }
 
 .header-right {

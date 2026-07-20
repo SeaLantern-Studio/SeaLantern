@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SLCard from "@components/common/SLCard.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { i18n } from "@language";
 
 defineProps<{
@@ -23,15 +20,15 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <SLCard :title="i18n.t('settings.console')" :subtitle="i18n.t('settings.console_desc')">
+  <cmz-card :title="i18n.t('settings.console')" :subtitle="i18n.t('settings.console_desc')">
     <div class="sl-settings-group">
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.console_font_size") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.console_font_size_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.console_font_size") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.console_font_size_desc") }}</span>
         </div>
         <div class="sl-input-sm">
-          <SLInput
+          <cmz-input
             :model-value="consoleFontSize"
             type="number"
             @update:model-value="
@@ -44,13 +41,13 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.font_family") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.console_font_family_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.font_family") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.console_font_family_desc") }}</span>
         </div>
         <div class="sl-input-lg">
-          <SLSelect
+          <cmz-select
             :model-value="consoleFontFamily"
             :options="fontFamilyOptions"
             :searchable="true"
@@ -67,13 +64,15 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.console_letter_spacing") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.console_letter_spacing_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.console_letter_spacing") }}</span>
+          <span class="settings-entry-desc">{{
+            i18n.t("settings.console_letter_spacing_desc")
+          }}</span>
         </div>
         <div class="sl-input-sm">
-          <SLInput
+          <cmz-input
             :model-value="consoleLetterSpacing"
             type="number"
             @update:model-value="
@@ -86,13 +85,13 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.max_log_lines") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.max_log_lines_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.max_log_lines") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.max_log_lines_desc") }}</span>
         </div>
         <div class="sl-input-sm">
-          <SLInput
+          <cmz-input
             :model-value="maxLogLines"
             type="number"
             @update:model-value="
@@ -105,5 +104,5 @@ const emit = defineEmits<{
         </div>
       </div>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { SLProgress } from "@components/common";
 import { i18n } from "@language";
 import { formatBytes } from "@utils/serverUtils";
 
@@ -17,9 +16,9 @@ const props = defineProps<{
 
 <template>
   <div class="progress-wrapper">
-    <SLProgress
+    <cmz-progress
       :value="taskInfo.progress"
-      :variant="taskError ? 'error' : taskInfo.isFinished ? 'success' : 'primary'"
+      :color="taskError ? '#ef4444' : taskInfo.isFinished ? '#22c55e' : undefined"
       :label="statusLabel"
     />
     <div class="progress-footer">

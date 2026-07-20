@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { FileCode2, FileCog, FolderOpen, RefreshCw, TerminalSquare } from "lucide-vue-next";
-import SLInput from "@components/common/SLInput.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import type { StartupCandidate, StartupMode } from "@components/views/create/startupTypes";
 import { i18n } from "@language";
 
@@ -143,7 +141,7 @@ function getStartupIcon(mode: StartupMode) {
         </button>
 
         <div v-if="candidate.mode === 'custom'" class="startup-inline-custom">
-          <SLInput
+          <cmz-input
             :label="i18n.t('create.startup_custom_label')"
             :model-value="customStartupCommand"
             :disabled="disabled"
@@ -168,7 +166,7 @@ function getStartupIcon(mode: StartupMode) {
           </template>
           <template v-else>{{ i18n.t("create.source_core_unknown") }}</template>
         </p>
-        <SLSelect
+        <cmz-select
           :model-value="selectedCoreType"
           :options="coreTypeSelectOptions"
           :disabled="disabled || coreTypeSelectOptions.length === 0"
@@ -187,7 +185,7 @@ function getStartupIcon(mode: StartupMode) {
         <p class="startup-step-warning" v-if="mcVersionDetectionFailed">
           {{ i18n.t("create.startup_mc_version_detection_failed") }}
         </p>
-        <SLSelect
+        <cmz-select
           :model-value="selectedMcVersion"
           :options="mcVersionSelectOptions"
           :disabled="disabled || mcVersionSelectOptions.length === 0"

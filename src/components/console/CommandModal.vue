@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SLButton from "@components/common/SLButton.vue";
-import SLInput from "@components/common/SLInput.vue";
-import SLModal from "@components/common/SLModal.vue";
 import { i18n } from "@language";
 import type { ServerCommand } from "@type/server";
 import { computed } from "vue";
@@ -37,72 +34,46 @@ const commandTextModel = computed({
 </script>
 
 <template>
-  <SLModal :visible="visible" :title="title" :close-on-overlay="false" @close="emit('close')">
+  <cmz-modal :visible="visible" :title="title" :close-on-overlay="false" @close="emit('close')">
     <div class="command-modal-content">
-      <div class="form-group">
-        <label for="command-name">{{ i18n.t("console.command_name") }}</label>
-        <SLInput
-          id="command-name"
-          v-model="commandNameModel"
-          :placeholder="i18n.t('console.enter_command_name')"
-          :disabled="loading"
-        />
-      </div>
-      <div class="form-group">
-        <label for="command-text">{{ i18n.t("console.command_content") }}</label>
-        <SLInput
-          id="command-text"
-          v-model="commandTextModel"
-          :placeholder="i18n.t('console.enter_command_content')"
-          :disabled="loading"
-        />
-      </div>
+      <cmz-input
+        :label="i18n.t('console.command_name')"
+        v-model="commandNameModel"
+        :placeholder="i18n.t('console.enter_command_name')"
+        :disabled="loading"
+      />
+      <cmz-input
+        :label="i18n.t('console.command_content')"
+        v-model="commandTextModel"
+        :placeholder="i18n.t('console.enter_command_content')"
+        :disabled="loading"
+      />
     </div>
     <template #footer>
-      <div class="modal-footer">
-        <SLButton variant="secondary" @click="emit('close')" :disabled="loading">
-          {{ i18n.t("console.cancel") }}
-        </SLButton>
-        <SLButton
-          v-if="editingCommand"
-          variant="danger"
-          @click="emit('delete', editingCommand)"
-          :disabled="loading"
-        >
-          {{ i18n.t("console.delete") }}
-        </SLButton>
-        <SLButton
-          variant="primary"
-          @click="emit('save')"
-          :disabled="loading || !commandName || !commandText"
-        >
-          {{ i18n.t("console.save") }}
-        </SLButton>
-      </div>
+      <cmz-button variant="outline" @click="emit('close')" :disabled="loading">
+        {{ i18n.t("console.cancel") }}
+      </cmz-button>
+      <cmz-button
+        v-if="editingCommand"
+        variant="solid"
+        color="#ef4444"
+        @click="emit('delete', editingCommand)"
+        :disabled="loading"
+      >
+        {{ i18n.t("console.delete") }}
+      </cmz-button>
+      <cmz-button @click="emit('save')" :disabled="loading || !commandName || !commandText">
+        {{ i18n.t("console.save") }}
+      </cmz-button>
     </template>
-  </SLModal>
+  </cmz-modal>
 </template>
 
 <style scoped>
 .command-modal-content {
-  padding: var(--sl-space-md);
-}
-
-.form-group {
-  margin-bottom: var(--sl-space-md);
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: var(--sl-space-xs);
-  font-weight: 500;
-}
-
-.modal-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: var(--sl-space-sm);
-  padding-top: var(--sl-space-md);
-  border-top: 1px solid var(--sl-border-light);
+  flex-direction: column;
+  gap: var(--sl-space-md);
+  padding: var(--sl-space-md);
 }
 </style>

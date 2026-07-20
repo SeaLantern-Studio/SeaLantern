@@ -90,7 +90,6 @@
 
   /* -- Layout -- */
   --sl-sidebar-width: 220px;
-  --sl-sidebar-collapsed-width: 60px;
   --sl-header-height: 48px;
 
   /* -- Scrollbar -- */
@@ -108,6 +107,13 @@
   --sl-saturate-subtle: 150%;
   --sl-saturate-normal: 180%;
   --sl-saturate-strong: 200%;
+  /* 毛玻璃背景色（半透明 + blur 配合使用） */
+  --sl-glass-bg: rgba(255, 255, 255, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.5);
+  /* 丙烯酸（高透明 + 强模糊，适合弹出层/浮层） */
+  --sl-acrylic-bg: rgba(255, 255, 255, 0.65);
+  --sl-acrylic-bg-strong: rgba(255, 255, 255, 0.78);
+  --sl-acrylic-border: rgba(255, 255, 255, 0.35);
 }
 
 [data-theme="dark"] {
@@ -152,25 +158,37 @@
   --sl-shadow-button-hover: 0 2px 6px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
   --sl-shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.3);
   --sl-shadow-input-focus: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  /* 毛玻璃背景色（暗色主题） */
+  --sl-glass-bg: rgba(0, 0, 0, 0.72);
+  --sl-glass-border: rgba(255, 255, 255, 0.08);
+  --sl-acrylic-bg: rgba(0, 0, 0, 0.65);
+  --sl-acrylic-bg-strong: rgba(0, 0, 0, 0.78);
+  --sl-acrylic-border: rgba(255, 255, 255, 0.06);
 }
 
-[data-acrylic="true"] {
-  --sl-bg: rgba(248, 250, 252, 0.65);
-  --sl-bg-secondary: rgba(241, 245, 249, 0.55);
-  --sl-bg-tertiary: rgba(226, 232, 240, 0.45);
-  --sl-surface: rgba(255, 255, 255, 0.65);
-  --sl-surface-hover: rgba(248, 250, 252, 0.75);
+[data-acrylic="on"] {
+  --sl-bg: rgba(255, 255, 255, 0.65);
+  --sl-bg-secondary: rgba(255, 255, 255, 0.72);
+  --sl-bg-tertiary: rgba(255, 255, 255, 0.78);
+  --sl-surface: rgba(255, 255, 255, 0.72);
+  --sl-surface-hover: rgba(255, 255, 255, 0.78);
 }
 
-[data-theme="dark"][data-acrylic="true"] {
-  --sl-bg: rgba(15, 17, 23, 0.65);
-  --sl-bg-secondary: rgba(26, 29, 40, 0.55);
-  --sl-bg-tertiary: rgba(36, 40, 54, 0.45);
-  --sl-surface: rgba(30, 33, 48, 0.65);
-  --sl-surface-hover: rgba(40, 44, 62, 0.75);
+[data-theme="dark"][data-acrylic="on"] {
+  --sl-bg: rgba(0, 0, 0, 0.65);
+  --sl-bg-secondary: rgba(0, 0, 0, 0.72);
+  --sl-bg-tertiary: rgba(0, 0, 0, 0.78);
+  --sl-surface: rgba(0, 0, 0, 0.72);
+  --sl-surface-hover: rgba(0, 0, 0, 0.78);
 }
 
 [data-minimal="true"] {
+  --sl-transition-fast: 0s;
+  --sl-transition-normal: 0s;
+  --sl-transition-slow: 0s;
+}
+
+[data-animation="off"] {
   --sl-transition-fast: 0s;
   --sl-transition-normal: 0s;
   --sl-transition-slow: 0s;

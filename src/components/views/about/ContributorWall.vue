@@ -2,7 +2,6 @@
 import { ref, computed } from "vue";
 import { AvatarImage, AvatarRoot, AvatarFallback } from "reka-ui";
 import { Plus, Link, ExternalLink, Check } from "lucide-vue-next";
-import SLButton from "@components/common/SLButton.vue";
 import BrandIcon from "@components/common/BrandIcon.vue";
 import { contributors as contributorsList, type SocialLinks } from "@data/contributors";
 import { i18n } from "@language";
@@ -175,9 +174,9 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
     </div>
 
     <div v-if="hasMore" class="load-more-section">
-      <SLButton variant="ghost" @click="loadMore">
+      <cmz-button variant="ghost" @click="loadMore">
         {{ i18n.t("about.load_more") }} ({{ contributors.length - displayedContributors.length }})
-      </SLButton>
+      </cmz-button>
     </div>
   </div>
 </template>
@@ -290,23 +289,27 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
   -webkit-backdrop-filter: blur(12px);
 }
 
-[data-acrylic="true"] .join-card {
+[data-acrylic="on"] .join-card,
+[data-acrylic]:not([data-acrylic="off"]) .join-card {
   background: rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 
-[data-acrylic="true"] .join-card:hover {
+[data-acrylic="on"] .join-card:hover,
+[data-acrylic]:not([data-acrylic="off"]) .join-card:hover {
   background: var(--sl-primary-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-[data-theme="dark"][data-acrylic="true"] .join-card {
+[data-theme="dark"][data-acrylic="on"] .join-card,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .join-card {
   background: rgba(15, 17, 23, 0.35);
 }
 
-[data-theme="dark"][data-acrylic="true"] .join-card:hover {
+[data-theme="dark"][data-acrylic="on"] .join-card:hover,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .join-card:hover {
   background: var(--sl-primary-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);

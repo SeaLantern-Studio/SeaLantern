@@ -92,30 +92,36 @@ const routes = [
     component: () => import("@views/BackupView.vue"),
     meta: { titleKey: "common.backup", icon: "archive" },
   },
+  {
+    path: "/help",
+    name: "help",
+    component: () => import("@views/HelpView.vue"),
+    meta: { titleKey: "common.help", icon: "book" },
+  },
+  // 404 兜底:无效路径统一回到首页
+  {
+    path: "/:pathMatch(.*)*",
+    name: "not-found",
+    redirect: "/",
+  },
 ];
 const router = createRouter({
   history: createWebHistory(),
   routes,
 });
 
-let pageChangedTimers: number[] = [];
+// 路由切换后通知插件页面变化;原实现注册 250ms/900ms 两个定时器冗余触发,改为单次延时
+let pageChangedTimer: number | null = null;
 
 router.afterEach((to) => {
-  for (const t of pageChangedTimers) {
-    clearTimeout(t);
+  if (pageChangedTimer !== null) {
+    clearTimeout(pageChangedTimer);
   }
-  pageChangedTimers = [];
-
-  pageChangedTimers.push(
-    window.setTimeout(() => {
-      onPageChanged(to.path).catch(() => {});
-    }, 250),
-  );
-  pageChangedTimers.push(
-    window.setTimeout(() => {
-      onPageChanged(to.path).catch(() => {});
-    }, 900),
-  );
+  // 300ms 等待页面渲染稳定后再通知,避免插件在过渡动画期间收到事件
+  pageChangedTimer = window.setTimeout(() => {
+    pageChangedTimer = null;
+    onPageChanged(to.path).catch(() => {});
+  }, 300);
 });
 
 export default router;

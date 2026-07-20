@@ -48,6 +48,7 @@ export function setTranslations(locale: LocaleCode, data: LanguageFile) {
   if (isSupportedLocale(locale)) {
     translations[locale] = data;
   }
+  i18n.invalidateCache();
 }
 
 export function registerPluginLocale(locale: string, displayName: string) {
@@ -69,10 +70,12 @@ export function addPluginTranslations(
     pluginFlatTranslations[pluginId][locale] = {};
   }
   Object.assign(pluginFlatTranslations[pluginId][locale], entries);
+  i18n.invalidateCache();
 }
 
 export function removePluginTranslations(pluginId: string) {
   delete pluginFlatTranslations[pluginId];
+  i18n.invalidateCache();
 }
 
 export function getPluginLocaleDisplayName(locale: string): string | undefined {
@@ -81,18 +84,6 @@ export function getPluginLocaleDisplayName(locale: string): string | undefined {
 
 function isSupportedLocale(locale: string): locale is LocaleCode {
   return supportedLocales.includes(locale);
-}
-
-function resolveNestedValue(source: TranslationNode, keys: string[]): string | undefined {
-  let current: string | TranslationNode | undefined = source;
-  for (const key of keys) {
-    if (!current || typeof current === "string") {
-      return undefined;
-    }
-    current = current[key];
-  }
-
-  return typeof current === "string" ? current : undefined;
 }
 
 function interpolateVariables(template: string, options: Record<string, unknown>): string {
@@ -111,6 +102,60 @@ function interpolateVariables(template: string, options: Record<string, unknown>
 class I18n {
   private currentLocale: Ref<LocaleCode> = ref("zh-CN");
   private fallbackLocale: LocaleCode = "en-US";
+  // 翻译原文缓存: locale -> (dottedKey -> 原文)
+  // 命中后跳过 4 次嵌套查找与 pluginFlatTranslations 遍历
+  private translationCache: Map<LocaleCode, Map<string, string>> = new Map();
+  private cacheValidLocales: Set<LocaleCode> = new Set();
+
+  /** 失效所有缓存(在 translations / plugin 翻译变更时调用) */
+  invalidateCache(): void {
+    this.translationCache.clear();
+    this.cacheValidLocales.clear();
+  }
+
+  /** 确保 locale 对应的扁平化缓存已构建 */
+  private ensureCacheForLocale(locale: LocaleCode): Map<string, string> | null {
+    if (this.cacheValidLocales.has(locale)) {
+      return this.translationCache.get(locale) || null;
+    }
+    const data = translations[locale];
+    if (!data) return null;
+    const flat = new Map<string, string>();
+
+    // 递归展开节点,写入 flat(已存在的 key 不覆盖,以此实现优先级)
+    const walkInto = (node: TranslationNode, prefix: string[]) => {
+      for (const [k, v] of Object.entries(node)) {
+        if (v && typeof v === "object") {
+          walkInto(v, [...prefix, k]);
+        } else if (typeof v === "string") {
+          const dotted = [...prefix, k].join(".");
+          if (!flat.has(dotted)) flat.set(dotted, v);
+        }
+      }
+    };
+
+    // 优先级由高到低:
+    // 1) sealantern 子树的无前缀 key (对应原 t() 先查 data.sealantern.foo)
+    const sealanternRoot = (data as any).sealantern;
+    if (sealanternRoot && typeof sealanternRoot === "object") {
+      walkInto(sealanternRoot as TranslationNode, []);
+    }
+    // 2) data 根的全路径 key (含 "sealantern.xxx" 与根级 string 如 "languageName")
+    walkInto(data, []);
+    // 3) 插件翻译(优先级最低,仅补缺)
+    for (const pluginMap of Object.values(pluginFlatTranslations)) {
+      const entries = pluginMap[locale];
+      if (entries) {
+        for (const [k, v] of Object.entries(entries)) {
+          if (!flat.has(k)) flat.set(k, v);
+        }
+      }
+    }
+
+    this.translationCache.set(locale, flat);
+    this.cacheValidLocales.add(locale);
+    return flat;
+  }
 
   setLocale(locale: string) {
     if (isSupportedLocale(locale) || pluginLocaleNames[locale] !== undefined) {
@@ -123,22 +168,19 @@ class I18n {
   }
 
   t(key: string, options: Record<string, unknown> = {}): string {
-    const keys = key.split(".");
     const currentLocaleValue = this.currentLocale.value;
 
-    let resolved: string | undefined =
-      resolveNestedValue(translations[currentLocaleValue], ["sealantern"].concat(keys)) ??
-      resolveNestedValue(translations[currentLocaleValue], keys) ??
-      resolveNestedValue(translations[this.fallbackLocale], ["sealantern"].concat(keys)) ??
-      resolveNestedValue(translations[this.fallbackLocale], keys);
-
-    if (resolved === undefined) {
-      for (const pluginMap of Object.values(pluginFlatTranslations)) {
-        const val = pluginMap[currentLocaleValue]?.[key] ?? pluginMap[this.fallbackLocale]?.[key];
-        if (val !== undefined) {
-          resolved = val;
-          break;
-        }
+    // 优先命中当前 locale 缓存
+    let resolved: string | undefined;
+    const currentCache = this.ensureCacheForLocale(currentLocaleValue);
+    if (currentCache) {
+      resolved = currentCache.get(key);
+    }
+    // 回退到 fallback locale
+    if (resolved === undefined && currentLocaleValue !== this.fallbackLocale) {
+      const fallbackCache = this.ensureCacheForLocale(this.fallbackLocale);
+      if (fallbackCache) {
+        resolved = fallbackCache.get(key);
       }
     }
 
@@ -146,18 +188,19 @@ class I18n {
       return key;
     }
 
+    if (Object.keys(options).length === 0) return resolved;
     return interpolateVariables(resolved, options);
   }
 
   te(key: string): boolean {
-    const keys = key.split(".");
     const currentLocaleValue = this.currentLocale.value;
-    const resolved =
-      resolveNestedValue(translations[currentLocaleValue], ["sealantern"].concat(keys)) ??
-      resolveNestedValue(translations[currentLocaleValue], keys) ??
-      resolveNestedValue(translations[this.fallbackLocale], ["sealantern"].concat(keys)) ??
-      resolveNestedValue(translations[this.fallbackLocale], keys);
-    return resolved !== undefined;
+    const currentCache = this.ensureCacheForLocale(currentLocaleValue);
+    if (currentCache?.has(key)) return true;
+    if (currentLocaleValue !== this.fallbackLocale) {
+      const fallbackCache = this.ensureCacheForLocale(this.fallbackLocale);
+      if (fallbackCache?.has(key)) return true;
+    }
+    return false;
   }
 
   getTranslations() {

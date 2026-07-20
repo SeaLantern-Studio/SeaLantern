@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLSelect from "@components/common/SLSelect.vue";
-import SLInput from "@components/common/SLInput.vue";
-
 interface Option {
   label: string;
   value: string | number;
@@ -36,13 +32,13 @@ function isBooleanControl(valueType: string | undefined, value: string | undefin
 <template>
   <div class="config-property-editor-control">
     <template v-if="isBooleanControl(valueType, modelValue)">
-      <SLSwitch
+      <cmz-switch
         :modelValue="modelValue === 'true'"
         @update:modelValue="emit('update:modelValue', $event)"
       />
     </template>
     <template v-else-if="propertyKey === 'gamemode'">
-      <SLSelect
+      <cmz-select
         :modelValue="modelValue"
         :options="gamemodeOptions"
         class="config-property-control-input"
@@ -50,7 +46,7 @@ function isBooleanControl(valueType: string | undefined, value: string | undefin
       />
     </template>
     <template v-else-if="propertyKey === 'difficulty'">
-      <SLSelect
+      <cmz-select
         :modelValue="modelValue"
         :options="difficultyOptions"
         class="config-property-control-input"
@@ -58,7 +54,7 @@ function isBooleanControl(valueType: string | undefined, value: string | undefin
       />
     </template>
     <template v-else>
-      <SLInput
+      <cmz-input
         :modelValue="modelValue"
         :placeholder="defaultValue"
         :type="valueType === 'number' ? 'number' : 'text'"

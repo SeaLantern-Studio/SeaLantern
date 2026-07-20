@@ -110,6 +110,7 @@
       "save": "保存",
       "plugins": "插件",
       "market": "插件市场",
+      "help": "帮助文档",
       "progress": "进度",
       "minimize": "最小化",
       "maximize": "最大化",
@@ -124,8 +125,7 @@
         "main": "通用",
         "server": "服务器",
         "system": "系统"
-      },
-      "collapse_btn": "收起侧栏"
+      }
     },
     "home": {
       "title": "服务器管理",
@@ -722,7 +722,7 @@
       "import": "导入",
       "java_download": "下载 Java",
       "java_download_desc": "如果系统中没有 Java 或需要更新版本，可以从这里下载",
-      "java_download_btn": "下载 Java {{version}} (LTS)",
+      "java_download_btn": "下载",
       "java_version_select": "选择版本",
       "java_installing": "下载中...",
       "java_install_success": "安装完成：",
@@ -1250,6 +1250,20 @@
       "load_failed": "加载备份列表失败",
       "settings_saved": "设置已保存",
       "settings_save_failed": "设置保存失败"
+    },
+    "help": {
+      "title": "帮助文档",
+      "sidebar_title": "文档目录",
+      "sections": {
+        "intro": "项目简介",
+        "download": "下载安装",
+        "getting_started": "快速开始",
+        "server_jar": "核心获取",
+        "tutorial": "使用教程",
+        "features": "功能总览",
+        "faq": "常见问题",
+        "contributor": "贡献者"
+      }
     }
   }
 }

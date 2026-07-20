@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
 import { i18n } from "@language";
 import { currentQuote, displayText, isTyping, updateQuote } from "@utils/quoteUtils";
 
@@ -10,16 +8,16 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <SLCard
+  <cmz-card
+    variant="glass"
     :title="i18n.t('home.title')"
     :subtitle="i18n.t('home.create_first')"
-    variant="solid"
     class="quick-start-card"
   >
     <div class="quick-actions">
-      <SLButton variant="primary" size="lg" @click="emit('create')">
+      <cmz-button variant="solid" size="lg" @click="emit('create')">
         {{ i18n.t("common.create_server") }}
-      </SLButton>
+      </cmz-button>
     </div>
     <div class="quote-display" @click="updateQuote" :title="i18n.t('common.click_to_refresh')">
       <span v-if="displayText || isTyping" class="quote-text">「{{ displayText }}」</span>
@@ -30,7 +28,7 @@ const emit = defineEmits<{
         >—— {{ currentQuote.author || " " }}</span
       >
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>
@@ -39,7 +37,7 @@ const emit = defineEmits<{
   flex-direction: column;
 }
 
-.quick-start-card :deep(.sl-card-body) {
+.quick-start-card :deep(.cmz-card-body) {
   display: flex;
   flex-direction: column;
 }

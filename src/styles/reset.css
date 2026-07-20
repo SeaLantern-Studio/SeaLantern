@@ -22,6 +22,12 @@ body {
   user-select: none;
 }
 
+/* 磨玻璃模式下，body 背景透明，让桌面内容透出 */
+[data-acrylic="on"] body,
+[data-acrylic]:not([data-acrylic="off"]) body {
+  background-color: transparent;
+}
+
 a {
   color: inherit;
   text-decoration: none;

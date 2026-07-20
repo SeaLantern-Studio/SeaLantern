@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import SLCard from "@components/common/SLCard.vue";
-import SLSwitch from "@components/common/SLSwitch.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import BackgroundSettings from "./BackgroundSettings.vue";
 import { i18n } from "@language";
 import { computed } from "vue";
@@ -78,20 +75,20 @@ function handleMinimalModeChange(value: boolean) {
 </script>
 
 <template>
-  <SLCard :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
+  <cmz-card :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
     <div class="sl-settings-group">
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.theme") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.theme_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.theme") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.theme_desc") }}</span>
         </div>
-        <div class="sl-input-lg">
+        <div class="sl-input-md">
           <div v-if="isThemeProxied" class="theme-proxied-notice">
             <span class="proxied-text">{{
               i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
             }}</span>
           </div>
-          <SLSelect
+          <cmz-select
             v-else
             :model-value="theme"
             :options="themeOptions"
@@ -100,10 +97,10 @@ function handleMinimalModeChange(value: boolean) {
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.font_size") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.font_size_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.font_size") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.font_size_desc") }}</span>
         </div>
         <div class="sl-slider-control">
           <input
@@ -119,13 +116,13 @@ function handleMinimalModeChange(value: boolean) {
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.font_family") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.font_family_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.font_family") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.font_family_desc") }}</span>
         </div>
         <div class="sl-input-lg">
-          <SLSelect
+          <cmz-select
             :model-value="fontFamily"
             :options="fontFamilyOptions"
             :searchable="true"
@@ -137,20 +134,20 @@ function handleMinimalModeChange(value: boolean) {
         </div>
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.acrylic") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.acrylic") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
         </div>
-        <SLSwitch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
+        <cmz-switch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
       </div>
 
-      <div class="sl-setting-row">
-        <div class="sl-setting-info">
-          <span class="sl-setting-label">{{ i18n.t("settings.minimal_mode") }}</span>
-          <span class="sl-setting-desc">{{ i18n.t("settings.minimal_mode_desc") }}</span>
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.minimal_mode") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.minimal_mode_desc") }}</span>
         </div>
-        <SLSwitch :model-value="minimalMode" @update:model-value="handleMinimalModeChange" />
+        <cmz-switch :model-value="minimalMode" @update:model-value="handleMinimalModeChange" />
       </div>
 
       <BackgroundSettings
@@ -170,7 +167,7 @@ function handleMinimalModeChange(value: boolean) {
         @change="emit('change')"
       />
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>

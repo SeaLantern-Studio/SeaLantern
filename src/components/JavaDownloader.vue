@@ -1,35 +1,27 @@
 <template>
   <div class="java-downloader-container">
-    <div class="java-downloader-header">
-      <!-- Left Side: Label & Desc -->
-      <div class="sl-setting-info">
-        <span class="sl-setting-label">
-          {{ i18n.t("settings.java_download") }}
-        </span>
-        <span class="sl-setting-desc">
-          {{ i18n.t("settings.java_download_desc") }}
-        </span>
+    <div class="settings-entry">
+      <div class="settings-entry-info">
+        <span class="settings-entry-title">{{ i18n.t("settings.java_download") }}</span>
+        <span class="settings-entry-desc">{{ i18n.t("settings.java_download_desc") }}</span>
       </div>
-
-      <!-- Right Side: Interaction Area -->
       <div class="java-downloader-actions">
         <!-- Idle State -->
         <template v-if="!isDownloading && !isExtracting && !successMessage">
           <div class="download-setting-div">
-            <SLSelect
+            <cmz-select
               v-model="selectedVersion"
               :options="versionOptions"
               :disabled="loadingUrl"
-              size="sm"
             />
-            <SLButton
-              variant="primary"
+            <cmz-button
+              variant="solid"
               class="download-button"
               :loading="loadingUrl"
               @click="startDownload"
             >
               {{ downloadButtonText }}
-            </SLButton>
+            </cmz-button>
           </div>
         </template>
 
@@ -51,7 +43,7 @@
                 ></div>
               </div>
             </div>
-            <SLButton
+            <cmz-button
               size="sm"
               variant="ghost"
               class="cancel-button"
@@ -59,7 +51,7 @@
               @click="cancelDownload"
             >
               <X :size="16" :stroke-width="2" />
-            </SLButton>
+            </cmz-button>
           </div>
         </template>
 
@@ -70,7 +62,7 @@
               <CheckCircle :size="16" />
               <span>{{ i18n.t("settings.java_install_success").replace(":", "") }}</span>
             </div>
-            <SLButton size="sm" variant="ghost" @click="resetState">OK</SLButton>
+            <cmz-button size="sm" variant="ghost" @click="resetState">OK</cmz-button>
           </div>
         </template>
       </div>
@@ -82,9 +74,9 @@
         <AlertCircle class="error-icon" :size="16" />
         <span>{{ errorMessage }}</span>
       </div>
-      <SLButton size="sm" variant="ghost" @click="resetState">
+      <cmz-button size="sm" variant="ghost" @click="resetState">
         {{ i18n.t("common.close_notification") }}
-      </SLButton>
+      </cmz-button>
     </div>
   </div>
 </template>
@@ -94,8 +86,6 @@ import { ref, computed, onUnmounted } from "vue";
 import { i18n } from "@language";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { javaApi } from "@api/java";
-import SLButton from "@components/common/SLButton.vue";
-import SLSelect from "@components/common/SLSelect.vue";
 import { X, CheckCircle, AlertCircle } from "lucide-vue-next";
 
 const emit = defineEmits(["installed"]);
@@ -232,18 +222,12 @@ onUnmounted(() => {
 
 <style scoped>
 .download-button {
-  padding: 0.5rem 2rem;
+  padding: 0 1.25rem;
+  flex-shrink: 0;
 }
 
 .java-downloader-container {
   width: 100%;
-}
-
-.java-downloader-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.25rem 0;
 }
 
 .java-downloader-actions {
@@ -251,13 +235,22 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+  margin-left: auto;
+  min-width: 0;
+  justify-content: flex-end;
 }
 
 .download-setting-div {
   display: flex;
   flex-direction: row;
   gap: 10px;
-  margin-top: 10px;
+  align-items: center;
+}
+
+.download-setting-div .cmz-select {
+  min-width: 160px;
+  width: 220px;
+  flex-shrink: 0;
 }
 
 .downloading-state {

@@ -1,424 +1,108 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick } from "vue";
-import { Terminal } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import { ClipboardAddon } from "@xterm/addon-clipboard";
-import { SerializeAddon } from "@xterm/addon-serialize";
-import "@xterm/xterm/css/xterm.css";
+import { ref, computed } from "vue";
 import { i18n } from "@language";
 
 interface Props {
   consoleFontSize: number;
   consoleFontFamily: string;
   consoleLetterSpacing?: number;
-  userScrolledUp: boolean;
   maxLogLines?: number;
+  readonly?: boolean;
+  history?: string[];
+  completionMd?: string;
+}
+
+interface ConsoleLineObj {
+  text: string;
+  type?: "input" | "output" | "error" | "warning" | "info" | "success" | "system";
+  timestamp?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   consoleLetterSpacing: 0,
   maxLogLines: 5000,
+  readonly: false,
+  history: () => [],
+  completionMd: "",
 });
 
 const emit = defineEmits<{
-  (e: "scroll", value: boolean): void;
-  (e: "scrollToBottom"): void;
+  (e: "command", text: string): void;
 }>();
-
-const terminalHost = ref<HTMLDivElement | null>(null);
 
 const LOG_REGEX = /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/;
 
-let terminal: Terminal | null = null;
-let fitAddon: FitAddon | null = null;
-let clipboardAddon: ClipboardAddon | null = null;
-let serializeAddon: SerializeAddon | null = null;
-let resizeObserver: ResizeObserver | null = null;
-let scrollDisposable: { dispose: () => void } | null = null;
-let hasAnyLine = false;
-let terminalTextarea: HTMLTextAreaElement | null = null;
-let emptyStateRenderId = 0;
+const lines = ref<ConsoleLineObj[]>([]);
 
-function handleWheelScroll(event: WheelEvent) {
-  if (!terminal) return;
-  if (event.ctrlKey) return;
-
-  const deltaInLines =
-    event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY : event.deltaY / 40;
-  const lines = deltaInLines > 0 ? Math.ceil(deltaInLines) : Math.floor(deltaInLines);
-  if (lines === 0) return;
-
-  terminal.scrollLines(lines);
-  event.preventDefault();
-}
-
-async function handleCopyShortcut(event: KeyboardEvent) {
-  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "c") return;
-  if (!terminal?.hasSelection()) return;
-
-  const selectedText = terminal.getSelection();
-  if (!selectedText) return;
-
-  event.preventDefault();
-  const copied = typeof document.execCommand === "function" && document.execCommand("copy");
-  if (copied) {
-    terminal.clearSelection();
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(selectedText);
-    terminal.clearSelection();
-  } catch (_err) {
-    // Keep selection when clipboard write fails.
-  }
-}
-
-function handleCopyEvent(event: ClipboardEvent) {
-  if (!terminal?.hasSelection()) return;
-  const selectedText = terminal.getSelection();
-  if (!selectedText || !event.clipboardData) return;
-  event.preventDefault();
-  event.clipboardData.setData("text/plain", selectedText);
-}
-
-function keepDisplayOnlyFocus() {
-  terminal?.blur();
-}
-
-function cssVar(name: string, fallback: string): string {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value || fallback;
-}
-
-function getConsoleFontFamily(fontFamily: string): string {
-  return fontFamily && fontFamily.trim().length > 0
-    ? fontFamily
-    : cssVar("--sl-font-mono", "monospace");
-}
-
-function getLevelColor(level: string): string {
+function levelToType(level: string): ConsoleLineObj["type"] {
   switch (level) {
     case "ERROR":
     case "FATAL":
-      return "31";
+      return "error";
     case "WARN":
-      return "33";
+      return "warning";
     case "DEBUG":
-      return "36";
+      return "info";
     case "INFO":
     default:
-      return "32";
+      return "info";
   }
 }
 
-/** 选区背景色：根据当前主题背景自动调整 +/-25 亮度 */
-function getSelectionBgColor(): string {
-  const hex = cssVar("--sl-bg", "#0f1117");
-  const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-  if (!m) return "rgba(128,128,128,0.3)";
-  let r = parseInt(m[1], 16),
-    g = parseInt(m[2], 16),
-    b = parseInt(m[3], 16);
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  const shift = luminance > 128 ? -25 : 25;
-  r = Math.max(0, Math.min(255, r + shift));
-  g = Math.max(0, Math.min(255, g + shift));
-  b = Math.max(0, Math.min(255, b + shift));
-  return `rgb(${r},${g},${b})`;
-}
-
-function formatLine(line: string): string {
+function parseLine(line: string): ConsoleLineObj {
   const parsed = line.match(LOG_REGEX);
   if (parsed) {
-    const [, time, source, level, message] = parsed;
-    const levelColor = getLevelColor(level);
-    return `\x1b[90m[${time}]\x1b[0m \x1b[${levelColor}m[${source}/${level}]\x1b[0m ${message}`;
+    const [, time, , level] = parsed;
+    return { text: line, type: levelToType(level), timestamp: time };
   }
-
-  if (line.startsWith(">")) {
-    return `\x1b[36;1m${line}\x1b[0m`;
-  }
-  if (line.startsWith("[Sea Lantern]")) {
-    return `\x1b[32;3m${line}\x1b[0m`;
-  }
-  if (line.includes("[ERROR]") || line.includes("ERROR") || line.includes("[STDERR]")) {
-    return `\x1b[31m${line}\x1b[0m`;
-  }
-  if (line.includes("[WARN]") || line.includes("WARNING")) {
-    return `\x1b[33m${line}\x1b[0m`;
-  }
-  return line;
+  if (line.startsWith(">")) return { text: line, type: "input" };
+  if (line.startsWith("[Sea Lantern]")) return { text: line, type: "system" };
+  if (line.includes("[ERROR]") || line.includes("ERROR") || line.includes("[STDERR]"))
+    return { text: line, type: "error" };
+  if (line.includes("[WARN]") || line.includes("WARNING")) return { text: line, type: "warning" };
+  return { text: line, type: "output" };
 }
 
-function fitTerminal() {
-  fitAddon?.fit();
-}
-
-function renderEmptyState(renderId = emptyStateRenderId) {
-  if (!terminal) return;
-  terminal.write("", () => {
-    if (!terminal || hasAnyLine || renderId !== emptyStateRenderId) return;
-    terminal.write(`\x1b[2m${i18n.t("console.waiting_for_output")}\x1b[0m`);
-  });
-}
-
-function appendLines(lines: string[]) {
-  if (!terminal) return;
-  if (lines.length === 0) return;
-  emptyStateRenderId += 1;
-
-  let isFirstLineInBuffer = !hasAnyLine;
-  if (!hasAnyLine) {
-    terminal.clear();
-    terminal.reset();
-    hasAnyLine = true;
-  }
-
-  for (const line of lines) {
-    const formattedLine = formatLine(line);
-    if (isFirstLineInBuffer) {
-      terminal.write(formattedLine);
-      isFirstLineInBuffer = false;
-    } else {
-      terminal.write(`\r\n${formattedLine}`);
-    }
-  }
-
-  if (!props.userScrolledUp) {
-    doScroll();
+function appendLines(rawLines: string[]): void {
+  if (rawLines.length === 0) return;
+  const newLines = rawLines.map(parseLine);
+  lines.value.push(...newLines);
+  if (lines.value.length > props.maxLogLines) {
+    lines.value.splice(0, lines.value.length - props.maxLogLines);
   }
 }
 
-function clear() {
-  if (!terminal) return;
-  emptyStateRenderId += 1;
-  const renderId = emptyStateRenderId;
-  terminal.clear();
-  terminal.reset();
-  hasAnyLine = false;
-  renderEmptyState(renderId);
-  emit("scroll", false);
+function clear(): void {
+  lines.value = [];
 }
 
 function getAllPlainText(): string {
-  if (!serializeAddon || !hasAnyLine) return "";
-  const serialized = serializeAddon.serialize({
-    excludeAltBuffer: true,
-    excludeModes: true,
-  });
-  return stripAnsi(serialized).replace(/\r/g, "");
+  return lines.value.map((l) => l.text).join("\n");
 }
 
-function stripAnsi(text: string): string {
-  let result = "";
-  let i = 0;
-  while (i < text.length) {
-    if (text.charCodeAt(i) === 27 && text.charCodeAt(i + 1) === 91) {
-      i += 2;
-      while (i < text.length) {
-        const code = text.charCodeAt(i);
-        if (code >= 64 && code <= 126) {
-          i += 1;
-          break;
-        }
-        i += 1;
-      }
-      continue;
-    }
-    result += text[i];
-    i += 1;
-  }
-  return result;
-}
+function doScroll(): void {}
 
-function setupScrollTracking() {
-  if (!terminal) return;
-  scrollDisposable = terminal.onScroll(() => {
-    const buffer = terminal?.buffer.active;
-    if (!buffer) return;
-    emit("scroll", buffer.baseY - buffer.viewportY > 0);
-  });
-}
-
-function doScroll() {
-  nextTick(() => {
-    terminal?.scrollToBottom();
-    emit("scroll", false);
-  });
-}
-
-onMounted(() => {
-  if (!terminalHost.value || terminal) return;
-
-  terminal = new Terminal({
-    convertEol: true,
-    allowTransparency: true,
-    disableStdin: true,
-    cursorBlink: false,
-    cursorInactiveStyle: "none",
-    fontFamily: getConsoleFontFamily(props.consoleFontFamily),
-    fontSize: props.consoleFontSize,
-    letterSpacing: props.consoleLetterSpacing,
-    lineHeight: 1,
-    scrollback: Math.max(100, props.maxLogLines),
-    overviewRuler: {
-      width: 4,
-    },
-    theme: {
-      background: "rgba(0, 0, 0, 0)",
-      foreground: cssVar("--sl-text-primary", "#e5e7eb"),
-      cursor: "transparent",
-      cursorAccent: "transparent",
-      selectionBackground: getSelectionBgColor(),
-      scrollbarSliderBackground: "rgba(94, 122, 145, 0.18)",
-      scrollbarSliderHoverBackground: "rgba(94, 122, 145, 0.34)",
-      scrollbarSliderActiveBackground: "rgba(94, 122, 145, 0.48)",
-      overviewRulerBorder: "rgba(0, 0, 0, 0)",
-    },
-  });
-
-  fitAddon = new FitAddon();
-  clipboardAddon = new ClipboardAddon();
-  serializeAddon = new SerializeAddon();
-  terminal.loadAddon(fitAddon);
-  terminal.loadAddon(clipboardAddon);
-  terminal.loadAddon(serializeAddon);
-  terminal.open(terminalHost.value);
-  terminalTextarea = terminal.textarea ?? null;
-  if (terminalTextarea) {
-    terminalTextarea.tabIndex = -1;
-    terminalTextarea.readOnly = true;
-    terminalTextarea.addEventListener("focus", keepDisplayOnlyFocus);
-  }
-  terminalHost.value.addEventListener("mousedown", keepDisplayOnlyFocus);
-  terminalHost.value.addEventListener("wheel", handleWheelScroll, { passive: false });
-  fitTerminal();
-  setupScrollTracking();
-  clear();
-
-  resizeObserver = new ResizeObserver(() => {
-    fitTerminal();
-  });
-  resizeObserver.observe(terminalHost.value);
-
-  window.addEventListener("resize", fitTerminal);
-  window.addEventListener("keydown", handleCopyShortcut);
-  document.addEventListener("copy", handleCopyEvent, true);
-  keepDisplayOnlyFocus();
-
-  // 监听 data-theme 属性变化，实时更新选区颜色
-  themeObserver = new MutationObserver(() => {
-    updateSelectionTheme();
-  });
-  themeObserver.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme"],
-  });
-});
-
-onUnmounted(() => {
-  window.removeEventListener("resize", fitTerminal);
-  window.removeEventListener("keydown", handleCopyShortcut);
-  document.removeEventListener("copy", handleCopyEvent, true);
-  terminalHost.value?.removeEventListener("mousedown", keepDisplayOnlyFocus);
-  terminalHost.value?.removeEventListener("wheel", handleWheelScroll);
-  terminalTextarea?.removeEventListener("focus", keepDisplayOnlyFocus);
-  terminalTextarea = null;
-  resizeObserver?.disconnect();
-  resizeObserver = null;
-  themeObserver?.disconnect();
-  themeObserver = null;
-  scrollDisposable?.dispose();
-  scrollDisposable = null;
-  fitAddon = null;
-  clipboardAddon = null;
-  serializeAddon = null;
-  terminal?.dispose();
-  terminal = null;
-  hasAnyLine = false;
-});
-
-watch(
-  () => props.consoleFontSize,
-  (size) => {
-    if (!terminal) return;
-    terminal.options.fontSize = size;
-    fitTerminal();
-  },
-);
-
-watch(
-  () => props.consoleFontFamily,
-  (family) => {
-    if (!terminal) return;
-    terminal.options.fontFamily = getConsoleFontFamily(family);
-    terminal.clearTextureAtlas();
-    terminal.refresh(0, terminal.rows - 1);
-    fitTerminal();
-  },
-);
-
-watch(
-  () => props.consoleLetterSpacing,
-  (value) => {
-    if (!terminal) return;
-    terminal.options.letterSpacing = value;
-    terminal.clearTextureAtlas();
-    terminal.refresh(0, terminal.rows - 1);
-    fitTerminal();
-  },
-);
-
-watch(
-  () => props.maxLogLines,
-  (value) => {
-    if (!terminal) return;
-    terminal.options.scrollback = Math.max(100, value || 5000);
-  },
-);
-
-// 主题切换时更新选区高亮色
-let themeObserver: MutationObserver | null = null;
-function updateSelectionTheme() {
-  if (!terminal) return;
-  terminal.options.theme = {
-    ...terminal.options.theme,
-    selectionBackground: getSelectionBgColor(),
-  };
-}
-
-watch(
-  () => props.userScrolledUp,
-  (value) => {
-    if (!value) doScroll();
-  },
-);
+const consoleStyle = computed(() => ({
+  "--cmz-font-mono": props.consoleFontFamily || "var(--sl-font-mono)",
+  "--cmz-font-size-base": `${props.consoleFontSize}px`,
+  letterSpacing: `${props.consoleLetterSpacing ?? 0}px`,
+}));
 
 defineExpose({ doScroll, appendLines, clear, getAllPlainText });
 </script>
 
 <template>
-  <div class="console-output">
-    <div ref="terminalHost" class="terminal-host"></div>
-  </div>
+  <cmz-console
+    :style="consoleStyle"
+    :lines="lines"
+    :show-timestamps="true"
+    :auto-scroll="true"
+    :max-lines="maxLogLines"
+    :readonly="readonly"
+    :placeholder="i18n.t('console.waiting_for_output')"
+    :history="history"
+    :completion-md="completionMd"
+    height="100%"
+    @command="(text: string) => emit('command', text)"
+  />
 </template>
-
-<style scoped>
-.terminal-host {
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  width: 100%;
-}
-
-.terminal-host :deep(.xterm) {
-  height: 100%;
-  color: var(--sl-text-primary);
-  font-family: var(--sl-font-mono);
-}
-
-.terminal-host :deep(.xterm-viewport) {
-  background: transparent !important;
-}
-</style>

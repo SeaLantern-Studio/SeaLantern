@@ -1,7 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { Pencil, FolderOpen, Check, X } from "lucide-vue-next";
-import SLCard from "@components/common/SLCard.vue";
-import SLButton from "@components/common/SLButton.vue";
 import type { ServerInstance } from "@type/server";
 import { i18n } from "@language";
 import { systemApi } from "@api/system";
@@ -31,6 +30,12 @@ const props = defineProps<{
 const store = useServerStore();
 const router = useRouter();
 
+// 把 store.statuses[server.id]?.status 集中到一个 computed
+// 避免模板中 6+ 次响应式读取
+const status = computed<string | undefined>(() => store.statuses[props.server.id]?.status);
+const actionLoadingForServer = computed(() => actionLoading.value[props.server.id] === true);
+const isEditing = computed(() => editingServerId.value === props.server.id);
+
 async function handlePathClick(path: string) {
   try {
     await systemApi.openFolder(path);
@@ -54,29 +59,29 @@ function handleStartupConfig() {
   router.push({ path: "/config/" + props.server.id, query: { tab: "startup" } });
 }
 
-function getStatusClass(status: string | undefined): string {
-  return status === "Running"
+function getStatusClass(s: string | undefined): string {
+  return s === "Running"
     ? "running"
-    : status === "Starting"
+    : s === "Starting"
       ? "starting"
-      : status === "Stopping"
+      : s === "Stopping"
         ? "stopping"
         : "stopped";
 }
 </script>
 
 <template>
-  <SLCard variant="glass" hoverable class="server-card">
+  <cmz-card variant="glass" hoverable class="server-card" :data-server-id="server.id">
     <div class="status-badge-container">
-      <div class="status-indicator" :class="getStatusClass(store.statuses[server.id]?.status)">
+      <div class="status-indicator" :class="getStatusClass(status)">
         <span class="status-dot"></span>
-        <span class="status-label">{{ getStatusText(store.statuses[server.id]?.status) }}</span>
+        <span class="status-label">{{ getStatusText(status) }}</span>
       </div>
     </div>
 
     <div class="server-card-header">
       <div class="server-name-container">
-        <template v-if="editingServerId === server.id">
+        <template v-if="isEditing">
           <div class="inline-edit">
             <input
               type="text"
@@ -134,45 +139,41 @@ function getStatusClass(status: string | undefined): string {
 
     <div class="server-card-actions">
       <div class="action-group primary-actions">
-        <SLButton
-          v-if="
-            store.statuses[server.id]?.status === 'Stopped' ||
-            store.statuses[server.id]?.status === 'Error' ||
-            !store.statuses[server.id]?.status
-          "
-          variant="primary"
+        <cmz-button
+          v-if="status === 'Stopped' || status === 'Error' || !status"
           size="sm"
-          :loading="actionLoading[server.id]"
-          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
+          :loading="actionLoadingForServer"
+          :disabled="actionLoadingForServer || status === 'Stopping'"
           @click="handleStart(server.id)"
-          >{{ i18n.t("home.start") }}</SLButton
+          >{{ i18n.t("home.start") }}</cmz-button
         >
-        <SLButton
+        <cmz-button
           v-else
-          variant="danger"
+          variant="solid"
+          color="#ef4444"
           size="sm"
-          :loading="actionLoading[server.id]"
-          :disabled="actionLoading[server.id] || store.statuses[server.id]?.status === 'Stopping'"
+          :loading="actionLoadingForServer"
+          :disabled="actionLoadingForServer || status === 'Stopping'"
           @click="handleStop(server.id)"
-          >{{ i18n.t("home.stop") }}</SLButton
+          >{{ i18n.t("home.stop") }}</cmz-button
         >
       </div>
       <div class="action-group secondary-actions">
-        <SLButton variant="ghost" size="sm" @click="handleConsole">
+        <cmz-button variant="ghost" size="sm" @click="handleConsole">
           {{ i18n.t("common.console") }}
-        </SLButton>
-        <SLButton variant="ghost" size="sm" @click="handleConfig">
+        </cmz-button>
+        <cmz-button variant="ghost" size="sm" @click="handleConfig">
           {{ i18n.t("common.config_edit") }}
-        </SLButton>
-        <SLButton variant="ghost" size="sm" @click="showChangePathModal(server)">
+        </cmz-button>
+        <cmz-button variant="ghost" size="sm" @click="showChangePathModal(server)">
           {{ i18n.t("home.change_path") }}
-        </SLButton>
-        <SLButton variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
+        </cmz-button>
+        <cmz-button variant="ghost" size="sm" @click="showDeleteConfirmInput(server)">
           {{ i18n.t("home.delete") }}
-        </SLButton>
+        </cmz-button>
       </div>
     </div>
-  </SLCard>
+  </cmz-card>
 </template>
 
 <style scoped>
@@ -235,6 +236,8 @@ function getStatusClass(status: string | undefined): string {
 .status-indicator.stopping .status-dot {
   background: var(--sl-warning);
   animation: pulse 2s infinite;
+  /* 频繁动画元素提升到独立图层,减少重绘开销 */
+  will-change: transform, opacity;
 }
 
 @keyframes pulse {
@@ -488,18 +491,18 @@ function getStatusClass(status: string | undefined): string {
   align-items: center;
 }
 
-.primary-actions :deep(.sl-button) {
+.primary-actions :deep(.cmz-button) {
   min-width: 72px;
   border-radius: var(--sl-radius-md);
   transition: all 0.2s ease;
 }
 
-.secondary-actions :deep(.sl-button) {
+.secondary-actions :deep(.cmz-button) {
   border-radius: var(--sl-radius-md);
   transition: all 0.2s ease;
 }
 
-.server-card-actions :deep(.sl-button:hover) {
+.server-card-actions :deep(.cmz-button:hover) {
   transform: translateY(-1px);
 }
 
@@ -532,7 +535,7 @@ function getStatusClass(status: string | undefined): string {
     justify-content: center;
   }
 
-  .action-group :deep(.sl-button) {
+  .action-group :deep(.cmz-button) {
     flex: 1;
   }
 }

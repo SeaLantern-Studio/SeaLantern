@@ -39,7 +39,7 @@ const handleItemClick = (item: MenuItem) => {
     </div>
     <div class="sl-menu-base-content">
       <template v-for="item in items" :key="item.id">
-        <div v-if="item.divider" class="sl-menu-base-divider" role="separator" />
+        <cmz-divider v-if="item.divider" orientation="horizontal" thickness="thin" />
         <div
           v-else
           class="sl-menu-base-item"
@@ -87,17 +87,19 @@ const handleItemClick = (item: MenuItem) => {
   --sl-glass-border: rgba(255, 255, 255, 0.08);
 }
 
-[data-acrylic="true"] .sl-menu-base {
+[data-acrylic="on"] .sl-menu-base,
+[data-acrylic]:not([data-acrylic="off"]) .sl-menu-base {
   --sl-glass-bg: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
 }
 
-[data-theme="dark"][data-acrylic="true"] .sl-menu-base {
+[data-theme="dark"][data-acrylic="on"] .sl-menu-base,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .sl-menu-base {
   --sl-glass-bg: rgba(15, 17, 23, 0.65);
 }
 
-[data-acrylic="false"] .sl-menu-base {
+[data-acrylic="off"] .sl-menu-base {
   background: var(--sl-surface, #ffffff);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -242,16 +244,6 @@ const handleItemClick = (item: MenuItem) => {
 
 .sl-menu-base-item.danger .sl-menu-base-label {
   color: var(--sl-error, #ef4444);
-}
-
-.sl-menu-base-divider {
-  height: 1px;
-  background: var(--sl-border, rgba(255, 255, 255, 0.08));
-  margin: var(--sl-space-xs, 4px) 0;
-}
-
-[data-theme="light"] .sl-menu-base-divider {
-  background: var(--sl-border, rgba(0, 0, 0, 0.08));
 }
 
 .sl-menu-base-empty {

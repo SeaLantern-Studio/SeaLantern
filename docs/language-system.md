@@ -95,7 +95,7 @@ Follows ISO 639-1 standard, format is `language-region`:
 | ko-KR       | 韩语 / Korean                  |
 | de-DE       | 德语 / German                  |
 | es-ES       | 西班牙语 / Spanish             |
-| fr-FA       | 法语 / French                |
+| fr-FA       | 法语 / French                  |
 | ru-RU       | 俄语 / Russian                 |
 | vi-VN       | 越南语 / Vietnamese            |
 

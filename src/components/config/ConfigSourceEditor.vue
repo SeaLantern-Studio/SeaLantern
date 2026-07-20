@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { i18n } from "@language";
-import SLButton from "@components/common/SLButton.vue";
 import { ChevronDown, ChevronUp } from "lucide-vue-next";
 import { SearchQuery, findNext, findPrevious, search, setSearchQuery } from "@codemirror/search";
 import { EditorState } from "@codemirror/state";
@@ -251,8 +250,8 @@ onBeforeUnmount(() => {
       </div>
       <div class="toolbar-right">
         <template v-if="props.iconNavOnly">
-          <SLButton
-            variant="secondary"
+          <cmz-button
+            variant="outline"
             size="sm"
             iconOnly
             :disabled="!canNavigate"
@@ -260,9 +259,9 @@ onBeforeUnmount(() => {
             @click="navigateToPrevious"
           >
             <ChevronUp :size="14" />
-          </SLButton>
-          <SLButton
-            variant="secondary"
+          </cmz-button>
+          <cmz-button
+            variant="outline"
             size="sm"
             iconOnly
             :disabled="!canNavigate"
@@ -270,20 +269,20 @@ onBeforeUnmount(() => {
             @click="navigateToNext"
           >
             <ChevronDown :size="14" />
-          </SLButton>
+          </cmz-button>
         </template>
         <template v-else>
-          <SLButton
-            variant="secondary"
+          <cmz-button
+            variant="outline"
             size="sm"
             :disabled="!canNavigate"
             @click="navigateToPrevious"
           >
             {{ i18n.t("config.source_search_prev") }}
-          </SLButton>
-          <SLButton variant="secondary" size="sm" :disabled="!canNavigate" @click="navigateToNext">
+          </cmz-button>
+          <cmz-button variant="outline" size="sm" :disabled="!canNavigate" @click="navigateToNext">
             {{ i18n.t("config.source_search_next") }}
-          </SLButton>
+          </cmz-button>
         </template>
       </div>
     </div>

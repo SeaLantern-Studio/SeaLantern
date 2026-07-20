@@ -121,8 +121,7 @@
       "main": "メイン",
       "server": "サーバー",
       "system": "システム"
-    },
-    "collapse_btn": "サイドバーを閉じる"
+    }
   },
 
   "home": {
@@ -547,7 +546,7 @@
     "import": "インポート",
     "java_download": "Java をダウンロード",
     "java_download_desc": "システムに Java がインストールされていない場合、または最新バージョンが必要な場合は、ここからダウンロードできます",
-    "java_download_btn": "Java {{version}} (LTS) をダウンロード",
+    "java_download_btn": "ダウンロード",
     "reset": "デフォルトに戻す",
     "import_settings": "設定をインポート",
     "import_desc": "以前エクスポートしたJSONデータを貼り付け",
