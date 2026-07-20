@@ -5,6 +5,38 @@
 
 use std::fmt::Display;
 
+// -- File system layer --
+
+/// Tracing target for the file system infrastructure module.
+pub const FS_TARGET: &str = "sealantern.infra.fs";
+
+/// Event: an atomic file replacement failed.
+pub const EVENT_ATOMIC_WRITE_FAILED: &str = "atomic_write_failed";
+/// Event: a file lock could not be released.
+pub const EVENT_LOCK_RELEASE_FAILED: &str = "lock_release_failed";
+
+/// Records an atomic write failure with its destination path.
+pub fn atomic_write_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::error!(
+        target: FS_TARGET,
+        event_name = EVENT_ATOMIC_WRITE_FAILED,
+        path = %path.display(),
+        error = %error,
+        "atomic file write failed"
+    );
+}
+
+/// Records a best-effort lock cleanup failure.
+pub fn lock_release_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::warn!(
+        target: FS_TARGET,
+        event_name = EVENT_LOCK_RELEASE_FAILED,
+        path = %path.display(),
+        error = %error,
+        "file lock release failed"
+    );
+}
+
 // ── 网络层 ──
 
 /// 网络模块的 tracing 目标。
