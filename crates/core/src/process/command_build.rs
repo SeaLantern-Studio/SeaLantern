@@ -83,6 +83,10 @@ impl JavaEnvironment {
 }
 
 /// Input used to construct a process command without host-specific state.
+///
+/// `Custom` mode accepts either legacy shell-backed `custom_command` text or a direct
+/// `custom_executable` with `custom_arguments`. The forms are mutually exclusive, and arguments
+/// are valid only for a direct executable.
 #[derive(Debug)]
 pub struct CommandBuildRequest<'a> {
     pub mode: CommandBuildMode,
@@ -117,17 +121,8 @@ impl<'a> CommandBuildRequest<'a> {
 
     /// Returns the input policy implied by the exact process construction request.
     pub(crate) fn console_input_policy(&self) -> ConsoleInputPolicy {
-        let direct_custom_executable = self
-            .custom_executable
-            .is_some_and(|path| !path.as_os_str().is_empty());
-        let shell_custom_command = self
-            .custom_command
-            .is_some_and(|command| !command.trim().is_empty());
-
         if matches!(self.mode, CommandBuildMode::DirectJar)
-            || (matches!(self.mode, CommandBuildMode::Custom)
-                && direct_custom_executable
-                && !shell_custom_command)
+            || matches!(custom_launch(self), Ok(CustomLaunch::Executable(_)))
         {
             ConsoleInputPolicy::Enabled
         } else {
@@ -220,6 +215,28 @@ fn build_direct_jar_command(
 }
 
 fn build_custom_command(request: &CommandBuildRequest<'_>) -> Result<Command, CommandBuildError> {
+    let mut command = match custom_launch(request)? {
+        CustomLaunch::Shell(command_text) => shell_command(command_text),
+        CustomLaunch::Executable(executable) => {
+            let mut command = Command::new(executable);
+            command.args(request.custom_arguments);
+            command
+        }
+    };
+
+    apply_optional_java_environment(&mut command, request.java_environment);
+    command.current_dir(request.working_directory);
+    Ok(command)
+}
+
+enum CustomLaunch<'a> {
+    Shell(&'a str),
+    Executable(&'a Path),
+}
+
+fn custom_launch<'a>(
+    request: &'a CommandBuildRequest<'a>,
+) -> Result<CustomLaunch<'a>, CommandBuildError> {
     let custom_command = request
         .custom_command
         .map(str::trim)
@@ -228,23 +245,12 @@ fn build_custom_command(request: &CommandBuildRequest<'_>) -> Result<Command, Co
         .custom_executable
         .filter(|path| !path.as_os_str().is_empty());
 
-    let mut command = match (custom_command, custom_executable) {
-        (Some(_), Some(_)) | (Some(_), None) if !request.custom_arguments.is_empty() => {
-            return Err(CommandBuildError::ConflictingCustomLaunch);
-        }
-        (Some(_), Some(_)) => return Err(CommandBuildError::ConflictingCustomLaunch),
-        (Some(command_text), None) => shell_command(command_text),
-        (None, Some(executable)) => {
-            let mut command = Command::new(executable);
-            command.args(request.custom_arguments);
-            command
-        }
-        (None, None) => return Err(CommandBuildError::MissingCustomLaunch),
-    };
-
-    apply_optional_java_environment(&mut command, request.java_environment);
-    command.current_dir(request.working_directory);
-    Ok(command)
+    match (custom_command, custom_executable, request.custom_arguments.is_empty()) {
+        (Some(command), None, true) => Ok(CustomLaunch::Shell(command)),
+        (None, Some(executable), _) => Ok(CustomLaunch::Executable(executable)),
+        (None, None, _) => Err(CommandBuildError::MissingCustomLaunch),
+        _ => Err(CommandBuildError::ConflictingCustomLaunch),
+    }
 }
 
 #[cfg(target_os = "windows")]

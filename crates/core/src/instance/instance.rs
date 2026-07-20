@@ -57,6 +57,10 @@ impl StartupMode {
 }
 
 /// Local runtime data owned by an instance, independent of process construction.
+///
+/// `Custom` mode accepts either legacy shell-backed `custom_command` text or a direct
+/// `custom_executable` with `custom_arguments`. The two forms are mutually exclusive, and
+/// arguments are valid only for a direct executable. Empty executable paths normalize to `None`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalLaunch {
     pub startup_mode: StartupMode,
@@ -76,14 +80,15 @@ impl LocalLaunch {
             .map(str::trim)
             .filter(|command| !command.is_empty())
             .map(str::to_string);
+        self.custom_executable = self
+            .custom_executable
+            .take()
+            .filter(|path| !path.as_os_str().is_empty());
 
         match self.startup_mode {
             StartupMode::Custom => {
                 let has_command = self.custom_command.is_some();
-                let has_executable = self
-                    .custom_executable
-                    .as_ref()
-                    .is_some_and(|path| !path.as_os_str().is_empty());
+                let has_executable = self.custom_executable.is_some();
 
                 if !has_command && !has_executable {
                     return Err(InstanceError::MissingCustomLaunch);
@@ -378,6 +383,24 @@ mod tests {
         let instance = Instance::new(spec).expect("legacy custom command should be valid");
 
         assert_eq!(instance.launch.custom_command.as_deref(), Some("java -jar server.jar"));
+    }
+
+    #[test]
+    fn empty_custom_executable_is_normalized_before_mode_validation() {
+        let mut direct_jar = base_spec();
+        direct_jar.launch.custom_executable = Some(PathBuf::new());
+
+        let instance =
+            Instance::new(direct_jar).expect("empty custom executable should be ignored");
+        assert!(instance.launch.custom_executable.is_none());
+
+        let mut custom = base_spec();
+        custom.launch.startup_mode = StartupMode::Custom;
+        custom.launch.startup_target = None;
+        custom.launch.custom_executable = Some(PathBuf::new());
+
+        let error = Instance::new(custom).expect_err("custom mode still needs a launch target");
+        assert_eq!(error, InstanceError::MissingCustomLaunch);
     }
 
     #[test]
