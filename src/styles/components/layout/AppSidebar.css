@@ -10,14 +10,6 @@
   z-index: 100;
   background: transparent;
   border-right: none;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: width;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-.sidebar.collapsed {
-  width: var(--sl-sidebar-collapsed-width);
 }
 
 .sidebar-logo {
@@ -56,7 +48,6 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  /* 拖动/弹飞时保留原位置的占位尺寸 */
   width: 28px;
   height: 28px;
 }
@@ -67,8 +58,6 @@
   width: 28px;
   height: 28px;
 }
-
-/* 长按进度环（已改为静默激活，保留样式以防需要） */
 
 /* 激活状态：图标光晕 + 轻微抖动提示可拖动 */
 .logo-armed .logo-icon {
@@ -189,16 +178,6 @@
   margin-bottom: var(--sl-space-sm);
 }
 
-.sidebar.collapsed .server-selector {
-  padding: var(--sl-space-sm);
-  display: flex;
-  justify-content: center;
-}
-
-.sidebar.macos-overlay.collapsed .server-selector {
-  padding-top: 0;
-}
-
 .nav-item {
   display: flex;
   align-items: center;
@@ -210,8 +189,7 @@
   color: var(--sl-text-secondary);
   transition:
     background-color var(--sl-transition-fast),
-    color var(--sl-transition-fast),
-    padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color var(--sl-transition-fast);
   position: relative;
   white-space: nowrap;
   margin-top: 4px;
@@ -287,56 +265,4 @@
 
 .lower-side {
   margin-top: auto;
-}
-
-.sidebar-footer {
-  flex-shrink: 0;
-  padding: var(--sl-space-sm);
-  border-top: none;
-}
-
-.sidebar.collapsed .nav-item {
-  padding: 8px;
-  padding-left: 10px;
-}
-
-.sidebar.collapsed .nav-label {
-  visibility: hidden;
-  opacity: 0;
-  width: 0;
-  overflow: hidden;
-}
-
-.sidebar.collapsed .nav-group-label {
-  visibility: visible;
-  opacity: 1;
-  padding: var(--sl-space-xs) var(--sl-space-sm);
-  margin-bottom: var(--sl-space-xs);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
-}
-
-.sidebar.collapsed .nav-separator {
-  margin: var(--sl-space-xs) 20%;
-  opacity: 0.3;
-}
-
-.sidebar.sidebar-transitioning .nav-active-indicator {
-  transition: none;
-}
-
-.sidebar.collapsed .nav-children {
-  display: none;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }

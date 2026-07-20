@@ -16,7 +16,6 @@ import {
   PaintRoller,
   Info,
   Server,
-  ChevronLeft,
   Blocks,
   Store,
   LayoutDashboard,
@@ -62,10 +61,7 @@ const ui = useUiStore();
 const serverStore = useServerStore();
 const pluginStore = usePluginStore();
 const navIndicator = ref<HTMLElement | null>(null);
-const sidebarTransitioning = ref(false);
 const isMacOS = isMacOSPlatform();
-let indicatorSyncInterval: ReturnType<typeof setInterval> | null = null;
-let indicatorSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 interface NavItem {
   name: string;
@@ -302,40 +298,6 @@ function updateNavIndicator() {
   });
 }
 
-function startIndicatorSyncDuringSidebarTransition() {
-  if (indicatorSyncInterval) {
-    clearInterval(indicatorSyncInterval);
-    indicatorSyncInterval = null;
-  }
-  if (indicatorSyncTimeout) {
-    clearTimeout(indicatorSyncTimeout);
-    indicatorSyncTimeout = null;
-  }
-
-  sidebarTransitioning.value = true;
-  indicatorSyncInterval = setInterval(() => {
-    updateNavIndicator();
-  }, 16);
-
-  indicatorSyncTimeout = setTimeout(() => {
-    if (indicatorSyncInterval) {
-      clearInterval(indicatorSyncInterval);
-      indicatorSyncInterval = null;
-    }
-    sidebarTransitioning.value = false;
-    updateNavIndicator();
-  }, 360);
-}
-
-// 监听侧边栏折叠状态变化，更新指示器位置
-watch(
-  () => ui.sidebarCollapsed,
-  () => {
-    updateNavIndicator();
-    startIndicatorSyncDuringSidebarTransition();
-  },
-);
-
 // 监听路由变化，更新指示器位置
 watch(
   () => route.path,
@@ -398,15 +360,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (indicatorSyncInterval) {
-    clearInterval(indicatorSyncInterval);
-    indicatorSyncInterval = null;
-  }
-  if (indicatorSyncTimeout) {
-    clearTimeout(indicatorSyncTimeout);
-    indicatorSyncTimeout = null;
-  }
-
   window.removeEventListener("resize", updateNavIndicator);
 
   // 移除侧边栏滚动监听
@@ -535,14 +488,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <aside
-    class="sidebar"
-    :class="{
-      collapsed: ui.sidebarCollapsed,
-      'macos-overlay': isMacOS,
-      'sidebar-transitioning': sidebarTransitioning,
-    }"
-  >
+  <aside class="sidebar" :class="{ 'macos-overlay': isMacOS }">
     <div
       class="sidebar-logo"
       :class="{ 'logo-armed': elastic.isArmed.value, 'logo-dragging': elastic.isDragging.value }"
@@ -582,9 +528,7 @@ onUnmounted(() => {
         class="logo-placeholder"
         aria-hidden="true"
       ></div>
-      <transition name="fade">
-        <span v-if="!ui.sidebarCollapsed" class="logo-text">{{ getAppName() }}</span>
-      </transition>
+      <span class="logo-text">{{ getAppName() }}</span>
     </div>
 
     <!-- 弹力绳 SVG 覆盖层 -->
@@ -611,7 +555,6 @@ onUnmounted(() => {
         v-if="serverOptions.length > 0"
         v-model="currentServerRef"
         :options="serverOptions"
-        :collapsed="ui.sidebarCollapsed"
         :icon="Server"
         :placeholder="i18n.t('common.select_server')"
         variant="server"
@@ -623,16 +566,10 @@ onUnmounted(() => {
       <template v-for="(group, gi) in orderedNavGroups" :key="gi">
         <div v-if="group.group !== 'server' || serverOptions.length > 0" class="nav-group">
           <div v-if="group.group === 'plugins-custom'" class="nav-group-label">
-            <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed">{{
-                group.items[0]?.pluginName || group.items[0]?.label
-              }}</span>
-            </transition>
+            <span>{{ group.items[0]?.pluginName || group.items[0]?.label }}</span>
           </div>
           <div v-else-if="group.group === 'plugins-default'" class="nav-group-label">
-            <transition name="fade">
-              <span v-if="!ui.sidebarCollapsed">{{ i18n.t("common.plugins") }}</span>
-            </transition>
+            <span>{{ i18n.t("common.plugins") }}</span>
           </div>
           <div v-else-if="group.group !== 'main'" class="nav-separator"></div>
 
@@ -642,7 +579,6 @@ onUnmounted(() => {
                 class="nav-item"
                 :class="{ active: isActive(item.path) }"
                 @click="navigateTo(item.path)"
-                :title="ui.sidebarCollapsed ? item.label : ''"
               >
                 <img
                   v-if="item.pluginIcon"
@@ -659,11 +595,9 @@ onUnmounted(() => {
                   :size="20"
                   :stroke-width="1.8"
                 />
-                <transition name="fade">
-                  <span v-if="!ui.sidebarCollapsed" class="nav-label">
-                    {{ item.labelKey ? i18n.t(item.labelKey) : item.label }}
-                  </span>
-                </transition>
+                <span class="nav-label">
+                  {{ item.labelKey ? i18n.t(item.labelKey) : item.label }}
+                </span>
               </div>
               <!-- 子项 -->
               <div v-if="item.children?.length" class="nav-children">
@@ -673,7 +607,6 @@ onUnmounted(() => {
                   class="nav-item nav-child-item"
                   :class="{ active: isActive(child.path) }"
                   @click="navigateTo(child.path)"
-                  :title="ui.sidebarCollapsed ? child.label : ''"
                 >
                   <img
                     v-if="child.pluginIcon"
@@ -690,9 +623,7 @@ onUnmounted(() => {
                     :size="16"
                     :stroke-width="1.8"
                   />
-                  <transition name="fade">
-                    <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ child.label }}</span>
-                  </transition>
+                  <span class="nav-label">{{ child.label }}</span>
                 </div>
               </div>
             </div>
@@ -702,35 +633,12 @@ onUnmounted(() => {
 
       <!-- 关于按钮 -->
       <div class="nav-group lower-side">
-        <div
-          class="nav-item"
-          :class="{ active: isActive('/about') }"
-          @click="navigateTo('/about')"
-          :title="ui.sidebarCollapsed ? i18n.t('common.about') : ''"
-        >
+        <div class="nav-item" :class="{ active: isActive('/about') }" @click="navigateTo('/about')">
           <Info class="nav-icon" :size="20" :stroke-width="1.8" />
-          <transition name="fade">
-            <span v-if="!ui.sidebarCollapsed" class="nav-label">{{ i18n.t("common.about") }}</span>
-          </transition>
+          <span class="nav-label">{{ i18n.t("common.about") }}</span>
         </div>
       </div>
     </nav>
-
-    <div class="sidebar-footer">
-      <div class="nav-item collapse-btn" @click="ui.toggleSidebar()">
-        <ChevronLeft
-          class="nav-icon"
-          :style="{ transform: ui.sidebarCollapsed ? 'rotate(180deg)' : '' }"
-          :size="20"
-          :stroke-width="1.8"
-        />
-        <transition name="fade">
-          <span v-if="!ui.sidebarCollapsed" class="nav-label">{{
-            i18n.t("sidebar.collapse_btn")
-          }}</span>
-        </transition>
-      </div>
-    </div>
   </aside>
 </template>
 

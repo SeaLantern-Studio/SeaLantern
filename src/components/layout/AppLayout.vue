@@ -127,10 +127,7 @@ const backgroundStyle = computed(() => {
   <div class="app-layout" :class="{ 'macos-native-vibrancy': isMacOS }">
     <div class="app-background" :style="backgroundStyle"></div>
     <AppSidebar />
-    <div
-      class="app-main"
-      :class="{ 'sidebar-collapsed': ui.sidebarCollapsed, 'macos-native-vibrancy': isMacOS }"
-    >
+    <div class="app-main" :class="{ 'macos-native-vibrancy': isMacOS }">
       <AppHeader />
       <main class="app-content">
         <router-view v-slot="{ Component }">

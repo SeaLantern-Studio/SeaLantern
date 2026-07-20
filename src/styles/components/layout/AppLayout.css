@@ -33,16 +33,12 @@
   transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 0;
   background: transparent;
-  padding: 0 20px 20px 20px;
-  gap: 12px;
+  padding: 0 12px 12px 12px;
+  gap: 8px;
 }
 
 .app-main.macos-native-vibrancy {
   background: transparent;
-}
-
-.app-main.sidebar-collapsed {
-  margin-left: var(--sl-sidebar-collapsed-width);
 }
 
 .app-content {
