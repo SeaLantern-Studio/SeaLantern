@@ -168,4 +168,12 @@
 .console-terminal-shell .cmz-console {
   flex: 1;
   min-height: 0;
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  overflow: hidden;
+  /* 控制台整体半透明 + 轻量毛玻璃,让输入框的 backdrop-filter 能看到后面的页面内容 */
+  --console-bg: color-mix(in srgb, var(--sl-surface) 85%, transparent);
+  background: color-mix(in srgb, var(--sl-surface) 85%, transparent);
+  backdrop-filter: blur(var(--sl-blur-sm, 8px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-sm, 8px)) saturate(var(--sl-saturate-normal, 180%));
 }
