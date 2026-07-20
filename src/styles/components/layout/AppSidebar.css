@@ -178,6 +178,36 @@
   margin-bottom: var(--sl-space-sm);
 }
 
+/* 服务器选择器文字居中 */
+.server-selector :deep(.cmz-select-trigger) {
+  position: relative;
+}
+
+.server-selector :deep(.cmz-select-value),
+.server-selector :deep(.cmz-select-placeholder),
+.server-selector :deep(.cmz-select-loading) {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  flex: none;
+  text-align: center;
+  max-width: calc(100% - 60px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-selector :deep(.cmz-select-icon) {
+  position: relative;
+  z-index: 1;
+}
+
+.server-selector :deep(.cmz-select-arrow) {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
