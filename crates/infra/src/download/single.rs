@@ -1,6 +1,6 @@
 //! Single-threaded download and text fetching utilities.
 //!
-//! Provides streaming file download and remote text fetching capabilities, without segments or pre-allocation.
+//! Provides streaming file download and remote text fetching capabilities, without chunking or pre-allocation.
 //! Suitable for small file downloads, API requests, etc.
 
 use std::sync::Arc;
