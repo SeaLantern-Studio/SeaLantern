@@ -375,18 +375,6 @@ onMounted(() => {
   transition: transform 0.3s ease;
 }
 
-.sidebar-header {
-  padding: var(--sl-space-md);
-  border-bottom: 1px solid var(--sl-border);
-  flex-shrink: 0;
-}
-
-.sidebar-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--sl-text);
-}
-
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
