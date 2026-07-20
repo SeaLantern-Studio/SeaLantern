@@ -4,20 +4,23 @@ pub(crate) use crate::models::download::{
 };
 use crate::utils::downloader::SingleThreadDownloader;
 use serde_json::Value;
-use tokio::sync::OnceCell;
+use tokio::sync::{Mutex, OnceCell};
 
 ///此处常量见 utils/constants.rs
 use crate::utils::constants::DOWNLOAD_LINK_LIST_URL;
 
 static DOWNLOAD_LINKS: OnceCell<BaseDownloadLinks> = OnceCell::const_new();
+static INIT_LOCK: Mutex<()> = Mutex::const_new(());
 
 impl LinkManager {
     pub async fn get() -> Result<&'static BaseDownloadLinks, String> {
         if DOWNLOAD_LINKS.get().is_none() {
-            let links = Self::init().await?;
-            DOWNLOAD_LINKS
-                .set(links)
-                .map_err(|_| "download links already initialized".to_string())?;
+            let _guard = INIT_LOCK.lock().await;
+            // 双重检查：在锁内再次确认，防止等待锁期间别人已经初始化了
+            if DOWNLOAD_LINKS.get().is_none() {
+                let links = Self::init().await?;
+                DOWNLOAD_LINKS.set(links).ok();
+            }
         }
 
         DOWNLOAD_LINKS
