@@ -7,21 +7,15 @@ import TermsDialog from "@components/common/TermsDialog.vue";
 import SLContextMenu from "@components/common/SLContextMenu.vue";
 import { PluginComponentRenderer } from "@components/plugin";
 import { useUpdateStore } from "@stores/updateStore";
-import { useSettingsStore } from "@stores/settingsStore";
+import { useSettingsStore, dispatchSettingsUpdate } from "@stores/settingsStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
 import { useToast } from "cmzya-modern-ui";
 import { isBrowserEnv } from "@api/tauri";
-import {
-  applyTheme,
-  applyFontSize,
-  applyFontFamily,
-  applyMinimalMode,
-  applyDeveloperMode,
-} from "@utils/theme";
-import { SETTINGS_UPDATE_EVENT, type SettingsUpdateEvent } from "@stores/settingsStore";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+
+// 主题/字体/开发者模式的应用统一由 AppLayout 负责,App.vue 仅加载设置并派发更新事件
 
 // 播放提示音（使用 Web Audio API 生成）
 function playNotificationSound() {
@@ -148,25 +142,21 @@ onMounted(async () => {
   contextMenuStore.initContextMenuListener();
   document.addEventListener("contextmenu", handleGlobalContextMenu);
 
-  await pluginStore.initUiEventListener();
-  await pluginStore.initSidebarEventListener();
-  await pluginStore.initPermissionLogListener();
-  await pluginStore.initPluginLogListener();
-  await pluginStore.initComponentEventListener();
-  await pluginStore.initI18nEventListener();
-
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
+  // 插件事件监听相互独立,并行初始化以缩短启动时间;任一失败不影响其他
+  await Promise.allSettled([
+    pluginStore.initUiEventListener(),
+    pluginStore.initSidebarEventListener(),
+    pluginStore.initPermissionLogListener(),
+    pluginStore.initPluginLogListener(),
+    pluginStore.initComponentEventListener(),
+    pluginStore.initI18nEventListener(),
+  ]);
 
   try {
     await settingsStore.loadSettings();
-    const settings = settingsStore.settings;
-    applyTheme(settings.theme || "auto");
-    applyFontSize(settings.font_size || 14);
-    applyFontFamily(settings.font_family || "");
-    applyMinimalMode(settings.minimal_mode || false);
-    applyDeveloperMode(settings.developer_mode || false);
+    // 设置加载完成后派发更新事件,由 AppLayout 统一应用主题/字体/开发者模式
+    // (AppLayout 在父组件 onMounted 之前已 mount,可能用了默认 settings,这里通知其重新应用)
+    dispatchSettingsUpdate(["Appearance", "Developer"], settingsStore.settings);
 
     // 托盘图标已在 Rust 后端创建，前端不需要再创建
     // 相关代码在 src-tauri/src/lib.rs 的 .setup() 中
@@ -202,7 +192,6 @@ onUnmounted(() => {
   }
 
   document.removeEventListener("contextmenu", handleGlobalContextMenu);
-  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
   contextMenuStore.cleanupContextMenuListener();
 
   pluginStore.cleanupUiEventListener();
@@ -248,11 +237,6 @@ function handleSplashReady() {
 
 function handleUpdateModalClose() {
   updateStore.hideUpdateModal();
-}
-
-function handleSettingsUpdate(e: CustomEvent<SettingsUpdateEvent>) {
-  const { settings } = e.detail;
-  applyDeveloperMode(settings.developer_mode || false);
 }
 </script>
 

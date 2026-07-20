@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onActivated, nextTick, computed, watch } from "vue";
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  onActivated,
+  onDeactivated,
+  nextTick,
+  computed,
+  watch,
+} from "vue";
 import { Cpu, HardDrive, MemoryStick } from "lucide-vue-next";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import CommandModal from "@components/console/CommandModal.vue";
@@ -829,6 +838,13 @@ onActivated(async () => {
     await syncLogsOnce(sid);
     nextTick(() => doScroll());
   }
+});
+
+// keep-alive 缓存时 onUnmounted 不会触发,需在 onDeactivated 中暂停资源
+// (unlistenLogLine 与 SETTINGS_UPDATE_EVENT 监听保留,切回时仍可用)
+onDeactivated(() => {
+  stopThemeObserver();
+  stopStatsPolling();
 });
 
 watch(

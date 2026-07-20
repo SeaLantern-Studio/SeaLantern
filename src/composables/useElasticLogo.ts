@@ -36,7 +36,7 @@ export function useElasticLogo() {
   const velocity = ref<Velocity>({ vx: 0, vy: 0 });
 
   let holdTimer: ReturnType<typeof setTimeout> | null = null;
-  let progressTimer: ReturnType<typeof setInterval> | null = null;
+  let progressRafId: number | null = null;
   let rafId: number | null = null;
   let lastPointerX = 0;
   let lastPointerY = 0;
@@ -55,17 +55,22 @@ export function useElasticLogo() {
     holdProgress.value = 0;
     const start = performance.now();
 
-    progressTimer = setInterval(() => {
+    // 用 rAF 替代 setInterval(30ms),自然适配刷新率并避免后台标签页持续触发
+    const tickProgress = () => {
       const elapsed = performance.now() - start;
       holdProgress.value = Math.min(1, elapsed / HOLD_THRESHOLD);
-    }, 30);
+      if (elapsed < HOLD_THRESHOLD) {
+        progressRafId = requestAnimationFrame(tickProgress);
+      }
+    };
+    progressRafId = requestAnimationFrame(tickProgress);
 
     holdTimer = setTimeout(() => {
       isArmed.value = true;
       holdProgress.value = 0;
-      if (progressTimer) {
-        clearInterval(progressTimer);
-        progressTimer = null;
+      if (progressRafId !== null) {
+        cancelAnimationFrame(progressRafId);
+        progressRafId = null;
       }
     }, HOLD_THRESHOLD);
   }
@@ -76,9 +81,9 @@ export function useElasticLogo() {
       clearTimeout(holdTimer);
       holdTimer = null;
     }
-    if (progressTimer) {
-      clearInterval(progressTimer);
-      progressTimer = null;
+    if (progressRafId !== null) {
+      cancelAnimationFrame(progressRafId);
+      progressRafId = null;
     }
     holdProgress.value = 0;
   }
