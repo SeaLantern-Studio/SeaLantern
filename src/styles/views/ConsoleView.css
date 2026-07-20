@@ -173,16 +173,13 @@
   overflow: hidden;
 }
 
-/* 输入框毛玻璃效果：强制覆盖，确保 blur 生效 */
+/* 输入框毛玻璃效果：强制覆盖，确保 blur 生效且可见 */
 .console-terminal-shell .cmz-console__input-line {
-  backdrop-filter: blur(12px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-  background: color-mix(in srgb, var(--sl-surface) 70%, transparent) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+  background: color-mix(in srgb, var(--sl-surface) 60%, transparent) !important;
   border-color: var(--sl-border-light) !important;
-}
-
-/* 控制台 body 底部渐变淡出，让输入框的毛玻璃有内容可模糊 */
-.console-terminal-shell .cmz-console__body {
-  -webkit-mask-image: linear-gradient(to bottom, #000 85%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 85%, transparent 100%);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
