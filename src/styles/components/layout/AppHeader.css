@@ -60,7 +60,8 @@
   display: flex;
   align-items: center;
   gap: var(--sl-space-xs);
-  padding: 6px 12px;
+  height: 32px;
+  padding: 0 12px;
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-full);
@@ -114,27 +115,84 @@
 
 .language-selector {
   position: relative;
+  -webkit-app-region: no-drag;
 }
 
 .language-button {
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: var(--sl-radius-md);
-  transition: background-color var(--sl-transition-fast);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--sl-radius-full);
+  transition: all var(--sl-transition-fast);
   display: flex;
   align-items: center;
-  gap: 4px;
-  width: 100%;
+  justify-content: center;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  box-shadow: var(--sl-shadow-sm);
 }
 
 .language-button:hover {
   background: var(--sl-bg-tertiary);
 }
 
-.language-text {
-  font-size: var(--sl-font-size-sm);
+.language-button :deep(svg) {
   color: var(--sl-text-secondary);
-  font-weight: 500;
+}
+
+.theme-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 4px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-full);
+  -webkit-app-region: no-drag;
+  box-shadow: var(--sl-shadow-sm);
+}
+
+.theme-indicator {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  background: var(--sl-primary-bg);
+  border-radius: var(--sl-radius-full);
+  transition: transform var(--sl-transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.theme-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--sl-text-tertiary);
+  border-radius: var(--sl-radius-full);
+  cursor: pointer;
+  transition: color var(--sl-transition-fast);
+  -webkit-app-region: no-drag;
+  z-index: 2;
+}
+
+.theme-btn:hover {
+  color: var(--sl-text-secondary);
+}
+
+.theme-btn.active {
+  color: var(--sl-primary);
+}
+
+.theme-btn.active:hover {
+  color: var(--sl-primary);
 }
 
 .language-menu {

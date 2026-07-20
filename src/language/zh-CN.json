@@ -722,7 +722,7 @@
       "import": "导入",
       "java_download": "下载 Java",
       "java_download_desc": "如果系统中没有 Java 或需要更新版本，可以从这里下载",
-      "java_download_btn": "下载 Java {{version}} (LTS)",
+      "java_download_btn": "下载",
       "java_version_select": "选择版本",
       "java_installing": "下载中...",
       "java_install_success": "安装完成：",

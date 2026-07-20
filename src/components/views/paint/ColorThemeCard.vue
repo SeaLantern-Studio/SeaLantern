@@ -30,7 +30,7 @@ function handleColorChange(value: string) {
           <h3 class="card-title">{{ i18n.t("settings.color_theme") }}</h3>
           <p class="card-subtitle">{{ i18n.t("settings.color_theme_desc") }}</p>
         </div>
-        <div class="sl-input-lg">
+        <div class="sl-input-md">
           <div v-if="isThemeProxied" class="theme-proxied-notice">
             <span class="proxied-text">{{
               i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })

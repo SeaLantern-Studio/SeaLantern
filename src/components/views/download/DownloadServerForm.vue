@@ -49,6 +49,7 @@ function handlePickFolder() {
           :loading="loadingTypes"
           searchable
           maxHeight="240px"
+          dropdownWidth="260px"
           @update:modelValue="emit('update:selectedType', $event)"
         />
       </div>
@@ -65,6 +66,7 @@ function handlePickFolder() {
           :loading="loadingVersions"
           searchable
           maxHeight="240px"
+          dropdownWidth="260px"
           @update:modelValue="emit('update:selectedVersion', $event)"
         />
       </div>

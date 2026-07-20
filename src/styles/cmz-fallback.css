@@ -306,7 +306,7 @@
   position: relative;
 }
 
-.cmz-select__trigger {
+.cmz-select-trigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -323,7 +323,7 @@
   box-sizing: border-box;
 }
 
-.cmz-select__trigger:focus {
+.cmz-select-trigger:focus {
   outline: none;
   border-color: var(--sl-primary);
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
@@ -653,12 +653,13 @@
   margin-top: 2px;
 }
 
-/* 设置页内的 select 限制宽度，防止标题文字被挤压 */
+/* 设置页内的 select 限制宽度，防止标题文字被挤压，右对齐 */
 .settings-entry .cmz-select {
   width: 100%;
   min-width: 140px;
   max-width: 240px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .settings-entry .cmz-switch {
@@ -1278,7 +1279,7 @@
 /* 输入框背景在毛玻璃下保持不透明 */
 [data-acrylic="on"] .cmz-input-container,
 [data-acrylic="on"] .cmz-textarea,
-[data-acrylic="on"] .cmz-select__trigger {
+[data-acrylic="on"] .cmz-select-trigger {
   background: var(--sl-surface);
 }
 

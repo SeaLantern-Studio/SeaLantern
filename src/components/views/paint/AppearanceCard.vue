@@ -82,7 +82,7 @@ function handleMinimalModeChange(value: boolean) {
           <span class="settings-entry-title">{{ i18n.t("settings.theme") }}</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.theme_desc") }}</span>
         </div>
-        <div class="sl-input-lg">
+        <div class="sl-input-md">
           <div v-if="isThemeProxied" class="theme-proxied-notice">
             <span class="proxied-text">{{
               i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })

@@ -178,11 +178,17 @@
   margin-bottom: var(--sl-space-sm);
 }
 
-/* 服务器选择器文字居中 */
+/* 服务器选择器毛玻璃效果 */
 .server-selector :deep(.cmz-select-trigger) {
   position: relative;
+  background: var(--cmz-glass-bg, rgba(255, 255, 255, 0.65));
+  backdrop-filter: blur(var(--cmz-acrylic-blur, var(--cmz-blur-md, 16px)))
+    saturate(var(--cmz-acrylic-saturate, var(--cmz-saturate-normal, 180%)));
+  -webkit-backdrop-filter: blur(var(--cmz-acrylic-blur, var(--cmz-blur-md, 16px)))
+    saturate(var(--cmz-acrylic-saturate, var(--cmz-saturate-normal, 180%)));
 }
 
+/* 服务器选择器文字居中 */
 .server-selector :deep(.cmz-select-value),
 .server-selector :deep(.cmz-select-placeholder),
 .server-selector :deep(.cmz-select-loading) {

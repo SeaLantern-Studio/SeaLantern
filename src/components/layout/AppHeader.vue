@@ -2,7 +2,19 @@
 import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, ChevronDown, ChevronUp, Copy, Check, Globe } from "lucide-vue-next";
+import {
+  Minus,
+  Square,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
+  Sun,
+  Moon,
+  Monitor,
+  Languages,
+} from "lucide-vue-next";
 import { useI18nStore } from "@stores/i18nStore";
 import { i18n } from "@language";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -241,6 +253,46 @@ async function handleLanguageClick(locale: string, close?: () => void) {
 function isActive(code: string) {
   return i18nStore.currentLocale == code;
 }
+
+const currentTheme = computed(() => settings.value?.theme || "auto");
+
+const themeIndicatorOffset = computed(() => {
+  const themeOrder = ["auto", "light", "dark"];
+  const idx = themeOrder.indexOf(currentTheme.value);
+  return idx >= 0 ? idx * 26 : 0;
+});
+
+function getEffectiveTheme(theme: string): "light" | "dark" {
+  if (theme === "auto") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return theme as "light" | "dark";
+}
+
+function applyTheme(theme: string) {
+  const effectiveTheme = getEffectiveTheme(theme);
+  document.documentElement.setAttribute("data-theme", effectiveTheme);
+  return effectiveTheme;
+}
+
+function setTheme(theme: string) {
+  if (!settings.value) return;
+  settings.value.theme = theme;
+  applyTheme(theme);
+  saveThemeDebounced();
+}
+
+let themeSaveTimer: ReturnType<typeof setTimeout> | null = null;
+function saveThemeDebounced() {
+  if (themeSaveTimer) clearTimeout(themeSaveTimer);
+  themeSaveTimer = setTimeout(async () => {
+    if (settings.value) {
+      const result = await settingsApi.saveWithDiff(settings.value);
+      dispatchSettingsUpdate(result.changed_groups, result.settings);
+    }
+    themeSaveTimer = null;
+  }, 300);
+}
 </script>
 
 <template>
@@ -256,7 +308,7 @@ function isActive(code: string) {
     <div class="header-right">
       <Menu as="div" class="language-selector">
         <MenuButton class="language-button">
-          <Globe class="language-text" :size="16" />
+          <Languages :size="16" />
         </MenuButton>
         <MenuItems class="language-menu">
           <!-- 主要语言 -->
@@ -311,6 +363,40 @@ function isActive(code: string) {
           </div>
         </MenuItems>
       </Menu>
+
+      <div class="theme-switcher">
+        <div
+          class="theme-indicator"
+          :style="{ transform: `translateX(${themeIndicatorOffset}px)` }"
+        ></div>
+        <button
+          class="theme-btn"
+          :class="{ active: currentTheme === 'auto' }"
+          @click="setTheme('auto')"
+          :title="i18n.t('settings.theme_options.auto')"
+          data-theme-idx="0"
+        >
+          <Monitor :size="16" />
+        </button>
+        <button
+          class="theme-btn"
+          :class="{ active: currentTheme === 'light' }"
+          @click="setTheme('light')"
+          :title="i18n.t('settings.theme_options.light')"
+          data-theme-idx="1"
+        >
+          <Sun :size="16" />
+        </button>
+        <button
+          class="theme-btn"
+          :class="{ active: currentTheme === 'dark' }"
+          @click="setTheme('dark')"
+          :title="i18n.t('settings.theme_options.dark')"
+          data-theme-idx="2"
+        >
+          <Moon :size="16" />
+        </button>
+      </div>
 
       <div class="header-status">
         <cmz-badge dot pulse variant="success" />

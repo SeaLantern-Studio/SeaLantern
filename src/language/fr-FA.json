@@ -547,7 +547,7 @@
     "import": "Importer",
     "java_download": "Télécharger Java",
     "java_download_desc": "Si Java n'est pas installé ou si vous avez besoin d'une version mise à jour, vous pouvez le télécharger ici",
-    "java_download_btn": "Télécharger Java {{version}} (LTS)",
+    "java_download_btn": "Télécharger",
     "reset": "Restaurer les valeurs par défaut",
     "import_settings": "Importer les paramètres",
     "import_desc": "Collez les données JSON exportées précédemment",

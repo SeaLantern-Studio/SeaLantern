@@ -36,16 +36,18 @@ const emit = defineEmits<{
           <span class="settings-entry-title">{{ i18n.t("settings.default_memory") }} (MB)</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.max_memory_desc") }}</span>
         </div>
-        <cmz-input
-          :model-value="maxMemory"
-          type="number"
-          @update:model-value="
-            (v) => {
-              emit('update:maxMemory', v);
-              emit('change');
-            }
-          "
-        />
+        <div class="sl-input-sm">
+          <cmz-input
+            :model-value="maxMemory"
+            type="number"
+            @update:model-value="
+              (v) => {
+                emit('update:maxMemory', v);
+                emit('change');
+              }
+            "
+          />
+        </div>
       </div>
 
       <div class="settings-entry">
@@ -53,16 +55,18 @@ const emit = defineEmits<{
           <span class="settings-entry-title">{{ i18n.t("settings.min_memory") }}</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.min_memory_desc") }}</span>
         </div>
-        <cmz-input
-          :model-value="minMemory"
-          type="number"
-          @update:model-value="
-            (v) => {
-              emit('update:minMemory', v);
-              emit('change');
-            }
-          "
-        />
+        <div class="sl-input-sm">
+          <cmz-input
+            :model-value="minMemory"
+            type="number"
+            @update:model-value="
+              (v) => {
+                emit('update:minMemory', v);
+                emit('change');
+              }
+            "
+          />
+        </div>
       </div>
 
       <div class="settings-entry">
@@ -70,16 +74,18 @@ const emit = defineEmits<{
           <span class="settings-entry-title">{{ i18n.t("settings.default_port") }}</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.port_desc") }}</span>
         </div>
-        <cmz-input
-          :model-value="port"
-          type="number"
-          @update:model-value="
-            (v) => {
-              emit('update:port', v);
-              emit('change');
-            }
-          "
-        />
+        <div class="sl-input-sm">
+          <cmz-input
+            :model-value="port"
+            type="number"
+            @update:model-value="
+              (v) => {
+                emit('update:port', v);
+                emit('change');
+              }
+            "
+          />
+        </div>
       </div>
 
       <div class="settings-entry">
@@ -87,22 +93,24 @@ const emit = defineEmits<{
           <span class="settings-entry-title">{{ i18n.t("settings.default_java") }}</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.default_java_desc") }}</span>
         </div>
-        <cmz-input
-          :model-value="defaultJavaPath"
-          :placeholder="i18n.t('settings.default_java_desc')"
-          @update:model-value="
-            (v) => {
-              emit('update:defaultJavaPath', v);
-              emit('change');
-            }
-          "
-        >
-          <template #suffix>
-            <button type="button" class="sl-input-action" @click="emit('browseJavaPath')">
-              {{ i18n.t("settings.browse") }}
-            </button>
-          </template>
-        </cmz-input>
+        <div class="sl-input-lg">
+          <cmz-input
+            :model-value="defaultJavaPath"
+            :placeholder="i18n.t('settings.default_java_desc')"
+            @update:model-value="
+              (v) => {
+                emit('update:defaultJavaPath', v);
+                emit('change');
+              }
+            "
+          >
+            <template #suffix>
+              <button type="button" class="sl-input-action" @click="emit('browseJavaPath')">
+                {{ i18n.t("settings.browse") }}
+              </button>
+            </template>
+          </cmz-input>
+        </div>
       </div>
 
       <div class="settings-entry">
@@ -110,22 +118,24 @@ const emit = defineEmits<{
           <span class="settings-entry-title">{{ i18n.t("settings.default_run_path") }}</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.default_run_path_desc") }}</span>
         </div>
-        <cmz-input
-          :model-value="defaultRunPath"
-          :placeholder="i18n.t('settings.default_run_path_desc')"
-          @update:model-value="
-            (v) => {
-              emit('update:defaultRunPath', v);
-              emit('change');
-            }
-          "
-        >
-          <template #suffix>
-            <button type="button" class="sl-input-action" @click="emit('browseRunPath')">
-              {{ i18n.t("settings.browse") }}
-            </button>
-          </template>
-        </cmz-input>
+        <div class="sl-input-lg">
+          <cmz-input
+            :model-value="defaultRunPath"
+            :placeholder="i18n.t('settings.default_run_path_desc')"
+            @update:model-value="
+              (v) => {
+                emit('update:defaultRunPath', v);
+                emit('change');
+              }
+            "
+          >
+            <template #suffix>
+              <button type="button" class="sl-input-action" @click="emit('browseRunPath')">
+                {{ i18n.t("settings.browse") }}
+              </button>
+            </template>
+          </cmz-input>
+        </div>
       </div>
 
       <JavaDownloader

@@ -222,7 +222,8 @@ onUnmounted(() => {
 
 <style scoped>
 .download-button {
-  padding: 0.5rem 2rem;
+  padding: 0 1.25rem;
+  flex-shrink: 0;
 }
 
 .java-downloader-container {
@@ -235,13 +236,21 @@ onUnmounted(() => {
   gap: 0.75rem;
   flex-shrink: 0;
   margin-left: auto;
+  min-width: 0;
+  justify-content: flex-end;
 }
 
 .download-setting-div {
   display: flex;
   flex-direction: row;
   gap: 10px;
-  margin-top: 10px;
+  align-items: center;
+}
+
+.download-setting-div .cmz-select {
+  min-width: 160px;
+  width: 220px;
+  flex-shrink: 0;
 }
 
 .downloading-state {

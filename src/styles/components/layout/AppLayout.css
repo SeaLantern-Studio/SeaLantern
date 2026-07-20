@@ -12,6 +12,11 @@
   background-color: transparent;
 }
 
+[data-acrylic="on"] .app-layout,
+[data-acrylic]:not([data-acrylic="off"]) .app-layout {
+  background-color: transparent;
+}
+
 .app-background {
   position: absolute;
   top: 0;
