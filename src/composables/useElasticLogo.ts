@@ -19,6 +19,12 @@ const SPRING_K = 0.12; // 弹簧劲度系数
 const DAMPING = 0.86; // 阻尼系数
 const MAX_VELOCITY = 60; // 限制最大速度，避免飞太快
 
+/** 获取元素相对视口的锚点（中心点） */
+function getAnchor(el: HTMLElement): Anchor {
+  const rect = el.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+}
+
 export function useElasticLogo() {
   const isDragging = ref(false);
   const isArmed = ref(false); // 已激活、等待拖动
@@ -35,12 +41,6 @@ export function useElasticLogo() {
   let lastPointerX = 0;
   let lastPointerY = 0;
   let lastTime = 0;
-
-  /** 获取元素相对视口的锚点（中心点） */
-  function getAnchor(el: HTMLElement): Anchor {
-    const rect = el.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  }
 
   /** 开始长按检测 */
   function startHold(e: MouseEvent | TouchEvent, el: HTMLElement) {
