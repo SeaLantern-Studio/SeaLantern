@@ -126,8 +126,7 @@
         "main": "Main",
         "server": "Server",
         "system": "System"
-      },
-      "collapse_btn": "Collapse Sidebar"
+      }
     },
     "home": {
       "title": "Server Management",
