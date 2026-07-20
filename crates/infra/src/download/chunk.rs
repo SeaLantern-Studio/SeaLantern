@@ -1,7 +1,7 @@
-//! 单个分片下载。
+//! Single chunk download.
 //!
-//! 发送 `Range` 请求并流式写入文件的指定位置。
-//! 通过 `tokio::select!` 支持取消信号。
+//! Sends a `Range` request and streams the response to the specified file position.
+//! Supports cancellation signals via `tokio::select!`.
 
 use std::sync::Arc;
 
@@ -13,29 +13,29 @@ use crate::download::status::{DownloadError, DownloadStatus};
 use crate::net::client::NetClient;
 use crate::observability;
 
-/// 下载单个分片。
+/// Downloads a single chunk.
 ///
-/// 向服务器请求 `bytes=start-end` 范围内的数据，
-/// 定位到文件对应位置后流式写入。
+/// Requests data in the `bytes=start-end` range from the server,
+/// seeks to the corresponding file position and writes streaming data.
 ///
 /// # Parameters
 ///
-/// - `client`: 已配置的 HTTP 客户端
-/// - `url`: 下载地址
-/// - `path`: 本地保存路径
-/// - `start`: 分片起始位置
-/// - `end`: 分片结束位置
-/// - `status`: 共享下载状态（用于进度上报和取消检测）
+/// - `client`: Configured HTTP client
+/// - `url`: Download URL
+/// - `path`: Local save path
+/// - `start`: Chunk start position
+/// - `end`: Chunk end position
+/// - `status`: Shared download status (for progress reporting and cancellation detection)
 ///
 /// # Returns
 ///
-/// 分片下载成功返回 `Ok(())`，失败返回 `DownloadError`。
+/// Returns `Ok(())` on success, `DownloadError` on failure.
 ///
-/// # 取消行为
+/// # Cancellation Behavior
 ///
-/// 通过 `tokio::select!` 同时等待下载和取消信号：
-/// - 下载请求进行中收到取消信号 → 立即返回 `Cancelled`
-/// - 下载完成后检查取消标志 → 返回 `Cancelled`
+/// Uses `tokio::select!` to wait for both download and cancellation signals:
+/// - If cancellation is received during download → immediately returns `Cancelled`
+/// - If cancellation flag is checked after download completes → returns `Cancelled`
 pub(super) async fn download_chunk(
     client: &NetClient,
     url: &str,
@@ -101,12 +101,12 @@ pub(super) async fn download_chunk(
     }
 }
 
-/// 校验分片响应。
+/// Validates chunk response.
 ///
 /// # Parameters
 ///
-/// - `response`: 服务器响应
-/// - `start`: 分片起始位置（大于 0 时必须返回 206）
+/// - `response`: Server response
+/// - `start`: Chunk start position (must return 206 if greater than 0)
 fn validate_chunk_response(response: &reqwest::Response, start: u64) -> Result<(), DownloadError> {
     if start > 0 && response.status() != StatusCode::PARTIAL_CONTENT {
         return Err(DownloadError::Response(

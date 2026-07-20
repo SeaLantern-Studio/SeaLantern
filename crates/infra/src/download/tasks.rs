@@ -1,6 +1,6 @@
-//! 分片任务管理。
+//! Chunk task management.
 //!
-//! 负责将文件按线程数分割为多个分片、生成下载任务并启动后台监控。
+//! Responsible for splitting a file into multiple chunks by thread count, spawning download tasks, and starting background monitoring.
 
 use std::sync::Arc;
 
@@ -9,16 +9,16 @@ use crate::download::status::{DownloadError, DownloadStatus};
 use crate::net::client::NetClient;
 use crate::observability;
 
-/// 将文件分割为多个分片范围。
+/// Splits the file into multiple chunk ranges.
 ///
 /// # Parameters
 ///
-/// - `total_size`: 文件总大小
-/// - `thread_count`: 分片数量
+/// - `total_size`: Total file size
+/// - `thread_count`: Number of chunks
 ///
 /// # Returns
 ///
-/// 返回 `(start, end)` 元组的列表，每个元组表示一个分片的起止位置。
+/// Returns a list of `(start, end)` tuples, each representing the start and end positions of a chunk.
 pub(super) fn split_ranges(total_size: u64, thread_count: usize) -> Vec<(u64, u64)> {
     if total_size == 0 {
         return Vec::new();
@@ -41,22 +41,22 @@ pub(super) fn split_ranges(total_size: u64, thread_count: usize) -> Vec<(u64, u6
     ranges
 }
 
-/// 生成全部分片下载任务。
+/// Spawns all chunk download tasks.
 ///
-/// 为每个分片 `spawn` 一个 tokio task，所有任务共享同一个 `DownloadStatus`。
+/// Spawns one tokio task per chunk, all tasks share the same `DownloadStatus`.
 ///
 /// # Parameters
 ///
-/// - `client`: 已配置的 HTTP 客户端（Clone 后在任务间共享）
-/// - `url`: 下载地址
-/// - `path`: 本地保存路径
-/// - `thread_count`: 分片数量
-/// - `total_size`: 文件总大小
-/// - `status`: 共享下载状态
+/// - `client`: Configured HTTP client (cloned and shared among tasks)
+/// - `url`: Download URL
+/// - `path`: Local save path
+/// - `thread_count`: Number of chunks
+/// - `total_size`: Total file size
+/// - `status`: Shared download status
 ///
 /// # Returns
 ///
-/// 返回所有分片任务的 `JoinHandle` 列表。
+/// Returns a list of `JoinHandle`s for all chunk tasks.
 pub(super) fn spawn_download_tasks(
     client: NetClient,
     url: String,
@@ -82,17 +82,17 @@ pub(super) fn spawn_download_tasks(
     tasks
 }
 
-/// 启动后台监控任务。
+/// Starts the background monitor task.
 ///
-/// 在后台等待所有分片任务完成，汇总错误信息到 `DownloadStatus`。
-/// 所有分片成功后调用 `download_completed()` 记录完成事件。
+/// Waits in the background for all chunk tasks to complete, aggregating errors into `DownloadStatus`.
+/// Calls `download_completed()` to record the completion event when all chunks succeed.
 ///
 /// # Parameters
 ///
-/// - `tasks`: 分片任务的 `JoinHandle` 列表
-/// - `status`: 共享下载状态
-/// - `url`: 下载地址（用于完成事件记录）
-/// - `total_size`: 文件总大小（用于完成事件记录）
+/// - `tasks`: List of chunk task `JoinHandle`s
+/// - `status`: Shared download status
+/// - `url`: Download URL (for completion event logging)
+/// - `total_size`: Total file size (for completion event logging)
 pub(super) fn spawn_task_monitor(
     tasks: Vec<tokio::task::JoinHandle<Result<(), DownloadError>>>,
     status: &Arc<DownloadStatus>,

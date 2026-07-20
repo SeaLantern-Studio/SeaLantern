@@ -1,7 +1,7 @@
-//! 单线程下载与文本获取工具。
+//! Single-threaded download and text fetching utilities.
 //!
-//! 提供流式文件下载和远端文本读取能力，不涉及分片和预分配。
-//! 适用于小文件下载、API 请求等场景。
+//! Provides streaming file download and remote text fetching capabilities, without chunking or pre-allocation.
+//! Suitable for small file downloads, API requests, etc.
 
 use std::sync::Arc;
 
@@ -12,21 +12,21 @@ use crate::download::status::{DownloadError, DownloadStatus};
 use crate::net::client::NetClient;
 use crate::observability;
 
-/// 单线程流式下载文件。
+/// Stream-download a file with a single thread.
 ///
-/// 直接发送 GET 请求，边读取响应体边写入文件。
-/// 不分片、不预分配，适用于不支持 Range 的服务器或小文件。
+/// Sends a GET request and writes the response body to a file as it is read.
+/// No segments, no pre-allocation; suitable for servers that don't support Range or for small files.
 ///
 /// # Parameters
 ///
-/// - `client`: 已配置的 HTTP 客户端
-/// - `url`: 下载地址
-/// - `output_path`: 本地保存路径
+/// - `client`: Configured HTTP client
+/// - `url`: Download URL
+/// - `output_path`: Local save path
 ///
 /// # Returns
 ///
-/// 返回 `Arc<DownloadStatus>`，可通过 `snapshot()` 查询实时进度。
-/// 若服务器未返回 `Content-Length`，`total_size` 为 0。
+/// Returns `Arc<DownloadStatus>`, progress can be queried via `snapshot()`.
+/// If the server does not return `Content-Length`, `total_size` is 0.
 pub async fn stream_download(
     client: &NetClient,
     url: &str,
@@ -84,19 +84,19 @@ pub async fn stream_download(
     Ok(status)
 }
 
-/// 读取远端文本内容。
+/// Fetches remote text content.
 ///
-/// 以字符串形式返回 GET 请求的响应体。
-/// 适用于调用 REST API、获取配置文件等场景。
+/// Returns the response body of a GET request as a string.
+/// Suitable for calling REST APIs, fetching config files, etc.
 ///
 /// # Parameters
 ///
-/// - `client`: 已配置的 HTTP 客户端
-/// - `url`: 请求地址
+/// - `client`: Configured HTTP client
+/// - `url`: Request URL
 ///
 /// # Returns
 ///
-/// 返回响应体文本；请求失败或状态码非 2xx 时返回错误描述。
+/// Returns the response text; returns an error description on failure or non-2xx status code.
 pub async fn fetch_to_string(client: &NetClient, url: &str) -> Result<String, DownloadError> {
     let response = client.get_reqwest_client().get(url).send().await?;
 
@@ -118,18 +118,18 @@ pub async fn fetch_to_string(client: &NetClient, url: &str) -> Result<String, Do
     Ok(text)
 }
 
-/// 读取远端二进制内容。
+/// Fetches remote binary content.
 ///
-/// 以字节数组形式返回 GET 请求的响应体。
+/// Returns the response body of a GET request as a byte vector.
 ///
 /// # Parameters
 ///
-/// - `client`: 已配置的 HTTP 客户端
-/// - `url`: 请求地址
+/// - `client`: Configured HTTP client
+/// - `url`: Request URL
 ///
 /// # Returns
 ///
-/// 返回响应体字节数组；请求失败或状态码非 2xx 时返回错误描述。
+/// Returns the response bytes; returns an error description on failure or non-2xx status code.
 pub async fn fetch_to_bytes(client: &NetClient, url: &str) -> Result<Vec<u8>, DownloadError> {
     let response = client.get_reqwest_client().get(url).send().await?;
 
