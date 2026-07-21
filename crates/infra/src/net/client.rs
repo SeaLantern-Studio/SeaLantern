@@ -343,8 +343,11 @@ impl NetBlockingClient {
 }
 
 fn no_proxy(routes: &crate::net::proxy::ProxyRoutes) -> Option<reqwest::NoProxy> {
-    (!routes.no_proxy().is_empty())
-        .then(|| reqwest::NoProxy::from_string(&routes.no_proxy().join(",")))?
+    if routes.no_proxy().is_empty() {
+        None
+    } else {
+        reqwest::NoProxy::from_string(&routes.no_proxy().join(","))
+    }
 }
 
 fn proxy_config_error(scope: &str) -> NetError {
@@ -352,25 +355,42 @@ fn proxy_config_error(scope: &str) -> NetError {
     NetError::Config(format!("{scope} 代理配置无效"))
 }
 
+fn configured_proxy_routes(
+    effective_proxy: &EffectiveProxy,
+) -> Result<[Option<reqwest::Proxy>; 2], NetError> {
+    let Some(routes) = effective_proxy.routes_ref() else {
+        return Ok([None, None]);
+    };
+    let no_proxy = no_proxy(routes);
+
+    let http_proxy = routes
+        .http_proxy()
+        .map(|proxy_url| {
+            reqwest::Proxy::http(proxy_url)
+                .map_err(|_| proxy_config_error("HTTP"))
+                .map(|proxy| proxy.no_proxy(no_proxy.clone()))
+        })
+        .transpose()?;
+    let https_proxy = routes
+        .https_proxy()
+        .map(|proxy_url| {
+            reqwest::Proxy::https(proxy_url)
+                .map_err(|_| proxy_config_error("HTTPS"))
+                .map(|proxy| proxy.no_proxy(no_proxy))
+        })
+        .transpose()?;
+
+    Ok([http_proxy, https_proxy])
+}
+
 fn apply_async_proxy_routes(
     mut builder: reqwest::ClientBuilder,
     effective_proxy: &EffectiveProxy,
 ) -> Result<reqwest::ClientBuilder, NetError> {
-    let Some(routes) = effective_proxy.routes_ref() else {
-        return Ok(builder);
-    };
-    let no_proxy = no_proxy(routes);
-
-    if let Some(proxy_url) = routes.http_proxy() {
-        let proxy = reqwest::Proxy::http(proxy_url)
-            .map_err(|_| proxy_config_error("HTTP"))?
-            .no_proxy(no_proxy.clone());
-        builder = builder.proxy(proxy);
-    }
-    if let Some(proxy_url) = routes.https_proxy() {
-        let proxy = reqwest::Proxy::https(proxy_url)
-            .map_err(|_| proxy_config_error("HTTPS"))?
-            .no_proxy(no_proxy);
+    for proxy in configured_proxy_routes(effective_proxy)?
+        .into_iter()
+        .flatten()
+    {
         builder = builder.proxy(proxy);
     }
     Ok(builder)
@@ -381,21 +401,10 @@ fn apply_blocking_proxy_routes(
     mut builder: reqwest::blocking::ClientBuilder,
     effective_proxy: &EffectiveProxy,
 ) -> Result<reqwest::blocking::ClientBuilder, NetError> {
-    let Some(routes) = effective_proxy.routes_ref() else {
-        return Ok(builder);
-    };
-    let no_proxy = no_proxy(routes);
-
-    if let Some(proxy_url) = routes.http_proxy() {
-        let proxy = reqwest::Proxy::http(proxy_url)
-            .map_err(|_| proxy_config_error("HTTP"))?
-            .no_proxy(no_proxy.clone());
-        builder = builder.proxy(proxy);
-    }
-    if let Some(proxy_url) = routes.https_proxy() {
-        let proxy = reqwest::Proxy::https(proxy_url)
-            .map_err(|_| proxy_config_error("HTTPS"))?
-            .no_proxy(no_proxy);
+    for proxy in configured_proxy_routes(effective_proxy)?
+        .into_iter()
+        .flatten()
+    {
         builder = builder.proxy(proxy);
     }
     Ok(builder)
