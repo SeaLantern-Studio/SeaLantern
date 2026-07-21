@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
-/// A stable identifier allocated by the host for a managed instance.
+/// 由主机为受管实例分配的稳定标识符。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InstanceId(String);
 
@@ -20,7 +20,7 @@ impl InstanceId {
     }
 }
 
-/// The configured mechanism used to start a local instance.
+/// 用于启动本地实例的已配置机制。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StartupMode {
     Jar,
@@ -56,11 +56,11 @@ impl StartupMode {
     }
 }
 
-/// Local runtime data owned by an instance, independent of process construction.
+/// 实例拥有的本地运行时数据，与进程构造无关。
 ///
-/// `Custom` mode accepts either legacy shell-backed `custom_command` text or a direct
-/// `custom_executable` with `custom_arguments`. The two forms are mutually exclusive, and
-/// arguments are valid only for a direct executable. Empty executable paths normalize to `None`.
+/// `Custom` 模式接受传统的 shell 后端 `custom_command` 文本，或直接的
+/// `custom_executable` 加 `custom_arguments`。两种形式互斥，参数仅对直接可执行文件有效。
+/// 空的可执行文件路径会被规范化为 `None`。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalLaunch {
     pub startup_mode: StartupMode,
@@ -118,7 +118,7 @@ impl LocalLaunch {
     }
 }
 
-/// Input used to validate and construct an [`Instance`].
+/// 用于验证和构造 [`Instance`] 的输入。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstanceSpec {
     pub id: InstanceId,
@@ -136,7 +136,7 @@ pub struct InstanceSpec {
     pub launch: LocalLaunch,
 }
 
-/// A validated managed instance and its local runtime configuration.
+/// 一个已验证的受管实例及其本地运行时配置。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Instance {
     pub id: InstanceId,
@@ -197,7 +197,7 @@ impl Instance {
     }
 }
 
-/// Identifies invalid or internally inconsistent instance data.
+/// 标识无效或内部不一致的实例数据。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstanceError {
     EmptyId,

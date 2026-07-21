@@ -10,7 +10,7 @@ use cap_std::time::SystemClock;
 use super::atomic::write_atomic_in;
 use super::{DataLimit, FsError, SafeRelativePath};
 
-/// A directory-backed byte cache scoped to an opened directory capability.
+/// 一个基于目录的字节缓存，作用域限定为已打开的目录能力。
 #[derive(Clone, Debug)]
 pub struct FileCache {
     root: Arc<Dir>,
@@ -18,10 +18,10 @@ pub struct FileCache {
 }
 
 impl FileCache {
-    /// Opens a cache rooted at the supplied directory.
+    /// 打开以指定目录为根的缓存。
     ///
-    /// The directory handle, rather than a joined path, is used for every
-    /// cache operation so concurrent symlink replacement cannot escape root.
+    /// 每个缓存操作都使用目录句柄而非拼接后的路径，
+    /// 因此并发的符号链接替换无法逃逸出根目录。
     pub fn new(root: impl Into<PathBuf>) -> Result<Self, FsError> {
         let root_path = root.into();
         let result = (|| {
@@ -40,12 +40,12 @@ impl FileCache {
         result
     }
 
-    /// Returns the cache root selected when this cache was opened.
+    /// 返回此缓存打开时所选的缓存根目录。
     pub fn root(&self) -> &Path {
         &self.root_path
     }
 
-    /// Stores bytes under a safe relative key.
+    /// 在安全的相对键下存储字节数据。
     pub async fn put(&self, key: impl AsRef<Path>, bytes: &[u8]) -> Result<(), FsError> {
         let root = Arc::clone(&self.root);
         let key = SafeRelativePath::parse(key)?;
@@ -57,7 +57,7 @@ impl FileCache {
         result
     }
 
-    /// Reads cached bytes subject to a caller-defined data limit.
+    /// 读取缓存的字节数据，受调用者定义的数据上限约束。
     pub async fn get(
         &self,
         key: impl AsRef<Path>,
@@ -72,7 +72,7 @@ impl FileCache {
         result
     }
 
-    /// Reads an entry only when its modification time is within max_age.
+    /// 仅当条目的修改时间在 max_age 之内时读取。
     pub async fn get_fresh(
         &self,
         key: impl AsRef<Path>,
@@ -111,7 +111,7 @@ impl FileCache {
         result
     }
 
-    /// Deletes every cached entry but keeps the cache root available.
+    /// 删除所有缓存的条目，但保留缓存根目录可用。
     pub async fn clear(&self) -> Result<(), FsError> {
         let root = Arc::clone(&self.root);
         let path = self.root_path.clone();

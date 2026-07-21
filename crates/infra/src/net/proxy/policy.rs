@@ -1,7 +1,7 @@
 use super::{ProxyConfigError, ProxyMode, ProxyRoutes, ProxySettings, SystemProxySnapshot};
 use crate::observability;
 
-/// Proxy that an HTTP client should use after policy resolution.
+/// 策略解析后 HTTP 客户端应使用的代理。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EffectiveProxy {
     Direct,
@@ -9,12 +9,12 @@ pub enum EffectiveProxy {
 }
 
 impl EffectiveProxy {
-    /// Creates a proxy decision that applies the URL to all HTTP client traffic.
+    /// 创建一个代理决策，将 URL 应用于所有 HTTP 客户端流量。
     pub fn proxy(proxy_url: impl Into<String>) -> Self {
         Self::Routes(ProxyRoutes::all(proxy_url))
     }
 
-    /// Creates a decision from independently resolved HTTP and HTTPS routes.
+    /// 从独立解析的 HTTP 和 HTTPS 路由创建一个决策。
     pub fn routes(routes: ProxyRoutes) -> Self {
         Self::Routes(routes)
     }
@@ -27,7 +27,7 @@ impl EffectiveProxy {
     }
 }
 
-/// Result of applying settings or a system network-change event.
+/// 应用设置或系统网络变更事件的结果。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProxyUpdate {
     pub previous: EffectiveProxy,
@@ -35,16 +35,16 @@ pub struct ProxyUpdate {
 }
 
 impl ProxyUpdate {
-    /// Returns whether a caller needs to rebuild its HTTP client.
+    /// 返回调用者是否需要重建其 HTTP 客户端。
     pub fn changed(&self) -> bool {
         self.previous != self.current
     }
 }
 
-/// Resolves proxy policy and holds its current in-memory decision.
+/// 解析代理策略并持有当前内存中的决策。
 ///
-/// Configuration files and OS event loops remain outside this type. A host
-/// supplies snapshots through [`Self::handle_system_proxy_change`].
+/// 本类型不管理配置文件和操作系统事件循环。宿主通过
+/// [`Self::handle_system_proxy_change`] 提供快照。
 #[derive(Debug, Clone)]
 pub struct ProxyController {
     settings: ProxySettings,
@@ -52,7 +52,7 @@ pub struct ProxyController {
 }
 
 impl ProxyController {
-    /// Creates a controller from application settings and the current system proxy.
+    /// 从应用程序设置和当前系统代理创建一个控制器。
     pub fn new(
         settings: ProxySettings,
         system_proxy: SystemProxySnapshot,
@@ -66,17 +66,17 @@ impl ProxyController {
         Ok(Self { settings, effective_proxy })
     }
 
-    /// Returns the settings currently owned by this controller.
+    /// 返回此控制器当前拥有的设置。
     pub fn settings(&self) -> &ProxySettings {
         &self.settings
     }
 
-    /// Returns the proxy currently selected for newly built HTTP clients.
+    /// 返回当前为新建 HTTP 客户端选择的代理。
     pub fn effective_proxy(&self) -> &EffectiveProxy {
         &self.effective_proxy
     }
 
-    /// Replaces settings and resolves them against the current system snapshot.
+    /// 替换设置并根据当前系统快照重新解析。
     pub fn update_settings(
         &mut self,
         settings: ProxySettings,
@@ -95,10 +95,10 @@ impl ProxyController {
         Ok(update)
     }
 
-    /// Applies an operating-system network change.
+    /// 应用操作系统网络变更。
     ///
-    /// Only adaptive settings follow later system changes. Preserve, manual,
-    /// and disabled modes intentionally retain their existing decision.
+    /// 只有自适应模式会跟随后续系统变化。保留、手动和禁用模式
+    /// 有意保留其现有决策。
     pub fn handle_system_proxy_change(&mut self, system_proxy: SystemProxySnapshot) -> ProxyUpdate {
         let next = match self.settings.mode {
             ProxyMode::Adaptive => resolve(&self.settings, &system_proxy),

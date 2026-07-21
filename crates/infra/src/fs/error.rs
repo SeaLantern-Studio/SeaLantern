@@ -1,42 +1,42 @@
 use std::fmt;
 use std::path::PathBuf;
 
-/// Errors returned by file system infrastructure operations.
+/// 文件系统基础设施操作返回的错误。
 #[derive(Debug)]
 pub enum FsError {
-    /// An underlying file system operation failed.
+    /// 底层的文件系统操作失败。
     Io {
-        /// The operation being attempted.
+        /// 正在尝试的操作。
         operation: &'static str,
-        /// The path involved in the operation.
+        /// 操作涉及的路径。
         path: PathBuf,
-        /// The underlying operating system error.
+        /// 底层的操作系统错误。
         source: std::io::Error,
     },
-    /// A user-supplied path was not a safe relative path.
+    /// 用户提供的路径不是安全的相对路径。
     InvalidPath { path: PathBuf, reason: &'static str },
-    /// A read exceeded its configured maximum size.
+    /// 读取操作超过了配置的最大大小限制。
     DataLimitExceeded {
         path: PathBuf,
         limit: usize,
         observed_at_least: usize,
     },
-    /// Another process or task owns the requested lock.
+    /// 另一个进程或任务持有请求的锁。
     AlreadyLocked(PathBuf),
-    /// Serialization or deserialization failed.
+    /// 序列化或反序列化失败。
     Serialization {
         format: &'static str,
         operation: &'static str,
         path: PathBuf,
         message: String,
     },
-    /// Text could not be decoded as UTF-8.
+    /// 文本无法以 UTF-8 解码。
     Encoding {
         path: PathBuf,
         encoding: &'static str,
         message: String,
     },
-    /// A blocking file system task could not complete.
+    /// 阻塞的文件系统任务无法完成。
     Task {
         operation: &'static str,
         message: String,
@@ -85,7 +85,7 @@ impl std::error::Error for FsError {
 }
 
 impl FsError {
-    /// Wraps an I/O error with the operation and affected path.
+    /// 将 I/O 错误与操作名称和受影响的路径一同包装。
     pub(crate) fn io(
         operation: &'static str,
         path: impl Into<PathBuf>,
@@ -94,7 +94,7 @@ impl FsError {
         Self::Io { operation, path: path.into(), source }
     }
 
-    /// Builds a detailed structured-data error.
+    /// 构建一个详细的结构化数据错误。
     pub(crate) fn serialization(
         format: &'static str,
         operation: &'static str,
@@ -109,7 +109,7 @@ impl FsError {
         }
     }
 
-    /// Builds an error for a failed blocking operation.
+    /// 为失败的阻塞操作构建错误。
     pub(crate) fn task(operation: &'static str, message: impl Into<String>) -> Self {
         Self::Task { operation, message: message.into() }
     }

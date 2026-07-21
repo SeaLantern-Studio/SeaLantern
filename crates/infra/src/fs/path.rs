@@ -2,12 +2,12 @@ use std::path::{Component, Path, PathBuf};
 
 use super::FsError;
 
-/// A path guaranteed to be relative and free of traversal components.
+/// 一个保证为相对路径且不含遍历组件的路径。
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct SafeRelativePath(PathBuf);
 
 impl SafeRelativePath {
-    /// Parses a portable relative path accepted for file system storage.
+    /// 解析一个可用于文件系统存储的可移植相对路径。
     pub fn parse(path: impl AsRef<Path>) -> Result<Self, FsError> {
         let path = path.as_ref();
         if path.as_os_str().is_empty() {
@@ -24,7 +24,7 @@ impl SafeRelativePath {
         Ok(Self(path.to_path_buf()))
     }
 
-    /// Returns the validated relative path.
+    /// 返回已验证的相对路径。
     pub fn as_path(&self) -> &Path {
         &self.0
     }

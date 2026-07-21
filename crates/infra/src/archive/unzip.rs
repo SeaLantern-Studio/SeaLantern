@@ -12,18 +12,18 @@ use super::{create_new_directory, is_symbolic_link, parse_symbolic_link_target, 
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: u64 = 4 * 1024;
 
-/// Resource limits applied before and during ZIP extraction.
+/// ZIP 解压前后应用的资源限制。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ExtractionLimits {
-    /// Maximum compressed ZIP file size accepted from disk.
+    /// 磁盘上可接受的压缩 ZIP 文件最大大小。
     pub max_archive_bytes: u64,
-    /// Maximum number of entries in the ZIP central directory.
+    /// ZIP 中央目录中的最大条目数。
     pub max_entries: usize,
-    /// Maximum uncompressed bytes for one regular file.
+    /// 单个常规文件的最大未压缩字节数。
     pub max_entry_bytes: u64,
-    /// Maximum total uncompressed bytes written across all entries.
+    /// 所有条目写入的最大未压缩字节总数。
     pub max_total_bytes: u64,
-    /// Maximum accepted ratio of uncompressed to compressed bytes.
+    /// 可接受的未压缩与压缩字节的最大比率。
     pub max_compression_ratio: u64,
 }
 
@@ -39,21 +39,21 @@ impl Default for ExtractionLimits {
     }
 }
 
-/// Counts entries and uncompressed bytes processed during ZIP extraction.
+/// 统计 ZIP 解压过程中处理的条目数和未压缩字节数。
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ExtractionSummary {
-    /// Number of regular files extracted.
+    /// 解压的常规文件数。
     pub files: u64,
-    /// Number of directory entries extracted.
+    /// 解压的目录条目数。
     pub directories: u64,
-    /// Total uncompressed file bytes extracted.
+    /// 解压的文件未压缩字节总数。
     pub bytes: u64,
 }
 
-/// Extracts a ZIP archive into a new destination directory with default limits.
+/// 使用默认限制将 ZIP 压缩包解压到新的目标目录中。
 ///
-/// The destination must not already exist. This avoids overwriting a previous
-/// extraction if an archive is invalid or a later I/O operation fails.
+/// 目标目录必须尚未存在。这避免了在压缩包无效或后续
+/// I/O 操作失败时覆盖之前的解压结果。
 pub fn extract_zip(
     archive: impl AsRef<Path>,
     destination: impl AsRef<Path>,
@@ -61,12 +61,11 @@ pub fn extract_zip(
     extract_zip_with_limits(archive, destination, ExtractionLimits::default())
 }
 
-/// Extracts a ZIP archive into a new destination directory with explicit limits.
+/// 使用显式限制将 ZIP 压缩包解压到新的目标目录中。
 ///
-/// All entry names, duplicate paths, symbolic links, and metadata limits are
-/// validated before the destination directory is created. The destination is
-/// opened without following its final path component, and every output file is
-/// created exclusively.
+/// 所有条目名称、重复路径、符号链接和元数据限制都在
+/// 创建目标目录之前进行验证。目标目录在打开时不会追踪
+/// 其最终路径组件，并且每个输出文件都是独占创建的。
 pub fn extract_zip_with_limits(
     archive: impl AsRef<Path>,
     destination: impl AsRef<Path>,

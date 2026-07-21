@@ -1,7 +1,7 @@
-//! Multi-threaded file downloader.
+//! 多线程文件下载器。
 //!
-//! Provides the `Downloader` struct, wrapping a configured `NetClient`,
-//! calling `download()` automatically probes the remote and downloads the file.
+//! 提供 `Downloader` 结构体，包装一个配置好的 `NetClient`，
+//! 调用 `download()` 会自动探测远端文件信息并下载文件。
 
 use std::sync::Arc;
 
@@ -10,9 +10,9 @@ use crate::download::tasks::{spawn_download_tasks, spawn_task_monitor};
 use crate::net::client::NetClient;
 use crate::observability;
 
-/// Multi-threaded downloader.
+/// 多线程下载器。
 ///
-/// Holds a configured HTTP client; call `download()` to download a file.
+/// 持有一个配置好的 HTTP 客户端，调用 `download()` 即可下载文件。
 ///
 /// # Examples
 ///
@@ -26,32 +26,32 @@ pub struct Downloader {
 }
 
 impl Downloader {
-    /// Creates a downloader.
+    /// 创建一个下载器。
     ///
     /// # Parameters
     ///
-    /// - `client`: HTTP client with proxy configuration loaded
+    /// - `client`: 已加载代理配置的 HTTP 客户端
     pub fn new(client: NetClient) -> Self {
         Self { client }
     }
 
-    /// Downloads a file and returns a status handle that can be queried for progress.
+    /// 下载文件并返回一个可查询进度的状态句柄。
     ///
-    /// Procedure:
-    /// 1. Probe remote file info (whether Range is supported, file size)
-    /// 2. Create and pre-allocate the local file
-    /// 3. Choose segmented or single-threaded download based on Range support
-    /// 4. Start background monitor task to aggregate segment results
+    /// 流程：
+    /// 1. 探测远端文件信息（是否支持 Range、文件大小）
+    /// 2. 创建并预分配本地文件
+    /// 3. 根据 Range 支持情况选择分段或单线程下载
+    /// 4. 启动后台监控任务以汇总各段结果
     ///
     /// # Parameters
     ///
-    /// - `url`: Download URL
-    /// - `output_path`: Local save path
-    /// - `thread_count`: Number of download threads
+    /// - `url`: 下载地址
+    /// - `output_path`: 本地保存路径
+    /// - `thread_count`: 下载线程数
     ///
     /// # Returns
     ///
-    /// Returns `Arc<DownloadStatus>`, which can be queried for real-time progress via `snapshot()`.
+    /// 返回 `Arc<DownloadStatus>`，可通过 `snapshot()` 查询实时进度。
     pub async fn download(
         &self,
         url: &str,

@@ -1,49 +1,49 @@
-//! Network request error types.
+//! 网络请求错误类型。
 //!
-//! Covers scenarios such as configuration errors, request failures,
-//! server error responses, timeouts, parse failures, and cancellations.
-//! Upper layers can handle various network exceptions uniformly through `NetError`.
+//! 涵盖配置错误、请求失败、
+//! 服务端错误响应、超时、解析失败以及取消等场景。
+//! 上层可通过 `NetError` 统一处理各类网络异常。
 
 use std::fmt;
 
-/// Errors that may occur during network requests.
+/// 网络请求过程中可能发生的错误。
 ///
-/// Categorized by source and nature as follows:
+/// 按来源和性质分类如下：
 ///
 /// | Variant | Typical Scenario |
 /// |---------|-----------------|
-/// | `Config` | Invalid proxy format, client construction failure |
-/// | `Request` | Connection refused, DNS resolution failure, TLS handshake failure |
-/// | `Response` | Server returned 4xx / 5xx |
-/// | `Timeout` | Connection timeout or read timeout |
-/// | `Parse` | JSON or text parsing failure |
-/// | `Io` | Underlying IO error (e.g. file read/write) |
-/// | `Cancelled` | Request cancelled by user |
+/// | `Config` | 代理格式无效、客户端构建失败 |
+/// | `Request` | 连接被拒绝、DNS 解析失败、TLS 握手失败 |
+/// | `Response` | 服务端返回 4xx / 5xx |
+/// | `Timeout` | 连接超时或读取超时 |
+/// | `Parse` | JSON 或文本解析失败 |
+/// | `Io` | 底层 IO 错误（如文件读写） |
+/// | `Cancelled` | 请求被用户取消 |
 #[derive(Debug)]
 pub enum NetError {
-    /// Configuration error.
+    /// 配置错误。
     ///
-    /// For example: invalid proxy address format, unable to build HTTP client.
+    /// 例如：代理地址格式无效、无法构建 HTTP 客户端。
     Config(String),
-    /// Request execution failure.
+    /// 请求执行失败。
     ///
-    /// For example: connection refused, DNS resolution failure, TLS handshake failure, etc.
+    /// 例如：连接被拒绝、DNS 解析失败、TLS 握手失败等。
     Request(String),
-    /// Server returned a non-success status code.
+    /// 服务端返回非成功状态码。
     ///
-    /// Contains the HTTP status code and a truncated response body.
+    /// 包含 HTTP 状态码和截断的响应体。
     Response(u16, String),
-    /// Request timeout.
+    /// 请求超时。
     ///
-    /// Both connection timeout and read timeout fall into this category.
+    /// 连接超时和读取超时均归入此类别。
     Timeout,
-    /// Response parsing failure.
+    /// 响应解析失败。
     ///
-    /// For example: invalid JSON format, non-UTF-8 text, etc.
+    /// 例如：JSON 格式无效、非 UTF-8 文本等。
     Parse(String),
-    /// IO error.
+    /// IO 错误。
     Io(std::io::Error),
-    /// Request was actively cancelled.
+    /// 请求被主动取消。
     Cancelled,
 }
 

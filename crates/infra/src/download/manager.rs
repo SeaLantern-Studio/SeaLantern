@@ -1,8 +1,8 @@
-//! Download task manager.
+//! 下载任务管理器。
 //!
-//! Manages creation, progress querying, cancellation, and automatic cleanup of multiple download tasks.
-//! Uses a `HashMap` internally to store all tasks; finished tasks are automatically removed on query.
-//! Each task is identified by a UUID v4, so there is no risk of ID overflow or collision.
+//! 管理多个下载任务的创建、进度查询、取消和自动清理。
+//! 内部使用 `HashMap` 存储所有任务，已完成的任务会在查询时自动移除。
+//! 每个任务由 UUID v4 标识，因此不存在 ID 溢出或冲突的风险。
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -15,10 +15,10 @@ use crate::download::status::{DownloadError, DownloadSnapshot, DownloadStatus};
 use crate::net::client::NetClient;
 use crate::observability;
 
-/// Download task manager.
+/// 下载任务管理器。
 ///
-/// Wraps `Downloader` to provide multi-task lifecycle management.
-/// Automatically cleans up finished tasks when querying progress.
+/// 封装 `Downloader` 以提供多任务生命周期管理。
+/// 在查询进度时自动清理已完成的任务。
 ///
 /// # Examples
 ///
@@ -30,18 +30,18 @@ use crate::observability;
 /// manager.cancel(id).await;
 /// ```
 pub struct DownloadManager {
-    /// Downloader instance
+    /// 下载器实例
     downloader: Downloader,
-    /// Task map: ID → download status
+    /// 任务映射：ID → 下载状态
     tasks: Arc<RwLock<HashMap<Uuid, Arc<DownloadStatus>>>>,
 }
 
 impl DownloadManager {
-    /// Creates a new download manager.
+    /// 创建新的下载管理器。
     ///
     /// # Parameters
     ///
-    /// - `client`: Configured HTTP client
+    /// - `client`: 配置好的 HTTP 客户端
     pub fn new(client: NetClient) -> Self {
         Self {
             downloader: Downloader::new(client),
@@ -49,19 +49,19 @@ impl DownloadManager {
         }
     }
 
-    /// Creates a download task.
+    /// 创建一个下载任务。
     ///
-    /// Returns the task UUID immediately after starting the download; the download proceeds asynchronously in the background.
+    /// 启动下载后立即返回任务 UUID，下载在后台异步进行。
     ///
     /// # Parameters
     ///
-    /// - `url`: Download URL
-    /// - `output_path`: Local save path
-    /// - `thread_count`: Number of download threads
+    /// - `url`: 下载 URL
+    /// - `output_path`: 本地保存路径
+    /// - `thread_count`: 下载线程数
     ///
     /// # Returns
     ///
-    /// Returns the task UUID, which can be used later to query progress or cancel.
+    /// 返回任务 UUID，后续可用于查询进度或取消。
     pub async fn create(
         &self,
         url: &str,
@@ -82,17 +82,17 @@ impl DownloadManager {
         Ok(id)
     }
 
-    /// Queries the progress of a single task.
+    /// 查询单个任务的进度。
     ///
-    /// Automatically removes the task from the manager when it finishes.
+    /// 任务完成时自动从管理器中移除。
     ///
     /// # Parameters
     ///
-    /// - `id`: Task UUID
+    /// - `id`: 任务 UUID
     ///
     /// # Returns
     ///
-    /// Returns `Some(DownloadSnapshot)` if the task exists, `None` otherwise.
+    /// 如果任务存在，返回 `Some(DownloadSnapshot)`，否则返回 `None`。
     pub async fn get_progress(&self, id: Uuid) -> Option<DownloadSnapshot> {
         let status = {
             let tasks = self.tasks.read().await;
@@ -101,9 +101,9 @@ impl DownloadManager {
 
         let snap = status.snapshot().await;
 
-        // Automatically remove finished tasks to free management resources.
-        // An acceptable race condition: two concurrent calls may both see the task as finished,
-        // and both attempt to remove it. The second remove is idempotent and does not affect correctness.
+        // 自动移除已完成的任务以释放管理资源。
+        // 可接受的竞态条件：两个并发调用可能同时看到任务已完成，
+        // 并且都尝试移除它。第二次移除是幂等的，不影响正确性。
         if snap.is_finished {
             let mut tasks = self.tasks.write().await;
             tasks.remove(&id);
@@ -112,9 +112,9 @@ impl DownloadManager {
         Some(snap)
     }
 
-    /// Queries progress of all tasks.
+    /// 查询所有任务的进度。
     ///
-    /// Returns progress of all ongoing tasks; finished tasks are automatically cleaned up.
+    /// 返回所有进行中任务的进度；已完成的任务会被自动清理。
     pub async fn get_all_progress(&self) -> Vec<(Uuid, DownloadSnapshot)> {
         let snapshot: Vec<(Uuid, Arc<DownloadStatus>)> = {
             let tasks = self.tasks.read().await;
@@ -142,13 +142,13 @@ impl DownloadManager {
         results
     }
 
-    /// Cancels a download task.
+    /// 取消一个下载任务。
     ///
-    /// The task will be removed from the manager after cancellation.
+    /// 取消后任务将从管理器中移除。
     ///
     /// # Parameters
     ///
-    /// - `id`: Task UUID
+    /// - `id`: 任务 UUID
     pub async fn cancel(&self, id: Uuid) {
         let status = {
             let tasks = self.tasks.read().await;
@@ -164,7 +164,7 @@ impl DownloadManager {
         }
     }
 
-    /// Returns the current number of managed tasks.
+    /// 返回当前管理的任务数量。
     pub async fn task_count(&self) -> usize {
         let tasks = self.tasks.read().await;
         tasks.len()

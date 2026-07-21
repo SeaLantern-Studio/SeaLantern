@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use super::core_parsing::{extract_minecraft_version, CoreKind};
 
-/// The script format selected from a startup-file extension.
+/// 根据启动文件扩展名选择的脚本格式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StartupScriptKind {
     Batch,
@@ -29,7 +29,7 @@ impl StartupScriptKind {
     }
 }
 
-/// One Java process invocation discovered in a startup script.
+/// 在启动脚本中发现的一个 Java 进程调用。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JavaLaunch {
     pub java_command: String,
@@ -40,7 +40,7 @@ pub struct JavaLaunch {
     pub application_arguments: Vec<String>,
 }
 
-/// Parsed startup-script metadata without executing shell content or expanding variables.
+/// 解析的启动脚本元数据，不执行 shell 内容或展开变量。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StartupScriptInfo {
     pub kind: StartupScriptKind,
@@ -49,7 +49,7 @@ pub struct StartupScriptInfo {
     pub minecraft_version: Option<String>,
 }
 
-/// Parses a startup script from a file without executing it.
+/// 从文件解析启动脚本，不执行它。
 pub fn parse_startup_script_file(path: &Path) -> Result<StartupScriptInfo, StartupParseError> {
     let kind = StartupScriptKind::from_path(path)
         .ok_or_else(|| StartupParseError::UnsupportedScript { path: path.to_path_buf() })?;
@@ -58,7 +58,7 @@ pub fn parse_startup_script_file(path: &Path) -> Result<StartupScriptInfo, Start
     Ok(parse_startup_script_content(kind, &content))
 }
 
-/// Parses startup-script content without executing commands or expanding variables.
+/// 解析启动脚本内容，不执行命令或展开变量。
 pub fn parse_startup_script_content(kind: StartupScriptKind, content: &str) -> StartupScriptInfo {
     let launches = logical_script_lines(kind, content)
         .iter()
@@ -303,7 +303,7 @@ fn infer_minecraft_version(launches: &[JavaLaunch]) -> Option<String> {
     })
 }
 
-/// Describes an error while loading a startup script for static parsing.
+/// 描述加载启动脚本进行静态解析时的错误。
 #[derive(Debug)]
 pub enum StartupParseError {
     UnsupportedScript { path: PathBuf },
