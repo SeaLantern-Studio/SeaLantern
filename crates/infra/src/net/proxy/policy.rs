@@ -1,24 +1,28 @@
-use super::{ProxyConfigError, ProxyMode, ProxySettings, SystemProxySnapshot};
+use super::{ProxyConfigError, ProxyMode, ProxyRoutes, ProxySettings, SystemProxySnapshot};
 use crate::observability;
 
 /// Proxy that an HTTP client should use after policy resolution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EffectiveProxy {
     Direct,
-    Proxy { proxy_url: String },
+    Routes(ProxyRoutes),
 }
 
 impl EffectiveProxy {
     /// Creates a proxy decision that applies the URL to all HTTP client traffic.
     pub fn proxy(proxy_url: impl Into<String>) -> Self {
-        Self::Proxy { proxy_url: proxy_url.into() }
+        Self::Routes(ProxyRoutes::all(proxy_url))
     }
 
-    /// Returns the proxy URL used to configure an HTTP client.
-    pub fn proxy_url(&self) -> Option<&str> {
+    /// Creates a decision from independently resolved HTTP and HTTPS routes.
+    pub fn routes(routes: ProxyRoutes) -> Self {
+        Self::Routes(routes)
+    }
+
+    pub fn routes_ref(&self) -> Option<&ProxyRoutes> {
         match self {
             Self::Direct => None,
-            Self::Proxy { proxy_url } => Some(proxy_url),
+            Self::Routes(routes) => Some(routes),
         }
     }
 }
@@ -57,6 +61,7 @@ impl ProxyController {
             .validate()
             .inspect_err(|error| observability::proxy_settings_invalid(error))?;
         let effective_proxy = resolve(&settings, &system_proxy);
+        observability::proxy_decision_updated("initial", settings.mode.as_str(), true);
 
         Ok(Self { settings, effective_proxy })
     }
@@ -81,7 +86,13 @@ impl ProxyController {
             .validate()
             .inspect_err(|error| observability::proxy_settings_invalid(error))?;
         self.settings = settings;
-        Ok(self.replace_effective_proxy(resolve(&self.settings, &system_proxy)))
+        let update = self.replace_effective_proxy(resolve(&self.settings, &system_proxy));
+        observability::proxy_decision_updated(
+            "settings",
+            self.settings.mode.as_str(),
+            update.changed(),
+        );
+        Ok(update)
     }
 
     /// Applies an operating-system network change.
@@ -96,7 +107,13 @@ impl ProxyController {
             }
         };
 
-        self.replace_effective_proxy(next)
+        let update = self.replace_effective_proxy(next);
+        observability::proxy_decision_updated(
+            "system",
+            self.settings.mode.as_str(),
+            update.changed(),
+        );
+        update
     }
 
     fn replace_effective_proxy(&mut self, current: EffectiveProxy) -> ProxyUpdate {
@@ -107,10 +124,14 @@ impl ProxyController {
 
 fn resolve(settings: &ProxySettings, system_proxy: &SystemProxySnapshot) -> EffectiveProxy {
     match &settings.mode {
-        ProxyMode::Adaptive | ProxyMode::Preserve => system_proxy
-            .proxy_url()
-            .map(EffectiveProxy::proxy)
-            .unwrap_or(EffectiveProxy::Direct),
+        ProxyMode::Adaptive | ProxyMode::Preserve => {
+            let routes = system_proxy.routes().clone();
+            if routes.http_proxy().is_some() || routes.https_proxy().is_some() {
+                EffectiveProxy::routes(routes)
+            } else {
+                EffectiveProxy::Direct
+            }
+        }
         ProxyMode::Manual { proxy_url } => EffectiveProxy::proxy(proxy_url),
         ProxyMode::Disabled => EffectiveProxy::Direct,
     }
@@ -133,7 +154,14 @@ mod tests {
             controller.handle_system_proxy_change(SystemProxySnapshot::proxy(SECOND_PROXY));
 
         assert!(update.changed());
-        assert_eq!(controller.effective_proxy().proxy_url(), Some(SECOND_PROXY));
+        assert_eq!(
+            controller
+                .effective_proxy()
+                .routes_ref()
+                .unwrap()
+                .http_proxy(),
+            Some(SECOND_PROXY)
+        );
     }
 
     #[test]
@@ -148,7 +176,14 @@ mod tests {
             controller.handle_system_proxy_change(SystemProxySnapshot::proxy(SECOND_PROXY));
 
         assert!(!update.changed());
-        assert_eq!(controller.effective_proxy().proxy_url(), Some(FIRST_PROXY));
+        assert_eq!(
+            controller
+                .effective_proxy()
+                .routes_ref()
+                .unwrap()
+                .http_proxy(),
+            Some(FIRST_PROXY)
+        );
     }
 
     #[test]
@@ -165,7 +200,14 @@ mod tests {
             controller.handle_system_proxy_change(SystemProxySnapshot::proxy(SECOND_PROXY));
 
         assert!(!update.changed());
-        assert_eq!(controller.effective_proxy().proxy_url(), Some(FIRST_PROXY));
+        assert_eq!(
+            controller
+                .effective_proxy()
+                .routes_ref()
+                .unwrap()
+                .http_proxy(),
+            Some(FIRST_PROXY)
+        );
     }
 
     #[test]
@@ -192,6 +234,6 @@ mod tests {
             .unwrap();
 
         assert!(update.changed());
-        assert_eq!(update.current.proxy_url(), Some(FIRST_PROXY));
+        assert_eq!(update.current.routes_ref().unwrap().http_proxy(), Some(FIRST_PROXY));
     }
 }
