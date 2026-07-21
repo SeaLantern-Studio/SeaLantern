@@ -30,16 +30,42 @@ pub const ARCHIVE_TARGET: &str = "sealantern.infra.archive";
 
 /// Event: a ZIP archive operation failed.
 pub const EVENT_ARCHIVE_OPERATION_FAILED: &str = "archive_operation_failed";
+/// Event: a temporary archive file could not be removed after publication.
+pub const EVENT_ARCHIVE_CLEANUP_FAILED: &str = "archive_cleanup_failed";
 
 /// Records an archive creation or extraction failure.
 pub fn archive_operation_failed(operation: &str, archive: &std::path::Path, error: &dyn Display) {
+    archive_operation_failed_with_context(operation, archive, None, None, error);
+}
+
+/// Records an archive failure with the affected destination and entry when available.
+pub fn archive_operation_failed_with_context(
+    operation: &str,
+    archive: &std::path::Path,
+    destination: Option<&std::path::Path>,
+    entry: Option<&str>,
+    error: &dyn Display,
+) {
     tracing::error!(
         target: ARCHIVE_TARGET,
         event_name = EVENT_ARCHIVE_OPERATION_FAILED,
         operation,
         archive = %archive.display(),
+        destination = destination.map(|path| path.display().to_string()),
+        entry,
         error = %error,
         "archive operation failed"
+    );
+}
+
+/// Records a best-effort cleanup failure after an archive was successfully published.
+pub fn archive_cleanup_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::warn!(
+        target: ARCHIVE_TARGET,
+        event_name = EVENT_ARCHIVE_CLEANUP_FAILED,
+        path = %path.display(),
+        error = %error,
+        "temporary archive cleanup failed"
     );
 }
 

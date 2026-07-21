@@ -20,6 +20,10 @@ pub enum ArchiveError {
     },
     /// The requested ZIP source is not a regular directory.
     InvalidSource { path: PathBuf, reason: &'static str },
+    /// The extraction destination is not a new, ordinary directory.
+    InvalidDestination { path: PathBuf, reason: &'static str },
+    /// An output archive or extraction destination already exists.
+    DestinationExists { path: PathBuf },
     /// A source entry cannot be represented safely in a portable ZIP archive.
     UnsupportedSourceEntry { path: PathBuf, kind: &'static str },
     /// An archive entry name would escape or otherwise violate the extraction root.
@@ -34,8 +38,27 @@ pub enum ArchiveError {
         entry: String,
         kind: &'static str,
     },
+    /// Archive metadata or streamed content exceeded a configured resource limit.
+    LimitExceeded {
+        archive: PathBuf,
+        limit: &'static str,
+        observed: u64,
+        maximum: u64,
+    },
     /// A symbolic-link payload is not a portable, safe relative path.
     InvalidSymbolicLinkTarget { reason: &'static str },
+    /// A symbolic-link payload is not safe for a specific archive entry.
+    InvalidSymbolicLinkTargetEntry {
+        archive: PathBuf,
+        entry: String,
+        reason: &'static str,
+    },
+    /// A symbolic-link payload could not be read from the archive.
+    SymbolicLinkTargetRead {
+        archive: PathBuf,
+        entry: String,
+        source: std::io::Error,
+    },
 }
 
 impl ArchiveError {
@@ -49,6 +72,16 @@ impl ArchiveError {
 
     pub(crate) fn zip(operation: &'static str, path: impl Into<PathBuf>, source: ZipError) -> Self {
         Self::Zip { operation, path: path.into(), source }
+    }
+
+    pub(crate) fn entry(&self) -> Option<&str> {
+        match self {
+            Self::UnsafeEntry { entry, .. }
+            | Self::UnsupportedEntry { entry, .. }
+            | Self::InvalidSymbolicLinkTargetEntry { entry, .. }
+            | Self::SymbolicLinkTargetRead { entry, .. } => Some(entry),
+            _ => None,
+        }
     }
 }
 
@@ -66,6 +99,12 @@ impl fmt::Display for ArchiveError {
             Self::InvalidSource { path, reason } => {
                 write!(formatter, "invalid ZIP source '{}': {reason}", path.display())
             }
+            Self::InvalidDestination { path, reason } => {
+                write!(formatter, "invalid ZIP destination '{}': {reason}", path.display())
+            }
+            Self::DestinationExists { path } => {
+                write!(formatter, "ZIP destination already exists: '{}'", path.display())
+            }
             Self::UnsupportedSourceEntry { path, kind } => write!(
                 formatter,
                 "cannot add {kind} source entry '{}' to a portable ZIP archive",
@@ -79,8 +118,27 @@ impl fmt::Display for ArchiveError {
                 "unsupported {kind} ZIP entry '{entry}' in '{}'",
                 archive.display()
             ),
+            Self::LimitExceeded { archive, limit, observed, maximum } => write!(
+                formatter,
+                "ZIP archive '{}' exceeds the {limit} limit: {observed} > {maximum}",
+                archive.display()
+            ),
             Self::InvalidSymbolicLinkTarget { reason } => {
                 write!(formatter, "invalid ZIP symbolic-link target: {reason}")
+            }
+            Self::InvalidSymbolicLinkTargetEntry { archive, entry, reason } => {
+                write!(
+                    formatter,
+                    "invalid symbolic-link target for ZIP entry '{entry}' in '{}': {reason}",
+                    archive.display()
+                )
+            }
+            Self::SymbolicLinkTargetRead { archive, entry, source } => {
+                write!(
+                    formatter,
+                    "failed to read symbolic-link target for ZIP entry '{entry}' in '{}': {source}",
+                    archive.display()
+                )
             }
         }
     }
@@ -91,6 +149,7 @@ impl std::error::Error for ArchiveError {
         match self {
             Self::Io { source, .. } => Some(source),
             Self::Zip { source, .. } => Some(source),
+            Self::SymbolicLinkTargetRead { source, .. } => Some(source),
             _ => None,
         }
     }
