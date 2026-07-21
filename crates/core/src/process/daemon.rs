@@ -9,12 +9,12 @@ const DEFAULT_GRACEFUL_TERMINATION_TIMEOUT: Duration = Duration::from_secs(10);
 #[cfg(unix)]
 const TERMINATION_POLL_INTERVAL: Duration = Duration::from_millis(50);
 
-/// Owns a server process and provides its lifecycle operations.
+/// 拥有一个服务器进程并提供其生命周期操作。
 pub struct Daemon {
     child: Child,
 }
 
-/// Identifies an abnormal daemon-termination outcome for callers and logs.
+/// 为调用方和日志标识异常的守护进程终止结果。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DaemonTerminationSign {
     ProcessAlreadyExited,
@@ -34,7 +34,7 @@ impl DaemonTerminationSign {
     }
 }
 
-/// Describes a failed or anomalous daemon-termination attempt.
+/// 描述失败或异常的守护进程终止尝试。
 #[derive(Debug)]
 pub struct DaemonTerminationError {
     sign: DaemonTerminationSign,
@@ -76,7 +76,7 @@ impl std::error::Error for DaemonTerminationError {
 }
 
 impl Daemon {
-    /// Spawns a daemon from a fully configured command.
+    /// 从完全配置的命令生成守护进程。
     pub fn spawn(command: &mut Command) -> io::Result<Self> {
         #[cfg(unix)]
         {
@@ -88,50 +88,49 @@ impl Daemon {
         command.spawn().map(|child| Self { child })
     }
 
-    /// Returns the operating-system process identifier.
+    /// 返回操作系统进程标识符。
     pub fn id(&self) -> u32 {
         self.child.id()
     }
 
-    /// Polls the child without blocking.
+    /// 非阻塞地轮询子进程。
     ///
-    /// `Ok(None)` means the daemon is still running. `Ok(Some(_))` contains its exit status.
+    /// `Ok(None)` 表示守护进程仍在运行。`Ok(Some(_))` 包含其退出状态。
     pub fn poll(&mut self) -> io::Result<Option<ExitStatus>> {
         self.child.try_wait()
     }
 
-    /// Waits until the daemon exits.
+    /// 等待直到守护进程退出。
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         self.child.wait()
     }
 
-    /// Transfers standard input ownership to the terminal module.
+    /// 将标准输入所有权转移到终端模块。
     pub(crate) fn take_stdin(&mut self) -> Option<ChildStdin> {
         self.child.stdin.take()
     }
 
-    /// Transfers standard output ownership to the terminal module.
+    /// 将标准输出所有权转移到终端模块。
     pub fn take_stdout(&mut self) -> Option<ChildStdout> {
         self.child.stdout.take()
     }
 
-    /// Transfers standard error ownership to the terminal module.
+    /// 将标准错误所有权转移到终端模块。
     pub fn take_stderr(&mut self) -> Option<ChildStderr> {
         self.child.stderr.take()
     }
 
-    /// Terminates the daemon and every process in its process tree.
+    /// 终止守护进程及其进程树中的每个进程。
     ///
-    /// If the child has already exited or cannot be inspected, a force-termination attempt is still
-    /// made and the method returns an error carrying an abnormal termination sign.
+    /// 如果子进程已退出或无法检查，仍会尝试强制终止，并且该方法会返回一个携带异常终止信号的错误。
     pub fn terminate_tree(&mut self) -> Result<(), DaemonTerminationError> {
         self.terminate_tree_with_timeout(DEFAULT_GRACEFUL_TERMINATION_TIMEOUT)
     }
 
-    /// Terminates the daemon after allowing a bounded Unix process-group shutdown interval.
+    /// 在允许有界的 Unix 进程组关闭间隔后终止守护进程。
     ///
-    /// Windows console process trees require `taskkill /F`; protocol-level graceful shutdown belongs
-    /// to the terminal module before this process-lifecycle operation is invoked.
+    /// Windows 控制台进程树需要使用 `taskkill /F`；协议级别的优雅关闭属于终端模块，
+    /// 应在调用此进程生命周期操作之前完成。
     pub fn terminate_tree_with_timeout(
         &mut self,
         graceful_timeout: Duration,

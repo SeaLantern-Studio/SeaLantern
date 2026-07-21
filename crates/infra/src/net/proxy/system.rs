@@ -1,7 +1,7 @@
-/// Static proxy routes resolved from operating-system configuration.
+/// 从操作系统配置解析的静态代理路由。
 ///
-/// Platform adapters must resolve PAC or other dynamic configuration before
-/// constructing this value. The network layer never executes external scripts.
+/// 平台适配器必须在构造此值之前解析 PAC 或其他动态配置。
+/// 网络层从不执行外部脚本。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProxyRoutes {
     http_proxy: Option<String>,
@@ -10,7 +10,7 @@ pub struct ProxyRoutes {
 }
 
 impl ProxyRoutes {
-    /// Creates direct routes for both HTTP and HTTPS traffic.
+    /// 为 HTTP 和 HTTPS 流量创建直连路由。
     pub const fn direct() -> Self {
         Self {
             http_proxy: None,
@@ -19,7 +19,7 @@ impl ProxyRoutes {
         }
     }
 
-    /// Creates routes that apply one proxy to both HTTP and HTTPS traffic.
+    /// 创建将对 HTTP 和 HTTPS 流量应用同一代理的路由。
     pub fn all(proxy_url: impl Into<String>) -> Self {
         let proxy_url = proxy_url.into();
         Self {
@@ -29,7 +29,7 @@ impl ProxyRoutes {
         }
     }
 
-    /// Creates routes with independent HTTP and HTTPS proxy endpoints.
+    /// 创建具有独立 HTTP 和 HTTPS 代理端点的路由。
     pub fn split(http_proxy: Option<String>, https_proxy: Option<String>) -> Self {
         Self {
             http_proxy,
@@ -38,7 +38,7 @@ impl ProxyRoutes {
         }
     }
 
-    /// Adds host, domain, IP, or CIDR entries that bypass configured proxies.
+    /// 添加绕过已配置代理的主机、域名、IP 或 CIDR 条目。
     pub fn with_no_proxy(mut self, no_proxy: Vec<String>) -> Self {
         self.no_proxy = no_proxy;
         self
@@ -57,29 +57,29 @@ impl ProxyRoutes {
     }
 }
 
-/// Snapshot of static proxy routes currently reported by the operating system.
+/// 操作系统当前报告的静态代理路由快照。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SystemProxySnapshot {
     routes: ProxyRoutes,
 }
 
 impl SystemProxySnapshot {
-    /// Creates a snapshot that requests direct connections.
+    /// 创建一个请求直连的快照。
     pub const fn direct() -> Self {
         Self { routes: ProxyRoutes::direct() }
     }
 
-    /// Creates a snapshot with one proxy applied to HTTP and HTTPS traffic.
+    /// 创建一个将同一代理应用于 HTTP 和 HTTPS 流量的快照。
     pub fn proxy(proxy_url: impl Into<String>) -> Self {
         Self::from_routes(ProxyRoutes::all(proxy_url))
     }
 
-    /// Creates a snapshot with independent HTTP and HTTPS routes.
+    /// 创建具有独立 HTTP 和 HTTPS 路由的快照。
     pub fn split(http_proxy: Option<String>, https_proxy: Option<String>) -> Self {
         Self::from_routes(ProxyRoutes::split(http_proxy, https_proxy))
     }
 
-    /// Creates a snapshot from platform-resolved routes.
+    /// 从平台解析的路由创建一个快照。
     pub fn from_routes(routes: ProxyRoutes) -> Self {
         Self { routes }
     }
@@ -89,14 +89,14 @@ impl SystemProxySnapshot {
     }
 }
 
-/// Supplies the current system proxy without coupling network policy to an OS.
+/// 提供当前系统代理，而不将网络策略与操作系统耦合。
 pub trait SystemProxyProvider {
     type Error: std::error::Error + Send + Sync + 'static;
 
     fn current_system_proxy(&self) -> Result<SystemProxySnapshot, Self::Error>;
 }
 
-/// Reads a platform proxy snapshot and records a stable failure event.
+/// 读取平台代理快照并记录稳定的失败事件。
 pub fn read_system_proxy<P: SystemProxyProvider>(
     provider: &P,
 ) -> Result<SystemProxySnapshot, P::Error> {

@@ -8,22 +8,21 @@ use zip::{CompressionMethod, ZipWriter};
 
 use super::{open_existing_directory, parent_path, ArchiveError};
 
-/// Counts entries and uncompressed bytes processed during ZIP creation.
+/// 统计 ZIP 创建过程中处理的条目数和非压缩字节数。
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ArchiveSummary {
-    /// Number of regular files written.
+    /// 已写入的普通文件数。
     pub files: u64,
-    /// Number of directory entries written.
+    /// 已写入的目录条目数。
     pub directories: u64,
-    /// Total uncompressed file bytes written.
+    /// 已写入的文件总非压缩字节数。
     pub bytes: u64,
 }
 
-/// Creates a ZIP archive containing the contents of source.
+/// 创建包含 source 目录内容的 ZIP 归档文件。
 ///
-/// The destination must not already exist. A temporary archive is completed in
-/// the destination directory and then hard-linked into place, so source-read
-/// or write failures never replace a previous archive with a partial result.
+/// 目标文件必须不存在。临时归档在目标目录中完成，然后通过硬链接放置到最终位置，
+/// 因此源文件读取或写入失败不会用部分结果替换原有的归档文件。
 pub fn create_zip(
     source: impl AsRef<Path>,
     destination: impl AsRef<Path>,

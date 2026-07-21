@@ -1,44 +1,44 @@
-//! Log events for the observability module.
+//! 可观测性模块的日志事件。
 //!
-//! Defines tracing targets and event name constants for `infra` sub-modules,
-//! providing stable event keys for log collection and the plugin system.
+//! 为 `infra` 子模块定义 tracing 目标和事件名称常量，
+//! 为日志收集和插件系统提供稳定的事件键。
 
 use std::fmt::Display;
 
-// -- File system layer --
+// -- 文件系统层 --
 
-/// Tracing target for the file system infrastructure module.
+/// 文件系统基础设施模块的 tracing 目标。
 pub const FS_TARGET: &str = "sealantern.infra.fs";
 
-/// Event: an atomic file replacement failed.
+/// Event: 原子文件替换失败。
 pub const EVENT_ATOMIC_WRITE_FAILED: &str = "atomic_write_failed";
-/// Event: a file lock could not be released.
+/// Event: 文件锁无法释放。
 pub const EVENT_LOCK_RELEASE_FAILED: &str = "lock_release_failed";
-/// Event: a file system operation failed.
+/// Event: 文件系统操作失败。
 pub const EVENT_OPERATION_FAILED: &str = "operation_failed";
-/// Event: a cache operation failed.
+/// Event: 缓存操作失败。
 pub const EVENT_CACHE_OPERATION_FAILED: &str = "cache_operation_failed";
-/// Event: structured file data could not be encoded or decoded.
+/// Event: 结构化文件数据无法编码或解码。
 pub const EVENT_SERIALIZATION_FAILED: &str = "serialization_failed";
-/// Event: a file lock could not be acquired.
+/// Event: 无法获取文件锁。
 pub const EVENT_LOCK_ACQUIRE_FAILED: &str = "lock_acquire_failed";
 
-// -- Archive layer --
+// -- 归档层 --
 
-/// Tracing target for archive infrastructure operations.
+/// 归档基础设施操作的 tracing 目标。
 pub const ARCHIVE_TARGET: &str = "sealantern.infra.archive";
 
-/// Event: a ZIP archive operation failed.
+/// Event: ZIP 归档操作失败。
 pub const EVENT_ARCHIVE_OPERATION_FAILED: &str = "archive_operation_failed";
-/// Event: a temporary archive file could not be removed after publication.
+/// Event: 发布后无法移除临时归档文件。
 pub const EVENT_ARCHIVE_CLEANUP_FAILED: &str = "archive_cleanup_failed";
 
-/// Records an archive creation or extraction failure.
+/// 记录归档创建或提取失败。
 pub fn archive_operation_failed(operation: &str, archive: &std::path::Path, error: &dyn Display) {
     archive_operation_failed_with_context(operation, archive, None, None, error);
 }
 
-/// Records an archive failure with the affected destination and entry when available.
+/// 记录归档失败，包含受影响的目标路径和条目（如有）。
 pub fn archive_operation_failed_with_context(
     operation: &str,
     archive: &std::path::Path,
@@ -58,7 +58,7 @@ pub fn archive_operation_failed_with_context(
     );
 }
 
-/// Records a best-effort cleanup failure after an archive was successfully published.
+/// 记录归档成功发布后，尽力清理临时文件失败的情况。
 pub fn archive_cleanup_failed(path: &std::path::Path, error: &dyn Display) {
     tracing::warn!(
         target: ARCHIVE_TARGET,
@@ -69,7 +69,7 @@ pub fn archive_cleanup_failed(path: &std::path::Path, error: &dyn Display) {
     );
 }
 
-/// Records an atomic write failure with its destination path.
+/// 记录原子写入失败及其目标路径。
 pub fn atomic_write_failed(path: &std::path::Path, error: &dyn Display) {
     tracing::error!(
         target: FS_TARGET,
@@ -80,7 +80,7 @@ pub fn atomic_write_failed(path: &std::path::Path, error: &dyn Display) {
     );
 }
 
-/// Records a best-effort lock cleanup failure.
+/// 记录尽力而为的锁清理失败。
 pub fn lock_release_failed(path: &std::path::Path, error: &dyn Display) {
     tracing::warn!(
         target: FS_TARGET,
@@ -91,7 +91,7 @@ pub fn lock_release_failed(path: &std::path::Path, error: &dyn Display) {
     );
 }
 
-/// Records a failed file system operation.
+/// 记录失败的文件系统操作。
 pub fn operation_failed(operation: &str, path: &std::path::Path, error: &dyn Display) {
     tracing::error!(
         target: FS_TARGET,
@@ -103,7 +103,7 @@ pub fn operation_failed(operation: &str, path: &std::path::Path, error: &dyn Dis
     );
 }
 
-/// Records a failed cache operation.
+/// 记录失败的缓存操作。
 pub fn cache_operation_failed(operation: &str, path: &std::path::Path, error: &dyn Display) {
     tracing::warn!(
         target: FS_TARGET,
@@ -115,7 +115,7 @@ pub fn cache_operation_failed(operation: &str, path: &std::path::Path, error: &d
     );
 }
 
-/// Records a structured file serialization failure.
+/// 记录结构化文件序列化失败。
 pub fn serialization_failed(
     format: &str,
     operation: &str,
@@ -133,7 +133,7 @@ pub fn serialization_failed(
     );
 }
 
-/// Records an unsuccessful file lock acquisition.
+/// 记录文件锁获取失败。
 pub fn lock_acquire_failed(path: &std::path::Path, error: &dyn Display) {
     tracing::warn!(
         target: FS_TARGET,
@@ -144,29 +144,29 @@ pub fn lock_acquire_failed(path: &std::path::Path, error: &dyn Display) {
     );
 }
 
-// ── Network layer ──
+// ── 网络层 ──
 
-/// Tracing target for the network module.
+/// 网络模块的 tracing 目标。
 pub const NET_TARGET: &str = "sealantern.infra.net";
 
-/// Event: an HTTP request has started.
+/// Event: HTTP 请求已开始。
 pub const EVENT_REQUEST_STARTED: &str = "request_started";
-/// Event: an HTTP request has completed successfully.
+/// Event: HTTP 请求已成功完成。
 pub const EVENT_REQUEST_COMPLETED: &str = "request_completed";
-/// Event: an HTTP request is being retried.
+/// Event: HTTP 请求正在重试。
 pub const EVENT_REQUEST_RETRY: &str = "request_retry";
-/// Event: the proxy configuration is invalid.
+/// Event: 代理配置无效。
 pub const EVENT_PROXY_CONFIG_INVALID: &str = "proxy_config_invalid";
-/// Event: proxy settings could not be applied.
+/// Event: 无法应用代理设置。
 pub const EVENT_PROXY_SETTINGS_INVALID: &str = "proxy_settings_invalid";
-/// Event: proxy routing policy was evaluated.
+/// Event: 代理路由策略已评估。
 pub const EVENT_PROXY_DECISION_UPDATED: &str = "proxy_decision_updated";
-/// Event: platform proxy discovery failed.
+/// Event: 平台代理发现失败。
 pub const EVENT_SYSTEM_PROXY_READ_FAILED: &str = "system_proxy_read_failed";
-/// Event: an HTTP client could not be constructed.
+/// Event: 无法构建 HTTP 客户端。
 pub const EVENT_HTTP_CLIENT_BUILD_FAILED: &str = "http_client_build_failed";
 
-/// Records a proxy configuration invalid event.
+/// 记录代理配置无效事件。
 pub fn proxy_config_invalid(scope: &str) {
     tracing::error!(
         target: NET_TARGET,
@@ -176,7 +176,7 @@ pub fn proxy_config_invalid(scope: &str) {
     );
 }
 
-/// Records invalid proxy settings rejected before a client is built.
+/// 记录在客户端构建前被拒绝的无效代理设置。
 pub fn proxy_settings_invalid(error: &dyn Display) {
     tracing::warn!(
         target: NET_TARGET,
@@ -186,7 +186,7 @@ pub fn proxy_settings_invalid(error: &dyn Display) {
     );
 }
 
-/// Records an evaluated proxy decision without exposing endpoint credentials.
+/// 记录已评估的代理决策，不暴露端点凭据。
 pub fn proxy_decision_updated(source: &str, mode: &str, changed: bool) {
     tracing::info!(
         target: NET_TARGET,
@@ -198,7 +198,7 @@ pub fn proxy_decision_updated(source: &str, mode: &str, changed: bool) {
     );
 }
 
-/// Records a platform proxy-read failure without logging provider-controlled text.
+/// 记录平台代理读取失败，不记录供应商控制的文本。
 pub fn system_proxy_read_failed() {
     tracing::warn!(
         target: NET_TARGET,
@@ -207,7 +207,7 @@ pub fn system_proxy_read_failed() {
     );
 }
 
-/// Records an HTTP client construction failure without logging configuration values.
+/// 记录 HTTP 客户端构建失败，不记录配置值。
 pub fn http_client_build_failed() {
     tracing::error!(
         target: NET_TARGET,
@@ -216,7 +216,7 @@ pub fn http_client_build_failed() {
     );
 }
 
-/// Records an HTTP request retry event.
+/// 记录 HTTP 请求重试事件。
 pub fn request_retry(url: &str, attempt: u32, error: &dyn Display) {
     tracing::warn!(
         target: NET_TARGET,
@@ -228,10 +228,10 @@ pub fn request_retry(url: &str, attempt: u32, error: &dyn Display) {
     );
 }
 
-/// Event: an HTTP request has failed.
+/// Event: HTTP 请求已失败。
 pub const EVENT_REQUEST_FAILED: &str = "request_failed";
 
-/// Records a request start event.
+/// 记录请求开始事件。
 pub fn request_started(url: &str) {
     tracing::info!(
         target: NET_TARGET,
@@ -241,7 +241,7 @@ pub fn request_started(url: &str) {
     );
 }
 
-/// Records a request completion event.
+/// 记录请求完成事件。
 pub fn request_completed(url: &str) {
     tracing::info!(
         target: NET_TARGET,
@@ -251,7 +251,7 @@ pub fn request_completed(url: &str) {
     );
 }
 
-/// Records a request failure event.
+/// 记录请求失败事件。
 pub fn request_failed(url: &str, error: &dyn Display) {
     tracing::error!(
         target: NET_TARGET,
@@ -262,25 +262,25 @@ pub fn request_failed(url: &str, error: &dyn Display) {
     );
 }
 
-// ── Download layer ──
+// ── 下载层 ──
 
-/// Tracing target for the download module.
+/// 下载模块的 tracing 目标。
 pub const DOWNLOAD_TARGET: &str = "sealantern.infra.download";
 
-/// Event: download has started.
+/// Event: 下载已开始。
 pub const EVENT_DOWNLOAD_STARTED: &str = "download_started";
-/// Event: download has completed.
+/// Event: 下载已完成。
 pub const EVENT_DOWNLOAD_COMPLETED: &str = "download_completed";
-/// Event: download has failed.
+/// Event: 下载已失败。
 pub const EVENT_DOWNLOAD_FAILED: &str = "download_failed";
-/// Event: chunk download has started.
+/// Event: 分块下载已开始。
 pub const EVENT_CHUNK_STARTED: &str = "chunk_started";
-/// Event: chunk download has completed.
+/// Event: 分块下载已完成。
 pub const EVENT_CHUNK_COMPLETED: &str = "chunk_completed";
-/// Event: chunk download has failed.
+/// Event: 分块下载已失败。
 pub const EVENT_CHUNK_FAILED: &str = "chunk_failed";
 
-/// Records a download start event.
+/// 记录下载开始事件。
 pub fn download_started(url: &str, total_size: u64, thread_count: usize) {
     tracing::info!(
         target: DOWNLOAD_TARGET,
@@ -292,7 +292,7 @@ pub fn download_started(url: &str, total_size: u64, thread_count: usize) {
     );
 }
 
-/// Records a download completion event.
+/// 记录下载完成事件。
 pub fn download_completed(url: &str, total_size: u64, elapsed: u64) {
     tracing::info!(
         target: DOWNLOAD_TARGET,
@@ -304,7 +304,7 @@ pub fn download_completed(url: &str, total_size: u64, elapsed: u64) {
     );
 }
 
-/// Records a download failure event.
+/// 记录下载失败事件。
 pub fn download_failed(url: &str, error: &dyn Display) {
     tracing::error!(
         target: DOWNLOAD_TARGET,
@@ -315,7 +315,7 @@ pub fn download_failed(url: &str, error: &dyn Display) {
     );
 }
 
-/// Records a chunk start event.
+/// 记录分块开始事件。
 pub fn chunk_started(url: &str, start: u64, end: u64) {
     tracing::debug!(
         target: DOWNLOAD_TARGET,
@@ -327,7 +327,7 @@ pub fn chunk_started(url: &str, start: u64, end: u64) {
     );
 }
 
-/// Records a chunk completion event.
+/// 记录分块完成事件。
 pub fn chunk_completed(url: &str, start: u64, end: u64) {
     tracing::debug!(
         target: DOWNLOAD_TARGET,
@@ -339,7 +339,7 @@ pub fn chunk_completed(url: &str, start: u64, end: u64) {
     );
 }
 
-/// Records a chunk failure event.
+/// 记录分块失败事件。
 pub fn chunk_failed(url: &str, start: u64, end: u64, error: &dyn Display) {
     tracing::error!(
         target: DOWNLOAD_TARGET,
@@ -352,16 +352,16 @@ pub fn chunk_failed(url: &str, start: u64, end: u64, error: &dyn Display) {
     );
 }
 
-/// Event: a download task has been created.
+/// Event: 下载任务已创建。
 pub const EVENT_TASK_CREATED: &str = "task_created";
-/// Event: a download task has been cancelled.
+/// Event: 下载任务已取消。
 pub const EVENT_TASK_CANCELLED: &str = "task_cancelled";
-/// Event: download cancelled by user.
+/// Event: 下载已被用户取消。
 pub const EVENT_DOWNLOAD_CANCELLED: &str = "download_cancelled";
-/// Event: download encountered an error.
+/// Event: 下载遇到错误。
 pub const EVENT_DOWNLOAD_ERROR: &str = "download_error";
 
-/// Records a task creation event.
+/// 记录任务创建事件。
 pub fn task_created(task_id: &uuid::Uuid, url: &str) {
     tracing::info!(
         target: DOWNLOAD_TARGET,
@@ -372,7 +372,7 @@ pub fn task_created(task_id: &uuid::Uuid, url: &str) {
     );
 }
 
-/// Records a task cancellation event.
+/// 记录任务取消事件。
 pub fn task_cancelled(task_id: &uuid::Uuid) {
     tracing::warn!(
         target: DOWNLOAD_TARGET,
@@ -382,7 +382,7 @@ pub fn task_cancelled(task_id: &uuid::Uuid) {
     );
 }
 
-/// Records a download cancelled event.
+/// 记录下载取消事件。
 pub fn download_cancelled() {
     tracing::warn!(
         target: DOWNLOAD_TARGET,
@@ -391,7 +391,7 @@ pub fn download_cancelled() {
     );
 }
 
-/// Records a download error event.
+/// 记录下载错误事件。
 pub fn download_error(error: &dyn Display) {
     tracing::error!(
         target: DOWNLOAD_TARGET,

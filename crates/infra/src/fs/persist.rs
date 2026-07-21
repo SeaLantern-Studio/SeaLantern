@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use super::{read_limited, write_atomic, DataLimit, FsError};
 
-/// Reads a JSON file within a maximum byte size.
+/// 在最大字节大小限制内读取 JSON 文件。
 pub async fn read_json<T: DeserializeOwned>(
     path: impl AsRef<Path>,
     limit: DataLimit,
@@ -15,7 +15,7 @@ pub async fn read_json<T: DeserializeOwned>(
     serde_json::from_slice(&bytes).map_err(|error| codec_error("JSON", "decode", path, error))
 }
 
-/// Serializes and atomically writes a JSON file.
+/// 序列化并以原子方式写入 JSON 文件。
 pub async fn write_json_atomic<T: Serialize>(
     path: impl AsRef<Path>,
     value: &T,
@@ -26,7 +26,7 @@ pub async fn write_json_atomic<T: Serialize>(
     write_atomic(path, &bytes).await
 }
 
-/// Reads a TOML file within a maximum byte size.
+/// 在最大字节大小限制内读取 TOML 文件。
 pub async fn read_toml<T: DeserializeOwned>(
     path: impl AsRef<Path>,
     limit: DataLimit,
@@ -37,7 +37,7 @@ pub async fn read_toml<T: DeserializeOwned>(
     toml::from_str(&text).map_err(|error| codec_error("TOML", "decode", path, error))
 }
 
-/// Serializes and atomically writes a TOML file.
+/// 序列化并以原子方式写入 TOML 文件。
 pub async fn write_toml_atomic<T: Serialize>(
     path: impl AsRef<Path>,
     value: &T,
@@ -48,7 +48,7 @@ pub async fn write_toml_atomic<T: Serialize>(
     write_atomic(path, text.as_bytes()).await
 }
 
-/// Reads a YAML file within a maximum byte size.
+/// 在最大字节大小限制内读取 YAML 文件。
 pub async fn read_yaml<T: DeserializeOwned>(
     path: impl AsRef<Path>,
     limit: DataLimit,
@@ -58,7 +58,7 @@ pub async fn read_yaml<T: DeserializeOwned>(
     serde_yaml::from_slice(&bytes).map_err(|error| codec_error("YAML", "decode", path, error))
 }
 
-/// Serializes and atomically writes a YAML file.
+/// 序列化并以原子方式写入 YAML 文件。
 pub async fn write_yaml_atomic<T: Serialize>(
     path: impl AsRef<Path>,
     value: &T,

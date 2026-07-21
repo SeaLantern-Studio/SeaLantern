@@ -1,9 +1,9 @@
-//! Portable ZIP archive infrastructure.
+//! 可移植的 ZIP 压缩包基础设施。
 //!
-//! Archives are written from directory contents and extracted through validated
-//! relative paths. Symbolic links are deliberately rejected during extraction:
-//! creating them has incompatible permissions and semantics across supported
-//! platforms, and callers must opt into a dedicated policy before doing so.
+//! 压缩包从目录内容写入，并通过经过验证的相对路径进行解压。
+//! 在解压过程中有意拒绝符号链接：创建符号链接在支持的
+//! 平台上具有不兼容的权限和语义，调用者必须先选择专门的
+//! 策略才能这样做。
 
 mod error;
 mod symbol_link;

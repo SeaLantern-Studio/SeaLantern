@@ -1,8 +1,8 @@
-//! File system infrastructure primitives.
+//! 文件系统基础设施原语。
 //!
-//! This module deliberately keeps policy out of the infrastructure layer. It
-//! provides safe path handling, bounded reads, atomic writes, persistence
-//! formats, and maintenance helpers that higher layers can compose.
+//! 该模块有意将策略与基础设施层分离。它
+//! 提供安全的路径处理、有界读取、原子写入、持久化
+//! 格式以及可供上层组合的维护辅助工具。
 
 mod archive;
 mod atomic;

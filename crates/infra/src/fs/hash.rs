@@ -7,7 +7,7 @@ use crate::observability;
 
 use super::FsError;
 
-/// Calculates a SHA-256 digest for a file without loading it fully into memory.
+/// 计算文件的 SHA-256 摘要，无需将整个文件加载到内存中。
 pub async fn sha256_file(path: impl AsRef<Path>) -> Result<[u8; 32], FsError> {
     let path = path.as_ref();
     let result = async {
@@ -35,7 +35,7 @@ pub async fn sha256_file(path: impl AsRef<Path>) -> Result<[u8; 32], FsError> {
     result
 }
 
-/// Calculates a lowercase hexadecimal SHA-256 digest for in-memory data.
+/// 计算内存数据的小写十六进制 SHA-256 摘要。
 pub fn sha256_hex(data: impl AsRef<[u8]>) -> String {
     let digest = Sha256::digest(data.as_ref());
     format!("{digest:x}")

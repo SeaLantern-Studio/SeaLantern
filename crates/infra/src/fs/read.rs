@@ -6,25 +6,25 @@ use crate::observability;
 
 use super::FsError;
 
-/// The maximum number of bytes a bounded read may return.
+/// 有界读取操作最多可返回的字节数。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DataLimit {
     max_bytes: usize,
 }
 
 impl DataLimit {
-    /// Creates a byte limit.
+    /// 创建一个字节上限。
     pub const fn new(max_bytes: usize) -> Self {
         Self { max_bytes }
     }
 
-    /// Returns the maximum number of bytes permitted.
+    /// 返回允许的最大字节数。
     pub const fn max_bytes(self) -> usize {
         self.max_bytes
     }
 }
 
-/// Reads a file while enforcing a maximum returned size.
+/// 读取文件并强制限制返回的最大大小。
 pub async fn read_limited(path: impl AsRef<Path>, limit: DataLimit) -> Result<Vec<u8>, FsError> {
     let path = path.as_ref();
     let result = async {
@@ -52,7 +52,7 @@ pub async fn read_limited(path: impl AsRef<Path>, limit: DataLimit) -> Result<Ve
     result
 }
 
-/// Reads UTF-8 text while enforcing a maximum returned size.
+/// 读取 UTF-8 文本并强制限制返回的最大大小。
 pub async fn read_string_limited(
     path: impl AsRef<Path>,
     limit: DataLimit,
