@@ -43,7 +43,7 @@ impl ProxyUpdate {
 
 /// 解析代理策略并持有当前内存中的决策。
 ///
-/// 配置文件和操作系统事件循环保持在此类型之外。宿主通过
+/// 本类型不管理配置文件和操作系统事件循环。宿主通过
 /// [`Self::handle_system_proxy_change`] 提供快照。
 #[derive(Debug, Clone)]
 pub struct ProxyController {

@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use crate::fs::{ensure_parent, read_limited, write_atomic, DataLimit, FsError};
 
+/// 配置文件读取上限：最大 10 MiB。
 const CONFIG_READ_LIMIT: DataLimit = DataLimit::new(10 * 1024 * 1024);
 
 /// 配置操作返回的错误。

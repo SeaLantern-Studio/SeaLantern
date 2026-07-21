@@ -5,7 +5,7 @@ use crate::observability;
 
 use super::FsError;
 
-/// 不追踪符号链接收集的基本元数据。
+/// 不追踪符号链接，收集路径的基本元数据。
 #[derive(Clone, Debug)]
 pub struct FileMetadata {
     /// 文件的字节大小（对于目录则为平台报告的元数据大小）。

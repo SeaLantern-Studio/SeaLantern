@@ -4,7 +4,7 @@ use crate::observability;
 
 use super::FsError;
 
-/// 当文件或目录存在时将其删除。
+/// 删除文件或目录（如果存在）。返回 `Ok(true)` 表示已删除，`Ok(false)` 表示路径不存在。
 pub async fn remove_if_exists(path: impl AsRef<Path>) -> Result<bool, FsError> {
     let path = path.as_ref();
     let result = match tokio::fs::symlink_metadata(path)

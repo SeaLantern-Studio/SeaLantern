@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// 选择出站代理的可持久化意图。
+/// 可持久化的代理选择设定。
 ///
 /// 应用程序配置层负责该值的存储位置和迁移方式。此类型故意不包含文件系统行为。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

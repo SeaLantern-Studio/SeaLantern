@@ -34,8 +34,8 @@ use crate::observability;
 /// # Cancellation Behavior
 ///
 /// 使用 `tokio::select!` 同时等待下载和取消信号：
-/// - 如果在下载过程中收到取消信号 → 立即返回 `Cancelled`
-/// - 如果下载完成后检查取消标志 → 返回 `Cancelled`
+/// - 下载过程中收到取消信号 → select! 触发取消分支，立即返回 `Cancelled`
+/// - async 块执行完毕（含错误路径）后检测到取消 → 返回 `Cancelled`
 pub(super) async fn download_chunk(
     client: &NetClient,
     url: &str,
