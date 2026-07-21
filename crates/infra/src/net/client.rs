@@ -1,15 +1,8 @@
 //! Unified HTTP client.
 //!
-//! Solves the problem of `reqwest::Client` being constructed ad-hoc across the project
-//! with no centralized proxy configuration management.
-//! Provides a pre-configured client instance with global settings (proxy, timeout, UA, etc.),
-//! so upper layers can use it directly without worrying about underlying configuration details.
-//!
-//! # TODO: Improve proxy configuration
-//!
-//! Since the refactoring is not yet complete, reading the SeaLantern config file directly is not feasible.
-//! Currently `from_settings()` returns a default configuration (no proxy).
-//! Once the configuration module is ready, it should be integrated to read proxy, timeout and other global settings.
+//! Prevents `reqwest::Client` construction from being scattered across the project.
+//! Callers provide resolved settings for proxy, timeout, User-Agent, and retry behavior.
+//! Application configuration and system-proxy detection remain outside this module.
 
 use std::time::Duration;
 
@@ -17,6 +10,7 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::net::error::NetError;
+use crate::net::proxy::EffectiveProxy;
 use crate::net::request::RequestBuilder;
 use crate::observability;
 
@@ -101,10 +95,27 @@ impl Default for ClientConfig {
     }
 }
 
+impl ClientConfig {
+    /// Applies a resolved proxy decision to this HTTP client configuration.
+    ///
+    /// Proxy policy and configuration persistence live outside the HTTP client.
+    /// Callers rebuild a client from the updated configuration after the effective
+    /// proxy changes.
+    pub fn apply_effective_proxy(&mut self, proxy: &EffectiveProxy) {
+        self.proxy = proxy.proxy_url().map(ToOwned::to_owned);
+    }
+
+    /// Returns this configuration with a resolved proxy decision applied.
+    pub fn with_effective_proxy(mut self, proxy: &EffectiveProxy) -> Self {
+        self.apply_effective_proxy(proxy);
+        self
+    }
+}
+
 /// Async HTTP client.
 ///
-/// Wraps `reqwest::Client` and automatically loads global configuration such as proxy at construction.
-/// Upper layers use this struct to make requests without worrying about how the underlying client is assembled.
+/// Wraps a `reqwest::Client` built from caller-supplied configuration.
+/// Upper layers use this struct without needing to assemble the HTTP client directly.
 ///
 /// # Parameters
 ///
@@ -151,24 +162,16 @@ impl NetClient {
         Ok(Self { inner, retry_policy: config.retry_policy })
     }
 
-    /// Creates a client with default global configuration.
-    ///
-    /// Currently returns a default configuration without proxy;
-    /// will read global settings once the configuration module is ready.
+    /// Creates a client with the default configuration.
     pub fn new() -> Result<Self, NetError> {
         Self::from_settings()
     }
 
-    /// Loads client configuration from application global settings.
+    /// Creates a client from the default configuration for compatibility.
     ///
-    /// Reads proxy, timeout and other configuration items from SeaLantern global settings,
-    /// and creates a client accordingly.
-    ///
-    /// # TODO: Improve proxy configuration
-    ///
-    /// Integrate global settings reading; currently returns default configuration.
+    /// Application settings are intentionally not read from `infra`; composition
+    /// roots must resolve them and use [`Self::from_config`] instead.
     pub fn from_settings() -> Result<Self, NetError> {
-        // TODO: read proxy, timeout and other settings from global configuration
         Self::from_config(&ClientConfig::default())
     }
 
@@ -316,19 +319,15 @@ impl NetBlockingClient {
         Ok(Self { inner, retry_policy: config.retry_policy })
     }
 
-    /// Creates a blocking client with default global configuration.
-    ///
-    /// Currently returns a default configuration without proxy;
-    /// will read global settings once the configuration module is ready.
+    /// Creates a blocking client with the default configuration.
     pub fn new() -> Result<Self, NetError> {
         Self::from_settings()
     }
 
-    /// Loads configuration from application global settings.
+    /// Creates a blocking client from the default configuration for compatibility.
     ///
-    /// # TODO: Improve proxy configuration
-    ///
-    /// Integrate global settings reading; currently returns default configuration.
+    /// Application settings are intentionally not read from `infra`; composition
+    /// roots must resolve them and use [`Self::from_config`] instead.
     pub fn from_settings() -> Result<Self, NetError> {
         Self::from_config(&ClientConfig::default())
     }
@@ -386,5 +385,25 @@ mod tests {
         };
         let client = NetClient::from_config(&config);
         assert!(client.is_ok());
+    }
+
+    #[test]
+    fn effective_proxy_is_applied_to_client_config() {
+        let config = ClientConfig::default()
+            .with_effective_proxy(&EffectiveProxy::proxy("http://127.0.0.1:7890"));
+
+        assert_eq!(config.proxy.as_deref(), Some("http://127.0.0.1:7890"));
+    }
+
+    #[test]
+    fn direct_effective_proxy_clears_client_config() {
+        let mut config = ClientConfig {
+            proxy: Some("http://127.0.0.1:7890".into()),
+            ..Default::default()
+        };
+
+        config.apply_effective_proxy(&EffectiveProxy::Direct);
+
+        assert!(config.proxy.is_none());
     }
 }

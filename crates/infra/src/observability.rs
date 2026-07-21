@@ -157,6 +157,8 @@ pub const EVENT_REQUEST_COMPLETED: &str = "request_completed";
 pub const EVENT_REQUEST_RETRY: &str = "request_retry";
 /// Event: the proxy configuration is invalid.
 pub const EVENT_PROXY_CONFIG_INVALID: &str = "proxy_config_invalid";
+/// Event: proxy settings could not be applied.
+pub const EVENT_PROXY_SETTINGS_INVALID: &str = "proxy_settings_invalid";
 
 /// Records a proxy configuration invalid event.
 pub fn proxy_config_invalid(proxy_url: &str, error: &dyn Display) {
@@ -166,6 +168,16 @@ pub fn proxy_config_invalid(proxy_url: &str, error: &dyn Display) {
         proxy_url,
         error = %error,
         "proxy config invalid"
+    );
+}
+
+/// Records invalid proxy settings rejected before a client is built.
+pub fn proxy_settings_invalid(error: &dyn Display) {
+    tracing::warn!(
+        target: NET_TARGET,
+        event_name = EVENT_PROXY_SETTINGS_INVALID,
+        error = %error,
+        "proxy settings invalid"
     );
 }
 
