@@ -35,7 +35,7 @@ pub fn create_zip(
         crate::observability::archive_operation_failed_with_context(
             "create ZIP",
             destination,
-            Some(destination),
+            Some(source),
             error.entry(),
             error,
         );
