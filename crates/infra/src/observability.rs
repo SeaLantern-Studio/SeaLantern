@@ -23,6 +23,26 @@ pub const EVENT_SERIALIZATION_FAILED: &str = "serialization_failed";
 /// Event: a file lock could not be acquired.
 pub const EVENT_LOCK_ACQUIRE_FAILED: &str = "lock_acquire_failed";
 
+// -- Archive layer --
+
+/// Tracing target for archive infrastructure operations.
+pub const ARCHIVE_TARGET: &str = "sealantern.infra.archive";
+
+/// Event: a ZIP archive operation failed.
+pub const EVENT_ARCHIVE_OPERATION_FAILED: &str = "archive_operation_failed";
+
+/// Records an archive creation or extraction failure.
+pub fn archive_operation_failed(operation: &str, archive: &std::path::Path, error: &dyn Display) {
+    tracing::error!(
+        target: ARCHIVE_TARGET,
+        event_name = EVENT_ARCHIVE_OPERATION_FAILED,
+        operation,
+        archive = %archive.display(),
+        error = %error,
+        "archive operation failed"
+    );
+}
+
 /// Records an atomic write failure with its destination path.
 pub fn atomic_write_failed(path: &std::path::Path, error: &dyn Display) {
     tracing::error!(
