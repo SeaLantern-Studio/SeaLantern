@@ -1,8 +1,8 @@
-//! HTTP request building and sending.
+//! HTTP 请求构建与发送。
 //!
-//! Provides a chainable request builder `RequestBuilder` with automatic retry support.
-//! On each retry, the request is reconstructed from internally stored metadata,
-//! avoiding the issue that `reqwest::Request` does not implement `Clone`.
+//! 提供可链式调用的请求构建器 `RequestBuilder`，支持自动重试。
+//! 每次重试时，请求会从内部存储的元数据重新构建，
+//! 避免了 `reqwest::Request` 未实现 `Clone` 的问题。
 
 use reqwest::{IntoUrl, Method, Response};
 use serde::Serialize;
@@ -12,20 +12,20 @@ use crate::net::error::NetError;
 use crate::net::RetryPolicy;
 use crate::observability;
 
-/// HTTP request builder.
+/// HTTP 请求构建器。
 ///
-/// Created via `NetClient::get()` / `NetClient::post()`,
-/// supports chainable configuration of headers, body, retry policy,
-/// and finally calls `.send()` to dispatch the request.
+/// 通过 `NetClient::get()` / `NetClient::post()` 创建，
+/// 支持对请求头、请求体、重试策略进行链式配置，
+/// 最后调用 `.send()` 发起请求。
 ///
 /// # Retry Behavior
 ///
 /// | Condition | Behavior |
 /// |-----------|----------|
-/// | Timeout, connection failure, DNS error | Automatic retry |
-/// | 5xx server error | Automatic retry |
-/// | 4xx client error | No retry, return immediately |
-/// | Request cancelled | No retry |
+/// | Timeout, connection failure, DNS error | 自动重试 |
+/// | 5xx server error | 自动重试 |
+/// | 4xx client error | 不重试，立即返回 |
+/// | Request cancelled | 不重试 |
 pub struct RequestBuilder<'a> {
     client: &'a NetClient,
     method: Method,
@@ -33,12 +33,12 @@ pub struct RequestBuilder<'a> {
     headers: Vec<(String, String)>,
     body: Option<String>,
     retry_policy: RetryPolicy,
-    // content-type is stored separately because it is needed when setting the body
+    // content-type 单独存储，因为设置请求体时需要用到它
     content_type: Option<String>,
 }
 
 impl<'a> RequestBuilder<'a> {
-    /// Creates a new request builder.
+    /// 创建一个新的请求构建器。
     pub(super) fn new(
         client: &'a NetClient,
         method: Method,
@@ -60,24 +60,24 @@ impl<'a> RequestBuilder<'a> {
         })
     }
 
-    /// Adds a request header.
+    /// 添加一个请求头。
     pub fn header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.push((key.into(), value.into()));
         self
     }
 
-    /// Sets the request body (text format).
+    /// 设置请求体（文本格式）。
     ///
-    /// Automatically adds `Content-Type: text/plain` unless already set via `.header()`.
+    /// 除非已通过 `.header()` 设置，否则自动添加 `Content-Type: text/plain`。
     pub fn body(mut self, body: impl Into<String>) -> Self {
         self.body = Some(body.into());
         self.content_type.get_or_insert_with(|| "text/plain".into());
         self
     }
 
-    /// Sets a JSON request body.
+    /// 设置 JSON 请求体。
     ///
-    /// Automatically adds `Content-Type: application/json` unless already set via `.header()`.
+    /// 除非已通过 `.header()` 设置，否则自动添加 `Content-Type: application/json`。
     pub fn json<T: Serialize>(mut self, value: &T) -> Result<Self, NetError> {
         let body = serde_json::to_string(value)
             .map_err(|e| NetError::Parse(format!("序列化 JSON 失败: {}", e)))?;
@@ -87,40 +87,40 @@ impl<'a> RequestBuilder<'a> {
         Ok(self)
     }
 
-    /// Overrides the retry policy for this request.
+    /// 覆盖此请求的重试策略。
     pub fn retry(mut self, policy: RetryPolicy) -> Self {
         self.retry_policy = policy;
         self
     }
 
-    /// Dispatches the request with automatic retry policy.
+    /// 以自动重试策略发起请求。
     ///
     /// # Retry Logic
     ///
-    /// 1. Compute backoff delay based on current attempt
-    /// 2. Build and send the request via `client.get_reqwest_client()`
-    /// 3. On success -> return `Ok(Response)`
-    /// 4. On failure -> determine if retryable
-    ///    - Retryable and under limit -> log event, wait, retry
-    ///    - Not retryable or limit reached -> return `Err(NetError)`
+    /// 1. 根据当前尝试次数计算退避延迟
+    /// 2. 通过 `client.get_reqwest_client()` 构建并发送请求
+    /// 3. 成功时 -> 返回 `Ok(Response)`
+    /// 4. 失败时 -> 判断是否可重试
+    ///    - 可重试且未达上限 -> 记录事件、等待、重试
+    ///    - 不可重试或已达上限 -> 返回 `Err(NetError)`
     pub async fn send(self) -> Result<Response, NetError> {
         let max_attempts = self.retry_policy.max_retries + 1; // initial attempt + retries
 
         observability::request_started(&self.url);
 
         for attempt in 1..=max_attempts {
-            // Build the reqwest request
+            // 构建 reqwest 请求
             let mut req = self
                 .client
                 .get_reqwest_client()
                 .request(self.method.clone(), &self.url);
 
-            // Add request headers
+            // 添加请求头
             for (key, value) in &self.headers {
                 req = req.header(key.as_str(), value.as_str());
             }
 
-            // Add body and Content-Type
+            // 添加请求体和 Content-Type
             if let Some(ref body) = self.body {
                 if let Some(ref ct) = self.content_type {
                     req = req.header("Content-Type", ct.as_str());
@@ -128,10 +128,10 @@ impl<'a> RequestBuilder<'a> {
                 req = req.body(body.clone());
             }
 
-            // Dispatch the request
+            // 发起请求
             match req.send().await {
                 Ok(response) => {
-                    // 5xx server errors are retryable
+                    // 服务端 5xx 错误可重试
                     if response.status().is_server_error() && attempt < max_attempts {
                         let status = response.status().as_u16();
                         observability::request_retry(
@@ -143,7 +143,7 @@ impl<'a> RequestBuilder<'a> {
                         continue;
                     }
 
-                    // Final response after retries exhausted: success (2xx/3xx) returns Ok, otherwise convert to error
+                    // 重试耗尽后的最终响应：成功 (2xx/3xx) 返回 Ok，否则转为错误
                     if response.status().is_success() || response.status().is_redirection() {
                         observability::request_completed(&self.url);
                         return Ok(response);
@@ -154,7 +154,7 @@ impl<'a> RequestBuilder<'a> {
                     return Err(NetError::Response(status, error));
                 }
                 Err(err) => {
-                    // Determine if retryable
+                    // 判断是否可重试
                     if attempt < max_attempts && is_retryable(&err) {
                         observability::request_retry(&self.url, attempt, &err);
                         self.sleep(attempt).await;
@@ -171,9 +171,9 @@ impl<'a> RequestBuilder<'a> {
         unreachable!("循环逻辑保证至少执行一次")
     }
 
-    /// Exponential backoff wait.
+    /// 指数退避等待。
     async fn sleep(&self, attempt: u32) {
-        let exponent = (attempt - 1).min(63); // prevent shift overflow
+        let exponent = (attempt - 1).min(63); // 防止移位溢出
         let delay = self
             .retry_policy
             .base_delay
@@ -185,7 +185,7 @@ impl<'a> RequestBuilder<'a> {
     }
 }
 
-/// Determines whether a `reqwest` error is retryable.
+/// 判断 `reqwest` 错误是否可重试。
 fn is_retryable(err: &reqwest::Error) -> bool {
     if err.is_timeout() {
         return true;
@@ -196,7 +196,7 @@ fn is_retryable(err: &reqwest::Error) -> bool {
     false
 }
 
-/// Converts a `reqwest::Error` into `NetError`.
+/// 将 `reqwest::Error` 转换为 `NetError`。
 fn convert_reqwest_error(err: reqwest::Error) -> NetError {
     if err.is_timeout() {
         NetError::Timeout

@@ -1,7 +1,7 @@
-//! Download status and error types.
+//! 下载状态和错误类型。
 //!
-//! Provides shared state `DownloadStatus` for download tasks, progress snapshot `DownloadSnapshot`
-//! and unified error type `DownloadError`.
+//! 提供下载任务的共享状态 `DownloadStatus`、进度快照 `DownloadSnapshot`
+//! 和统一的错误类型 `DownloadError`。
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -11,20 +11,20 @@ use tokio_util::sync::CancellationToken;
 use crate::net::error::NetError;
 use crate::observability;
 
-/// Errors that may occur during download.
+/// 下载过程中可能发生的错误。
 #[derive(Debug)]
 pub enum DownloadError {
-    /// HTTP request failed
+    /// HTTP 请求失败
     Reqwest(reqwest::Error),
-    /// Local file read/write failed
+    /// 本地文件读写失败
     Io(std::io::Error),
-    /// Server returned unexpected status code
+    /// 服务端返回了意外的状态码
     Response(u16, String),
-    /// Network layer error
+    /// 网络层错误
     Net(NetError),
-    /// Download was actively cancelled
+    /// 下载被主动取消
     Cancelled(String),
-    /// Other error messages
+    /// 其他错误信息
     Message(String),
 }
 
@@ -61,44 +61,44 @@ impl From<NetError> for DownloadError {
     }
 }
 
-/// Real-time snapshot of download progress, used to pass to the frontend.
+/// 下载进度的实时快照，用于传递给前端。
 pub struct DownloadSnapshot {
-    /// Bytes downloaded
+    /// 已下载的字节数
     pub downloaded: u64,
-    /// Total file size
+    /// 文件总大小
     pub total_size: u64,
-    /// Current progress percentage (0.0 ~ 100.0)
+    /// 当前进度百分比（0.0 ~ 100.0）
     pub progress_percentage: f64,
-    /// Whether it has finished (completed, errored, or cancelled)
+    /// 是否已完成（完成、出错或取消）
     pub is_finished: bool,
-    /// Error message (includes cancellation message when cancelled)
+    /// 错误信息（取消时包含取消消息）
     pub error: Option<String>,
 }
 
-/// Shared state for a single download task.
+/// 单个下载任务的共享状态。
 ///
-/// Uses `AtomicU64` to track downloaded bytes; safe for concurrent accumulation by multiple segment threads.
-/// Implements cancellation signal via `CancellationToken`.
+/// 使用 `AtomicU64` 跟踪已下载字节数，多个分段线程可安全地并发累加。
+/// 通过 `CancellationToken` 实现取消信号。
 ///
-/// Fields are visible within the `download` module (directly accessed by segment and transport layers),
-/// external code interacts via public methods like `snapshot()` / `cancel()`.
+/// 字段在 `download` 模块内可见（由分段层和传输层直接访问），
+/// 外部代码通过 `snapshot()` / `cancel()` 等公共方法交互。
 pub struct DownloadStatus {
-    /// Total file size
+    /// 文件总大小
     pub(super) total_size: u64,
-    /// Bytes downloaded (atomic counter, thread-safe)
+    /// 已下载的字节数（原子计数器，线程安全）
     pub(super) downloaded: AtomicU64,
-    /// Error message
+    /// 错误信息
     pub(super) error_message: RwLock<Option<String>>,
-    /// Cancellation token
+    /// 取消令牌
     pub(super) cancel_token: CancellationToken,
 }
 
 impl DownloadStatus {
-    /// Creates a new download status.
+    /// 创建新的下载状态。
     ///
     /// # Parameters
     ///
-    /// - `total_size`: Total file size
+    /// - `total_size`: 文件总大小
     pub fn new(total_size: u64) -> Self {
         Self {
             total_size,
@@ -108,32 +108,32 @@ impl DownloadStatus {
         }
     }
 
-    /// Cancels the download.
+    /// 取消下载。
     pub fn cancel(&self) {
         observability::download_cancelled();
         self.cancel_token.cancel();
     }
 
-    /// Checks if the download has been cancelled.
+    /// 检查下载是否已被取消。
     pub fn cancelled(&self) -> bool {
         self.cancel_token.is_cancelled()
     }
 
-    /// Sets the error message.
+    /// 设置错误信息。
     ///
     /// # Parameters
     ///
-    /// - `msg`: Error description
+    /// - `msg`: 错误描述
     pub async fn set_error(&self, msg: String) {
         observability::download_error(&msg);
         let mut lock = self.error_message.write().await;
         *lock = Some(msg);
     }
 
-    /// Gets the current progress snapshot.
+    /// 获取当前进度快照。
     ///
-    /// When cancelled without a specific error set, the `error` field returns the cancellation message,
-    /// ensuring the frontend can detect the cancelled state via `is_finished`.
+    /// 当取消时未设置特定错误时，`error` 字段返回取消消息，
+    /// 确保前端可以通过 `is_finished` 检测到已取消的状态。
     pub async fn snapshot(&self) -> DownloadSnapshot {
         let downloaded = self.downloaded.load(Ordering::Relaxed);
         let error = self.error_message.read().await.clone();

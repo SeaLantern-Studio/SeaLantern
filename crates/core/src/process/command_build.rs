@@ -7,7 +7,7 @@ use std::process::Command;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
-/// The supported ways to build a server process command.
+/// 构建服务器进程命令的受支持方式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandBuildMode {
     DirectJar,
@@ -29,14 +29,14 @@ impl CommandBuildMode {
     }
 }
 
-/// Controls whether a terminal may retain a child process standard-input handle.
+/// 控制终端是否可以保留子进程标准输入句柄。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ConsoleInputPolicy {
     Enabled,
     Disabled,
 }
 
-/// The Windows console encoding used when invoking a batch script.
+/// 调用批处理脚本时使用的 Windows 控制台编码。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowsConsoleEncoding {
     Utf8,
@@ -53,7 +53,7 @@ impl WindowsConsoleEncoding {
     }
 }
 
-/// Java directories injected into script and custom-executable environments.
+/// 注入到脚本和自定义可执行环境中的 Java 目录。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JavaEnvironment {
     pub home: PathBuf,
@@ -65,7 +65,7 @@ impl JavaEnvironment {
         Self { home: home.into(), bin: bin.into() }
     }
 
-    /// Derives Java home and bin directories from a Java executable path.
+    /// 从 Java 可执行文件路径推导出 Java home 和 bin 目录。
     pub fn from_java_executable(java_executable: &Path) -> Result<Self, CommandBuildError> {
         let bin = java_executable
             .parent()
@@ -82,11 +82,10 @@ impl JavaEnvironment {
     }
 }
 
-/// Input used to construct a process command without host-specific state.
+/// 用于构造进程命令的输入，不包含主机特定状态。
 ///
-/// `Custom` mode accepts either legacy shell-backed `custom_command` text or a direct
-/// `custom_executable` with `custom_arguments`. The forms are mutually exclusive, and arguments
-/// are valid only for a direct executable.
+/// `Custom` 模式接受传统的 shell 后端 `custom_command` 文本，或直接的
+/// `custom_executable` 加 `custom_arguments`。两种形式互斥，参数仅对直接可执行文件有效。
 #[derive(Debug)]
 pub struct CommandBuildRequest<'a> {
     pub mode: CommandBuildMode,
@@ -119,7 +118,7 @@ impl<'a> CommandBuildRequest<'a> {
         }
     }
 
-    /// Returns the input policy implied by the exact process construction request.
+    /// 返回由具体进程构造请求所隐含的输入策略。
     pub(crate) fn console_input_policy(&self) -> ConsoleInputPolicy {
         if matches!(self.mode, CommandBuildMode::DirectJar)
             || matches!(custom_launch(self), Ok(CustomLaunch::Executable(_)))
@@ -131,7 +130,7 @@ impl<'a> CommandBuildRequest<'a> {
     }
 }
 
-/// Identifies why a process command could not be constructed.
+/// 标识无法构造进程命令的原因。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommandBuildError {
     MissingJavaExecutable,
@@ -176,7 +175,7 @@ impl fmt::Display for CommandBuildError {
 
 impl std::error::Error for CommandBuildError {}
 
-/// Builds a command for the requested server startup mode.
+/// 为请求的服务器启动模式构建命令。
 pub fn build_command(request: &CommandBuildRequest<'_>) -> Result<Command, CommandBuildError> {
     match request.mode {
         CommandBuildMode::DirectJar => build_direct_jar_command(request),
@@ -187,7 +186,7 @@ pub fn build_command(request: &CommandBuildRequest<'_>) -> Result<Command, Comma
     }
 }
 
-/// Applies `JAVA_HOME` and a Java-bin-prefixed `PATH` to a command.
+/// 将 `JAVA_HOME` 和以 Java bin 目录为前缀的 `PATH` 应用到命令。
 pub fn apply_java_environment(command: &mut Command, java_environment: &JavaEnvironment) {
     command.env("JAVA_HOME", &java_environment.home);
     command.env("PATH", java_path_value(&java_environment.bin));

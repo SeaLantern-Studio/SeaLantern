@@ -3,14 +3,14 @@ use std::process::ExitStatus;
 
 use crate::process::Daemon;
 
-/// A point-in-time observation of a server daemon.
+/// 服务器守护进程的一个时间点快照。
 #[derive(Debug)]
 pub struct ServerStatus {
     pub process_id: u32,
     pub state: ServerProcessState,
 }
 
-/// The process state reported by a server daemon.
+/// 由服务器守护进程报告的进程状态。
 #[derive(Debug)]
 pub enum ServerProcessState {
     Running,
@@ -18,7 +18,7 @@ pub enum ServerProcessState {
 }
 
 impl ServerStatus {
-    /// Wraps the current state collected by a daemon.
+    /// 包装由守护进程收集的当前状态。
     pub fn from_daemon(daemon: &mut Daemon) -> io::Result<Self> {
         let process_id = daemon.id();
         let state = match daemon.poll()? {

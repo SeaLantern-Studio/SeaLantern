@@ -3,57 +3,57 @@ use std::path::PathBuf;
 
 use zip::result::ZipError;
 
-/// Errors returned by ZIP archive operations.
+/// ZIP 压缩包操作返回的错误。
 #[derive(Debug)]
 pub enum ArchiveError {
-    /// An operating system file operation failed.
+    /// 操作系统文件操作失败。
     Io {
         operation: &'static str,
         path: PathBuf,
         source: std::io::Error,
     },
-    /// The ZIP format could not be read or written.
+    /// ZIP 格式无法读取或写入。
     Zip {
         operation: &'static str,
         path: PathBuf,
         source: ZipError,
     },
-    /// The requested ZIP source is not a regular directory.
+    /// 请求的 ZIP 源不是一个常规目录。
     InvalidSource { path: PathBuf, reason: &'static str },
-    /// The extraction destination is not a new, ordinary directory.
+    /// 解压目标不是一个全新的普通目录。
     InvalidDestination { path: PathBuf, reason: &'static str },
-    /// An output archive or extraction destination already exists.
+    /// 输出压缩包或解压目标已存在。
     DestinationExists { path: PathBuf },
-    /// A source entry cannot be represented safely in a portable ZIP archive.
+    /// 源条目无法安全地表示在可移植的 ZIP 压缩包中。
     UnsupportedSourceEntry { path: PathBuf, kind: &'static str },
-    /// An archive entry name would escape or otherwise violate the extraction root.
+    /// 压缩包条目名会逃逸或以其他方式违反解压根目录。
     UnsafeEntry {
         archive: PathBuf,
         entry: String,
         reason: String,
     },
-    /// An archive entry uses a type intentionally unsupported by this API.
+    /// 压缩包条目使用了此 API 有意不支持的类型。
     UnsupportedEntry {
         archive: PathBuf,
         entry: String,
         kind: &'static str,
     },
-    /// Archive metadata or streamed content exceeded a configured resource limit.
+    /// 压缩包元数据或流式内容超过了配置的资源限制。
     LimitExceeded {
         archive: PathBuf,
         limit: &'static str,
         observed: u64,
         maximum: u64,
     },
-    /// A symbolic-link payload is not a portable, safe relative path.
+    /// 符号链接载荷不是一个可移植的安全相对路径。
     InvalidSymbolicLinkTarget { reason: &'static str },
-    /// A symbolic-link payload is not safe for a specific archive entry.
+    /// 符号链接载荷对于特定的压缩包条目不安全。
     InvalidSymbolicLinkTargetEntry {
         archive: PathBuf,
         entry: String,
         reason: &'static str,
     },
-    /// A symbolic-link payload could not be read from the archive.
+    /// 无法从压缩包中读取符号链接载荷。
     SymbolicLinkTargetRead {
         archive: PathBuf,
         entry: String,

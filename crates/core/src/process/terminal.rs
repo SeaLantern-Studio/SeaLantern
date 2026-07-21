@@ -5,14 +5,14 @@ use std::process::{ChildStderr, ChildStdin, ChildStdout};
 use super::command_build::ConsoleInputPolicy;
 use super::{CommandBuildRequest, Daemon};
 
-/// Identifies one of a daemon's output streams.
+/// 标识守护进程的一个输出流。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerminalStream {
     Stdout,
     Stderr,
 }
 
-/// An owned daemon output stream that retains its source identity.
+/// 一个持有的守护进程输出流，保留其源身份标识。
 pub enum TerminalOutput {
     Stdout(ChildStdout),
     Stderr(ChildStderr),
@@ -36,7 +36,7 @@ impl Read for TerminalOutput {
     }
 }
 
-/// A daemon's standard streams after their ownership has moved out of the process handle.
+/// 守护进程的标准流，在其所有权已移出进程句柄之后。
 pub struct Terminal {
     stdin: Option<ChildStdin>,
     stdout: Option<ChildStdout>,
@@ -44,7 +44,7 @@ pub struct Terminal {
 }
 
 impl Terminal {
-    /// Transfers configured streams from a daemon according to the request used to launch it.
+    /// 根据用于启动守护进程的请求，从守护进程转移已配置的流。
     pub fn from_daemon(daemon: &mut Daemon, request: &CommandBuildRequest<'_>) -> Self {
         let stdin = daemon.take_stdin();
         Self {
@@ -56,19 +56,19 @@ impl Terminal {
         }
     }
 
-    /// Returns whether the daemon was configured with a writable standard input stream.
+    /// 返回守护进程是否配置了可写的标准输入流。
     pub fn accepts_input(&self) -> bool {
         self.stdin.is_some()
     }
 
-    /// Writes bytes to standard input and flushes them to the daemon.
+    /// 将字节写入标准输入并刷新到守护进程。
     pub fn write(&mut self, input: &[u8]) -> Result<(), TerminalWriteError> {
         let stdin = self.stdin()?;
         stdin.write_all(input).map_err(TerminalWriteError::Write)?;
         stdin.flush().map_err(TerminalWriteError::Flush)
     }
 
-    /// Writes one command line to standard input and flushes it to the daemon.
+    /// 将一个命令行写入标准输入并刷新到守护进程。
     pub fn write_line(&mut self, line: &str) -> Result<(), TerminalWriteError> {
         let stdin = self.stdin()?;
         stdin
@@ -78,7 +78,7 @@ impl Terminal {
         stdin.flush().map_err(TerminalWriteError::Flush)
     }
 
-    /// Transfers ownership of an output stream to the host reader.
+    /// 将输出流的所有权转移到主机读取器。
     pub fn take_output(&mut self, stream: TerminalStream) -> Option<TerminalOutput> {
         match stream {
             TerminalStream::Stdout => self.stdout.take().map(TerminalOutput::Stdout),
@@ -93,7 +93,7 @@ impl Terminal {
     }
 }
 
-/// Describes why writing to a daemon terminal failed.
+/// 描述写入守护进程终端失败的原因。
 #[derive(Debug)]
 pub enum TerminalWriteError {
     InputUnavailable,
@@ -102,7 +102,7 @@ pub enum TerminalWriteError {
 }
 
 impl TerminalWriteError {
-    /// Returns the underlying operating-system error, when a write was attempted.
+    /// 返回底层的操作系统错误（当尝试写入时）。
     pub fn io_error(&self) -> Option<&io::Error> {
         match self {
             Self::InputUnavailable => None,

@@ -4,7 +4,7 @@ use crate::observability;
 
 use super::FsError;
 
-/// Removes a file or directory when it exists.
+/// 当文件或目录存在时将其删除。
 pub async fn remove_if_exists(path: impl AsRef<Path>) -> Result<bool, FsError> {
     let path = path.as_ref();
     let result = match tokio::fs::symlink_metadata(path)
@@ -34,7 +34,7 @@ pub async fn remove_if_exists(path: impl AsRef<Path>) -> Result<bool, FsError> {
     result
 }
 
-/// Deletes all direct children of a directory without deleting the directory itself.
+/// 删除目录的所有直接子项，但不删除目录本身。
 pub async fn clear_directory(path: impl AsRef<Path>) -> Result<(), FsError> {
     let path = path.as_ref();
     let result = async {

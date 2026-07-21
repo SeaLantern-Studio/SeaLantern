@@ -5,22 +5,22 @@ use crate::observability;
 
 use super::FsError;
 
-/// Basic metadata collected without following symbolic links.
+/// 不追踪符号链接收集的基本元数据。
 #[derive(Clone, Debug)]
 pub struct FileMetadata {
-    /// Size in bytes for files and platform-reported directory metadata.
+    /// 文件的字节大小（对于目录则为平台报告的元数据大小）。
     pub size: u64,
-    /// Last modification time when supported by the file system.
+    /// 文件系统支持时的最后修改时间。
     pub modified: Option<SystemTime>,
-    /// Whether the target is a regular file.
+    /// 目标是否为常规文件。
     pub is_file: bool,
-    /// Whether the target is a directory.
+    /// 目标是否为目录。
     pub is_dir: bool,
-    /// Whether the target itself is a symbolic link.
+    /// 目标本身是否为符号链接。
     pub is_symlink: bool,
 }
 
-/// Describes a path without following symbolic links.
+/// 描述路径（不追踪符号链接）。
 pub async fn describe(path: impl AsRef<Path>) -> Result<FileMetadata, FsError> {
     let path = path.as_ref();
     let result = async {
@@ -43,7 +43,7 @@ pub async fn describe(path: impl AsRef<Path>) -> Result<FileMetadata, FsError> {
     result
 }
 
-/// Returns a regular file's size.
+/// 返回常规文件的大小。
 pub async fn file_size(path: impl AsRef<Path>) -> Result<u64, FsError> {
     let path = path.as_ref();
     let metadata = describe(path).await?;

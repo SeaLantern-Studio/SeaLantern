@@ -1,17 +1,16 @@
 use super::{FsError, SafeRelativePath};
 
-/// Parses a portable archive entry path.
+/// 解析可移植的归档条目路径。
 ///
-/// ZIP and TAR adapters must pass the resulting path to a directory-handle
-/// based extractor. Returning a joined path here would reintroduce a symlink
-/// replacement race between validation and file creation.
+/// ZIP 和 TAR 适配器必须将结果路径传递给基于目录句柄的提取器。
+/// 在此处返回拼接后的路径会重新引入验证与文件创建之间的符号链接替换竞争。
 pub fn archive_entry_path(entry_name: &str) -> Result<SafeRelativePath, FsError> {
     SafeRelativePath::parse(entry_name)
 }
 
-/// Parses a symbolic-link payload from an archive.
+/// 解析归档中的符号链接目标。
 ///
-/// Archive adapters must reject targets that escape the extraction root.
+/// 归档适配器必须拒绝指向提取根目录之外的目标。
 pub fn parse_symbolic_link_target(target: &str) -> Result<SafeRelativePath, FsError> {
     SafeRelativePath::parse(target)
 }

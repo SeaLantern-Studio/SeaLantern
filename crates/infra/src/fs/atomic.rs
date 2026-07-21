@@ -9,11 +9,10 @@ use crate::observability;
 
 use super::{ensure_parent, FsError, SafeRelativePath};
 
-/// Atomically replaces a complete file through a sibling temporary file.
+/// 通过同级临时文件原子性地替换整个文件。
 ///
-/// The replacement is delegated to platform-specific operations. It provides
-/// atomic visibility, but does not promise crash durability of the parent
-/// directory entry on every supported file system.
+/// 替换操作委托给平台特定的实现。它提供
+/// 原子可见性，但不保证在所有支持的文件系统上父目录项的崩溃持久性。
 pub async fn write_atomic(path: impl AsRef<Path>, contents: &[u8]) -> Result<(), FsError> {
     let path = path.as_ref();
     let result = write_atomic_inner(path, contents).await;
@@ -38,7 +37,7 @@ async fn write_atomic_inner(path: &Path, contents: &[u8]) -> Result<(), FsError>
     .map_err(|error| FsError::task("atomically replace file", error.to_string()))?
 }
 
-/// Writes bytes atomically within a capability-based directory root.
+/// 在基于能力的目录根内原子性地写入字节。
 pub(crate) fn write_atomic_in(
     root: &Dir,
     path: &SafeRelativePath,

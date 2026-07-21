@@ -1,8 +1,8 @@
-//! File download module.
+//! 文件下载模块。
 //!
-//! Provides multi-threaded segmented download (`Downloader`) and single-threaded streaming download (`single` module).
-//! Automatically selects segmentation strategy via `Downloader::download()`,
-//! `single::stream_download()` is used for small files or streaming scenarios.
+//! 提供多线程分段下载（`Downloader`）和单线程流式下载（`single` 模块）。
+//! 通过 `Downloader::download()` 自动选择分段策略，
+//! `single::stream_download()` 用于小文件或流式场景。
 
 pub(crate) mod chunk;
 pub mod manager;

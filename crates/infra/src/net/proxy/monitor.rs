@@ -2,28 +2,27 @@ use super::{
     read_system_proxy, ProxyController, ProxyUpdate, SystemProxyProvider, SystemProxySnapshot,
 };
 
-/// Accepts network-change snapshots from a platform adapter.
+/// 从平台适配器接收网络变更快照。
 ///
-/// This type intentionally does not poll or subscribe to an operating system.
-/// The composition root owns the platform-specific event source and forwards
-/// each updated proxy snapshot here.
+/// 此类型故意不轮询或订阅操作系统。组合根拥有平台特定的事件源，
+/// 并将每个更新的代理快照转发到此。
 #[derive(Debug)]
 pub struct ProxyMonitor {
     controller: ProxyController,
 }
 
 impl ProxyMonitor {
-    /// Creates a monitor around a configured proxy controller.
+    /// 围绕已配置的代理控制器创建一个监视器。
     pub fn new(controller: ProxyController) -> Self {
         Self { controller }
     }
 
-    /// Applies a system proxy snapshot received after a network change.
+    /// 应用网络变更后收到的系统代理快照。
     pub fn network_changed(&mut self, system_proxy: SystemProxySnapshot) -> ProxyUpdate {
         self.controller.handle_system_proxy_change(system_proxy)
     }
 
-    /// Reads the latest snapshot after a platform network-change notification.
+    /// 在平台网络变更通知后读取最新快照。
     pub fn refresh<P: SystemProxyProvider>(
         &mut self,
         provider: &P,
@@ -31,12 +30,12 @@ impl ProxyMonitor {
         Ok(self.network_changed(read_system_proxy(provider)?))
     }
 
-    /// Returns the proxy controller so callers can apply user settings updates.
+    /// 返回代理控制器，以便调用者可以应用用户设置更新。
     pub fn controller(&self) -> &ProxyController {
         &self.controller
     }
 
-    /// Returns mutable access for applying user settings updates.
+    /// 返回可变访问权限以应用用户设置更新。
     pub fn controller_mut(&mut self) -> &mut ProxyController {
         &mut self.controller
     }

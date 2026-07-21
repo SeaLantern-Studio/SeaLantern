@@ -4,11 +4,11 @@ use crate::observability;
 
 use super::FsError;
 
-/// A cross-process lock represented by an atomically created sibling file.
+/// 一个跨进程的锁，通过原子创建的同级文件来表示。
 ///
-/// The lock is released on drop. An abnormal process exit can leave a stale
-/// lock file, so callers that need recovery should define an explicit stale
-/// lock policy at their application boundary.
+/// 锁在 drop 时释放。异常进程退出可能留下过时的
+/// 锁文件，因此需要恢复的调用者应在应用程序边界
+/// 定义明确的过期锁策略。
 #[derive(Debug)]
 pub struct FileLock {
     path: PathBuf,
@@ -16,7 +16,7 @@ pub struct FileLock {
 }
 
 impl FileLock {
-    /// Acquires a lock for a resource by creating a sibling .lock file.
+    /// 通过创建同级的 .lock 文件来获取资源的锁。
     pub fn try_acquire(resource: impl AsRef<Path>) -> Result<Self, FsError> {
         let resource = resource.as_ref();
         let result = (|| {
@@ -57,12 +57,12 @@ impl FileLock {
         result
     }
 
-    /// Returns the lock-file path.
+    /// 返回锁文件的路径。
     pub fn path(&self) -> &Path {
         &self.path
     }
 
-    /// Releases the lock before the guard is dropped.
+    /// 在守卫被释放之前手动释放锁。
     pub fn release(mut self) -> Result<(), FsError> {
         let result = std::fs::remove_file(&self.path)
             .map_err(|error| FsError::io("release lock", &self.path, error));

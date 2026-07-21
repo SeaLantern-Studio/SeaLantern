@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use zip::result::ZipError;
 
-/// A recognized server core family.
+/// 一个可识别的服务端核心系列。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoreKind {
     ArclightForge,
@@ -125,7 +125,7 @@ const CORE_KEYWORDS: &[(CoreKind, &[&str])] = &[
     (CoreKind::Vanilla, &["vanilla"]),
 ];
 
-/// Parsed server-core metadata from a file name or JAR manifest.
+/// 从文件名或 JAR 清单解析的服务端核心元数据。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoreFileInfo {
     pub kind: CoreKind,
@@ -152,7 +152,7 @@ impl CoreFileInfo {
     }
 }
 
-/// Inspects a server-core filename without reading from disk.
+/// 检查服务端核心文件名，无需从磁盘读取。
 pub fn inspect_core_filename(filename: &str) -> CoreFileInfo {
     let filename = Path::new(filename)
         .file_name()
@@ -161,7 +161,7 @@ pub fn inspect_core_filename(filename: &str) -> CoreFileInfo {
     CoreFileInfo::from_filename(filename)
 }
 
-/// Reads a JAR manifest and reconciles it with filename-based server-core detection.
+/// 读取 JAR 清单并将其与基于文件名的服务端核心检测进行协调。
 pub fn inspect_core_file(path: &Path) -> Result<CoreFileInfo, CoreParseError> {
     let filename = path
         .file_name()
@@ -195,7 +195,7 @@ pub fn inspect_core_file(path: &Path) -> Result<CoreFileInfo, CoreParseError> {
     Ok(info)
 }
 
-/// Extracts the first Minecraft-style version hint (for example `1.20.1`) from text.
+/// 从文本中提取第一个 Minecraft 风格的版本提示（例如 `1.20.1`）。
 pub fn extract_minecraft_version(input: &str) -> Option<String> {
     extract_version_tokens(input)
         .into_iter()
@@ -204,7 +204,7 @@ pub fn extract_minecraft_version(input: &str) -> Option<String> {
 
 fn reconcile_core_kind(filename_kind: CoreKind, main_class_kind: CoreKind) -> CoreKind {
     match (filename_kind, main_class_kind) {
-        // NeoForge installers retain a legacy Forge installer main class.
+        // NeoForge 安装程序保留了旧的 Forge 安装程序主类。
         (CoreKind::NeoForge | CoreKind::ArclightNeoForge, CoreKind::Forge) => filename_kind,
         (_, main_class_kind) => main_class_kind,
     }
@@ -336,7 +336,7 @@ fn extract_version_tokens(input: &str) -> Vec<String> {
     tokens
 }
 
-/// Describes a failure while opening or parsing a server-core file.
+/// 描述打开或解析服务端核心文件时的失败。
 #[derive(Debug)]
 pub enum CoreParseError {
     InvalidPath { path: PathBuf },

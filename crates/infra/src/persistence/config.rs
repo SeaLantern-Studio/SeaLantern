@@ -7,20 +7,20 @@ use crate::fs::{ensure_parent, read_limited, write_atomic, DataLimit, FsError};
 
 const CONFIG_READ_LIMIT: DataLimit = DataLimit::new(10 * 1024 * 1024);
 
-/// Errors returned by configuration operations.
+/// 配置操作返回的错误。
 #[derive(Debug)]
 pub enum ConfigError {
-    /// Serialization failed.
+    /// 序列化失败。
     Serialize {
         format: &'static str,
         message: String,
     },
-    /// Deserialization failed.
+    /// 反序列化失败。
     Deserialize {
         format: &'static str,
         message: String,
     },
-    /// File extension does not match any supported format.
+    /// 文件扩展名不匹配任何支持的格式。
     UnsupportedFormat { path: PathBuf },
 }
 
@@ -42,10 +42,9 @@ impl std::fmt::Display for ConfigError {
 
 impl std::error::Error for ConfigError {}
 
-/// Supported configuration file format.
+/// 支持的配置文件格式。
 ///
-/// Can be used directly for string-level serialization and deserialization
-/// without touching the file system.
+/// 可以直接用于字符串级别的序列化和反序列化，无需接触文件系统。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConfigFormat {
     Json,
@@ -103,13 +102,13 @@ impl From<ConfigError> for FsError {
     }
 }
 
-/// Generic configuration file manager.
+/// 通用配置文件管理器。
 ///
-/// Provides load, save, backup and restore operations for any serializable type.
-/// The config format is inferred from the file extension.
+/// 为任何可序列化类型提供加载、保存、备份和恢复操作。
+/// 配置格式从文件扩展名推断。
 ///
-/// File I/O methods are asynchronous and reuse `fs` primitives
-/// (`write_atomic`, `read_limited`, `ensure_parent`).
+/// 文件 I/O 方法是异步的，并复用 `fs` 基础工具
+/// （`write_atomic`、`read_limited`、`ensure_parent`）。
 pub struct ConfigFile<T> {
     path: PathBuf,
     data: T,
@@ -153,10 +152,10 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
         Ok(Self { path, data, format })
     }
 
-    /// Save current configuration to file using atomic write.
+    /// 使用原子写入将当前配置保存到文件。
     ///
-    /// When `auto_backup` is true, the previous version is backed up before
-    /// the new content is written, enabling recovery if the new file is corrupt.
+    /// 当 `auto_backup` 为 true 时，在写入新内容之前备份先前版本，
+    /// 以便在新文件损坏时能够恢复。
     pub async fn save(&self, auto_backup: bool) -> Result<(), FsError> {
         if auto_backup && self.path.exists() {
             self.backup().await?;
