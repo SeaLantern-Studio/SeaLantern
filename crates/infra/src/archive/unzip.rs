@@ -127,8 +127,8 @@ fn extract_zip_inner(
         let copied = copy_entry_with_limits(
             &mut entry,
             &mut output,
+            &output_path,
             archive_path,
-            &entry_name,
             &mut summary.bytes,
             limits,
         )?;
@@ -272,8 +272,8 @@ fn ensure_directory(root: &Dir, path: &Path, destination: &Path) -> Result<(), A
 fn copy_entry_with_limits(
     entry: &mut zip::read::ZipFile<'_>,
     output: &mut cap_std::fs::File,
+    output_path: &Path,
     archive_path: &Path,
-    entry_name: &str,
     total_bytes: &mut u64,
     limits: ExtractionLimits,
 ) -> Result<u64, ArchiveError> {
@@ -322,7 +322,7 @@ fn copy_entry_with_limits(
             .write_all(&buffer[..count])
             .map_err(|error| ArchiveError::Io {
                 operation: "write ZIP entry file",
-                path: PathBuf::from(entry_name),
+                path: output_path.to_path_buf(),
                 source: error,
             })?;
     }
