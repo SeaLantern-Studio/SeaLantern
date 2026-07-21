@@ -1,4 +1,6 @@
-use super::{ProxyController, ProxyUpdate, SystemProxySnapshot};
+use super::{
+    read_system_proxy, ProxyController, ProxyUpdate, SystemProxyProvider, SystemProxySnapshot,
+};
 
 /// Accepts network-change snapshots from a platform adapter.
 ///
@@ -19,6 +21,14 @@ impl ProxyMonitor {
     /// Applies a system proxy snapshot received after a network change.
     pub fn network_changed(&mut self, system_proxy: SystemProxySnapshot) -> ProxyUpdate {
         self.controller.handle_system_proxy_change(system_proxy)
+    }
+
+    /// Reads the latest snapshot after a platform network-change notification.
+    pub fn refresh<P: SystemProxyProvider>(
+        &mut self,
+        provider: &P,
+    ) -> Result<ProxyUpdate, P::Error> {
+        Ok(self.network_changed(read_system_proxy(provider)?))
     }
 
     /// Returns the proxy controller so callers can apply user settings updates.
@@ -47,8 +57,35 @@ mod tests {
 
         assert!(update.changed());
         assert_eq!(
-            monitor.controller().effective_proxy().proxy_url(),
+            monitor
+                .controller()
+                .effective_proxy()
+                .routes_ref()
+                .unwrap()
+                .http_proxy(),
             Some("http://127.0.0.1:7890")
         );
+    }
+
+    #[derive(Debug)]
+    struct FailingProvider;
+
+    impl SystemProxyProvider for FailingProvider {
+        type Error = std::io::Error;
+
+        fn current_system_proxy(&self) -> Result<SystemProxySnapshot, Self::Error> {
+            Err(std::io::Error::other("provider failed"))
+        }
+    }
+
+    #[test]
+    fn refresh_returns_provider_errors() {
+        let controller =
+            ProxyController::new(ProxySettings::default(), SystemProxySnapshot::direct()).unwrap();
+        let mut monitor = ProxyMonitor::new(controller);
+
+        let error = monitor.refresh(&FailingProvider).unwrap_err();
+
+        assert_eq!(error.kind(), std::io::ErrorKind::Other);
     }
 }

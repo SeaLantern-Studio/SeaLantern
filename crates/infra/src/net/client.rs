@@ -95,23 +95,6 @@ impl Default for ClientConfig {
     }
 }
 
-impl ClientConfig {
-    /// Applies a resolved proxy decision to this HTTP client configuration.
-    ///
-    /// Proxy policy and configuration persistence live outside the HTTP client.
-    /// Callers rebuild a client from the updated configuration after the effective
-    /// proxy changes.
-    pub fn apply_effective_proxy(&mut self, proxy: &EffectiveProxy) {
-        self.proxy = proxy.proxy_url().map(ToOwned::to_owned);
-    }
-
-    /// Returns this configuration with a resolved proxy decision applied.
-    pub fn with_effective_proxy(mut self, proxy: &EffectiveProxy) -> Self {
-        self.apply_effective_proxy(proxy);
-        self
-    }
-}
-
 /// Async HTTP client.
 ///
 /// Wraps a `reqwest::Client` built from caller-supplied configuration.
@@ -141,23 +124,31 @@ impl NetClient {
     ///
     /// Returns a configured `NetClient` instance; returns `NetError::Config` on configuration error
     pub fn from_config(config: &ClientConfig) -> Result<Self, NetError> {
+        let effective_proxy = config
+            .proxy
+            .as_deref()
+            .map(EffectiveProxy::proxy)
+            .unwrap_or(EffectiveProxy::Direct);
+        Self::from_config_with_effective_proxy(config, &effective_proxy)
+    }
+
+    /// Creates a client from base settings and an already-resolved proxy policy.
+    pub fn from_config_with_effective_proxy(
+        config: &ClientConfig,
+        effective_proxy: &EffectiveProxy,
+    ) -> Result<Self, NetError> {
         let mut builder = reqwest::Client::builder()
             .connect_timeout(config.timeout.connect)
             .read_timeout(config.timeout.read)
             .timeout(config.timeout.total)
             .user_agent(&config.user_agent);
 
-        if let Some(ref proxy_url) = config.proxy {
-            let proxy = reqwest::Proxy::all(proxy_url).map_err(|e| {
-                observability::proxy_config_invalid(proxy_url, &e);
-                NetError::Config(format!("代理配置无效: {}", e))
-            })?;
-            builder = builder.proxy(proxy);
-        }
+        builder = apply_async_proxy_routes(builder, effective_proxy)?;
 
-        let inner = builder
-            .build()
-            .map_err(|e| NetError::Config(format!("创建 HTTP 客户端失败: {}", e)))?;
+        let inner = builder.build().map_err(|_| {
+            observability::http_client_build_failed();
+            NetError::Config("无法创建 HTTP 客户端".into())
+        })?;
 
         Ok(Self { inner, retry_policy: config.retry_policy })
     }
@@ -299,22 +290,30 @@ impl NetBlockingClient {
     ///
     /// Returns a configured `NetBlockingClient` instance; returns `NetError::Config` on configuration error
     pub fn from_config(config: &ClientConfig) -> Result<Self, NetError> {
+        let effective_proxy = config
+            .proxy
+            .as_deref()
+            .map(EffectiveProxy::proxy)
+            .unwrap_or(EffectiveProxy::Direct);
+        Self::from_config_with_effective_proxy(config, &effective_proxy)
+    }
+
+    /// Creates a blocking client from base settings and a resolved proxy policy.
+    pub fn from_config_with_effective_proxy(
+        config: &ClientConfig,
+        effective_proxy: &EffectiveProxy,
+    ) -> Result<Self, NetError> {
         let mut builder = reqwest::blocking::Client::builder()
             .connect_timeout(config.timeout.connect)
             .timeout(config.timeout.total)
             .user_agent(&config.user_agent);
 
-        if let Some(ref proxy_url) = config.proxy {
-            let proxy = reqwest::Proxy::all(proxy_url).map_err(|e| {
-                observability::proxy_config_invalid(proxy_url, &e);
-                NetError::Config(format!("代理配置无效: {}", e))
-            })?;
-            builder = builder.proxy(proxy);
-        }
+        builder = apply_blocking_proxy_routes(builder, effective_proxy)?;
 
-        let inner = builder
-            .build()
-            .map_err(|e| NetError::Config(format!("创建阻塞 HTTP 客户端失败: {}", e)))?;
+        let inner = builder.build().map_err(|_| {
+            observability::http_client_build_failed();
+            NetError::Config("无法创建阻塞 HTTP 客户端".into())
+        })?;
 
         Ok(Self { inner, retry_policy: config.retry_policy })
     }
@@ -341,6 +340,65 @@ impl NetBlockingClient {
     pub fn retry_policy(&self) -> &RetryPolicy {
         &self.retry_policy
     }
+}
+
+fn no_proxy(routes: &crate::net::proxy::ProxyRoutes) -> Option<reqwest::NoProxy> {
+    (!routes.no_proxy().is_empty())
+        .then(|| reqwest::NoProxy::from_string(&routes.no_proxy().join(",")))?
+}
+
+fn proxy_config_error(scope: &str) -> NetError {
+    observability::proxy_config_invalid(scope);
+    NetError::Config(format!("{scope} 代理配置无效"))
+}
+
+fn apply_async_proxy_routes(
+    mut builder: reqwest::ClientBuilder,
+    effective_proxy: &EffectiveProxy,
+) -> Result<reqwest::ClientBuilder, NetError> {
+    let Some(routes) = effective_proxy.routes_ref() else {
+        return Ok(builder);
+    };
+    let no_proxy = no_proxy(routes);
+
+    if let Some(proxy_url) = routes.http_proxy() {
+        let proxy = reqwest::Proxy::http(proxy_url)
+            .map_err(|_| proxy_config_error("HTTP"))?
+            .no_proxy(no_proxy.clone());
+        builder = builder.proxy(proxy);
+    }
+    if let Some(proxy_url) = routes.https_proxy() {
+        let proxy = reqwest::Proxy::https(proxy_url)
+            .map_err(|_| proxy_config_error("HTTPS"))?
+            .no_proxy(no_proxy);
+        builder = builder.proxy(proxy);
+    }
+    Ok(builder)
+}
+
+#[cfg(feature = "blocking")]
+fn apply_blocking_proxy_routes(
+    mut builder: reqwest::blocking::ClientBuilder,
+    effective_proxy: &EffectiveProxy,
+) -> Result<reqwest::blocking::ClientBuilder, NetError> {
+    let Some(routes) = effective_proxy.routes_ref() else {
+        return Ok(builder);
+    };
+    let no_proxy = no_proxy(routes);
+
+    if let Some(proxy_url) = routes.http_proxy() {
+        let proxy = reqwest::Proxy::http(proxy_url)
+            .map_err(|_| proxy_config_error("HTTP"))?
+            .no_proxy(no_proxy.clone());
+        builder = builder.proxy(proxy);
+    }
+    if let Some(proxy_url) = routes.https_proxy() {
+        let proxy = reqwest::Proxy::https(proxy_url)
+            .map_err(|_| proxy_config_error("HTTPS"))?
+            .no_proxy(no_proxy);
+        builder = builder.proxy(proxy);
+    }
+    Ok(builder)
 }
 
 #[cfg(test)]
@@ -388,22 +446,30 @@ mod tests {
     }
 
     #[test]
-    fn effective_proxy_is_applied_to_client_config() {
-        let config = ClientConfig::default()
-            .with_effective_proxy(&EffectiveProxy::proxy("http://127.0.0.1:7890"));
+    fn effective_proxy_routes_build_a_client() {
+        let effective_proxy = EffectiveProxy::routes(
+            crate::net::proxy::ProxyRoutes::split(
+                Some("http://127.0.0.1:7890".into()),
+                Some("http://127.0.0.1:7891".into()),
+            )
+            .with_no_proxy(vec!["localhost".into()]),
+        );
 
-        assert_eq!(config.proxy.as_deref(), Some("http://127.0.0.1:7890"));
+        assert!(NetClient::from_config_with_effective_proxy(
+            &ClientConfig::default(),
+            &effective_proxy
+        )
+        .is_ok());
     }
 
     #[test]
-    fn direct_effective_proxy_clears_client_config() {
-        let mut config = ClientConfig {
-            proxy: Some("http://127.0.0.1:7890".into()),
-            ..Default::default()
-        };
+    fn invalid_proxy_error_does_not_echo_credentials() {
+        let effective_proxy = EffectiveProxy::proxy("http://user:secret@[::1");
+        let error =
+            NetClient::from_config_with_effective_proxy(&ClientConfig::default(), &effective_proxy)
+                .unwrap_err();
 
-        config.apply_effective_proxy(&EffectiveProxy::Direct);
-
-        assert!(config.proxy.is_none());
+        assert!(matches!(error, NetError::Config(_)));
+        assert!(!error.to_string().contains("secret"));
     }
 }

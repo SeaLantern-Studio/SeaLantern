@@ -159,14 +159,19 @@ pub const EVENT_REQUEST_RETRY: &str = "request_retry";
 pub const EVENT_PROXY_CONFIG_INVALID: &str = "proxy_config_invalid";
 /// Event: proxy settings could not be applied.
 pub const EVENT_PROXY_SETTINGS_INVALID: &str = "proxy_settings_invalid";
+/// Event: proxy routing policy was evaluated.
+pub const EVENT_PROXY_DECISION_UPDATED: &str = "proxy_decision_updated";
+/// Event: platform proxy discovery failed.
+pub const EVENT_SYSTEM_PROXY_READ_FAILED: &str = "system_proxy_read_failed";
+/// Event: an HTTP client could not be constructed.
+pub const EVENT_HTTP_CLIENT_BUILD_FAILED: &str = "http_client_build_failed";
 
 /// Records a proxy configuration invalid event.
-pub fn proxy_config_invalid(proxy_url: &str, error: &dyn Display) {
+pub fn proxy_config_invalid(scope: &str) {
     tracing::error!(
         target: NET_TARGET,
         event_name = EVENT_PROXY_CONFIG_INVALID,
-        proxy_url,
-        error = %error,
+        scope,
         "proxy config invalid"
     );
 }
@@ -178,6 +183,36 @@ pub fn proxy_settings_invalid(error: &dyn Display) {
         event_name = EVENT_PROXY_SETTINGS_INVALID,
         error = %error,
         "proxy settings invalid"
+    );
+}
+
+/// Records an evaluated proxy decision without exposing endpoint credentials.
+pub fn proxy_decision_updated(source: &str, mode: &str, changed: bool) {
+    tracing::info!(
+        target: NET_TARGET,
+        event_name = EVENT_PROXY_DECISION_UPDATED,
+        source,
+        mode,
+        changed,
+        "proxy decision updated"
+    );
+}
+
+/// Records a platform proxy-read failure without logging provider-controlled text.
+pub fn system_proxy_read_failed() {
+    tracing::warn!(
+        target: NET_TARGET,
+        event_name = EVENT_SYSTEM_PROXY_READ_FAILED,
+        "system proxy read failed"
+    );
+}
+
+/// Records an HTTP client construction failure without logging configuration values.
+pub fn http_client_build_failed() {
+    tracing::error!(
+        target: NET_TARGET,
+        event_name = EVENT_HTTP_CLIENT_BUILD_FAILED,
+        "HTTP client build failed"
     );
 }
 

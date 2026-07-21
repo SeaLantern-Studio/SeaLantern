@@ -28,6 +28,17 @@ impl ProxySettings {
     }
 }
 
+impl ProxyMode {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::Adaptive => "adaptive",
+            Self::Preserve => "preserve",
+            Self::Manual { .. } => "manual",
+            Self::Disabled => "disabled",
+        }
+    }
+}
+
 /// Policy used to select an outbound proxy.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
