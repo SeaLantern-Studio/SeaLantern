@@ -8,3 +8,9 @@ license = "GPL-3.0-only"
 path = "src/lib.rs"
 
 [dependencies]
+tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-trait = "0.1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+sealantern-infra = { path = "../infra" }
