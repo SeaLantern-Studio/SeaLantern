@@ -149,13 +149,13 @@ impl Fetcher for ModrinthFetcher {
             .header("User-Agent", super::USER_AGENT)
             .send()
             .await
-            .map_err(|e| MarketError::http("search resources", e.to_string()))?;
+            .map_err(|e| MarketError::http("search resources", "modrinth", e.to_string()))?;
 
         // 自动反序列化为 ModrinthSearchResponse
         let search_resp: ModrinthSearchResponse = resp
             .json()
             .await
-            .map_err(|e| MarketError::json("parse search results", e.to_string()))?;
+            .map_err(|e| MarketError::json("parse search results", "modrinth", e.to_string()))?;
 
         // 将 Modrinth 的搜索命中转换为内部的 MarketResource
         let resources: Vec<MarketResource> = search_resp
@@ -203,13 +203,13 @@ impl Fetcher for ModrinthFetcher {
             .header("User-Agent", super::USER_AGENT)
             .send()
             .await
-            .map_err(|e| MarketError::http("get resource details", e.to_string()))?;
+            .map_err(|e| MarketError::http("get resource details", "modrinth", e.to_string()))?;
 
         // 自动反序列化为 ModrinthProject
         let project: ModrinthProject = resp
             .json()
             .await
-            .map_err(|e| MarketError::json("parse resource details", e.to_string()))?;
+            .map_err(|e| MarketError::json("parse resource details", "modrinth", e.to_string()))?;
 
         let info = ResourceInfo {
             id: project.id,
@@ -251,13 +251,13 @@ impl Fetcher for ModrinthFetcher {
             .header("User-Agent", super::USER_AGENT)
             .send()
             .await
-            .map_err(|e| MarketError::http("get resource versions", e.to_string()))?;
+            .map_err(|e| MarketError::http("get resource versions", "modrinth", e.to_string()))?;
 
         // 自动反序列化为 Vec<ModrinthVersion>
         let versions: Vec<ModrinthVersion> = resp
             .json()
             .await
-            .map_err(|e| MarketError::json("parse version list", e.to_string()))?;
+            .map_err(|e| MarketError::json("parse version list", "modrinth", e.to_string()))?;
 
         // 将 Modrinth 版本转换为内部的 Version
         let result: Vec<Version> = versions
@@ -318,11 +318,11 @@ impl Fetcher for ModrinthFetcher {
             .header("User-Agent", super::USER_AGENT)
             .send()
             .await
-            .map_err(|e| MarketError::http("get random resources", e.to_string()))?;
+            .map_err(|e| MarketError::http("get random resources", "modrinth", e.to_string()))?;
         let projects: Vec<ModrinthProject> = resp
             .json()
             .await
-            .map_err(|e| MarketError::json("parse random resources", e.to_string()))?;
+            .map_err(|e| MarketError::json("parse random resources", "modrinth", e.to_string()))?;
         Ok(projects
             .into_iter()
             .map(|p| MarketResource {
@@ -394,3 +394,4 @@ mod tests {
         }
     }
 }
+
