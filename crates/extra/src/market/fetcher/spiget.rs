@@ -117,8 +117,13 @@ impl Fetcher for SpigetFetcher {
             return Err(MarketError::config("page must be 1 or greater"));
         }
         observability::market_search_started(query, page, page_size, "spiget");
-        let url =
-            format!("{}/search/resources/{}?size={}&page={}", SPIGET_BASE, urlencoding::encode(query), page_size, page);
+        let url = format!(
+            "{}/search/resources/{}?size={}&page={}",
+            SPIGET_BASE,
+            urlencoding::encode(query),
+            page_size,
+            page
+        );
         let resp = self
             .client
             .get(&url)
@@ -387,4 +392,3 @@ mod tests {
         }
     }
 }
-

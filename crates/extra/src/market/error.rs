@@ -64,14 +64,22 @@ impl std::error::Error for MarketError {}
 
 impl MarketError {
     /// 将 HTTP 错误与操作名称和来源后端一同包装。
-    pub(crate) fn http(operation: &'static str, backend: &'static str, source: impl Into<String>) -> Self {
+    pub(crate) fn http(
+        operation: &'static str,
+        backend: &'static str,
+        source: impl Into<String>,
+    ) -> Self {
         let msg = source.into();
         observability::market_request_failed(operation, backend, &msg);
         MarketError::Http { operation, source: msg }
     }
 
     /// 将 JSON 解析错误与操作名称和来源后端一同包装。
-    pub(crate) fn json(operation: &'static str, backend: &'static str, message: impl Into<String>) -> Self {
+    pub(crate) fn json(
+        operation: &'static str,
+        backend: &'static str,
+        message: impl Into<String>,
+    ) -> Self {
         let msg = message.into();
         observability::market_request_failed(operation, backend, &msg);
         MarketError::Json { operation, message: msg }
