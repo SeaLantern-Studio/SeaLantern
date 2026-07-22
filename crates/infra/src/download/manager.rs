@@ -1,11 +1,14 @@
 //! 下载任务管理器。
 //!
-//! 管理多个下载任务的创建、进度查询、取消和自动清理。
-//! 内部使用 `HashMap` 存储所有任务，已完成的任务会在查询时自动移除。
-//! 每个任务由 UUID v4 标识，因此不存在 ID 溢出或冲突的风险。
+//! 提供全局单例 `DownloadManager`，统一管理所有多线程下载任务。
+//! 调用方通过 `DownloadManager::instance()` 获取管理器，
+//! 使用 `create()` 或 `create_with_handle()` 启动下载，
+//! 通过 `get_progress()` / `cancel()` 查询和取消任务。
+//! 已结束的任务在查询时自动清理。
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -17,14 +20,13 @@ use crate::observability;
 
 /// 下载任务管理器。
 ///
-/// 封装 `Downloader` 以提供多任务生命周期管理。
-/// 在查询进度时自动清理已完成的任务。
+/// 封装多线程下载能力，提供全局单例。
+/// 所有通过此管理器创建的下载任务均可通过 UUID 查询进度或取消。
 ///
 /// # Examples
 ///
 /// ```ignore
-/// let client = NetClient::from_config(&ClientConfig::default())?;
-/// let manager = DownloadManager::new(client);
+/// let manager = DownloadManager::instance();
 /// let id = manager.create("https://...", "./file.zip", 8).await;
 /// let snap = manager.get_progress(id).await;
 /// manager.cancel(id).await;
@@ -37,12 +39,7 @@ pub struct DownloadManager {
 }
 
 impl DownloadManager {
-    /// 创建新的下载管理器。
-    ///
-    /// # Parameters
-    ///
-    /// - `client`: 配置好的 HTTP 客户端
-    pub fn new(client: NetClient) -> Self {
+    pub(crate) fn new(client: NetClient) -> Self {
         Self {
             downloader: Downloader::new(client),
             tasks: Arc::new(RwLock::new(HashMap::new())),
@@ -68,6 +65,22 @@ impl DownloadManager {
         output_path: &str,
         thread_count: usize,
     ) -> Result<Uuid, DownloadError> {
+        let (id, _) = self
+            .create_with_handle(url, output_path, thread_count)
+            .await?;
+        Ok(id)
+    }
+
+    /// 创建下载任务并返回任务 UUID 和状态句柄。
+    ///
+    /// 与 `create()` 的区别在于同时返回 `Arc<DownloadStatus>`，
+    /// 调用方可直接轮询进度或监听取消信号，无需通过管理器查询。
+    pub async fn create_with_handle(
+        &self,
+        url: &str,
+        output_path: &str,
+        thread_count: usize,
+    ) -> Result<(Uuid, Arc<DownloadStatus>), DownloadError> {
         let status = self
             .downloader
             .download(url, output_path, thread_count)
@@ -75,11 +88,11 @@ impl DownloadManager {
         let id = Uuid::new_v4();
 
         let mut tasks = self.tasks.write().await;
-        tasks.insert(id, status);
+        tasks.insert(id, status.clone());
 
         observability::task_created(&id, url);
 
-        Ok(id)
+        Ok((id, status))
     }
 
     /// 查询单个任务的进度。
@@ -168,6 +181,21 @@ impl DownloadManager {
     pub async fn task_count(&self) -> usize {
         let tasks = self.tasks.read().await;
         tasks.len()
+    }
+}
+
+static GLOBAL_DOWNLOAD_MANAGER: OnceLock<DownloadManager> = OnceLock::new();
+
+impl DownloadManager {
+    /// 获取全局下载管理器实例（懒加载）。
+    ///
+    /// 首次调用时使用默认的 `NetClient` 配置创建管理器实例。
+    pub fn instance() -> &'static Self {
+        GLOBAL_DOWNLOAD_MANAGER.get_or_init(|| {
+            let client = NetClient::from_config(&Default::default())
+                .expect("failed to create default HTTP client for global DownloadManager");
+            DownloadManager::new(client)
+        })
     }
 }
 

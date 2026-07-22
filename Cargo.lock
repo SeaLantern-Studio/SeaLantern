@@ -6013,6 +6013,14 @@ dependencies = [
 [[package]]
 name = "sealantern-extra"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "sealantern-infra",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "sealantern-infra"
