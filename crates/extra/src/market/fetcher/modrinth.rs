@@ -132,8 +132,11 @@ impl Fetcher for ModrinthFetcher {
         page: u32,
         page_size: u32,
     ) -> Result<SearchResult, MarketError> {
+        if page == 0 {
+            return Err(MarketError::config("page must be 1 or greater"));
+        }
         observability::market_search_started(query, page, page_size, "modrinth");
-        let offset = page.saturating_sub(1) * page_size;
+        let offset = (page - 1) * page_size;
         let url = format!(
             "{}/search?query={}&limit={}&offset={}",
             MODRINTH_BASE, urlencoding::encode(query), page_size, offset
