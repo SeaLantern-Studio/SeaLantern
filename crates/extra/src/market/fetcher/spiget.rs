@@ -125,13 +125,13 @@ impl Fetcher for SpigetFetcher {
             .map_err(|e| MarketError::config(e.to_string()))?
             .send()
             .await
-            .map_err(|e| MarketError::http("search resources", e.to_string()))?;
+            .map_err(|e| MarketError::http("search resources", "spiget", e.to_string()))?;
 
         // 直接反序列化为 Vec<SpigetSearchHit>
         let hits: Vec<SpigetSearchHit> = resp
             .json()
             .await
-            .map_err(|e| MarketError::json("parse search results", e.to_string()))?;
+            .map_err(|e| MarketError::json("parse search results", "spiget", e.to_string()))?;
 
         // 将搜索结果映射为统一的 MarketResource
         // tag 字段作为简要描述，downloads 字段作为下载量
@@ -175,12 +175,12 @@ impl Fetcher for SpigetFetcher {
             .map_err(|e| MarketError::config(e.to_string()))?
             .send()
             .await
-            .map_err(|e| MarketError::http("get resource details", e.to_string()))?;
+            .map_err(|e| MarketError::http("get resource details", "spiget", e.to_string()))?;
 
         let resource: SpigetResource = resp
             .json()
             .await
-            .map_err(|e| MarketError::json("parse resource details", e.to_string()))?;
+            .map_err(|e| MarketError::json("parse resource details", "spiget", e.to_string()))?;
 
         // 从 SpigetResource 构建 ResourceInfo
         let download_url = build_spiget_download_url(&resource, id);
@@ -221,21 +221,21 @@ impl Fetcher for SpigetFetcher {
             .map_err(|e| MarketError::config(e.to_string()))?
             .send()
             .await
-            .map_err(|e| MarketError::http("get resource versions", e.to_string()))?;
+            .map_err(|e| MarketError::http("get resource versions", "spiget", e.to_string()))?;
 
         let outer: serde_json::Value = resp
             .json()
             .await
-            .map_err(|e| MarketError::json("parse version list", e.to_string()))?;
+            .map_err(|e| MarketError::json("parse version list", "spiget", e.to_string()))?;
 
         // 兼容两种响应格式：{ value: [...] } 或 [...]
         let versions_raw = if outer.get("value").and_then(|v| v.as_array()).is_some() {
             serde_json::from_value::<SpigetVersionList>(outer)
-                .map_err(|e| MarketError::json("parse version list", e.to_string()))?
+                .map_err(|e| MarketError::json("parse version list", "spiget", e.to_string()))?
                 .value
         } else {
             serde_json::from_value::<Vec<SpigetVersion>>(outer)
-                .map_err(|e| MarketError::json("parse version list", e.to_string()))?
+                .map_err(|e| MarketError::json("parse version list", "spiget", e.to_string()))?
         };
 
         // 映射每个版本对象，version_number 复用 name 字段（Spiget 不单独提供版本号）
@@ -291,11 +291,11 @@ impl Fetcher for SpigetFetcher {
             .map_err(|e| MarketError::config(e.to_string()))?
             .send()
             .await
-            .map_err(|e| MarketError::http("get random resources", e.to_string()))?;
+            .map_err(|e| MarketError::http("get random resources", "spiget", e.to_string()))?;
         let list: Vec<SpigetSearchHit> = resp
             .json()
             .await
-            .map_err(|e| MarketError::json("parse random resources", e.to_string()))?;
+            .map_err(|e| MarketError::json("parse random resources", "spiget", e.to_string()))?;
         Ok(list
             .into_iter()
             .map(|h| MarketResource {
@@ -387,3 +387,4 @@ mod tests {
         }
     }
 }
+

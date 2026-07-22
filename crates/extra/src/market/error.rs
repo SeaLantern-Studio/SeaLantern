@@ -63,17 +63,17 @@ impl fmt::Display for MarketError {
 impl std::error::Error for MarketError {}
 
 impl MarketError {
-    /// 将 HTTP 错误与操作名称一同包装。
-    pub(crate) fn http(operation: &'static str, source: impl Into<String>) -> Self {
+    /// 将 HTTP 错误与操作名称和来源后端一同包装。
+    pub(crate) fn http(operation: &'static str, backend: &'static str, source: impl Into<String>) -> Self {
         let msg = source.into();
-        observability::market_request_failed(operation, "market", &msg);
+        observability::market_request_failed(operation, backend, &msg);
         MarketError::Http { operation, source: msg }
     }
 
-    /// 将 JSON 解析错误与操作名称一同包装。
-    pub(crate) fn json(operation: &'static str, message: impl Into<String>) -> Self {
+    /// 将 JSON 解析错误与操作名称和来源后端一同包装。
+    pub(crate) fn json(operation: &'static str, backend: &'static str, message: impl Into<String>) -> Self {
         let msg = message.into();
-        observability::market_request_failed(operation, "market", &msg);
+        observability::market_request_failed(operation, backend, &msg);
         MarketError::Json { operation, message: msg }
     }
 
@@ -93,13 +93,13 @@ mod tests {
 
     #[test]
     fn http_error_includes_operation_and_source() {
-        let err = MarketError::http("fetch mod list", "connection refused");
+        let err = MarketError::http("fetch mod list", "test", "connection refused");
         assert_eq!(err.to_string(), "failed to fetch mod list: connection refused");
     }
 
     #[test]
     fn json_error_includes_operation_and_message() {
-        let err = MarketError::json("parse manifest", "missing field 'version'");
+        let err = MarketError::json("parse manifest", "test", "missing field 'version'");
         assert_eq!(err.to_string(), "failed to parse manifest: missing field 'version'");
     }
 
