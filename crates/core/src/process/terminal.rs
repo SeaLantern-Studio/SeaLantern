@@ -45,6 +45,8 @@ pub struct Terminal {
 
 impl Terminal {
     /// 根据用于启动守护进程的请求，从守护进程转移已配置的流。
+    ///
+    /// 此方法仅从请求推导输入策略，其余流转移统一委托给 [`Self::from_daemon_with_input`]。
     pub fn from_daemon(daemon: &mut Daemon, request: &CommandBuildRequest<'_>) -> Self {
         Self::from_daemon_with_input(
             daemon,
