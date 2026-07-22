@@ -3,7 +3,6 @@
 //! 提供 [`Fetcher`] trait 定义以及各平台的实现（Spigot、Modrinth）。
 //! 还包含通用的 `download_file` 辅助函数，供各平台实现复用。
 
-pub mod error;
 pub mod models;
 mod modrinth;
 mod spiget;
@@ -11,9 +10,10 @@ pub mod traits;
 
 use std::sync::Arc;
 
-pub use error::FetcherError;
 pub use models::VersionFile;
 pub use traits::Fetcher;
+
+use crate::market::MarketError;
 pub use modrinth::ModrinthFetcher;
 pub use spiget::SpigetFetcher;
 
@@ -30,14 +30,14 @@ const USER_AGENT: &str = "SeaLantern/extra/0.1.0";
 /// 返回 [`DownloadStatus`] 的共享引用，可用于跟踪下载进度与结果。
 ///
 /// # Errors
-/// 如果下载初始化失败，返回 [`FetcherError::Download`]。
+/// 如果下载初始化失败，返回 [`MarketError::Download`]。
 pub(crate) async fn download_file(
     url: &str,
     destination: &str,
-) -> Result<Arc<sealantern_infra::download::DownloadStatus>, FetcherError> {
+) -> Result<Arc<sealantern_infra::download::DownloadStatus>, MarketError> {
     let (_id, status) = sealantern_infra::download::DownloadManager::instance()
         .create_with_handle(url, destination, 8)
         .await
-        .map_err(|e| FetcherError::Download(e.to_string()))?;
+        .map_err(|e| MarketError::download(e.to_string()))?;
     Ok(status)
 }

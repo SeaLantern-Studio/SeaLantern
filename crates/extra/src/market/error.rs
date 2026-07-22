@@ -74,6 +74,11 @@ impl MarketError {
     pub(crate) fn config(message: impl Into<String>) -> Self {
         MarketError::Config(message.into())
     }
+
+    /// 构建下载失败的错误。
+    pub(crate) fn download(message: impl Into<String>) -> Self {
+        MarketError::Download(message.into())
+    }
 }
 
 #[cfg(test)]

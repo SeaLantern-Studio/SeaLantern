@@ -136,7 +136,7 @@ impl Fetcher for ModrinthFetcher {
         let offset = page.saturating_sub(1) * page_size;
         let url = format!(
             "{}/search?query={}&limit={}&offset={}",
-            MODRINTH_BASE, query, page_size, offset
+            MODRINTH_BASE, urlencoding::encode(query), page_size, offset
         );
 
         let resp = self
