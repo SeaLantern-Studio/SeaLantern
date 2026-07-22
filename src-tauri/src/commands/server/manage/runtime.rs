@@ -2,6 +2,16 @@ use super::common::{manager, ForceStopPreparationResponse, ServerStartFallbackEv
 use crate::models::server::{ServerInstance, ServerStatusInfo};
 use tauri::Emitter;
 
+impl sealantern_server::rpc::service::ConsoleCommandExecutor
+    for crate::services::server::manager::ServerManager
+{
+    type Error = String;
+
+    fn send_console_command(&self, instance_id: &str, command: &str) -> Result<(), Self::Error> {
+        self.send_command(instance_id, command)
+    }
+}
+
 /// 生成强制停止确认信息
 pub(super) fn prepare_force_stop_server(
     id: String,
@@ -43,7 +53,7 @@ pub(super) fn stop_server(id: String) -> Result<(), String> {
 
 /// 发送控制台命令
 pub(super) fn send_command(id: String, command: String) -> Result<(), String> {
-    manager().send_command(&id, &command)
+    sealantern_server::rpc::methods::server::dispatch_console_command(manager(), &id, &command)
 }
 
 /// 读取服务器列表

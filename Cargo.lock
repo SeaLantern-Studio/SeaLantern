@@ -5970,6 +5970,7 @@ dependencies = [
  "reqwest 0.12.28",
  "rusqlite",
  "sculk",
+ "sealantern-server",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -6032,6 +6033,13 @@ dependencies = [
  "tracing",
  "uuid",
  "zip",
+]
+
+[[package]]
+name = "sealantern-server"
+version = "0.1.0"
+dependencies = [
+ "tracing",
 ]
 
 [[package]]
