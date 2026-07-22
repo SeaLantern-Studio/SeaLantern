@@ -65,28 +65,24 @@ impl SqliteDatabase {
         options: SqliteOptions,
     ) -> Result<Self, PersistenceError> {
         let path = path.into();
-        let _guard = lock_database("open", &path).await?;
         let operation_path = path.clone();
-        let opened = tokio::task::spawn_blocking(move || open_connection(&path, &options))
-            .await
-            .map_err(|error| {
-                let error = PersistenceError::Task {
+        let result = async {
+            let _guard = lock_database(&path).await?;
+            let opened = tokio::task::spawn_blocking(move || open_connection(&path, &options))
+                .await
+                .map_err(|error| PersistenceError::Task {
                     operation: "open SQLite database",
                     message: error.to_string(),
-                };
-                observability::persistence_operation_failed("open", &operation_path, &error);
-                error
-            })?;
-        match opened {
-            Ok(connection) => Ok(Self {
-                path: operation_path,
+                })?;
+            let connection = opened?;
+            Ok(Self {
+                path: operation_path.clone(),
                 connection: Arc::new(Mutex::new(connection)),
-            }),
-            Err(error) => {
-                observability::persistence_operation_failed("open", &operation_path, &error);
-                Err(error)
-            }
+            })
         }
+        .await;
+        report_operation_error("open", &operation_path, &result);
+        result
     }
 
     /// 返回数据库文件路径。
@@ -95,44 +91,57 @@ impl SqliteDatabase {
     }
 
     /// 执行单条使用参数绑定的写入或控制语句。
-    pub async fn execute(
+    pub async fn execute<P>(
         &self,
         sql: impl Into<String>,
-        params: Vec<SqlValue>,
-    ) -> Result<usize, PersistenceError> {
+        params: P,
+    ) -> Result<usize, PersistenceError>
+    where
+        P: IntoIterator<Item = SqlValue> + Send + 'static,
+    {
         let sql = sql.into();
-        self.with_connection("execute", move |connection| {
-            connection.execute(&sql, rusqlite::params_from_iter(params))
-        })
-        .await
+        let result = self
+            .with_connection("execute", move |connection| {
+                connection.execute(&sql, rusqlite::params_from_iter(params))
+            })
+            .await;
+        report_operation_error("execute", &self.path, &result);
+        result
     }
 
     /// 执行仅由受信任代码构造的多条 SQL 语句。
     pub async fn execute_batch(&self, sql: impl Into<String>) -> Result<(), PersistenceError> {
         let sql = sql.into();
-        self.with_connection("execute batch", move |connection| connection.execute_batch(&sql))
-            .await
+        let result = self
+            .with_connection("execute batch", move |connection| connection.execute_batch(&sql))
+            .await;
+        report_operation_error("execute batch", &self.path, &result);
+        result
     }
 
     /// 查询记录，并通过调用方提供的闭包映射每一行。
-    pub async fn query<T, F>(
+    pub async fn query<T, P, F>(
         &self,
         sql: impl Into<String>,
-        params: Vec<SqlValue>,
+        params: P,
         mut map_row: F,
     ) -> Result<Vec<T>, PersistenceError>
     where
         T: Send + 'static,
+        P: IntoIterator<Item = SqlValue> + Send + 'static,
         F: FnMut(&Row<'_>) -> rusqlite::Result<T> + Send + 'static,
     {
         let sql = sql.into();
-        self.with_connection("query", move |connection| {
-            let mut statement = connection.prepare(&sql)?;
-            let rows =
-                statement.query_map(rusqlite::params_from_iter(params), |row| map_row(row))?;
-            rows.collect()
-        })
-        .await
+        let result = self
+            .with_connection("query", move |connection| {
+                let mut statement = connection.prepare(&sql)?;
+                let rows =
+                    statement.query_map(rusqlite::params_from_iter(params), |row| map_row(row))?;
+                rows.collect()
+            })
+            .await;
+        report_operation_error("query", &self.path, &result);
+        result
     }
 
     /// 在 `BEGIN IMMEDIATE` 事务中运行上层定义的写入操作。
@@ -141,31 +150,38 @@ impl SqliteDatabase {
         T: Send + 'static,
         F: FnOnce(&Transaction<'_>) -> rusqlite::Result<T> + Send + 'static,
     {
-        self.with_mut_connection(operation, move |connection| {
-            let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let result = work(&transaction)?;
-            transaction.commit()?;
-            Ok(result)
-        })
-        .await
+        let result = self
+            .with_mut_connection(operation, move |connection| {
+                let transaction =
+                    connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+                let result = work(&transaction)?;
+                transaction.commit()?;
+                Ok(result)
+            })
+            .await;
+        report_operation_error(operation, &self.path, &result);
+        result
     }
 
     /// 以单个原子事务应用未执行过的迁移。
     pub async fn migrate(&self, mut migrations: Vec<Migration>) -> Result<(), PersistenceError> {
         migrations.sort_by_key(|migration| migration.version);
         if let Some(migration) = migrations.iter().find(|migration| migration.version < 0) {
-            return Err(PersistenceError::InvalidMigration {
+            let result = Err(PersistenceError::InvalidMigration {
                 version: migration.version,
                 reason: "migration versions must not be negative",
             });
+            report_operation_error("migrate", &self.path, &result);
+            return result;
         }
         for pair in migrations.windows(2) {
             if pair[0].version == pair[1].version {
-                return Err(PersistenceError::InvalidMigration {
+                let result = Err(PersistenceError::InvalidMigration {
                     version: pair[0].version,
                     reason: "migration versions must be unique",
                 });
+                report_operation_error("migrate", &self.path, &result);
+                return result;
             }
         }
 
@@ -209,10 +225,9 @@ impl SqliteDatabase {
             transaction.commit()?;
             Ok(Ok(()))
         })
-        .await?;
-        if let Err(error) = &result {
-            observability::persistence_operation_failed("migrate", &self.path, error);
-        }
+        .await
+        .and_then(|result| result);
+        report_operation_error("migrate", &self.path, &result);
         result
     }
 
@@ -226,7 +241,7 @@ impl SqliteDatabase {
         F: FnOnce(&Connection) -> rusqlite::Result<T> + Send + 'static,
     {
         let path = self.path.clone();
-        let process_guard = lock_database(operation, &path).await?;
+        let process_guard = lock_database(&path).await?;
         let connection = Arc::clone(&self.connection);
         let result = tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
@@ -243,12 +258,7 @@ impl SqliteDatabase {
             })
         })
         .await
-        .map_err(|error| {
-            let error = PersistenceError::Task { operation, message: error.to_string() };
-            observability::persistence_operation_failed(operation, &self.path, &error);
-            error
-        })?;
-        report_operation_error(operation, &self.path, &result);
+        .map_err(|error| PersistenceError::Task { operation, message: error.to_string() })?;
         result
     }
 
@@ -262,7 +272,7 @@ impl SqliteDatabase {
         F: FnOnce(&mut Connection) -> rusqlite::Result<T> + Send + 'static,
     {
         let path = self.path.clone();
-        let process_guard = lock_database(operation, &path).await?;
+        let process_guard = lock_database(&path).await?;
         let connection = Arc::clone(&self.connection);
         let result = tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
@@ -280,26 +290,13 @@ impl SqliteDatabase {
             })
         })
         .await
-        .map_err(|error| {
-            let error = PersistenceError::Task { operation, message: error.to_string() };
-            observability::persistence_operation_failed(operation, &self.path, &error);
-            error
-        })?;
-        report_operation_error(operation, &self.path, &result);
+        .map_err(|error| PersistenceError::Task { operation, message: error.to_string() })?;
         result
     }
 }
 
-async fn lock_database(
-    operation: &'static str,
-    path: &Path,
-) -> Result<tokio::sync::OwnedMutexGuard<()>, PersistenceError> {
-    process_lock_registry()
-        .lock(path)
-        .await
-        .inspect_err(|error| {
-            observability::persistence_operation_failed(operation, path, error);
-        })
+async fn lock_database(path: &Path) -> Result<tokio::sync::OwnedMutexGuard<()>, PersistenceError> {
+    process_lock_registry().lock(path).await
 }
 
 fn open_connection(path: &Path, options: &SqliteOptions) -> Result<Connection, PersistenceError> {
@@ -376,15 +373,17 @@ mod tests {
         database
             .execute(
                 "INSERT INTO records (id, name) VALUES (?1, ?2)",
-                vec![SqlValue::Integer(7), SqlValue::Text("O'Reilly".to_owned())],
+                [SqlValue::Integer(7), SqlValue::Text("O'Reilly".to_owned())],
             )
             .await
             .unwrap();
 
         let names = database
-            .query("SELECT name FROM records WHERE id = ?1", vec![SqlValue::Integer(7)], |row| {
-                row.get::<_, String>(0)
-            })
+            .query(
+                "SELECT name FROM records WHERE id = ?1",
+                std::iter::once(SqlValue::Integer(7)),
+                |row| row.get::<_, String>(0),
+            )
             .await
             .unwrap();
         assert_eq!(names, ["O'Reilly"]);
