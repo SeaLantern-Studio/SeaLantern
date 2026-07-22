@@ -13,12 +13,12 @@ pub enum PersistenceError {
     Sqlite {
         operation: &'static str,
         path: PathBuf,
-        message: String,
+        source: rusqlite::Error,
     },
     /// 阻塞数据库任务未能完成。
     Task {
         operation: &'static str,
-        message: String,
+        source: tokio::task::JoinError,
     },
     /// 进程内协调器状态异常。
     Coordination { resource: PathBuf, message: String },
@@ -38,15 +38,15 @@ impl fmt::Display for PersistenceError {
                     path.display()
                 )
             }
-            Self::Sqlite { operation, path, message } => {
+            Self::Sqlite { operation, path, source } => {
                 write!(
                     formatter,
-                    "SQLite operation '{operation}' failed for '{}': {message}",
+                    "SQLite operation '{operation}' failed for '{}': {source}",
                     path.display()
                 )
             }
-            Self::Task { operation, message } => {
-                write!(formatter, "database task '{operation}' failed: {message}")
+            Self::Task { operation, source } => {
+                write!(formatter, "database task '{operation}' failed: {source}")
             }
             Self::Coordination { resource, message } => {
                 write!(
@@ -69,6 +69,8 @@ impl std::error::Error for PersistenceError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::CreateParent { source, .. } => Some(source),
+            Self::Sqlite { source, .. } => Some(source),
+            Self::Task { source, .. } => Some(source),
             _ => None,
         }
     }
