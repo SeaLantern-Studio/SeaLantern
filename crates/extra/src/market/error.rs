@@ -6,6 +6,8 @@
 
 use std::fmt;
 
+use crate::observability;
+
 /// 市场操作过程中可能发生的所有错误。
 ///
 /// 该枚举实现了 [`std::error::Error`] trait。
@@ -63,12 +65,16 @@ impl std::error::Error for MarketError {}
 impl MarketError {
     /// 将 HTTP 错误与操作名称一同包装。
     pub(crate) fn http(operation: &'static str, source: impl Into<String>) -> Self {
-        MarketError::Http { operation, source: source.into() }
+        let msg = source.into();
+        observability::market_request_failed(operation, "market", &msg);
+        MarketError::Http { operation, source: msg }
     }
 
     /// 将 JSON 解析错误与操作名称一同包装。
     pub(crate) fn json(operation: &'static str, message: impl Into<String>) -> Self {
-        MarketError::Json { operation, message: message.into() }
+        let msg = message.into();
+        observability::market_request_failed(operation, "market", &msg);
+        MarketError::Json { operation, message: msg }
     }
 
     pub(crate) fn config(message: impl Into<String>) -> Self {
