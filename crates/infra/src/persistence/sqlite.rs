@@ -6,7 +6,7 @@ use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehav
 
 use crate::observability;
 
-use super::{process_lock_registry, PersistenceError};
+use super::{process_lock_registry, PersistenceError, ProcessResourceLock};
 
 /// 可安全传入 SQLite 参数绑定的动态值。
 pub use rusqlite::types::Value as SqlValue;
@@ -20,6 +20,28 @@ pub struct SqliteOptions {
     pub foreign_keys: bool,
     /// 是否使用 WAL 日志模式以允许并发读。
     pub wal: bool,
+    /// 提交事务时的崩溃耐久性策略。
+    pub synchronous: SqliteSynchronousMode,
+}
+
+/// SQLite 的同步写入策略。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SqliteSynchronousMode {
+    Off,
+    Normal,
+    Full,
+    Extra,
+}
+
+impl SqliteSynchronousMode {
+    const fn as_pragma(self) -> &'static str {
+        match self {
+            Self::Off => "OFF",
+            Self::Normal => "NORMAL",
+            Self::Full => "FULL",
+            Self::Extra => "EXTRA",
+        }
+    }
 }
 
 impl Default for SqliteOptions {
@@ -28,6 +50,7 @@ impl Default for SqliteOptions {
             busy_timeout: Duration::from_secs(5),
             foreign_keys: true,
             wal: true,
+            synchronous: SqliteSynchronousMode::Full,
         }
     }
 }
@@ -50,6 +73,7 @@ pub struct Migration {
 #[derive(Clone)]
 pub struct SqliteDatabase {
     path: PathBuf,
+    coordination: ProcessResourceLock,
     connection: Arc<Mutex<Connection>>,
 }
 
@@ -67,16 +91,18 @@ impl SqliteDatabase {
         let path = path.into();
         let operation_path = path.clone();
         let result = async {
-            let _guard = lock_database(&path).await?;
+            let coordination = process_lock_registry().resource(&path)?;
+            let _guard = coordination.write().await;
             let opened = tokio::task::spawn_blocking(move || open_connection(&path, &options))
                 .await
                 .map_err(|error| PersistenceError::Task {
                     operation: "open SQLite database",
-                    message: error.to_string(),
+                    source: error,
                 })?;
             let connection = opened?;
             Ok(Self {
                 path: operation_path.clone(),
+                coordination,
                 connection: Arc::new(Mutex::new(connection)),
             })
         }
@@ -101,7 +127,7 @@ impl SqliteDatabase {
     {
         let sql = sql.into();
         let result = self
-            .with_connection("execute", move |connection| {
+            .with_mut_connection("execute", move |connection| {
                 connection.execute(&sql, rusqlite::params_from_iter(params))
             })
             .await;
@@ -113,7 +139,7 @@ impl SqliteDatabase {
     pub async fn execute_batch(&self, sql: impl Into<String>) -> Result<(), PersistenceError> {
         let sql = sql.into();
         let result = self
-            .with_connection("execute batch", move |connection| connection.execute_batch(&sql))
+            .with_mut_connection("execute batch", move |connection| connection.execute_batch(&sql))
             .await;
         report_operation_error("execute batch", &self.path, &result);
         result
@@ -241,7 +267,7 @@ impl SqliteDatabase {
         F: FnOnce(&Connection) -> rusqlite::Result<T> + Send + 'static,
     {
         let path = self.path.clone();
-        let process_guard = lock_database(&path).await?;
+        let process_guard = self.coordination.read().await;
         let connection = Arc::clone(&self.connection);
         let result = tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
@@ -254,11 +280,11 @@ impl SqliteDatabase {
             work(&connection).map_err(|error| PersistenceError::Sqlite {
                 operation,
                 path,
-                message: error.to_string(),
+                source: error,
             })
         })
         .await
-        .map_err(|error| PersistenceError::Task { operation, message: error.to_string() })?;
+        .map_err(|error| PersistenceError::Task { operation, source: error })?;
         result
     }
 
@@ -272,7 +298,7 @@ impl SqliteDatabase {
         F: FnOnce(&mut Connection) -> rusqlite::Result<T> + Send + 'static,
     {
         let path = self.path.clone();
-        let process_guard = lock_database(&path).await?;
+        let process_guard = self.coordination.write().await;
         let connection = Arc::clone(&self.connection);
         let result = tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
@@ -286,17 +312,13 @@ impl SqliteDatabase {
             work(&mut connection).map_err(|error| PersistenceError::Sqlite {
                 operation,
                 path,
-                message: error.to_string(),
+                source: error,
             })
         })
         .await
-        .map_err(|error| PersistenceError::Task { operation, message: error.to_string() })?;
+        .map_err(|error| PersistenceError::Task { operation, source: error })?;
         result
     }
-}
-
-async fn lock_database(path: &Path) -> Result<tokio::sync::OwnedMutexGuard<()>, PersistenceError> {
-    process_lock_registry().lock(path).await
 }
 
 fn open_connection(path: &Path, options: &SqliteOptions) -> Result<Connection, PersistenceError> {
@@ -309,21 +331,21 @@ fn open_connection(path: &Path, options: &SqliteOptions) -> Result<Connection, P
     let connection = Connection::open(path).map_err(|error| PersistenceError::Sqlite {
         operation: "open",
         path: path.to_path_buf(),
-        message: error.to_string(),
+        source: error,
     })?;
     connection
         .busy_timeout(options.busy_timeout)
         .map_err(|error| PersistenceError::Sqlite {
             operation: "configure busy timeout",
             path: path.to_path_buf(),
-            message: error.to_string(),
+            source: error,
         })?;
     connection
         .pragma_update(None, "foreign_keys", options.foreign_keys)
         .map_err(|error| PersistenceError::Sqlite {
             operation: "enable foreign keys",
             path: path.to_path_buf(),
-            message: error.to_string(),
+            source: error,
         })?;
     if options.wal {
         connection
@@ -331,16 +353,16 @@ fn open_connection(path: &Path, options: &SqliteOptions) -> Result<Connection, P
             .map_err(|error| PersistenceError::Sqlite {
                 operation: "enable WAL",
                 path: path.to_path_buf(),
-                message: error.to_string(),
-            })?;
-        connection
-            .pragma_update(None, "synchronous", "NORMAL")
-            .map_err(|error| PersistenceError::Sqlite {
-                operation: "configure synchronous mode",
-                path: path.to_path_buf(),
-                message: error.to_string(),
+                source: error,
             })?;
     }
+    connection
+        .pragma_update(None, "synchronous", options.synchronous.as_pragma())
+        .map_err(|error| PersistenceError::Sqlite {
+            operation: "configure synchronous mode",
+            path: path.to_path_buf(),
+            source: error,
+        })?;
     Ok(connection)
 }
 
@@ -356,6 +378,8 @@ fn report_operation_error<T>(
 
 #[cfg(test)]
 mod tests {
+    use std::error::Error;
+
     use super::*;
 
     fn database_path(label: &str) -> PathBuf {
@@ -387,6 +411,28 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(names, ["O'Reilly"]);
+        drop(database);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn applies_the_selected_synchronous_mode() {
+        let path = database_path("sqlite-synchronous");
+        let database = SqliteDatabase::open_with_options(
+            &path,
+            SqliteOptions {
+                synchronous: SqliteSynchronousMode::Normal,
+                ..SqliteOptions::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        let mode = database
+            .query("PRAGMA synchronous", [], |row| row.get::<_, i64>(0))
+            .await
+            .unwrap();
+        assert_eq!(mode, [1]);
         drop(database);
         std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
@@ -454,7 +500,8 @@ mod tests {
                 Ok(())
             })
             .await;
-        assert!(matches!(result, Err(PersistenceError::Sqlite { .. })));
+        assert!(matches!(&result, Err(PersistenceError::Sqlite { .. })));
+        assert!(result.unwrap_err().source().is_some());
         let count = database
             .query("SELECT COUNT(*) FROM records", vec![], |row| row.get::<_, i64>(0))
             .await

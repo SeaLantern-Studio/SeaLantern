@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use crate::fs::{ensure_parent, read_limited, write_atomic, DataLimit, FsError};
+use crate::fs::{ensure_parent, read_limited, write_atomic, DataLimit, FileLock, FsError};
 use crate::observability;
 
 use super::process_lock_registry;
@@ -236,10 +236,31 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
     }
 }
 
-async fn lock_config(path: &Path) -> Result<tokio::sync::OwnedMutexGuard<()>, FsError> {
-    process_lock_registry().lock(path).await.map_err(|error| {
+struct ConfigLockGuard {
+    _file_lock: FileLock,
+    _process_guard: tokio::sync::OwnedRwLockWriteGuard<()>,
+}
+
+async fn lock_config(path: &Path) -> Result<ConfigLockGuard, FsError> {
+    let resource = process_lock_registry().resource(path).map_err(|error| {
         observability::persistence_operation_failed("coordinate config access", path, &error);
         FsError::task("coordinate config access", error.to_string())
+    })?;
+    let process_guard = resource.write().await;
+    let lock_path = path.to_path_buf();
+    let file_lock = tokio::task::spawn_blocking(move || FileLock::try_acquire(&lock_path))
+        .await
+        .map_err(|error| {
+            let error = FsError::task("acquire config file lock", error.to_string());
+            observability::persistence_operation_failed("acquire config file lock", path, &error);
+            error
+        })?
+        .inspect_err(|error| {
+            observability::persistence_operation_failed("acquire config file lock", path, error);
+        })?;
+    Ok(ConfigLockGuard {
+        _file_lock: file_lock,
+        _process_guard: process_guard,
     })
 }
 
@@ -269,7 +290,8 @@ async fn backup_path(path: &Path) -> Result<PathBuf, FsError> {
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("config");
-    let backup_path = path.with_file_name(format!("{file_name}.bak-{timestamp}"));
+    let backup_path =
+        path.with_file_name(format!("{file_name}.bak-{timestamp}-{}", uuid::Uuid::new_v4()));
     tokio::fs::copy(path, &backup_path)
         .await
         .map_err(|error| FsError::io("backup config", path, error))?;
@@ -441,6 +463,34 @@ mod tests {
         std::fs::copy(&backup_path, &path).unwrap();
         let restored = ConfigFile::<TestConfig>::load(&path).await.unwrap();
         assert_eq!(restored.get().name, "before");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn backup_names_are_unique_within_the_same_millisecond() {
+        let dir = test_dir("backup_unique");
+        let path = dir.join("settings.json");
+        let config = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default())
+            .await
+            .unwrap();
+
+        let first = config.backup().await.unwrap();
+        let second = config.backup().await.unwrap();
+        assert_ne!(first, second);
+        assert!(first.exists());
+        assert!(second.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn returns_an_error_when_the_file_lock_is_already_held() {
+        let dir = test_dir("cross_process_lock");
+        let path = dir.join("settings.json");
+        let file_lock = FileLock::try_acquire(&path).unwrap();
+
+        let result = ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default()).await;
+        assert!(matches!(result, Err(FsError::AlreadyLocked(_))));
+        drop(file_lock);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

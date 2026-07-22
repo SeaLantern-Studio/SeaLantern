@@ -4,6 +4,6 @@ mod error;
 mod sqlite;
 
 pub use config::{ConfigError, ConfigFile, ConfigFormat};
-pub use coordination::{process_lock_registry, ProcessLockRegistry};
+pub use coordination::{process_lock_registry, ProcessLockRegistry, ProcessResourceLock};
 pub use error::PersistenceError;
-pub use sqlite::{Migration, SqlValue, SqliteDatabase, SqliteOptions};
+pub use sqlite::{Migration, SqlValue, SqliteDatabase, SqliteOptions, SqliteSynchronousMode};
