@@ -4,6 +4,9 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use crate::fs::{ensure_parent, read_limited, write_atomic, DataLimit, FsError};
+use crate::observability;
+
+use super::process_lock_registry;
 
 /// 配置文件读取上限：最大 10 MiB。
 const CONFIG_READ_LIMIT: DataLimit = DataLimit::new(10 * 1024 * 1024);
@@ -120,6 +123,7 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
     pub async fn load_or_create(path: impl Into<PathBuf>, default: T) -> Result<Self, FsError> {
         let path = path.into();
         let format = ConfigFormat::from_extension(&path)?;
+        let _guard = lock_config(&path).await?;
 
         let data = if path.exists() {
             let content = read_limited(&path, CONFIG_READ_LIMIT).await?;
@@ -144,6 +148,7 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
     pub async fn load(path: impl Into<PathBuf>) -> Result<Self, FsError> {
         let path = path.into();
         let format = ConfigFormat::from_extension(&path)?;
+        let _guard = lock_config(&path).await?;
         let content = read_limited(&path, CONFIG_READ_LIMIT).await?;
         let text = String::from_utf8(content)
             .map_err(|e| FsError::serialization("config", "decode UTF-8", &path, e.to_string()))?;
@@ -158,8 +163,9 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
     /// 当 `auto_backup` 为 true 时，在写入新内容之前备份先前版本，
     /// 以便在新文件损坏时能够恢复。
     pub async fn save(&self, auto_backup: bool) -> Result<(), FsError> {
+        let _guard = lock_config(&self.path).await?;
         if auto_backup && self.path.exists() {
-            self.backup().await?;
+            self.backup_unlocked().await?;
         }
         let content = self
             .format
@@ -169,6 +175,7 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
     }
 
     pub async fn reload(&mut self) -> Result<(), FsError> {
+        let _guard = lock_config(&self.path).await?;
         let content = read_limited(&self.path, CONFIG_READ_LIMIT).await?;
         let text = String::from_utf8(content).map_err(|e| {
             FsError::serialization("config", "decode UTF-8", &self.path, e.to_string())
@@ -194,6 +201,11 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
     }
 
     pub async fn backup(&self) -> Result<PathBuf, FsError> {
+        let _guard = lock_config(&self.path).await?;
+        self.backup_unlocked().await
+    }
+
+    async fn backup_unlocked(&self) -> Result<PathBuf, FsError> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -210,6 +222,13 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
             .map_err(|e| FsError::io("backup config", &self.path, e))?;
         Ok(backup_path)
     }
+}
+
+async fn lock_config(path: &Path) -> Result<tokio::sync::OwnedMutexGuard<()>, FsError> {
+    process_lock_registry().lock(path).await.map_err(|error| {
+        observability::persistence_operation_failed("coordinate config access", path, &error);
+        FsError::task("coordinate config access", error.to_string())
+    })
 }
 
 impl<T: Serialize + DeserializeOwned + Default> ConfigFile<T> {
