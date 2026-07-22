@@ -115,7 +115,7 @@ impl Fetcher for SpigetFetcher {
     ) -> Result<SearchResult, MarketError> {
         observability::market_search_started(query, page, page_size, "spiget");
         let url =
-            format!("{}/search/resources/{}?size={}&page={}", SPIGET_BASE, query, page_size, page);
+            format!("{}/search/resources/{}?size={}&page={}", SPIGET_BASE, urlencoding::encode(query), page_size, page);
         let resp = self
             .client
             .get(&url)
