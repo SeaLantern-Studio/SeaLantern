@@ -15,6 +15,7 @@ blocking = ["reqwest/blocking"]
 atomicwrites = "0.4"
 cap-std = "4"
 reqwest = { version = "0.12", features = ["json", "stream"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
 tracing = "0.1"
 tokio = { version = "1", features = ["fs", "io-util", "rt", "rt-multi-thread", "macros", "sync", "time"] }
 tokio-util = { version = "0.7", features = ["io"] }

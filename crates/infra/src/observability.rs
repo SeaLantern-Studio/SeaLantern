@@ -5,6 +5,26 @@
 
 use std::fmt::Display;
 
+// ── 持久化层 ──
+
+/// 持久化基础设施模块的 tracing 目标。
+pub const PERSISTENCE_TARGET: &str = "sealantern.infra.persistence";
+
+/// Event: 持久化操作失败。
+pub const EVENT_PERSISTENCE_OPERATION_FAILED: &str = "persistence_operation_failed";
+
+/// 记录持久化操作失败，不记录 SQL 文本或参数值。
+pub fn persistence_operation_failed(operation: &str, path: &std::path::Path, error: &dyn Display) {
+    tracing::error!(
+        target: PERSISTENCE_TARGET,
+        event_name = EVENT_PERSISTENCE_OPERATION_FAILED,
+        operation,
+        path = %path.display(),
+        error = %error,
+        "persistence operation failed"
+    );
+}
+
 // -- 平台层 --
 
 /// 平台基础设施模块的 tracing 目标。
