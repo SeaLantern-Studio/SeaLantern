@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use rusqlite::{Connection, Row, Transaction, TransactionBehavior};
+use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior};
 
 use crate::observability;
 
@@ -65,13 +65,17 @@ impl SqliteDatabase {
         options: SqliteOptions,
     ) -> Result<Self, PersistenceError> {
         let path = path.into();
-        let _guard = process_lock_registry().lock(&path).await?;
+        let _guard = lock_database("open", &path).await?;
         let operation_path = path.clone();
         let opened = tokio::task::spawn_blocking(move || open_connection(&path, &options))
             .await
-            .map_err(|error| PersistenceError::Task {
-                operation: "open SQLite database",
-                message: error.to_string(),
+            .map_err(|error| {
+                let error = PersistenceError::Task {
+                    operation: "open SQLite database",
+                    message: error.to_string(),
+                };
+                observability::persistence_operation_failed("open", &operation_path, &error);
+                error
             })?;
         match opened {
             Ok(connection) => Ok(Self {
@@ -165,33 +169,51 @@ impl SqliteDatabase {
             }
         }
 
-        self.with_mut_connection("migrate", move |connection| {
+        let result = self
+            .with_mut_connection("migrate", move |connection| {
             let transaction =
                 connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
             transaction.execute_batch(
                 "CREATE TABLE IF NOT EXISTS _sealantern_schema_migrations (\
                     version INTEGER PRIMARY KEY NOT NULL,\
                     name TEXT NOT NULL,\
+                    checksum TEXT NOT NULL,\
                     applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\
                  )",
             )?;
             for migration in migrations {
-                let already_applied: bool = transaction.query_row(
-                    "SELECT EXISTS(SELECT 1 FROM _sealantern_schema_migrations WHERE version = ?1)",
+                let checksum = crate::fs::sha256_hex(migration.sql);
+                let applied: Option<(String, String)> = transaction
+                    .query_row(
+                    "SELECT name, checksum FROM _sealantern_schema_migrations WHERE version = ?1",
                     [migration.version],
-                    |row| row.get(0),
-                )?;
-                if !already_applied {
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                    .optional()?;
+                if let Some((applied_name, applied_checksum)) = applied {
+                    if applied_name != migration.name || applied_checksum != checksum {
+                        return Ok(Err(PersistenceError::MigrationIntegrity {
+                            version: migration.version,
+                            message: "applied name or SQL checksum differs from the migration manifest"
+                                .to_owned(),
+                        }));
+                    }
+                } else {
                     transaction.execute_batch(migration.sql)?;
                     transaction.execute(
-                        "INSERT INTO _sealantern_schema_migrations (version, name) VALUES (?1, ?2)",
-                        (migration.version, migration.name),
+                        "INSERT INTO _sealantern_schema_migrations (version, name, checksum) VALUES (?1, ?2, ?3)",
+                        (migration.version, migration.name, checksum),
                     )?;
                 }
             }
-            transaction.commit()
+            transaction.commit()?;
+            Ok(Ok(()))
         })
-        .await
+        .await?;
+        if let Err(error) = &result {
+            observability::persistence_operation_failed("migrate", &self.path, error);
+        }
+        result
     }
 
     async fn with_connection<T, F>(
@@ -204,7 +226,7 @@ impl SqliteDatabase {
         F: FnOnce(&Connection) -> rusqlite::Result<T> + Send + 'static,
     {
         let path = self.path.clone();
-        let process_guard = process_lock_registry().lock(&path).await?;
+        let process_guard = lock_database(operation, &path).await?;
         let connection = Arc::clone(&self.connection);
         let result = tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
@@ -221,7 +243,11 @@ impl SqliteDatabase {
             })
         })
         .await
-        .map_err(|error| PersistenceError::Task { operation, message: error.to_string() })?;
+        .map_err(|error| {
+            let error = PersistenceError::Task { operation, message: error.to_string() };
+            observability::persistence_operation_failed(operation, &self.path, &error);
+            error
+        })?;
         report_operation_error(operation, &self.path, &result);
         result
     }
@@ -236,7 +262,7 @@ impl SqliteDatabase {
         F: FnOnce(&mut Connection) -> rusqlite::Result<T> + Send + 'static,
     {
         let path = self.path.clone();
-        let process_guard = process_lock_registry().lock(&path).await?;
+        let process_guard = lock_database(operation, &path).await?;
         let connection = Arc::clone(&self.connection);
         let result = tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
@@ -254,10 +280,26 @@ impl SqliteDatabase {
             })
         })
         .await
-        .map_err(|error| PersistenceError::Task { operation, message: error.to_string() })?;
+        .map_err(|error| {
+            let error = PersistenceError::Task { operation, message: error.to_string() };
+            observability::persistence_operation_failed(operation, &self.path, &error);
+            error
+        })?;
         report_operation_error(operation, &self.path, &result);
         result
     }
+}
+
+async fn lock_database(
+    operation: &'static str,
+    path: &Path,
+) -> Result<tokio::sync::OwnedMutexGuard<()>, PersistenceError> {
+    process_lock_registry()
+        .lock(path)
+        .await
+        .inspect_err(|error| {
+            observability::persistence_operation_failed(operation, path, error);
+        })
 }
 
 fn open_connection(path: &Path, options: &SqliteOptions) -> Result<Connection, PersistenceError> {
@@ -369,6 +411,31 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(versions, [1]);
+        drop(database);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn rejects_migration_manifest_drift() {
+        let path = database_path("sqlite-migration-drift");
+        let database = SqliteDatabase::open(&path).await.unwrap();
+        database
+            .migrate(vec![Migration {
+                version: 1,
+                name: "create records",
+                sql: "CREATE TABLE records (id INTEGER PRIMARY KEY)",
+            }])
+            .await
+            .unwrap();
+
+        let result = database
+            .migrate(vec![Migration {
+                version: 1,
+                name: "create records",
+                sql: "CREATE TABLE records (id INTEGER PRIMARY KEY, name TEXT)",
+            }])
+            .await;
+        assert!(matches!(result, Err(PersistenceError::MigrationIntegrity { version: 1, .. })));
         drop(database);
         std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }

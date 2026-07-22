@@ -200,27 +200,39 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
         f(&mut self.data);
     }
 
+    /// 在单个文件锁内加载、更新并持久化配置。
+    ///
+    /// 多个任务可能修改同一配置文件时，应使用此方法，而不是分别调用
+    /// `load`、`update` 和 `save`，以避免基于过期快照覆盖其他修改。
+    pub async fn update_persisted(
+        path: impl Into<PathBuf>,
+        default: T,
+        auto_backup: bool,
+        update: impl FnOnce(&mut T),
+    ) -> Result<T, FsError> {
+        let path = path.into();
+        let format = ConfigFormat::from_extension(&path)?;
+        let _guard = lock_config(&path).await?;
+        let mut data = load_data_or_default(&path, format, default).await?;
+
+        update(&mut data);
+        if auto_backup && path.exists() {
+            backup_path(&path).await?;
+        }
+        let content = format.serialize(&data).map_err(|error| {
+            FsError::serialization("config", "encode", &path, error.to_string())
+        })?;
+        write_atomic(&path, content.as_bytes()).await?;
+        Ok(data)
+    }
+
     pub async fn backup(&self) -> Result<PathBuf, FsError> {
         let _guard = lock_config(&self.path).await?;
         self.backup_unlocked().await
     }
 
     async fn backup_unlocked(&self) -> Result<PathBuf, FsError> {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis();
-        let file_name = self
-            .path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("config");
-        let backup_name = format!("{}.bak-{}", file_name, timestamp);
-        let backup_path = self.path.with_file_name(&backup_name);
-        tokio::fs::copy(&self.path, &backup_path)
-            .await
-            .map_err(|e| FsError::io("backup config", &self.path, e))?;
-        Ok(backup_path)
+        backup_path(&self.path).await
     }
 }
 
@@ -229,6 +241,39 @@ async fn lock_config(path: &Path) -> Result<tokio::sync::OwnedMutexGuard<()>, Fs
         observability::persistence_operation_failed("coordinate config access", path, &error);
         FsError::task("coordinate config access", error.to_string())
     })
+}
+
+async fn load_data_or_default<T: Serialize + DeserializeOwned>(
+    path: &Path,
+    format: ConfigFormat,
+    default: T,
+) -> Result<T, FsError> {
+    if !path.exists() {
+        return Ok(default);
+    }
+    let content = read_limited(path, CONFIG_READ_LIMIT).await?;
+    let text = String::from_utf8(content).map_err(|error| {
+        FsError::serialization("config", "decode UTF-8", path, error.to_string())
+    })?;
+    format
+        .deserialize(&text)
+        .map_err(|error| FsError::serialization("config", "decode", path, error.to_string()))
+}
+
+async fn backup_path(path: &Path) -> Result<PathBuf, FsError> {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("config");
+    let backup_path = path.with_file_name(format!("{file_name}.bak-{timestamp}"));
+    tokio::fs::copy(path, &backup_path)
+        .await
+        .map_err(|error| FsError::io("backup config", path, error))?;
+    Ok(backup_path)
 }
 
 impl<T: Serialize + DeserializeOwned + Default> ConfigFile<T> {
@@ -409,6 +454,37 @@ mod tests {
 
         cfg.update(|c| c.port = 8888);
         assert_eq!(cfg.get().port, 8888);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn update_persisted_keeps_disjoint_concurrent_changes() {
+        let dir = test_dir("update_persisted");
+        let path = dir.join("settings.json");
+        ConfigFile::<TestConfig>::load_or_create(&path, TestConfig::default())
+            .await
+            .unwrap();
+
+        let first_path = path.clone();
+        let first = tokio::spawn(async move {
+            ConfigFile::update_persisted(first_path, TestConfig::default(), false, |config| {
+                config.port = 30000;
+            })
+            .await
+        });
+        let second_path = path.clone();
+        let second = tokio::spawn(async move {
+            ConfigFile::update_persisted(second_path, TestConfig::default(), false, |config| {
+                config.enabled = false;
+            })
+            .await
+        });
+        first.await.unwrap().unwrap();
+        second.await.unwrap().unwrap();
+
+        let saved = ConfigFile::<TestConfig>::load(&path).await.unwrap();
+        assert_eq!(saved.get().port, 30000);
+        assert!(!saved.get().enabled);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
