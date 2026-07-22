@@ -24,6 +24,8 @@ pub enum PersistenceError {
     Coordination { resource: PathBuf, message: String },
     /// 迁移清单不满足版本顺序约束。
     InvalidMigration { version: i64, reason: &'static str },
+    /// 已应用的迁移与当前迁移清单不一致。
+    MigrationIntegrity { version: i64, message: String },
 }
 
 impl fmt::Display for PersistenceError {
@@ -55,6 +57,9 @@ impl fmt::Display for PersistenceError {
             }
             Self::InvalidMigration { version, reason } => {
                 write!(formatter, "migration {version} is invalid: {reason}")
+            }
+            Self::MigrationIntegrity { version, message } => {
+                write!(formatter, "migration {version} integrity check failed: {message}")
             }
         }
     }
