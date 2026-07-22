@@ -6,3 +6,4 @@ pub mod fs;
 pub mod net;
 pub mod observability;
 pub mod persistence;
+pub mod platform;

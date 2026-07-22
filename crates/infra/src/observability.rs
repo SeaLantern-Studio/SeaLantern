@@ -5,6 +5,25 @@
 
 use std::fmt::Display;
 
+// -- 平台层 --
+
+/// 平台基础设施模块的 tracing 目标。
+pub const PLATFORM_TARGET: &str = "sealantern.infra.platform";
+
+/// Event: 平台操作失败。
+pub const EVENT_PLATFORM_OPERATION_FAILED: &str = "platform_operation_failed";
+
+/// 记录平台操作失败，不记录环境变量值或证书内容。
+pub fn platform_operation_failed(operation: &str, error: &dyn Display) {
+    tracing::error!(
+        target: PLATFORM_TARGET,
+        event_name = EVENT_PLATFORM_OPERATION_FAILED,
+        operation,
+        error = %error,
+        "platform operation failed"
+    );
+}
+
 // -- 文件系统层 --
 
 /// 文件系统基础设施模块的 tracing 目标。
