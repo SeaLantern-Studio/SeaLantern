@@ -16,15 +16,33 @@ pub struct ServerRuntime {
 }
 
 impl ServerRuntime {
-    /// 启动服务器进程，并为控制台和日志消费者保留标准流。
+    /// 使用调用方配置的标准流启动服务器进程。
+    ///
+    /// 调用方可以按托管场景选择 pipe、inherit、null 或文件重定向。未配置为 pipe 的流
+    /// 不会出现在此运行时的终端接口中。
     pub fn spawn(command: &mut Command, accepts_console_input: bool) -> io::Result<Self> {
+        let daemon = Daemon::spawn(command)?;
+        Ok(Self::from_daemon(daemon, accepts_console_input))
+    }
+
+    /// 使用 piped 标准流启动服务器进程。
+    ///
+    /// 适用于宿主需要发送控制台命令并将 stdout/stderr 交给日志读取器的默认场景。
+    pub fn spawn_with_piped_stdio(
+        command: &mut Command,
+        accepts_console_input: bool,
+    ) -> io::Result<Self> {
         command.stdin(Stdio::piped());
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
 
-        let mut daemon = Daemon::spawn(command)?;
+        Self::spawn(command, accepts_console_input)
+    }
+
+    /// 从已启动的 core 守护进程接管服务器运行时。
+    pub fn from_daemon(mut daemon: Daemon, accepts_console_input: bool) -> Self {
         let terminal = Terminal::from_daemon_with_input(&mut daemon, accepts_console_input);
-        Ok(Self { daemon, terminal })
+        Self { daemon, terminal }
     }
 
     /// 返回操作系统进程标识符。
@@ -86,7 +104,8 @@ mod tests {
     #[test]
     fn takes_server_output_for_a_host_reader() {
         let mut command = command_reader();
-        let mut runtime = ServerRuntime::spawn(&mut command, true).expect("spawn server runtime");
+        let mut runtime = ServerRuntime::spawn_with_piped_stdio(&mut command, true)
+            .expect("spawn server runtime");
 
         runtime
             .send_console_command("say hello")
@@ -99,5 +118,24 @@ mod tests {
 
         assert!(runtime.wait().expect("wait for server process").success());
         assert!(text.contains("say hello"));
+    }
+
+    #[test]
+    fn preserves_caller_stdio_configuration() {
+        let mut command = Command::new(if cfg!(windows) { "cmd" } else { "sh" });
+        if cfg!(windows) {
+            command.args(["/C", "exit 0"]);
+        } else {
+            command.args(["-c", "exit 0"]);
+        }
+
+        let mut runtime = ServerRuntime::spawn(&mut command, true).expect("spawn server runtime");
+
+        assert!(runtime.take_output(TerminalStream::Stdout).is_none());
+        assert!(matches!(
+            runtime.send_console_command("stop"),
+            Err(TerminalWriteError::InputUnavailable)
+        ));
+        assert!(runtime.wait().expect("wait for server process").success());
     }
 }
