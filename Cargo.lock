@@ -6025,6 +6025,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sha2 0.10.9",
+ "sysinfo",
  "tokio",
  "tokio-util",
  "toml 0.8.2",
