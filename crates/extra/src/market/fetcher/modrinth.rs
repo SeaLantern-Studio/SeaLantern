@@ -23,6 +23,7 @@ use crate::market::fetcher;
 use crate::market::fetcher::models::VersionFile;
 use crate::market::fetcher::Fetcher;
 use crate::market::models::*;
+use crate::observability;
 
 /// Modrinth API 的基础 URL。
 const MODRINTH_BASE: &str = "https://api.modrinth.com/v2";
@@ -131,6 +132,7 @@ impl Fetcher for ModrinthFetcher {
         page: u32,
         page_size: u32,
     ) -> Result<SearchResult, MarketError> {
+        observability::market_search_started(query, page, page_size, "modrinth");
         let offset = page.saturating_sub(1) * page_size;
         let url = format!(
             "{}/search?query={}&limit={}&offset={}",
@@ -141,7 +143,7 @@ impl Fetcher for ModrinthFetcher {
             .client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
-            .header("User-Agent", "SeaLantern/extra/0.1.0")
+            .header("User-Agent", super::USER_AGENT)
             .send()
             .await
             .map_err(|e| MarketError::http("search resources", e.to_string()))?;
@@ -165,6 +167,8 @@ impl Fetcher for ModrinthFetcher {
                 source: MarketSource::Modrinth,
             })
             .collect();
+
+        observability::market_search_completed(query, search_resp.total_hits, "modrinth");
 
         Ok(SearchResult {
             total: search_resp.total_hits,
@@ -193,7 +197,7 @@ impl Fetcher for ModrinthFetcher {
             .client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
-            .header("User-Agent", "SeaLantern/extra/0.1.0")
+            .header("User-Agent", super::USER_AGENT)
             .send()
             .await
             .map_err(|e| MarketError::http("get resource details", e.to_string()))?;
@@ -204,7 +208,7 @@ impl Fetcher for ModrinthFetcher {
             .await
             .map_err(|e| MarketError::json("parse resource details", e.to_string()))?;
 
-        Ok(ResourceInfo {
+        let info = ResourceInfo {
             id: project.id,
             name: project.title,
             description: project.description,
@@ -216,7 +220,10 @@ impl Fetcher for ModrinthFetcher {
             resource_type: project.project_type,
             external: false,
             download_url: String::new(),
-        })
+        };
+
+        observability::market_resource_fetched(id, &info.name, "modrinth");
+        Ok(info)
     }
 
     /// 获取指定项目的所有版本列表。
@@ -238,7 +245,7 @@ impl Fetcher for ModrinthFetcher {
             .client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
-            .header("User-Agent", "SeaLantern/extra/0.1.0")
+            .header("User-Agent", super::USER_AGENT)
             .send()
             .await
             .map_err(|e| MarketError::http("get resource versions", e.to_string()))?;
@@ -305,7 +312,7 @@ impl Fetcher for ModrinthFetcher {
             .client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
-            .header("User-Agent", "SeaLantern/extra/0.1.0")
+            .header("User-Agent", super::USER_AGENT)
             .send()
             .await
             .map_err(|e| MarketError::http("get random resources", e.to_string()))?;

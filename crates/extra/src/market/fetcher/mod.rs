@@ -13,9 +13,12 @@ use std::sync::Arc;
 
 pub use error::FetcherError;
 pub use models::VersionFile;
+pub use traits::Fetcher;
 pub use modrinth::ModrinthFetcher;
 pub use spiget::SpigetFetcher;
-pub use traits::Fetcher;
+
+/// 市场 API 请求使用的 User-Agent。
+const USER_AGENT: &str = "SeaLantern/extra/0.1.0";
 
 /// 通用的文件下载函数，使用全局 `DownloadManager` 执行多线程下载。
 ///
