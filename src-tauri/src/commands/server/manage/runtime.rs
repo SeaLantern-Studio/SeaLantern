@@ -1,14 +1,45 @@
 use super::common::{manager, ForceStopPreparationResponse, ServerStartFallbackEvent};
 use crate::models::server::{ServerInstance, ServerStatusInfo};
+use std::fmt;
 use tauri::Emitter;
+
+/// 将服务器管理器错误保留在 Tauri 适配器内，避免向 RPC 层暴露未分类的文本错误。
+pub struct ServerManagerConsoleError {
+    transport_message: String,
+}
+
+impl ServerManagerConsoleError {
+    fn from_manager_message(transport_message: String) -> Self {
+        Self { transport_message }
+    }
+
+    fn into_transport_message(self) -> String {
+        self.transport_message
+    }
+}
+
+impl fmt::Debug for ServerManagerConsoleError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("ServerManagerConsoleError")
+    }
+}
+
+impl fmt::Display for ServerManagerConsoleError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "server console command execution failed")
+    }
+}
+
+impl std::error::Error for ServerManagerConsoleError {}
 
 impl sealantern_server::rpc::service::ConsoleCommandExecutor
     for crate::services::server::manager::ServerManager
 {
-    type Error = String;
+    type Error = ServerManagerConsoleError;
 
     fn send_console_command(&self, instance_id: &str, command: &str) -> Result<(), Self::Error> {
         self.send_command(instance_id, command)
+            .map_err(ServerManagerConsoleError::from_manager_message)
     }
 }
 
@@ -54,6 +85,7 @@ pub(super) fn stop_server(id: String) -> Result<(), String> {
 /// 发送控制台命令
 pub(super) fn send_command(id: String, command: String) -> Result<(), String> {
     sealantern_server::rpc::methods::server::dispatch_console_command(manager(), &id, &command)
+        .map_err(ServerManagerConsoleError::into_transport_message)
 }
 
 /// 读取服务器列表

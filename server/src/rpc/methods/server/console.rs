@@ -1,11 +1,9 @@
-use std::fmt::Display;
-
 use crate::observability;
 use crate::rpc::service::ConsoleCommandExecutor;
 
 /// 调度一条服务器控制台命令并记录一次脱敏追踪事件。
 ///
-/// 命令正文可能包含密码、令牌或玩家输入，事件只记录长度、实例标识和结果。
+/// 命令正文可能包含密码、令牌或玩家输入，事件只记录文本长度（按字符计）、实例标识和结果。
 /// 验证和授权由调用方及具体执行器承担，避免在迁移期间改变已有命令语义。
 pub fn dispatch_console_command<E>(
     executor: &E,
@@ -16,9 +14,16 @@ where
     E: ConsoleCommandExecutor,
 {
     let result = executor.send_console_command(instance_id, command);
-    let observation = result.as_ref().map_err(|error| error as &dyn Display);
-    observability::console_command_dispatched(instance_id, command.len(), observation.copied());
+    observability::console_command_dispatched(
+        instance_id,
+        command_char_count(command),
+        result.is_ok(),
+    );
     result
+}
+
+fn command_char_count(command: &str) -> usize {
+    command.chars().count()
 }
 
 #[cfg(test)]
@@ -77,5 +82,10 @@ mod tests {
         };
 
         assert_eq!(dispatch_console_command(&executor, "instance-a", "stop"), Err(TestError));
+    }
+
+    #[test]
+    fn counts_unicode_scalars_instead_of_utf8_bytes() {
+        assert_eq!(command_char_count("say 你好"), 6);
     }
 }
