@@ -102,7 +102,7 @@ impl Fetcher for SpigetFetcher {
     ///
     /// # Parameters
     /// - `query`: 搜索关键词。
-    /// - `page`: 页码（从 0 开始）。
+    /// - `page`: 页码，从 1 开始；传入 0 会返回错误。
     /// - `page_size`: 每页结果数。
     ///
     /// # Returns
