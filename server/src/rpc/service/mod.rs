@@ -2,6 +2,10 @@
 
 use std::fmt::Display;
 
+mod runtime;
+
+pub use runtime::ServerRuntime;
+
 /// 由宿主实现的运行中实例控制台写入能力。
 ///
 /// 此 trait 保持应用服务与 Tauri、HTTP 或插件运行时的具体实现解耦。

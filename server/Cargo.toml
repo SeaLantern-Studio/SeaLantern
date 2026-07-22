@@ -8,4 +8,5 @@ license = "GPL-3.0-only"
 path = "src/lib.rs"
 
 [dependencies]
+sealantern-core = { path = "../crates/core" }
 tracing = "0.1"

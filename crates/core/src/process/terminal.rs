@@ -46,11 +46,19 @@ pub struct Terminal {
 impl Terminal {
     /// 根据用于启动守护进程的请求，从守护进程转移已配置的流。
     pub fn from_daemon(daemon: &mut Daemon, request: &CommandBuildRequest<'_>) -> Self {
+        Self::from_daemon_with_input(
+            daemon,
+            matches!(request.console_input_policy(), ConsoleInputPolicy::Enabled),
+        )
+    }
+
+    /// 从守护进程转移标准流，并由宿主显式声明是否保留控制台输入。
+    ///
+    /// 适用于已经在 core 外部构建进程命令、但仍希望复用守护进程和终端所有权模型的宿主。
+    pub fn from_daemon_with_input(daemon: &mut Daemon, accepts_input: bool) -> Self {
         let stdin = daemon.take_stdin();
         Self {
-            stdin: matches!(request.console_input_policy(), ConsoleInputPolicy::Enabled)
-                .then_some(stdin)
-                .flatten(),
+            stdin: accepts_input.then_some(stdin).flatten(),
             stdout: daemon.take_stdout(),
             stderr: daemon.take_stderr(),
         }
@@ -219,12 +227,11 @@ mod tests {
     }
 
     #[test]
-    fn writes_and_flushes_a_command_line_to_daemon_input() {
+    fn host_selected_console_input_writes_and_flushes_a_command_line() {
         let mut command = command_reader_command();
         command.stdin(Stdio::piped()).stdout(Stdio::piped());
         let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
-        let request = request(CommandBuildMode::DirectJar);
-        let mut terminal = Terminal::from_daemon(&mut daemon, &request);
+        let mut terminal = Terminal::from_daemon_with_input(&mut daemon, true);
 
         terminal
             .write_line("say hello")
