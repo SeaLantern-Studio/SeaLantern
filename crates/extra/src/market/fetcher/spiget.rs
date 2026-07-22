@@ -15,6 +15,7 @@ use crate::market::error::MarketError;
 use crate::market::fetcher;
 use crate::market::fetcher::Fetcher;
 use crate::market::models::*;
+use crate::observability;
 
 // ---------------------------------------------------------------------------
 // Spiget API 响应结构体（自动反序列化）
@@ -112,6 +113,7 @@ impl Fetcher for SpigetFetcher {
         page: u32,
         page_size: u32,
     ) -> Result<SearchResult, MarketError> {
+        observability::market_search_started(query, page, page_size, "spiget");
         let url =
             format!("{}/search/resources/{}?size={}&page={}", SPIGET_BASE, query, page_size, page);
         let resp = self
@@ -141,6 +143,8 @@ impl Fetcher for SpigetFetcher {
                 source: MarketSource::Spiget,
             })
             .collect();
+
+        observability::market_search_completed(query, items.len() as u64, "spiget");
 
         Ok(SearchResult {
             total: items.len() as u64,
@@ -177,6 +181,8 @@ impl Fetcher for SpigetFetcher {
 
         // 从 SpigetResource 构建 ResourceInfo
         let download_url = build_spiget_download_url(&resource, id);
+
+        observability::market_resource_fetched(id, &resource.name, "spiget");
 
         Ok(ResourceInfo {
             id: resource.id.to_string(),
@@ -243,6 +249,8 @@ impl Fetcher for SpigetFetcher {
             })
             .collect();
 
+        observability::market_versions_fetched(id, versions.len(), "spiget");
+
         Ok(versions)
     }
 
@@ -261,6 +269,7 @@ impl Fetcher for SpigetFetcher {
         url: &str,
         destination: &str,
     ) -> Result<Arc<sealantern_infra::download::DownloadStatus>, MarketError> {
+        observability::market_download_started(url, "spiget");
         let status = fetcher::download_file(url, destination).await?;
         Ok(status)
     }
