@@ -69,7 +69,7 @@ struct SpigetVersion {
 // ---------------------------------------------------------------------------
 
 /// Spiget API 的基础 URL。
-const SPIEGET_BASE: &str = "https://api.spiget.org/v2";
+const SPIGET_BASE: &str = "https://api.spiget.org/v2";
 
 /// 基于 Spiget API 的资源获取器。
 ///
@@ -113,7 +113,7 @@ impl Fetcher for SpigetFetcher {
         page_size: u32,
     ) -> Result<SearchResult, MarketError> {
         let url =
-            format!("{}/search/resources/{}?size={}&page={}", SPIEGET_BASE, query, page_size, page);
+            format!("{}/search/resources/{}?size={}&page={}", SPIGET_BASE, query, page_size, page);
         let resp = self
             .client
             .get(&url)
@@ -161,7 +161,7 @@ impl Fetcher for SpigetFetcher {
     /// # Returns
     /// 包含资源详细元数据的 `ResourceInfo`。
     async fn get_resource(&self, id: &str) -> Result<ResourceInfo, MarketError> {
-        let url = format!("{}/resources/{}", SPIEGET_BASE, id);
+        let url = format!("{}/resources/{}", SPIGET_BASE, id);
         let resp = self
             .client
             .get(&url)
@@ -205,7 +205,7 @@ impl Fetcher for SpigetFetcher {
     /// # Returns
     /// 版本对象列表，每个版本包含名称、下载量等信息。
     async fn get_resource_versions(&self, id: &str) -> Result<Vec<Version>, MarketError> {
-        let url = format!("{}/resources/{}/versions?size=100", SPIEGET_BASE, id);
+        let url = format!("{}/resources/{}/versions?size=100", SPIGET_BASE, id);
         let resp = self
             .client
             .get(&url)
@@ -272,8 +272,7 @@ impl Fetcher for SpigetFetcher {
             .as_nanos();
         let page = (seed % 100) as u32 + 1;
         let limit = count.min(8);
-        let url =
-            format!("{}/resources?size={}&page={}&sort=-downloads", SPIEGET_BASE, limit, page);
+        let url = format!("{}/resources?size={}&page={}&sort=-downloads", SPIGET_BASE, limit, page);
         let resp = self
             .client
             .get(&url)
@@ -307,7 +306,7 @@ fn build_spiget_download_url(resource: &SpigetResource, id: &str) -> String {
     if resource.external {
         resource.file.external_url.clone().unwrap_or_default()
     } else {
-        format!("{}/resources/{}/download", SPIEGET_BASE, id)
+        format!("{}/resources/{}/download", SPIGET_BASE, id)
     }
 }
 

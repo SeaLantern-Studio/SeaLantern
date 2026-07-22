@@ -131,12 +131,10 @@ impl Fetcher for ModrinthFetcher {
         page: u32,
         page_size: u32,
     ) -> Result<SearchResult, MarketError> {
+        let offset = page.saturating_sub(1) * page_size;
         let url = format!(
             "{}/search?query={}&limit={}&offset={}",
-            MODRINTH_BASE,
-            query,
-            page_size,
-            page * page_size
+            MODRINTH_BASE, query, page_size, offset
         );
 
         let resp = self
