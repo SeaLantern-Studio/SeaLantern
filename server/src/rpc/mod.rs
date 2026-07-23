@@ -8,6 +8,7 @@ mod context;
 mod contract;
 mod error;
 mod method_name;
+mod response;
 
 pub mod methods;
 pub mod service;
@@ -17,3 +18,4 @@ pub use context::{RpcContext, RpcRequest, RpcRequestId, RpcTransport};
 pub use contract::{dispatch, RpcMethod};
 pub use error::{RpcError, RpcErrorCode, RpcResult};
 pub use method_name::RpcMethodName;
+pub use response::RpcResponse;
