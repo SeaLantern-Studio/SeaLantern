@@ -146,7 +146,7 @@ jobs:
           save-if: false
 
       - name: 运行测试
-        run: cargo test -p sealantern-core
+        run: cargo test -p sealantern-core --lib -- --nocapture --test-threads=1
 
   backend-test-infra:
     name: 后端测试 (infra)
