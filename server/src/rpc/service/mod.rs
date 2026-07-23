@@ -2,8 +2,10 @@
 
 use std::fmt::Display;
 
+mod console;
 mod runtime;
 
+pub use console::{ConsoleCommandService, ConsoleCommandServiceError};
 pub use runtime::ServerRuntime;
 
 /// 由宿主实现的运行中实例控制台写入能力。
