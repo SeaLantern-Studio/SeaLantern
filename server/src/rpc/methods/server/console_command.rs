@@ -5,7 +5,7 @@ use std::future::Future;
 
 use crate::observability;
 use crate::rpc::service::{ConsoleCommandService, ConsoleCommandServiceError};
-use crate::rpc::{RpcContext, RpcError, RpcMethod, RpcResult};
+use crate::rpc::{RpcContext, RpcError, RpcMethod, RpcMethodName, RpcResult};
 
 const MAX_INSTANCE_ID_LENGTH: usize = 128;
 const MAX_COMMAND_CHAR_COUNT: usize = 32_767;
@@ -75,7 +75,7 @@ impl<S> RpcMethod for SendConsoleCommand<S>
 where
     S: ConsoleCommandService,
 {
-    const NAME: &'static str = "server.console.send";
+    const NAME: RpcMethodName = RpcMethodName::new("server.console.send");
 
     type Request = ConsoleCommandRequest;
     type Response = ();
