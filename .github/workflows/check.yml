@@ -125,7 +125,7 @@ jobs:
         run: cargo clippy --workspace -- -D warnings
 
   backend-test-core:
-    name: 后端测试（core）
+    name: 后端测试 (core)
     needs: [changes, backend-lint]
     if: ${{ needs.changes.outputs['backend-core'] == 'true' }}
     runs-on: ubuntu-22.04
@@ -139,16 +139,17 @@ jobs:
         with:
           toolchain: stable
 
-      - name: 缓存 Rust 编译产物
+      - name: 缓存 Rust 编译产物（只恢复）
         uses: swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
+          save-if: false
 
       - name: 运行测试
         run: cargo test -p sealantern-core
 
   backend-test-infra:
-    name: 后端测试（infra）
+    name: 后端测试 (infra)
     needs: [changes, backend-lint]
     if: ${{ needs.changes.outputs['backend-infra'] == 'true' }}
     runs-on: ubuntu-22.04
@@ -162,16 +163,17 @@ jobs:
         with:
           toolchain: stable
 
-      - name: 缓存 Rust 编译产物
+      - name: 缓存 Rust 编译产物（只恢复）
         uses: swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
+          save-if: false
 
       - name: 运行测试
         run: cargo test -p sealantern-infra --all-features
 
   backend-test-server:
-    name: 后端测试（server）
+    name: 后端测试 (server)
     needs: [changes, backend-lint]
     if: ${{ needs.changes.outputs['backend-server'] == 'true' }}
     runs-on: ubuntu-22.04
@@ -185,16 +187,41 @@ jobs:
         with:
           toolchain: stable
 
-      - name: 缓存 Rust 编译产物
+      - name: 缓存 Rust 编译产物（只恢复）
         uses: swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
+          save-if: false
 
       - name: 运行测试
         run: cargo test -p sealantern-server
 
+  backend-test-extra:
+    name: 后端测试 (extra)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-extra'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 缓存 Rust 编译产物（只恢复）
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          save-if: false
+
+      - name: 运行测试
+        run: cargo test -p sealantern-extra
+
   backend-test-tauri:
-    name: 后端测试（tauri）
+    name: 后端测试 (tauri)
     needs: [changes, backend-lint]
     if: ${{ needs.changes.outputs['backend-tauri'] == 'true' }}
     runs-on: ubuntu-22.04
@@ -213,25 +240,32 @@ jobs:
         with:
           toolchain: stable
 
-      - name: 缓存 Rust 编译产物
+      - name: 缓存 Rust 编译产物（只恢复）
         uses: swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
+          save-if: false
 
       - name: 运行测试
         run: cargo test --lib -p sea-lantern
 
   backend:
     name: 后端检查 (Rust)
-    needs: [backend-lint, backend-test-core, backend-test-infra, backend-test-server, backend-test-tauri]
+    needs: [backend-lint, backend-test-core, backend-test-infra, backend-test-server, backend-test-extra, backend-test-tauri]
     if: always()
     runs-on: ubuntu-22.04
     steps:
       - name: 汇总后端检查状态
         run: |
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]] \
-          || [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            echo "后端检查失败：部分模块未通过，请查看日志"
+          failed=""
+          if [[ "${{ needs.backend-lint.result }}" == "failure" ]]; then failed="$failed lint"; fi
+          if [[ "${{ needs.backend-test-core.result }}" == "failure" ]]; then failed="$failed core"; fi
+          if [[ "${{ needs.backend-test-infra.result }}" == "failure" ]]; then failed="$failed infra"; fi
+          if [[ "${{ needs.backend-test-server.result }}" == "failure" ]]; then failed="$failed server"; fi
+          if [[ "${{ needs.backend-test-extra.result }}" == "failure" ]]; then failed="$failed extra"; fi
+          if [[ "${{ needs.backend-test-tauri.result }}" == "failure" ]]; then failed="$failed tauri"; fi
+          if [[ -n "$failed" ]]; then
+            echo "::error ::后端检查失败，以下模块未通过：$failed"
             exit 1
           else
             echo "所有后端模块检查通过！"
