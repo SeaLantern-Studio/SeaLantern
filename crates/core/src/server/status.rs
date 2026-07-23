@@ -32,7 +32,7 @@ impl ServerStatus {
 
 #[cfg(test)]
 mod tests {
-    #![allow(dead_code)]
+    #![allow(dead_code, unused_imports)]
     use std::process::Command;
 
     use super::{ServerProcessState, ServerStatus};
