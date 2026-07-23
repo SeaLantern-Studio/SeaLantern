@@ -8,6 +8,7 @@ license = "GPL-3.0-only"
 path = "src/lib.rs"
 
 [dependencies]
+axum = "0.8"
 sealantern-core = { path = "../crates/core" }
 serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
@@ -15,3 +16,4 @@ tracing = "0.1"
 [dev-dependencies]
 serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt"] }
+tower = { version = "0.5", features = ["util"] }
