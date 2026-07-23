@@ -6050,6 +6050,8 @@ name = "sealantern-server"
 version = "0.1.0"
 dependencies = [
  "sealantern-core",
+ "serde",
+ "tokio",
  "tracing",
 ]
 

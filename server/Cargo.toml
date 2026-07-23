@@ -9,4 +9,8 @@ path = "src/lib.rs"
 
 [dependencies]
 sealantern-core = { path = "../crates/core" }
+serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
