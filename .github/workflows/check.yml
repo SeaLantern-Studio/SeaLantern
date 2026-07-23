@@ -221,6 +221,22 @@ jobs:
       - name: 运行测试
         run: cargo test --lib -p sea-lantern
 
+  backend:
+    name: 后端检查 (Rust)
+    needs: [backend-lint, backend-test-core, backend-test-infra, backend-test-server, backend-test-tauri]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 汇总后端检查状态
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]] \
+          || [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "后端检查失败：部分模块未通过，请查看日志"
+            exit 1
+          else
+            echo "所有后端模块检查通过！"
+          fi
+
   frontend:
     name: 前端检查 (Node)
     needs: changes
