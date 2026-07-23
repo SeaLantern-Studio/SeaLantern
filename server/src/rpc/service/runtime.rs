@@ -1,15 +1,19 @@
+//! 直接使用 core 进程能力的受管服务器运行时。
+
 use std::io;
 use std::process::{Command, ExitStatus, Stdio};
 use std::time::Duration;
 
 use sealantern_core::process::{
-    Daemon, DaemonTerminationError, Terminal, TerminalOutput, TerminalStream, TerminalWriteError,
+    CommandBuildRequest, Daemon, DaemonTerminationError, Terminal, TerminalOutput, TerminalStream,
+    TerminalWriteError,
 };
 
 /// 一个拥有服务器子进程及其终端流的运行时服务。
 ///
-/// 该服务不依赖 Tauri、HTTP 或事件传输。宿主负责构建命令、持久化配置和消费输出，
-/// 服务只保证进程和终端流以 core 定义的所有权模型协作。
+/// 该服务直接使用 core 的进程与终端模型。控制台输入是否可用只能由
+/// [`CommandBuildRequest`] 的启动模式推导，避免将命令写入 shell 或自定义启动包装进程的
+/// stdin。
 pub struct ServerRuntime {
     daemon: Daemon,
     terminal: Terminal,
@@ -17,31 +21,29 @@ pub struct ServerRuntime {
 
 impl ServerRuntime {
     /// 使用调用方配置的标准流启动服务器进程。
-    ///
-    /// 调用方可以按托管场景选择 pipe、inherit、null 或文件重定向。未配置为 pipe 的流
-    /// 不会出现在此运行时的终端接口中。
-    pub fn spawn(command: &mut Command, accepts_console_input: bool) -> io::Result<Self> {
+    pub fn spawn(command: &mut Command, request: &CommandBuildRequest<'_>) -> io::Result<Self> {
         let daemon = Daemon::spawn(command)?;
-        Ok(Self::from_daemon(daemon, accepts_console_input))
+        Ok(Self::from_daemon(daemon, request))
     }
 
     /// 使用 piped 标准流启动服务器进程。
     ///
-    /// 适用于宿主需要发送控制台命令并将 stdout/stderr 交给日志读取器的默认场景。
+    /// shell 和自定义启动模式即使拥有 piped stdin，仍会由 core 的输入策略移除控制台写入
+    /// 能力。
     pub fn spawn_with_piped_stdio(
         command: &mut Command,
-        accepts_console_input: bool,
+        request: &CommandBuildRequest<'_>,
     ) -> io::Result<Self> {
         command.stdin(Stdio::piped());
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
 
-        Self::spawn(command, accepts_console_input)
+        Self::spawn(command, request)
     }
 
     /// 从已启动的 core 守护进程接管服务器运行时。
-    pub fn from_daemon(mut daemon: Daemon, accepts_console_input: bool) -> Self {
-        let terminal = Terminal::from_daemon_with_input(&mut daemon, accepts_console_input);
+    pub fn from_daemon(mut daemon: Daemon, request: &CommandBuildRequest<'_>) -> Self {
+        let terminal = Terminal::from_daemon(&mut daemon, request);
         Self { daemon, terminal }
     }
 
@@ -60,7 +62,7 @@ impl ServerRuntime {
         self.daemon.wait()
     }
 
-    /// 将一行命令写入服务器控制台。
+    /// 将一行命令写入已验证的服务器控制台。
     pub fn send_console_command(&mut self, command: &str) -> Result<(), TerminalWriteError> {
         self.terminal.write_line(command)
     }
@@ -84,8 +86,14 @@ impl ServerRuntime {
 #[cfg(test)]
 mod tests {
     use std::io::Read;
+    use std::path::Path;
 
     use super::*;
+    use sealantern_core::process::{CommandBuildMode, CommandBuildRequest};
+
+    fn request(mode: CommandBuildMode) -> CommandBuildRequest<'static> {
+        CommandBuildRequest::new(mode, Path::new("server"))
+    }
 
     #[cfg(unix)]
     fn command_reader() -> Command {
@@ -101,10 +109,25 @@ mod tests {
         command
     }
 
+    #[cfg(unix)]
+    fn exit_successfully_command() -> Command {
+        let mut command = Command::new("sh");
+        command.args(["-c", "exit 0"]);
+        command
+    }
+
+    #[cfg(windows)]
+    fn exit_successfully_command() -> Command {
+        let mut command = Command::new("cmd");
+        command.args(["/C", "exit 0"]);
+        command
+    }
+
     #[test]
-    fn takes_server_output_for_a_host_reader() {
+    fn direct_server_mode_accepts_console_input() {
         let mut command = command_reader();
-        let mut runtime = ServerRuntime::spawn_with_piped_stdio(&mut command, true)
+        let request = request(CommandBuildMode::DirectJar);
+        let mut runtime = ServerRuntime::spawn_with_piped_stdio(&mut command, &request)
             .expect("spawn server runtime");
 
         runtime
@@ -121,15 +144,25 @@ mod tests {
     }
 
     #[test]
-    fn preserves_caller_stdio_configuration() {
-        let mut command = Command::new(if cfg!(windows) { "cmd" } else { "sh" });
-        if cfg!(windows) {
-            command.args(["/C", "exit 0"]);
-        } else {
-            command.args(["-c", "exit 0"]);
-        }
+    fn shell_mode_discards_piped_console_input() {
+        let mut command = exit_successfully_command();
+        let request = request(CommandBuildMode::Shell);
+        let mut runtime = ServerRuntime::spawn_with_piped_stdio(&mut command, &request)
+            .expect("spawn shell runtime");
 
-        let mut runtime = ServerRuntime::spawn(&mut command, true).expect("spawn server runtime");
+        assert!(matches!(
+            runtime.send_console_command("stop"),
+            Err(TerminalWriteError::InputUnavailable)
+        ));
+        let _ = runtime.wait().expect("wait for shell process");
+    }
+
+    #[test]
+    fn preserves_caller_stdio_configuration() {
+        let mut command = exit_successfully_command();
+        let request = request(CommandBuildMode::DirectJar);
+        let mut runtime =
+            ServerRuntime::spawn(&mut command, &request).expect("spawn server runtime");
 
         assert!(runtime.take_output(TerminalStream::Stdout).is_none());
         assert!(matches!(
