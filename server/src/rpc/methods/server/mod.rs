@@ -4,4 +4,6 @@ mod console;
 mod console_command;
 
 pub use console::dispatch_console_command;
-pub use console_command::{ConsoleCommandRequest, SendConsoleCommand};
+pub use console_command::{
+    ConsoleCommandRequest, SendConsoleCommand, PERMISSION_SERVER_CONSOLE_SEND,
+};

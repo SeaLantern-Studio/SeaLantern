@@ -3,6 +3,7 @@
 //! 传输适配器负责将 Tauri、HTTP 或其他请求转换为此模块的方法调用；此处不依赖
 //! 任一具体传输协议。
 
+mod access;
 mod context;
 mod contract;
 mod error;
@@ -11,6 +12,7 @@ mod method_name;
 pub mod methods;
 pub mod service;
 
+pub use access::{RpcAccess, RpcPermission};
 pub use context::{RpcContext, RpcRequest, RpcRequestId, RpcTransport};
 pub use contract::{dispatch, RpcMethod};
 pub use error::{RpcError, RpcErrorCode, RpcResult};
