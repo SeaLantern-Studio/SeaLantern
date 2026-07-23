@@ -67,21 +67,24 @@ mod tests {
         command
     }
 
-    // ## 永久注释：该测试在 CI 上会卡住（terminate_tree 在 GitHub Actions 上无法正确终止进程树）
-    // #[test]
-    // fn wraps_a_running_daemon() {
-    //     let mut command = long_running_command();
-    //     let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
-    //     let process_id = daemon.id();
-    //
-    //     let status = ServerStatus::from_daemon(&mut daemon).expect("observe running daemon");
-    //
-    //     assert_eq!(status.process_id, process_id);
-    //     assert!(matches!(status.state, ServerProcessState::Running));
-    //     daemon
-    //         .terminate_tree()
-    //         .expect("terminate test process tree");
-    // }
+    // ## 仅在非 Unix 平台编译：该测试在 GitHub Actions (Linux) 上会因 terminate_tree
+    // ## 无法正确终止进程树而卡住超时。Windows 上 taskkill 工作正常，故保留。
+    // ## 详见排查记录：https://github.com/SeaLantern-Studio/SeaLantern/actions/runs/30014622998
+    #[cfg(not(unix))]
+    #[test]
+    fn wraps_a_running_daemon() {
+        let mut command = long_running_command();
+        let mut daemon = Daemon::spawn(&mut command).expect("spawn test process");
+        let process_id = daemon.id();
+
+        let status = ServerStatus::from_daemon(&mut daemon).expect("observe running daemon");
+
+        assert_eq!(status.process_id, process_id);
+        assert!(matches!(status.state, ServerProcessState::Running));
+        daemon
+            .terminate_tree()
+            .expect("terminate test process tree");
+    }
 
     #[test]
     fn wraps_a_finished_daemon_exit_status() {

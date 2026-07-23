@@ -359,15 +359,18 @@ mod tests {
         ));
     }
 
-    // ## 永久注释：该测试在 CI 上会卡住（terminate_tree 在 GitHub Actions 上无法正确终止进程树）
-    // #[test]
-    // fn terminates_a_running_process_tree() {
-    //     let mut command = long_running_tree_command();
-    //     let mut daemon = Daemon::spawn(&mut command).expect("spawn test process tree");
-    //
-    //     daemon
-    //         .terminate_tree()
-    //         .expect("terminate running process tree");
-    //     assert!(daemon.poll().expect("poll terminated process").is_some());
-    // }
+    // ## 仅在非 Unix 平台编译：该测试在 GitHub Actions (Linux) 上会因 terminate_tree
+    // ## 无法正确终止进程树而卡住超时。Windows 上 taskkill 工作正常，故保留。
+    // ## 详见排查记录：https://github.com/SeaLantern-Studio/SeaLantern/actions/runs/30014622998
+    #[cfg(not(unix))]
+    #[test]
+    fn terminates_a_running_process_tree() {
+        let mut command = long_running_tree_command();
+        let mut daemon = Daemon::spawn(&mut command).expect("spawn test process tree");
+
+        daemon
+            .terminate_tree()
+            .expect("terminate running process tree");
+        assert!(daemon.poll().expect("poll terminated process").is_some());
+    }
 }
