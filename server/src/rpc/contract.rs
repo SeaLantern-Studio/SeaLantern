@@ -4,7 +4,9 @@ use std::future::Future;
 
 use crate::observability;
 
-use super::{RpcContext, RpcError, RpcMethodName, RpcPermission, RpcRequest, RpcResult};
+use super::{
+    RpcContext, RpcError, RpcMethodName, RpcPermission, RpcRequest, RpcResponse, RpcResult,
+};
 
 /// 一个传输无关的 RPC 应用服务方法。
 ///
@@ -32,7 +34,10 @@ pub trait RpcMethod {
 /// 调度一个 RPC 方法并为失败结果补充关联标识和结构化追踪事件。
 ///
 /// 不记录请求参数、响应正文或错误消息，避免凭据、命令正文和文件路径进入公共事件流。
-pub async fn dispatch<M>(method: &M, request: RpcRequest<M::Request>) -> RpcResult<M::Response>
+pub async fn dispatch<M>(
+    method: &M,
+    request: RpcRequest<M::Request>,
+) -> RpcResult<RpcResponse<M::Response>>
 where
     M: RpcMethod + Sync,
 {
@@ -46,7 +51,7 @@ where
     }
 
     match method.call(&context, params).await {
-        Ok(response) => Ok(response),
+        Ok(response) => Ok(RpcResponse::new(context.request_id().clone(), response)),
         Err(error) => {
             let error = error.with_request_id(context.request_id().clone());
             observability::rpc_method_failed(M::NAME.as_str(), &context, &error);
@@ -109,7 +114,8 @@ mod tests {
             .await
             .expect("method should succeed");
 
-        assert_eq!(response, "rpc-test-42:payload");
+        assert_eq!(response.request_id().as_str(), "rpc-test-42");
+        assert_eq!(response.data(), "rpc-test-42:payload");
     }
 
     #[tokio::test]

@@ -52,6 +52,7 @@ impl RpcErrorCode {
 /// 不保存底层错误对象或未脱敏参数。方法实现应先将底层错误记录到受控日志，再映射为本
 /// 类型，防止路径、凭据或供应商错误文本越过传输边界。
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RpcError {
     code: RpcErrorCode,
     message: String,
@@ -169,5 +170,15 @@ mod tests {
         assert!(RpcError::unavailable("test dependency").is_retryable());
         assert!(RpcError::deadline_exceeded("test operation").is_retryable());
         assert!(!RpcError::permission_denied().is_retryable());
+    }
+
+    #[test]
+    fn serializes_the_request_id_with_camel_case() {
+        let request_id = RpcRequestId::new("error-42").expect("request id should be valid");
+        let error = RpcError::permission_denied().with_request_id(request_id);
+        let value = serde_json::to_value(error).expect("error should serialize");
+
+        assert_eq!(value["requestId"], "error-42");
+        assert!(value.get("request_id").is_none());
     }
 }
