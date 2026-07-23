@@ -4,7 +4,7 @@ use std::future::Future;
 
 use crate::observability;
 
-use super::{RpcContext, RpcRequest, RpcResult};
+use super::{RpcContext, RpcMethodName, RpcRequest, RpcResult};
 
 /// 一个传输无关的 RPC 应用服务方法。
 ///
@@ -12,7 +12,7 @@ use super::{RpcContext, RpcRequest, RpcResult};
 /// 参数反序列化、授权、协议错误映射和事件推送；方法实现只编排领域端口。
 pub trait RpcMethod {
     /// 稳定的方法名，供日志和适配器注册表使用。
-    const NAME: &'static str;
+    const NAME: RpcMethodName;
 
     /// 已完成传输反序列化的输入类型。
     type Request: Send;
@@ -39,7 +39,7 @@ where
         Ok(response) => Ok(response),
         Err(error) => {
             let error = error.with_request_id(context.request_id().clone());
-            observability::rpc_method_failed(M::NAME, &context, &error);
+            observability::rpc_method_failed(M::NAME.as_str(), &context, &error);
             Err(error)
         }
     }
@@ -53,7 +53,7 @@ mod tests {
     struct EchoMethod;
 
     impl RpcMethod for EchoMethod {
-        const NAME: &'static str = "test.echo";
+        const NAME: RpcMethodName = RpcMethodName::new("test.echo");
 
         type Request = String;
         type Response = String;
@@ -71,7 +71,7 @@ mod tests {
     struct FailingMethod;
 
     impl RpcMethod for FailingMethod {
-        const NAME: &'static str = "test.fail";
+        const NAME: RpcMethodName = RpcMethodName::new("test.fail");
 
         type Request = ();
         type Response = ();
