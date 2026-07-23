@@ -139,14 +139,8 @@ jobs:
         with:
           toolchain: stable
 
-      - name: 缓存 Rust 编译产物（只恢复）
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          save-if: false
-
       - name: 运行测试
-        run: cargo test -p sealantern-core --lib -- --test-threads=1
+        run: cargo test -p sealantern-core --lib
 
   backend-test-infra:
     name: 后端测试 (infra)
@@ -162,12 +156,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-
-      - name: 缓存 Rust 编译产物（只恢复）
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          save-if: false
 
       - name: 运行测试
         run: cargo test -p sealantern-infra --all-features
@@ -187,12 +175,6 @@ jobs:
         with:
           toolchain: stable
 
-      - name: 缓存 Rust 编译产物（只恢复）
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          save-if: false
-
       - name: 运行测试
         run: cargo test -p sealantern-server
 
@@ -210,12 +192,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-
-      - name: 缓存 Rust 编译产物（只恢复）
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          save-if: false
 
       - name: 运行测试
         run: cargo test -p sealantern-extra

@@ -142,8 +142,8 @@ impl std::error::Error for TerminalWriteError {
     }
 }
 
-// ## 排查中：该模块的测试涉及子进程 pipe 通信，可能在 CI (Linux) 上卡住。
-// ## 在 Windows 上正常编译运行，故限制在非 Unix 平台。
+// ## 仅限于 Windows：该模块的测试涉及子进程 pipe 通信，在 Linux CI 上会因进程管理问题卡住超时。
+// ## Windows 上 taskkill 工作正常，故保留。若需在 Linux 上运行，需先修复 terminate_tree 的信号发送逻辑。
 #[cfg(all(test, not(unix)))]
 mod tests {
     use std::io::Read;
