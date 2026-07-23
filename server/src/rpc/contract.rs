@@ -4,7 +4,7 @@ use std::future::Future;
 
 use crate::observability;
 
-use super::{RpcContext, RpcMethodName, RpcRequest, RpcResult};
+use super::{RpcContext, RpcError, RpcMethodName, RpcPermission, RpcRequest, RpcResult};
 
 /// 一个传输无关的 RPC 应用服务方法。
 ///
@@ -13,6 +13,8 @@ use super::{RpcContext, RpcMethodName, RpcRequest, RpcResult};
 pub trait RpcMethod {
     /// 稳定的方法名，供日志和适配器注册表使用。
     const NAME: RpcMethodName;
+    /// 执行该方法所需的权限；`None` 仅适用于显式公开的只读方法。
+    const REQUIRED_PERMISSION: Option<RpcPermission>;
 
     /// 已完成传输反序列化的输入类型。
     type Request: Send;
@@ -35,6 +37,14 @@ where
     M: RpcMethod + Sync,
 {
     let (context, params) = request.into_parts();
+    if let Some(permission) = M::REQUIRED_PERMISSION {
+        if !context.access().allows(permission) {
+            let error = RpcError::permission_denied().with_request_id(context.request_id().clone());
+            observability::rpc_method_failed(M::NAME.as_str(), &context, &error);
+            return Err(error);
+        }
+    }
+
     match method.call(&context, params).await {
         Ok(response) => Ok(response),
         Err(error) => {
@@ -54,6 +64,7 @@ mod tests {
 
     impl RpcMethod for EchoMethod {
         const NAME: RpcMethodName = RpcMethodName::new("test.echo");
+        const REQUIRED_PERMISSION: Option<RpcPermission> = None;
 
         type Request = String;
         type Response = String;
@@ -72,6 +83,7 @@ mod tests {
 
     impl RpcMethod for FailingMethod {
         const NAME: RpcMethodName = RpcMethodName::new("test.fail");
+        const REQUIRED_PERMISSION: Option<RpcPermission> = None;
 
         type Request = ();
         type Response = ();

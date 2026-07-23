@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use super::{RpcError, RpcResult};
+use super::{RpcAccess, RpcError, RpcResult};
 
 const MAX_REQUEST_ID_LENGTH: usize = 128;
 
@@ -82,16 +82,29 @@ impl RpcTransport {
 }
 
 /// RPC 方法执行时可安全使用的请求元数据。
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RpcContext {
     request_id: RpcRequestId,
     transport: RpcTransport,
+    access: RpcAccess,
 }
 
 impl RpcContext {
     /// 由传输适配器构建请求上下文。
     pub fn new(request_id: RpcRequestId, transport: RpcTransport) -> Self {
-        Self { request_id, transport }
+        Self {
+            request_id,
+            transport,
+            access: RpcAccess::deny_all(),
+        }
+    }
+
+    /// 附加已由受信任适配器完成认证和授权的访问集合。
+    ///
+    /// 未调用此方法的上下文不会拥有任何方法权限，调度器将拒绝受保护的 RPC 方法。
+    pub fn with_access(mut self, access: RpcAccess) -> Self {
+        self.access = access;
+        self
     }
 
     /// 返回当前调用的关联标识。
@@ -102,6 +115,11 @@ impl RpcContext {
     /// 返回当前调用的传输类型。
     pub const fn transport(&self) -> RpcTransport {
         self.transport
+    }
+
+    /// 返回当前调用已获授的权限集合。
+    pub fn access(&self) -> &RpcAccess {
+        &self.access
     }
 }
 

@@ -5,10 +5,13 @@ use std::future::Future;
 
 use crate::observability;
 use crate::rpc::service::{ConsoleCommandService, ConsoleCommandServiceError};
-use crate::rpc::{RpcContext, RpcError, RpcMethod, RpcMethodName, RpcResult};
+use crate::rpc::{RpcContext, RpcError, RpcMethod, RpcMethodName, RpcPermission, RpcResult};
 
 const MAX_INSTANCE_ID_LENGTH: usize = 128;
 const MAX_COMMAND_CHAR_COUNT: usize = 32_767;
+
+/// 向受管服务器控制台写入命令所需的 RPC 权限。
+pub const PERMISSION_SERVER_CONSOLE_SEND: RpcPermission = RpcPermission::new("server.console.send");
 
 /// 经过边界校验的单行服务器控制台命令。
 ///
@@ -76,6 +79,7 @@ where
     S: ConsoleCommandService,
 {
     const NAME: RpcMethodName = RpcMethodName::new("server.console.send");
+    const REQUIRED_PERMISSION: Option<RpcPermission> = Some(PERMISSION_SERVER_CONSOLE_SEND);
 
     type Request = ConsoleCommandRequest;
     type Response = ();
@@ -155,7 +159,9 @@ mod tests {
     use std::sync::Mutex;
 
     use super::*;
-    use crate::rpc::{dispatch, RpcContext, RpcErrorCode, RpcRequest, RpcRequestId, RpcTransport};
+    use crate::rpc::{
+        dispatch, RpcAccess, RpcContext, RpcErrorCode, RpcRequest, RpcRequestId, RpcTransport,
+    };
 
     struct RecordingConsoleService {
         requests: Mutex<Vec<(String, String)>>,
@@ -177,6 +183,15 @@ mod tests {
     }
 
     fn rpc_request(params: ConsoleCommandRequest) -> RpcRequest<ConsoleCommandRequest> {
+        let request_id = RpcRequestId::new("console-rpc-42").expect("request id should be valid");
+        let context = RpcContext::new(request_id, RpcTransport::Internal)
+            .with_access(RpcAccess::allow([PERMISSION_SERVER_CONSOLE_SEND]));
+        RpcRequest::new(context, params)
+    }
+
+    fn unprivileged_rpc_request(
+        params: ConsoleCommandRequest,
+    ) -> RpcRequest<ConsoleCommandRequest> {
         let request_id = RpcRequestId::new("console-rpc-42").expect("request id should be valid");
         let context = RpcContext::new(request_id, RpcTransport::Internal);
         RpcRequest::new(context, params)
@@ -236,5 +251,27 @@ mod tests {
 
         assert_eq!(error.code(), RpcErrorCode::Conflict);
         assert_eq!(error.request_id().map(RpcRequestId::as_str), Some("console-rpc-42"));
+    }
+
+    #[tokio::test]
+    async fn rejects_an_unprivileged_call_before_the_service_is_invoked() {
+        let method = SendConsoleCommand::new(RecordingConsoleService {
+            requests: Mutex::new(Vec::new()),
+            failure: None,
+        });
+        let params =
+            ConsoleCommandRequest::new("server-42", "stop").expect("request should be valid");
+
+        let error = dispatch(&method, unprivileged_rpc_request(params))
+            .await
+            .expect_err("missing permission must be rejected");
+
+        assert_eq!(error.code(), RpcErrorCode::PermissionDenied);
+        assert!(method
+            .service
+            .requests
+            .lock()
+            .expect("test request log lock should not be poisoned")
+            .is_empty());
     }
 }
