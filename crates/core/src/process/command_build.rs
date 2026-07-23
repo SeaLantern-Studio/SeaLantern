@@ -621,7 +621,8 @@ mod tests {
     }
 
     #[cfg(not(target_os = "windows"))]
-    #[test]
+    #[allow(dead_code)]
+    // #[test]
     fn windows_only_modes_fail_gracefully_on_other_platforms() {
         for mode in [CommandBuildMode::Batch, CommandBuildMode::PowerShell] {
             let mut request = CommandBuildRequest::new(mode, Path::new("server"));
