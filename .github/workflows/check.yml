@@ -118,16 +118,15 @@ jobs:
         with:
           workspaces: ". -> target"
 
-      # ## 临时注释：跳过 fmt 和 clippy
-      # - name: 检查代码格式 (Rust)
-      #   run: cargo fmt --all -- --check
-      #
-      # - name: 运行 Clippy 检查
-      #   run: cargo clippy --workspace -- -D warnings
+      - name: 检查代码格式 (Rust)
+        run: cargo fmt --all -- --check
+
+      - name: 运行 Clippy 检查
+        run: cargo clippy --workspace -- -D warnings
 
   backend-test-core:
     name: 后端测试 (core)
-    needs: [changes]
+    needs: [changes, backend-lint]
     if: ${{ needs.changes.outputs['backend-core'] == 'true' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 4
@@ -146,161 +145,113 @@ jobs:
           workspaces: ". -> target"
           save-if: false
 
-      - name: 运行测试（剔除已知问题测试）
-        run: cargo test -p sealantern-core --lib -- --skip terminates_a_running_process_tree --skip wraps_a_running_daemon --nocapture --test-threads=1
+      - name: 运行测试
+        run: cargo test -p sealantern-core --lib
 
-  # ## 排查嫌疑人：6 个并行 job，每个只恢复一组测试
-  backend-test-suspects:
-    name: 排查 ${{ matrix.group }}
-    needs: changes
-    if: ${{ needs.changes.outputs['backend-core'] == 'true' }}
+  backend-test-infra:
+    name: 后端测试 (infra)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-infra'] == 'true' }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        group: [terminal, daemon-exit, daemon-sleep, status-exit, status-sleep, cmd-build]
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: swatinem/rust-cache@v2
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 缓存 Rust 编译产物（只恢复）
+        uses: swatinem/rust-cache@v2
         with:
           workspaces: ". -> target"
           save-if: false
-      - name: 恢复本组测试并运行
+
+      - name: 运行测试
+        run: cargo test -p sealantern-infra --all-features
+
+  backend-test-server:
+    name: 后端测试 (server)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-server'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 缓存 Rust 编译产物（只恢复）
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          save-if: false
+
+      - name: 运行测试
+        run: cargo test -p sealantern-server
+
+  backend-test-extra:
+    name: 后端测试 (extra)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-extra'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 缓存 Rust 编译产物（只恢复）
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          save-if: false
+
+      - name: 运行测试
+        run: cargo test -p sealantern-extra
+
+  backend-test-tauri:
+    name: 后端测试 (tauri)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-tauri'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 6
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装系统依赖
         run: |
-          set -e
-          case "${{ matrix.group }}" in
-            terminal)
-              sed -i 's|// \[test\]|[test]|g' crates/core/src/process/terminal.rs
-              SKIP="--skip terminates_a_running_process_tree --skip wraps_a_running_daemon"
-              ;;
-            daemon-exit)
-              sed -i '336s|// \[test\]|[test]|;345s|// \[test\]|[test]|' crates/core/src/process/daemon.rs
-              SKIP="--skip terminates_a_running_process_tree --skip wraps_a_running_daemon"
-              ;;
-            daemon-sleep)
-              SKIP="--skip reports_the_exit_status_of_a_finished_daemon --skip reports_an_abnormal_sign_for_an_exited_daemon --skip wraps_a_running_daemon"
-              ;;
-            status-exit)
-              sed -i '84s|// \[test\]|[test]|' crates/core/src/server/status.rs
-              SKIP="--skip terminates_a_running_process_tree --skip wraps_a_running_daemon"
-              ;;
-            status-sleep)
-              SKIP="--skip terminates_a_running_process_tree --skip wraps_a_finished_daemon_exit_status"
-              ;;
-            cmd-build)
-              sed -i '625s|// \[test\]|[test]|' crates/core/src/process/command_build.rs
-              SKIP="--skip terminates_a_running_process_tree --skip wraps_a_running_daemon"
-              ;;
-          esac
-          cargo test -p sealantern-core --lib -- $SKIP --nocapture --test-threads=1
-  #   name: 后端测试 (infra)
-  #   needs: [changes, backend-lint]
-  #   if: ${{ needs.changes.outputs['backend-infra'] == 'true' }}
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 10
-  #   steps:
-  #     - name: 检出代码
-  #       uses: actions/checkout@v4
-  #
-  #     - name: 安装 Rust 工具链
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #
-  #     - name: 缓存 Rust 编译产物（只恢复）
-  #       uses: swatinem/rust-cache@v2
-  #       with:
-  #         workspaces: ". -> target"
-  #         save-if: false
-  #
-  #     - name: 运行测试
-  #       run: cargo test -p sealantern-infra --all-features
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
 
-  # ## 临时注释：跳过 server 测试
-  # backend-test-server:
-  #   name: 后端测试 (server)
-  #   needs: [changes, backend-lint]
-  #   if: ${{ needs.changes.outputs['backend-server'] == 'true' }}
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 10
-  #   steps:
-  #     - name: 检出代码
-  #       uses: actions/checkout@v4
-  #
-  #     - name: 安装 Rust 工具链
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #
-  #     - name: 缓存 Rust 编译产物（只恢复）
-  #       uses: swatinem/rust-cache@v2
-  #       with:
-  #         workspaces: ". -> target"
-  #         save-if: false
-  #
-  #     - name: 运行测试
-  #       run: cargo test -p sealantern-server
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
 
-  # ## 临时注释：跳过 extra 测试
-  # backend-test-extra:
-  #   name: 后端测试 (extra)
-  #   needs: [changes, backend-lint]
-  #   if: ${{ needs.changes.outputs['backend-extra'] == 'true' }}
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 10
-  #   steps:
-  #     - name: 检出代码
-  #       uses: actions/checkout@v4
-  #
-  #     - name: 安装 Rust 工具链
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #
-  #     - name: 缓存 Rust 编译产物（只恢复）
-  #       uses: swatinem/rust-cache@v2
-  #       with:
-  #         workspaces: ". -> target"
-  #         save-if: false
-  #
-  #     - name: 运行测试
-  #       run: cargo test -p sealantern-extra
+      - name: 缓存 Rust 编译产物（只恢复）
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          save-if: false
 
-  # ## 临时注释：跳过 tauri 测试
-  # backend-test-tauri:
-  #   name: 后端测试 (tauri)
-  #   needs: [changes, backend-lint]
-  #   if: ${{ needs.changes.outputs['backend-tauri'] == 'true' }}
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 6
-  #   steps:
-  #     - name: 检出代码
-  #       uses: actions/checkout@v4
-  #
-  #     - name: 安装系统依赖
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
-  #
-  #     - name: 安装 Rust 工具链
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #
-  #     - name: 缓存 Rust 编译产物（只恢复）
-  #       uses: swatinem/rust-cache@v2
-  #       with:
-  #         workspaces: ". -> target"
-  #         save-if: false
-  #
-  #     - name: 运行测试
-  #       run: cargo test --lib -p sea-lantern
+      - name: 运行测试
+        run: cargo test --lib -p sea-lantern
 
   backend:
     name: 后端检查 (Rust)
-    needs: [backend-lint, backend-test-core, backend-test-suspects]
+    needs: [backend-lint, backend-test-core, backend-test-infra, backend-test-server, backend-test-extra, backend-test-tauri]
     if: always()
     runs-on: ubuntu-22.04
     steps:
@@ -309,7 +260,10 @@ jobs:
           failed=""
           if [[ "${{ needs.backend-lint.result }}" == "failure" ]]; then failed="$failed lint"; fi
           if [[ "${{ needs.backend-test-core.result }}" == "failure" ]]; then failed="$failed core"; fi
-          if [[ "${{ needs.backend-test-suspects.result }}" == "failure" ]]; then failed="$failed suspects"; fi
+          if [[ "${{ needs.backend-test-infra.result }}" == "failure" ]]; then failed="$failed infra"; fi
+          if [[ "${{ needs.backend-test-server.result }}" == "failure" ]]; then failed="$failed server"; fi
+          if [[ "${{ needs.backend-test-extra.result }}" == "failure" ]]; then failed="$failed extra"; fi
+          if [[ "${{ needs.backend-test-tauri.result }}" == "failure" ]]; then failed="$failed tauri"; fi
           if [[ -n "$failed" ]]; then
             echo "::error ::后端检查失败，以下模块未通过：$failed"
             exit 1
@@ -317,38 +271,37 @@ jobs:
             echo "所有后端模块检查通过！"
           fi
 
-  # ## 临时注释：跳过前端检查
-  # frontend:
-  #   name: 前端检查 (Node)
-  #   needs: changes
-  #   if: ${{ needs.changes.outputs.frontend == 'true' }}
-  #   runs-on: ubuntu-22.04
-  #   steps:
-  #     - name: 检出代码
-  #       uses: actions/checkout@v4
-  #
-  #     - name: 安装 Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "lts/*"
-  #
-  #     - name: Prepare PNPM (固定版本)
-  #       run: |
-  #         corepack enable
-  #         corepack prepare pnpm@9.15.9 --activate
-  #
-  #     - name: 缓存 pnpm 依赖
-  #       uses: actions/cache@v4
-  #       with:
-  #         path: ~/.pnpm-store
-  #         key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-pnpm-
-  #
-  #     - name: 安装前端依赖
-  #       run: |
-  #         pnpm install --frozen-lockfile
-  #
-  #     - name: 运行格式化并检查前端 Lint
-  #       run: pnpm run fmt:check && pnpm run lint
+  frontend:
+    name: 前端检查 (Node)
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Prepare PNPM (固定版本)
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: 安装前端依赖
+        run: |
+          pnpm install --frozen-lockfile
+
+      - name: 运行格式化并检查前端 Lint
+        run: pnpm run fmt:check && pnpm run lint
 
