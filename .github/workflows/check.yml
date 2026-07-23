@@ -219,7 +219,7 @@ jobs:
           workspaces: ". -> target"
 
       - name: 运行测试
-        run: cargo test -p sea-lantern-lib
+        run: cargo test --lib -p sea-lantern
 
   frontend:
     name: 前端检查 (Node)
