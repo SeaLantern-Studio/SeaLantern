@@ -194,7 +194,7 @@ jobs:
               SKIP="--skip terminates_a_running_process_tree --skip wraps_a_running_daemon"
               ;;
           esac
-          cargo test -p sealantern-core --lib $SKIP --nocapture --test-threads=1
+          cargo test -p sealantern-core --lib -- $SKIP --nocapture --test-threads=1
   #   name: 后端测试 (infra)
   #   needs: [changes, backend-lint]
   #   if: ${{ needs.changes.outputs['backend-infra'] == 'true' }}
