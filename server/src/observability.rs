@@ -5,6 +5,8 @@ pub const SERVER_TARGET: &str = "sealantern.server";
 pub const EVENT_CONSOLE_COMMAND_DISPATCHED: &str = "console_command_dispatched";
 /// Event: RPC 方法调用失败。
 pub const EVENT_RPC_METHOD_FAILED: &str = "rpc_method_failed";
+/// Event: HTTP 适配器在调度前拒绝请求。
+pub const EVENT_RPC_HTTP_REQUEST_REJECTED: &str = "rpc_http_request_rejected";
 
 /// 记录控制台命令的处理结果，不记录命令正文或执行错误。
 pub fn console_command_dispatched(instance_id: &str, command_char_count: usize, succeeded: bool) {
@@ -44,5 +46,17 @@ pub fn rpc_method_failed(
         error_code = error.code().as_str(),
         retryable = error.is_retryable(),
         "rpc method failed"
+    );
+}
+
+/// 记录 HTTP 适配器拒绝的请求，不记录请求头、请求正文或认证材料。
+pub fn rpc_http_request_rejected(request_id: &str, reason: &'static str, error_code: &str) {
+    tracing::warn!(
+        target: SERVER_TARGET,
+        event_name = EVENT_RPC_HTTP_REQUEST_REJECTED,
+        request_id,
+        reason,
+        error_code,
+        "rpc HTTP request rejected"
     );
 }
