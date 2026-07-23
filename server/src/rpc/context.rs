@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use super::{RpcAccess, RpcError, RpcResult};
+use super::{RpcAccess, RpcCancellationToken, RpcDeadline, RpcError, RpcResult};
 
 const MAX_REQUEST_ID_LENGTH: usize = 128;
 
@@ -82,11 +82,13 @@ impl RpcTransport {
 }
 
 /// RPC 方法执行时可安全使用的请求元数据。
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct RpcContext {
     request_id: RpcRequestId,
     transport: RpcTransport,
     access: RpcAccess,
+    cancellation: RpcCancellationToken,
+    deadline: Option<RpcDeadline>,
 }
 
 impl RpcContext {
@@ -96,6 +98,8 @@ impl RpcContext {
             request_id,
             transport,
             access: RpcAccess::deny_all(),
+            cancellation: RpcCancellationToken::new(),
+            deadline: None,
         }
     }
 
@@ -104,6 +108,18 @@ impl RpcContext {
     /// 未调用此方法的上下文不会拥有任何方法权限，调度器将拒绝受保护的 RPC 方法。
     pub fn with_access(mut self, access: RpcAccess) -> Self {
         self.access = access;
+        self
+    }
+
+    /// 附加由传输适配器或任务协调器持有的取消令牌。
+    pub fn with_cancellation(mut self, cancellation: RpcCancellationToken) -> Self {
+        self.cancellation = cancellation;
+        self
+    }
+
+    /// 为本次调用设置单调时钟截止时间。
+    pub fn with_deadline(mut self, deadline: RpcDeadline) -> Self {
+        self.deadline = Some(deadline);
         self
     }
 
@@ -121,12 +137,33 @@ impl RpcContext {
     pub fn access(&self) -> &RpcAccess {
         &self.access
     }
+
+    /// 返回当前调用的协作式取消令牌。
+    pub fn cancellation(&self) -> &RpcCancellationToken {
+        &self.cancellation
+    }
+
+    /// 检查调用是否仍可继续执行。
+    ///
+    /// 适用于长时间运行的方法在副作用发生前、每个分页/循环迭代以及等待外部依赖后进行
+    /// 协作式检查。
+    pub fn check_active(&self) -> RpcResult<()> {
+        if self.cancellation.is_cancelled() {
+            return Err(RpcError::cancelled());
+        }
+
+        if self.deadline.is_some_and(RpcDeadline::has_expired) {
+            return Err(RpcError::deadline_exceeded("the requested operation"));
+        }
+
+        Ok(())
+    }
 }
 
 /// 传输适配器传给 RPC 方法的已解析请求。
 ///
 /// 参数由该类型拥有，调用方法时会被消费，从而避免为跨异步边界保留请求数据而额外克隆。
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct RpcRequest<T> {
     context: RpcContext,
     params: T,

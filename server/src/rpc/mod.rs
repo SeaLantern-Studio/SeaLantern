@@ -7,6 +7,7 @@ mod access;
 mod context;
 mod contract;
 mod error;
+mod lifecycle;
 mod method_name;
 mod response;
 
@@ -17,5 +18,6 @@ pub use access::{RpcAccess, RpcPermission};
 pub use context::{RpcContext, RpcRequest, RpcRequestId, RpcTransport};
 pub use contract::{dispatch, RpcMethod};
 pub use error::{RpcError, RpcErrorCode, RpcResult};
+pub use lifecycle::{RpcCancellationToken, RpcDeadline};
 pub use method_name::RpcMethodName;
 pub use response::RpcResponse;

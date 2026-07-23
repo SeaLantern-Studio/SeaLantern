@@ -42,28 +42,40 @@ where
     M: RpcMethod + Sync,
 {
     let (context, params) = request.into_parts();
+    if let Err(error) = context.check_active() {
+        return fail(&context, M::NAME, error);
+    }
+
     if let Some(permission) = M::REQUIRED_PERMISSION {
         if !context.access().allows(permission) {
-            let error = RpcError::permission_denied().with_request_id(context.request_id().clone());
-            observability::rpc_method_failed(M::NAME.as_str(), &context, &error);
-            return Err(error);
+            return fail(&context, M::NAME, RpcError::permission_denied());
         }
     }
 
     match method.call(&context, params).await {
-        Ok(response) => Ok(RpcResponse::new(context.request_id().clone(), response)),
-        Err(error) => {
-            let error = error.with_request_id(context.request_id().clone());
-            observability::rpc_method_failed(M::NAME.as_str(), &context, &error);
-            Err(error)
-        }
+        Ok(response) => match context.check_active() {
+            Ok(()) => Ok(RpcResponse::new(context.request_id().clone(), response)),
+            Err(error) => fail(&context, M::NAME, error),
+        },
+        Err(error) => fail(&context, M::NAME, error),
     }
+}
+
+fn fail<T>(context: &RpcContext, method: RpcMethodName, error: RpcError) -> RpcResult<T> {
+    let error = error.with_request_id(context.request_id().clone());
+    observability::rpc_method_failed(method.as_str(), context, &error);
+    Err(error)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rpc::{RpcError, RpcErrorCode, RpcRequestId, RpcTransport};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::{Duration, Instant};
+
+    use crate::rpc::{
+        RpcCancellationToken, RpcDeadline, RpcError, RpcErrorCode, RpcRequestId, RpcTransport,
+    };
 
     struct EchoMethod;
 
@@ -102,6 +114,27 @@ mod tests {
         }
     }
 
+    struct CountingMethod {
+        calls: AtomicUsize,
+    }
+
+    impl RpcMethod for CountingMethod {
+        const NAME: RpcMethodName = RpcMethodName::new("test.count");
+        const REQUIRED_PERMISSION: Option<RpcPermission> = None;
+
+        type Request = ();
+        type Response = ();
+
+        fn call(
+            &self,
+            _context: &RpcContext,
+            _request: Self::Request,
+        ) -> impl Future<Output = RpcResult<Self::Response>> + Send {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            async { Ok(()) }
+        }
+    }
+
     fn request<T>(params: T) -> RpcRequest<T> {
         let request_id = RpcRequestId::new("rpc-test-42").expect("request id should be valid");
         let context = RpcContext::new(request_id, RpcTransport::Internal);
@@ -127,5 +160,37 @@ mod tests {
         assert_eq!(error.code(), RpcErrorCode::Unavailable);
         assert_eq!(error.request_id().map(RpcRequestId::as_str), Some("rpc-test-42"));
         assert!(error.is_retryable());
+    }
+
+    #[tokio::test]
+    async fn rejects_a_cancelled_request_before_invoking_the_method() {
+        let cancellation = RpcCancellationToken::new();
+        cancellation.cancel();
+        let request_id = RpcRequestId::new("cancelled-42").expect("request id should be valid");
+        let context =
+            RpcContext::new(request_id, RpcTransport::Internal).with_cancellation(cancellation);
+        let method = CountingMethod { calls: AtomicUsize::new(0) };
+
+        let error = dispatch(&method, RpcRequest::new(context, ()))
+            .await
+            .expect_err("cancelled request must fail");
+
+        assert_eq!(error.code(), RpcErrorCode::Cancelled);
+        assert_eq!(method.calls.load(Ordering::Relaxed), 0);
+    }
+
+    #[tokio::test]
+    async fn rejects_an_expired_request_before_invoking_the_method() {
+        let request_id = RpcRequestId::new("deadline-42").expect("request id should be valid");
+        let deadline = RpcDeadline::at(Instant::now() - Duration::from_secs(1));
+        let context = RpcContext::new(request_id, RpcTransport::Internal).with_deadline(deadline);
+        let method = CountingMethod { calls: AtomicUsize::new(0) };
+
+        let error = dispatch(&method, RpcRequest::new(context, ()))
+            .await
+            .expect_err("expired request must fail");
+
+        assert_eq!(error.code(), RpcErrorCode::DeadlineExceeded);
+        assert_eq!(method.calls.load(Ordering::Relaxed), 0);
     }
 }

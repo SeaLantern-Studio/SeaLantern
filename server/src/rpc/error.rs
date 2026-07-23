@@ -23,6 +23,8 @@ pub enum RpcErrorCode {
     Unavailable,
     /// 调用超过适配器或应用服务声明的截止时间。
     DeadlineExceeded,
+    /// 调用方或任务协调器取消了执行。
+    Cancelled,
     /// 未分类的服务端失败，不暴露内部错误文本。
     Internal,
 }
@@ -37,6 +39,7 @@ impl RpcErrorCode {
             Self::PermissionDenied => "permission_denied",
             Self::Unavailable => "unavailable",
             Self::DeadlineExceeded => "deadline_exceeded",
+            Self::Cancelled => "cancelled",
             Self::Internal => "internal",
         }
     }
@@ -99,6 +102,11 @@ impl RpcError {
             RpcErrorCode::DeadlineExceeded,
             format!("The {operation} did not complete before its deadline. Please retry."),
         )
+    }
+
+    /// 构建调用被取消错误。
+    pub fn cancelled() -> Self {
+        Self::new(RpcErrorCode::Cancelled, "The requested operation was cancelled.".to_string())
     }
 
     /// 构建不泄露内部实现细节的服务端错误。
