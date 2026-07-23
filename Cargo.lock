@@ -6049,10 +6049,12 @@ dependencies = [
 name = "sealantern-server"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "sealantern-core",
  "serde",
  "serde_json",
  "tokio",
+ "tower",
  "tracing",
 ]
 
