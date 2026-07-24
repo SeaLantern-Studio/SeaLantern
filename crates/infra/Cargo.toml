@@ -28,3 +28,4 @@ toml = "0.8"
 uuid = { version = "1", features = ["v4"] }
 zip = { version = "2.0", default-features = false, features = ["deflate"] }
 sysinfo = "0.32"
+dirs = "5"
