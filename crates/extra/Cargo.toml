@@ -22,5 +22,3 @@ sealantern-infra = { path = "../infra" }
 
 [features]
 default = []
-tauri-commands = ["tauri"]
-tauri = []
