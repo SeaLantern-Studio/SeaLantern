@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
-pub mod observability;
 pub mod config;
+pub mod observability;
 
 #[path = "market/lib.rs"]
 pub mod market;

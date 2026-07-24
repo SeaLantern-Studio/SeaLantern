@@ -72,10 +72,7 @@ pub fn get_app_data_dir() -> PathBuf {
     eprintln!("[DEBUG] path.rs: /.dockerenv exists = {}", is_docker);
     if is_docker {
         let docker_path = PathBuf::from("./data");
-        eprintln!(
-            "[DEBUG] path.rs: Docker mode, returning path: {:?}",
-            docker_path
-        );
+        eprintln!("[DEBUG] path.rs: Docker mode, returning path: {:?}", docker_path);
         return docker_path;
     }
 
@@ -103,10 +100,7 @@ pub fn get_app_data_dir() -> PathBuf {
         // 便携版或其他安装：使用程序所在目录
         if let Ok(exe_path) = std::env::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
-                eprintln!(
-                    "[DEBUG] path.rs: Windows portable mode, returning path: {:?}",
-                    exe_dir
-                );
+                eprintln!("[DEBUG] path.rs: Windows portable mode, returning path: {:?}", exe_dir);
                 return exe_dir.to_path_buf();
             }
         }
@@ -174,10 +168,7 @@ pub fn get_app_data_dir() -> PathBuf {
 /// 获取应用数据目录的字符串表示，如果目录不存在则创建
 pub fn get_or_create_app_data_dir() -> String {
     let data_dir = get_app_data_dir();
-    eprintln!(
-        "[DEBUG] path.rs: get_or_create_app_data_dir called, path: {:?}",
-        data_dir
-    );
+    eprintln!("[DEBUG] path.rs: get_or_create_app_data_dir called, path: {:?}", data_dir);
     // 创建目录（如果不存在）
     if let Err(e) = std::fs::create_dir_all(&data_dir) {
         eprintln!("警告：无法创建数据目录：{}", e);
