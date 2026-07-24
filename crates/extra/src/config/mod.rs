@@ -58,13 +58,13 @@ impl AppConfig {
     /// 加载或创建默认配置
     pub async fn load_or_default() -> Result<Self, ConfigError> {
         let path = Self::config_path();
-        
+
         if path.exists() {
             let content = tokio::fs::read_to_string(&path)
                 .await
                 .map_err(|e| ConfigError::Io(path.clone(), e.to_string()))?;
-            let config: Self = serde_json::from_str(&content)
-                .map_err(|e| ConfigError::Parse(e.to_string()))?;
+            let config: Self =
+                serde_json::from_str(&content).map_err(|e| ConfigError::Parse(e.to_string()))?;
             Ok(config)
         } else {
             let config = Self::default();
@@ -77,18 +77,18 @@ impl AppConfig {
     pub async fn save(&self) -> Result<(), ConfigError> {
         let path = Self::config_path();
         let parent = path.parent().unwrap();
-        
+
         tokio::fs::create_dir_all(parent)
             .await
             .map_err(|e| ConfigError::Io(parent.to_path_buf(), e.to_string()))?;
-        
+
         let content = serde_json::to_string_pretty(self)
             .map_err(|e| ConfigError::Serialize(e.to_string()))?;
-        
+
         tokio::fs::write(&path, content)
             .await
             .map_err(|e| ConfigError::Io(path.clone(), e.to_string()))?;
-        
+
         Ok(())
     }
 }
