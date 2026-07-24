@@ -12,6 +12,15 @@ tracing = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 async-trait = "0.1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "sync"] }
 urlencoding = "2"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+thiserror = "1"
+tempfile = "3"
 sealantern-infra = { path = "../infra" }
+
+[features]
+default = []
+tauri-commands = ["tauri"]
+tauri = []

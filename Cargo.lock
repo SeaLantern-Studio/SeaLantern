@@ -6036,12 +6036,16 @@ name = "sealantern-extra"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "sealantern-infra",
  "serde",
  "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
  "tokio",
  "tracing",
  "urlencoding",
+ "uuid",
 ]
 
 [[package]]
