@@ -242,12 +242,12 @@ jobs:
       - name: 汇总后端检查状态
         run: |
           failed=""
-          if [[ "${{ needs.backend-lint.result }}" == "failure" ]]; then failed="$failed lint"; fi
-          if [[ "${{ needs.backend-test-core.result }}" == "failure" ]]; then failed="$failed core"; fi
-          if [[ "${{ needs.backend-test-infra.result }}" == "failure" ]]; then failed="$failed infra"; fi
-          if [[ "${{ needs.backend-test-server.result }}" == "failure" ]]; then failed="$failed server"; fi
-          if [[ "${{ needs.backend-test-extra.result }}" == "failure" ]]; then failed="$failed extra"; fi
-          if [[ "${{ needs.backend-test-tauri.result }}" == "failure" ]]; then failed="$failed tauri"; fi
+          if [[ "${{ needs.backend-lint.result }}" != "success" && "${{ needs.backend-lint.result }}" != "skipped" ]]; then failed="$failed lint"; fi
+          if [[ "${{ needs.backend-test-core.result }}" != "success" && "${{ needs.backend-test-core.result }}" != "skipped" ]]; then failed="$failed core"; fi
+          if [[ "${{ needs.backend-test-infra.result }}" != "success" && "${{ needs.backend-test-infra.result }}" != "skipped" ]]; then failed="$failed infra"; fi
+          if [[ "${{ needs.backend-test-server.result }}" != "success" && "${{ needs.backend-test-server.result }}" != "skipped" ]]; then failed="$failed server"; fi
+          if [[ "${{ needs.backend-test-extra.result }}" != "success" && "${{ needs.backend-test-extra.result }}" != "skipped" ]]; then failed="$failed extra"; fi
+          if [[ "${{ needs.backend-test-tauri.result }}" != "success" && "${{ needs.backend-test-tauri.result }}" != "skipped" ]]; then failed="$failed tauri"; fi
           if [[ -n "$failed" ]]; then
             echo "::error ::后端检查失败，以下模块未通过：$failed"
             exit 1
