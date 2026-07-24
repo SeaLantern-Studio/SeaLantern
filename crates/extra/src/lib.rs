@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod backup;
 pub mod config;
 pub mod observability;
 
