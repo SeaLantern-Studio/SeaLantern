@@ -227,7 +227,15 @@ jobs:
 
   backend:
     name: 后端检查 (Rust)
-    needs: [backend-lint, backend-test-core, backend-test-infra, backend-test-server, backend-test-extra, backend-test-tauri]
+    needs:
+      [
+        backend-lint,
+        backend-test-core,
+        backend-test-infra,
+        backend-test-server,
+        backend-test-extra,
+        backend-test-tauri,
+      ]
     if: always()
     runs-on: ubuntu-22.04
     steps:
@@ -280,4 +288,3 @@ jobs:
 
       - name: 运行格式化并检查前端 Lint
         run: pnpm run fmt:check && pnpm run lint
-
