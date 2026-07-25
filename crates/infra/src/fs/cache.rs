@@ -147,7 +147,7 @@ fn read_optional(
     key: &SafeRelativePath,
     limit: DataLimit,
 ) -> Result<Option<Vec<u8>>, FsError> {
-    let metadata = match root.symlink_metadata(&key) {
+    let metadata = match root.symlink_metadata(key) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(FsError::io("read cache entry metadata", key.as_path(), error)),
@@ -166,7 +166,7 @@ fn read_optional(
     }
 
     let file = root
-        .open(&key)
+        .open(key)
         .map_err(|error| FsError::io("open cache entry", key.as_path(), error))?;
     let mut reader = file.take((limit.max_bytes() as u64).saturating_add(1));
     let mut bytes = Vec::new();

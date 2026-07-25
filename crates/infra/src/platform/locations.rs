@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use crate::observability;
 
 /// 标准安装的应用目录名（macOS 和 Windows MSI 安装使用）。
+#[cfg(target_os = "windows")]
 const APP_DIR_NAME: &str = "SeaLantern";
 
 /// Linux 平台的应用目录名（遵循 XDG 规范使用小写）。
