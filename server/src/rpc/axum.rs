@@ -6,14 +6,13 @@ use std::sync::Arc;
 use axum::{
     http::{header::HeaderName, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
-    Json, Router,
+    Json,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use crate::observability;
 
-use super::service::ConsoleCommandService;
 use super::{
     dispatch, RpcAccess, RpcContext, RpcError, RpcErrorCode, RpcMethod, RpcRequest, RpcRequestId,
     RpcResult, RpcTransport,
@@ -50,25 +49,6 @@ impl<A: Send + Sync + 'static> Clone for AxumRpcState<A> {
             access_resolver: Arc::clone(&self.access_resolver),
         }
     }
-}
-
-/// 组装当前所有已实现 RPC 方法的 Axum 路由。
-///
-/// 调用方可将返回的路由嵌套进更大的 Axum 应用，认证实现则通过
-/// [`HttpRpcAccessResolver`] 注入，避免 HTTP 传输默认获得写入服务器控制台的权限。
-pub fn build_router<S, A>(console_service: S, access_resolver: A) -> Router
-where
-    S: ConsoleCommandService + 'static,
-    A: HttpRpcAccessResolver,
-{
-    let mut router = Router::new();
-    crate::rpc_route!(
-        router,
-        crate::rpc::methods::server::SendConsoleCommand::new(console_service)
-    );
-    router.with_state(AxumRpcState {
-        access_resolver: Arc::new(access_resolver),
-    })
 }
 
 /// Axum 专用的 RPC 方法契约，扩展传输无关的 [`RpcMethod`]。
@@ -303,6 +283,7 @@ mod tests {
     use axum::{
         body::{to_bytes, Body},
         http::Request,
+        Router,
     };
     use serde_json::Value;
     use tower::ServiceExt;
@@ -329,16 +310,6 @@ mod tests {
                 .expect("recording service lock")
                 .push((instance_id.into(), command.into()));
             Ok(())
-        }
-    }
-
-    impl ConsoleCommandService for Arc<RecordingConsoleService> {
-        fn send_console_command(
-            &self,
-            instance_id: &str,
-            command: &str,
-        ) -> Result<(), ConsoleCommandServiceError> {
-            self.as_ref().send_console_command(instance_id, command)
         }
     }
 
@@ -370,12 +341,12 @@ mod tests {
 
     #[tokio::test]
     async fn dispatches_a_valid_http_request_through_the_rpc_method() {
-        let service = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
+        let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
         let state = AxumRpcState {
             access_resolver: Arc::new(AllowConsoleSend),
         };
         let mut router = Router::new();
-        rpc_route!(router, SendConsoleCommand::new(service));
+        rpc_route!(router, SendConsoleCommand::new(svc.clone()));
         let app = router.with_state(state);
         let response = app
             .oneshot(request(r#"{"instanceId":"alpha","command":"say hello"}"#))
@@ -390,14 +361,18 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["requestId"], "http-test-42");
         assert!(body["data"].is_null());
+        assert_eq!(
+            *svc.commands.lock().expect("recording service lock"),
+            vec![("alpha".into(), "say hello".into())]
+        );
     }
 
     #[tokio::test]
     async fn rejects_an_unprivileged_request_without_calling_the_service() {
-        let service = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
+        let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
         let state = AxumRpcState { access_resolver: Arc::new(DenyAll) };
         let mut router = Router::new();
-        rpc_route!(router, SendConsoleCommand::new(service));
+        rpc_route!(router, SendConsoleCommand::new(svc.clone()));
         let app = router.with_state(state);
 
         let response = app
@@ -412,16 +387,21 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "permission_denied");
         assert_eq!(body["requestId"], "http-test-42");
+        assert!(svc
+            .commands
+            .lock()
+            .expect("recording service lock")
+            .is_empty());
     }
 
     #[tokio::test]
     async fn maps_invalid_json_to_the_rpc_error_envelope() {
-        let service = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
+        let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
         let state = AxumRpcState {
             access_resolver: Arc::new(AllowConsoleSend),
         };
         let mut router = Router::new();
-        rpc_route!(router, SendConsoleCommand::new(service));
+        rpc_route!(router, SendConsoleCommand::new(svc.clone()));
         let app = router.with_state(state);
         let response = app
             .oneshot(request("not json"))
@@ -435,6 +415,11 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "invalid_argument");
         assert_eq!(body["requestId"], "http-test-42");
+        assert!(svc
+            .commands
+            .lock()
+            .expect("recording service lock")
+            .is_empty());
     }
 
     #[test]
@@ -446,13 +431,10 @@ mod tests {
 
     #[tokio::test]
     async fn build_router_dispatches_requests_through_the_public_entry() {
-        let service = RecordingConsoleService { commands: Mutex::new(Vec::new()) };
-        // 使用 build_router 公开入口，验证路由可正确响应 HTTP 请求
-        let app =
-            build_router::<RecordingConsoleService, AllowConsoleSend>(service, AllowConsoleSend);
+        let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
+        let services = crate::rpc::service::RpcServices::new(svc.clone());
+        let app = crate::rpc::router::build_router(services, AllowConsoleSend);
 
-        // 显式验证 Router 实现了 Service，调用 oneshot 前明确 body 类型
-        use tower::ServiceExt as _;
         let response = app
             .oneshot(request(r#"{"instanceId":"beta","command":"list"}"#))
             .await
@@ -466,12 +448,17 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["requestId"], "http-test-42");
         assert!(body["data"].is_null());
+        assert_eq!(
+            *svc.commands.lock().expect("recording service lock"),
+            vec![("beta".into(), "list".into())]
+        );
     }
 
     #[tokio::test]
     async fn build_router_rejects_unprivileged_requests() {
-        let service = RecordingConsoleService { commands: Mutex::new(Vec::new()) };
-        let app = build_router::<RecordingConsoleService, DenyAll>(service, DenyAll);
+        let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
+        let services = crate::rpc::service::RpcServices::new(svc.clone());
+        let app = crate::rpc::router::build_router(services, DenyAll);
 
         let response = app
             .oneshot(request(r#"{"instanceId":"alpha","command":"stop"}"#))
@@ -485,13 +472,18 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "permission_denied");
         assert_eq!(body["requestId"], "http-test-42");
+        assert!(svc
+            .commands
+            .lock()
+            .expect("recording service lock")
+            .is_empty());
     }
 
     #[tokio::test]
     async fn build_router_rejects_invalid_json() {
-        let service = RecordingConsoleService { commands: Mutex::new(Vec::new()) };
-        let app =
-            build_router::<RecordingConsoleService, AllowConsoleSend>(service, AllowConsoleSend);
+        let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
+        let services = crate::rpc::service::RpcServices::new(svc.clone());
+        let app = crate::rpc::router::build_router(services, AllowConsoleSend);
 
         let response = app
             .oneshot(request("not json"))

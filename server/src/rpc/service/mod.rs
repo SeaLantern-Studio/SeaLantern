@@ -4,9 +4,11 @@ use std::fmt::Display;
 
 mod console;
 mod runtime;
+pub(crate) mod services;
 
 pub use console::{ConsoleCommandService, ConsoleCommandServiceError};
 pub use runtime::ServerRuntime;
+pub use services::RpcServices;
 
 /// 由宿主实现的运行中实例控制台写入能力。
 ///
