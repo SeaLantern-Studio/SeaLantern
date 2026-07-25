@@ -3,7 +3,11 @@
 use std::fmt;
 use std::future::Future;
 
+use serde::de::{self, Deserialize, Deserializer};
+use serde::Deserialize as DeriveDeserialize;
+
 use crate::observability;
+use crate::rpc::axum::{RpcAxumMethod, RpcHttpMethod};
 use crate::rpc::service::{ConsoleCommandService, ConsoleCommandServiceError};
 use crate::rpc::{RpcContext, RpcError, RpcMethod, RpcMethodName, RpcPermission, RpcResult};
 
@@ -62,6 +66,19 @@ impl fmt::Debug for ConsoleCommandRequest {
     }
 }
 
+impl<'de> Deserialize<'de> for ConsoleCommandRequest {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(DeriveDeserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Raw {
+            instance_id: String,
+            command: String,
+        }
+        let raw = Raw::deserialize(d)?;
+        ConsoleCommandRequest::new(raw.instance_id, raw.command).map_err(de::Error::custom)
+    }
+}
+
 /// 将已验证请求交给受管服务器控制台的 RPC 方法。
 pub struct SendConsoleCommand<S> {
     service: S,
@@ -102,6 +119,10 @@ where
             result
         }
     }
+}
+
+impl<S: ConsoleCommandService> RpcAxumMethod for SendConsoleCommand<S> {
+    const HTTP_METHOD: RpcHttpMethod = RpcHttpMethod::Post;
 }
 
 fn validate_instance_id(instance_id: &str) -> RpcResult<()> {

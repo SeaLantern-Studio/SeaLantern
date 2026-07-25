@@ -2,6 +2,8 @@
 
 use std::future::Future;
 
+use serde::Serialize;
+
 use crate::observability;
 
 use super::{
@@ -21,7 +23,7 @@ pub trait RpcMethod {
     /// 已完成传输反序列化的输入类型。
     type Request: Send;
     /// 可由传输适配器序列化的输出类型。
-    type Response: Send;
+    type Response: Serialize + Send;
 
     /// 执行方法。
     fn call(
