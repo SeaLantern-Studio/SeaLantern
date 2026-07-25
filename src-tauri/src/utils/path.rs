@@ -28,7 +28,7 @@ fn is_msi_installation() -> bool {
 ///
 /// 根据不同平台和安装方式返回合适的存储路径：
 /// - Docker 环境：./data
-/// - Windows MSI 安装：%AppData%\Sea Lantern
+/// - Windows MSI 安装：%AppData%\SeaLantern
 /// - Windows 便携版：程序所在目录
 /// - macOS: ~/Library/Application Support/Sea Lantern
 /// - Linux: ~/.local/share/sea-lantern

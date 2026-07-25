@@ -115,7 +115,7 @@ fn write_archive(
             .read_dir(if directory.as_os_str().is_empty() {
                 Path::new(".")
             } else {
-                directory.as_path()
+                &directory
             })
             .map_err(|error| {
                 ArchiveError::io("read ZIP source directory", source_path.join(&directory), error)

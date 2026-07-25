@@ -50,7 +50,7 @@ impl FileCache {
         let root = Arc::clone(&self.root);
         let key = SafeRelativePath::parse(key)?;
         let bytes = bytes.to_vec();
-        let path = self.root_path.join(key.as_path());
+        let path = self.root_path.join(&key);
         let result =
             run_blocking("write cache entry", move || write_atomic_in(&root, &key, &bytes)).await;
         trace_cache_result("write cache entry", &path, &result);
@@ -65,7 +65,7 @@ impl FileCache {
     ) -> Result<Option<Vec<u8>>, FsError> {
         let root = Arc::clone(&self.root);
         let key = SafeRelativePath::parse(key)?;
-        let path = self.root_path.join(key.as_path());
+        let path = self.root_path.join(&key);
         let result =
             run_blocking("read cache entry", move || read_optional(&root, &key, limit)).await;
         trace_cache_result("read cache entry", &path, &result);
@@ -81,9 +81,9 @@ impl FileCache {
     ) -> Result<Option<Vec<u8>>, FsError> {
         let root = Arc::clone(&self.root);
         let key = SafeRelativePath::parse(key)?;
-        let path = self.root_path.join(key.as_path());
+        let path = self.root_path.join(&key);
         let result = run_blocking("read fresh cache entry", move || {
-            let metadata = match root.symlink_metadata(key.as_path()) {
+            let metadata = match root.symlink_metadata(&key) {
                 Ok(metadata) => metadata,
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
                 Err(error) => {
@@ -92,7 +92,7 @@ impl FileCache {
             };
             if metadata.file_type().is_symlink() {
                 return Err(FsError::InvalidPath {
-                    path: key.as_path().to_path_buf(),
+                    path: key.to_path_buf(),
                     reason: "cache entry must not be a symbolic link",
                 });
             }
@@ -147,26 +147,26 @@ fn read_optional(
     key: &SafeRelativePath,
     limit: DataLimit,
 ) -> Result<Option<Vec<u8>>, FsError> {
-    let metadata = match root.symlink_metadata(key.as_path()) {
+    let metadata = match root.symlink_metadata(&key) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(FsError::io("read cache entry metadata", key.as_path(), error)),
     };
     if metadata.file_type().is_symlink() {
         return Err(FsError::InvalidPath {
-            path: key.as_path().to_path_buf(),
+            path: key.to_path_buf(),
             reason: "cache entry must not be a symbolic link",
         });
     }
     if !metadata.file_type().is_file() {
         return Err(FsError::InvalidPath {
-            path: key.as_path().to_path_buf(),
+            path: key.to_path_buf(),
             reason: "cache entry is not a regular file",
         });
     }
 
     let file = root
-        .open(key.as_path())
+        .open(&key)
         .map_err(|error| FsError::io("open cache entry", key.as_path(), error))?;
     let mut reader = file.take((limit.max_bytes() as u64).saturating_add(1));
     let mut bytes = Vec::new();
@@ -175,7 +175,7 @@ fn read_optional(
         .map_err(|error| FsError::io("read cache entry", key.as_path(), error))?;
     if bytes.len() > limit.max_bytes() {
         return Err(FsError::DataLimitExceeded {
-            path: key.as_path().to_path_buf(),
+            path: key.to_path_buf(),
             limit: limit.max_bytes(),
             observed_at_least: bytes.len(),
         });

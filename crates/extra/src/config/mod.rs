@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-pub use sealantern_infra::fs::{get_app_data_dir, get_or_create_app_data_dir};
+pub use sealantern_infra::platform::{get_app_data_dir, get_or_create_app_data_dir};
 
 /// 应用程序主配置
 #[derive(Debug, Clone, Serialize, Deserialize)]

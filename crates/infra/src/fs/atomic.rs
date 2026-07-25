@@ -43,19 +43,16 @@ pub(crate) fn write_atomic_in(
     path: &SafeRelativePath,
     contents: &[u8],
 ) -> Result<(), FsError> {
-    let parent = path.as_path().parent().unwrap_or_else(|| Path::new(""));
+    let parent = path.parent().unwrap_or_else(|| Path::new(""));
     if !parent.as_os_str().is_empty() {
         root.create_dir_all(parent)
             .map_err(|error| FsError::io("create cache directory", path.as_path(), error))?;
     }
 
-    let file_name = path
-        .as_path()
-        .file_name()
-        .ok_or_else(|| FsError::InvalidPath {
-            path: path.as_path().to_path_buf(),
-            reason: "destination has no file name",
-        })?;
+    let file_name = path.file_name().ok_or_else(|| FsError::InvalidPath {
+        path: path.to_path_buf(),
+        reason: "destination has no file name",
+    })?;
     let temporary = parent.join(format!(".{}.{}.tmp", file_name.to_string_lossy(), Uuid::new_v4()));
 
     let write_result = (|| {
@@ -68,10 +65,9 @@ pub(crate) fn write_atomic_in(
             .map_err(|error| FsError::io("write cache temporary file", &temporary, error))?;
         file.sync_all()
             .map_err(|error| FsError::io("sync cache temporary file", &temporary, error))?;
-        root.rename(&temporary, root, path.as_path())
-            .map_err(|error| {
-                FsError::io("atomically replace cache entry", path.as_path(), error)
-            })?;
+        root.rename(&temporary, root, path).map_err(|error| {
+            FsError::io("atomically replace cache entry", path.as_path(), error)
+        })?;
         Ok(())
     })();
     if write_result.is_err() {
