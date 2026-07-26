@@ -1,9 +1,9 @@
 //! 应用更新相关的命令。
 
 use tauri::{command, AppHandle, Emitter};
-use tracing::{debug, info};
+use tracing::info;
 
-use sealantern_extra::update::{UpdateInfo, PendingUpdate, get_github_config, UPDATE_HTTP_USER_AGENT, is_arch_linux, fetch_cnb_release, fetch_github_release, get_update_cache_dir, resolve_download_candidate_by_version, check_pending_update, clear_pending_update, write_pending_update, get_pending_update_file, INSTALL_IN_PROGRESS, DownloadProgress};
+use sealantern_extra::update::{UpdateInfo, PendingUpdate, UPDATE_HTTP_USER_AGENT, get_update_cache_dir, resolve_download_candidate_by_version, check_pending_update, clear_pending_update, write_pending_update, get_pending_update_file, INSTALL_IN_PROGRESS, DownloadProgress};
 
 use futures::StreamExt;
 use sha2::{Digest, Sha256};
@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 
 #[cfg(target_os = "linux")]
-use sealantern_extra::update::check_aur_update;
+use sealantern_extra::update::{check_aur_update, is_arch_linux, fetch_cnb_release, fetch_github_release, get_github_config};
 
 #[cfg(target_os = "windows")]
 use sealantern_extra::update::spawn_elevated_windows_process;
@@ -55,14 +55,11 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
 
     #[cfg(not(debug_assertions))]
     {
-        debug!("=== 检查更新 ===");
-        debug!(current_version = %current_version, target_os = %std::env::consts::OS; "Checking for updates");
+        info!(current_version = %current_version, target_os = %std::env::consts::OS; "检查更新");
 
         #[cfg(target_os = "linux")]
         {
-            debug!("Linux 条件编译通过");
             let is_arch = is_arch_linux();
-            debug!(is_arch; "Arch Linux detection result");
 
             if is_arch {
                 info!("检测到 Arch Linux，使用 AUR 更新检查");
