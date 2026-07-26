@@ -2,6 +2,7 @@
 
 pub mod config;
 pub mod observability;
+pub mod update;
 
 #[cfg(feature = "online-tunnel")]
 pub mod online;

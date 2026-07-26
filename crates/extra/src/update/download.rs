@@ -2,11 +2,10 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
-use crate::hardcode_data::update_sources::UPDATE_HTTP_USER_AGENT;
 use sha2::{Digest, Sha256};
 use std::io::Read;
-use tauri::{AppHandle, Emitter};
 
+use super::constants::UPDATE_HTTP_USER_AGENT;
 use super::types::DownloadProgress;
 
 /// 从 URL 提取文件名
@@ -38,9 +37,8 @@ pub fn calculate_sha256(file_path: &PathBuf) -> Result<String, std::io::Error> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-/// 下载更新文件
-pub async fn download_update_file(
-    app: AppHandle,
+/// 下载更新文件 (不包含 Tauri 事件发送)
+pub async fn download_update_file_without_events(
     url: String,
     expected_hash: Option<String>,
     cache_dir: PathBuf,
@@ -66,31 +64,15 @@ pub async fn download_update_file(
         return Err(format!("Download failed with status: {}", response.status()));
     }
 
-    let total_size = response.content_length().unwrap_or(0);
-    let mut downloaded = 0_u64;
-
     let mut file = File::create(&file_path).map_err(|e| format!("Failed to create file: {}", e))?;
 
-    let mut stream = response.bytes_stream();
-    use futures::StreamExt;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
 
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("Failed to read chunk: {}", e))?;
-        file.write_all(&chunk)
-            .map_err(|e| format!("Failed to write chunk: {}", e))?;
-
-        downloaded += chunk.len() as u64;
-        let percent = if total_size > 0 {
-            (downloaded as f64 / total_size as f64) * 100.0
-        } else {
-            0.0
-        };
-
-        let _ = app.emit(
-            "update-download-progress",
-            DownloadProgress { downloaded, total: total_size, percent },
-        );
-    }
+    file.write_all(&bytes)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
 
     file.flush()
         .map_err(|e| format!("Failed to flush file: {}", e))?;
@@ -112,4 +94,14 @@ pub async fn download_update_file(
     }
 
     Ok(file_path_str)
+}
+
+/// 计算下载进度
+pub fn calculate_progress(downloaded: u64, total: u64) -> DownloadProgress {
+    let percent = if total > 0 {
+        (downloaded as f64 / total as f64) * 100.0
+    } else {
+        0.0
+    };
+    DownloadProgress { downloaded, total, percent }
 }

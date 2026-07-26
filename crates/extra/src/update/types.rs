@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::hardcode_data::update_sources::{
-    UPDATE_GITHUB_API_BASE, UPDATE_GITHUB_OWNER, UPDATE_GITHUB_REPO,
-};
+use super::constants::{UPDATE_GITHUB_API_BASE, UPDATE_GITHUB_OWNER, UPDATE_GITHUB_REPO};
 
 /// 更新信息结构体
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -34,7 +32,6 @@ pub struct PendingUpdate {
 
 /// 发布响应结构体
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)] // 发布调用
 pub struct ReleaseResponse {
     pub tag_name: String,
     pub body: Option<String>,
@@ -45,14 +42,12 @@ pub struct ReleaseResponse {
 
 /// 发布资源结构体
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)] // 发布调用
 pub struct ReleaseAsset {
     pub name: String,
     pub browser_download_url: String,
 }
 
 /// 仓库配置结构体
-#[allow(dead_code)] // 发布调用
 pub struct RepoConfig {
     pub owner: &'static str,
     pub repo: &'static str,
@@ -60,14 +55,12 @@ pub struct RepoConfig {
 }
 
 impl RepoConfig {
-    #[allow(dead_code)] // 发布调用
     pub fn api_url(&self) -> String {
         format!("{}/{}/{}/releases/latest", self.api_base, self.owner, self.repo)
     }
 }
 
 /// 获取 GitHub 仓库配置
-#[allow(dead_code)] // 发布调用
 pub fn get_github_config() -> RepoConfig {
     RepoConfig {
         owner: UPDATE_GITHUB_OWNER,
