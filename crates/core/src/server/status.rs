@@ -31,25 +31,42 @@ impl ServerStatus {
 }
 
 // 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
-#[cfg(all(test, not(unix)))]
+#[cfg(test)]
 mod tests {
     use std::process::Command;
 
     use super::{ServerProcessState, ServerStatus};
     use crate::process::Daemon;
 
+    #[cfg(unix)]
+    fn exit_successfully_command() -> Command {
+        let mut command = Command::new("sh");
+        command.args(["-c", "exit 0"]);
+        command
+    }
+
+    #[cfg(windows)]
     fn exit_successfully_command() -> Command {
         let mut command = Command::new("cmd");
         command.args(["/C", "exit 0"]);
         command
     }
 
+    #[cfg(unix)]
+    fn long_running_command() -> Command {
+        let mut command = Command::new("sh");
+        command.args(["-c", "sleep 30"]);
+        command
+    }
+
+    #[cfg(windows)]
     fn long_running_command() -> Command {
         let mut command = Command::new("cmd");
         command.args(["/C", "ping -n 30 127.0.0.1 > NUL"]);
         command
     }
 
+    #[cfg_attr(ci_skip_validation, ignore)]
     #[test]
     fn wraps_a_running_daemon() {
         let mut command = long_running_command();
@@ -65,6 +82,7 @@ mod tests {
             .expect("terminate test process tree");
     }
 
+    #[cfg_attr(ci_skip_validation, ignore)]
     #[test]
     fn wraps_a_finished_daemon_exit_status() {
         let mut command = exit_successfully_command();
