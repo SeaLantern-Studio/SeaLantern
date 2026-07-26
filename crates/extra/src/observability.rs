@@ -92,3 +92,56 @@ pub fn market_request_failed(operation: &str, source: &str, error: &dyn Display)
         "market request failed"
     );
 }
+
+/// 在线隧道模块的 tracing 目标。
+pub const ONLINE_TARGET: &str = "sealantern.extra.online";
+
+/// Event: 在线隧道已启动。
+pub const EVENT_ONLINE_TUNNEL_STARTED: &str = "online_tunnel_started";
+/// Event: 在线隧道已停止。
+pub const EVENT_ONLINE_TUNNEL_STOPPED: &str = "online_tunnel_stopped";
+/// Event: 在线隧道操作失败。
+pub const EVENT_ONLINE_TUNNEL_FAILED: &str = "online_tunnel_failed";
+/// Event: 在线隧道报告非致命错误。
+pub const EVENT_ONLINE_TUNNEL_EVENT_ERROR: &str = "online_tunnel_event_error";
+
+/// 记录在线隧道启动完成，不记录票据、密码或身份密钥。
+pub fn online_tunnel_started(mode: &str) {
+    tracing::info!(
+        target: ONLINE_TARGET,
+        event_name = EVENT_ONLINE_TUNNEL_STARTED,
+        mode,
+        "online tunnel started"
+    );
+}
+
+/// 记录在线隧道停止完成。
+pub fn online_tunnel_stopped(mode: &str) {
+    tracing::info!(
+        target: ONLINE_TARGET,
+        event_name = EVENT_ONLINE_TUNNEL_STOPPED,
+        mode,
+        "online tunnel stopped"
+    );
+}
+
+/// 记录在线隧道操作失败，不记录调用输入中的敏感字段。
+pub fn online_tunnel_failed(operation: &str, error: &dyn Display) {
+    tracing::error!(
+        target: ONLINE_TARGET,
+        event_name = EVENT_ONLINE_TUNNEL_FAILED,
+        operation,
+        error = %error,
+        "online tunnel operation failed"
+    );
+}
+
+/// 记录底层隧道报告的非致命错误事件。
+pub fn online_tunnel_event_error(error: &str) {
+    tracing::warn!(
+        target: ONLINE_TARGET,
+        event_name = EVENT_ONLINE_TUNNEL_EVENT_ERROR,
+        error,
+        "online tunnel reported a non-fatal error"
+    );
+}
