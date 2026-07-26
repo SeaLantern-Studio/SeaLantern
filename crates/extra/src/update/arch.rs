@@ -4,6 +4,8 @@ use super::constants::{AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL, PLUGIN_MARKET
 use super::types::UpdateInfo;
 #[cfg(target_os = "linux")]
 use super::version::compare_versions;
+#[cfg(target_os = "linux")]
+use tracing::{debug, info};
 
 /// 检查是否为 Arch Linux 系统
 #[cfg(target_os = "linux")]
@@ -92,10 +94,8 @@ pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, Strin
         format!("已是最新版本 (Arch Linux)\n当前版本: {}", current_version)
     };
 
-    println!("=== AUR 检查结果 ===");
-    println!("has_update: {}", has_update);
-    println!("source: arch-aur");
-    println!("latest_version: {}", aur_version);
+    debug!("=== AUR 检查结果 ===");
+    debug!(has_update, source = "arch-aur", latest_version = %aur_version; "AUR update check completed");
 
     Ok(UpdateInfo {
         has_update,
