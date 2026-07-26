@@ -91,12 +91,6 @@ impl fmt::Debug for TunnelTicket {
     }
 }
 
-impl fmt::Display for TunnelTicket {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(&self.0)
-    }
-}
-
 /// Host 节点使用的 32 字节稳定身份密钥。
 #[derive(Clone)]
 pub struct TunnelIdentity([u8; 32]);
@@ -227,3 +221,15 @@ impl fmt::Display for OnlineTunnelError {
 }
 
 impl std::error::Error for OnlineTunnelError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ticket_debug_output_is_redacted() {
+        let ticket = TunnelTicket::from_provider("sculk://sensitive-ticket");
+
+        assert!(!format!("{ticket:?}").contains(ticket.as_str()));
+    }
+}

@@ -14,16 +14,13 @@ pub struct OnlineTunnelService {
     state: Arc<Mutex<ServiceState>>,
 }
 
+#[derive(Default)]
 enum ServiceState {
+    #[default]
     Idle,
     Starting,
+    Stopping,
     Active(ActiveTunnel),
-}
-
-impl Default for ServiceState {
-    fn default() -> Self {
-        Self::Idle
-    }
 }
 
 impl OnlineTunnelService {
@@ -60,29 +57,28 @@ impl OnlineTunnelService {
     }
 
     pub async fn stop(&self) -> Result<TunnelStatus, OnlineTunnelError> {
-        let active = {
-            let mut state = self.state.lock().await;
-            match std::mem::replace(&mut *state, ServiceState::Idle) {
-                ServiceState::Active(active) => active,
-                ServiceState::Idle => return Err(OnlineTunnelError::NotRunning),
-                ServiceState::Starting => {
-                    *state = ServiceState::Starting;
-                    return Err(OnlineTunnelError::Busy);
-                }
-            }
-        };
-
-        let mode = active.mode;
-        active.close().await;
-        crate::observability::online_tunnel_stopped(mode.as_str());
+        let active = self.begin_stop().await?;
+        self.finish_stop(active).await;
         Ok(TunnelStatus::idle())
+    }
+
+    /// 幂等关闭服务持有的活动隧道，供宿主退出流程调用。
+    pub async fn shutdown(&self) -> Result<(), OnlineTunnelError> {
+        match self.begin_stop().await {
+            Ok(active) => {
+                self.finish_stop(active).await;
+                Ok(())
+            }
+            Err(OnlineTunnelError::NotRunning) => Ok(()),
+            Err(error) => Err(error),
+        }
     }
 
     pub async fn status(&self) -> Result<TunnelStatus, OnlineTunnelError> {
         let state = self.state.lock().await;
         match &*state {
             ServiceState::Idle => Ok(TunnelStatus::idle()),
-            ServiceState::Starting => Err(OnlineTunnelError::Busy),
+            ServiceState::Starting | ServiceState::Stopping => Err(OnlineTunnelError::Busy),
             ServiceState::Active(active) => active.status(),
         }
     }
@@ -92,7 +88,7 @@ impl OnlineTunnelService {
         match &*state {
             ServiceState::Active(active) => Ok(active.subscribe()),
             ServiceState::Idle => Err(OnlineTunnelError::NotRunning),
-            ServiceState::Starting => Err(OnlineTunnelError::Busy),
+            ServiceState::Starting | ServiceState::Stopping => Err(OnlineTunnelError::Busy),
         }
     }
 
@@ -103,15 +99,47 @@ impl OnlineTunnelService {
                 *state = ServiceState::Starting;
                 Ok(())
             }
-            ServiceState::Starting | ServiceState::Active(_) => Err(OnlineTunnelError::Busy),
+            ServiceState::Starting | ServiceState::Stopping | ServiceState::Active(_) => {
+                Err(OnlineTunnelError::Busy)
+            }
         }
     }
 
     async fn reset_starting(&self) {
         let mut state = self.state.lock().await;
-        if matches!(*state, ServiceState::Starting) {
+        if matches!(&*state, ServiceState::Starting) {
             *state = ServiceState::Idle;
         }
+    }
+
+    async fn begin_stop(&self) -> Result<ActiveTunnel, OnlineTunnelError> {
+        let mut state = self.state.lock().await;
+        match std::mem::replace(&mut *state, ServiceState::Stopping) {
+            ServiceState::Active(active) => Ok(active),
+            ServiceState::Idle => {
+                *state = ServiceState::Idle;
+                Err(OnlineTunnelError::NotRunning)
+            }
+            ServiceState::Starting => {
+                *state = ServiceState::Starting;
+                Err(OnlineTunnelError::Busy)
+            }
+            ServiceState::Stopping => {
+                *state = ServiceState::Stopping;
+                Err(OnlineTunnelError::Busy)
+            }
+        }
+    }
+
+    async fn finish_stop(&self, active: ActiveTunnel) {
+        let mode = active.mode;
+        active.close().await;
+
+        let mut state = self.state.lock().await;
+        if matches!(&*state, ServiceState::Stopping) {
+            *state = ServiceState::Idle;
+        }
+        crate::observability::online_tunnel_stopped(mode.as_str());
     }
 
     async fn finish_start(&self, active: ActiveTunnel) -> Result<TunnelStatus, OnlineTunnelError> {
@@ -126,7 +154,7 @@ impl OnlineTunnelService {
         };
         let mode = active.mode;
         let mut state = self.state.lock().await;
-        if !matches!(*state, ServiceState::Starting) {
+        if !matches!(&*state, ServiceState::Starting) {
             drop(state);
             active.close().await;
             return Err(OnlineTunnelError::Busy);
@@ -154,5 +182,26 @@ mod tests {
 
         assert_eq!(service.stop().await, Err(OnlineTunnelError::NotRunning));
         assert!(matches!(service.subscribe().await, Err(OnlineTunnelError::NotRunning)));
+    }
+
+    #[tokio::test]
+    async fn stopping_state_blocks_new_operations() {
+        let service = OnlineTunnelService::default();
+        *service.state.lock().await = ServiceState::Stopping;
+
+        assert_eq!(service.begin_start().await, Err(OnlineTunnelError::Busy));
+        assert!(matches!(service.begin_stop().await, Err(OnlineTunnelError::Busy)));
+        assert_eq!(service.status().await, Err(OnlineTunnelError::Busy));
+        assert!(matches!(service.subscribe().await, Err(OnlineTunnelError::Busy)));
+    }
+
+    #[tokio::test]
+    async fn shutdown_is_idempotent_while_idle() {
+        let service = OnlineTunnelService::default();
+
+        service
+            .shutdown()
+            .await
+            .expect("idle shutdown must succeed");
     }
 }
