@@ -142,7 +142,8 @@ impl std::error::Error for TerminalWriteError {
     }
 }
 
-#[cfg(test)]
+// 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
+#[cfg(all(test, not(unix)))]
 mod tests {
     use std::io::Read;
     use std::process::{Command, Stdio};

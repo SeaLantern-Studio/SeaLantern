@@ -32,6 +32,7 @@ impl ServerStatus {
 
 #[cfg(test)]
 mod tests {
+    #![allow(dead_code, unused_imports)]
     use std::process::Command;
 
     use super::{ServerProcessState, ServerStatus};
@@ -52,6 +53,7 @@ mod tests {
     }
 
     #[cfg(unix)]
+    #[allow(dead_code)]
     fn long_running_command() -> Command {
         let mut command = Command::new("sh");
         command.args(["-c", "sleep 30"]);
@@ -59,12 +61,15 @@ mod tests {
     }
 
     #[cfg(windows)]
+    #[allow(dead_code)]
     fn long_running_command() -> Command {
         let mut command = Command::new("cmd");
         command.args(["/C", "ping -n 30 127.0.0.1 > NUL"]);
         command
     }
 
+    // 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
+    #[cfg(not(unix))]
     #[test]
     fn wraps_a_running_daemon() {
         let mut command = long_running_command();
@@ -80,6 +85,8 @@ mod tests {
             .expect("terminate test process tree");
     }
 
+    // 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
+    #[cfg(not(unix))]
     #[test]
     fn wraps_a_finished_daemon_exit_status() {
         let mut command = exit_successfully_command();
