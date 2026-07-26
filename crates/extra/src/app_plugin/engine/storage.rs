@@ -2,18 +2,19 @@ use std::{
     collections::BTreeMap,
     fs,
     io::ErrorKind,
-    io::Write,
+    io::Read,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
-use atomicwrites::{AllowOverwrite, AtomicFile};
 use mlua::{Lua, Value};
 use serde_json::Value as JsonValue;
 
 use crate::app_plugin::AppPluginError;
 
 const MAX_DEPTH: usize = 64;
+const MAX_STORAGE_VALUE_BYTES: usize = 256 * 1024;
+const MAX_STORAGE_FILE_BYTES: usize = 1024 * 1024;
 
 #[derive(Clone)]
 pub(super) struct PluginStorage {
@@ -58,27 +59,37 @@ impl PluginStorage {
     }
 
     pub(super) fn set(&self, key: String, value: Value) -> mlua::Result<()> {
-        let key = validate_key(key)?;
-        let value = lua_to_json(&value, 0)?;
         self.report_failure(
             "set",
-            self.with_lock(|| {
-                let mut values = self.read()?;
-                values.insert(key, value);
-                self.write(&values)
-            }),
+            (|| {
+                let key = validate_key(key)?;
+                let value = lua_to_json(&value, 0)?;
+                let value_size = serde_json::to_vec(&value)
+                    .map_err(|error| storage_error("serialize value", error))?
+                    .len();
+                if value_size > MAX_STORAGE_VALUE_BYTES {
+                    return Err(storage_limit("value", MAX_STORAGE_VALUE_BYTES));
+                }
+                self.with_lock(|| {
+                    let mut values = self.read()?;
+                    values.insert(key, value);
+                    self.write(&values)
+                })
+            })(),
         )
     }
 
     pub(super) fn remove(&self, key: String) -> mlua::Result<()> {
-        let key = validate_key(key)?;
         self.report_failure(
             "remove",
-            self.with_lock(|| {
-                let mut values = self.read()?;
-                values.remove(&key);
-                self.write(&values)
-            }),
+            (|| {
+                let key = validate_key(key)?;
+                self.with_lock(|| {
+                    let mut values = self.read()?;
+                    values.remove(&key);
+                    self.write(&values)
+                })
+            })(),
         )
     }
 
@@ -91,33 +102,39 @@ impl PluginStorage {
     }
 
     fn report_failure<T>(&self, operation: &str, result: mlua::Result<T>) -> mlua::Result<T> {
-        if let Err(error) = &result {
-            crate::observability::app_plugin_storage_failed(&self.plugin_id, operation, error);
+        if let Err(_error) = &result {
+            crate::observability::app_plugin_storage_failed(&self.plugin_id, operation);
         }
         result
     }
 
     fn read(&self) -> mlua::Result<BTreeMap<String, JsonValue>> {
-        match fs::read_to_string(&*self.path) {
-            Ok(content) => serde_json::from_str(&content).map_err(|error| {
-                mlua::Error::runtime(format!("failed to parse plugin storage: {error}"))
-            }),
-            Err(error) if error.kind() == ErrorKind::NotFound => Ok(BTreeMap::new()),
-            Err(error) => Err(storage_error("read storage", error)),
+        let file = match fs::File::open(&*self.path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(BTreeMap::new()),
+            Err(error) => return Err(storage_error("open storage", error)),
+        };
+        let mut bytes = Vec::with_capacity(MAX_STORAGE_FILE_BYTES.min(8 * 1024));
+        file.take((MAX_STORAGE_FILE_BYTES + 1) as u64)
+            .read_to_end(&mut bytes)
+            .map_err(|error| storage_error("read storage", error))?;
+        if bytes.len() > MAX_STORAGE_FILE_BYTES {
+            return Err(storage_limit("file", MAX_STORAGE_FILE_BYTES));
         }
+        let content = String::from_utf8(bytes)
+            .map_err(|error| storage_error("decode storage as UTF-8", error))?;
+        serde_json::from_str(&content).map_err(|error| {
+            mlua::Error::runtime(format!("failed to parse plugin storage: {error}"))
+        })
     }
 
     fn write(&self, values: &BTreeMap<String, JsonValue>) -> mlua::Result<()> {
         let content = serde_json::to_vec_pretty(values)
             .map_err(|error| storage_error("serialize storage", error))?;
-        let parent = self
-            .path
-            .parent()
-            .ok_or_else(|| mlua::Error::runtime("plugin storage path has no parent directory"))?;
-        fs::create_dir_all(parent)
-            .map_err(|error| storage_error("create storage directory", error))?;
-        AtomicFile::new(&*self.path, AllowOverwrite)
-            .write(|file| file.write_all(&content))
+        if content.len() > MAX_STORAGE_FILE_BYTES {
+            return Err(storage_limit("file", MAX_STORAGE_FILE_BYTES));
+        }
+        sealantern_infra::fs::write_atomic_blocking(&*self.path, &content)
             .map_err(|error| storage_error("replace storage", error))
     }
 }
@@ -137,6 +154,10 @@ fn storage_error(operation: &'static str, error: impl std::fmt::Display) -> mlua
     mlua::Error::runtime(
         AppPluginError::Storage { operation, message: error.to_string() }.to_string(),
     )
+}
+
+fn storage_limit(subject: &str, limit: usize) -> mlua::Error {
+    mlua::Error::runtime(format!("plugin storage {subject} exceeds the {limit}-byte limit"))
 }
 
 fn lua_to_json(value: &Value, depth: usize) -> mlua::Result<JsonValue> {

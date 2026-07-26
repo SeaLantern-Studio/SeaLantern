@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[derive(Debug)]
 pub enum AppPluginError {
     /// The plugin targets an API that predates the breaking v2 contract.
-    ApiVersionTooOld,
+    ApiVersionTooOld { found: Option<u32> },
     /// The plugin targets an API newer than this host supports.
     UnsupportedApiVersion { found: u32, supported: u32 },
     /// The manifest is not valid JSON or does not satisfy the v2 schema.
@@ -25,12 +25,14 @@ pub enum AppPluginError {
         operation: &'static str,
         message: String,
     },
+    /// A plugin script exhausted the instruction budget for one execution phase.
+    ExecutionLimit { operation: &'static str },
 }
 
 impl fmt::Display for AppPluginError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ApiVersionTooOld => formatter.write_str("版本过旧"),
+            Self::ApiVersionTooOld { .. } => formatter.write_str("版本过旧"),
             Self::UnsupportedApiVersion { found, supported } => write!(
                 formatter,
                 "unsupported plugin API version {found}; this host supports version {supported}"
@@ -54,11 +56,32 @@ impl fmt::Display for AppPluginError {
             Self::Storage { operation, message } => {
                 write!(formatter, "plugin storage failed to {operation}: {message}")
             }
+            Self::ExecutionLimit { operation } => {
+                write!(formatter, "plugin execution limit exceeded during {operation}")
+            }
         }
     }
 }
 
 impl std::error::Error for AppPluginError {}
+
+impl AppPluginError {
+    /// 返回可安全写入结构化日志的稳定错误类别。
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::ApiVersionTooOld { .. } => "api_version_too_old",
+            Self::UnsupportedApiVersion { .. } => "unsupported_api_version",
+            Self::MalformedManifest { .. } => "malformed_manifest",
+            Self::InvalidPath { .. } => "invalid_path",
+            Self::InvalidManifest { .. } => "invalid_manifest",
+            Self::UnsupportedCapability { .. } => "unsupported_capability",
+            Self::Io { .. } => "io",
+            Self::Engine(_) => "engine",
+            Self::Storage { .. } => "storage",
+            Self::ExecutionLimit { .. } => "execution_limit",
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -66,7 +89,7 @@ mod tests {
 
     #[test]
     fn old_api_message_is_stable() {
-        assert_eq!(AppPluginError::ApiVersionTooOld.to_string(), "版本过旧");
+        assert_eq!(AppPluginError::ApiVersionTooOld { found: None }.to_string(), "版本过旧");
     }
 
     #[test]

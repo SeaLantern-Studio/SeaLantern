@@ -7,20 +7,27 @@ mod storage;
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
-use mlua::{Lua, LuaOptions, StdLib, Table, Value};
+use mlua::{HookTriggers, Lua, LuaOptions, StdLib, Table, Value, VmState};
 
 use crate::app_plugin::{AppPluginError, PluginManifest, PluginPermission};
 use crate::observability;
 
 use self::storage::PluginStorage;
 
+const EXECUTION_HOOK_INTERVAL: u32 = 1_000;
+const MAX_EXECUTION_INSTRUCTIONS: u64 = 1_000_000;
+const MAX_LUA_MEMORY_BYTES: usize = 8 * 1024 * 1024;
+const EXECUTION_LIMIT_MESSAGE: &str = "plugin execution instruction budget exhausted";
+
 pub struct PluginEngine {
     lua: Lua,
     plugin_id: String,
     plugin_dir: PathBuf,
     main: String,
+    execution_budget: Arc<Mutex<Option<u64>>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -48,16 +55,38 @@ impl PluginEngine {
         plugin_dir: &Path,
         data_dir: &Path,
     ) -> Result<Self, AppPluginError> {
+        // Hook 只作用于当前 Lua 线程，因此首版不暴露 coroutine 以避免绕过执行预算。
         let lua = Lua::new_with(
-            StdLib::TABLE | StdLib::STRING | StdLib::MATH | StdLib::UTF8 | StdLib::COROUTINE,
+            StdLib::TABLE | StdLib::STRING | StdLib::MATH | StdLib::UTF8,
             LuaOptions::default(),
         )
         .map_err(engine_error)?;
+        lua.set_memory_limit(MAX_LUA_MEMORY_BYTES)
+            .map_err(engine_error)?;
+        let execution_budget = Arc::new(Mutex::new(None));
+        let hook_budget = Arc::clone(&execution_budget);
+        lua.set_hook(
+            HookTriggers::new().every_nth_instruction(EXECUTION_HOOK_INTERVAL),
+            move |_, _| {
+                let mut remaining = hook_budget.lock().map_err(|_| {
+                    mlua::Error::runtime("plugin execution budget lock is poisoned")
+                })?;
+                let Some(remaining) = remaining.as_mut() else {
+                    return Ok(VmState::Continue);
+                };
+                if *remaining <= u64::from(EXECUTION_HOOK_INTERVAL) {
+                    return Err(mlua::Error::runtime(EXECUTION_LIMIT_MESSAGE));
+                }
+                *remaining -= u64::from(EXECUTION_HOOK_INTERVAL);
+                Ok(VmState::Continue)
+            },
+        );
         let engine = Self {
             lua,
             plugin_id: manifest.id.clone(),
             plugin_dir: plugin_dir.to_path_buf(),
             main: manifest.main.clone(),
+            execution_budget,
         };
         engine.install_sl(manifest, data_dir)?;
         Ok(engine)
@@ -73,37 +102,24 @@ impl PluginEngine {
         })?;
         let source =
             String::from_utf8_lossy(source.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&source));
-        self.lua
-            .load(source.as_ref())
-            .set_name(path.to_string_lossy().as_ref())
-            .exec()
-            .map_err(|error| {
-                AppPluginError::Engine(format!(
-                    "failed to execute plugin entry script {}: {error}",
-                    path.display()
-                ))
-            })
+        self.run_with_execution_budget("entry_script", || {
+            self.lua
+                .load(source.as_ref())
+                .set_name(path.to_string_lossy().as_ref())
+                .exec()
+        })
     }
 
     pub(crate) fn call_lifecycle(&self, lifecycle: Lifecycle) -> Result<(), AppPluginError> {
         let name = lifecycle.as_str();
-        match self
-            .lua
-            .globals()
-            .get::<Value>(name)
-            .map_err(engine_error)?
-        {
+        self.run_with_execution_budget(name, || match self.lua.globals().get::<Value>(name)? {
             Value::Nil => Ok(()),
-            Value::Function(function) => function.call::<()>(()).map_err(|error| {
-                AppPluginError::Engine(format!(
-                    "plugin lifecycle callback '{name}' failed: {error}"
-                ))
-            }),
-            value => Err(AppPluginError::Engine(format!(
+            Value::Function(function) => function.call::<()>(()),
+            value => Err(mlua::Error::runtime(format!(
                 "plugin lifecycle callback '{name}' must be a function, got {}",
                 value.type_name()
             ))),
-        }
+        })
     }
 
     fn install_sl(&self, manifest: &PluginManifest, data_dir: &Path) -> Result<(), AppPluginError> {
@@ -198,6 +214,36 @@ impl PluginEngine {
         }
         sl.set("log", table).map_err(engine_error)
     }
+
+    fn run_with_execution_budget<T>(
+        &self,
+        operation: &'static str,
+        action: impl FnOnce() -> mlua::Result<T>,
+    ) -> Result<T, AppPluginError> {
+        {
+            let mut budget = self.execution_budget.lock().map_err(|_| {
+                AppPluginError::Engine("plugin execution budget lock is poisoned".to_string())
+            })?;
+            *budget = Some(MAX_EXECUTION_INSTRUCTIONS);
+        }
+
+        let result = action();
+        {
+            let mut budget = self.execution_budget.lock().map_err(|_| {
+                AppPluginError::Engine("plugin execution budget lock is poisoned".to_string())
+            })?;
+            *budget = None;
+        }
+
+        result.map_err(|error| {
+            if error.to_string().contains(EXECUTION_LIMIT_MESSAGE) {
+                observability::app_plugin_execution_limit_exceeded(&self.plugin_id, operation);
+                AppPluginError::ExecutionLimit { operation }
+            } else {
+                engine_error(error)
+            }
+        })
+    }
 }
 
 fn resolve_main_path(plugin_dir: &Path, main: &str) -> Result<PathBuf, AppPluginError> {
@@ -282,7 +328,7 @@ mod tests {
     }
 
     #[test]
-    fn sandbox_excludes_os_and_io() {
+    fn sandbox_excludes_os_io_and_coroutines() {
         let root = test_dir("sandbox");
         fs::create_dir_all(&root).expect("plugin directory should be created");
         let engine = PluginEngine::new(&manifest(vec![]), &root, &root.join("data"))
@@ -298,8 +344,14 @@ mod tests {
             .load("return io")
             .eval()
             .expect("Lua should evaluate");
+        let coroutine: Value = engine
+            .lua
+            .load("return coroutine")
+            .eval()
+            .expect("Lua should evaluate");
         assert!(matches!(os, Value::Nil));
         assert!(matches!(io, Value::Nil));
+        assert!(matches!(coroutine, Value::Nil));
 
         let _ = fs::remove_dir_all(root);
     }
@@ -367,6 +419,65 @@ mod tests {
             .eval()
             .expect("Lua should evaluate");
         assert!(loaded);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn instruction_budget_interrupts_non_terminating_entry_scripts() {
+        let root = test_dir("instruction-budget");
+        fs::create_dir_all(&root).expect("plugin directory should be created");
+        fs::write(root.join("main.lua"), "while true do end")
+            .expect("entry script should be written");
+        let engine = PluginEngine::new(&manifest(vec![]), &root, &root.join("data"))
+            .expect("engine should initialize");
+
+        assert!(matches!(
+            engine.load(),
+            Err(AppPluginError::ExecutionLimit { operation: "entry_script" })
+        ));
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn memory_limit_rejects_oversized_lua_allocations() {
+        let root = test_dir("memory-limit");
+        fs::create_dir_all(&root).expect("plugin directory should be created");
+        let engine = PluginEngine::new(&manifest(vec![]), &root, &root.join("data"))
+            .expect("engine should initialize");
+        let script = format!(
+            "return pcall(function() return string.rep('x', {}) end)",
+            MAX_LUA_MEMORY_BYTES * 2
+        );
+
+        let allocated: bool = engine
+            .lua
+            .load(&script)
+            .eval()
+            .expect("Lua should evaluate");
+        assert!(!allocated);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn storage_rejects_values_larger_than_its_quota() {
+        let root = test_dir("storage-quota");
+        fs::create_dir_all(&root).expect("plugin directory should be created");
+        let engine = PluginEngine::new(
+            &manifest(vec![PluginPermission::Storage]),
+            &root,
+            &root.join("data"),
+        )
+        .expect("engine should initialize");
+
+        let allowed: bool = engine
+            .lua
+            .load("return pcall(function() sl.storage.set('large', string.rep('x', 262145)) end)")
+            .eval()
+            .expect("Lua should evaluate");
+        assert!(!allowed);
 
         let _ = fs::remove_dir_all(root);
     }

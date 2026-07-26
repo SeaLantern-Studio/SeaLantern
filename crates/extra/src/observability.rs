@@ -18,6 +18,10 @@ pub const EVENT_APP_PLUGIN_LIFECYCLE_FAILED: &str = "app_plugin_lifecycle_failed
 pub const EVENT_APP_PLUGIN_STORAGE_FAILED: &str = "app_plugin_storage_failed";
 /// Event: 插件输出日志。
 pub const EVENT_APP_PLUGIN_LOG_EMITTED: &str = "app_plugin_log_emitted";
+/// Event: 插件加载失败。
+pub const EVENT_APP_PLUGIN_LOAD_FAILED: &str = "app_plugin_load_failed";
+/// Event: 插件脚本耗尽执行预算。
+pub const EVENT_APP_PLUGIN_EXECUTION_LIMIT_EXCEEDED: &str = "app_plugin_execution_limit_exceeded";
 
 /// 记录因不支持的旧 API 而拒绝插件。
 pub fn app_plugin_api_too_old(plugin_id: &str, found_api_version: Option<u32>) {
@@ -41,26 +45,48 @@ pub fn app_plugin_loaded(plugin_id: &str) {
 }
 
 /// 记录插件生命周期回调失败。
-pub fn app_plugin_lifecycle_failed(plugin_id: &str, lifecycle: &str, error: &dyn Display) {
+pub fn app_plugin_lifecycle_failed(plugin_id: &str, lifecycle: &str, error_kind: &str) {
     tracing::error!(
         target: APP_PLUGIN_TARGET,
         event_name = EVENT_APP_PLUGIN_LIFECYCLE_FAILED,
         plugin_id,
         lifecycle,
-        error = %error,
+        error_kind,
         "plugin lifecycle callback failed"
     );
 }
 
 /// 记录插件私有存储失败。
-pub fn app_plugin_storage_failed(plugin_id: &str, operation: &str, error: &dyn Display) {
+pub fn app_plugin_storage_failed(plugin_id: &str, operation: &str) {
     tracing::error!(
         target: APP_PLUGIN_TARGET,
         event_name = EVENT_APP_PLUGIN_STORAGE_FAILED,
         plugin_id,
         operation,
-        error = %error,
         "plugin storage operation failed"
+    );
+}
+
+/// 记录插件在加载过程中的失败，不记录脚本正文或错误详情。
+pub fn app_plugin_load_failed(plugin_id: &str, phase: &'static str, error_kind: &str) {
+    tracing::error!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_LOAD_FAILED,
+        plugin_id,
+        phase,
+        error_kind,
+        "plugin load failed"
+    );
+}
+
+/// 记录插件脚本耗尽执行预算。
+pub fn app_plugin_execution_limit_exceeded(plugin_id: &str, operation: &'static str) {
+    tracing::warn!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_EXECUTION_LIMIT_EXCEEDED,
+        plugin_id,
+        operation,
+        "plugin execution limit exceeded"
     );
 }
 

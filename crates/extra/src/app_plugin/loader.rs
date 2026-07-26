@@ -94,7 +94,7 @@ impl PluginLoader {
     /// Validates metadata and filesystem constraints after successful parsing.
     pub fn validate_manifest(manifest: &PluginManifest) -> Result<(), AppPluginError> {
         if manifest.api_version < PLUGIN_API_VERSION {
-            return Err(AppPluginError::ApiVersionTooOld);
+            return Err(AppPluginError::ApiVersionTooOld { found: Some(manifest.api_version) });
         }
         if manifest.api_version > PLUGIN_API_VERSION {
             return Err(AppPluginError::UnsupportedApiVersion {
@@ -123,7 +123,7 @@ impl PluginLoader {
         manifest_path: &Path,
     ) -> Result<(), AppPluginError> {
         let version = match object.get("apiVersion") {
-            None => return Err(AppPluginError::ApiVersionTooOld),
+            None => return Err(AppPluginError::ApiVersionTooOld { found: None }),
             Some(Value::Number(number)) => number
                 .as_u64()
                 .and_then(|version| u32::try_from(version).ok())
@@ -140,7 +140,7 @@ impl PluginLoader {
         };
 
         if version < PLUGIN_API_VERSION {
-            Err(AppPluginError::ApiVersionTooOld)
+            Err(AppPluginError::ApiVersionTooOld { found: Some(version) })
         } else if version > PLUGIN_API_VERSION {
             Err(AppPluginError::UnsupportedApiVersion {
                 found: version,
@@ -307,7 +307,7 @@ mod tests {
         let error =
             PluginLoader::load_manifest(&plugin_dir).expect_err("legacy API must be rejected");
 
-        assert!(matches!(error, AppPluginError::ApiVersionTooOld));
+        assert!(matches!(error, AppPluginError::ApiVersionTooOld { found: None }));
         assert_eq!(error.to_string(), "版本过旧");
     }
 

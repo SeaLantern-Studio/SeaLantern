@@ -5762,7 +5762,6 @@ name = "sealantern-extra"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "atomicwrites",
  "dirs 5.0.1",
  "mlua",
  "regex",

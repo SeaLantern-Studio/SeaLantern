@@ -24,5 +24,4 @@ reqwest = { version = "0.12", features = ["json", "stream"] }
 sha2 = "0.10"
 dirs = "5"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
-atomicwrites = "0.4"
 sculk = { version = "=0.3.1", default-features = false, optional = true }

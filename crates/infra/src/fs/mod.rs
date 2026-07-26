@@ -18,7 +18,7 @@ mod persist;
 mod read;
 
 pub use archive::{archive_entry_path, parse_symbolic_link_target};
-pub use atomic::write_atomic;
+pub use atomic::{write_atomic, write_atomic_blocking};
 pub use cache::FileCache;
 pub use cleanup::{clear_directory, remove_if_exists};
 pub use dir::{ensure_dir, ensure_parent};

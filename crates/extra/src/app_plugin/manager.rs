@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::engine::{Lifecycle, PluginEngine};
@@ -74,15 +73,22 @@ impl PluginManager {
         let plugin_dir = self.validate_plugin_dir(plugin_dir)?;
         let manifest = match PluginLoader::load_manifest(&plugin_dir) {
             Ok(manifest) => manifest,
-            Err(error @ AppPluginError::ApiVersionTooOld) => {
+            Err(error @ AppPluginError::ApiVersionTooOld { found }) => {
                 let plugin_id = plugin_dir
                     .file_name()
                     .and_then(|name| name.to_str())
                     .unwrap_or("unknown");
-                observability::app_plugin_api_too_old(plugin_id, None);
+                observability::app_plugin_api_too_old(plugin_id, found);
                 return Err(error);
             }
-            Err(error) => return Err(error),
+            Err(error) => {
+                let plugin_id = plugin_dir
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("unknown");
+                observability::app_plugin_load_failed(plugin_id, "manifest", error.kind());
+                return Err(error);
+            }
         };
         if self.plugins.contains_key(&manifest.id) {
             return Err(AppPluginError::Engine(format!(
@@ -92,19 +98,19 @@ impl PluginManager {
         }
 
         let data_dir = self.config.data_dir.join(&manifest.id);
-        fs::create_dir_all(&data_dir).map_err(|error| AppPluginError::Io {
-            path: data_dir.clone(),
-            message: error.to_string(),
-        })?;
 
         let engine = PluginEngine::new(&manifest, &plugin_dir, &data_dir)?;
-        engine.load()?;
+        if let Err(error) = engine.load() {
+            observability::app_plugin_load_failed(&manifest.id, "entry_script", error.kind());
+            return Err(error);
+        }
         if let Err(error) = engine.call_lifecycle(Lifecycle::Load) {
             observability::app_plugin_lifecycle_failed(
                 &manifest.id,
                 Lifecycle::Load.as_str(),
-                &error,
+                error.kind(),
             );
+            self.cleanup_engine_after_failure(&engine, &manifest.id, Lifecycle::Load);
             return Err(error);
         }
 
@@ -165,7 +171,7 @@ impl PluginManager {
                 observability::app_plugin_lifecycle_failed(
                     plugin_id,
                     Lifecycle::Disable.as_str(),
-                    &error,
+                    error.kind(),
                 );
                 first_error = Some(error);
             }
@@ -175,7 +181,7 @@ impl PluginManager {
             observability::app_plugin_lifecycle_failed(
                 plugin_id,
                 Lifecycle::Unload.as_str(),
-                &error,
+                error.kind(),
             );
             if first_error.is_none() {
                 first_error = Some(error);
@@ -239,13 +245,31 @@ impl PluginManager {
         observability::app_plugin_lifecycle_failed(
             &plugin.info.manifest.id,
             lifecycle.as_str(),
-            error,
+            error.kind(),
         );
-        if let Err(cleanup_error) = plugin.engine.call_lifecycle(Lifecycle::Unload) {
+        self.cleanup_engine_after_failure(&plugin.engine, &plugin.info.manifest.id, lifecycle);
+    }
+
+    fn cleanup_engine_after_failure(
+        &self,
+        engine: &PluginEngine,
+        plugin_id: &str,
+        failed_lifecycle: Lifecycle,
+    ) {
+        if failed_lifecycle == Lifecycle::Enable {
+            if let Err(cleanup_error) = engine.call_lifecycle(Lifecycle::Disable) {
+                observability::app_plugin_lifecycle_failed(
+                    plugin_id,
+                    Lifecycle::Disable.as_str(),
+                    cleanup_error.kind(),
+                );
+            }
+        }
+        if let Err(cleanup_error) = engine.call_lifecycle(Lifecycle::Unload) {
             observability::app_plugin_lifecycle_failed(
-                &plugin.info.manifest.id,
+                plugin_id,
                 Lifecycle::Unload.as_str(),
-                &cleanup_error,
+                cleanup_error.kind(),
             );
         }
     }
@@ -253,6 +277,7 @@ impl PluginManager {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;
@@ -267,8 +292,22 @@ mod tests {
     }
 
     fn write_plugin(root: &Path, api_version: u32, script: &str) -> PathBuf {
+        write_plugin_with_permissions(root, api_version, script, &[])
+    }
+
+    fn write_plugin_with_permissions(
+        root: &Path,
+        api_version: u32,
+        script: &str,
+        permissions: &[&str],
+    ) -> PathBuf {
         let plugin_dir = root.join("example.plugin");
         fs::create_dir_all(&plugin_dir).expect("plugin directory should be created");
+        let permissions = permissions
+            .iter()
+            .map(|permission| format!(r#""{permission}""#))
+            .collect::<Vec<_>>()
+            .join(", ");
         fs::write(
             plugin_dir.join("manifest.json"),
             format!(
@@ -277,7 +316,8 @@ mod tests {
                     "id": "example.plugin",
                     "name": "Example",
                     "version": "1.0.0",
-                    "main": "main.lua"
+                    "main": "main.lua",
+                    "permissions": [{permissions}]
                 }}"#
             ),
         )
@@ -359,6 +399,75 @@ mod tests {
 
         manager.load(&plugin_dir).expect("plugin should load");
         assert!(manager.enable("example.plugin").is_err());
+        assert!(manager.plugin("example.plugin").is_none());
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn load_failure_runs_unload_cleanup() {
+        let root = test_root("load-cleanup");
+        let data_dir = root.join("data");
+        let plugin_dir = write_plugin_with_permissions(
+            &root,
+            2,
+            r#"
+                function on_load()
+                    sl.storage.set("load_started", true)
+                    error("expected load failure")
+                end
+                function on_unload()
+                    sl.storage.set("unloaded", true)
+                end
+            "#,
+            &["storage"],
+        );
+        let mut manager = PluginManager::new(PluginManagerConfig::new(&root, &data_dir));
+
+        assert!(manager.load(&plugin_dir).is_err());
+        let storage: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(data_dir.join("example.plugin").join("storage.json"))
+                .expect("cleanup storage should be written"),
+        )
+        .expect("cleanup storage should contain JSON");
+        assert_eq!(storage["unloaded"], true);
+        assert!(manager.plugin("example.plugin").is_none());
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn enable_failure_runs_disable_then_unload_cleanup() {
+        let root = test_root("enable-cleanup");
+        let data_dir = root.join("data");
+        let plugin_dir = write_plugin_with_permissions(
+            &root,
+            2,
+            r#"
+                function on_enable()
+                    sl.storage.set("enable_started", true)
+                    error("expected enable failure")
+                end
+                function on_disable()
+                    sl.storage.set("disabled", true)
+                end
+                function on_unload()
+                    sl.storage.set("unloaded", true)
+                end
+            "#,
+            &["storage"],
+        );
+        let mut manager = PluginManager::new(PluginManagerConfig::new(&root, &data_dir));
+
+        manager.load(&plugin_dir).expect("plugin should load");
+        assert!(manager.enable("example.plugin").is_err());
+        let storage: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(data_dir.join("example.plugin").join("storage.json"))
+                .expect("cleanup storage should be written"),
+        )
+        .expect("cleanup storage should contain JSON");
+        assert_eq!(storage["disabled"], true);
+        assert_eq!(storage["unloaded"], true);
         assert!(manager.plugin("example.plugin").is_none());
 
         let _ = fs::remove_dir_all(root);
