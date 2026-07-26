@@ -19,8 +19,11 @@ async-trait = "0.1"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "sync"] }
 urlencoding = "2"
 sealantern-infra = { path = "../infra" }
+<<<<<<< HEAD
 regex = "1"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 sha2 = "0.10"
 dirs = "5"
+=======
+>>>>>>> a3a44048ffb58cb25913fa7699fb10c14a38ff1f
 sculk = { version = "=0.2.0", default-features = false, optional = true }
