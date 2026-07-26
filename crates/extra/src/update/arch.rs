@@ -6,8 +6,6 @@ use super::types::UpdateInfo;
 use super::version::compare_versions;
 #[cfg(target_os = "linux")]
 use tracing::{debug, info};
-#[cfg(target_os = "linux")]
-use tracing::{debug, info};
 
 /// 检查是否为 Arch Linux 系统
 #[cfg(target_os = "linux")]
@@ -97,7 +95,7 @@ pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, Strin
     };
 
     debug!("=== AUR 检查结果 ===");
-    debug!(has_update, source = "arch-aur", latest_version = %aur_version; "AUR update check completed");
+    debug!(has_update, source = "arch-aur", latest_version = %aur_version, "AUR update check completed");
 
     Ok(UpdateInfo {
         has_update,
