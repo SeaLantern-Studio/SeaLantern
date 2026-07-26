@@ -6015,6 +6015,7 @@ dependencies = [
  "tokio-util",
  "tower",
  "tower-http",
+ "tracing",
  "trash",
  "url",
  "uuid",
