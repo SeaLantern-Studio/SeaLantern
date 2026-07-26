@@ -16,7 +16,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 
-#[cfg(target_os = "linux")]
+#[cfg(all(not(debug_assertions), target_os = "linux"))]
 use sealantern_extra::update::{
     check_aur_update, fetch_cnb_release, fetch_github_release, get_github_config, is_arch_linux,
 };
