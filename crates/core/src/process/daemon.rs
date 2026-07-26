@@ -300,43 +300,23 @@ fn wait_for_exit(child: &mut Child, timeout: Duration) -> io::Result<bool> {
     }
 }
 
-#[cfg(test)]
+// 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
+#[cfg(all(test, not(unix)))]
 mod tests {
-    #![allow(dead_code)]
     use super::*;
 
-    #[cfg(unix)]
-    fn exit_successfully_command() -> Command {
-        let mut command = Command::new("sh");
-        command.args(["-c", "exit 0"]);
-        command
-    }
-
-    #[cfg(windows)]
     fn exit_successfully_command() -> Command {
         let mut command = Command::new("cmd");
         command.args(["/C", "exit 0"]);
         command
     }
 
-    #[cfg(unix)]
-    #[allow(dead_code)]
-    fn long_running_tree_command() -> Command {
-        let mut command = Command::new("sh");
-        command.args(["-c", "sleep 30 & wait"]);
-        command
-    }
-
-    #[cfg(windows)]
-    #[allow(dead_code)]
     fn long_running_tree_command() -> Command {
         let mut command = Command::new("cmd");
         command.args(["/C", "ping -n 30 127.0.0.1 > NUL"]);
         command
     }
 
-    // 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
-    #[cfg(not(unix))]
     #[test]
     fn reports_the_exit_status_of_a_finished_daemon() {
         let mut command = exit_successfully_command();
@@ -346,8 +326,6 @@ mod tests {
         assert!(daemon.poll().expect("poll test process").is_some());
     }
 
-    // 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
-    #[cfg(not(unix))]
     #[test]
     fn reports_an_abnormal_sign_for_an_exited_daemon() {
         let mut command = exit_successfully_command();
@@ -364,8 +342,6 @@ mod tests {
         ));
     }
 
-    // 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
-    #[cfg(not(unix))]
     #[test]
     fn terminates_a_running_process_tree() {
         let mut command = long_running_tree_command();
