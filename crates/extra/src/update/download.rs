@@ -1,3 +1,12 @@
+//! 更新文件下载模块。
+//!
+//! 提供更新文件的 HTTP 下载、SHA256 哈希计算与校验功能。
+//! 主要入口为 [`download_update_file_without_events`]。
+//!
+//! # 错误处理
+//!
+//! 所有失败路径均返回 `Err(String)`，并同步通过 `observability` 模块记录结构化日志。
+
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -7,6 +16,7 @@ use std::io::Read;
 
 use super::constants::UPDATE_HTTP_USER_AGENT;
 use super::types::DownloadProgress;
+use crate::observability;
 
 /// 从 URL 提取文件名
 pub fn file_name_from_url(url: &str) -> String {
@@ -43,8 +53,13 @@ pub async fn download_update_file_without_events(
     expected_hash: Option<String>,
     cache_dir: PathBuf,
 ) -> Result<String, String> {
-    std::fs::create_dir_all(&cache_dir)
-        .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+    observability::update_download_started(&url);
+
+    std::fs::create_dir_all(&cache_dir).map_err(|e| {
+        let msg = format!("Failed to create cache directory: {}", e);
+        observability::update_download_failed(&url, &msg);
+        msg
+    })?;
 
     let file_name = file_name_from_url(&url);
     let file_path = cache_dir.join(file_name);
@@ -52,30 +67,47 @@ pub async fn download_update_file_without_events(
     let client = reqwest::Client::builder()
         .user_agent(UPDATE_HTTP_USER_AGENT)
         .build()
-        .map_err(|e| format!("HTTP client init failed: {}", e))?;
+        .map_err(|e| {
+            let msg = format!("HTTP client init failed: {}", e);
+            observability::update_download_failed(&url, &msg);
+            msg
+        })?;
 
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Download request failed: {}", e))?;
+    let response = client.get(&url).send().await.map_err(|e| {
+        let msg = format!("Download request failed: {}", e);
+        observability::update_download_failed(&url, &msg);
+        msg
+    })?;
 
     if !response.status().is_success() {
-        return Err(format!("Download failed with status: {}", response.status()));
+        let msg = format!("Download failed with status: {}", response.status());
+        observability::update_download_failed(&url, &msg);
+        return Err(msg);
     }
 
-    let mut file = File::create(&file_path).map_err(|e| format!("Failed to create file: {}", e))?;
+    let mut file = File::create(&file_path).map_err(|e| {
+        let msg = format!("Failed to create file: {}", e);
+        observability::update_download_failed(&url, &msg);
+        msg
+    })?;
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
+    let bytes = response.bytes().await.map_err(|e| {
+        let msg = format!("Failed to read response: {}", e);
+        observability::update_download_failed(&url, &msg);
+        msg
+    })?;
 
-    file.write_all(&bytes)
-        .map_err(|e| format!("Failed to write file: {}", e))?;
+    file.write_all(&bytes).map_err(|e| {
+        let msg = format!("Failed to write file: {}", e);
+        observability::update_download_failed(&url, &msg);
+        msg
+    })?;
 
-    file.flush()
-        .map_err(|e| format!("Failed to flush file: {}", e))?;
+    file.flush().map_err(|e| {
+        let msg = format!("Failed to flush file: {}", e);
+        observability::update_download_failed(&url, &msg);
+        msg
+    })?;
 
     let file_path_str = file_path.to_string_lossy().to_string();
 
@@ -86,13 +118,15 @@ pub async fn download_update_file_without_events(
 
         if calculated_hash.to_lowercase() != hash.to_lowercase() {
             std::fs::remove_file(&file_path).ok();
-            return Err(format!(
-                "Hash verification failed. Expected: {}, Got: {}",
-                hash, calculated_hash
-            ));
+            let msg =
+                format!("Hash verification failed. Expected: {}, Got: {}", hash, calculated_hash);
+            observability::update_hash_mismatch(&file_path_str, &hash, &calculated_hash);
+            return Err(msg);
         }
+        observability::update_hash_verified(&file_path_str);
     }
 
+    observability::update_download_completed(&file_path_str);
     Ok(file_path_str)
 }
 

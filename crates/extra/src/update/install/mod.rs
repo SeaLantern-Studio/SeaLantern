@@ -1,3 +1,13 @@
+//! 更新安装流程管理模块。
+//!
+//! 提供安装状态跟踪、待更新持久化、缓存目录管理等功能。
+//!
+//! # 子模块
+//!
+//! - [`paths`] — 缓存目录和待更新文件路径
+//! - [`pending`] — 待更新状态的读写与清理
+//! - [`windows`] — Windows 特权安装器启动（仅 Windows 平台）
+
 mod paths;
 mod pending;
 
@@ -24,8 +34,10 @@ pub fn get_pending_update_file() -> std::path::PathBuf {
 }
 
 /// 检查待更新状态
-pub async fn check_pending_update() -> Result<Option<PendingUpdate>, String> {
-    pending::check_pending_update().await
+///
+/// `current_version` 由调用方传入，用于与待更新版本比较。
+pub async fn check_pending_update(current_version: &str) -> Result<Option<PendingUpdate>, String> {
+    pending::check_pending_update(current_version).await
 }
 
 /// 清除待更新状态

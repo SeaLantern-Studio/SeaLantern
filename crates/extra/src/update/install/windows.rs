@@ -1,3 +1,17 @@
+//! Windows 特权安装进程管理。
+//!
+//! 通过 PowerShell 以管理员权限启动安装程序（MSI/EXE），
+//! 并启动后台监视进程等待安装完成后再重启主应用。
+//!
+//! # 平台可用性
+//!
+//! - Windows: 完整实现，使用 `Start-Process -Verb RunAs` 提权
+//! - 非 Windows: 编译时包含桩实现，返回错误
+//!
+//! # 编码处理
+//!
+//! PowerShell 输出可能为 UTF-16LE/BE 或 UTF-8，模块内置了编码自动探测逻辑。
+
 #[cfg(target_os = "windows")]
 mod imp {
     /// 转义 PowerShell 单引号
@@ -33,7 +47,7 @@ mod imp {
             }
         }
 
-        if bytes.len().is_multiple_of(2) && bytes.len() >= 4 {
+        if bytes.len().is_multiple_of(2) && bytes.len() >= 8 {
             let even_zeros = bytes.iter().step_by(2).filter(|b| **b == 0).count();
             let odd_zeros = bytes.iter().skip(1).step_by(2).filter(|b| **b == 0).count();
             let even_count = bytes.len() / 2;

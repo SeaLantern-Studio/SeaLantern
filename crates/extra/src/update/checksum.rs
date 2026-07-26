@@ -1,6 +1,16 @@
+//! 更新文件校验和验证模块。
+//!
+//! 提供 SHA256 校验和文件的解析、匹配和远程获取功能。
+//! 支持常见的校验和文件名模式（`.sha256`、`.sha256sum`、`.sha256.txt` 等）。
+//!
+//! # 解析策略
+//!
+//! 采用多级候选匹配策略：精确名称匹配 > 目标文件名匹配 > 通用哈希文件匹配。
+
 use std::path::Path;
 
 use super::types::ReleaseAsset;
+use crate::observability;
 
 /// 解析 SHA256 校验文件内容
 pub fn parse_sha256_from_checksum_content(content: &str, target_name: &str) -> Option<String> {
@@ -128,9 +138,23 @@ pub async fn fetch_sha256_from_asset(
         .get(&hash_asset.browser_download_url)
         .send()
         .await
+        .inspect_err(|e| {
+            observability::update_api_request_failed(
+                "github",
+                "fetch_sha256_asset",
+                None,
+                &format!("{e}"),
+            );
+        })
         .ok()?;
 
     if !response.status().is_success() {
+        observability::update_api_request_failed(
+            "github",
+            "fetch_sha256_asset",
+            Some(response.status().as_u16()),
+            &"non-success status",
+        );
         return None;
     }
 

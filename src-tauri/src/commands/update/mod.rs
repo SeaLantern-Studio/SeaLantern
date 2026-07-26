@@ -111,7 +111,6 @@ pub async fn open_download_url(url: String) -> Result<(), String> {
 
 /// 下载更新
 #[command]
-#[allow(dead_code)]
 pub async fn download_update(
     app: AppHandle,
     url: String,
@@ -266,7 +265,6 @@ fn calculate_file_sha256(file_path: &PathBuf) -> Result<String, std::io::Error> 
 
 /// 安装更新
 #[command]
-#[allow(dead_code)]
 pub async fn install_update(file_path: String, version: String) -> Result<(), String> {
     if INSTALL_IN_PROGRESS.swap(true, Ordering::SeqCst) {
         return Err("Install is already in progress".to_string());
@@ -362,28 +360,25 @@ fn launch_update_installer(
 
 /// 检查待更新状态
 #[command]
-#[allow(dead_code)]
 pub async fn check_pending_update_cmd() -> Result<Option<PendingUpdate>, String> {
-    check_pending_update().await
+    let current_version = env!("CARGO_PKG_VERSION");
+    check_pending_update(current_version).await
 }
 
 /// 清除待更新状态
 #[command]
-#[allow(dead_code)]
 pub async fn clear_pending_update_cmd() -> Result<(), String> {
     clear_pending_update().await
 }
 
 /// 重启并安装
 #[command]
-#[allow(dead_code)]
 pub async fn restart_and_install(app: AppHandle) -> Result<(), String> {
     app.restart();
 }
 
 /// 从调试 URL 下载更新
 #[command]
-#[allow(dead_code)]
 pub async fn download_update_from_debug_url(app: AppHandle, url: String) -> Result<String, String> {
     download_update(app, url, None, None).await
 }

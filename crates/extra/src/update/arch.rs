@@ -1,3 +1,13 @@
+//! Arch Linux AUR 更新检查模块。
+//!
+//! 通过 AUR RPC 接口查询 `sealantern` 包的最新版本，
+//! 并提供 AUR 助手检测功能以辅助用户执行更新命令。
+//!
+//! # 平台可用性
+//!
+//! - Linux: 完整实现，通过 `/etc/os-release` 检测是否为 Arch Linux
+//! - 非 Linux: 提供 `is_arch_linux()` / `get_aur_helper()` 的桩实现
+
 #[cfg(target_os = "linux")]
 use super::constants::{AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL, PLUGIN_MARKET_HTTP_USER_AGENT};
 #[cfg(target_os = "linux")]
@@ -5,7 +15,7 @@ use super::types::UpdateInfo;
 #[cfg(target_os = "linux")]
 use super::version::compare_versions;
 #[cfg(target_os = "linux")]
-use tracing::debug;
+use crate::observability;
 
 /// 检查是否为 Arch Linux 系统
 #[cfg(target_os = "linux")]
@@ -41,6 +51,8 @@ pub fn get_aur_helper() -> Option<String> {
 /// 检查 AUR 更新
 #[cfg(target_os = "linux")]
 pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, String> {
+    observability::update_check_started("arch-aur", current_version);
+
     let client = reqwest::Client::new();
     let url = AUR_PACKAGE_INFO_URL;
 
@@ -49,20 +61,34 @@ pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, Strin
         .header("User-Agent", PLUGIN_MARKET_HTTP_USER_AGENT)
         .send()
         .await
-        .map_err(|e| format!("AUR查询失败: {}", e))?;
+        .map_err(|e| {
+            let msg = format!("AUR查询失败: {}", e);
+            observability::update_api_request_failed("arch-aur", "info_request", None, &msg);
+            msg
+        })?;
 
     if !response.status().is_success() {
-        return Err(format!("AUR API返回错误: {}", response.status()));
+        let msg = format!("AUR API返回错误: {}", response.status());
+        observability::update_api_request_failed(
+            "arch-aur",
+            "info_request",
+            Some(response.status().as_u16()),
+            &msg,
+        );
+        return Err(msg);
     }
 
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("解析AUR响应失败: {}", e))?;
+    let json: serde_json::Value = response.json().await.map_err(|e| {
+        let msg = format!("解析AUR响应失败: {}", e);
+        observability::update_api_request_failed("arch-aur", "parse_response", None, &msg);
+        msg
+    })?;
 
     let resultcount = json["resultcount"].as_u64().unwrap_or(0);
     if resultcount == 0 {
-        return Err("AUR中未找到sealantern包".to_string());
+        let msg = "AUR中未找到sealantern包".to_string();
+        observability::update_api_request_failed("arch-aur", "check_package", None, &msg);
+        return Err(msg);
     }
 
     let aur_version = json["results"][0]["Version"]
@@ -94,8 +120,7 @@ pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, Strin
         format!("已是最新版本 (Arch Linux)\n当前版本: {}", current_version)
     };
 
-    debug!("=== AUR 检查结果 ===");
-    debug!(has_update, source = "arch-aur", latest_version = %aur_version, "AUR update check completed");
+    observability::update_check_completed("arch-aur", has_update, Some(&aur_version));
 
     Ok(UpdateInfo {
         has_update,

@@ -1,3 +1,5 @@
+//! 更新缓存目录与待更新文件路径管理。
+
 use std::path::PathBuf;
 
 pub fn get_update_cache_dir() -> PathBuf {
