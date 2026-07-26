@@ -159,10 +159,7 @@ mod tests {
 
     #[test]
     fn parse_version_ignores_build_metadata() {
-        assert_eq!(
-            parse_version("1.2.3+abc"),
-            parse_version("1.2.3+def")
-        );
+        assert_eq!(parse_version("1.2.3+abc"), parse_version("1.2.3+def"));
     }
 
     #[test]
@@ -177,9 +174,6 @@ mod tests {
 
     #[test]
     fn normalize_release_tag_version_handles_prerelease_tag() {
-        assert_eq!(
-            normalize_release_tag_version("SeaLantern_release-v1.2.3-rc.1"),
-            "1.2.3-rc.1"
-        );
+        assert_eq!(normalize_release_tag_version("SeaLantern_release-v1.2.3-rc.1"), "1.2.3-rc.1");
     }
 }

@@ -103,9 +103,5 @@ pub fn calculate_progress(downloaded: u64, total: u64) -> DownloadProgress {
     } else {
         0.0
     };
-    DownloadProgress {
-        downloaded,
-        total,
-        percent,
-    }
+    DownloadProgress { downloaded, total, percent }
 }

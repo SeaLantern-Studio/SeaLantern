@@ -3,7 +3,11 @@
 use tauri::{command, AppHandle, Emitter};
 use tracing::info;
 
-use sealantern_extra::update::{UpdateInfo, PendingUpdate, UPDATE_HTTP_USER_AGENT, get_update_cache_dir, resolve_download_candidate_by_version, check_pending_update, clear_pending_update, write_pending_update, get_pending_update_file, INSTALL_IN_PROGRESS, DownloadProgress};
+use sealantern_extra::update::{
+    check_pending_update, clear_pending_update, get_pending_update_file, get_update_cache_dir,
+    resolve_download_candidate_by_version, write_pending_update, DownloadProgress, PendingUpdate,
+    UpdateInfo, INSTALL_IN_PROGRESS, UPDATE_HTTP_USER_AGENT,
+};
 
 use futures::StreamExt;
 use sha2::{Digest, Sha256};
@@ -13,7 +17,9 @@ use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 
 #[cfg(target_os = "linux")]
-use sealantern_extra::update::{check_aur_update, is_arch_linux, fetch_cnb_release, fetch_github_release, get_github_config};
+use sealantern_extra::update::{
+    check_aur_update, fetch_cnb_release, fetch_github_release, get_github_config, is_arch_linux,
+};
 
 #[cfg(target_os = "windows")]
 use sealantern_extra::update::spawn_elevated_windows_process;
@@ -76,8 +82,7 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
             let cnb_result = fetch_cnb_release(&client, current_version).await;
 
             let config = get_github_config();
-            let github_result =
-                fetch_github_release(&client, &config, current_version).await;
+            let github_result = fetch_github_release(&client, &config, current_version).await;
 
             return select_update_result(cnb_result, github_result);
         }
@@ -225,8 +230,8 @@ async fn download_update_file_with_progress(
 
     // 验证哈希值
     if let Some(hash) = expected_hash {
-        let calculated_hash =
-            calculate_file_sha256(&file_path).map_err(|e| format!("Failed to calculate hash: {}", e))?;
+        let calculated_hash = calculate_file_sha256(&file_path)
+            .map_err(|e| format!("Failed to calculate hash: {}", e))?;
 
         if calculated_hash.to_lowercase() != hash.to_lowercase() {
             std::fs::remove_file(&file_path).ok();
@@ -404,10 +409,7 @@ mod tests {
     #[test]
     fn parse_version_ignores_build_metadata() {
         use sealantern_extra::update::parse_version;
-        assert_eq!(
-            parse_version("1.2.3+abc"),
-            parse_version("1.2.3+def")
-        );
+        assert_eq!(parse_version("1.2.3+abc"), parse_version("1.2.3+def"));
     }
 
     #[test]
@@ -422,9 +424,6 @@ mod tests {
 
     #[test]
     fn normalize_release_tag_version_handles_prerelease_tag() {
-        assert_eq!(
-            normalize_release_tag_version("SeaLantern_release-v1.2.3-rc.1"),
-            "1.2.3-rc.1"
-        );
+        assert_eq!(normalize_release_tag_version("SeaLantern_release-v1.2.3-rc.1"), "1.2.3-rc.1");
     }
 }
