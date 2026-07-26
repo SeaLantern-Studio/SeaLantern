@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod app_plugin;
 pub mod config;
 pub mod observability;
 pub mod update;

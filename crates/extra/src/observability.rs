@@ -5,6 +5,65 @@
 
 use std::fmt::Display;
 
+/// 应用插件执行内核的 tracing 目标。
+pub const APP_PLUGIN_TARGET: &str = "sealantern.extra.app_plugin";
+
+/// Event: 发现的插件因 API 版本过旧被拒绝。
+pub const EVENT_APP_PLUGIN_API_TOO_OLD: &str = "app_plugin_api_too_old";
+/// Event: 插件已完成脚本加载。
+pub const EVENT_APP_PLUGIN_LOADED: &str = "app_plugin_loaded";
+/// Event: 插件生命周期回调失败。
+pub const EVENT_APP_PLUGIN_LIFECYCLE_FAILED: &str = "app_plugin_lifecycle_failed";
+/// Event: 插件私有存储操作失败。
+pub const EVENT_APP_PLUGIN_STORAGE_FAILED: &str = "app_plugin_storage_failed";
+/// Event: 插件输出日志。
+pub const EVENT_APP_PLUGIN_LOG_EMITTED: &str = "app_plugin_log_emitted";
+
+/// 记录因不支持的旧 API 而拒绝插件。
+pub fn app_plugin_api_too_old(plugin_id: &str, found_api_version: Option<u32>) {
+    tracing::warn!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_API_TOO_OLD,
+        plugin_id,
+        found_api_version,
+        "plugin rejected because its API version is too old"
+    );
+}
+
+/// 记录插件脚本加载完成。
+pub fn app_plugin_loaded(plugin_id: &str) {
+    tracing::info!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_LOADED,
+        plugin_id,
+        "plugin script loaded"
+    );
+}
+
+/// 记录插件生命周期回调失败。
+pub fn app_plugin_lifecycle_failed(plugin_id: &str, lifecycle: &str, error: &dyn Display) {
+    tracing::error!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_LIFECYCLE_FAILED,
+        plugin_id,
+        lifecycle,
+        error = %error,
+        "plugin lifecycle callback failed"
+    );
+}
+
+/// 记录插件私有存储失败。
+pub fn app_plugin_storage_failed(plugin_id: &str, operation: &str, error: &dyn Display) {
+    tracing::error!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_STORAGE_FAILED,
+        plugin_id,
+        operation,
+        error = %error,
+        "plugin storage operation failed"
+    );
+}
+
 /// 市场模块的 tracing 目标。
 pub const MARKET_TARGET: &str = "sealantern.extra.market";
 
