@@ -182,6 +182,8 @@ mod imp {
 
 #[cfg(not(target_os = "windows"))]
 mod imp {
+    /// 非 Windows 平台上的桩实现，始终返回错误。
+    #[allow(dead_code)]
     pub fn spawn_elevated_windows_process(
         _file_path: &str,
         _args: &[&str],
@@ -193,6 +195,4 @@ mod imp {
 }
 
 #[cfg(target_os = "windows")]
-pub use imp::spawn_elevated_windows_process;
-#[cfg(not(target_os = "windows"))]
 pub use imp::spawn_elevated_windows_process;
