@@ -6,6 +6,8 @@ use super::types::UpdateInfo;
 use super::version::compare_versions;
 #[cfg(target_os = "linux")]
 use tracing::{debug, info};
+#[cfg(target_os = "linux")]
+use tracing::{debug, info};
 
 /// 检查是否为 Arch Linux 系统
 #[cfg(target_os = "linux")]
