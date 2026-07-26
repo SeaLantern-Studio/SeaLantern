@@ -18,8 +18,10 @@ use std::sync::atomic::Ordering;
 
 #[cfg(all(not(debug_assertions), target_os = "linux"))]
 use sealantern_extra::update::{
-    check_aur_update, fetch_cnb_release, fetch_github_release, get_github_config, is_arch_linux,
+    check_aur_update, fetch_cnb_release, fetch_github_release, get_github_config,
 };
+#[cfg(target_os = "linux")]
+use sealantern_extra::update::is_arch_linux;
 
 #[cfg(target_os = "windows")]
 use sealantern_extra::update::spawn_elevated_windows_process;
