@@ -2,3 +2,5 @@
 
 pub(crate) mod permissions;
 pub mod server;
+
+pub use permissions::PERMISSION_SERVER_CONSOLE_SEND;

@@ -6,7 +6,7 @@ mod console;
 mod runtime;
 pub(crate) mod services;
 
-pub use console::{ConsoleCommandService, ConsoleCommandServiceError};
+pub use console::{dispatch_console_command, ConsoleCommandService, ConsoleCommandServiceError};
 pub use runtime::ServerRuntime;
 pub use services::RpcServices;
 

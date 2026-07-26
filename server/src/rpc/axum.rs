@@ -290,7 +290,8 @@ mod tests {
 
     use super::*;
     use crate::rpc::{
-        methods::server::{SendConsoleCommand, PERMISSION_SERVER_CONSOLE_SEND},
+        methods::server::SendConsoleCommand,
+        methods::PERMISSION_SERVER_CONSOLE_SEND,
         service::{ConsoleCommandService, ConsoleCommandServiceError},
         RpcMethodName, RpcPermission,
     };

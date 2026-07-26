@@ -1,4 +1,39 @@
 //! 服务器控制台命令 RPC 方法。
+//!
+//! # 接口说明
+//!
+//! | 项目 | 值 |
+//! |------|-----|
+//! | 方法名 | `server.console.send` |
+//! | HTTP 方法 | `POST` |
+//! | HTTP 路径 | `/api/rpc/server/console/send` |
+//! | 请求 Content-Type | `application/json` |
+//! | 请求头 | `x-request-id`（可选，不传则自动生成） |
+//!
+//! ## 请求体（JSON）
+//!
+//! ```json
+//! {
+//!     "instanceId": "server-42",
+//!     "command": "say hello"
+//! }
+//! ```
+//!
+//! | 字段 | 类型 | 约束 |
+//! |------|------|------|
+//! | `instanceId` | `string` | 1-128 字符，仅允许 ASCII 字母、数字、`-`、`_` |
+//! | `command` | `string` | 1-32767 字符，单行，无控制字符 |
+//!
+//! ## 响应体（JSON）
+//!
+//! ```json
+//! {
+//!     "requestId": "http-42",
+//!     "data": null
+//! }
+//! ```
+//!
+//! `data` 固定为 `null`，成功即表示命令已送达服务端控制台。
 
 use std::fmt;
 use std::future::Future;
@@ -12,7 +47,7 @@ use crate::rpc::axum::{RpcAxumMethod, RpcHttpMethod};
 use crate::rpc::service::{ConsoleCommandService, ConsoleCommandServiceError};
 use crate::rpc::{RpcContext, RpcError, RpcMethod, RpcMethodName, RpcPermission, RpcResult};
 
-use super::PERMISSION_SERVER_CONSOLE_SEND;
+use crate::rpc::methods::PERMISSION_SERVER_CONSOLE_SEND;
 
 const MAX_INSTANCE_ID_LENGTH: usize = 128;
 const MAX_COMMAND_CHAR_COUNT: usize = 32_767;
