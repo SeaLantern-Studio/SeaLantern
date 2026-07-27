@@ -3,7 +3,6 @@ use super::types::{ReleaseAsset, ReleaseResponse, RepoConfig, UpdateInfo};
 use super::version::normalize_release_tag_version;
 
 /// 查找适合当前平台的资源文件
-#[allow(dead_code)] // 发布调用
 pub fn find_suitable_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
     let os = std::env::consts::OS;
     let arch = std::env::consts::ARCH;
@@ -40,7 +39,6 @@ pub fn find_suitable_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
 
 // 查询平台信息
 // 注意, 这里的arch是指cpu架构, 不是指系统架构, 不要和arch系统混淆了
-#[allow(dead_code)] // 发布调用
 fn get_platform_info(os: &str, arch: &str) -> (Vec<&'static str>, Vec<&'static str>) {
     let target_suffixes: Vec<&'static str> = match os {
         "windows" => vec![".msi", ".exe"],
@@ -58,7 +56,6 @@ fn get_platform_info(os: &str, arch: &str) -> (Vec<&'static str>, Vec<&'static s
 }
 
 /// 获取 GitHub 最新发布版本
-#[allow(dead_code)] // 发布调用
 pub async fn fetch_release(
     client: &reqwest::Client,
     config: &RepoConfig,

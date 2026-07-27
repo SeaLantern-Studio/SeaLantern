@@ -5,6 +5,91 @@
 
 use std::fmt::Display;
 
+/// 应用插件执行内核的 tracing 目标。
+pub const APP_PLUGIN_TARGET: &str = "sealantern.extra.app_plugin";
+
+/// Event: 发现的插件因 API 版本过旧被拒绝。
+pub const EVENT_APP_PLUGIN_API_TOO_OLD: &str = "app_plugin_api_too_old";
+/// Event: 插件已完成脚本加载。
+pub const EVENT_APP_PLUGIN_LOADED: &str = "app_plugin_loaded";
+/// Event: 插件生命周期回调失败。
+pub const EVENT_APP_PLUGIN_LIFECYCLE_FAILED: &str = "app_plugin_lifecycle_failed";
+/// Event: 插件私有存储操作失败。
+pub const EVENT_APP_PLUGIN_STORAGE_FAILED: &str = "app_plugin_storage_failed";
+/// Event: 插件输出日志。
+pub const EVENT_APP_PLUGIN_LOG_EMITTED: &str = "app_plugin_log_emitted";
+/// Event: 插件加载失败。
+pub const EVENT_APP_PLUGIN_LOAD_FAILED: &str = "app_plugin_load_failed";
+/// Event: 插件脚本耗尽执行预算。
+pub const EVENT_APP_PLUGIN_EXECUTION_LIMIT_EXCEEDED: &str = "app_plugin_execution_limit_exceeded";
+
+/// 记录因不支持的旧 API 而拒绝插件。
+pub fn app_plugin_api_too_old(plugin_id: &str, found_api_version: Option<u32>) {
+    tracing::warn!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_API_TOO_OLD,
+        plugin_id,
+        found_api_version,
+        "plugin rejected because its API version is too old"
+    );
+}
+
+/// 记录插件脚本加载完成。
+pub fn app_plugin_loaded(plugin_id: &str) {
+    tracing::info!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_LOADED,
+        plugin_id,
+        "plugin script loaded"
+    );
+}
+
+/// 记录插件生命周期回调失败。
+pub fn app_plugin_lifecycle_failed(plugin_id: &str, lifecycle: &str, error_kind: &str) {
+    tracing::error!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_LIFECYCLE_FAILED,
+        plugin_id,
+        lifecycle,
+        error_kind,
+        "plugin lifecycle callback failed"
+    );
+}
+
+/// 记录插件私有存储失败。
+pub fn app_plugin_storage_failed(plugin_id: &str, operation: &str) {
+    tracing::error!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_STORAGE_FAILED,
+        plugin_id,
+        operation,
+        "plugin storage operation failed"
+    );
+}
+
+/// 记录插件在加载过程中的失败，不记录脚本正文或错误详情。
+pub fn app_plugin_load_failed(plugin_id: &str, phase: &'static str, error_kind: &str) {
+    tracing::error!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_LOAD_FAILED,
+        plugin_id,
+        phase,
+        error_kind,
+        "plugin load failed"
+    );
+}
+
+/// 记录插件脚本耗尽执行预算。
+pub fn app_plugin_execution_limit_exceeded(plugin_id: &str, operation: &'static str) {
+    tracing::warn!(
+        target: APP_PLUGIN_TARGET,
+        event_name = EVENT_APP_PLUGIN_EXECUTION_LIMIT_EXCEEDED,
+        plugin_id,
+        operation,
+        "plugin execution limit exceeded"
+    );
+}
+
 /// 市场模块的 tracing 目标。
 pub const MARKET_TARGET: &str = "sealantern.extra.market";
 
@@ -90,5 +175,58 @@ pub fn market_request_failed(operation: &str, source: &str, error: &dyn Display)
         source,
         error = %error,
         "market request failed"
+    );
+}
+
+/// 在线隧道模块的 tracing 目标。
+pub const ONLINE_TARGET: &str = "sealantern.extra.online";
+
+/// Event: 在线隧道已启动。
+pub const EVENT_ONLINE_TUNNEL_STARTED: &str = "online_tunnel_started";
+/// Event: 在线隧道已停止。
+pub const EVENT_ONLINE_TUNNEL_STOPPED: &str = "online_tunnel_stopped";
+/// Event: 在线隧道操作失败。
+pub const EVENT_ONLINE_TUNNEL_FAILED: &str = "online_tunnel_failed";
+/// Event: 在线隧道报告非致命错误。
+pub const EVENT_ONLINE_TUNNEL_EVENT_ERROR: &str = "online_tunnel_event_error";
+
+/// 记录在线隧道启动完成，不记录票据、密码或身份密钥。
+pub fn online_tunnel_started(mode: &str) {
+    tracing::info!(
+        target: ONLINE_TARGET,
+        event_name = EVENT_ONLINE_TUNNEL_STARTED,
+        mode,
+        "online tunnel started"
+    );
+}
+
+/// 记录在线隧道停止完成。
+pub fn online_tunnel_stopped(mode: &str) {
+    tracing::info!(
+        target: ONLINE_TARGET,
+        event_name = EVENT_ONLINE_TUNNEL_STOPPED,
+        mode,
+        "online tunnel stopped"
+    );
+}
+
+/// 记录在线隧道操作失败，不记录调用输入中的敏感字段。
+pub fn online_tunnel_failed(operation: &str, error: &dyn Display) {
+    tracing::error!(
+        target: ONLINE_TARGET,
+        event_name = EVENT_ONLINE_TUNNEL_FAILED,
+        operation,
+        error = %error,
+        "online tunnel operation failed"
+    );
+}
+
+/// 记录底层隧道报告的非致命错误事件。
+pub fn online_tunnel_event_error(error: &str) {
+    tracing::warn!(
+        target: ONLINE_TARGET,
+        event_name = EVENT_ONLINE_TUNNEL_EVENT_ERROR,
+        error,
+        "online tunnel reported a non-fatal error"
     );
 }

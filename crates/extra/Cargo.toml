@@ -7,6 +7,10 @@ license = "GPL-3.0-only"
 [lib]
 path = "src/lib.rs"
 
+[features]
+default = []
+online-tunnel = ["dep:sculk"]
+
 [dependencies]
 tracing = "0.1"
 serde = { version = "1", features = ["derive"] }
@@ -22,3 +26,9 @@ sealantern-infra = { path = "../infra" }
 
 [features]
 default = []
+regex = "1"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+sha2 = "0.10"
+dirs = "5"
+mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
+sculk = { version = "=0.3.1", default-features = false, optional = true }

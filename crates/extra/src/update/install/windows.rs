@@ -1,7 +1,6 @@
 #[cfg(target_os = "windows")]
 mod imp {
     /// 转义 PowerShell 单引号
-    #[allow(dead_code)] // Windows 调用
     pub fn escape_powershell_single_quoted(value: &str) -> String {
         value.replace('\'', "''")
     }
@@ -54,7 +53,6 @@ mod imp {
     }
 
     /// 构建隐藏的 PowerShell 命令
-    #[allow(dead_code)] // Windows 调用
     pub fn build_hidden_powershell_command(command: &str) -> std::process::Command {
         let mut process = std::process::Command::new("powershell");
         process.args([
@@ -76,7 +74,6 @@ mod imp {
     }
 
     /// 启动更新重启监视器
-    #[allow(dead_code)] // Windows 调用
     pub fn spawn_update_relaunch_watcher(
         installer_pid: u32,
         relaunch_exe: &str,
@@ -124,7 +121,6 @@ mod imp {
     }
 
     /// 以提升权限启动 Windows 进程
-    #[allow(dead_code)] // Windows 调用
     pub fn spawn_elevated_windows_process(
         file_path: &str,
         args: &[&str],
@@ -186,7 +182,8 @@ mod imp {
 
 #[cfg(not(target_os = "windows"))]
 mod imp {
-    #[allow(dead_code)] // 跨平台占位
+    /// 非 Windows 平台上的桩实现，始终返回错误。
+    #[allow(dead_code)]
     pub fn spawn_elevated_windows_process(
         _file_path: &str,
         _args: &[&str],
@@ -198,4 +195,4 @@ mod imp {
 }
 
 #[cfg(target_os = "windows")]
-pub(super) use imp::spawn_elevated_windows_process;
+pub use imp::spawn_elevated_windows_process;

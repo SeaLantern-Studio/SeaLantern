@@ -84,7 +84,7 @@ pub(super) fn stop_server(id: String) -> Result<(), String> {
 
 /// 发送控制台命令
 pub(super) fn send_command(id: String, command: String) -> Result<(), String> {
-    sealantern_server::rpc::methods::server::dispatch_console_command(manager(), &id, &command)
+    sealantern_server::rpc::service::dispatch_console_command(manager(), &id, &command)
         .map_err(ServerManagerConsoleError::into_transport_message)
 }
 

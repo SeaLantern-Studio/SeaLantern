@@ -44,6 +44,20 @@ pub fn platform_operation_failed(operation: &str, error: &dyn Display) {
     );
 }
 
+/// Event: 应用数据目录创建失败。
+pub const EVENT_APP_DATA_DIR_CREATE_FAILED: &str = "app_data_dir_create_failed";
+
+/// 记录应用数据目录创建失败，不暴露完整目录结构。
+pub fn app_data_dir_create_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::warn!(
+        target: PLATFORM_TARGET,
+        event_name = EVENT_APP_DATA_DIR_CREATE_FAILED,
+        path = %path.display(),
+        error = %error,
+        "application data directory creation failed"
+    );
+}
+
 // -- 文件系统层 --
 
 /// 文件系统基础设施模块的 tracing 目标。

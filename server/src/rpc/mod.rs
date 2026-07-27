@@ -9,8 +9,10 @@ mod context;
 mod contract;
 mod error;
 mod lifecycle;
+mod macros;
 mod method_name;
 mod response;
+pub mod router;
 
 pub mod methods;
 pub mod service;

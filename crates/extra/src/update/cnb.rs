@@ -1,6 +1,6 @@
+use super::constants::{CNB_BASE_URL, CNB_RELEASES_URL};
 use super::types::UpdateInfo;
 use super::version::{compare_versions, normalize_release_tag_version};
-use crate::hardcode_data::update_sources::{CNB_BASE_URL, CNB_RELEASES_URL};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -47,7 +47,6 @@ struct CnbReleaseListData {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[allow(dead_code)] // 发布调用
 struct CnbRelease {
     #[serde(rename = "tagRef")]
     tag_ref: String,
@@ -76,7 +75,6 @@ fn normalize_tag_ref(tag_ref: &str) -> String {
     normalize_release_tag_version(tag)
 }
 
-#[allow(dead_code)] // 发布调用
 fn release_time_key(release: &CnbRelease) -> String {
     release
         .published_at
@@ -153,7 +151,6 @@ async fn fetch_releases(client: &reqwest::Client) -> Result<Vec<CnbRelease>, Str
         .unwrap_or_default())
 }
 
-#[allow(dead_code)] // 发布调用
 pub async fn fetch_release(
     client: &reqwest::Client,
     current_version: &str,

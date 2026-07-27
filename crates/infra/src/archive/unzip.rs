@@ -113,15 +113,15 @@ fn extract_zip_inner(
         let relative = safe_entry_path(archive_path, &entry_name)?;
 
         if entry.is_dir() {
-            ensure_directory(&root, relative.as_path(), destination)?;
+            ensure_directory(&root, &relative, destination)?;
             summary.directories += 1;
             continue;
         }
 
-        ensure_parent_dirs(&root, relative.as_path(), destination)?;
-        let output_path = destination.join(relative.as_path());
+        ensure_parent_dirs(&root, &relative, destination)?;
+        let output_path = destination.join(&relative);
         let mut output = root
-            .open_with(relative.as_path(), OpenOptions::new().write(true).create_new(true))
+            .open_with(&relative, OpenOptions::new().write(true).create_new(true))
             .map_err(|error| ArchiveError::io("create ZIP entry file", &output_path, error))?;
         let copied = copy_entry_with_limits(
             &mut entry,

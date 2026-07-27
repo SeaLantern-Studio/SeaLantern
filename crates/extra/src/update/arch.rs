@@ -1,11 +1,11 @@
-#[cfg(all(target_os = "linux", not(debug_assertions)))]
+#[cfg(target_os = "linux")]
+use super::constants::{AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL, PLUGIN_MARKET_HTTP_USER_AGENT};
+#[cfg(target_os = "linux")]
 use super::types::UpdateInfo;
-#[cfg(all(target_os = "linux", not(debug_assertions)))]
+#[cfg(target_os = "linux")]
 use super::version::compare_versions;
-#[cfg(all(target_os = "linux", not(debug_assertions)))]
-use crate::hardcode_data::external_services::{AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL};
-#[cfg(all(target_os = "linux", not(debug_assertions)))]
-use crate::hardcode_data::plugin_market::PLUGIN_MARKET_HTTP_USER_AGENT;
+#[cfg(target_os = "linux")]
+use tracing::debug;
 
 /// 检查是否为 Arch Linux 系统
 #[cfg(target_os = "linux")]
@@ -39,7 +39,7 @@ pub fn get_aur_helper() -> Option<String> {
 }
 
 /// 检查 AUR 更新
-#[cfg(all(target_os = "linux", not(debug_assertions)))]
+#[cfg(target_os = "linux")]
 pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, String> {
     let client = reqwest::Client::new();
     let url = AUR_PACKAGE_INFO_URL;
@@ -70,7 +70,7 @@ pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, Strin
         .unwrap_or("")
         .to_string();
 
-    // 比较版本（忽略pkgrel部分）
+    // 比较版本(忽略pkgrel部分)
     let aur_clean = aur_version.split('-').next().unwrap_or(&aur_version);
     let current_clean = current_version.split('-').next().unwrap_or(current_version);
 
@@ -94,10 +94,8 @@ pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, Strin
         format!("已是最新版本 (Arch Linux)\n当前版本: {}", current_version)
     };
 
-    println!("=== AUR 检查结果 ===");
-    println!("has_update: {}", has_update);
-    println!("source: arch-aur");
-    println!("latest_version: {}", aur_version);
+    debug!("=== AUR 检查结果 ===");
+    debug!(has_update, source = "arch-aur", latest_version = %aur_version, "AUR update check completed");
 
     Ok(UpdateInfo {
         has_update,
@@ -113,14 +111,12 @@ pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, Strin
 
 /// 非 Linux 系统的占位实现
 #[cfg(not(target_os = "linux"))]
-#[allow(dead_code)] // 跨平台占位
 pub fn is_arch_linux() -> bool {
     false
 }
 
 /// 非 Linux 系统的占位实现
 #[cfg(not(target_os = "linux"))]
-#[allow(dead_code)] // 跨平台占位
 pub fn get_aur_helper() -> Option<String> {
     None
 }

@@ -1,17 +1,56 @@
 //! 服务器控制台命令 RPC 方法。
+//!
+//! # 接口说明
+//!
+//! | 项目 | 值 |
+//! |------|-----|
+//! | 方法名 | `server.console.send` |
+//! | HTTP 方法 | `POST` |
+//! | HTTP 路径 | `/api/rpc/server/console/send` |
+//! | 请求 Content-Type | `application/json` |
+//! | 请求头 | `x-request-id`（可选，不传则自动生成） |
+//!
+//! ## 请求体（JSON）
+//!
+//! ```json
+//! {
+//!     "instanceId": "server-42",
+//!     "command": "say hello"
+//! }
+//! ```
+//!
+//! | 字段 | 类型 | 约束 |
+//! |------|------|------|
+//! | `instanceId` | `string` | 1-128 字符，仅允许 ASCII 字母、数字、`-`、`_` |
+//! | `command` | `string` | 1-32767 字符，单行，无控制字符 |
+//!
+//! ## 响应体（JSON）
+//!
+//! ```json
+//! {
+//!     "requestId": "http-42",
+//!     "data": null
+//! }
+//! ```
+//!
+//! `data` 固定为 `null`，成功即表示命令已送达服务端控制台。
 
 use std::fmt;
 use std::future::Future;
+use std::sync::Arc;
+
+use serde::de::{self, Deserialize, Deserializer};
+use serde::Deserialize as DeriveDeserialize;
 
 use crate::observability;
+use crate::rpc::axum::{RpcAxumMethod, RpcHttpMethod};
 use crate::rpc::service::{ConsoleCommandService, ConsoleCommandServiceError};
 use crate::rpc::{RpcContext, RpcError, RpcMethod, RpcMethodName, RpcPermission, RpcResult};
 
+use crate::rpc::methods::PERMISSION_SERVER_CONSOLE_SEND;
+
 const MAX_INSTANCE_ID_LENGTH: usize = 128;
 const MAX_COMMAND_CHAR_COUNT: usize = 32_767;
-
-/// 向受管服务器控制台写入命令所需的 RPC 权限。
-pub const PERMISSION_SERVER_CONSOLE_SEND: RpcPermission = RpcPermission::new("server.console.send");
 
 /// 经过边界校验的单行服务器控制台命令。
 ///
@@ -62,22 +101,32 @@ impl fmt::Debug for ConsoleCommandRequest {
     }
 }
 
-/// 将已验证请求交给受管服务器控制台的 RPC 方法。
-pub struct SendConsoleCommand<S> {
-    service: S,
+impl<'de> Deserialize<'de> for ConsoleCommandRequest {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(DeriveDeserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Raw {
+            instance_id: String,
+            command: String,
+        }
+        let raw = Raw::deserialize(d)?;
+        ConsoleCommandRequest::new(raw.instance_id, raw.command).map_err(de::Error::custom)
+    }
 }
 
-impl<S> SendConsoleCommand<S> {
+/// 将已验证请求交给受管服务器控制台的 RPC 方法。
+pub struct SendConsoleCommand {
+    service: Arc<dyn ConsoleCommandService>,
+}
+
+impl SendConsoleCommand {
     /// 使用宿主提供的受管控制台能力创建方法实例。
-    pub const fn new(service: S) -> Self {
+    pub fn new(service: Arc<dyn ConsoleCommandService>) -> Self {
         Self { service }
     }
 }
 
-impl<S> RpcMethod for SendConsoleCommand<S>
-where
-    S: ConsoleCommandService,
-{
+impl RpcMethod for SendConsoleCommand {
     const NAME: RpcMethodName = RpcMethodName::new("server.console.send");
     const REQUIRED_PERMISSION: Option<RpcPermission> = Some(PERMISSION_SERVER_CONSOLE_SEND);
 
@@ -89,7 +138,7 @@ where
         _context: &RpcContext,
         request: Self::Request,
     ) -> impl Future<Output = RpcResult<Self::Response>> + Send {
-        let service = &self.service;
+        let service = Arc::clone(&self.service);
         async move {
             let result = service
                 .send_console_command(request.instance_id(), request.command())
@@ -102,6 +151,10 @@ where
             result
         }
     }
+}
+
+impl RpcAxumMethod for SendConsoleCommand {
+    const HTTP_METHOD: RpcHttpMethod = RpcHttpMethod::Post;
 }
 
 fn validate_instance_id(instance_id: &str) -> RpcResult<()> {
@@ -215,10 +268,11 @@ mod tests {
 
     #[tokio::test]
     async fn dispatches_the_validated_command_once() {
-        let method = SendConsoleCommand::new(RecordingConsoleService {
+        let service = Arc::new(RecordingConsoleService {
             requests: Mutex::new(Vec::new()),
             failure: None,
         });
+        let method = SendConsoleCommand::new(service.clone());
         let params =
             ConsoleCommandRequest::new("server-42", "say hello").expect("request should be valid");
 
@@ -227,10 +281,9 @@ mod tests {
             .expect("command should be delivered");
 
         assert_eq!(
-            method
-                .service
+            *service
                 .requests
-                .into_inner()
+                .lock()
                 .expect("test request log lock should not be poisoned"),
             vec![("server-42".into(), "say hello".into())]
         );
@@ -238,10 +291,11 @@ mod tests {
 
     #[tokio::test]
     async fn maps_unverified_console_input_to_a_conflict() {
-        let method = SendConsoleCommand::new(RecordingConsoleService {
+        let service = Arc::new(RecordingConsoleService {
             requests: Mutex::new(Vec::new()),
             failure: Some(ConsoleCommandServiceError::InputUnavailable),
         });
+        let method = SendConsoleCommand::new(service);
         let params =
             ConsoleCommandRequest::new("server-42", "stop").expect("request should be valid");
 
@@ -255,10 +309,11 @@ mod tests {
 
     #[tokio::test]
     async fn rejects_an_unprivileged_call_before_the_service_is_invoked() {
-        let method = SendConsoleCommand::new(RecordingConsoleService {
+        let service = Arc::new(RecordingConsoleService {
             requests: Mutex::new(Vec::new()),
             failure: None,
         });
+        let method = SendConsoleCommand::new(service.clone());
         let params =
             ConsoleCommandRequest::new("server-42", "stop").expect("request should be valid");
 
@@ -267,8 +322,7 @@ mod tests {
             .expect_err("missing permission must be rejected");
 
         assert_eq!(error.code(), RpcErrorCode::PermissionDenied);
-        assert!(method
-            .service
+        assert!(service
             .requests
             .lock()
             .expect("test request log lock should not be poisoned")

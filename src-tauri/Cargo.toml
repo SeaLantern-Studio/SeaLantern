@@ -15,6 +15,8 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 sealantern-server = { path = "../server" }
+sealantern-extra = { path = "../crates/extra" }
+tracing = "0.1"
 tauri = { version = "2", features = ["protocol-asset", "tray-icon", "macos-private-api"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
@@ -68,7 +70,7 @@ ipnet = "2.10"
 chrono = "0.4"
 lazy_static = "1.4"
 shlex = "1.3.0"
-sculk = { version = "0.2.0", features = ["persist", "clipboard"] }
+sculk = { version = "0.3.1", features = ["persist", "clipboard"] }
 
 [features]
 docker = ["axum", "tower", "tower-http", "tokio-stream", "mime_guess"]

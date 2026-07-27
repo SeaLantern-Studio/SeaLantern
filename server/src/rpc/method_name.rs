@@ -2,13 +2,11 @@
 
 use std::fmt;
 
-const HTTP_RPC_PREFIX: &str = "/api/rpc";
-
 /// 传输无关的 RPC 方法标识。
 ///
 /// 标识固定使用小写点分的 `domain.resource.action` 形式，例如
 /// `server.console.send`。Rust 实现仍可使用 idiomatic 的模块、类型和函数命名；前端
-/// 适配器则可直接以此标识组织调用，并由 [`Self::http_path`] 获得一致的 Axum 路径。
+/// 适配器可直接以此标识组织调用。
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RpcMethodName(&'static str);
 
@@ -56,20 +54,6 @@ impl RpcMethodName {
     pub const fn as_str(self) -> &'static str {
         self.0
     }
-
-    /// 派生 Axum 应注册的 POST 路径。
-    ///
-    /// HTTP 只承载 RPC 方法，不混入旧的动态 `/api/{command}` 表。请求和响应 JSON 字段
-    /// 的 camelCase 规则由未来的 Axum/Tauri 适配器 DTO 负责。
-    pub fn http_path(self) -> String {
-        let mut path = String::with_capacity(HTTP_RPC_PREFIX.len() + self.0.len() + 1);
-        path.push_str(HTTP_RPC_PREFIX);
-        path.push('/');
-        for character in self.0.chars() {
-            path.push(if character == '.' { '/' } else { character });
-        }
-        path
-    }
 }
 
 impl fmt::Debug for RpcMethodName {
@@ -98,14 +82,6 @@ const fn is_ascii_digit(byte: u8) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn derives_a_stable_http_path_from_the_canonical_name() {
-        let method = RpcMethodName::new("server.console.send");
-
-        assert_eq!(method.as_str(), "server.console.send");
-        assert_eq!(method.http_path(), "/api/rpc/server/console/send");
-    }
 
     #[test]
     fn accepts_lowercase_dotted_domain_resource_action_names() {
