@@ -18,13 +18,16 @@ pub struct TaskProgressResponse {
 #[serde(untagged)]
 pub enum TaskStatus {
     Simple(String),
-    Error { error: String },
+    Error {
+        #[serde(rename = "Error")]
+        error: String,
+    },
 }
 
 impl From<sealantern_infra::download::DownloadSnapshot> for TaskProgressResponse {
     fn from(snap: sealantern_infra::download::DownloadSnapshot) -> Self {
         let status = if let Some(err) = snap.error {
-            TaskStatus::Error { Error: err }
+            TaskStatus::Error { error: err }
         } else if snap.is_finished {
             TaskStatus::Simple("Completed".to_string())
         } else if snap.downloaded > 0 {
