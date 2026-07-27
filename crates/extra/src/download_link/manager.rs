@@ -2,7 +2,7 @@
 
 use super::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
 use sealantern_infra::download::fetch_to_bytes;
-use sealantern_infra::net::client::NetClient;
+use sealantern_infra::net::client::{ClientConfig, NetClient};
 use serde_json::Value;
 use tokio::sync::{Mutex, OnceCell};
 
@@ -35,7 +35,12 @@ impl LinkManager {
 
     /// 从远程加载下载链接配置
     async fn init() -> Result<BaseDownloadLinks, String> {
-        let client = NetClient::from_config(&Default::default())
+        let config = ClientConfig {
+            user_agent: crate::update::UPDATE_HTTP_USER_AGENT.to_string(),
+            ..Default::default()
+        };
+
+        let client = NetClient::from_config(&config)
             .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
         let response_body = fetch_to_bytes(&client, DOWNLOAD_LINK_LIST_URL)
@@ -43,8 +48,8 @@ impl LinkManager {
             .map_err(|e| format!("Failed to download config: {}", e))?;
 
         let body_str = String::from_utf8_lossy(&response_body);
-        let root_json: Value = serde_json::from_str(&body_str)
-            .map_err(|e| format!("Failed to parse config: {}", e))?;
+        let root_json: Value =
+            serde_json::from_str(&body_str).map_err(|e| format!("Failed to parse config: {}", e))?;
 
         let mut all_server_types = Vec::new();
         let mut type_download_groups = Vec::new();
