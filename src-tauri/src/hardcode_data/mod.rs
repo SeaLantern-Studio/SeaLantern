@@ -10,3 +10,4 @@ pub mod plugin_manifest;
 pub mod plugin_market;
 pub mod plugin_permissions;
 pub mod server_downloads;
+pub mod update_sources;
