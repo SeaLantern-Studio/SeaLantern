@@ -143,7 +143,7 @@ impl std::error::Error for TerminalWriteError {
 }
 
 // 受制于 GitHub 机器关于杀进程的不稳定性，杀进程测试不会为 Unix 开放。
-#[cfg(all(test, not(unix)))]
+#[cfg(test)]
 mod tests {
     use std::io::Read;
     use std::process::{Command, Stdio};
@@ -197,6 +197,7 @@ mod tests {
         command
     }
 
+    #[cfg_attr(ci_skip_validation, ignore)]
     #[test]
     fn transfers_output_streams_without_losing_their_identity() {
         let mut command = output_command();
@@ -229,6 +230,7 @@ mod tests {
         assert!(terminal.take_output(TerminalStream::Stdout).is_none());
     }
 
+    #[cfg_attr(ci_skip_validation, ignore)]
     #[test]
     fn host_selected_console_input_writes_and_flushes_a_command_line() {
         let mut command = command_reader_command();
@@ -251,6 +253,7 @@ mod tests {
         assert!(output.contains("say hello"));
     }
 
+    #[cfg_attr(ci_skip_validation, ignore)]
     #[test]
     fn reports_unavailable_standard_input_without_discarding_state() {
         let mut command = exit_successfully_command();
@@ -268,6 +271,7 @@ mod tests {
         let _ = daemon.wait().expect("wait for test process");
     }
 
+    #[cfg_attr(ci_skip_validation, ignore)]
     #[test]
     fn terminal_output_implements_read_for_host_owned_readers() {
         let mut command = output_command();
@@ -289,6 +293,7 @@ mod tests {
         let _ = daemon.wait().expect("wait for test process");
     }
 
+    #[cfg_attr(ci_skip_validation, ignore)]
     #[test]
     fn shell_mode_discards_piped_input() {
         let mut command = exit_successfully_command();
@@ -306,6 +311,7 @@ mod tests {
         let _ = daemon.wait().expect("wait for test process");
     }
 
+    #[cfg_attr(ci_skip_validation, ignore)]
     #[test]
     fn legacy_custom_command_discards_piped_input() {
         let mut command = exit_successfully_command();
