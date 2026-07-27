@@ -1,6 +1,6 @@
 //! 服务器相关命令
 
-use crate::models::ServerInstance;
+use sealantern_extra::models::ServerInstance;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;

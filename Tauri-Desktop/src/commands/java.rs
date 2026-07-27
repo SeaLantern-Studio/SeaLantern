@@ -1,6 +1,6 @@
 //! Java 相关命令
 
-use crate::models::JavaInfo;
+use sealantern_extra::models::JavaInfo;
 use std::sync::Mutex;
 use tauri::State;
 

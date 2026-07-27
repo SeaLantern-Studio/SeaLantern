@@ -1,6 +1,6 @@
 //! 设置相关命令
 
-use crate::models::{AppSettings, JavaInfo};
+use sealantern_extra::models::{AppSettings, JavaInfo};
 use sealantern_extra::config::get_app_data_dir;
 use serde::{Deserialize, Serialize};
 use std::fs;
