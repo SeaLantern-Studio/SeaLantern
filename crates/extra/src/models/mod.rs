@@ -11,6 +11,4 @@ pub use server::ServerInstance;
 pub use task::{TaskProgressResponse, TaskStatus};
 
 // 从 download_link 重新导出
-pub use crate::download_link::{
-    BaseDownloadLinks, DownloadLink, LinkManager, TypeDownloadLinks,
-};
+pub use crate::download_link::{BaseDownloadLinks, DownloadLink, LinkManager, TypeDownloadLinks};

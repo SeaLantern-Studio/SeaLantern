@@ -43,8 +43,8 @@ impl LinkManager {
             .map_err(|e| format!("Failed to download config: {}", e))?;
 
         let body_str = String::from_utf8_lossy(&response_body);
-        let root_json: Value =
-            serde_json::from_str(&body_str).map_err(|e| format!("Failed to parse config: {}", e))?;
+        let root_json: Value = serde_json::from_str(&body_str)
+            .map_err(|e| format!("Failed to parse config: {}", e))?;
 
         let mut all_server_types = Vec::new();
         let mut type_download_groups = Vec::new();

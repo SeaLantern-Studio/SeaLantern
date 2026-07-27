@@ -1,7 +1,7 @@
 //! 应用设置模型
 
-use serde::{Deserialize, Serialize};
 use super::JavaInfo;
+use serde::{Deserialize, Serialize};
 
 /// 应用设置（与前端 AppSettings 对应）
 #[derive(Debug, Clone, Serialize, Deserialize)]
