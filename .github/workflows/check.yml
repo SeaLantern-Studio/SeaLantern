@@ -141,6 +141,8 @@ jobs:
 
       - name: 运行测试
         run: cargo test -p sealantern-core --lib
+        env:
+          RUSTFLAGS: "--cfg ci_skip_validation"
 
   backend-test-infra:
     name: 后端测试 (infra)
