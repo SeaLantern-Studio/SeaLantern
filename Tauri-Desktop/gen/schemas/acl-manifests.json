@@ -3848,5 +3848,46 @@
     },
     "permission_sets": {},
     "global_scope_schema": null
+  },
+  "window-state": {
+    "default_permission": {
+      "identifier": "default",
+      "description": "This permission set configures what kind of\noperations are available from the window state plugin.\n\n#### Granted Permissions\n\nAll operations are enabled by default.\n\n",
+      "permissions": ["allow-filename", "allow-restore-state", "allow-save-window-state"]
+    },
+    "permissions": {
+      "allow-filename": {
+        "identifier": "allow-filename",
+        "description": "Enables the filename command without any pre-configured scope.",
+        "commands": { "allow": ["filename"], "deny": [] }
+      },
+      "allow-restore-state": {
+        "identifier": "allow-restore-state",
+        "description": "Enables the restore_state command without any pre-configured scope.",
+        "commands": { "allow": ["restore_state"], "deny": [] }
+      },
+      "allow-save-window-state": {
+        "identifier": "allow-save-window-state",
+        "description": "Enables the save_window_state command without any pre-configured scope.",
+        "commands": { "allow": ["save_window_state"], "deny": [] }
+      },
+      "deny-filename": {
+        "identifier": "deny-filename",
+        "description": "Denies the filename command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["filename"] }
+      },
+      "deny-restore-state": {
+        "identifier": "deny-restore-state",
+        "description": "Denies the restore_state command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["restore_state"] }
+      },
+      "deny-save-window-state": {
+        "identifier": "deny-save-window-state",
+        "description": "Denies the save_window_state command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["save_window_state"] }
+      }
+    },
+    "permission_sets": {},
+    "global_scope_schema": null
   }
 }

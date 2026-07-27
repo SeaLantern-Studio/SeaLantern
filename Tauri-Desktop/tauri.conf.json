@@ -44,8 +44,7 @@
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]
-      },
-      "capabilities": ["default"]
+      }
     },
     "withGlobalTauri": true
   },
