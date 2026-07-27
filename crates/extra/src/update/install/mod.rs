@@ -1,9 +1,17 @@
+//! 更新安装流程管理模块。
+//!
+//! 提供安装状态跟踪、待更新持久化、缓存目录管理等功能。
+//!
+//! # 子模块
+//!
+//! - [`paths`] — 缓存目录和待更新文件路径
+//! - [`pending`] — 待更新状态的读写与清理
+//! - [`windows`] — Windows 特权安装器启动（仅 Windows 平台）
+
 mod paths;
 mod pending;
 
 #[cfg(target_os = "windows")]
-pub mod windows;
-#[cfg(not(target_os = "windows"))]
 pub mod windows;
 
 use std::sync::atomic::AtomicBool;

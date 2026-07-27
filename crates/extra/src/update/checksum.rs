@@ -1,69 +1,23 @@
+//! 更新文件校验和验证模块。
+//!
+//! 提供 SHA256 校验和文件的解析、匹配和远程获取功能。
+//! 支持常见的校验和文件名模式（`.sha256`、`.sha256sum`、`.sha256.txt` 等）。
+//!
+//! 校验和解析的基础能力（`is_sha256_hex`、`find_sha256_in_line`、
+//! `parse_sha256_from_checksum_content`）委托给 `sealantern_infra::fs`。
+//!
+//! # 解析策略
+//!
+//! 采用多级候选匹配策略：精确名称匹配 > 目标文件名匹配 > 通用哈希文件匹配。
+
 use std::path::Path;
 
 use super::types::ReleaseAsset;
+use crate::observability;
 
-/// 解析 SHA256 校验文件内容
-pub fn parse_sha256_from_checksum_content(content: &str, target_name: &str) -> Option<String> {
-    let target_lower = target_name.to_ascii_lowercase();
-    let target_file_name = Path::new(target_name)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or(target_name)
-        .to_ascii_lowercase();
-
-    let mut single_hash: Option<String> = None;
-    let mut hash_line_count = 0_usize;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        let hash = match find_sha256_in_line(trimmed) {
-            Some(value) => value,
-            None => continue,
-        };
-
-        hash_line_count += 1;
-        if hash_line_count == 1 {
-            single_hash = Some(hash.clone());
-        } else {
-            single_hash = None;
-        }
-
-        let line_lower = trimmed.to_ascii_lowercase();
-        if line_lower.contains(&target_lower) || line_lower.contains(&target_file_name) {
-            return Some(hash);
-        }
-    }
-
-    if hash_line_count == 1 {
-        return single_hash;
-    }
-
-    None
-}
-
-/// 在行中查找 SHA256 哈希值
-fn find_sha256_in_line(line: &str) -> Option<String> {
-    for token in line.split(|ch: char| {
-        ch.is_ascii_whitespace()
-            || matches!(ch, '=' | ':' | ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>')
-    }) {
-        let candidate = token.trim_matches(|ch| ch == '*' || ch == '"' || ch == '\'');
-        if is_sha256_hex(candidate) {
-            return Some(candidate.to_ascii_lowercase());
-        }
-    }
-
-    None
-}
-
-/// 检查字符串是否为有效的 SHA256 十六进制值
-fn is_sha256_hex(value: &str) -> bool {
-    value.len() == 64 && value.chars().all(|ch| ch.is_ascii_hexdigit())
-}
+pub use sealantern_infra::fs::{
+    find_sha256_in_line, is_sha256_hex, parse_sha256_from_checksum_content,
+};
 
 /// 查找 SHA256 校验文件资源
 pub fn find_sha256_assets<'a>(
@@ -128,9 +82,23 @@ pub async fn fetch_sha256_from_asset(
         .get(&hash_asset.browser_download_url)
         .send()
         .await
+        .inspect_err(|e| {
+            observability::update_api_request_failed(
+                "github",
+                "fetch_sha256_asset",
+                None,
+                &format!("{e}"),
+            );
+        })
         .ok()?;
 
     if !response.status().is_success() {
+        observability::update_api_request_failed(
+            "github",
+            "fetch_sha256_asset",
+            Some(response.status().as_u16()),
+            &"non-success status",
+        );
         return None;
     }
 
@@ -157,17 +125,4 @@ pub async fn resolve_asset_sha256(
         }
     }
     None
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_sha256_from_checksum_content() {
-        let content = "abc123def456...  file.zip\n";
-        let result = parse_sha256_from_checksum_content(content, "file.zip");
-        // 验证基本功能
-        assert!(result.is_some() || result.is_none());
-    }
 }

@@ -230,3 +230,121 @@ pub fn online_tunnel_event_error(error: &str) {
         "online tunnel reported a non-fatal error"
     );
 }
+
+// ---------------------------------------------------------------------------
+// 更新检查模块
+// ---------------------------------------------------------------------------
+
+/// 更新检查模块的 tracing 目标。
+pub const UPDATE_TARGET: &str = "sealantern.extra.update";
+
+/// Event: 更新检查开始。
+pub const EVENT_UPDATE_CHECK_STARTED: &str = "update_check_started";
+/// Event: 更新检查完成。
+pub const EVENT_UPDATE_CHECK_COMPLETED: &str = "update_check_completed";
+/// Event: 更新下载开始。
+pub const EVENT_UPDATE_DOWNLOAD_STARTED: &str = "update_download_started";
+/// Event: 更新下载完成。
+pub const EVENT_UPDATE_DOWNLOAD_COMPLETED: &str = "update_download_completed";
+/// Event: 更新下载失败。
+pub const EVENT_UPDATE_DOWNLOAD_FAILED: &str = "update_download_failed";
+/// Event: 更新校验和验证通过。
+pub const EVENT_UPDATE_HASH_VERIFIED: &str = "update_hash_verified";
+/// Event: 更新校验和不匹配。
+pub const EVENT_UPDATE_HASH_MISMATCH: &str = "update_hash_mismatch";
+/// Event: 更新 API 请求失败。
+pub const EVENT_UPDATE_API_REQUEST_FAILED: &str = "update_api_request_failed";
+
+/// 记录更新检查开始。
+pub fn update_check_started(source: &str, current_version: &str) {
+    tracing::info!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_CHECK_STARTED,
+        source,
+        current_version,
+        "update check started"
+    );
+}
+
+/// 记录更新检查完成。
+pub fn update_check_completed(source: &str, has_update: bool, latest_version: Option<&str>) {
+    tracing::info!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_CHECK_COMPLETED,
+        source,
+        has_update,
+        latest_version,
+        "update check completed"
+    );
+}
+
+/// 记录更新下载开始。
+pub fn update_download_started(url: &str) {
+    tracing::info!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_DOWNLOAD_STARTED,
+        url,
+        "update download started"
+    );
+}
+
+/// 记录更新下载完成。
+pub fn update_download_completed(file_path: &str) {
+    tracing::info!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_DOWNLOAD_COMPLETED,
+        file_path,
+        "update download completed"
+    );
+}
+
+/// 记录更新下载失败。
+pub fn update_download_failed(url: &str, error: &dyn Display) {
+    tracing::error!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_DOWNLOAD_FAILED,
+        url,
+        error = %error,
+        "update download failed"
+    );
+}
+
+/// 记录更新校验和验证通过。
+pub fn update_hash_verified(file_path: &str) {
+    tracing::info!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_HASH_VERIFIED,
+        file_path,
+        "update hash verified"
+    );
+}
+
+/// 记录更新校验和不匹配——文件可能损坏或被篡改。
+pub fn update_hash_mismatch(file_path: &str, expected: &str, got: &str) {
+    tracing::error!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_HASH_MISMATCH,
+        file_path,
+        expected,
+        got,
+        "update hash mismatch"
+    );
+}
+
+/// 记录更新 API 请求失败。
+pub fn update_api_request_failed(
+    source: &str,
+    operation: &str,
+    status: Option<u16>,
+    error: &dyn Display,
+) {
+    tracing::error!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_API_REQUEST_FAILED,
+        source,
+        operation,
+        status,
+        error = %error,
+        "update API request failed"
+    );
+}
