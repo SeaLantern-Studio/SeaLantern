@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/infra", "crates/extra", "server", "docker-entry"]
+members = ["crates/core", "crates/infra", "crates/extra", "server", "Tauri-Desktop"]
 resolver = "2"
 
 # 优化配置（从 src-tauri/Cargo.toml 移到这里统一管理）

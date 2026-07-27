@@ -9,6 +9,12 @@
     "beforeBuildCommand": "pnpm run build",
     "frontendDist": "../dist"
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [],
+      "pubkey": ""
+    }
+  },
   "app": {
     "windows": [
       {
