@@ -32,10 +32,8 @@ pub fn get_pending_update_file() -> std::path::PathBuf {
 }
 
 /// 检查待更新状态
-///
-/// `current_version` 由调用方传入，用于与待更新版本比较。
-pub async fn check_pending_update(current_version: &str) -> Result<Option<PendingUpdate>, String> {
-    pending::check_pending_update(current_version).await
+pub async fn check_pending_update() -> Result<Option<PendingUpdate>, String> {
+    pending::check_pending_update().await
 }
 
 /// 清除待更新状态

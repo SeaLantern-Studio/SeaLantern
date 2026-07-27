@@ -364,8 +364,7 @@ fn launch_update_installer(
 #[command]
 #[allow(dead_code)]
 pub async fn check_pending_update_cmd() -> Result<Option<PendingUpdate>, String> {
-    let current_version = env!("CARGO_PKG_VERSION");
-    check_pending_update(current_version).await
+    check_pending_update().await
 }
 
 /// 清除待更新状态
