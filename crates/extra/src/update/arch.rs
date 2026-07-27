@@ -10,11 +10,11 @@
 
 #[cfg(target_os = "linux")]
 mod imp {
-    use super::constants::{
+    use super::super::constants::{
         AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL, PLUGIN_MARKET_HTTP_USER_AGENT,
     };
-    use super::types::UpdateInfo;
-    use super::version::compare_versions;
+    use super::super::types::UpdateInfo;
+    use super::super::version::compare_versions;
     use crate::observability;
 
     /// 检查是否为 Arch Linux 系统
