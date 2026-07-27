@@ -1,1 +1,43 @@
-{}
+{
+  "default": {
+    "identifier": "default",
+    "description": "默认权限配置",
+    "local": true,
+    "windows": ["main"],
+    "permissions": [
+      "core:default",
+      "core:event:allow-listen",
+      "core:event:allow-emit",
+      "core:window:default",
+      "core:window:allow-start-dragging",
+      "core:window:allow-close",
+      "core:window:allow-minimize",
+      "core:window:allow-maximize",
+      "core:window:allow-unmaximize",
+      "core:window:allow-toggle-maximize",
+      "fs:default",
+      "fs:allow-read-text-file",
+      "fs:allow-write-text-file",
+      "fs:allow-exists",
+      "fs:allow-mkdir",
+      "fs:allow-remove",
+      "fs:allow-read-dir",
+      "dialog:default",
+      "dialog:allow-open",
+      "dialog:allow-save",
+      "dialog:allow-message",
+      "dialog:allow-ask",
+      "dialog:allow-confirm",
+      "http:default",
+      "http:allow-fetch",
+      "process:default",
+      "process:allow-restart",
+      "process:allow-exit",
+      "opener:default",
+      "opener:allow-open-url",
+      "updater:default",
+      "updater:allow-check",
+      "updater:allow-download-and-install"
+    ]
+  }
+}
