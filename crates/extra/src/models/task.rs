@@ -18,7 +18,7 @@ pub struct TaskProgressResponse {
 #[serde(untagged)]
 pub enum TaskStatus {
     Simple(String),
-    Error { Error: String },
+    Error { error: String },
 }
 
 impl From<sealantern_infra::download::DownloadSnapshot> for TaskProgressResponse {
