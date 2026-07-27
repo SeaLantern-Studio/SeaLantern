@@ -4,17 +4,21 @@ version = "1.2.0"
 edition = "2021"
 license = "GPL-3.0-only"
 
+
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = "2"
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api", "protocol-asset"] }
-tauri-plugin-opener = "2"
-tauri-plugin-fs = "2"
-tauri-plugin-dialog = "2"
-tauri-plugin-http = "2"
-tauri-plugin-process = "2"
-tauri-plugin-updater = "2"
+# 允许 Cargo 自动拉取匹配该 Minor 版本的最新兼容 Patch 版本
+tauri = { version = "2.10", features = ["macos-private-api", "protocol-asset"] }
+
+tauri-plugin-dialog = "2.6"
+tauri-plugin-fs = "2.4"
+tauri-plugin-opener = "2.5"
+tauri-plugin-http = "2.5"
+tauri-plugin-process = "2.3"
+tauri-plugin-updater = "2.10"
+
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
