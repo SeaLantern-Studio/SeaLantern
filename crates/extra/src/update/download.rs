@@ -1,7 +1,8 @@
 //! 更新文件下载模块。
 //!
-//! 提供更新文件的 HTTP 下载、SHA256 哈希计算与校验功能。
+//! 提供更新文件的 HTTP 下载以及下载后的 SHA256 校验功能。
 //! 主要入口为 [`download_update_file_without_events`]。
+//! 哈希计算委托给 `sealantern_infra::fs::hash`。
 //!
 //! # 错误处理
 //!
@@ -10,9 +11,6 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-
-use sha2::{Digest, Sha256};
-use std::io::Read;
 
 use super::constants::UPDATE_HTTP_USER_AGENT;
 use super::types::DownloadProgress;
@@ -28,23 +26,6 @@ pub fn file_name_from_url(url: &str) -> String {
     } else {
         candidate.to_string()
     }
-}
-
-/// 计算文件的 SHA256 哈希值
-pub fn calculate_sha256(file_path: &PathBuf) -> Result<String, std::io::Error> {
-    let mut file = File::open(file_path)?;
-    let mut hasher = Sha256::new();
-    let mut buffer = [0u8; 8192];
-
-    loop {
-        let bytes_read = file.read(&mut buffer)?;
-        if bytes_read == 0 {
-            break;
-        }
-        hasher.update(&buffer[..bytes_read]);
-    }
-
-    Ok(format!("{:x}", hasher.finalize()))
 }
 
 /// 下载更新文件 (不包含 Tauri 事件发送)
@@ -113,14 +94,16 @@ pub async fn download_update_file_without_events(
 
     // 验证哈希值
     if let Some(hash) = expected_hash {
-        let calculated_hash =
-            calculate_sha256(&file_path).map_err(|e| format!("Failed to calculate hash: {}", e))?;
+        let calculated_hash = sealantern_infra::fs::sha256_file(&file_path)
+            .await
+            .map_err(|e| format!("Failed to calculate hash: {}", e))?;
+        let calculated_hex = sealantern_infra::fs::sha256_hex(calculated_hash);
 
-        if calculated_hash.to_lowercase() != hash.to_lowercase() {
+        if calculated_hex.to_lowercase() != hash.to_lowercase() {
             std::fs::remove_file(&file_path).ok();
             let msg =
-                format!("Hash verification failed. Expected: {}, Got: {}", hash, calculated_hash);
-            observability::update_hash_mismatch(&file_path_str, &hash, &calculated_hash);
+                format!("Hash verification failed. Expected: {}, Got: {}", hash, calculated_hex);
+            observability::update_hash_mismatch(&file_path_str, &hash, &calculated_hex);
             return Err(msg);
         }
         observability::update_hash_verified(&file_path_str);

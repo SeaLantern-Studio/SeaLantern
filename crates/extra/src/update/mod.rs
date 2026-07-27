@@ -30,9 +30,7 @@ pub use checksum::{
 };
 pub use cnb::{fetch_release as fetch_cnb_release, resolve_download_candidate_by_version};
 pub use constants::UPDATE_HTTP_USER_AGENT;
-pub use download::{
-    calculate_progress, calculate_sha256, download_update_file_without_events, file_name_from_url,
-};
+pub use download::{calculate_progress, download_update_file_without_events, file_name_from_url};
 pub use github::{fetch_release as fetch_github_release, find_suitable_asset};
 pub use install::{
     check_pending_update, clear_pending_update, get_pending_update_file, get_update_cache_dir,
