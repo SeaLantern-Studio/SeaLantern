@@ -100,6 +100,13 @@ pub fn run() {
             get_plugin_context_menu_snapshot,
             get_plugin_component_snapshot,
             get_plugin_permission_logs,
+            download_file,
+            poll_task,
+            poll_all_downloads,
+            cancel_download_task,
+            get_server_types,
+            get_versions_by_type,
+            get_download_info,
             // Greeting (保留用于测试)
             greet,
         ])
