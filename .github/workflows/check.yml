@@ -30,7 +30,7 @@ jobs:
             backend:
               - 'crates/**'
               - 'server/**'
-              - 'src-tauri/**'
+              - 'desktop/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -65,7 +65,7 @@ jobs:
               - 'rustfmt.toml'
               - '.github/workflows/check.yml'
             backend-tauri:
-              - 'src-tauri/**'
+              - 'desktop/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
