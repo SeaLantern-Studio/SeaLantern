@@ -1,6 +1,20 @@
+//! GitHub Release 更新检查模块。
+//!
+//! 通过 GitHub Releases API 获取 SeaLantern 的最新版本信息，
+//! 并根据当前操作系统和 CPU 架构自动匹配合适的发布资源文件。
+//!
+//! # 平台匹配规则
+//!
+//! | 系统 | 匹配后缀 |
+//! |------|----------|
+//! | Windows | `.msi`, `.exe` |
+//! | macOS | `.dmg`, `.app`, `.tar.gz` |
+//! | Linux | `.appimage`, `.deb`, `.rpm`, `.tar.gz` |
+
 use super::checksum::resolve_asset_sha256;
 use super::types::{ReleaseAsset, ReleaseResponse, RepoConfig, UpdateInfo};
 use super::version::normalize_release_tag_version;
+use crate::observability;
 
 /// 查找适合当前平台的资源文件
 pub fn find_suitable_asset(assets: &[ReleaseAsset]) -> Option<&ReleaseAsset> {
@@ -63,6 +77,8 @@ pub async fn fetch_release(
 ) -> Result<UpdateInfo, String> {
     use super::version::compare_versions;
 
+    observability::update_check_started("github", current_version);
+
     let url = config.api_url();
 
     let resp = client
@@ -70,16 +86,28 @@ pub async fn fetch_release(
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
-        .map_err(|e| format!("request failed: {}", e))?;
+        .map_err(|e| {
+            let msg = format!("request failed: {}", e);
+            observability::update_api_request_failed("github", "fetch_release", None, &msg);
+            msg
+        })?;
 
     if !resp.status().is_success() {
-        return Err(format!("API status: {}", resp.status()));
+        let msg = format!("API status: {}", resp.status());
+        observability::update_api_request_failed(
+            "github",
+            "fetch_release",
+            Some(resp.status().as_u16()),
+            &msg,
+        );
+        return Err(msg);
     }
 
-    let release: ReleaseResponse = resp
-        .json()
-        .await
-        .map_err(|e| format!("response parse failed: {}", e))?;
+    let release: ReleaseResponse = resp.json().await.map_err(|e| {
+        let msg = format!("response parse failed: {}", e);
+        observability::update_api_request_failed("github", "parse_release", None, &msg);
+        msg
+    })?;
 
     let latest_version = normalize_release_tag_version(&release.tag_name);
     let is_newer_version = compare_versions(current_version, &latest_version);
@@ -96,6 +124,8 @@ pub async fn fetch_release(
     };
 
     let has_update = is_newer_version && download_url.is_some();
+
+    observability::update_check_completed("github", has_update, Some(&latest_version));
 
     Ok(UpdateInfo {
         has_update,

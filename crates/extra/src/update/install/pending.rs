@@ -1,9 +1,18 @@
+//! 待更新状态持久化管理。
+//!
+//! 将待安装的更新信息序列化为 JSON 文件存储在缓存目录中，
+//! 以便应用重启后仍能检测到未完成的安装。
+
 use std::path::PathBuf;
 
 use super::paths::get_pending_update_file;
 use crate::update::types::PendingUpdate;
 use crate::update::version::compare_versions;
 
+/// 检查待更新状态
+///
+/// 当前版本通过编译时 `env!("CARGO_PKG_VERSION")` 获取，
+/// 项目中通过版本管理脚本确保各 crate 版本号一致。
 pub async fn check_pending_update() -> Result<Option<PendingUpdate>, String> {
     let pending_file = get_pending_update_file();
 
@@ -23,8 +32,6 @@ pub async fn check_pending_update() -> Result<Option<PendingUpdate>, String> {
         return Ok(None);
     }
 
-    // 注意: 此函数需要在调用时传入current_version,这里使用环境变量
-    // 实际使用时应该从外部传入
     let current_version = env!("CARGO_PKG_VERSION");
     if !compare_versions(current_version, &pending.version) {
         std::fs::remove_file(&pending_file).ok();

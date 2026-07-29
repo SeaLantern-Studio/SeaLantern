@@ -30,7 +30,7 @@ jobs:
             backend:
               - 'crates/**'
               - 'server/**'
-              - 'src-tauri/**'
+              - 'desktop/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -65,7 +65,7 @@ jobs:
               - 'rustfmt.toml'
               - '.github/workflows/check.yml'
             backend-tauri:
-              - 'src-tauri/**'
+              - 'desktop/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -225,7 +225,7 @@ jobs:
           save-if: false
 
       - name: 运行测试
-        run: cargo test --lib -p sea-lantern
+        run: cargo test --lib -p sealantern-tauri
 
   backend:
     name: 后端检查 (Rust)

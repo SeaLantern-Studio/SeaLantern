@@ -1,3 +1,8 @@
+//! 更新模块的公共类型定义。
+//!
+//! 包含更新信息、下载进度、发布响应、资源文件等数据结构的定义，
+//! 以及 GitHub 仓库配置的获取函数。
+
 use serde::{Deserialize, Serialize};
 
 use super::constants::{UPDATE_GITHUB_API_BASE, UPDATE_GITHUB_OWNER, UPDATE_GITHUB_REPO};

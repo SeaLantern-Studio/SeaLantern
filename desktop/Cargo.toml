@@ -1,0 +1,29 @@
+[package]
+name = "sealantern-tauri"
+version = "1.2.0"
+description = "Minecraft Server Manager"
+authors = ["FPS_Z"]
+edition = "2021"
+default-run = "sealantern-tauri"
+
+[lib]
+name = "sealantern_tauri_lib"
+crate-type = ["lib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.9", features = ["macos-private-api", "protocol-asset"] }
+tauri-plugin-dialog = "2.6"
+tauri-plugin-fs = "2.4"
+tauri-plugin-opener = "2.5"
+tauri-plugin-http = "2.5"
+tauri-plugin-process = "2.3"
+tauri-plugin-window-state = "2"
+sealantern-extra = { path = "../crates/extra" }
+sealantern-core = { path = "../crates/core" }
+sealantern-infra = { path = "../crates/infra" }
+
+[features]
+docker = []

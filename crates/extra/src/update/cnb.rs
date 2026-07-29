@@ -1,6 +1,17 @@
+//! CNB.cool 更新检查模块。
+//!
+//! 从 CNB.cool 平台获取 SeaLantern 的版本发布信息。
+//! 该平台的响应 JSON 层级较深（6 层嵌套），本模块封装了完整的反序列化逻辑。
+//!
+//! # 注意事项
+//!
+//! `CNB_RELEASES_URL` 包含 Next.js 构建 ID，站点部署后可能失效，
+//! 届时需要更新该常量中的构建 ID。
+
 use super::constants::{CNB_BASE_URL, CNB_RELEASES_URL};
 use super::types::UpdateInfo;
 use super::version::{compare_versions, normalize_release_tag_version};
+use crate::observability;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -128,16 +139,28 @@ async fn fetch_releases(client: &reqwest::Client) -> Result<Vec<CnbRelease>, Str
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| format!("CNB request failed: {}", e))?;
+        .map_err(|e| {
+            let msg = format!("CNB request failed: {}", e);
+            observability::update_api_request_failed("cnb", "fetch_releases", None, &msg);
+            msg
+        })?;
 
     if !resp.status().is_success() {
-        return Err(format!("CNB API status: {}", resp.status()));
+        let msg = format!("CNB API status: {}", resp.status());
+        observability::update_api_request_failed(
+            "cnb",
+            "fetch_releases",
+            Some(resp.status().as_u16()),
+            &msg,
+        );
+        return Err(msg);
     }
 
-    let payload: CnbResponse = resp
-        .json()
-        .await
-        .map_err(|e| format!("CNB response parse failed: {}", e))?;
+    let payload: CnbResponse = resp.json().await.map_err(|e| {
+        let msg = format!("CNB response parse failed: {}", e);
+        observability::update_api_request_failed("cnb", "parse_releases", None, &msg);
+        msg
+    })?;
 
     Ok(payload
         .page_props
@@ -155,6 +178,8 @@ pub async fn fetch_release(
     client: &reqwest::Client,
     current_version: &str,
 ) -> Result<UpdateInfo, String> {
+    observability::update_check_started("cnb", current_version);
+
     let releases = fetch_releases(client).await?;
     let latest_release = releases
         .iter()
@@ -167,6 +192,8 @@ pub async fn fetch_release(
     let selected_asset = find_suitable_asset(&latest_release.assets);
     let download_url = selected_asset.map(|asset| to_absolute_download_url(&asset.path));
     let has_update = has_newer_version && download_url.is_some();
+
+    observability::update_check_completed("cnb", has_update, Some(&latest_version));
 
     Ok(UpdateInfo {
         has_update,
