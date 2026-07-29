@@ -7,7 +7,7 @@
 # ============================================
 
 # ---------- 阶段 1: 构建前端 ----------
-FROM docker.m.daocloud.io/node:22.5-alpine AS frontend-builder
+FROM docker.m.daocloud.io/node:22.23.1-slim AS frontend-builder
 
 WORKDIR /app
 
