@@ -1,6 +1,6 @@
 name: 文档更新请求
 description: 请求新增或修改文档内容
-title: "[文档] "
+title: "[Docs] "
 labels: ["documentation", "pending"]
 body:
   - type: textarea

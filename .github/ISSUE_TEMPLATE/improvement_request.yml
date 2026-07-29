@@ -1,6 +1,6 @@
 name: 优化请求
 description: 请求优化现有功能或体验
-title: "[优化] "
+title: "[Perf] "
 labels: ["performance", "pending"]
 body:
   - type: textarea

@@ -1,6 +1,6 @@
 name: 新功能请求
 description: 请求添加新功能
-title: "[功能] "
+title: "[Feature] "
 labels: ["enhancement", "pending"]
 body:
   - type: textarea

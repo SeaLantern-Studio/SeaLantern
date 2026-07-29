@@ -1,6 +1,6 @@
-name: 错误报告
+name: Bug 报告
 description: 报告软件中存在的问题
-title: "[错误] "
+title: "[Bug] "
 labels: ["bug", "pending"]
 body:
   - type: textarea
