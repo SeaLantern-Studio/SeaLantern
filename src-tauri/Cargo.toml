@@ -21,7 +21,6 @@ tauri-plugin-http = "2.5"
 tauri-plugin-opener = "2.5"
 tauri-plugin-process = "2.3"
 tauri-plugin-window-state = "2"
-sealantern-server = { path = "../server" }
 sealantern-extra = { path = "../crates/extra" }
 sealantern-core = { path = "../crates/core" }
 sealantern-infra = { path = "../crates/infra" }

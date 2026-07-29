@@ -5065,7 +5065,6 @@ dependencies = [
  "sealantern-core",
  "sealantern-extra",
  "sealantern-infra",
- "sealantern-server",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
