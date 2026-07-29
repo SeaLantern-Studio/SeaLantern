@@ -1,14 +1,27 @@
-mod adapters;
-mod commands;
-mod hardcode_data;
-mod models;
-pub mod plugins;
-mod runtime;
-mod services;
-mod utils;
+//! Sea Lantern 桌面端的 Tauri 宿主入口。
+
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-/// 程序入口。
+/// 启动桌面应用。
 pub fn run() {
-    runtime::run();
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_window_state::Builder::new().build())
+        .invoke_handler(tauri::generate_handler![])
+        .setup(|app| {
+            // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
+            #[cfg(not(target_os = "macos"))]
+            if let Some(window) = app.get_webview_window("main") {
+                window.set_decorations(false)?;
+            }
+
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running Sea Lantern");
 }
