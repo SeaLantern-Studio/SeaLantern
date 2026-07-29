@@ -3,8 +3,7 @@
 ## Checklist
 
 - [ ] 已阅读 `docs/CONTRIBUTING.md`
-- [ ] CI 通过
-- [ ] 自检通过
+- [ ] 已执行与本次变更相关的测试或检查
 
 ## 影响范围
 
