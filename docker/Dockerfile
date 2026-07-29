@@ -7,7 +7,7 @@
 # ============================================
 
 # ---------- 阶段 1: 构建前端 ----------
-FROM docker.m.daocloud.io/node:20-alpine AS frontend-builder
+FROM docker.m.daocloud.io/node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
@@ -66,7 +66,6 @@ COPY src-tauri/build.rs ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
 COPY src-tauri/icons/ ./src-tauri/icons/
 COPY src-tauri/tauri.conf.json ./src-tauri/
-COPY src-tauri/locales/ ./src-tauri/locales/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
 
@@ -109,7 +108,6 @@ COPY src-tauri/build.rs ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
 COPY src-tauri/icons/ ./src-tauri/icons/
 COPY src-tauri/tauri.conf.json ./src-tauri/
-COPY src-tauri/locales/ ./src-tauri/locales/
 COPY docker-entry/Cargo.toml ./docker-entry/
 COPY docker-entry/src/ ./docker-entry/src/
 
