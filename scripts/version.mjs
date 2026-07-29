@@ -96,11 +96,6 @@ async function discoverFiles() {
     type: "json",
   });
 
-  // 可选：PKGBUILD / .SRCINFO（AUR 打包）
-  for (const name of ["PKGBUILD", ".SRCINFO"]) {
-    candidates.push({ label: name, path: path.join(rootDir, name), type: "pkgbuild" });
-  }
-
   // 批量检查存在性
   const results = await Promise.all(candidates.map((c) => exists(c.path)));
 
@@ -124,9 +119,6 @@ async function readVersion(file) {
     } catch {
       return "(解析失败)";
     }
-  }
-  if (file.type === "pkgbuild") {
-    return raw.match(/^pkgver\s*=\s*([^\s#]+)/m)?.[1] ?? "(未找到)";
   }
   return "(未知类型)";
 }
@@ -169,9 +161,6 @@ function buildUpdatedContent(file, raw, version) {
     const parsed = JSON.parse(raw);
     parsed.version = version;
     return `${JSON.stringify(parsed, null, 2)}\n`;
-  }
-  if (file.type === "pkgbuild") {
-    return raw.replace(/^pkgver\s*=\s*([^\s#]+)/m, `pkgver=${version}`);
   }
   throw new Error(`未知文件类型：${file.type}`);
 }
