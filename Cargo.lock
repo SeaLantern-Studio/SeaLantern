@@ -1319,7 +1319,7 @@ dependencies = [
 name = "docker-entry"
 version = "1.1.0"
 dependencies = [
- "sea-lantern",
+ "sealantern",
 ]
 
 [[package]]
@@ -5059,7 +5059,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sea-lantern"
+name = "sealantern"
 version = "1.2.0"
 dependencies = [
  "sealantern-core",

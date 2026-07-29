@@ -215,8 +215,8 @@ jobs:
           VERSION: ${{ needs.validate-tag.outputs.version }}
           ASSET_ARCH: ${{ matrix.asset_arch }}
         run: |
-          $releaseDir = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
-            Where-Object { $_.FullName -match '\\release\\sea-lantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
+          $releaseDir = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -Filter "sealantern.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\release\\sealantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
             Select-Object -First 1 -ExpandProperty DirectoryName
 
           if (-not $releaseDir) {
@@ -227,7 +227,7 @@ jobs:
           Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path $stageDir | Out-Null
 
-          Copy-Item -LiteralPath (Join-Path $releaseDir "sea-lantern.exe") -Destination $stageDir
+          Copy-Item -LiteralPath (Join-Path $releaseDir "sealantern.exe") -Destination $stageDir
 
           Get-ChildItem -Path $releaseDir -File -Filter "*.dll" -ErrorAction SilentlyContinue |
             ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $stageDir }

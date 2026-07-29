@@ -225,7 +225,7 @@ jobs:
           save-if: false
 
       - name: 运行测试
-        run: cargo test --lib -p sea-lantern
+        run: cargo test --lib -p sealantern
 
   backend:
     name: 后端检查 (Rust)

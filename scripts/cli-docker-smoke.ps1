@@ -39,9 +39,9 @@ function Resolve-CliPath {
     }
 
     $candidates = @(
-        (Join-Path $RepoRoot 'target\debug\sea-lantern.exe'),
-        (Join-Path $RepoRoot 'src-tauri\target\debug\sea-lantern.exe'),
-        (Join-Path $RepoRoot 'src-tauri\target\debug\sea-lantern.exe')
+        (Join-Path $RepoRoot 'target\debug\sealantern.exe'),
+        (Join-Path $RepoRoot 'src-tauri\target\debug\sealantern.exe'),
+        (Join-Path $RepoRoot 'src-tauri\target\debug\sealantern.exe')
     )
 
     foreach ($candidate in $candidates) {
