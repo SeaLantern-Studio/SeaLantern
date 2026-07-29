@@ -1317,7 +1317,7 @@ dependencies = [
 
 [[package]]
 name = "docker-entry"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "sealantern",
 ]
@@ -5077,7 +5077,7 @@ dependencies = [
 
 [[package]]
 name = "sealantern-core"
-version = "0.1.0"
+version = "1.2.0"
 dependencies = [
  "tracing",
  "zip",
@@ -5085,7 +5085,7 @@ dependencies = [
 
 [[package]]
 name = "sealantern-extra"
-version = "0.1.0"
+version = "1.2.0"
 dependencies = [
  "async-trait",
  "dirs 5.0.1",
@@ -5104,7 +5104,7 @@ dependencies = [
 
 [[package]]
 name = "sealantern-infra"
-version = "0.1.0"
+version = "1.2.0"
 dependencies = [
  "atomicwrites",
  "cap-std",
@@ -5127,7 +5127,7 @@ dependencies = [
 
 [[package]]
 name = "sealantern-server"
-version = "0.1.0"
+version = "1.2.0"
 dependencies = [
  "axum",
  "sealantern-core",
