@@ -7,7 +7,7 @@
 # ============================================
 
 # ---------- 阶段 1: 构建前端 ----------
-FROM docker.m.daocloud.io/node:22-alpine AS frontend-builder
+FROM docker.m.daocloud.io/node:22.5-alpine AS frontend-builder
 
 WORKDIR /app
 
@@ -61,6 +61,10 @@ WORKDIR /app
 
 # 只复制 Rust 项目相关文件（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
+COPY crates/core/Cargo.toml ./crates/core/
+COPY crates/infra/Cargo.toml ./crates/infra/
+COPY crates/extra/Cargo.toml ./crates/extra/
+COPY server/Cargo.toml ./server/
 COPY src-tauri/Cargo.toml ./src-tauri/
 COPY src-tauri/build.rs ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
@@ -103,6 +107,14 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # 只复制 Rust 源代码（精准 COPY，绝不复制前端文件）
 COPY Cargo.toml Cargo.lock ./
+COPY crates/core/Cargo.toml ./crates/core/
+COPY crates/core/src/ ./crates/core/src/
+COPY crates/infra/Cargo.toml ./crates/infra/
+COPY crates/infra/src/ ./crates/infra/src/
+COPY crates/extra/Cargo.toml ./crates/extra/
+COPY crates/extra/src/ ./crates/extra/src/
+COPY server/Cargo.toml ./server/
+COPY server/src/ ./server/src/
 COPY src-tauri/Cargo.toml ./src-tauri/
 COPY src-tauri/build.rs ./src-tauri/
 COPY src-tauri/src/ ./src-tauri/src/
