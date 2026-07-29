@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use chrono::{DateTime, Utc};
 use sealantern_infra::archive::{create_zip, extract_zip};
-use sealantern_infra::fs::get_app_data_dir;
+use sealantern_infra::platform::get_app_data_dir;
 use tracing::{debug, error, info, warn};
 
 use super::error::{BackupError, BackupResult};

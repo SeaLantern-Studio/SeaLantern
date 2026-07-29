@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use sealantern_infra::fs::get_app_data_dir;
+use sealantern_infra::platform::get_app_data_dir;
 use tracing::{debug, error, info};
 
 use super::error::{BackupError, BackupResult};
