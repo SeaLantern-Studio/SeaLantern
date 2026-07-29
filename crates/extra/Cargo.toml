@@ -23,9 +23,6 @@ uuid = { version = "1", features = ["v4"] }
 thiserror = "1"
 tempfile = "3"
 sealantern-infra = { path = "../infra" }
-
-[features]
-default = []
 regex = "1"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 sha2 = "0.10"
