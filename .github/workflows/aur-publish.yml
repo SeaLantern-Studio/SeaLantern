@@ -20,6 +20,10 @@ jobs:
     container:
       image: archlinux:latest
       options: --user root
+    env:
+      AUR_PKGBASE: sealantern
+      BOT_NAME: github-actions[bot]
+      BOT_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
     steps:
       - name: 安装依赖
@@ -32,62 +36,107 @@ jobs:
           useradd -m builder
           echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-      - name: 检出仓库代码
+      - name: 检出发布版本
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
-          fetch-depth: 0
 
-      - name: 提取版本信息
+      - name: 提取发布信息
         id: meta
+        shell: bash
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          VERSION="$(echo "$RELEASE_TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
+
+          VERSION="$(printf '%s' "$RELEASE_TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
           if [ -z "$VERSION" ]; then
-            echo "❌ 无法从 tag 提取版本号: $RELEASE_TAG"
+            echo "无法从 Release tag 提取版本号: $RELEASE_TAG" >&2
             exit 1
           fi
+
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "✅ 发布版本: $VERSION"
 
-      - name: 更新 PKGBUILD 版本
+      - name: 配置 AUR SSH
+        shell: bash
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 /root/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > /root/.ssh/aur
+          chmod 600 /root/.ssh/aur
+          ssh-keyscan -H aur.archlinux.org >> /root/.ssh/known_hosts
+
+      - name: 在 AUR 仓库内生成并发布包信息
+        shell: bash
         env:
           VERSION: ${{ steps.meta.outputs.version }}
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
           set -euo pipefail
-          cp packaging/PKGBUILD packaging/PKGBUILD.bak
-          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/PKGBUILD
-          sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/PKGBUILD
-          sed -i "s|releases/download/v\${pkgver}/|releases/download/${TAG}/|" packaging/PKGBUILD
+          export GIT_SSH_COMMAND='ssh -i /root/.ssh/aur -o IdentitiesOnly=yes'
 
-      - name: 生成 .SRCINFO
-        run: |
-          set -euo pipefail
-          chown -R builder:builder packaging
-          cd packaging && sudo -u builder makepkg --printsrcinfo > .SRCINFO
+          git clone "ssh://aur@aur.archlinux.org/${AUR_PKGBASE}.git" aur
+          cp packaging/sealantern.desktop packaging/sealantern.install aur/
 
-      - name: 发布到 AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
-        with:
-          pkgname: sealantern
-          pkgbuild: packaging/PKGBUILD
-          assets: |
-            packaging/.SRCINFO
-            packaging/sealantern.desktop
-            packaging/sealantern.install
-          commit_username: "${{ github.actor }}"
-          commit_email: "${{ github.actor }}@users.noreply.github.com"
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "chore(release): 发布 sealantern v${{ steps.meta.outputs.version }}"
-          allow_empty_commits: false
-          force_push: false
-          updpkgsums: false
+          cat > aur/PKGBUILD <<PKG
+          # Maintainer: SeaLantern Studio
+          pkgname=sealantern
+          pkgver=${VERSION}
+          pkgrel=1
+          _debarch=amd64
+          pkgdesc="A lightweight Minecraft server management tool based on Tauri 2 + Rust + Vue 3"
+          arch=('x86_64')
+          url="https://github.com/SeaLantern-Studio/SeaLantern"
+          license=('GPL-3.0-or-later')
+          depends=(
+              'gtk3'
+              'webkit2gtk-4.1'
+              'libayatana-appindicator'
+              'openssl'
+          )
+          optdepends=(
+              'ffmpeg: 视频/音频编解码支持'
+              'gst-plugins-base: GStreamer 基础插件'
+              'gst-plugins-good: GStreamer 优质插件'
+              'gst-plugins-bad: GStreamer 额外插件'
+              'gst-plugins-ugly: GStreamer 非自由插件'
+              'noto-fonts: 更好的字体显示'
+              'noto-fonts-cjk: 中日韩字体支持'
+              'noto-fonts-emoji: 表情符号支持'
+          )
+          options=('!strip' '!emptydirs')
+          install=sealantern.install
+          source=(
+              "\${pkgname}-\${pkgver}-\${_debarch}.deb::https://github.com/SeaLantern-Studio/SeaLantern/releases/download/${TAG}/Sea.Lantern_\${pkgver}_\${_debarch}.deb"
+              'sealantern.desktop'
+          )
+          sha256sums=('SKIP' 'SKIP')
 
-      - name: 清理
-        if: always()
-        run: |
-          [ -f "packaging/PKGBUILD.bak" ] && mv -f packaging/PKGBUILD.bak packaging/PKGBUILD || true
+          package() {
+              local deb="\${srcdir}/\${pkgname}-\${pkgver}-\${_debarch}.deb"
+
+              bsdtar --no-same-owner -xf "\${deb}" -C "\${srcdir}" data.tar.*
+              bsdtar --no-same-owner -xpf "\${srcdir}"/data.tar.* -C "\${pkgdir}"
+
+              rm -f "\${pkgdir}/usr/share/applications/Sea Lantern.desktop"
+              install -Dm644 "\${srcdir}/sealantern.desktop" \
+                  "\${pkgdir}/usr/share/applications/sealantern.desktop"
+          }
+          PKG
+
+          chown -R builder:builder aur
+          sudo -u builder bash -c 'cd aur && makepkg --printsrcinfo > .SRCINFO'
+
+          git -C aur add PKGBUILD .SRCINFO sealantern.desktop sealantern.install
+          if git -C aur diff --cached --quiet; then
+            echo "AUR 包信息没有变化"
+            exit 0
+          fi
+
+          git -C aur config user.name "$BOT_NAME"
+          git -C aur config user.email "$BOT_EMAIL"
+          git -C aur commit -m "chore(release): 发布 sealantern v${VERSION}"
+          git -C aur push
