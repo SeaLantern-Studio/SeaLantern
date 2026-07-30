@@ -12,12 +12,13 @@ permissions:
 jobs:
   check-linked-issue:
     runs-on: ubuntu-22.04
-    if: ${{ !contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association) && !contains(toJSON(github.event.pull_request.labels), '"name":"internal"') }}
+    if: ${{ !contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association) && !contains(github.event.pull_request.labels.*.name, 'internal') }}
     steps:
       - name: 检查是否关联 Issue
         uses: actions/github-script@v7
         with:
           script: |
+            core.info(`author_association: ${context.payload.pull_request.author_association}`);
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request.number;
 
