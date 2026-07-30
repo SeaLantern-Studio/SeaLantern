@@ -31,6 +31,7 @@ import {
   LayoutDashboard,
   BarChart2,
   Sparkles,
+  Clock3,
   type LucideIcon,
 } from "lucide-vue-next";
 
@@ -49,6 +50,7 @@ const iconMap: Record<string, LucideIcon> = {
   "layout-dashboard": LayoutDashboard,
   chart: BarChart2,
   sparkles: Sparkles,
+  clock: Clock3,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -117,6 +119,14 @@ const staticNavItems: NavItem[] = [
     labelKey: "common.player_manage",
     label: i18n.t("common.player_manage"),
     group: "server",
+  },
+  {
+    name: "scheduler",
+    path: "/scheduler",
+    icon: "clock",
+    labelKey: "common.scheduler",
+    label: "定时任务",
+    group: "system",
   },
   {
     name: "paint",
