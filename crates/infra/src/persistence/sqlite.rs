@@ -150,6 +150,23 @@ impl SqliteDatabase {
         &self,
         sql: impl Into<String>,
         params: P,
+        map_row: F,
+    ) -> Result<Vec<T>, PersistenceError>
+    where
+        T: Send + 'static,
+        P: IntoIterator<Item = SqlValue> + Send + 'static,
+        F: FnMut(&Row<'_>) -> rusqlite::Result<T> + Send + 'static,
+    {
+        self.query_with_operation("query", sql, params, map_row)
+            .await
+    }
+
+    /// 查询记录，并为错误追踪指定调用方的稳定操作名称。
+    pub async fn query_with_operation<T, P, F>(
+        &self,
+        operation: &'static str,
+        sql: impl Into<String>,
+        params: P,
         mut map_row: F,
     ) -> Result<Vec<T>, PersistenceError>
     where
@@ -159,14 +176,14 @@ impl SqliteDatabase {
     {
         let sql = sql.into();
         let result = self
-            .with_connection("query", move |connection| {
+            .with_connection(operation, move |connection| {
                 let mut statement = connection.prepare(&sql)?;
                 let rows =
                     statement.query_map(rusqlite::params_from_iter(params), |row| map_row(row))?;
                 rows.collect()
             })
             .await;
-        report_operation_error("query", &self.path, &result);
+        report_operation_error(operation, &self.path, &result);
         result
     }
 
