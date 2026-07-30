@@ -18,6 +18,21 @@ pub const EVENT_INSTANCE_RESTART_COMPLETED: &str = "instance_restart_completed";
 /// 主机可映射的实例重启失败事件名称。
 pub const EVENT_INSTANCE_RESTART_FAILED: &str = "instance_restart_failed";
 
+/// 重启在读取当前状态时失败的稳定阶段名称。
+pub const RESTART_PHASE_READ_STATE: &str = "read_state";
+
+/// 重启在请求停止时失败的稳定阶段名称。
+pub const RESTART_PHASE_REQUEST_STOP: &str = "request_stop";
+
+/// 重启在等待停止时失败的稳定阶段名称。
+pub const RESTART_PHASE_AWAIT_STOP: &str = "await_stop";
+
+/// 重启因未达到停止状态而终止的稳定阶段名称。
+pub const RESTART_PHASE_VERIFY_STOPPED: &str = "verify_stopped";
+
+/// 重启在启动新实例时失败的稳定阶段名称。
+pub const RESTART_PHASE_START: &str = "start";
+
 pub(crate) fn daemon_termination_failed(process_id: u32, sign: &str, error: &dyn Display) {
     tracing::error!(
         target: PROCESS_DAEMON_TARGET,
@@ -52,6 +67,8 @@ pub(crate) fn instance_restart_completed(instance_id: &str, previous_state: &str
 pub(crate) fn instance_restart_failed(
     instance_id: &str,
     previous_state: &str,
+    phase: &str,
+    terminal_state: Option<&str>,
     error: &dyn Display,
 ) {
     tracing::error!(
@@ -59,6 +76,8 @@ pub(crate) fn instance_restart_failed(
         event_name = EVENT_INSTANCE_RESTART_FAILED,
         instance_id,
         previous_state,
+        phase,
+        terminal_state = terminal_state.unwrap_or("not_observed"),
         error = %error,
         "instance restart failed"
     );
