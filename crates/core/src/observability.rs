@@ -9,6 +9,12 @@ pub const EVENT_DAEMON_TERMINATION_FAILED: &str = "daemon_termination_failed";
 /// 实例生命周期操作的稳定追踪目标。
 pub const INSTANCE_LIFECYCLE_TARGET: &str = "sealantern.core.instance.lifecycle";
 
+/// 实例生命周期观察中表示尚未读取前一状态的稳定字段值。
+pub const INSTANCE_PREVIOUS_STATE_UNAVAILABLE: &str = "state_unavailable";
+
+/// 实例生命周期观察中表示尚未观察到终止状态的稳定字段值。
+pub const INSTANCE_TERMINAL_STATE_NOT_OBSERVED: &str = "not_observed";
+
 /// 主机可映射的实例重启请求事件名称。
 pub const EVENT_INSTANCE_RESTART_REQUESTED: &str = "instance_restart_requested";
 
@@ -77,7 +83,7 @@ pub(crate) fn instance_restart_failed(
         instance_id,
         previous_state,
         phase,
-        terminal_state = terminal_state.unwrap_or("not_observed"),
+        terminal_state = terminal_state.unwrap_or(INSTANCE_TERMINAL_STATE_NOT_OBSERVED),
         error = %error,
         "instance restart failed"
     );

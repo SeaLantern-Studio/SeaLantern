@@ -182,14 +182,17 @@ pub fn restart_instance<D: InstanceRestartDriver>(
     instance: &Instance,
     policy: RestartPolicy,
 ) -> Result<RestartOutcome, RestartError<D::Error>> {
-    observability::instance_restart_requested(instance.id.as_str(), "unknown");
+    observability::instance_restart_requested(
+        instance.id.as_str(),
+        observability::INSTANCE_PREVIOUS_STATE_UNAVAILABLE,
+    );
     let previous_state = match driver.state(instance) {
         Ok(state) => state,
         Err(error) => {
             let error = RestartError::State(error);
             observability::instance_restart_failed(
                 instance.id.as_str(),
-                "unknown",
+                observability::INSTANCE_PREVIOUS_STATE_UNAVAILABLE,
                 observability::RESTART_PHASE_READ_STATE,
                 None,
                 &error,
