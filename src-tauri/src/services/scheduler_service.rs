@@ -65,7 +65,6 @@ impl SchedulerService {
     }
 
     pub fn update_task(&self, task: ScheduledTask) -> Result<ScheduledTask, String> {
-        let next_run = compute_next_run(&task.cron_expression)?;
         let mut tasks = self
             .tasks
             .lock()
@@ -74,8 +73,16 @@ impl SchedulerService {
             .iter()
             .position(|existing| existing.id == task.id)
             .ok_or_else(|| format!("未找到任务: {}", task.id))?;
+        let existing = tasks[index].clone();
         let mut updated = task;
-        updated.next_run = Some(next_run);
+        updated.enabled = existing.enabled;
+        updated.last_run = existing.last_run;
+        updated.next_run =
+            if updated.cron_expression != existing.cron_expression || existing.next_run.is_none() {
+                Some(compute_next_run(&updated.cron_expression)?)
+            } else {
+                existing.next_run
+            };
         tasks[index] = updated.clone();
         save_tasks(&self.data_dir, &tasks)?;
         Ok(updated)
@@ -137,7 +144,9 @@ impl SchedulerService {
             let tasks_guard = tasks.lock().map_err(|e| format!("任务锁被污染: {e}"))?;
             tasks_guard
                 .iter()
-                .filter(|task| task.enabled && task.next_run.is_some_and(|next_run| next_run <= now))
+                .filter(|task| {
+                    task.enabled && task.next_run.is_some_and(|next_run| next_run <= now)
+                })
                 .cloned()
                 .collect::<Vec<_>>()
         };
@@ -261,12 +270,23 @@ async fn execute_task_internal(task: &ScheduledTask) -> Result<(), String> {
 }
 
 fn compute_next_run(cron_expression: &str) -> Result<DateTime<Utc>, String> {
+    let normalized = normalize_cron_expression(cron_expression)?;
     let schedule =
-        Schedule::from_str(cron_expression).map_err(|e| format!("无效的 cron 表达式: {e}"))?;
+        Schedule::from_str(&normalized).map_err(|e| format!("无效的 cron 表达式: {e}"))?;
     let mut upcoming = schedule.upcoming(Utc);
     upcoming
         .next()
         .ok_or_else(|| "无法计算下次执行时间".to_string())
+}
+
+fn normalize_cron_expression(cron_expression: &str) -> Result<String, String> {
+    let trimmed = cron_expression.trim();
+    let field_count = trimmed.split_whitespace().count();
+    match field_count {
+        5 => Ok(format!("0 {trimmed}")),
+        6 => Ok(trimmed.to_string()),
+        _ => Err(format!("无效的 cron 表达式: {cron_expression}")),
+    }
 }
 
 impl TaskType {
@@ -282,10 +302,47 @@ impl TaskType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Duration;
 
     #[test]
     fn parses_valid_cron_expression() {
         let next = compute_next_run("0 4 * * *").expect("should parse");
         assert!(next > Utc::now());
+    }
+
+    #[test]
+    fn update_task_preserves_enabled_and_run_history() {
+        let service = SchedulerService::new();
+        let original_last_run = Utc::now() - Duration::hours(2);
+        let original_next_run = Utc::now() + Duration::hours(1);
+        let original = ScheduledTask {
+            id: "task-1".to_string(),
+            name: "测试任务".to_string(),
+            task_type: TaskType::Restart,
+            cron_expression: "0 4 * * *".to_string(),
+            command: None,
+            enabled: false,
+            last_run: Some(original_last_run),
+            next_run: Some(original_next_run),
+        };
+
+        service.add_task(original.clone()).expect("should add task");
+
+        let updated = service
+            .update_task(ScheduledTask {
+                id: original.id.clone(),
+                name: "更新后的任务".to_string(),
+                task_type: TaskType::Backup,
+                cron_expression: "0 5 * * *".to_string(),
+                command: None,
+                enabled: true,
+                last_run: None,
+                next_run: None,
+            })
+            .expect("should update task");
+
+        assert!(!updated.enabled);
+        assert_eq!(updated.last_run, Some(original_last_run));
+        assert!(updated.next_run.is_some());
     }
 }

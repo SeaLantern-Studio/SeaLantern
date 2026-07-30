@@ -403,7 +403,7 @@ onMounted(() => {
   cursor: pointer;
 }
 
-..dialog-root {
+.dialog-root {
   position: relative;
   z-index: 50;
 }

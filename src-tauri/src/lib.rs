@@ -22,7 +22,6 @@ use tauri::{
     Emitter, Listener, Manager,
 };
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn initialize_scheduler() {
     let _ = crate::services::global::scheduler_service();
 }
