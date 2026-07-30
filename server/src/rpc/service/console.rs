@@ -56,6 +56,20 @@ fn command_char_count(command: &str) -> usize {
     command.chars().count()
 }
 
+/// 空操作控制台服务（用于预览版或测试）。
+pub struct NoOpConsoleService;
+
+impl ConsoleCommandService for NoOpConsoleService {
+    fn send_console_command(
+        &self,
+        _instance_id: &str,
+        _command: &str,
+    ) -> Result<(), ConsoleCommandServiceError> {
+        // 预览版暂不实现实际功能
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;

@@ -47,6 +47,8 @@ impl fmt::Display for RpcPermission {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RpcAccess {
     permissions: BTreeSet<RpcPermission>,
+    /// 是否允许所有权限（用于预览版或测试）。
+    allow_all: bool,
 }
 
 impl RpcAccess {
@@ -55,16 +57,25 @@ impl RpcAccess {
         Self::default()
     }
 
+    /// 构建授予所有权限的访问集合（用于预览版或测试）。
+    pub fn allow_all() -> Self {
+        Self {
+            permissions: BTreeSet::new(),
+            allow_all: true,
+        }
+    }
+
     /// 使用已由受信任边界决定的权限构建访问集合。
     pub fn allow(permissions: impl IntoIterator<Item = RpcPermission>) -> Self {
         Self {
             permissions: permissions.into_iter().collect(),
+            allow_all: false,
         }
     }
 
     /// 判断当前调用是否已获授指定权限。
     pub fn allows(&self, permission: RpcPermission) -> bool {
-        self.permissions.contains(&permission)
+        self.allow_all || self.permissions.contains(&permission)
     }
 }
 

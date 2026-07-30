@@ -4,6 +4,10 @@ version = "1.2.0"
 edition = "2021"
 license = "GPL-3.0-only"
 
+[[bin]]
+name = "sealantern-server"
+path = "src/main.rs"
+
 [lib]
 path = "src/lib.rs"
 
@@ -13,7 +17,12 @@ sealantern-core = { path = "../crates/core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+tower-http = { version = "0.6", features = ["fs"] }
+
+[features]
+default = []
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt"] }
 tower = { version = "0.5", features = ["util"] }
