@@ -348,3 +348,72 @@ pub fn update_api_request_failed(
         "update API request failed"
     );
 }
+
+// ---------------------------------------------------------------------------
+// 配置迁移模块
+// ---------------------------------------------------------------------------
+
+/// 配置迁移模块的 tracing 目标。
+pub const CONFIG_TARGET: &str = "sealantern.extra.config";
+
+/// Event: 配置迁移开始。
+pub const EVENT_CONFIG_MIGRATION_STARTED: &str = "config_migration_started";
+/// Event: 配置迁移完成。
+pub const EVENT_CONFIG_MIGRATION_COMPLETED: &str = "config_migration_completed";
+/// Event: 配置迁移失败。
+pub const EVENT_CONFIG_MIGRATION_FAILED: &str = "config_migration_failed";
+/// Event: 定位器文件不可读。
+pub const EVENT_CONFIG_LOCATOR_UNREADABLE: &str = "config_locator_unreadable";
+/// Event: 删除定位器文件失败。
+pub const EVENT_CONFIG_LOCATOR_CLEANUP_FAILED: &str = "config_locator_cleanup_failed";
+
+/// 记录配置迁移开始。
+pub fn config_migration_started(old_dir: &std::path::Path, new_dir: &std::path::Path) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_STARTED,
+        old_dir = %old_dir.display(),
+        new_dir = %new_dir.display(),
+        "config migration started"
+    );
+}
+
+/// 记录配置迁移完成。
+pub fn config_migration_completed() {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_COMPLETED,
+        "config migration completed"
+    );
+}
+
+/// 记录配置迁移失败。
+pub fn config_migration_failed(error: &dyn Display) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_FAILED,
+        error = %error,
+        "config migration failed"
+    );
+}
+
+/// 记录定位器文件不可读或格式错误。
+pub fn config_locator_unreadable(path: &std::path::Path) {
+    tracing::warn!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_LOCATOR_UNREADABLE,
+        path = %path.display(),
+        "locator file is unreadable or malformed"
+    );
+}
+
+/// 记录删除定位器文件失败。
+pub fn config_locator_cleanup_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_LOCATOR_CLEANUP_FAILED,
+        path = %path.display(),
+        error = %error,
+        "failed to clean up locator file"
+    );
+}

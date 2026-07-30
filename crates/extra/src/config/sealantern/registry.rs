@@ -3,6 +3,8 @@
 //! 管理所有已创建服务器的元数据（CRUD），
 //! 底层通过 [`ServerStore`] 持久化到 JSON 文件。
 
+use sealantern_infra::fs::FsError;
+
 use super::store::ServerStore;
 use super::types::ServerInstance;
 
@@ -30,21 +32,30 @@ impl ServerRegistry {
         self.store.get().servers.iter().find(|s| s.id == id)
     }
 
-    /// 添加服务器
+    /// 添加服务器，拒绝重复 ID
     pub async fn add(
         &mut self,
         instance: ServerInstance,
     ) -> Result<(), sealantern_infra::fs::FsError> {
+        if self.store.get().servers.iter().any(|s| s.id == instance.id) {
+            return Err(FsError::Task {
+                operation: "add server",
+                message: format!("duplicate server id: {}", instance.id),
+            });
+        }
         self.store.update(|list| list.servers.push(instance)).await
     }
 
-    /// 更新服务器
+    /// 更新服务器，ID 不存在时静默跳过（不触发写入）
     pub async fn update(
         &mut self,
         id: &str,
         f: impl FnOnce(&mut ServerInstance),
     ) -> Result<bool, sealantern_infra::fs::FsError> {
         let id = id.to_string();
+        if !self.store.get().servers.iter().any(|s| s.id == id) {
+            return Ok(false);
+        }
         let mut updated = false;
         self.store
             .update(|list| {
@@ -57,9 +68,12 @@ impl ServerRegistry {
         Ok(updated)
     }
 
-    /// 删除服务器
+    /// 删除服务器，ID 不存在时静默跳过（不触发写入）
     pub async fn delete(&mut self, id: &str) -> Result<bool, sealantern_infra::fs::FsError> {
         let id = id.to_string();
+        if !self.store.get().servers.iter().any(|s| s.id == id) {
+            return Ok(false);
+        }
         let mut removed = false;
         self.store
             .update(|list| {

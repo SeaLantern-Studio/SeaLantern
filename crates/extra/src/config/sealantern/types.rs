@@ -2,6 +2,12 @@
 
 use serde::{Deserialize, Serialize};
 
+/// 当前配置版本号。
+///
+/// 每次配置结构变更（新增/删除/重命名字段）时递增，
+/// 用于触发 `SettingsManager` 中的自动迁移。
+pub const CURRENT_CONFIG_VERSION: u32 = 1;
+
 // ---------------------------------------------------------------------------
 // 设置分组
 // ---------------------------------------------------------------------------
@@ -24,7 +30,11 @@ pub enum SettingsGroup {
 
 /// 完整的应用设置
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppSettings {
+    /// 配置版本号，用于结构变更时触发迁移
+    pub config_version: u32,
+
     // General
     pub close_servers_on_exit: bool,
     pub close_servers_on_update: bool,
@@ -80,6 +90,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            config_version: CURRENT_CONFIG_VERSION,
             close_servers_on_exit: true,
             close_servers_on_update: true,
             auto_accept_eula: true,
@@ -236,15 +247,15 @@ pub struct PartialAppSettings {
     pub minimal_mode: Option<bool>,
 
     // Window
-    pub window_width: Option<Option<u32>>,
-    pub window_height: Option<Option<u32>>,
-    pub window_x: Option<Option<i32>>,
-    pub window_y: Option<Option<i32>>,
-    pub window_maximized: Option<Option<bool>>,
+    pub window_width: Option<u32>,
+    pub window_height: Option<u32>,
+    pub window_x: Option<i32>,
+    pub window_y: Option<i32>,
+    pub window_maximized: Option<bool>,
 
     // Developer
     pub language: Option<String>,
-    pub locales_base_url: Option<Option<String>>,
+    pub locales_base_url: Option<String>,
     pub developer_mode: Option<bool>,
     pub last_run_path: Option<String>,
     pub agreed_to_terms: Option<bool>,
@@ -333,25 +344,25 @@ impl PartialAppSettings {
             target.minimal_mode = *v;
         }
         if let Some(v) = &self.window_width {
-            target.window_width = *v;
+            target.window_width = Some(*v);
         }
         if let Some(v) = &self.window_height {
-            target.window_height = *v;
+            target.window_height = Some(*v);
         }
         if let Some(v) = &self.window_x {
-            target.window_x = *v;
+            target.window_x = Some(*v);
         }
         if let Some(v) = &self.window_y {
-            target.window_y = *v;
+            target.window_y = Some(*v);
         }
         if let Some(v) = &self.window_maximized {
-            target.window_maximized = *v;
+            target.window_maximized = Some(*v);
         }
         if let Some(v) = &self.language {
             target.language = v.clone();
         }
         if let Some(v) = &self.locales_base_url {
-            target.locales_base_url = v.clone();
+            target.locales_base_url = Some(v.clone());
         }
         if let Some(v) = &self.developer_mode {
             target.developer_mode = *v;

@@ -6,7 +6,7 @@
 use sealantern_infra::persistence::config::ConfigFile;
 use std::path::PathBuf;
 
-use super::types::{AppSettings, PartialAppSettings, UpdateResult};
+use super::types::{AppSettings, PartialAppSettings, UpdateResult, CURRENT_CONFIG_VERSION};
 
 /// 应用设置管理器
 pub struct SettingsManager {
@@ -14,10 +14,33 @@ pub struct SettingsManager {
 }
 
 impl SettingsManager {
-    /// 加载或创建设置文件
+    /// 加载或创建设置文件，检测版本号并执行迁移
     pub async fn load(path: impl Into<PathBuf>) -> Result<Self, sealantern_infra::fs::FsError> {
-        let inner = ConfigFile::load_or_create(path, AppSettings::default()).await?;
-        Ok(Self { inner })
+        let path = path.into();
+        let inner = match ConfigFile::load(&path).await {
+            Ok(cf) => cf,
+            Err(_) => {
+                // 文件不存在或格式错误，创建默认配置
+                ConfigFile::load_or_create(&path, AppSettings::default()).await?
+            }
+        };
+
+        let mut mgr = Self { inner };
+
+        // 版本迁移：如果配置版本落后于当前版本，执行升级并保存
+        let version = mgr.inner.get().config_version;
+        if version < CURRENT_CONFIG_VERSION {
+            tracing::info!(
+                target: "sealantern.config",
+                "配置版本升级: {} → {}",
+                version, CURRENT_CONFIG_VERSION
+            );
+            mgr.inner
+                .update(|s| s.config_version = CURRENT_CONFIG_VERSION);
+            mgr.inner.save(false).await?;
+        }
+
+        Ok(mgr)
     }
 
     /// 获取当前设置的只读引用
@@ -26,6 +49,7 @@ impl SettingsManager {
     }
 
     /// 全量替换设置并持久化
+    /// 持久化失败时回滚内存状态
     pub async fn update(
         &mut self,
         new: AppSettings,
@@ -33,11 +57,16 @@ impl SettingsManager {
         let old = self.inner.get().clone();
         let changed_groups = old.changed_groups(&new);
         self.inner.set(new);
-        self.inner.save(false).await?;
-        Ok(UpdateResult {
-            settings: self.inner.get().clone(),
-            changed_groups,
-        })
+        match self.inner.save(false).await {
+            Ok(()) => Ok(UpdateResult {
+                settings: self.inner.get().clone(),
+                changed_groups,
+            }),
+            Err(e) => {
+                self.inner.set(old);
+                Err(e)
+            }
+        }
     }
 
     /// 全量替换 + 计算变更分组
@@ -49,6 +78,7 @@ impl SettingsManager {
     }
 
     /// 部分更新（只传需要改的字段）
+    /// 持久化失败时回滚内存状态
     pub async fn update_partial(
         &mut self,
         partial: PartialAppSettings,
@@ -56,11 +86,16 @@ impl SettingsManager {
         let old = self.inner.get().clone();
         self.inner.update(|s| partial.merge_into(s));
         let changed_groups = old.changed_groups(self.inner.get());
-        self.inner.save(false).await?;
-        Ok(UpdateResult {
-            settings: self.inner.get().clone(),
-            changed_groups,
-        })
+        match self.inner.save(false).await {
+            Ok(()) => Ok(UpdateResult {
+                settings: self.inner.get().clone(),
+                changed_groups,
+            }),
+            Err(e) => {
+                self.inner.set(old);
+                Err(e)
+            }
+        }
     }
 
     /// 重置为默认设置

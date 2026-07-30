@@ -6,6 +6,7 @@
 
 use std::path::PathBuf;
 
+use crate::observability;
 use sealantern_infra::platform::get_app_data_dir;
 
 const APP_DATA_LOCATOR_FILE: &str = "data_dir.json";
@@ -28,37 +29,33 @@ pub fn run_startup_migration() {
     // 读取定位器中的旧数据目录
     let old_dir = match read_locator(&locator_path) {
         Some(dir) if dir != default_dir => dir,
+        None => {
+            observability::config_locator_unreadable(&locator_path);
+            return;
+        }
         _ => {
             // 定位器指向的就是默认目录，不需要迁移，清理文件即可
-            let _ = std::fs::remove_file(&locator_path);
+            if let Err(e) = std::fs::remove_file(&locator_path) {
+                observability::config_locator_cleanup_failed(&locator_path, &e);
+            }
             return;
         }
     };
 
-    tracing::info!(
-        target: "sealantern.config.migration",
-        "检测到旧版数据目录定位器，将数据从 '{}' 回迁到 '{}'",
-        old_dir.display(),
-        default_dir.display()
-    );
+    observability::config_migration_started(&old_dir, &default_dir);
 
     // 搬迁数据：将旧目录下的内容复制到默认目录
     if let Err(e) = migrate_data_dir(&old_dir, &default_dir) {
-        tracing::error!(
-            target: "sealantern.config.migration",
-            "数据回迁失败: {}",
-            e
-        );
+        observability::config_migration_failed(&e);
         return;
     }
 
     // 删除定位器文件
-    let _ = std::fs::remove_file(&locator_path);
+    if let Err(e) = std::fs::remove_file(&locator_path) {
+        observability::config_locator_cleanup_failed(&locator_path, &e);
+    }
 
-    tracing::info!(
-        target: "sealantern.config.migration",
-        "数据回迁完成，定位器文件已清理"
-    );
+    observability::config_migration_completed();
 }
 
 /// 从定位器文件读取自定义路径
@@ -93,10 +90,6 @@ fn migrate_data_dir(src: &PathBuf, dst: &PathBuf) -> Result<(), String> {
         let file_name = entry.file_name();
         let src_path = entry.path();
         let dst_path = dst.join(&file_name);
-
-        if dst_path.exists() {
-            continue; // 目标已存在则跳过
-        }
 
         if src_path.is_dir() {
             copy_dir_recursive(&src_path, &dst_path)?;
