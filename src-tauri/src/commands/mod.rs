@@ -3,6 +3,7 @@ pub mod java;
 pub mod mcs_plugin;
 pub mod player;
 pub mod plugin;
+pub mod scheduler;
 pub mod server;
 pub mod settings;
 pub mod system;

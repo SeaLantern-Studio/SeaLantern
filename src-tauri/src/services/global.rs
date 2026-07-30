@@ -2,6 +2,7 @@ use super::i18n::I18nService;
 use super::join_manager::JoinManager;
 use super::mcs_plugin_manager::m_PluginManager;
 use super::mod_manager::ModManager;
+use super::scheduler_service::SchedulerService;
 use super::server_id_manager::ServerIdManager;
 use super::server_manager::ServerManager;
 use super::settings_manager::SettingsManager;
@@ -15,6 +16,11 @@ pub fn server_manager() -> &'static ServerManager {
 pub fn settings_manager() -> &'static SettingsManager {
     static INSTANCE: OnceLock<SettingsManager> = OnceLock::new();
     INSTANCE.get_or_init(SettingsManager::new)
+}
+
+pub fn scheduler_service() -> &'static SchedulerService {
+    static INSTANCE: OnceLock<SchedulerService> = OnceLock::new();
+    INSTANCE.get_or_init(SchedulerService::new)
 }
 
 pub fn i18n_service() -> &'static I18nService {

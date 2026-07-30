@@ -21,6 +21,9 @@ export type { PlayerEntry, BanEntry, OpEntry } from "@api/player";
 export { settingsApi, checkAcrylicSupport, applyAcrylic, getSystemFonts } from "@api/settings";
 export type { AppSettings } from "@api/settings";
 
+export { schedulerApi } from "@api/scheduler";
+export type { ScheduledTask, SchedulerTaskType } from "@api/scheduler";
+
 export { systemApi } from "@api/system";
 export type {
   CpuInfo,

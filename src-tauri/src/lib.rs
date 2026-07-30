@@ -9,6 +9,7 @@ use commands::java as java_commands;
 use commands::mcs_plugin as mcs_plugin_commands;
 use commands::player as player_commands;
 use commands::plugin as plugin_commands;
+use commands::scheduler as scheduler_commands;
 use commands::server as server_commands;
 use commands::settings as settings_commands;
 use commands::system as system_commands;
@@ -20,6 +21,11 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Listener, Manager,
 };
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn initialize_scheduler() {
+    let _ = crate::services::global::scheduler_service();
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -119,6 +125,12 @@ pub fn run() {
             settings_commands::save_settings,
             settings_commands::save_settings_with_diff,
             settings_commands::update_settings_partial,
+            scheduler_commands::get_all_tasks,
+            scheduler_commands::create_task,
+            scheduler_commands::update_task,
+            scheduler_commands::delete_task,
+            scheduler_commands::toggle_task,
+            scheduler_commands::run_task_now,
             settings_commands::reset_settings,
             settings_commands::export_settings,
             settings_commands::import_settings,

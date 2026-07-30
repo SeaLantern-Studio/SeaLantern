@@ -1,0 +1,291 @@
+use crate::models::scheduler::{ScheduledTask, TaskType};
+use crate::services::global;
+use chrono::{DateTime, Utc};
+use cron::Schedule;
+use std::collections::HashSet;
+use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
+use std::time::Duration as StdDuration;
+use tokio::time::interval;
+use uuid::Uuid;
+
+const TASKS_FILE: &str = "scheduler_tasks.json";
+
+#[derive(Debug, Clone)]
+pub struct SchedulerService {
+    tasks: Arc<Mutex<Vec<ScheduledTask>>>,
+    data_dir: PathBuf,
+    running_tasks: Arc<Mutex<HashSet<String>>>,
+}
+
+impl SchedulerService {
+    pub fn new() -> Self {
+        let data_dir = PathBuf::from(crate::utils::path::get_or_create_app_data_dir()).join("data");
+        let _ = fs::create_dir_all(&data_dir);
+        let tasks = load_tasks(&data_dir);
+        let service = Self {
+            tasks: Arc::new(Mutex::new(tasks)),
+            data_dir: data_dir.clone(),
+            running_tasks: Arc::new(Mutex::new(HashSet::new())),
+        };
+        service.start_background_loop();
+        service
+    }
+
+    pub fn add_task(&self, mut task: ScheduledTask) -> Result<ScheduledTask, String> {
+        if task.id.is_empty() {
+            task.id = Uuid::new_v4().to_string();
+        }
+
+        let next_run = compute_next_run(&task.cron_expression)?;
+        task.next_run = Some(next_run);
+        let mut tasks = self
+            .tasks
+            .lock()
+            .map_err(|e| format!("任务锁被污染: {e}"))?;
+        tasks.push(task.clone());
+        save_tasks(&self.data_dir, &tasks)?;
+        Ok(task)
+    }
+
+    pub fn remove_task(&self, id: &str) -> Result<(), String> {
+        let mut tasks = self
+            .tasks
+            .lock()
+            .map_err(|e| format!("任务锁被污染: {e}"))?;
+        let original_len = tasks.len();
+        tasks.retain(|task| task.id != id);
+        if tasks.len() == original_len {
+            return Err(format!("未找到任务: {id}"));
+        }
+        save_tasks(&self.data_dir, &tasks)?;
+        Ok(())
+    }
+
+    pub fn update_task(&self, task: ScheduledTask) -> Result<ScheduledTask, String> {
+        let next_run = compute_next_run(&task.cron_expression)?;
+        let mut tasks = self
+            .tasks
+            .lock()
+            .map_err(|e| format!("任务锁被污染: {e}"))?;
+        let index = tasks
+            .iter()
+            .position(|existing| existing.id == task.id)
+            .ok_or_else(|| format!("未找到任务: {}", task.id))?;
+        let mut updated = task;
+        updated.next_run = Some(next_run);
+        tasks[index] = updated.clone();
+        save_tasks(&self.data_dir, &tasks)?;
+        Ok(updated)
+    }
+
+    pub fn toggle_task(&self, id: &str) -> Result<ScheduledTask, String> {
+        let mut tasks = self
+            .tasks
+            .lock()
+            .map_err(|e| format!("任务锁被污染: {e}"))?;
+        let index = tasks
+            .iter()
+            .position(|task| task.id == id)
+            .ok_or_else(|| format!("未找到任务: {id}"))?;
+        tasks[index].enabled = !tasks[index].enabled;
+        let task = tasks[index].clone();
+        save_tasks(&self.data_dir, &tasks)?;
+        Ok(task)
+    }
+
+    pub fn get_all_tasks(&self) -> Vec<ScheduledTask> {
+        self.tasks.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn run_task_now(&self, id: &str) -> Result<(), String> {
+        let tasks = self
+            .tasks
+            .lock()
+            .map_err(|e| format!("任务锁被污染: {e}"))?;
+        let task = tasks
+            .iter()
+            .find(|item| item.id == id)
+            .cloned()
+            .ok_or_else(|| format!("未找到任务: {id}"))?;
+        drop(tasks);
+        self.execute_task(task)
+    }
+
+    fn start_background_loop(&self) {
+        let tasks = Arc::clone(&self.tasks);
+        let running_tasks = Arc::clone(&self.running_tasks);
+        tauri::async_runtime::spawn(async move {
+            let mut interval = interval(StdDuration::from_secs(15));
+            loop {
+                interval.tick().await;
+                if let Err(err) = Self::tick(&tasks, &running_tasks).await {
+                    eprintln!("定时任务检查失败: {err}");
+                }
+            }
+        });
+    }
+
+    async fn tick(
+        tasks: &Arc<Mutex<Vec<ScheduledTask>>>,
+        running_tasks: &Arc<Mutex<HashSet<String>>>,
+    ) -> Result<(), String> {
+        let now = Utc::now();
+        let pending_tasks = {
+            let tasks_guard = tasks.lock().map_err(|e| format!("任务锁被污染: {e}"))?;
+            tasks_guard
+                .iter()
+                .filter(|task| task.enabled && task.next_run.is_some_and(|next_run| next_run <= now))
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        let mut dirty = false;
+
+        for task in pending_tasks {
+            let result = Self::dispatch_task(&task, running_tasks).await;
+            if let Err(err) = result {
+                eprintln!("定时任务执行失败: {err}");
+                continue;
+            }
+
+            let mut tasks_guard = tasks.lock().map_err(|e| format!("任务锁被污染: {e}"))?;
+            let current = tasks_guard
+                .iter_mut()
+                .find(|item| item.id == task.id)
+                .ok_or_else(|| format!("未找到任务: {}", task.id))?;
+            current.last_run = Some(now);
+            current.next_run = Some(compute_next_run(&current.cron_expression)?);
+            dirty = true;
+        }
+
+        if dirty {
+            let tasks_guard = tasks.lock().map_err(|e| format!("任务锁被污染: {e}"))?;
+            save_tasks_from_locked(&tasks_guard)?;
+        }
+
+        Ok(())
+    }
+
+    fn execute_task(&self, task: ScheduledTask) -> Result<(), String> {
+        let running_tasks = Arc::clone(&self.running_tasks);
+        tauri::async_runtime::spawn(async move {
+            if let Err(err) = Self::dispatch_task(&task, &running_tasks).await {
+                eprintln!("任务执行失败: {err}");
+            }
+        });
+        Ok(())
+    }
+
+    async fn dispatch_task(
+        task: &ScheduledTask,
+        running_tasks: &Arc<Mutex<HashSet<String>>>,
+    ) -> Result<(), String> {
+        let task_id = task.id.clone();
+        {
+            let mut running = running_tasks
+                .lock()
+                .map_err(|e| format!("任务锁被污染: {e}"))?;
+            if running.contains(&task_id) {
+                return Err(format!("任务 {} 正在执行，已跳过", task_id));
+            }
+            running.insert(task_id.clone());
+        }
+
+        let result = execute_task_internal(task).await;
+
+        {
+            let mut running = running_tasks
+                .lock()
+                .map_err(|e| format!("任务锁被污染: {e}"))?;
+            running.remove(&task_id);
+        }
+        result
+    }
+}
+
+fn load_tasks(data_dir: &PathBuf) -> Vec<ScheduledTask> {
+    let path = data_dir.join(TASKS_FILE);
+    if !path.exists() {
+        let _ = save_tasks(data_dir, &Vec::new());
+        return Vec::new();
+    }
+
+    match fs::read_to_string(&path) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(_) => Vec::new(),
+    }
+}
+
+fn save_tasks(data_dir: &PathBuf, tasks: &[ScheduledTask]) -> Result<(), String> {
+    let path = data_dir.join(TASKS_FILE);
+    let json = serde_json::to_string_pretty(tasks).map_err(|e| format!("序列化任务失败: {e}"))?;
+    fs::write(&path, json).map_err(|e| format!("保存任务失败: {e}"))
+}
+
+fn save_tasks_from_locked(
+    tasks: &std::sync::MutexGuard<'_, Vec<ScheduledTask>>,
+) -> Result<(), String> {
+    let data_dir = PathBuf::from(crate::utils::path::get_or_create_app_data_dir()).join("data");
+    save_tasks(&data_dir, tasks)
+}
+
+async fn execute_task_internal(task: &ScheduledTask) -> Result<(), String> {
+    let server_manager = global::server_manager();
+    println!("[Scheduler] 执行任务: {} ({})", task.name, task.task_type.as_str());
+
+    match task.task_type {
+        TaskType::Restart => {
+            // TODO: 调用现有服务的重启接口
+            let _ = server_manager.stop_server("default");
+            let _ = server_manager.start_server("default");
+            Ok(())
+        }
+        TaskType::Backup => {
+            // TODO: 调用现有备份服务
+            println!("[Scheduler] Backup task placeholder executed for {}", task.name);
+            Ok(())
+        }
+        TaskType::Command => {
+            let command = task.command.as_deref().unwrap_or_default();
+            if command.is_empty() {
+                return Err("命令任务缺少 command 内容".to_string());
+            }
+            // TODO: 调用现有控制台命令服务
+            let _ = server_manager.send_command("default", command);
+            Ok(())
+        }
+    }
+}
+
+fn compute_next_run(cron_expression: &str) -> Result<DateTime<Utc>, String> {
+    let schedule =
+        Schedule::from_str(cron_expression).map_err(|e| format!("无效的 cron 表达式: {e}"))?;
+    let mut upcoming = schedule.upcoming(Utc);
+    upcoming
+        .next()
+        .ok_or_else(|| "无法计算下次执行时间".to_string())
+}
+
+impl TaskType {
+    fn as_str(&self) -> &'static str {
+        match self {
+            TaskType::Restart => "restart",
+            TaskType::Backup => "backup",
+            TaskType::Command => "command",
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_valid_cron_expression() {
+        let next = compute_next_run("0 4 * * *").expect("should parse");
+        assert!(next > Utc::now());
+    }
+}

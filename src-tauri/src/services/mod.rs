@@ -8,6 +8,7 @@ pub mod join_manager;
 pub mod mcs_plugin_manager;
 pub mod mod_manager;
 pub mod player_manager;
+pub mod scheduler_service;
 pub mod server_id_manager;
 pub mod server_manager;
 pub mod settings_manager;

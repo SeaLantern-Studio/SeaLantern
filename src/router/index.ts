@@ -49,6 +49,12 @@ const routes = [
     meta: { title: "设置", icon: "sliders" },
   },
   {
+    path: "/scheduler",
+    name: "scheduler",
+    component: () => import("@views/SchedulerPage.vue"),
+    meta: { title: "定时任务", icon: "clock" },
+  },
+  {
     path: "/paint",
     name: "paint",
     component: () => import("@views/PaintView.vue"),
