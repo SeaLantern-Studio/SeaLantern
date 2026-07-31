@@ -413,6 +413,7 @@ pub struct JavaInfo {
 
 /// 服务器运行时状态
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum ServerStatus {
     Stopped,
     Starting,
@@ -435,6 +436,7 @@ impl ServerStatus {
 
 /// 启动模式
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum StartupMode {
     Jar,
     Bat,
@@ -458,7 +460,11 @@ impl StartupMode {
 }
 
 /// 服务器实例
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// `#[serde(default)]` 保证未来新增字段时不破坏旧文件的反序列化，
+/// 缺失字段以各类型的默认值填充。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ServerInstance {
     pub id: String,
     pub name: String,
@@ -481,6 +487,7 @@ pub struct ServerInstance {
 
 /// 服务器列表的包装类型
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ServerList {
     pub version: u32,
     pub servers: Vec<ServerInstance>,

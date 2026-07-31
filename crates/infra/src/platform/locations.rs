@@ -98,11 +98,22 @@ pub fn get_app_data_dir() -> PathBuf {
     }
 }
 
-/// 通过环境变量覆盖数据目录
+/// 通过环境变量覆盖数据目录。
+///
+/// 环境变量存在但为空时记录警告并回退默认路径，方便诊断配置错误。
 fn env_override() -> Option<PathBuf> {
-    let value = std::env::var(APP_DATA_DIR_ENV).ok()?;
+    let value = match std::env::var(APP_DATA_DIR_ENV) {
+        Ok(v) => v,
+        Err(std::env::VarError::NotPresent) => return None,
+        // 变量存在但值不是合法 UTF-8，视为无效配置
+        Err(std::env::VarError::NotUnicode(_)) => {
+            observability::platform_env_override_invalid(APP_DATA_DIR_ENV);
+            return None;
+        }
+    };
     let trimmed = value.trim();
     if trimmed.is_empty() {
+        observability::platform_env_override_invalid(APP_DATA_DIR_ENV);
         None
     } else {
         Some(PathBuf::from(trimmed))
