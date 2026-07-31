@@ -30,27 +30,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 开启 Docker BuildKit 层缓存
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
+      # 构建并直接导出为 Docker TAR 文件 (使用 type=docker)
       - name: Build Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile
-          push: false # 仅测试编译，不推送
+          push: false
           tags: sealantern-server:test
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          outputs: type=docker,dest=/tmp/sealantern-server-test.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      # 更新缓存目录
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+      # 上传生成的镜像包到 GitHub Artifacts 供下载
+      - name: Upload Docker Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-sealantern-server
+          path: /tmp/sealantern-server-test.tar
+          retention-days: 7 # 缓存保留天数（可按需修改）
