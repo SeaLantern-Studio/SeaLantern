@@ -3,7 +3,7 @@ name: 检查 PR 关联的 Issue
 on:
   pull_request:
     branches: [main]
-    types: [opened, reopened, synchronize, edited]
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled]
 
 permissions:
   pull-requests: read
@@ -12,7 +12,7 @@ permissions:
 jobs:
   check-linked-issue:
     runs-on: ubuntu-22.04
-    if: ${{ !contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association) }}
+    if: ${{ !contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association) && !contains(github.event.pull_request.labels.*.name, 'internal') }}
     steps:
       - name: 检查是否关联 Issue
         uses: actions/github-script@v7
