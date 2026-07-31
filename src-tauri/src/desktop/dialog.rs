@@ -131,11 +131,10 @@ pub fn pick_server_executable(app: tauri::AppHandle) -> Result<Option<(String, S
 pub fn pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = mpsc::channel();
 
-    let mut dialog = app.dialog().file();
     #[cfg(target_os = "windows")]
-    {
-        dialog = dialog.add_filter("Java Executable", &["exe"]);
-    }
+    let dialog = app.dialog().file().add_filter("Java Executable", &["exe"]);
+    #[cfg(not(target_os = "windows"))]
+    let dialog = app.dialog().file();
 
     dialog
         .add_filter("All Files", &["*"])
