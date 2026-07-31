@@ -51,8 +51,10 @@ async fn main() {
         .route("/health", get(|| async { "ok" }))
         // RPC API 路由
         .nest("/api", build_router(services, AllowAllAccessResolver))
-        // 前端静态文件服务
-        .fallback_service(ServeDir::new(&static_dir).fallback(ServeDir::new(&static_dir).append_index_html_on_directories(true)));
+        // 前端静态文件服务（fallback）
+        .fallback_service(
+            tower_http::services::ServeFile::new(&static_dir.join("index.html"))
+        );
 
     // 监听地址
     let addr: SocketAddr = "0.0.0.0:3000".parse().expect("valid socket address");
