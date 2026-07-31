@@ -5161,6 +5161,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "sealantern-interface"
+version = "1.2.0"
+
+[[package]]
 name = "sealantern-server"
 version = "1.2.0"
 dependencies = [

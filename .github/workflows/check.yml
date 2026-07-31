@@ -18,6 +18,7 @@ jobs:
       backend-core: ${{ steps.filter.outputs['backend-core'] }}
       backend-infra: ${{ steps.filter.outputs['backend-infra'] }}
       backend-extra: ${{ steps.filter.outputs['backend-extra'] }}
+      backend-interface: ${{ steps.filter.outputs['backend-interface'] }}
       backend-server: ${{ steps.filter.outputs['backend-server'] }}
       backend-tauri: ${{ steps.filter.outputs['backend-tauri'] }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -53,6 +54,13 @@ jobs:
               - '.github/workflows/check.yml'
             backend-extra:
               - 'crates/extra/**'
+              - '.cargo/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rustfmt.toml'
+              - '.github/workflows/check.yml'
+            backend-interface:
+              - 'crates/interface/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -145,6 +153,24 @@ jobs:
         env:
           RUSTFLAGS: "--cfg ci_skip_validation"
 
+  backend-test-extra:
+    name: 后端测试 (extra)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-extra'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 运行测试
+        run: cargo test -p sealantern-extra
+
   backend-test-infra:
     name: 后端测试 (infra)
     needs: [changes, backend-lint]
@@ -163,6 +189,24 @@ jobs:
       - name: 运行测试
         run: cargo test -p sealantern-infra --all-features
 
+  backend-test-interface:
+    name: 后端测试 (interface)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-interface'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 运行测试
+        run: cargo test -p sealantern-interface
+
   backend-test-server:
     name: 后端测试 (server)
     needs: [changes, backend-lint]
@@ -180,24 +224,6 @@ jobs:
 
       - name: 运行测试
         run: cargo test -p sealantern-server
-
-  backend-test-extra:
-    name: 后端测试 (extra)
-    needs: [changes, backend-lint]
-    if: ${{ needs.changes.outputs['backend-extra'] == 'true' }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 安装 Rust 工具链
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: 运行测试
-        run: cargo test -p sealantern-extra
 
   backend-test-tauri:
     name: 后端测试 (tauri)
@@ -235,6 +261,7 @@ jobs:
         backend-lint,
         backend-test-core,
         backend-test-infra,
+        backend-test-interface,
         backend-test-server,
         backend-test-extra,
         backend-test-tauri,
@@ -244,13 +271,7 @@ jobs:
     steps:
       - name: 汇总后端检查状态
         run: |
-          failed=""
-          if [[ "${{ needs.backend-lint.result }}" != "success" && "${{ needs.backend-lint.result }}" != "skipped" ]]; then failed="$failed lint"; fi
-          if [[ "${{ needs.backend-test-core.result }}" != "success" && "${{ needs.backend-test-core.result }}" != "skipped" ]]; then failed="$failed core"; fi
-          if [[ "${{ needs.backend-test-infra.result }}" != "success" && "${{ needs.backend-test-infra.result }}" != "skipped" ]]; then failed="$failed infra"; fi
-          if [[ "${{ needs.backend-test-server.result }}" != "success" && "${{ needs.backend-test-server.result }}" != "skipped" ]]; then failed="$failed server"; fi
-          if [[ "${{ needs.backend-test-extra.result }}" != "success" && "${{ needs.backend-test-extra.result }}" != "skipped" ]]; then failed="$failed extra"; fi
-          if [[ "${{ needs.backend-test-tauri.result }}" != "success" && "${{ needs.backend-test-tauri.result }}" != "skipped" ]]; then failed="$failed tauri"; fi
+          failed=$(echo '${{ toJSON(needs) }}' | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key] | join(" ")')
           if [[ -n "$failed" ]]; then
             echo "::error ::后端检查失败，以下模块未通过：$failed"
             exit 1
