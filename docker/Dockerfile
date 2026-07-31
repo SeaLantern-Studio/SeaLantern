@@ -34,12 +34,13 @@ RUN npm run build
 # ---------- 阶段 2: Rust 基础镜像 ----------
 FROM debian:bookworm-slim AS rust-base
 
-# 安装 Rust 工具链和 cargo-chef
+# 安装 Rust 工具链、cargo-chef 以及 GLib 开发依赖
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
     pkg-config \
     libssl-dev \
+    libglib2.0-dev \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
     && . "$HOME/.cargo/env" \
     && rustup default 1.93.1 \
@@ -78,11 +79,12 @@ FROM rust-base AS backend-builder
 
 WORKDIR /app
 
-# 安装系统依赖
+# 安装系统依赖（包含 GLib）
 RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     libssl-dev \
+    libglib2.0-dev \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -109,6 +111,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    libglib2.0-0 \
     curl \
     wget \
     gnupg \
