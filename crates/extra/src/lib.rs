@@ -5,6 +5,7 @@ pub mod config;
 pub mod download_link;
 pub mod models;
 pub mod observability;
+pub mod server;
 pub mod update;
 
 #[cfg(feature = "online-tunnel")]

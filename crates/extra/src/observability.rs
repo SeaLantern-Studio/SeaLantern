@@ -7,6 +7,55 @@ use std::fmt::Display;
 
 use crate::config::sealantern::types::SettingsGroup;
 
+/// 服务器定时任务模块的 tracing 目标。
+pub const SERVER_CRON_TASK_TARGET: &str = "sealantern.extra.server.cron_task";
+
+/// Event: 定时任务开始执行。
+pub const EVENT_SERVER_CRON_TASK_STARTED: &str = "server_cron_task_started";
+/// Event: 定时任务执行成功。
+pub const EVENT_SERVER_CRON_TASK_COMPLETED: &str = "server_cron_task_completed";
+/// Event: 定时任务执行失败。
+pub const EVENT_SERVER_CRON_TASK_FAILED: &str = "server_cron_task_failed";
+
+pub(crate) fn server_cron_task_started(task_id: &str, server_id: &str, action: &str) {
+    tracing::info!(
+        target: SERVER_CRON_TASK_TARGET,
+        event_name = EVENT_SERVER_CRON_TASK_STARTED,
+        task_id,
+        server_id,
+        action,
+        "server cron task started"
+    );
+}
+
+pub(crate) fn server_cron_task_completed(task_id: &str, server_id: &str, action: &str) {
+    tracing::info!(
+        target: SERVER_CRON_TASK_TARGET,
+        event_name = EVENT_SERVER_CRON_TASK_COMPLETED,
+        task_id,
+        server_id,
+        action,
+        "server cron task completed"
+    );
+}
+
+pub(crate) fn server_cron_task_failed(
+    task_id: &str,
+    server_id: &str,
+    action: &str,
+    error: &dyn Display,
+) {
+    tracing::error!(
+        target: SERVER_CRON_TASK_TARGET,
+        event_name = EVENT_SERVER_CRON_TASK_FAILED,
+        task_id,
+        server_id,
+        action,
+        error = %error,
+        "server cron task failed"
+    );
+}
+
 /// 应用插件执行内核的 tracing 目标。
 pub const APP_PLUGIN_TARGET: &str = "sealantern.extra.app_plugin";
 
