@@ -5102,6 +5102,8 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-window-state",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
