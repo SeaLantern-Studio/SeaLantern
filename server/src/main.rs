@@ -9,7 +9,7 @@ use axum::{
     routing::get,
     Router,
 };
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use sealantern_server::rpc::router::build_router;
@@ -53,7 +53,8 @@ async fn main() {
         .nest("/api", build_router(services, AllowAllAccessResolver))
         // 前端静态文件服务（fallback）
         .fallback_service(
-            tower_http::services::ServeFile::new(&static_dir.join("index.html"))
+            ServeDir::new(&static_dir)
+                .fallback(ServeFile::new(&static_dir.join("index.html")))
         );
 
     // 监听地址
