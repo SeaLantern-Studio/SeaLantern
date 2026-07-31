@@ -10,12 +10,6 @@ on:
         default: 'main'
         type: string
 
-  # 2. 自动触发规则（如果不希望推送代码时自动触发，可以将下面几行注释掉）
-  push:
-    branches: [ "main", "master", "dev" ]
-  pull_request:
-    branches: [ "main", "master" ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
