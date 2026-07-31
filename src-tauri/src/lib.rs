@@ -1,10 +1,16 @@
 //! Sea Lantern 桌面端的 Tauri 宿主入口。
 
+pub mod desktop;
+pub mod observability;
+
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// 启动桌面应用。
 pub fn run() {
+    // 初始化 tracing 日志（在 Tauri 构建之前）
+    observability::init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
