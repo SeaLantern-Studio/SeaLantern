@@ -38,6 +38,7 @@ export const schedulerApi = {
     taskType: SchedulerTaskType;
     cronExpression: string;
     command?: string | null;
+    enabled: boolean;
   }): Promise<ScheduledTask> {
     return tauriInvoke<ScheduledTask>("update_task", {
       id: params.id,
@@ -45,6 +46,7 @@ export const schedulerApi = {
       task_type: params.taskType,
       cron_expression: params.cronExpression,
       command: params.command ?? null,
+      enabled: params.enabled,
     });
   },
 

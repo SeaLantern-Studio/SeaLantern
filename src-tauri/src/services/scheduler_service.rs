@@ -22,7 +22,13 @@ pub struct SchedulerService {
 
 impl SchedulerService {
     pub fn new() -> Self {
-        let data_dir = PathBuf::from(crate::utils::path::get_or_create_app_data_dir()).join("data");
+        Self::new_with_options(None, true)
+    }
+
+    pub fn new_with_options(data_dir: Option<PathBuf>, start_background_loop: bool) -> Self {
+        let data_dir = data_dir.unwrap_or_else(|| {
+            PathBuf::from(crate::utils::path::get_or_create_app_data_dir()).join("data")
+        });
         let _ = fs::create_dir_all(&data_dir);
         let tasks = load_tasks(&data_dir);
         let service = Self {
@@ -30,7 +36,9 @@ impl SchedulerService {
             data_dir: data_dir.clone(),
             running_tasks: Arc::new(Mutex::new(HashSet::new())),
         };
-        service.start_background_loop();
+        if start_background_loop {
+            service.start_background_loop();
+        }
         service
     }
 
@@ -75,7 +83,6 @@ impl SchedulerService {
             .ok_or_else(|| format!("未找到任务: {}", task.id))?;
         let existing = tasks[index].clone();
         let mut updated = task;
-        updated.enabled = existing.enabled;
         updated.last_run = existing.last_run;
         updated.next_run =
             if updated.cron_expression != existing.cron_expression || existing.next_run.is_none() {
@@ -108,15 +115,19 @@ impl SchedulerService {
     }
 
     pub fn run_task_now(&self, id: &str) -> Result<(), String> {
-        let tasks = self
+        let mut tasks = self
             .tasks
             .lock()
             .map_err(|e| format!("任务锁被污染: {e}"))?;
-        let task = tasks
+        let index = tasks
             .iter()
-            .find(|item| item.id == id)
-            .cloned()
+            .position(|item| item.id == id)
             .ok_or_else(|| format!("未找到任务: {id}"))?;
+        let now = Utc::now();
+        tasks[index].last_run = Some(now);
+        tasks[index].next_run = Some(compute_next_run(&tasks[index].cron_expression)?);
+        let task = tasks[index].clone();
+        save_tasks(&self.data_dir, &tasks)?;
         drop(tasks);
         self.execute_task(task)
     }
@@ -247,9 +258,12 @@ async fn execute_task_internal(task: &ScheduledTask) -> Result<(), String> {
 
     match task.task_type {
         TaskType::Restart => {
-            // TODO: 调用现有服务的重启接口
-            let _ = server_manager.stop_server("default");
-            let _ = server_manager.start_server("default");
+            server_manager
+                .stop_server("default")
+                .map_err(|e| format!("停止服务器失败: {e}"))?;
+            server_manager
+                .start_server("default")
+                .map_err(|e| format!("启动服务器失败: {e}"))?;
             Ok(())
         }
         TaskType::Backup => {
@@ -262,8 +276,9 @@ async fn execute_task_internal(task: &ScheduledTask) -> Result<(), String> {
             if command.is_empty() {
                 return Err("命令任务缺少 command 内容".to_string());
             }
-            // TODO: 调用现有控制台命令服务
-            let _ = server_manager.send_command("default", command);
+            server_manager
+                .send_command("default", command)
+                .map_err(|e| format!("发送控制台命令失败: {e}"))?;
             Ok(())
         }
     }
@@ -303,6 +318,7 @@ impl TaskType {
 mod tests {
     use super::*;
     use chrono::Duration;
+    use tempfile::tempdir;
 
     #[test]
     fn parses_valid_cron_expression() {
@@ -312,7 +328,9 @@ mod tests {
 
     #[test]
     fn update_task_preserves_enabled_and_run_history() {
-        let service = SchedulerService::new();
+        let temp_dir = tempdir().expect("create temp dir");
+        let service =
+            SchedulerService::new_with_options(Some(temp_dir.path().to_path_buf()), false);
         let original_last_run = Utc::now() - Duration::hours(2);
         let original_next_run = Utc::now() + Duration::hours(1);
         let original = ScheduledTask {
@@ -341,8 +359,36 @@ mod tests {
             })
             .expect("should update task");
 
-        assert!(!updated.enabled);
+        assert!(updated.enabled);
         assert_eq!(updated.last_run, Some(original_last_run));
         assert!(updated.next_run.is_some());
+    }
+
+    #[test]
+    fn run_task_now_updates_last_run_and_next_run() {
+        let temp_dir = tempdir().expect("create temp dir");
+        let service =
+            SchedulerService::new_with_options(Some(temp_dir.path().to_path_buf()), false);
+        let original_next_run = Utc::now() + Duration::hours(1);
+        let task = ScheduledTask {
+            id: "task-2".to_string(),
+            name: "立即执行任务".to_string(),
+            task_type: TaskType::Backup,
+            cron_expression: "0 4 * * *".to_string(),
+            command: None,
+            enabled: true,
+            last_run: None,
+            next_run: Some(original_next_run),
+        };
+
+        service.add_task(task.clone()).expect("should add task");
+
+        service.run_task_now("task-2").expect("should run task now");
+
+        let tasks = service.get_all_tasks();
+        let updated = tasks.iter().find(|item| item.id == "task-2").unwrap();
+        assert!(updated.last_run.is_some());
+        assert!(updated.next_run.is_some());
+        assert!(updated.next_run.unwrap() > original_next_run);
     }
 }

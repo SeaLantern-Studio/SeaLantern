@@ -37,6 +37,7 @@ pub fn update_task(
     task_type: TaskType,
     cron_expression: String,
     command: Option<String>,
+    enabled: bool,
 ) -> Result<ScheduledTask, String> {
     let task = ScheduledTask {
         id,
@@ -44,7 +45,7 @@ pub fn update_task(
         task_type,
         cron_expression,
         command,
-        enabled: true,
+        enabled,
         last_run: None,
         next_run: None,
     };

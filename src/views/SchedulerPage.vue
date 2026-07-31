@@ -16,13 +16,8 @@ const form = ref({
   taskType: "Restart" as SchedulerTaskType,
   cronExpression: "0 4 * * *",
   command: "",
+  enabled: true,
 });
-
-const taskTypeOptions: Array<{ value: SchedulerTaskType; label: string }> = [
-  { value: "Restart", label: "重启服务器" },
-  { value: "Backup", label: "备份世界" },
-  { value: "Command", label: "执行命令" },
-];
 
 const cronPresets = [
   { label: "每天凌晨 4 点", value: "0 4 * * *" },
@@ -49,6 +44,7 @@ function openCreateDialog() {
     taskType: "Restart",
     cronExpression: "0 4 * * *",
     command: "",
+    enabled: true,
   };
   isDialogOpen.value = true;
 }
@@ -61,6 +57,7 @@ function openEditDialog(task: ScheduledTask) {
     taskType: task.task_type,
     cronExpression: task.cron_expression,
     command: task.command ?? "",
+    enabled: task.enabled,
   };
   isDialogOpen.value = true;
 }
@@ -87,6 +84,7 @@ async function handleSubmit() {
         taskType: form.value.taskType,
         cronExpression: form.value.cronExpression,
         command: form.value.command || null,
+        enabled: form.value.enabled,
       });
       toast.success("任务已更新");
     } else {
@@ -235,6 +233,14 @@ onMounted(() => {
                 <option v-for="option in taskTypeOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>启用状态</span>
+              <select v-model="form.enabled">
+                <option :value="true">启用</option>
+                <option :value="false">禁用</option>
               </select>
             </label>
 
