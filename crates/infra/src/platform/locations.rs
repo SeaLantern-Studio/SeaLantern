@@ -11,6 +11,8 @@ use std::path::PathBuf;
 
 use crate::observability;
 
+const APP_DATA_DIR_ENV: &str = "SEALANTERN_DATA_DIR";
+
 /// 标准安装的应用目录名（macOS 和 Windows MSI 安装使用）。
 #[cfg(target_os = "windows")]
 const APP_DIR_NAME: &str = "SeaLantern";
@@ -48,6 +50,10 @@ fn is_msi_installation() -> bool {
 /// - macOS：`~/Library/Application Support/SeaLantern`
 /// - Linux：`~/.local/share/sea-lantern`
 pub fn get_app_data_dir() -> PathBuf {
+    if let Some(dir) = env_override() {
+        return dir;
+    }
+
     if std::path::Path::new("/.dockerenv").exists() {
         return PathBuf::from(APP_DOCKER_DATA_DIR);
     }
@@ -89,6 +95,28 @@ pub fn get_app_data_dir() -> PathBuf {
             .map(|d| d.join(APP_DIR_NAME_LOWERCASE))
             .or_else(|| dirs::home_dir().map(|h| h.join(APP_DIR_HIDDEN)))
             .unwrap_or_else(|| PathBuf::from("."))
+    }
+}
+
+/// 通过环境变量覆盖数据目录。
+///
+/// 环境变量存在但为空时记录警告并回退默认路径，方便诊断配置错误。
+fn env_override() -> Option<PathBuf> {
+    let value = match std::env::var(APP_DATA_DIR_ENV) {
+        Ok(v) => v,
+        Err(std::env::VarError::NotPresent) => return None,
+        // 变量存在但值不是合法 UTF-8，视为无效配置
+        Err(std::env::VarError::NotUnicode(_)) => {
+            observability::platform_env_override_invalid(APP_DATA_DIR_ENV);
+            return None;
+        }
+    };
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        observability::platform_env_override_invalid(APP_DATA_DIR_ENV);
+        None
+    } else {
+        Some(PathBuf::from(trimmed))
     }
 }
 

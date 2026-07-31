@@ -5,6 +5,57 @@
 
 use std::fmt::Display;
 
+use crate::config::sealantern::types::SettingsGroup;
+
+/// 服务器定时任务模块的 tracing 目标。
+pub const SERVER_CRON_TASK_TARGET: &str = "sealantern.extra.server.cron_task";
+
+/// Event: 定时任务开始执行。
+pub const EVENT_SERVER_CRON_TASK_STARTED: &str = "server_cron_task_started";
+/// Event: 定时任务执行成功。
+pub const EVENT_SERVER_CRON_TASK_COMPLETED: &str = "server_cron_task_completed";
+/// Event: 定时任务执行失败。
+pub const EVENT_SERVER_CRON_TASK_FAILED: &str = "server_cron_task_failed";
+
+pub(crate) fn server_cron_task_started(task_id: &str, server_id: &str, action: &str) {
+    tracing::info!(
+        target: SERVER_CRON_TASK_TARGET,
+        event_name = EVENT_SERVER_CRON_TASK_STARTED,
+        task_id,
+        server_id,
+        action,
+        "server cron task started"
+    );
+}
+
+pub(crate) fn server_cron_task_completed(task_id: &str, server_id: &str, action: &str) {
+    tracing::info!(
+        target: SERVER_CRON_TASK_TARGET,
+        event_name = EVENT_SERVER_CRON_TASK_COMPLETED,
+        task_id,
+        server_id,
+        action,
+        "server cron task completed"
+    );
+}
+
+pub(crate) fn server_cron_task_failed(
+    task_id: &str,
+    server_id: &str,
+    action: &str,
+    error: &dyn Display,
+) {
+    tracing::error!(
+        target: SERVER_CRON_TASK_TARGET,
+        event_name = EVENT_SERVER_CRON_TASK_FAILED,
+        task_id,
+        server_id,
+        action,
+        error = %error,
+        "server cron task failed"
+    );
+}
+
 /// 应用插件执行内核的 tracing 目标。
 pub const APP_PLUGIN_TARGET: &str = "sealantern.extra.app_plugin";
 
@@ -346,5 +397,444 @@ pub fn update_api_request_failed(
         status,
         error = %error,
         "update API request failed"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 配置迁移模块
+// ---------------------------------------------------------------------------
+
+/// 配置迁移模块的 tracing 目标。
+pub const CONFIG_TARGET: &str = "sealantern.extra.config";
+
+/// Event: 配置迁移开始。
+pub const EVENT_CONFIG_MIGRATION_STARTED: &str = "config_migration_started";
+/// Event: 配置迁移完成。
+pub const EVENT_CONFIG_MIGRATION_COMPLETED: &str = "config_migration_completed";
+/// Event: 配置迁移失败。
+pub const EVENT_CONFIG_MIGRATION_FAILED: &str = "config_migration_failed";
+/// Event: 定位器文件不可读。
+pub const EVENT_CONFIG_LOCATOR_UNREADABLE: &str = "config_locator_unreadable";
+/// Event: 删除定位器文件失败。
+pub const EVENT_CONFIG_LOCATOR_CLEANUP_FAILED: &str = "config_locator_cleanup_failed";
+
+/// 记录配置迁移开始。
+pub fn config_migration_started(old_dir: &std::path::Path, new_dir: &std::path::Path) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_STARTED,
+        old_dir = %old_dir.display(),
+        new_dir = %new_dir.display(),
+        "config migration started"
+    );
+}
+
+/// 记录配置迁移完成。
+pub fn config_migration_completed() {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_COMPLETED,
+        "config migration completed"
+    );
+}
+
+/// 记录配置迁移失败。
+pub fn config_migration_failed(error: &dyn Display) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_FAILED,
+        error = %error,
+        "config migration failed"
+    );
+}
+
+/// 记录定位器文件不可读或格式错误。
+pub fn config_locator_unreadable(path: &std::path::Path) {
+    tracing::warn!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_LOCATOR_UNREADABLE,
+        path = %path.display(),
+        "locator file is unreadable or malformed"
+    );
+}
+
+/// 记录删除定位器文件失败。
+pub fn config_locator_cleanup_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_LOCATOR_CLEANUP_FAILED,
+        path = %path.display(),
+        error = %error,
+        "failed to clean up locator file"
+    );
+}
+
+/// Event: 迁移过程中目标目录已存在同名条目。
+pub const EVENT_CONFIG_MIGRATION_CONFLICT: &str = "config_migration_conflict";
+
+/// 记录迁移时目标路径已存在同名条目的覆盖/跳过冲突。
+pub fn config_migration_conflict(path: &std::path::Path) {
+    tracing::warn!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_CONFLICT,
+        path = %path.display(),
+        "migration found an existing entry at destination, overwriting"
+    );
+}
+
+/// Event: 数据目录迁移完成（携带条目统计）。
+pub const EVENT_CONFIG_MIGRATION_SUMMARY: &str = "config_migration_summary";
+
+/// 记录数据目录迁移的条目统计（复制文件数 / 目录数）。
+pub fn config_migration_summary(files_copied: usize, dirs_copied: usize) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_SUMMARY,
+        files_copied,
+        dirs_copied,
+        "config migration finished"
+    );
+}
+
+/// Event: 迁移路径无效（源与目标存在包含关系），迁移被拒绝。
+pub const EVENT_CONFIG_MIGRATION_INVALID_PATH: &str = "config_migration_invalid_path";
+
+/// 记录迁移路径存在包含关系、被拒绝迁移的事件。
+///
+/// 若旧目录是默认目录的祖先或子目录，递归复制会膨胀或误删数据树。
+pub fn config_migration_invalid_path(old_dir: &std::path::Path, default_dir: &std::path::Path) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_INVALID_PATH,
+        old_dir = %old_dir.display(),
+        default_dir = %default_dir.display(),
+        "migration rejected: source and destination overlap"
+    );
+}
+
+/// Event: 迁移跳过符号链接条目。
+pub const EVENT_CONFIG_MIGRATION_SYMLINK_SKIPPED: &str = "config_migration_symlink_skipped";
+
+/// 记录迁移时跳过符号链接条目（避免跟随链接递归或复制链接指向的目录）。
+pub fn config_migration_symlink_skipped(path: &std::path::Path) {
+    tracing::warn!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_SYMLINK_SKIPPED,
+        path = %path.display(),
+        "migration skipped symbolic link entry"
+    );
+}
+
+/// Event: 恢复上次中断迁移留下的残留目录。
+pub const EVENT_CONFIG_MIGRATION_RESUMED: &str = "config_migration_resumed";
+
+/// 记录上次迁移中断残留的迁移源已恢复为原目录名。
+pub fn config_migration_resumed(staged: &std::path::Path, restored: &std::path::Path) {
+    tracing::warn!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_RESUMED,
+        staged = %staged.display(),
+        restored = %restored.display(),
+        "interrupted migration residue recovered to original name"
+    );
+}
+
+/// Event: 清理迁移源失败（数据已迁移完成）。
+pub const EVENT_CONFIG_MIGRATION_CLEANUP_FAILED: &str = "config_migration_cleanup_failed";
+
+/// 记录迁移源清理失败——数据已完整复制到目标，残留目录可稍后手动清理。
+pub fn config_migration_cleanup_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_CLEANUP_FAILED,
+        path = %path.display(),
+        error = %error,
+        "failed to clean up migration source after successful copy"
+    );
+}
+
+/// Event: 迁移失败后回滚重命名也失败。
+pub const EVENT_CONFIG_MIGRATION_ROLLBACK_FAILED: &str = "config_migration_rollback_failed";
+
+/// 记录迁移失败后回滚重命名失败——旧数据仍留在迁移源目录，需要人工介入。
+pub fn config_migration_rollback_failed(
+    staged: &std::path::Path,
+    original: &std::path::Path,
+    error: &dyn Display,
+) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_MIGRATION_ROLLBACK_FAILED,
+        staged = %staged.display(),
+        original = %original.display(),
+        error = %error,
+        "failed to roll back migration source rename, user data may be left in staging directory"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 应用设置管理
+// ---------------------------------------------------------------------------
+
+/// Event: 设置加载完成。
+pub const EVENT_CONFIG_SETTINGS_LOADED: &str = "config_settings_loaded";
+/// Event: 设置全量更新成功。
+pub const EVENT_CONFIG_SETTINGS_UPDATED: &str = "config_settings_updated";
+/// Event: 设置部分更新成功。
+pub const EVENT_CONFIG_SETTINGS_PARTIAL_UPDATED: &str = "config_settings_partial_updated";
+/// Event: 设置持久化失败并已回滚。
+pub const EVENT_CONFIG_SETTINGS_PERSIST_FAILED: &str = "config_settings_persist_failed";
+/// Event: 设置重置为默认值。
+pub const EVENT_CONFIG_SETTINGS_RESET: &str = "config_settings_reset";
+/// Event: 设置导出为 JSON。
+pub const EVENT_CONFIG_SETTINGS_EXPORTED: &str = "config_settings_exported";
+/// Event: 设置从 JSON 导入。
+pub const EVENT_CONFIG_SETTINGS_IMPORTED: &str = "config_settings_imported";
+/// Event: 配置文件损坏，已备份并恢复默认配置。
+pub const EVENT_CONFIG_SETTINGS_CORRUPT_RECOVERED: &str = "config_settings_corrupt_recovered";
+/// Event: 设置版本升级成功。
+pub const EVENT_CONFIG_SETTINGS_VERSION_UPGRADED: &str = "config_settings_version_upgraded";
+
+/// 记录设置加载完成。
+pub fn config_settings_loaded(path: &std::path::Path, version: u32) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_LOADED,
+        path = %path.display(),
+        version,
+        "settings loaded"
+    );
+}
+
+/// 记录设置全量更新成功。
+pub fn config_settings_updated(path: &std::path::Path, changed_groups: &[SettingsGroup]) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_UPDATED,
+        path = %path.display(),
+        changed_groups = ?changed_groups,
+        "settings updated"
+    );
+}
+
+/// 记录设置部分更新成功。
+pub fn config_settings_partial_updated(path: &std::path::Path, changed_groups: &[SettingsGroup]) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_PARTIAL_UPDATED,
+        path = %path.display(),
+        changed_groups = ?changed_groups,
+        "settings partially updated"
+    );
+}
+
+/// 记录设置持久化失败并已回滚内存状态。
+pub fn config_settings_persist_failed(
+    path: &std::path::Path,
+    operation: &str,
+    error: &dyn Display,
+) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_PERSIST_FAILED,
+        path = %path.display(),
+        operation,
+        error = %error,
+        "settings persist failed, in-memory state rolled back"
+    );
+}
+
+/// 记录设置重置为默认值。
+pub fn config_settings_reset(path: &std::path::Path) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_RESET,
+        path = %path.display(),
+        "settings reset to defaults"
+    );
+}
+
+/// 记录设置导出为 JSON。
+pub fn config_settings_exported(path: &std::path::Path) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_EXPORTED,
+        path = %path.display(),
+        "settings exported as JSON"
+    );
+}
+
+/// 记录设置从 JSON 导入。
+pub fn config_settings_imported(path: &std::path::Path, changed_groups: &[SettingsGroup]) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_IMPORTED,
+        path = %path.display(),
+        changed_groups = ?changed_groups,
+        "settings imported from JSON"
+    );
+}
+
+/// 记录配置文件损坏、已备份并恢复默认配置的事件。
+pub fn config_settings_corrupt_recovered(path: &std::path::Path, backup: &std::path::Path) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_CORRUPT_RECOVERED,
+        path = %path.display(),
+        backup = %backup.display(),
+        "settings file corrupted, backed up and reset to defaults"
+    );
+}
+
+/// 记录设置版本升级成功（升级前已备份原文件）。
+pub fn config_settings_version_upgraded(
+    path: &std::path::Path,
+    from_version: u32,
+    to_version: u32,
+    backup: &std::path::Path,
+) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_SETTINGS_VERSION_UPGRADED,
+        path = %path.display(),
+        from_version,
+        to_version,
+        backup = %backup.display(),
+        "settings version upgraded"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 旧版嵌套配置迁移
+// ---------------------------------------------------------------------------
+
+/// Event: 旧版嵌套配置迁移成功。
+pub const EVENT_CONFIG_LEGACY_MIGRATED: &str = "config_legacy_settings_migrated";
+/// Event: 旧版配置迁移失败。
+pub const EVENT_CONFIG_LEGACY_MIGRATE_FAILED: &str = "config_legacy_settings_migrate_failed";
+
+/// 记录旧版嵌套配置迁移成功（不记录迁移前的敏感值）。
+pub fn config_legacy_settings_migrated(path: &std::path::Path) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_LEGACY_MIGRATED,
+        path = %path.display(),
+        "legacy nested settings migrated to flat format"
+    );
+}
+
+/// 记录旧版配置迁移失败。
+pub fn config_legacy_settings_migrate_failed(path: &std::path::Path, error: &dyn Display) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_LEGACY_MIGRATE_FAILED,
+        path = %path.display(),
+        error = %error,
+        "legacy settings migration failed"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 服务器注册表
+// ---------------------------------------------------------------------------
+
+/// Event: 注册表加载完成。
+pub const EVENT_CONFIG_REGISTRY_LOADED: &str = "config_registry_loaded";
+/// Event: 添加服务器。
+pub const EVENT_CONFIG_REGISTRY_ADDED: &str = "config_registry_server_added";
+/// Event: 更新服务器。
+pub const EVENT_CONFIG_REGISTRY_UPDATED: &str = "config_registry_server_updated";
+/// Event: 删除服务器。
+pub const EVENT_CONFIG_REGISTRY_DELETED: &str = "config_registry_server_deleted";
+/// Event: 拒绝重复 ID。
+pub const EVENT_CONFIG_REGISTRY_DUPLICATE_ID: &str = "config_registry_duplicate_id";
+/// Event: 服务器不存在，操作被跳过。
+pub const EVENT_CONFIG_REGISTRY_NOT_FOUND: &str = "config_registry_server_not_found";
+/// Event: 注册表操作失败。
+pub const EVENT_CONFIG_REGISTRY_OPERATION_FAILED: &str = "config_registry_operation_failed";
+
+/// 记录注册表加载完成。
+pub fn config_registry_loaded(path: &std::path::Path, count: usize) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_LOADED,
+        path = %path.display(),
+        count,
+        "server registry loaded"
+    );
+}
+
+/// 记录添加服务器成功。
+pub fn config_registry_server_added(path: &std::path::Path, id: &str, name: &str) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_ADDED,
+        path = %path.display(),
+        id,
+        name,
+        "server added to registry"
+    );
+}
+
+/// 记录更新服务器成功。
+pub fn config_registry_server_updated(path: &std::path::Path, id: &str) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_UPDATED,
+        path = %path.display(),
+        id,
+        "server updated in registry"
+    );
+}
+
+/// 记录删除服务器成功。
+pub fn config_registry_server_deleted(path: &std::path::Path, id: &str) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_DELETED,
+        path = %path.display(),
+        id,
+        "server deleted from registry"
+    );
+}
+
+/// 记录拒绝重复 ID。
+pub fn config_registry_duplicate_id(path: &std::path::Path, id: &str) {
+    tracing::warn!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_DUPLICATE_ID,
+        path = %path.display(),
+        id,
+        "server add rejected: duplicate id"
+    );
+}
+
+/// 记录按 ID 找不到服务器（更新/删除被静默跳过）。
+pub fn config_registry_server_not_found(path: &std::path::Path, operation: &str, id: &str) {
+    tracing::warn!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_NOT_FOUND,
+        path = %path.display(),
+        operation,
+        id,
+        "server not found, operation skipped"
+    );
+}
+
+/// 记录注册表操作失败。
+pub fn config_registry_operation_failed(
+    path: &std::path::Path,
+    operation: &str,
+    id: Option<&str>,
+    error: &dyn Display,
+) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_OPERATION_FAILED,
+        path = %path.display(),
+        operation,
+        id,
+        error = %error,
+        "registry operation failed"
     );
 }

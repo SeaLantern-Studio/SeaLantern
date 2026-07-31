@@ -1,0 +1,56 @@
+name: Docker Build Test
+
+on:
+  # 1. 允许在 GitHub 网页界面手动触发，并手动选择分支/输入参数
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: '选择或指定要编译的分支/Tag'
+        required: true
+        default: 'main'
+        type: string
+
+  # 2. 自动触发规则（如果不希望推送代码时自动触发，可以将下面几行注释掉）
+  push:
+    branches: [ "main", "master", "dev" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 根据手动输入的参数或默认分支进行检出
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.target_branch || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 开启 Docker BuildKit 层缓存
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false # 仅测试编译，不推送
+          tags: sealantern-server:test
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      # 更新缓存目录
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
