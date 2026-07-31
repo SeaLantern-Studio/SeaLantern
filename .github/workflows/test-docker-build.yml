@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       target_branch:
-        description: '选择或指定要编译的分支/Tag'
+        description: "选择或指定要编译的分支/Tag"
         required: true
-        default: 'main'
+        default: "main"
         type: string
 
 jobs:
