@@ -55,18 +55,30 @@ impl<A: Send + Sync + 'static> Clone for AxumRpcState<A> {
 ///
 /// 将 HTTP 相关配置（方法、路径）保留在适配器层，不污染契约层。实现者只需声明
 /// [`HTTP_METHOD`] 和 [`RpcMethod::NAME`]，HTTP 路径由 [`http_path`] 默认实现从方法
-/// 标识自动派生。
+/// 标识自动派生；需要 RESTful 路径时可声明 [`HTTP_PATH_TEMPLATE`] 覆盖。
 ///
 /// [`HTTP_METHOD`]: Self::HTTP_METHOD
 /// [`http_path`]: Self::http_path
+/// [`HTTP_PATH_TEMPLATE`]: Self::HTTP_PATH_TEMPLATE
 pub trait RpcAxumMethod: RpcMethod {
     /// HTTP 方法，影响 axum 路由注册方式。
     const HTTP_METHOD: RpcHttpMethod;
 
+    /// 可选的 REST 路径模板，如 `"/api/servers/{id}/status"`。
+    ///
+    /// 模板中的 `{param}` 与 [`RpcMethod::Request`] 的字段名一一对应，
+    /// 由 [`handle_rpc`] 从 URL 路径提取并合并进请求参数（Tauri 等其它传输
+    /// 无需感知路径概念，参数以 args 全量传递）。为 `None` 时回退默认
+    /// RPC 风格路径（见 [`http_path`]）。
+    ///
+    /// [`handle_rpc`]: crate::rpc::axum::handle_rpc
+    const HTTP_PATH_TEMPLATE: Option<&'static str> = None;
+
     /// 派生 Axum 应注册的 HTTP 路径。
     ///
-    /// 默认实现将方法标识中的 `.` 映射为路径 `/`，并拼接 [`HTTP_RPC_PREFIX`] 前缀。
-    /// 例如标识 `server.console.send` 会派生出 `/api/rpc/server/console/send`。
+    /// 默认实现优先返回 [`HTTP_PATH_TEMPLATE`]；未声明时将方法标识中的 `.`
+    /// 映射为路径 `/`，并拼接 [`HTTP_RPC_PREFIX`] 前缀。例如标识
+    /// `server.console.send` 会派生出 `/api/rpc/server/console/send`。
     ///
     /// 实现者可重写此方法以提供自定义路径，但必须保持以 `/` 开头。
     ///
@@ -77,7 +89,13 @@ pub trait RpcAxumMethod: RpcMethod {
     /// let path = <SendConsoleCommand<_> as RpcAxumMethod>::http_path();
     /// assert_eq!(path, "/api/rpc/server/console/send");
     /// ```
+    ///
+    /// [`HTTP_PATH_TEMPLATE`]: Self::HTTP_PATH_TEMPLATE
+    /// [`HTTP_RPC_PREFIX`]: crate::rpc::axum::HTTP_RPC_PREFIX
     fn http_path() -> String {
+        if let Some(template) = Self::HTTP_PATH_TEMPLATE {
+            return template.to_string();
+        }
         let name = Self::NAME.as_str();
         let mut path = String::with_capacity(HTTP_RPC_PREFIX.len() + name.len() + 1);
         path.push_str(HTTP_RPC_PREFIX);
@@ -125,13 +143,15 @@ macro_rules! rpc_route {
         let __rpc_handler =
             move |state: axum::extract::State<$crate::rpc::axum::AxumRpcState<_>>,
                   headers: axum::http::HeaderMap,
+                  path: Option<axum::extract::Path<std::collections::HashMap<String, String>>>,
                   payload: Result<
                 axum::Json<serde_json::Value>,
                 axum::extract::rejection::JsonRejection,
             >| {
                 let method = std::sync::Arc::clone(&method);
                 async move {
-                    $crate::rpc::axum::handle_rpc(method.as_ref(), &state, &headers, payload).await
+                    $crate::rpc::axum::handle_rpc(method.as_ref(), &state, &headers, path, payload)
+                        .await
                 }
             };
 
@@ -156,10 +176,14 @@ macro_rules! rpc_route {
 }
 
 /// 通用 RPC handler，处理鉴权、反序列化、调度和响应。
+///
+/// 路径参数（REST 模板 `{param}`）与请求体合并后反序列化为 `M::Request`；
+/// 无请求体（如 REST GET）时以空对象兜底。
 pub(crate) async fn handle_rpc<M, A>(
     method: &M,
     state: &AxumRpcState<A>,
     headers: &HeaderMap,
+    path_params: Option<axum::extract::Path<std::collections::HashMap<String, String>>>,
     payload: Result<Json<serde_json::Value>, axum::extract::rejection::JsonRejection>,
 ) -> Response
 where
@@ -178,26 +202,9 @@ where
         Err(error) => return reject(request_id, "authorization_rejected", error),
     };
 
-    let value = match payload {
-        Ok(Json(value)) => value,
-        Err(_) => {
-            return reject(
-                request_id,
-                "invalid_json",
-                RpcError::invalid_argument("request", "must be a valid JSON object"),
-            );
-        }
-    };
-
-    let params: M::Request = match serde_json::from_value(value) {
+    let params = match build_params::<M>(path_params, payload) {
         Ok(params) => params,
-        Err(_) => {
-            return reject(
-                request_id,
-                "invalid_params",
-                RpcError::invalid_argument("request", "failed to parse request body"),
-            );
-        }
+        Err(error) => return reject(request_id, "invalid_params", error),
     };
 
     let context = RpcContext::new(request_id, RpcTransport::Http).with_access(access);
@@ -205,6 +212,43 @@ where
         Ok(response) => respond(StatusCode::OK, response.request_id(), &response),
         Err(error) => rpc_error_response(error),
     }
+}
+
+/// 将路径参数与请求体合并后反序列化为 `M::Request`。
+///
+/// - 请求体：合法 JSON 对象直接使用；缺少 JSON 请求体（REST GET 等）视为空对象；
+///   请求体存在但不是合法 JSON 时拒绝。
+/// - 路径参数：来自 REST 模板 `{param}` 的值以字符串形式覆盖合并进请求体
+///   （字段类型由 `M::Request` 反序列化时决定）。
+fn build_params<M: RpcMethod>(
+    path_params: Option<axum::extract::Path<std::collections::HashMap<String, String>>>,
+    payload: Result<Json<serde_json::Value>, axum::extract::rejection::JsonRejection>,
+) -> RpcResult<M::Request>
+where
+    M::Request: DeserializeOwned,
+{
+    let mut value = match payload {
+        Ok(Json(value)) => value,
+        // 无 JSON 请求体（如 REST GET）：以空对象兜底，参数全部来自路径
+        Err(axum::extract::rejection::JsonRejection::MissingJsonContentType(_)) => {
+            serde_json::Value::Object(Default::default())
+        }
+        Err(_) => {
+            return Err(RpcError::invalid_argument("request", "must be a valid JSON object"));
+        }
+    };
+
+    if let Some(axum::extract::Path(path_params)) = path_params {
+        let object = value.as_object_mut().ok_or_else(|| {
+            RpcError::invalid_argument("request", "path parameters require a JSON object")
+        })?;
+        for (key, param) in path_params {
+            object.insert(key, serde_json::Value::String(param));
+        }
+    }
+
+    serde_json::from_value(value)
+        .map_err(|_| RpcError::invalid_argument("request", "failed to parse request body"))
 }
 
 fn request_id(headers: &HeaderMap) -> Result<RpcRequestId, (RpcRequestId, RpcError)> {

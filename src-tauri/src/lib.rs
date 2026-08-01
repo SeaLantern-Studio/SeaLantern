@@ -1,7 +1,9 @@
 //! Sea Lantern 桌面端的 Tauri 宿主入口。
 
+pub mod adapter;
 pub mod desktop;
 pub mod observability;
+pub mod services;
 
 use tauri::Manager;
 
