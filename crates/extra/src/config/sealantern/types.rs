@@ -459,43 +459,21 @@ impl StartupMode {
     }
 }
 
-/// 服务器实例
+/// 实例列表的包装类型
 ///
-/// `#[serde(default)]` 保证未来新增字段时不破坏旧文件的反序列化，
-/// 缺失字段以各类型的默认值填充。
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct ServerInstance {
-    pub id: String,
-    pub name: String,
-    pub core_type: String,
-    pub core_version: String,
-    pub mc_version: String,
-    pub path: String,
-    pub jar_path: String,
-    pub startup_mode: String,
-    pub custom_command: Option<String>,
-    pub java_path: String,
-    pub max_memory: u32,
-    pub min_memory: u32,
-    pub jvm_args: Vec<String>,
-    pub port: u16,
-    pub created_at: u64,
-    pub last_started_at: Option<u64>,
-    pub notes: String,
-}
-
-/// 服务器列表的包装类型
+/// 持久化 `core` 的领域模型 [`Instance`]，`version` 字段保留用于未来结构迁移。
+///
+/// [`Instance`]: sealantern_core::instance::Instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct ServerList {
+pub struct InstanceList {
     pub version: u32,
-    pub servers: Vec<ServerInstance>,
+    pub instances: Vec<sealantern_core::instance::Instance>,
 }
 
-impl Default for ServerList {
+impl Default for InstanceList {
     fn default() -> Self {
-        Self { version: 1, servers: Vec::new() }
+        Self { version: 1, instances: Vec::new() }
     }
 }
 

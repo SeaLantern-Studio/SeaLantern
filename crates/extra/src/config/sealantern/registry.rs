@@ -1,141 +1,143 @@
 //! 服务器实例注册表。
 //!
-//! 管理所有已创建服务器的元数据（CRUD），
-//! 底层通过 [`ServerStore`] 持久化到 JSON 文件。
+//! 管理所有已创建实例的元数据（CRUD），
+//! 底层通过 [`InstanceStore`] 持久化到 JSON 文件。
 //!
 //! 所有操作都会记录带操作类型、配置路径和实例 ID 的 tracing 事件，
 //! 便于排查持久化错误与并发覆盖问题。
 
 use std::path::PathBuf;
 
+use sealantern_core::instance::{Instance, InstanceId};
 use sealantern_infra::fs::FsError;
 
 use crate::observability;
 
-use super::store::ServerStore;
-use super::types::ServerInstance;
+use super::store::InstanceStore;
 
-/// 服务器注册表
-pub struct ServerRegistry {
-    store: ServerStore,
+/// 服务器实例注册表
+pub struct InstanceRegistry {
+    store: InstanceStore,
     path: PathBuf,
 }
 
-impl ServerRegistry {
-    /// 从指定路径加载服务器列表
+impl InstanceRegistry {
+    /// 从指定路径加载实例列表
     pub async fn load(path: impl Into<PathBuf>) -> Result<Self, FsError> {
         let path = path.into();
-        let store = ServerStore::load(&path).await?;
-        let count = store.get().servers.len();
+        let store = InstanceStore::load(&path).await?;
+        let count = store.get().instances.len();
         observability::config_registry_loaded(&path, count);
         Ok(Self { store, path })
     }
 
-    /// 获取所有服务器
-    pub fn list(&self) -> &[ServerInstance] {
-        &self.store.get().servers
+    /// 获取全部实例
+    pub fn list(&self) -> &[Instance] {
+        &self.store.get().instances
     }
 
-    /// 按 ID 查找服务器
-    pub fn get(&self, id: &str) -> Option<&ServerInstance> {
-        self.store.get().servers.iter().find(|s| s.id == id)
+    /// 按 ID 查找实例
+    pub fn get(&self, id: &InstanceId) -> Option<&Instance> {
+        self.store.get().instances.iter().find(|i| i.id == *id)
     }
 
-    /// 添加服务器，拒绝重复 ID。
+    /// 保存（覆盖写入）实例。
     ///
-    /// 重复 ID 检查在锁内闭包中执行，与写入共享同一把文件锁，
-    /// 避免"检查-动作"竞态窗口。
-    pub async fn add(
-        &mut self,
-        instance: ServerInstance,
-    ) -> Result<(), sealantern_infra::fs::FsError> {
+    /// 已存在同 ID 实例时整体替换，否则追加——即 upsert 语义。
+    /// 写入在锁内闭包中执行，避免"检查-动作"竞态窗口。
+    pub async fn save_instance(&mut self, instance: &Instance) -> Result<(), FsError> {
         let id = instance.id.clone();
         let name = instance.name.clone();
-        let mut duplicate = false;
         let result = self
             .store
             .update(|list| {
-                if list.servers.iter().any(|s| s.id == id) {
-                    duplicate = true;
+                if let Some(existing) = list.instances.iter_mut().find(|i| i.id == id) {
+                    *existing = instance.clone();
                 } else {
-                    list.servers.push(instance);
+                    list.instances.push(instance.clone());
                 }
             })
             .await;
 
         match &result {
-            Ok(()) if duplicate => {
-                observability::config_registry_duplicate_id(&self.path, &id);
-                return Err(FsError::Task {
-                    operation: "add server",
-                    message: format!("duplicate server id: {id}"),
-                });
-            }
-            Ok(()) => observability::config_registry_server_added(&self.path, &id, &name),
-            Err(e) => {
-                observability::config_registry_operation_failed(&self.path, "add", Some(&id), e)
-            }
+            Ok(()) => observability::config_registry_server_added(&self.path, id.as_str(), &name),
+            Err(e) => observability::config_registry_operation_failed(
+                &self.path,
+                "save",
+                Some(id.as_str()),
+                e,
+            ),
         }
         result
     }
 
-    /// 更新服务器，ID 不存在时静默跳过（不触发写入）
-    pub async fn update(
+    /// 编辑实例，ID 不存在时静默跳过（不触发写入）。
+    ///
+    /// 返回是否确实编辑了某个实例。
+    pub async fn edit_instance(
         &mut self,
-        id: &str,
-        f: impl FnOnce(&mut ServerInstance),
-    ) -> Result<bool, sealantern_infra::fs::FsError> {
-        let id = id.to_string();
-        if !self.store.get().servers.iter().any(|s| s.id == id) {
-            observability::config_registry_server_not_found(&self.path, "update", &id);
+        id: &InstanceId,
+        f: impl FnOnce(&mut Instance),
+    ) -> Result<bool, FsError> {
+        let id = id.clone();
+        if !self.store.get().instances.iter().any(|i| i.id == id) {
+            observability::config_registry_server_not_found(&self.path, "edit", id.as_str());
             return Ok(false);
         }
         let mut updated = false;
         let result = self
             .store
             .update(|list| {
-                if let Some(server) = list.servers.iter_mut().find(|s| s.id == id) {
-                    f(server);
+                if let Some(instance) = list.instances.iter_mut().find(|i| i.id == id) {
+                    f(instance);
                     updated = true;
                 }
             })
             .await;
         match result {
             Ok(()) if updated => {
-                observability::config_registry_server_updated(&self.path, &id);
+                observability::config_registry_server_updated(&self.path, id.as_str());
             }
             Ok(()) => {}
-            Err(ref e) => {
-                observability::config_registry_operation_failed(&self.path, "update", Some(&id), e)
-            }
+            Err(ref e) => observability::config_registry_operation_failed(
+                &self.path,
+                "edit",
+                Some(id.as_str()),
+                e,
+            ),
         }
         result.map(|_| updated)
     }
 
-    /// 删除服务器，ID 不存在时静默跳过（不触发写入）
-    pub async fn delete(&mut self, id: &str) -> Result<bool, sealantern_infra::fs::FsError> {
-        let id = id.to_string();
-        if !self.store.get().servers.iter().any(|s| s.id == id) {
-            observability::config_registry_server_not_found(&self.path, "delete", &id);
+    /// 删除实例，ID 不存在时静默跳过（不触发写入）。
+    ///
+    /// 返回是否确实删除了某个实例。
+    pub async fn delete(&mut self, id: &InstanceId) -> Result<bool, FsError> {
+        let id = id.clone();
+        if !self.store.get().instances.iter().any(|i| i.id == id) {
+            observability::config_registry_server_not_found(&self.path, "delete", id.as_str());
             return Ok(false);
         }
         let mut removed = false;
         let result = self
             .store
             .update(|list| {
-                let before = list.servers.len();
-                list.servers.retain(|s| s.id != id);
-                removed = list.servers.len() < before;
+                let before = list.instances.len();
+                list.instances.retain(|i| i.id != id);
+                removed = list.instances.len() < before;
             })
             .await;
         match result {
             Ok(()) if removed => {
-                observability::config_registry_server_deleted(&self.path, &id);
+                observability::config_registry_server_deleted(&self.path, id.as_str());
             }
             Ok(()) => {}
-            Err(ref e) => {
-                observability::config_registry_operation_failed(&self.path, "delete", Some(&id), e)
-            }
+            Err(ref e) => observability::config_registry_operation_failed(
+                &self.path,
+                "delete",
+                Some(id.as_str()),
+                e,
+            ),
         }
         result.map(|_| removed)
     }
