@@ -128,8 +128,10 @@ impl SettingsManager {
         &mut self,
         installations: Vec<JavaInfo>,
     ) -> Result<UpdateResult, sealantern_infra::fs::FsError> {
-        let mut partial = PartialAppSettings::default();
-        partial.cached_java_list = Some(installations);
+        let partial = PartialAppSettings {
+            cached_java_list: Some(installations),
+            ..PartialAppSettings::default()
+        };
         self.update_partial(partial).await
     }
 
