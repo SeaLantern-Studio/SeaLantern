@@ -236,8 +236,25 @@ pub fn market_request_failed(operation: &str, source: &str, error: &dyn Display)
 /// Java 环境检测模块的 tracing 目标。
 pub const JAVA_TARGET: &str = "sealantern.extra.java";
 
+/// Event: Java 检测开始。
+pub const EVENT_JAVA_DETECTION_STARTED: &str = "java_detection_started";
+/// Event: Java 检测完成。
+pub const EVENT_JAVA_DETECTION_COMPLETED: &str = "java_detection_completed";
 /// Event: Java 检测来源不可用。
 pub const EVENT_JAVA_SEARCH_FAILED: &str = "java_search_failed";
+
+/// Event: Java 检测来源完成。
+pub const EVENT_JAVA_SEARCH_COMPLETED: &str = "java_search_completed";
+/// Event: Java 候选被拒绝。
+pub const EVENT_JAVA_CANDIDATE_REJECTED: &str = "java_candidate_rejected";
+/// Event: Java 检测因深度来源不可用而回退。
+pub const EVENT_JAVA_SEARCH_FALLBACK: &str = "java_search_fallback";
+/// Event: Java 校验开始。
+pub const EVENT_JAVA_VALIDATION_STARTED: &str = "java_validation_started";
+/// Event: Java 校验完成。
+pub const EVENT_JAVA_VALIDATION_COMPLETED: &str = "java_validation_completed";
+/// Event: Java 校验失败。
+pub const EVENT_JAVA_VALIDATION_FAILED: &str = "java_validation_failed";
 
 /// 记录一个 Java 检测来源失败；其它来源仍可继续返回结果。
 pub fn java_search_failed(source: &str, error: &dyn Display) {
@@ -247,6 +264,93 @@ pub fn java_search_failed(source: &str, error: &dyn Display) {
         source,
         error = %error,
         "java discovery source failed"
+    );
+}
+
+/// 记录 Java 检测开始。
+pub fn java_detection_started() {
+    tracing::info!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_DETECTION_STARTED,
+        "java detection started"
+    );
+}
+
+/// 记录 Java 检测完成。
+pub fn java_detection_completed(installation_count: usize, error_count: usize) {
+    tracing::info!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_DETECTION_COMPLETED,
+        installation_count,
+        error_count,
+        "java detection completed"
+    );
+}
+
+/// 记录 Java 检测来源完成。
+pub fn java_search_completed(source: &str, installation_count: usize, error_count: usize) {
+    tracing::info!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_SEARCH_COMPLETED,
+        source,
+        installation_count,
+        error_count,
+        "java discovery source completed"
+    );
+}
+
+/// 记录 Java 候选因元数据或路径错误被拒绝。
+pub fn java_candidate_rejected(source: &str, path: &std::path::Path, error: &dyn Display) {
+    tracing::warn!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_CANDIDATE_REJECTED,
+        source,
+        path = %path.display(),
+        error = %error,
+        "java discovery candidate rejected"
+    );
+}
+
+/// 记录 Java 检测回退到另一个来源。
+pub fn java_search_fallback(from: &str, to: &str) {
+    tracing::info!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_SEARCH_FALLBACK,
+        from,
+        to,
+        "java discovery falling back to another source"
+    );
+}
+
+/// 记录显式 Java 路径校验开始。
+pub fn java_validation_started(path: &str) {
+    tracing::info!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_VALIDATION_STARTED,
+        path,
+        "java validation started"
+    );
+}
+
+/// 记录显式 Java 路径校验完成。
+pub fn java_validation_completed(path: &str, major_version: u32) {
+    tracing::info!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_VALIDATION_COMPLETED,
+        path,
+        major_version,
+        "java validation completed"
+    );
+}
+
+/// 记录显式 Java 路径校验失败。
+pub fn java_validation_failed(path: &str, error: &dyn Display) {
+    tracing::warn!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_VALIDATION_FAILED,
+        path,
+        error = %error,
+        "java validation failed"
     );
 }
 

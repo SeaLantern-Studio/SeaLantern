@@ -27,26 +27,91 @@ const EXCLUDE_FOLDERS: &[&str] = &[
     "log",
 ];
 
-pub fn quick_search() -> Result<Vec<JavaInfo>, JavaError> {
-    let mut results: Vec<JavaInfo> = Vec::new();
+/// 自动发现结果，以及可继续处理的候选和来源错误。
+#[derive(Debug, Default)]
+pub struct SearchReport {
+    pub installations: Vec<JavaInfo>,
+    pub errors: Vec<SearchError>,
+    source_failed: bool,
+}
 
-    if let Ok(paths) = env::var("PATH") {
+/// 与发现来源或候选路径关联的错误。
+#[derive(Debug)]
+pub struct SearchError {
+    pub path: Option<PathBuf>,
+    pub error: JavaError,
+}
+
+impl SearchError {
+    fn source(error: JavaError) -> Self {
+        Self { path: None, error }
+    }
+
+    fn candidate(path: PathBuf, error: JavaError) -> Self {
+        Self { path: Some(path), error }
+    }
+}
+
+impl SearchReport {
+    /// 返回发现来源本身是否无法查询。
+    pub fn source_failed(&self) -> bool {
+        self.source_failed
+    }
+
+    fn source_error(error: JavaError) -> Self {
+        Self {
+            installations: Vec::new(),
+            errors: vec![SearchError::source(error)],
+            source_failed: true,
+        }
+    }
+
+    fn into_result(self) -> Result<Vec<JavaInfo>, JavaError> {
+        if self.installations.is_empty()
+            && let Some(error) = self.errors.into_iter().next()
+        {
+            return Err(error.error);
+        }
+
+        Ok(self.installations)
+    }
+}
+
+fn collect_candidate(report: &mut SearchReport, path: PathBuf) {
+    match JavaInfo::from_discovered_path(path.to_string_lossy().into_owned()) {
+        Ok(info) => report.installations.push(info),
+        Err(error) => report.errors.push(SearchError::candidate(path, error)),
+    }
+}
+
+pub fn quick_search() -> Result<Vec<JavaInfo>, JavaError> {
+    quick_search_with_diagnostics().into_result()
+}
+
+/// 搜索 PATH，但不执行候选二进制，并保留候选错误。
+pub fn quick_search_with_diagnostics() -> SearchReport {
+    let mut report = SearchReport::default();
+
+    if let Some(paths) = env::var_os("PATH") {
         for path in env::split_paths(&paths) {
             let java_exe = if cfg!(windows) { "java.exe" } else { "java" };
             let java_path = path.join(java_exe);
 
-            if java_path.is_file()
-                && let Ok(info) = JavaInfo::new(java_path.to_string_lossy().to_string())
-            {
-                results.push(info);
+            if java_path.is_file() {
+                collect_candidate(&mut report, java_path);
             }
         }
     }
 
-    Ok(results)
+    report
 }
 
 pub fn deep_search() -> Result<Vec<JavaInfo>, JavaError> {
+    deep_search_with_diagnostics().into_result()
+}
+
+/// 执行平台相关的深度搜索，但不执行候选二进制。
+pub fn deep_search_with_diagnostics() -> SearchReport {
     #[cfg(target_os = "windows")]
     {
         deep_search_everything()
@@ -54,16 +119,21 @@ pub fn deep_search() -> Result<Vec<JavaInfo>, JavaError> {
 
     #[cfg(target_os = "linux")]
     {
-        full_search()
+        full_search_with_diagnostics()
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
-        Ok(Vec::new())
+        SearchReport::default()
     }
 }
 
 pub fn full_search() -> Result<Vec<JavaInfo>, JavaError> {
+    full_search_with_diagnostics().into_result()
+}
+
+/// 执行完整的平台搜索，并保留候选错误。
+pub fn full_search_with_diagnostics() -> SearchReport {
     let mut paths: Vec<PathBuf> = Vec::new();
 
     #[cfg(target_os = "windows")]
@@ -82,29 +152,34 @@ pub fn full_search() -> Result<Vec<JavaInfo>, JavaError> {
     paths.sort();
     paths.dedup();
 
-    Ok(paths
-        .into_iter()
-        .filter_map(|p| JavaInfo::new(p.to_string_lossy().to_string()).ok())
-        .collect())
+    let mut report = SearchReport::default();
+    for path in paths {
+        collect_candidate(&mut report, path);
+    }
+    report
 }
 
 #[cfg(target_os = "windows")]
-fn deep_search_everything() -> Result<Vec<JavaInfo>, JavaError> {
+fn deep_search_everything() -> SearchReport {
     use everything_sdk::*;
 
-    let mut results: Vec<JavaInfo> = Vec::new();
-    let mut everything = global().try_lock().map_err(|_| {
-        JavaError::RuntimeError("Failed to lock Everything global state".to_string())
-    })?;
+    let mut everything = match global().try_lock() {
+        Ok(everything) => everything,
+        Err(_) => {
+            return SearchReport::source_error(JavaError::RuntimeError(
+                "Failed to lock Everything global state".to_string(),
+            ));
+        }
+    };
 
     match everything.is_db_loaded() {
         Ok(false) => {
-            return Err(JavaError::ExecuteError(
+            return SearchReport::source_error(JavaError::ExecuteError(
                 "Everything database is not fully loaded".to_string(),
             ));
         }
         Err(EverythingError::Ipc) => {
-            return Err(JavaError::ExecuteError(
+            return SearchReport::source_error(JavaError::ExecuteError(
                 "Everything is not running in the background. Please start Everything.exe"
                     .to_string(),
             ));
@@ -121,19 +196,27 @@ fn deep_search_everything() -> Result<Vec<JavaInfo>, JavaError> {
     );
     searcher.set_sort(SortType::EVERYTHING_SORT_NAME_ASCENDING);
 
-    assert!(!searcher.get_match_case());
+    if searcher.get_match_case() {
+        return SearchReport::source_error(JavaError::RuntimeError(
+            "Everything searcher unexpectedly uses case-sensitive matching".to_string(),
+        ));
+    }
 
     let query_results = searcher.query();
+    let mut report = SearchReport::default();
 
     for item in query_results.iter() {
-        if let Ok(path) = item.filepath()
-            && let Ok(info) = JavaInfo::new(path.to_string_lossy().to_string())
-        {
-            results.push(info);
+        match item.filepath() {
+            Ok(path) => collect_candidate(&mut report, path),
+            Err(error) => report
+                .errors
+                .push(SearchError::source(JavaError::RuntimeError(format!(
+                    "Failed to read Everything result path: {error}"
+                )))),
         }
     }
 
-    Ok(results)
+    report
 }
 
 #[cfg(target_os = "windows")]

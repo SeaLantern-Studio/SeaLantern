@@ -23,7 +23,14 @@ use std::env;
 /// }
 /// ```
 pub fn java_home() -> Option<JavaInfo> {
-    env::var("JAVA_HOME")
-        .ok()
-        .and_then(|path| JavaInfo::new(path).ok())
+    java_home_with_diagnostics().ok().flatten()
+}
+
+/// Returns JAVA_HOME discovery errors instead of silently discarding them.
+pub fn java_home_with_diagnostics() -> Result<Option<JavaInfo>, crate::JavaError> {
+    let Some(path) = env::var_os("JAVA_HOME") else {
+        return Ok(None);
+    };
+
+    JavaInfo::from_discovered_path(path.to_string_lossy().into_owned()).map(Some)
 }

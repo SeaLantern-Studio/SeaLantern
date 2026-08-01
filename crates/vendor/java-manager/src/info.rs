@@ -4,12 +4,17 @@ use crate::JavaError;
 use is_executable::is_executable;
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, ExitStatus, Stdio};
 use std::str;
+use std::thread;
+use std::time::{Duration, Instant};
 
 const UNKNOWN: &str = "UNKNOWN";
+const VERSION_PROBE_OUTPUT_LIMIT: usize = 64 * 1024;
+const VERSION_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+const VERSION_PROBE_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 /// Represents a discovered Java installation.
 ///
@@ -57,6 +62,57 @@ impl JavaInfo {
     /// # Ok::<_, java_manager::JavaError>(())
     /// ```
     pub fn new(path: String) -> Result<Self, JavaError> {
+        let mut info = Self::from_path(path)?;
+
+        if info.is_complete() {
+            return Ok(info);
+        }
+
+        // 显式校验允许执行用户指定的 Java，但探测必须有超时和输出上限。
+        let version_info = read_version(&info.java_home.join("bin").join(if cfg!(windows) {
+            "java.exe"
+        } else {
+            "java"
+        }))?;
+
+        if info.name == UNKNOWN
+            && let Some(name) = version_info.name
+        {
+            info.name = name;
+        }
+        if info.version == UNKNOWN
+            && let Some(ver) = version_info.version
+        {
+            info.version = ver;
+        }
+        if info.vendor == UNKNOWN
+            && let Some(vend) = version_info.vendor
+        {
+            info.vendor = vend;
+        }
+        if info.architecture == UNKNOWN
+            && let Some(arch) = version_info.arch
+        {
+            info.architecture = arch;
+        }
+
+        Ok(info)
+    }
+
+    /// 从自动发现结果构建信息，但不会执行发现到的可执行文件。
+    pub(crate) fn from_discovered_path(path: String) -> Result<Self, JavaError> {
+        let info = Self::from_path(path)?;
+        if info.is_complete() {
+            Ok(info)
+        } else {
+            Err(JavaError::RuntimeError(format!(
+                "Java release metadata is incomplete: {}",
+                info.java_home.display()
+            )))
+        }
+    }
+
+    fn from_path(path: String) -> Result<Self, JavaError> {
         let path_obj = Path::new(&path);
         if !path_obj.exists() {
             return Err(JavaError::InvalidJavaPath(format!("Path does not exist: {}", path)));
@@ -65,8 +121,14 @@ impl JavaInfo {
         // Resolve symlinks to get the real absolute path
         let canonical_path = fs::canonicalize(path_obj).map_err(JavaError::IoError)?;
 
-        let (java_home, exec_path) = if canonical_path.is_file() && is_executable(&canonical_path) {
-            // It's an executable – locate JAVA_HOME by walking up the tree
+        let (java_home, exec_path) = if canonical_path.is_file() {
+            if !is_executable(&canonical_path) {
+                return Err(JavaError::InvalidJavaPath(format!(
+                    "Path is not an executable: {}",
+                    canonical_path.display()
+                )));
+            }
+
             let home = find_java_home_from_exe(&canonical_path).ok_or_else(|| {
                 JavaError::InvalidJavaPath(format!(
                     "Unable to determine JAVA_HOME from executable: {}",
@@ -74,15 +136,26 @@ impl JavaInfo {
                 ))
             })?;
             (home, Some(canonical_path))
-        } else {
-            // Assume it's a directory (JAVA_HOME itself)
+        } else if canonical_path.is_dir() {
             (canonical_path, None)
+        } else {
+            return Err(JavaError::InvalidJavaPath(format!(
+                "Path is neither a file nor a directory: {}",
+                canonical_path.display()
+            )));
         };
 
         // Path to the java executable inside JAVA_HOME
         let java_exe = java_home
             .join("bin")
             .join(if cfg!(windows) { "java.exe" } else { "java" });
+        if !java_exe.is_file() || !is_executable(&java_exe) {
+            return Err(JavaError::NotFound(format!(
+                "Java executable not found or not executable: {}",
+                java_exe.display()
+            )));
+        }
+
         // Store either the original executable path or the default one from bin
         let stored_path = exec_path.unwrap_or_else(|| java_exe.clone());
 
@@ -109,35 +182,6 @@ impl JavaInfo {
             if let Some(arch) = release.arch {
                 info.architecture = arch;
             }
-        }
-
-        // If all fields are known, we are done
-        if info.is_complete() {
-            return Ok(info);
-        }
-
-        // --- Step 2: fill missing fields from `java -version` ---
-        let version_info = read_version(&java_exe)?;
-
-        if info.name == UNKNOWN
-            && let Some(name) = version_info.name
-        {
-            info.name = name;
-        }
-        if info.version == UNKNOWN
-            && let Some(ver) = version_info.version
-        {
-            info.version = ver;
-        }
-        if info.vendor == UNKNOWN
-            && let Some(vend) = version_info.vendor
-        {
-            info.vendor = vend;
-        }
-        if info.architecture == UNKNOWN
-            && let Some(arch) = version_info.arch
-        {
-            info.architecture = arch;
         }
 
         Ok(info)
@@ -230,20 +274,116 @@ struct VersionInfo {
     arch: Option<String>,
 }
 
-fn read_version(java_exe: &Path) -> Result<VersionInfo, JavaError> {
-    let output = Command::new(java_exe)
-        .arg("-version")
-        .output()
-        .map_err(|e| JavaError::ExecuteError(format!("Failed to execute java -version: {}", e)))?;
+struct LimitedOutput {
+    bytes: Vec<u8>,
+    truncated: bool,
+}
 
-    if !output.status.success() {
+fn read_limited<R: Read>(mut reader: R, limit: usize) -> io::Result<LimitedOutput> {
+    let mut bytes = Vec::with_capacity(limit.min(8 * 1024));
+    let mut buffer = [0_u8; 8 * 1024];
+    let mut truncated = false;
+
+    loop {
+        let read = reader.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+
+        let remaining = limit.saturating_sub(bytes.len());
+        let kept = read.min(remaining);
+        bytes.extend_from_slice(&buffer[..kept]);
+        truncated |= kept < read;
+    }
+
+    Ok(LimitedOutput { bytes, truncated })
+}
+
+fn join_limited_reader(
+    handle: thread::JoinHandle<io::Result<LimitedOutput>>,
+    stream: &str,
+) -> Result<LimitedOutput, JavaError> {
+    handle
+        .join()
+        .map_err(|_| {
+            JavaError::RuntimeError(format!("Java version {stream} reader thread panicked"))
+        })?
+        .map_err(|error| {
+            JavaError::ExecuteError(format!("Failed to read Java version {stream}: {error}"))
+        })
+}
+
+fn read_version(java_exe: &Path) -> Result<VersionInfo, JavaError> {
+    let mut child = Command::new(java_exe)
+        .arg("-version")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| {
+            JavaError::ExecuteError(format!("Failed to execute java -version: {error}"))
+        })?;
+
+    let stdout = child.stdout.take().ok_or_else(|| {
+        JavaError::RuntimeError("Java version probe stdout pipe was not created".to_string())
+    })?;
+    let stderr = child.stderr.take().ok_or_else(|| {
+        JavaError::RuntimeError("Java version probe stderr pipe was not created".to_string())
+    })?;
+
+    let stdout_handle = thread::spawn(move || read_limited(stdout, VERSION_PROBE_OUTPUT_LIMIT));
+    let stderr_handle = thread::spawn(move || read_limited(stderr, VERSION_PROBE_OUTPUT_LIMIT));
+
+    let started_at = Instant::now();
+    let mut timed_out = false;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Ok(status),
+            Ok(None) if started_at.elapsed() >= VERSION_PROBE_TIMEOUT => {
+                timed_out = true;
+                let _ = child.kill();
+                break child.wait().map_err(|error| {
+                    JavaError::ExecuteError(format!(
+                        "Failed to stop timed-out java -version process: {error}"
+                    ))
+                });
+            }
+            Ok(None) => thread::sleep(VERSION_PROBE_POLL_INTERVAL),
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break Err(JavaError::ExecuteError(format!(
+                    "Failed to wait for java -version: {error}"
+                )));
+            }
+        }
+    };
+
+    let stdout = join_limited_reader(stdout_handle, "stdout")?;
+    let stderr = join_limited_reader(stderr_handle, "stderr")?;
+    let status = status?;
+
+    if timed_out {
+        return Err(JavaError::ProcessTimeout {
+            executable: java_exe.to_path_buf(),
+            timeout: VERSION_PROBE_TIMEOUT,
+        });
+    }
+
+    if stdout.truncated || stderr.truncated {
+        return Err(JavaError::OutputLimitExceeded {
+            executable: java_exe.to_path_buf(),
+            limit: VERSION_PROBE_OUTPUT_LIMIT,
+        });
+    }
+
+    if !status.success() {
         return Err(JavaError::ExecuteError(format!(
             "java -version command failed with status: {}",
-            output.status
+            format_process_status(&status)
         )));
     }
 
-    let stderr = str::from_utf8(&output.stderr).map_err(|e| {
+    let stderr = str::from_utf8(&stderr.bytes).map_err(|e| {
         JavaError::RuntimeError(format!("Failed to decode java -version output: {}", e))
     })?;
 
@@ -301,4 +441,25 @@ fn read_version(java_exe: &Path) -> Result<VersionInfo, JavaError> {
     let name = vendor.clone();
 
     Ok(VersionInfo { name, version, vendor, arch })
+}
+
+fn format_process_status(status: &ExitStatus) -> String {
+    status.code().map_or_else(
+        || format!("terminated without an exit code ({status})"),
+        |code| code.to_string(),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::read_limited;
+    use std::io::Cursor;
+
+    #[test]
+    fn limited_reader_keeps_prefix_and_drains_remaining_output() {
+        let output = read_limited(Cursor::new(b"123456"), 4).expect("reader should succeed");
+
+        assert_eq!(output.bytes, b"1234");
+        assert!(output.truncated);
+    }
 }
