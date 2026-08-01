@@ -57,7 +57,7 @@ fn normalize_path_key(path: &str) -> String {
 }
 
 fn normalize_unknown(value: String) -> String {
-    if value == "UNKNOWN" {
+    if value.trim().eq_ignore_ascii_case("unknown") {
         String::new()
     } else {
         value
@@ -65,19 +65,18 @@ fn normalize_unknown(value: String) -> String {
 }
 
 fn parse_major_version(version: &str) -> u32 {
-    let Some(first) = version.split(['.', '-']).next() else {
+    let mut numbers = version
+        .split(|character: char| !character.is_ascii_digit())
+        .filter(|part| !part.is_empty())
+        .filter_map(|part| part.parse::<u32>().ok());
+    let Some(first) = numbers.next() else {
         return 0;
     };
 
-    let parsed = first.parse().unwrap_or(0);
-    if parsed == 1 {
-        version
-            .split(['.', '-'])
-            .nth(1)
-            .and_then(|part| part.parse().ok())
-            .unwrap_or(parsed)
+    if first == 1 {
+        numbers.next().unwrap_or(first)
     } else {
-        parsed
+        first
     }
 }
 
@@ -91,7 +90,11 @@ mod tests {
         assert_eq!(parse_major_version("1.8.0_402"), 8);
         assert_eq!(parse_major_version("17.0.12"), 17);
         assert_eq!(parse_major_version("21.0.4-LTS"), 21);
+        assert_eq!(parse_major_version("jdk-21"), 21);
+        assert_eq!(parse_major_version("OpenJDK 21.0.4"), 21);
+        assert_eq!(parse_major_version("jdk-1.8.0_402"), 8);
         assert_eq!(parse_major_version(""), 0);
+        assert_eq!(parse_major_version("unknown"), 0);
     }
 
     #[test]
@@ -118,6 +121,8 @@ mod tests {
     #[test]
     fn unknown_metadata_is_exposed_as_empty_values() {
         assert!(normalize_unknown("UNKNOWN".to_string()).is_empty());
+        assert!(normalize_unknown(" unknown ".to_string()).is_empty());
+        assert!(normalize_unknown("Unknown".to_string()).is_empty());
         assert_eq!(normalize_unknown("OpenJDK".to_string()), "OpenJDK");
     }
 

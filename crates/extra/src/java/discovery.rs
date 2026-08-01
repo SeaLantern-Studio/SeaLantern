@@ -10,6 +10,27 @@ use super::mapping::push_unique;
 use crate::config::JavaInfo;
 use crate::observability;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum JavaSearchSource {
+    JavaHome,
+    QuickSearch,
+    DeepSearch,
+    FullSearch,
+    GlobalSearch,
+}
+
+impl JavaSearchSource {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::JavaHome => "java_home",
+            Self::QuickSearch => "quick_search",
+            Self::DeepSearch => "deep_search",
+            Self::FullSearch => "full_search",
+            Self::GlobalSearch => "global_search",
+        }
+    }
+}
+
 /// Java 自动检测结果；成功安装和非致命错误同时保留。
 #[derive(Debug, Default)]
 pub struct JavaDetectionReport {
@@ -33,16 +54,16 @@ pub fn detect_java_installations_with_diagnostics() -> JavaDetectionReport {
     match java_manager::java_home_with_diagnostics() {
         Ok(Some(info)) => {
             push_unique(&mut results, &mut seen, info);
-            observability::java_search_completed("java_home", 1, 0);
+            observability::java_search_completed(JavaSearchSource::JavaHome.as_str(), 1, 0);
         }
-        Ok(None) => observability::java_search_completed("java_home", 0, 0),
+        Ok(None) => observability::java_search_completed(JavaSearchSource::JavaHome.as_str(), 0, 0),
         Err(error) => {
-            observability::java_search_failed("java_home", &error);
+            observability::java_search_failed(JavaSearchSource::JavaHome.as_str(), &error);
             report.errors.push(JavaDiscoveryError {
-                source: "java_home".to_string(),
+                source: JavaSearchSource::JavaHome.as_str().to_string(),
                 message: error.to_string(),
             });
-            observability::java_search_completed("java_home", 0, 1);
+            observability::java_search_completed(JavaSearchSource::JavaHome.as_str(), 0, 1);
         }
     }
 
@@ -50,7 +71,7 @@ pub fn detect_java_installations_with_diagnostics() -> JavaDetectionReport {
         &mut report,
         &mut results,
         &mut seen,
-        "quick_search",
+        JavaSearchSource::QuickSearch,
         java_manager::quick_search_with_diagnostics(),
     );
 
@@ -58,19 +79,22 @@ pub fn detect_java_installations_with_diagnostics() -> JavaDetectionReport {
         &mut report,
         &mut results,
         &mut seen,
-        "deep_search",
+        JavaSearchSource::DeepSearch,
         java_manager::deep_search_with_diagnostics(),
     );
 
     // Windows 的 deep_search 依赖 Everything。不可用时退回不依赖外部
     // 常驻程序的完整扫描，Linux/macOS 则继续沿用 vendor 的平台实现。
     if !deep_search_succeeded {
-        observability::java_search_fallback("deep_search", "full_search");
+        observability::java_search_fallback(
+            JavaSearchSource::DeepSearch.as_str(),
+            JavaSearchSource::FullSearch.as_str(),
+        );
         collect_search_results(
             &mut report,
             &mut results,
             &mut seen,
-            "full_search",
+            JavaSearchSource::FullSearch,
             java_manager::full_search_with_diagnostics(),
         );
     }
@@ -90,9 +114,19 @@ pub fn detect_java_installations_with_global_search(
     previous: Option<&JavaSearchIndex>,
     complete: bool,
 ) -> (JavaDetectionReport, JavaSearchIndex) {
-    let previous_vendor = previous
-        .filter(|index| index.schema_version == JAVA_SEARCH_INDEX_VERSION)
-        .map(to_vendor_search_index);
+    let previous_vendor = match previous {
+        None => None,
+        Some(index) if index.schema_version == JAVA_SEARCH_INDEX_VERSION => {
+            Some(to_vendor_search_index(index))
+        }
+        Some(index) => {
+            observability::java_global_search_index_ignored(
+                index.schema_version,
+                JAVA_SEARCH_INDEX_VERSION,
+            );
+            None
+        }
+    };
     observability::java_global_search_started(previous_vendor.is_some(), complete);
 
     let options = if complete {
@@ -105,7 +139,13 @@ pub fn detect_java_installations_with_global_search(
     let mut report = JavaDetectionReport::default();
     let mut results = Vec::new();
     let mut seen = HashSet::new();
-    collect_search_results(&mut report, &mut results, &mut seen, "global_search", search);
+    collect_search_results(
+        &mut report,
+        &mut results,
+        &mut seen,
+        JavaSearchSource::GlobalSearch,
+        search,
+    );
     results.sort_by_key(|info| std::cmp::Reverse(info.major_version));
     report.installations = results;
 
@@ -123,7 +163,7 @@ fn collect_search_results(
     report: &mut JavaDetectionReport,
     results: &mut Vec<JavaInfo>,
     seen: &mut HashSet<String>,
-    source: &str,
+    source: JavaSearchSource,
     search: SearchReport,
 ) -> bool {
     let source_failed = search.source_failed();
@@ -139,19 +179,23 @@ fn collect_search_results(
         record_search_error(report, source, error);
     }
 
-    observability::java_search_completed(source, installation_count, error_count);
+    observability::java_search_completed(source.as_str(), installation_count, error_count);
     !source_failed
 }
 
-fn record_search_error(report: &mut JavaDetectionReport, source: &str, error: SearchError) {
+fn record_search_error(
+    report: &mut JavaDetectionReport,
+    source: JavaSearchSource,
+    error: SearchError,
+) {
     if let Some(path) = error.path.as_deref() {
-        observability::java_candidate_rejected(source, path, &error.error);
+        observability::java_candidate_rejected(source.as_str(), path, &error.error);
     } else {
-        observability::java_search_failed(source, &error.error);
+        observability::java_search_failed(source.as_str(), &error.error);
     }
 
     report.errors.push(JavaDiscoveryError {
-        source: source.to_string(),
+        source: source.as_str().to_string(),
         message: error.error.to_string(),
     });
 }

@@ -259,6 +259,8 @@ pub const EVENT_JAVA_VALIDATION_FAILED: &str = "java_validation_failed";
 pub const EVENT_JAVA_GLOBAL_SEARCH_STARTED: &str = "java_global_search_started";
 /// Event: Java 全局搜索完成。
 pub const EVENT_JAVA_GLOBAL_SEARCH_COMPLETED: &str = "java_global_search_completed";
+/// Event: Java 全局搜索索引因 schema 版本不匹配而被忽略。
+pub const EVENT_JAVA_GLOBAL_SEARCH_INDEX_IGNORED: &str = "java_global_search_index_ignored";
 
 /// 记录一个 Java 检测来源失败；其它来源仍可继续返回结果。
 pub fn java_search_failed(source: &str, error: &dyn Display) {
@@ -367,6 +369,17 @@ pub fn java_global_search_started(index_reused: bool, complete: bool) {
         index_reused,
         complete,
         "java global search started"
+    );
+}
+
+/// 记录 Java 全局搜索索引因版本不匹配而被忽略。
+pub fn java_global_search_index_ignored(actual_schema_version: u32, expected_schema_version: u32) {
+    tracing::warn!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_GLOBAL_SEARCH_INDEX_IGNORED,
+        actual_schema_version,
+        expected_schema_version,
+        "java global search index ignored because schema version is unsupported"
     );
 }
 
