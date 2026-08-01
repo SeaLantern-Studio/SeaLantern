@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use super::console::ConsoleCommandService;
+use super::instance::InstanceService;
 
 /// 所有可用的 RPC 宿主服务。
 ///
@@ -13,11 +14,16 @@ use super::console::ConsoleCommandService;
 pub struct RpcServices {
     /// 服务器控制台命令服务。
     pub console: Arc<dyn ConsoleCommandService>,
+    /// 服务器实例管理服务。
+    pub instance: Arc<dyn InstanceService>,
 }
 
 impl RpcServices {
     /// 创建 RPC 服务容器。
-    pub fn new(console: Arc<dyn ConsoleCommandService>) -> Self {
-        Self { console }
+    pub fn new(
+        console: Arc<dyn ConsoleCommandService>,
+        instance: Arc<dyn InstanceService>,
+    ) -> Self {
+        Self { console, instance }
     }
 }

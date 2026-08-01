@@ -3,10 +3,12 @@
 use std::fmt::Display;
 
 mod console;
+mod instance;
 mod runtime;
 pub(crate) mod services;
 
 pub use console::{dispatch_console_command, ConsoleCommandService, ConsoleCommandServiceError};
+pub use instance::{InstanceService, InstanceServiceError};
 pub use runtime::ServerRuntime;
 pub use services::RpcServices;
 

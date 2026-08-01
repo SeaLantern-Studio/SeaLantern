@@ -336,7 +336,7 @@ mod tests {
     use crate::rpc::{
         methods::server::SendConsoleCommand,
         methods::PERMISSION_SERVER_CONSOLE_SEND,
-        service::{ConsoleCommandService, ConsoleCommandServiceError},
+        service::{ConsoleCommandService, ConsoleCommandServiceError, InstanceServiceError},
         RpcMethodName, RpcPermission,
     };
 
@@ -371,6 +371,83 @@ mod tests {
     impl HttpRpcAccessResolver for DenyAll {
         fn resolve(&self, _headers: &HeaderMap) -> RpcResult<RpcAccess> {
             Ok(RpcAccess::deny_all())
+        }
+    }
+
+    /// 供 `build_router` 测试使用的空实例管理服务。
+    struct NoopInstanceService;
+
+    impl crate::rpc::service::InstanceService for NoopInstanceService {
+        fn list(&self) -> Result<Vec<sealantern_core::instance::Instance>, InstanceServiceError> {
+            Ok(Vec::new())
+        }
+
+        fn find(
+            &self,
+            _id: &sealantern_core::instance::InstanceId,
+        ) -> Result<Option<sealantern_core::instance::Instance>, InstanceServiceError> {
+            Ok(None)
+        }
+
+        fn status(
+            &self,
+            _id: &sealantern_core::instance::InstanceId,
+        ) -> Result<sealantern_core::server::ServerStatus, InstanceServiceError> {
+            Ok(sealantern_core::server::ServerStatus {
+                process_id: 0,
+                state: sealantern_core::server::ServerProcessState::Running,
+            })
+        }
+
+        fn start(
+            &self,
+            _id: &sealantern_core::instance::InstanceId,
+        ) -> Result<(), InstanceServiceError> {
+            Ok(())
+        }
+
+        fn stop(
+            &self,
+            _id: &sealantern_core::instance::InstanceId,
+        ) -> Result<(), InstanceServiceError> {
+            Ok(())
+        }
+
+        fn force_stop(
+            &self,
+            _id: &sealantern_core::instance::InstanceId,
+        ) -> Result<(), InstanceServiceError> {
+            Ok(())
+        }
+
+        fn create(
+            &self,
+            _spec: sealantern_core::instance::InstanceSpec,
+        ) -> Result<sealantern_core::instance::Instance, InstanceServiceError> {
+            Err(InstanceServiceError::Unsupported)
+        }
+
+        fn delete(
+            &self,
+            _id: &sealantern_core::instance::InstanceId,
+        ) -> Result<bool, InstanceServiceError> {
+            Ok(false)
+        }
+
+        fn rename(
+            &self,
+            _id: &sealantern_core::instance::InstanceId,
+            _name: &str,
+        ) -> Result<(), InstanceServiceError> {
+            Ok(())
+        }
+
+        fn update_path(
+            &self,
+            _id: &sealantern_core::instance::InstanceId,
+            _path: &str,
+        ) -> Result<(), InstanceServiceError> {
+            Ok(())
         }
     }
 
@@ -477,7 +554,10 @@ mod tests {
     #[tokio::test]
     async fn build_router_dispatches_requests_through_the_public_entry() {
         let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
-        let services = crate::rpc::service::RpcServices::new(svc.clone());
+        let services = crate::rpc::service::RpcServices::new(
+            svc.clone(),
+            std::sync::Arc::new(NoopInstanceService),
+        );
         let app = crate::rpc::router::build_router(services, AllowConsoleSend);
 
         let response = app
@@ -502,7 +582,10 @@ mod tests {
     #[tokio::test]
     async fn build_router_rejects_unprivileged_requests() {
         let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
-        let services = crate::rpc::service::RpcServices::new(svc.clone());
+        let services = crate::rpc::service::RpcServices::new(
+            svc.clone(),
+            std::sync::Arc::new(NoopInstanceService),
+        );
         let app = crate::rpc::router::build_router(services, DenyAll);
 
         let response = app
@@ -527,7 +610,10 @@ mod tests {
     #[tokio::test]
     async fn build_router_rejects_invalid_json() {
         let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
-        let services = crate::rpc::service::RpcServices::new(svc.clone());
+        let services = crate::rpc::service::RpcServices::new(
+            svc.clone(),
+            std::sync::Arc::new(NoopInstanceService),
+        );
         let app = crate::rpc::router::build_router(services, AllowConsoleSend);
 
         let response = app
