@@ -18,7 +18,9 @@ use sealantern_infra::persistence::process_lock_registry;
 use serde::Deserialize;
 use tokio::sync::OwnedRwLockWriteGuard;
 
-use super::types::{AppSettings, PartialAppSettings, UpdateResult, CURRENT_CONFIG_VERSION};
+use super::types::{
+    AppSettings, JavaInfo, PartialAppSettings, UpdateResult, CURRENT_CONFIG_VERSION,
+};
 use crate::observability;
 
 /// 配置文件读取上限：最大 10 MiB。
@@ -116,6 +118,21 @@ impl SettingsManager {
     /// 获取当前设置的只读引用
     pub fn get(&self) -> &AppSettings {
         self.inner.get()
+    }
+
+    /// 更新持久化的 Java 检测结果。
+    ///
+    /// Java 信息通过设置文件统一保存，旧缓存缺失置信度字段时由 serde
+    /// 使用 0 补齐，并在配置版本升级时通过现有备份和原子写入流程保存。
+    pub async fn update_java_cache(
+        &mut self,
+        installations: Vec<JavaInfo>,
+    ) -> Result<UpdateResult, sealantern_infra::fs::FsError> {
+        let partial = PartialAppSettings {
+            cached_java_list: Some(installations),
+            ..PartialAppSettings::default()
+        };
+        self.update_partial(partial).await
     }
 
     /// 全量替换设置并持久化
@@ -405,9 +422,41 @@ fn is_legacy_format(content: &str) -> bool {
 fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
     let mut version = from_version;
     while version < CURRENT_CONFIG_VERSION {
-        // v0 → v1：扁平结构首次引入，此前旧版数据由 legacy 迁移处理，
-        // 此处仅提升版本号，无字段级变更。
+        // v0 → v1：扁平结构首次引入，此前旧版数据由 legacy 迁移处理。
+        // v1 → v2：Java 缓存新增置信度字段，缺失值由 serde 默认补齐。
         version += 1;
     }
     settings.config_version = CURRENT_CONFIG_VERSION;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SettingsManager;
+    use crate::config::JavaInfo;
+
+    #[tokio::test]
+    async fn java_cache_persists_confidence() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings should load");
+
+        manager
+            .update_java_cache(vec![JavaInfo {
+                path: "/opt/jdk/bin/java".to_string(),
+                version: "21.0.1".to_string(),
+                vendor: "OpenJDK".to_string(),
+                is_64bit: true,
+                major_version: 21,
+                confidence: 87,
+            }])
+            .await
+            .expect("Java cache should persist");
+
+        let reloaded = SettingsManager::load(&path)
+            .await
+            .expect("persisted settings should reload");
+        assert_eq!(reloaded.get().cached_java_list[0].confidence, 87);
+    }
 }

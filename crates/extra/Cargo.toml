@@ -28,6 +28,7 @@ dirs = "5"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
 sculk = { version = "=0.3.1", default-features = false, optional = true }
 uuid = { version = "1", features = ["v4"] }
+java-manager = { path = "../vendor/java-manager" }
 
 [dev-dependencies]
 tempfile = "3"

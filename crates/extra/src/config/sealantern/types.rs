@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// 每次配置结构变更（新增/删除/重命名字段）时递增，
 /// 用于触发 `SettingsManager` 中的自动迁移。
-pub const CURRENT_CONFIG_VERSION: u32 = 1;
+pub const CURRENT_CONFIG_VERSION: u32 = 2;
 
 // ---------------------------------------------------------------------------
 // 设置分组
@@ -211,7 +211,7 @@ impl AppSettings {
 // ---------------------------------------------------------------------------
 
 /// 部分更新请求 — 所有字段均为 `Option`，只处理 `Some` 的值
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PartialAppSettings {
     // General
     pub close_servers_on_exit: Option<bool>,
@@ -405,6 +405,30 @@ pub struct JavaInfo {
     pub vendor: String,
     pub is_64bit: bool,
     pub major_version: u32,
+    /// Java 安装信息的规则置信度，范围为 0 到 100。
+    #[serde(default)]
+    pub confidence: u8,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JavaInfo;
+
+    #[test]
+    fn legacy_java_cache_defaults_confidence() {
+        let info: JavaInfo = serde_json::from_str(
+            r#"{
+                "path": "/opt/jdk/bin/java",
+                "version": "21.0.1",
+                "vendor": "OpenJDK",
+                "is_64bit": true,
+                "major_version": 21
+            }"#,
+        )
+        .expect("legacy Java info should remain readable");
+
+        assert_eq!(info.confidence, 0);
+    }
 }
 
 // ===========================================================================
