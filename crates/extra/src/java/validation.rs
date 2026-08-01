@@ -18,7 +18,7 @@ pub fn validate_java(path: &str) -> Result<JavaInfo, JavaValidationError> {
     match VendorJavaInfo::new(path.to_string()) {
         Ok(info) => {
             let info = to_app_java_info(info);
-            observability::java_validation_completed(path, info.major_version);
+            observability::java_validation_completed(path, info.major_version, info.confidence);
             Ok(info)
         }
         Err(error) => {

@@ -337,12 +337,13 @@ pub fn java_validation_started(path: &str) {
 }
 
 /// 记录显式 Java 路径校验完成。
-pub fn java_validation_completed(path: &str, major_version: u32) {
+pub fn java_validation_completed(path: &str, major_version: u32, confidence: u8) {
     tracing::info!(
         target: JAVA_TARGET,
         event_name = EVENT_JAVA_VALIDATION_COMPLETED,
         path,
         major_version,
+        confidence,
         "java validation completed"
     );
 }

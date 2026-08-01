@@ -33,6 +33,10 @@ pub struct JavaInfo {
     pub vendor: String,
     /// Architecture (e.g., "64-Bit", "32-Bit").
     pub architecture: String,
+    /// 此路径及其元数据描述 Java 安装的置信度。
+    ///
+    /// 这是 0 到 100 的规则评分，不是统计概率，也不表示 JDK/JRE 分类。
+    pub confidence: u8,
     /// The `JAVA_HOME` directory corresponding to this installation.
     pub java_home: PathBuf,
 }
@@ -96,6 +100,7 @@ impl JavaInfo {
             info.architecture = arch;
         }
 
+        info.confidence = calculate_confidence(&info, true);
         Ok(info)
     }
 
@@ -165,6 +170,7 @@ impl JavaInfo {
             path: stored_path,
             vendor: UNKNOWN.to_string(),
             architecture: UNKNOWN.to_string(),
+            confidence: 0,
             java_home,
         };
 
@@ -184,6 +190,7 @@ impl JavaInfo {
             }
         }
 
+        info.confidence = calculate_confidence(&info, false);
         Ok(info)
     }
 }
@@ -196,6 +203,7 @@ impl Default for JavaInfo {
             path: PathBuf::new(),
             vendor: UNKNOWN.to_string(),
             architecture: UNKNOWN.to_string(),
+            confidence: 0,
             java_home: PathBuf::new(),
         }
     }
@@ -208,6 +216,57 @@ impl JavaInfo {
             && self.vendor != UNKNOWN
             && self.architecture != UNKNOWN
     }
+}
+
+fn calculate_confidence(info: &JavaInfo, version_probe_succeeded: bool) -> u8 {
+    let mut score = 50_u16;
+
+    // from_path 已经验证了预期的 bin/java 布局。
+    if info.java_home.join("release").is_file() {
+        score += 15;
+    }
+    if info.is_complete() {
+        score += 15;
+    }
+    if version_probe_succeeded {
+        score += 15;
+    }
+    if has_java_path_hint(&info.java_home) {
+        score += 5;
+    }
+    if has_installation_marker(&info.java_home) {
+        score += 5;
+    }
+
+    score.min(100) as u8
+}
+
+fn has_java_path_hint(java_home: &Path) -> bool {
+    const HINTS: &[&str] = &["java", "jdk", "jre", "jvm", "openjdk", "graalvm"];
+
+    java_home.components().any(|component| {
+        let component = component.as_os_str().to_string_lossy().to_ascii_lowercase();
+        HINTS.iter().any(|hint| component.contains(hint))
+    })
+}
+
+fn has_installation_marker(java_home: &Path) -> bool {
+    const EXECUTABLE_MARKERS: &[&str] = &["javac", "javadoc", "jdb", "jlink", "jpackage"];
+    let java_name = if cfg!(windows) { "java.exe" } else { "java" };
+
+    EXECUTABLE_MARKERS.iter().any(|name| {
+        let name = if cfg!(windows) {
+            format!("{name}.exe")
+        } else {
+            (*name).to_string()
+        };
+        let path = java_home.join("bin").join(name);
+        path.is_file() && is_executable(&path)
+    }) || java_home.join("jmods").is_dir()
+        || java_home.join("include").is_dir()
+        || java_home.join("lib").join("src.zip").is_file()
+        || java_home.join("lib").join("modules").is_file()
+        || java_home.join("jre").join("bin").join(java_name).is_file()
 }
 
 // -----------------------------------------------------------------------------
@@ -452,8 +511,10 @@ fn format_process_status(status: &ExitStatus) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::read_limited;
+    use super::{JavaInfo, calculate_confidence, read_limited};
+    use std::fs;
     use std::io::Cursor;
+    use std::path::PathBuf;
 
     #[test]
     fn limited_reader_keeps_prefix_and_drains_remaining_output() {
@@ -461,5 +522,31 @@ mod tests {
 
         assert_eq!(output.bytes, b"1234");
         assert!(output.truncated);
+    }
+
+    #[test]
+    fn confidence_uses_installation_metadata_and_probe_source() {
+        let root = tempfile::tempdir().expect("temporary root should be created");
+        let home = root.path().join("jdk-21");
+        fs::create_dir_all(home.join("bin")).expect("bin should be created");
+        fs::create_dir_all(home.join("jmods")).expect("jmods should be created");
+        fs::write(
+            home.join("release"),
+            "IMPLEMENTOR=\"Test JDK\"\nJAVA_VERSION=\"21.0.1\"\nOS_ARCH=\"amd64\"\n",
+        )
+        .expect("release metadata should be written");
+
+        let info = JavaInfo {
+            name: "Test JDK".to_string(),
+            version: "21.0.1".to_string(),
+            path: PathBuf::from("java"),
+            vendor: "Test JDK".to_string(),
+            architecture: "amd64".to_string(),
+            confidence: 0,
+            java_home: home,
+        };
+
+        assert_eq!(calculate_confidence(&info, false), 90);
+        assert_eq!(calculate_confidence(&info, true), 100);
     }
 }

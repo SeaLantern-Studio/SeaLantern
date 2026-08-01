@@ -29,6 +29,7 @@ pub(crate) fn to_app_java_info(info: VendorJavaInfo) -> JavaInfo {
         is_64bit: architecture.contains("64")
             || matches!(architecture.as_str(), "amd64" | "x86_64" | "aarch64"),
         major_version,
+        confidence: info.confidence,
     }
 }
 
@@ -101,6 +102,7 @@ mod tests {
             path: PathBuf::from(r"C:\Java\jdk-21\bin\java.exe"),
             vendor: "Eclipse Adoptium".to_string(),
             architecture: "amd64".to_string(),
+            confidence: 95,
             java_home: PathBuf::from(r"C:\Java\jdk-21"),
         };
 
@@ -110,6 +112,7 @@ mod tests {
         assert_eq!(app_info.vendor, "Eclipse Adoptium");
         assert_eq!(app_info.major_version, 21);
         assert!(app_info.is_64bit);
+        assert_eq!(app_info.confidence, 95);
     }
 
     #[test]
