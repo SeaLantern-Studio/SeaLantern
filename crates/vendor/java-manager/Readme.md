@@ -23,7 +23,6 @@ A comprehensive Rust library and command-line tool for discovering, managing, an
 - **Cross‑platform** – Works on Windows, macOS, and Linux/Unix.
 - **Java discovery** – Find Java installations via `PATH`, `JAVA_HOME`, deep system scans (Everything SDK on Windows, walkdir on Linux), or full system scan (registry + keyword BFS + Microsoft Store + `where` command).
 - **Detailed metadata** – Extract version, vendor, architecture, and the location of the `java` executable and `JAVA_HOME`.
-- **Execution control** – Run Java programs (JAR or main class) with configurable memory limits, arguments, and I/O redirection.
 - **Error handling** – Comprehensive error types for path issues, I/O, command execution, and process failures.
 
 ## Installation
@@ -64,32 +63,6 @@ let all_javas = full_search()?;
 if let Some(java) = java_home() {
     println!("JAVA_HOME points to Java version {}", java.version);
 }
-```
-
-### Execute a Java program
-
-```rust
-use java_manager::{JavaRunner, JavaRedirect};
-
-let java = java_home().expect("JAVA_HOME not set");
-
-// Run a JAR file
-JavaRunner::new()
-    .java(java.clone())
-    .jar("myapp.jar")
-    .min_memory(256 * 1024 * 1024)   // 256 MB
-    .max_memory(1024 * 1024 * 1024)  // 1 GB
-    .arg("--server")
-    .redirect(JavaRedirect::new().output("out.log").error("err.log"))
-    .execute()?;
-
-// Or run a main class
-JavaRunner::new()
-    .java(java)
-    .main_class("com.example.Main")
-    .arg("arg1")
-    .arg("arg2")
-    .execute()?;
 ```
 
 ### Get metadata from a specific Java path

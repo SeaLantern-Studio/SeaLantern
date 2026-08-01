@@ -14,7 +14,6 @@ readme = "Readme.md"
 [dependencies]
 glob = "0.3.3"
 is_executable = "1.0.5"
-shell-words = "1.1.1"
 
 [dev-dependencies]
 tempfile = "3.3"
