@@ -229,6 +229,27 @@ pub fn market_request_failed(operation: &str, source: &str, error: &dyn Display)
     );
 }
 
+// ---------------------------------------------------------------------------
+// Java 环境检测模块
+// ---------------------------------------------------------------------------
+
+/// Java 环境检测模块的 tracing 目标。
+pub const JAVA_TARGET: &str = "sealantern.extra.java";
+
+/// Event: Java 检测来源不可用。
+pub const EVENT_JAVA_SEARCH_FAILED: &str = "java_search_failed";
+
+/// 记录一个 Java 检测来源失败；其它来源仍可继续返回结果。
+pub fn java_search_failed(source: &str, error: &dyn Display) {
+    tracing::warn!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_SEARCH_FAILED,
+        source,
+        error = %error,
+        "java discovery source failed"
+    );
+}
+
 /// 在线隧道模块的 tracing 目标。
 pub const ONLINE_TARGET: &str = "sealantern.extra.online";
 
