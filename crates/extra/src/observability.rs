@@ -255,6 +255,10 @@ pub const EVENT_JAVA_VALIDATION_STARTED: &str = "java_validation_started";
 pub const EVENT_JAVA_VALIDATION_COMPLETED: &str = "java_validation_completed";
 /// Event: Java 校验失败。
 pub const EVENT_JAVA_VALIDATION_FAILED: &str = "java_validation_failed";
+/// Event: Java 全局搜索开始。
+pub const EVENT_JAVA_GLOBAL_SEARCH_STARTED: &str = "java_global_search_started";
+/// Event: Java 全局搜索完成。
+pub const EVENT_JAVA_GLOBAL_SEARCH_COMPLETED: &str = "java_global_search_completed";
 
 /// 记录一个 Java 检测来源失败；其它来源仍可继续返回结果。
 pub fn java_search_failed(source: &str, error: &dyn Display) {
@@ -351,6 +355,35 @@ pub fn java_validation_failed(path: &str, error: &dyn Display) {
         path,
         error = %error,
         "java validation failed"
+    );
+}
+
+/// 记录 Java 全局搜索开始。
+pub fn java_global_search_started(index_reused: bool, complete: bool) {
+    tracing::info!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_GLOBAL_SEARCH_STARTED,
+        index_reused,
+        complete,
+        "java global search started"
+    );
+}
+
+/// 记录 Java 全局搜索完成和索引规模。
+pub fn java_global_search_completed(
+    installation_count: usize,
+    error_count: usize,
+    indexed_directory_count: usize,
+    indexed_candidate_count: usize,
+) {
+    tracing::info!(
+        target: JAVA_TARGET,
+        event_name = EVENT_JAVA_GLOBAL_SEARCH_COMPLETED,
+        installation_count,
+        error_count,
+        indexed_directory_count,
+        indexed_candidate_count,
+        "java global search completed"
     );
 }
 

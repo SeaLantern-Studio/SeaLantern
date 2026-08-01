@@ -27,11 +27,81 @@ const EXCLUDE_FOLDERS: &[&str] = &[
     "log",
 ];
 
+/// 全局搜索的遍历策略。
+#[derive(Debug, Clone, Copy)]
+pub struct GlobalSearchOptions {
+    /// 最大目录深度；`None` 表示不限制深度。
+    pub max_depth: Option<usize>,
+    /// 单次搜索允许检查的最大目录数。
+    pub max_directories: usize,
+    /// 是否跟随目录符号链接。
+    pub follow_links: bool,
+}
+
+impl GlobalSearchOptions {
+    /// 面向交互式调用的快速扫描策略。
+    pub const fn fast() -> Self {
+        Self {
+            max_depth: Some(8),
+            max_directories: 32_768,
+            follow_links: false,
+        }
+    }
+
+    /// 面向后台任务的完整扫描策略。
+    pub const fn complete() -> Self {
+        Self {
+            max_depth: None,
+            max_directories: usize::MAX,
+            follow_links: false,
+        }
+    }
+}
+
+impl Default for GlobalSearchOptions {
+    fn default() -> Self {
+        Self::fast()
+    }
+}
+
+/// 全局搜索目录的增量索引条目。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GlobalSearchDirectory {
+    pub path: PathBuf,
+    pub modified_ns: u64,
+    pub len: u64,
+}
+
+/// 全局搜索使用的目录和候选路径索引。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GlobalSearchIndex {
+    pub roots: Vec<PathBuf>,
+    pub directories: Vec<GlobalSearchDirectory>,
+    pub candidates: Vec<PathBuf>,
+    pub max_depth: Option<usize>,
+    pub max_directories: usize,
+    pub truncated: bool,
+}
+
+impl Default for GlobalSearchIndex {
+    fn default() -> Self {
+        Self {
+            roots: Vec::new(),
+            directories: Vec::new(),
+            candidates: Vec::new(),
+            max_depth: None,
+            max_directories: usize::MAX,
+            truncated: false,
+        }
+    }
+}
+
 /// 自动发现结果，以及可继续处理的候选和来源错误。
 #[derive(Debug, Default)]
 pub struct SearchReport {
     pub installations: Vec<JavaInfo>,
     pub errors: Vec<SearchError>,
+    pub index: Option<GlobalSearchIndex>,
     source_failed: bool,
 }
 
@@ -43,11 +113,11 @@ pub struct SearchError {
 }
 
 impl SearchError {
-    fn source(error: JavaError) -> Self {
+    pub(crate) fn source(error: JavaError) -> Self {
         Self { path: None, error }
     }
 
-    fn candidate(path: PathBuf, error: JavaError) -> Self {
+    pub(crate) fn candidate(path: PathBuf, error: JavaError) -> Self {
         Self { path: Some(path), error }
     }
 }
@@ -58,12 +128,33 @@ impl SearchReport {
         self.source_failed
     }
 
-    fn source_error(error: JavaError) -> Self {
+    #[cfg(target_os = "windows")]
+    pub(crate) fn source_error(error: JavaError) -> Self {
         Self {
             installations: Vec::new(),
             errors: vec![SearchError::source(error)],
+            index: None,
             source_failed: true,
         }
+    }
+
+    pub(crate) fn add_source_error(&mut self, error: JavaError, source_failed: bool) {
+        self.errors.push(SearchError::source(error));
+        self.source_failed |= source_failed;
+    }
+
+    pub(crate) fn add_candidate_error(&mut self, path: PathBuf, error: JavaError) {
+        self.errors.push(SearchError::candidate(path, error));
+    }
+
+    pub(crate) fn merge_without_source_failure(&mut self, mut other: SearchReport) {
+        self.installations.append(&mut other.installations);
+        self.errors.append(&mut other.errors);
+    }
+
+    pub(crate) fn merge_with_source_failure(&mut self, other: SearchReport) {
+        self.source_failed |= other.source_failed;
+        self.merge_without_source_failure(other);
     }
 
     fn into_result(self) -> Result<Vec<JavaInfo>, JavaError> {
@@ -512,10 +603,10 @@ fn scan_linux() -> Vec<PathBuf> {
                 continue;
             }
 
-            if let Some(parent) = entry_path.parent() {
-                if !should_explore_linux(parent) {
-                    continue;
-                }
+            if let Some(parent) = entry_path.parent()
+                && !should_explore_linux(parent)
+            {
+                continue;
             }
 
             #[cfg(unix)]

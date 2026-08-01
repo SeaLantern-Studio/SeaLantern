@@ -22,6 +22,7 @@
 
 pub mod error;
 pub mod execute;
+pub mod global_search;
 pub mod info;
 pub mod local;
 pub mod search;
@@ -29,9 +30,17 @@ pub mod search;
 pub use error::JavaError;
 pub use execute::JavaRedirect;
 pub use execute::JavaRunner;
+pub use global_search::environment_search;
+pub use global_search::environment_search_with_diagnostics;
+pub use global_search::global_search;
+pub use global_search::global_search_complete;
+pub use global_search::global_search_with_index;
 pub use info::JavaInfo;
 pub use local::java_home;
 pub use local::java_home_with_diagnostics;
+pub use search::GlobalSearchDirectory;
+pub use search::GlobalSearchIndex;
+pub use search::GlobalSearchOptions;
 pub use search::SearchError;
 pub use search::SearchReport;
 pub use search::deep_search;

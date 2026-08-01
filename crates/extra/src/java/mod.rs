@@ -5,12 +5,22 @@
 //! 的结果，并通过 tracing 记录失败来源，避免本机没有 Everything 等可选
 //! 工具时整个检测流程失效。
 
-use std::{collections::HashSet, fmt, path::Path};
+use std::{
+    collections::HashSet,
+    fmt,
+    path::{Path, PathBuf},
+};
 
-use java_manager::{JavaInfo as VendorJavaInfo, SearchError, SearchReport};
+use java_manager::{
+    GlobalSearchDirectory, GlobalSearchIndex, GlobalSearchOptions, JavaInfo as VendorJavaInfo,
+    SearchError, SearchReport,
+};
+use serde::{Deserialize, Serialize};
 
 pub use crate::config::JavaInfo;
 use crate::observability;
+
+const JAVA_SEARCH_INDEX_VERSION: u32 = 2;
 
 /// Java 自动检测中单个来源或候选产生的非致命错误。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +42,40 @@ impl std::error::Error for JavaDiscoveryError {}
 pub struct JavaDetectionReport {
     pub installations: Vec<JavaInfo>,
     pub errors: Vec<JavaDiscoveryError>,
+}
+
+/// 可由上游调用方持久化的 Java 全局搜索索引。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JavaSearchIndex {
+    pub schema_version: u32,
+    pub roots: Vec<String>,
+    pub directories: Vec<JavaSearchDirectory>,
+    pub candidates: Vec<String>,
+    pub max_depth: Option<usize>,
+    pub max_directories: usize,
+    pub truncated: bool,
+}
+
+impl Default for JavaSearchIndex {
+    fn default() -> Self {
+        Self {
+            schema_version: JAVA_SEARCH_INDEX_VERSION,
+            roots: Vec::new(),
+            directories: Vec::new(),
+            candidates: Vec::new(),
+            max_depth: None,
+            max_directories: usize::MAX,
+            truncated: false,
+        }
+    }
+}
+
+/// 全局搜索索引中的目录元数据。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JavaSearchDirectory {
+    pub path: String,
+    pub modified_ns: u64,
+    pub len: u64,
 }
 
 /// 显式 Java 路径校验错误。
@@ -118,6 +162,44 @@ pub fn detect_java_installations_with_diagnostics() -> JavaDetectionReport {
     report
 }
 
+/// 执行全局 Java 搜索，并返回可交给上游持久化的最新索引。
+///
+/// `complete` 为 `false` 时使用交互式快速策略；后台任务可传入 `true` 执行
+/// 不限制深度的 BFS。传入上次返回的索引后，只会重新枚举目录元数据发生变化
+/// 的目录，同时重新验证索引中的候选路径。
+pub fn detect_java_installations_with_global_search(
+    previous: Option<&JavaSearchIndex>,
+    complete: bool,
+) -> (JavaDetectionReport, JavaSearchIndex) {
+    let previous_vendor = previous
+        .filter(|index| index.schema_version == JAVA_SEARCH_INDEX_VERSION)
+        .map(to_vendor_search_index);
+    observability::java_global_search_started(previous_vendor.is_some(), complete);
+
+    let options = if complete {
+        GlobalSearchOptions::complete()
+    } else {
+        GlobalSearchOptions::fast()
+    };
+    let search = java_manager::global_search_with_index(previous_vendor.as_ref(), options);
+    let vendor_index = search.index.clone().unwrap_or_default();
+    let mut report = JavaDetectionReport::default();
+    let mut results = Vec::new();
+    let mut seen = HashSet::new();
+    collect_search_results(&mut report, &mut results, &mut seen, "global_search", search);
+    results.sort_by_key(|info| std::cmp::Reverse(info.major_version));
+    report.installations = results;
+
+    let index = from_vendor_search_index(vendor_index);
+    observability::java_global_search_completed(
+        report.installations.len(),
+        report.errors.len(),
+        index.directories.len(),
+        index.candidates.len(),
+    );
+    (report, index)
+}
+
 /// 校验并读取指定路径下的 Java 安装信息。
 pub fn validate_java(path: &str) -> Result<JavaInfo, JavaValidationError> {
     let path = path.trim();
@@ -187,6 +269,53 @@ fn push_unique(results: &mut Vec<JavaInfo>, seen: &mut HashSet<String>, info: Ve
     let key = normalize_path_key(&app_info.path);
     if seen.insert(key) {
         results.push(app_info);
+    }
+}
+
+fn to_vendor_search_index(index: &JavaSearchIndex) -> GlobalSearchIndex {
+    GlobalSearchIndex {
+        roots: index.roots.iter().map(PathBuf::from).collect(),
+        directories: index
+            .directories
+            .iter()
+            .map(|directory| GlobalSearchDirectory {
+                path: PathBuf::from(&directory.path),
+                modified_ns: directory.modified_ns,
+                len: directory.len,
+            })
+            .collect(),
+        candidates: index.candidates.iter().map(PathBuf::from).collect(),
+        max_depth: index.max_depth,
+        max_directories: index.max_directories,
+        truncated: index.truncated,
+    }
+}
+
+fn from_vendor_search_index(index: GlobalSearchIndex) -> JavaSearchIndex {
+    JavaSearchIndex {
+        schema_version: JAVA_SEARCH_INDEX_VERSION,
+        roots: index
+            .roots
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect(),
+        directories: index
+            .directories
+            .iter()
+            .map(|directory| JavaSearchDirectory {
+                path: directory.path.to_string_lossy().into_owned(),
+                modified_ns: directory.modified_ns,
+                len: directory.len,
+            })
+            .collect(),
+        candidates: index
+            .candidates
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect(),
+        max_depth: index.max_depth,
+        max_directories: index.max_directories,
+        truncated: index.truncated,
     }
 }
 
@@ -301,6 +430,26 @@ mod tests {
 
         assert!(error.to_string().contains("C:\\Java\\missing"));
         assert!(error.to_string().contains("not found"));
+    }
+
+    #[test]
+    fn search_index_is_serializable_for_upstream_storage() {
+        let index = JavaSearchIndex {
+            roots: vec!["/opt".to_string()],
+            directories: vec![JavaSearchDirectory {
+                path: "/opt/jdk".to_string(),
+                modified_ns: 10,
+                len: 20,
+            }],
+            candidates: vec!["/opt/jdk/bin/java".to_string()],
+            ..JavaSearchIndex::default()
+        };
+
+        let encoded = serde_json::to_string(&index).expect("search index should serialize");
+        let decoded: JavaSearchIndex =
+            serde_json::from_str(&encoded).expect("search index should deserialize");
+
+        assert_eq!(decoded, index);
     }
 
     #[cfg(target_os = "windows")]
