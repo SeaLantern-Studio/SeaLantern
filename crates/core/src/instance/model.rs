@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize};
 
 /// 由主机为受管实例分配的稳定标识符。
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -23,7 +23,7 @@ impl InstanceId {
 }
 
 /// 用于启动本地实例的已配置机制。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum StartupMode {
     Jar,
@@ -56,6 +56,15 @@ impl StartupMode {
             Self::Starter => "starter",
             Self::Custom => "custom",
         }
+    }
+}
+
+/// 反序列化时复用 [`StartupMode::parse`] 的解析规则，
+/// 容忍大小写差异与别名（如 `"JAR"`、`"batch"`），与持久化值兼容。
+impl<'de> Deserialize<'de> for StartupMode {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        Self::parse(&value).map_err(de::Error::custom)
     }
 }
 
