@@ -3,8 +3,7 @@ pub mod sealantern;
 pub mod server;
 
 pub use sealantern::types::{
-    AppSettings, InstanceList, JavaInfo, PartialAppSettings, ServerStatus, SettingsGroup,
-    StartupMode, UpdateResult,
+    AppSettings, InstanceList, JavaInfo, PartialAppSettings, SettingsGroup, UpdateResult,
 };
 pub use sealantern::InstanceRegistry;
 pub use sealantern::SettingsManager;

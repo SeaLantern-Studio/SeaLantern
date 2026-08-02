@@ -6,7 +6,7 @@ mod index;
 mod mapping;
 mod validation;
 
-pub use crate::config::JavaInfo;
+pub use crate::models::JavaInfo;
 pub use discovery::{
     detect_java_installations, detect_java_installations_with_diagnostics,
     detect_java_installations_with_global_search, JavaDetectionReport,

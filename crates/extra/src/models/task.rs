@@ -1,9 +1,11 @@
-//! 下载任务进度模型
+//! 下载任务进度模型。
 
+use sealantern_infra::download::DownloadSnapshot;
 use serde::{Deserialize, Serialize};
 
-/// 任务进度响应（与前端 DownloadTaskInfo 对应）
+/// 下载任务进度响应。
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TaskProgressResponse {
     pub id: String,
     pub total_size: u64,
@@ -13,8 +15,8 @@ pub struct TaskProgressResponse {
     pub is_finished: bool,
 }
 
-/// 任务状态（与前端 TaskStatus 对应）
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// 下载任务状态。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TaskStatus {
     Simple(String),
@@ -24,25 +26,79 @@ pub enum TaskStatus {
     },
 }
 
-impl From<sealantern_infra::download::DownloadSnapshot> for TaskProgressResponse {
-    fn from(snap: sealantern_infra::download::DownloadSnapshot) -> Self {
-        let status = if let Some(err) = snap.error {
-            TaskStatus::Error { error: err }
-        } else if snap.is_finished {
+impl TaskProgressResponse {
+    /// 将基础设施层快照和其所属任务 ID 组合为对外响应。
+    pub fn from_snapshot(id: impl Into<String>, snapshot: DownloadSnapshot) -> Self {
+        let status = if let Some(error) = snapshot.error {
+            TaskStatus::Error { error }
+        } else if snapshot.is_finished {
             TaskStatus::Simple("Completed".to_string())
-        } else if snap.downloaded > 0 {
+        } else if snapshot.downloaded > 0 {
             TaskStatus::Simple("Downloading".to_string())
         } else {
             TaskStatus::Simple("Pending".to_string())
         };
 
         Self {
-            id: String::new(),
-            total_size: snap.total_size,
-            downloaded: snap.downloaded,
-            progress: snap.progress_percentage,
+            id: id.into(),
+            total_size: snapshot.total_size,
+            downloaded: snapshot.downloaded,
+            progress: snapshot.progress_percentage,
             status,
-            is_finished: snap.is_finished,
+            is_finished: snapshot.is_finished,
         }
+    }
+}
+
+impl From<(String, DownloadSnapshot)> for TaskProgressResponse {
+    fn from((id, snapshot): (String, DownloadSnapshot)) -> Self {
+        Self::from_snapshot(id, snapshot)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use sealantern_infra::download::DownloadSnapshot;
+
+    use super::{TaskProgressResponse, TaskStatus};
+
+    #[test]
+    fn task_progress_preserves_id_and_uses_frontend_field_names() {
+        let response = TaskProgressResponse::from_snapshot(
+            "task-42",
+            DownloadSnapshot {
+                downloaded: 512,
+                total_size: 1024,
+                progress_percentage: 50.0,
+                is_finished: false,
+                error: None,
+            },
+        );
+
+        assert_eq!(response.id, "task-42");
+        assert_eq!(response.status, TaskStatus::Simple("Downloading".to_string()));
+
+        let value = serde_json::to_value(response).expect("task progress should serialize");
+        assert_eq!(value["totalSize"], 1024);
+        assert_eq!(value["isFinished"], false);
+        assert!(value.get("total_size").is_none());
+        assert!(value.get("is_finished").is_none());
+    }
+
+    #[test]
+    fn task_error_matches_the_external_status_shape() {
+        let response = TaskProgressResponse::from_snapshot(
+            "task-error",
+            DownloadSnapshot {
+                downloaded: 0,
+                total_size: 1024,
+                progress_percentage: 0.0,
+                is_finished: true,
+                error: Some("connection reset".to_string()),
+            },
+        );
+
+        let value = serde_json::to_value(response).expect("task error should serialize");
+        assert_eq!(value["status"]["Error"], "connection reset");
     }
 }

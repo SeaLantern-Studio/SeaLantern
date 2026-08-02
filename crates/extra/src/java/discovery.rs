@@ -7,7 +7,7 @@ use super::index::{
     from_vendor_search_index, to_vendor_search_index, JavaSearchIndex, JAVA_SEARCH_INDEX_VERSION,
 };
 use super::mapping::push_unique;
-use crate::config::JavaInfo;
+use crate::models::JavaInfo;
 use crate::observability;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

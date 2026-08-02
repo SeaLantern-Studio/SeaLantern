@@ -2,7 +2,7 @@ use java_manager::JavaInfo as VendorJavaInfo;
 
 use super::error::JavaValidationError;
 use super::mapping::to_app_java_info;
-use crate::config::JavaInfo;
+use crate::models::JavaInfo;
 use crate::observability;
 
 /// 校验并读取指定路径下的 Java 安装信息。
