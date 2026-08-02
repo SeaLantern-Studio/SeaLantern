@@ -1,88 +1,115 @@
+mod fabric;
+mod forge;
 mod paperclip;
 mod vanilla;
 
 use std::path::{Path, PathBuf};
 
 use super::archive::ArchiveMetadata;
+use super::directory::DirectoryMetadata;
 use super::evidence::{EvidenceCollector, NewEvidence};
 use super::model::{
     ArtifactInfo, ArtifactRole, Attributed, Detected, DetectionTarget, DiagnosticSeverity,
-    EvidenceLocation, EvidenceSource, InspectionDiagnostic, MavenCoordinate, MinecraftVersionInfo,
-    ReleaseChannel, ServerCategory, ServerComponent, ServerEcosystem, ServerIdentityInfo,
-    ServerProduct,
+    EvidenceLocation, EvidenceSource, InspectionDiagnostic, LaunchProfile, MavenCoordinate,
+    MinecraftVersionInfo, ReleaseChannel, ServerCategory, ServerComponent, ServerComponentKind,
+    ServerEcosystem, ServerIdentityInfo, ServerProduct,
 };
 use super::resolver::{resolve, resolve_attributed, DetectionClaim};
 
+const PAPER_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Paper, ServerEcosystem::Bukkit];
+const VANILLA_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Vanilla];
+const BUKKIT_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Bukkit];
+const FABRIC_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Fabric];
+const LEGACY_FABRIC_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::LegacyFabric];
+const FORGE_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Forge];
+const NEOFORGE_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::NeoForge];
+
 const PRODUCTS: &[ProductDefinition] = &[
-    ProductDefinition::paper(
+    ProductDefinition::new(
         "pufferfish",
         "Pufferfish",
+        PAPER_ECOSYSTEMS,
         "gg.pufferfish.pufferfish",
         "pufferfish-api",
     ),
-    ProductDefinition::paper("divinemc", "DivineMC", "org.bxteam.divinemc", "divinemc-api"),
-    ProductDefinition::paper("aspaper", "AsPaper", "com.infernalsuite.asp", "aspaper-api"),
-    ProductDefinition::paper("purpur", "Purpur", "org.purpurmc.purpur", "purpur-api"),
-    ProductDefinition::paper("canvas", "Canvas", "io.canvasmc.canvas", "canvas-api"),
-    ProductDefinition::paper("leaves", "Leaves", "org.leavesmc.leaves", "leaves-api"),
-    ProductDefinition::vanilla(),
-    ProductDefinition::bukkit("spigot", "Spigot"),
-    ProductDefinition::paper("paper", "Paper", "io.papermc.paper", "paper-api"),
-    ProductDefinition::paper("folia", "Folia", "dev.folia", "folia-api"),
-    ProductDefinition::paper("pluto", "Pluto", "dev.yive.pluto", "pluto-api"),
-    ProductDefinition::paper("leaf", "Leaf", "cn.dreeam.leaf", "leaf-api"),
+    ProductDefinition::new("legacy-fabric", "Legacy Fabric", LEGACY_FABRIC_ECOSYSTEMS, "", ""),
+    ProductDefinition::new(
+        "divinemc",
+        "DivineMC",
+        PAPER_ECOSYSTEMS,
+        "org.bxteam.divinemc",
+        "divinemc-api",
+    ),
+    ProductDefinition::new(
+        "aspaper",
+        "AsPaper",
+        PAPER_ECOSYSTEMS,
+        "com.infernalsuite.asp",
+        "aspaper-api",
+    ),
+    ProductDefinition::new(
+        "purpur",
+        "Purpur",
+        PAPER_ECOSYSTEMS,
+        "org.purpurmc.purpur",
+        "purpur-api",
+    ),
+    ProductDefinition::new(
+        "canvas",
+        "Canvas",
+        PAPER_ECOSYSTEMS,
+        "io.canvasmc.canvas",
+        "canvas-api",
+    ),
+    ProductDefinition::new(
+        "leaves",
+        "Leaves",
+        PAPER_ECOSYSTEMS,
+        "org.leavesmc.leaves",
+        "leaves-api",
+    ),
+    ProductDefinition::new("vanilla", "Vanilla", VANILLA_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("neoforge", "NeoForge", NEOFORGE_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("fabric", "Fabric", FABRIC_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("spigot", "Spigot", BUKKIT_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("paper", "Paper", PAPER_ECOSYSTEMS, "io.papermc.paper", "paper-api"),
+    ProductDefinition::new("folia", "Folia", PAPER_ECOSYSTEMS, "dev.folia", "folia-api"),
+    ProductDefinition::new("pluto", "Pluto", PAPER_ECOSYSTEMS, "dev.yive.pluto", "pluto-api"),
+    ProductDefinition::new("forge", "Forge", FORGE_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("leaf", "Leaf", PAPER_ECOSYSTEMS, "cn.dreeam.leaf", "leaf-api"),
 ];
 
 #[derive(Debug, Clone, Copy)]
 struct ProductDefinition {
     key: &'static str,
     display_name: &'static str,
-    paper: bool,
-    bukkit: bool,
-    vanilla: bool,
+    ecosystems: &'static [ServerEcosystem],
     api_group: Option<&'static str>,
     api_artifact: Option<&'static str>,
 }
 
 impl ProductDefinition {
-    const fn paper(
+    const fn new(
         key: &'static str,
         display_name: &'static str,
+        ecosystems: &'static [ServerEcosystem],
         api_group: &'static str,
         api_artifact: &'static str,
     ) -> Self {
         Self {
             key,
             display_name,
-            paper: true,
-            bukkit: true,
-            vanilla: false,
-            api_group: Some(api_group),
-            api_artifact: Some(api_artifact),
-        }
-    }
-
-    const fn bukkit(key: &'static str, display_name: &'static str) -> Self {
-        Self {
-            key,
-            display_name,
-            paper: false,
-            bukkit: true,
-            vanilla: false,
-            api_group: None,
-            api_artifact: None,
-        }
-    }
-
-    const fn vanilla() -> Self {
-        Self {
-            key: "vanilla",
-            display_name: "Vanilla",
-            paper: false,
-            bukkit: false,
-            vanilla: true,
-            api_group: None,
-            api_artifact: None,
+            ecosystems,
+            api_group: if api_group.is_empty() {
+                None
+            } else {
+                Some(api_group)
+            },
+            api_artifact: if api_artifact.is_empty() {
+                None
+            } else {
+                Some(api_artifact)
+            },
         }
     }
 }
@@ -124,6 +151,8 @@ pub(super) struct Findings {
     pub(super) release_channels: Vec<ProductValueFinding<ReleaseChannel>>,
     pub(super) roles: Vec<Signal<ArtifactRole>>,
     pub(super) components: Vec<ComponentFinding>,
+    pub(super) launches: Vec<Signal<LaunchProfile>>,
+    pub(super) java_majors: Vec<Signal<u16>>,
 }
 
 impl Findings {
@@ -139,6 +168,8 @@ pub(super) struct DetectorOutput {
     pub(super) minecraft_version: Detected<String>,
     pub(super) roles: Vec<Attributed<ArtifactRole>>,
     pub(super) components: Vec<Attributed<ServerComponent>>,
+    pub(super) launches: Vec<Attributed<LaunchProfile>>,
+    pub(super) java_major: Detected<u16>,
     pub(super) diagnostics: Vec<InspectionDiagnostic>,
 }
 
@@ -147,19 +178,54 @@ pub(super) fn detect_jar(
     artifact: &ArtifactInfo,
     archive: &ArchiveMetadata,
     minecraft: Option<&MinecraftVersionInfo>,
+    java_major: Option<&Detected<u16>>,
     evidence: &mut EvidenceCollector,
 ) -> DetectorOutput {
     let mut findings = Findings::default();
     detect_filename(path, &mut findings);
+    fabric::detect(path, archive, None, &mut findings);
+    forge::detect_archive(path, None, archive, &mut findings);
     paperclip::detect(path, artifact, archive, &mut findings);
     vanilla::detect(path, artifact, minecraft, &mut findings);
-    finalize(path, findings, minecraft, evidence)
+    finalize(path, findings, minecraft, java_major, evidence)
+}
+
+pub(super) fn detect_directory(
+    path: &Path,
+    directory: &DirectoryMetadata,
+    evidence: &mut EvidenceCollector,
+) -> DetectorOutput {
+    let mut findings = Findings::default();
+    detect_filename(path, &mut findings);
+    for root_archive in &directory.root_archives {
+        let archive_path = path.join(&root_archive.relative_path);
+        fabric::detect(
+            &archive_path,
+            &root_archive.metadata,
+            Some((path, &root_archive.relative_path)),
+            &mut findings,
+        );
+        forge::detect_archive(
+            &archive_path,
+            Some((path, &root_archive.relative_path)),
+            &root_archive.metadata,
+            &mut findings,
+        );
+    }
+    for installation in &directory.installations {
+        forge::detect_installation(path, installation, &mut findings);
+    }
+    for script in &directory.scripts {
+        forge::detect_script(path, script, &mut findings);
+    }
+    finalize(path, findings, None, None, evidence)
 }
 
 fn finalize(
     path: &Path,
     findings: Findings,
     minecraft: Option<&MinecraftVersionInfo>,
+    existing_java_major: Option<&Detected<u16>>,
     evidence: &mut EvidenceCollector,
 ) -> DetectorOutput {
     let implementation = resolve(
@@ -254,23 +320,20 @@ fn finalize(
         resolve_attributed(claims)
     });
 
-    let components = selected_key.map_or_else(Vec::new, |selected_key| {
-        resolve_attributed(
-            findings
-                .components
-                .iter()
-                .filter(|finding| finding.product_key == selected_key)
-                .map(|finding| {
-                    push_claim(
-                        &finding.signal,
-                        DetectionTarget::Component,
-                        finding.signal.value.key.clone(),
-                        evidence,
-                    )
-                })
-                .collect(),
-        )
-    });
+    let components = resolve_attributed(
+        findings
+            .components
+            .iter()
+            .map(|finding| {
+                push_claim(
+                    &finding.signal,
+                    DetectionTarget::Component,
+                    format!("{}:{}", finding.product_key, finding.signal.value.key),
+                    evidence,
+                )
+            })
+            .collect(),
+    );
     let roles = resolve_attributed(
         findings
             .roles
@@ -286,6 +349,31 @@ fn finalize(
             .collect(),
     );
     let minecraft_version = resolve_minecraft_version(&findings, minecraft, evidence);
+    let launches = resolve_attributed(
+        findings
+            .launches
+            .iter()
+            .map(|signal| {
+                push_claim(
+                    signal,
+                    DetectionTarget::LaunchProfile,
+                    signal.value.id.clone(),
+                    evidence,
+                )
+            })
+            .collect(),
+    );
+    let mut java_claims = findings
+        .java_majors
+        .iter()
+        .map(|signal| {
+            push_claim(signal, DetectionTarget::JavaMajor, signal.value.to_string(), evidence)
+        })
+        .collect::<Vec<_>>();
+    if let Some(existing) = existing_java_major {
+        java_claims.extend(existing_detected_claims(existing, "existing-java-requirement"));
+    }
+    let java_major = resolve(java_claims);
 
     let mut diagnostics = Vec::new();
     add_conflict_diagnostic(
@@ -321,6 +409,8 @@ fn finalize(
         minecraft_version,
         roles,
         components,
+        launches,
+        java_major,
         diagnostics,
     }
 }
@@ -492,17 +582,7 @@ pub(super) fn ecosystems_for_key(key: &str, paperclip_context: bool) -> Vec<Serv
             Vec::new()
         };
     };
-    let mut ecosystems = Vec::new();
-    if definition.vanilla {
-        ecosystems.push(ServerEcosystem::Vanilla);
-    }
-    if definition.paper {
-        ecosystems.push(ServerEcosystem::Paper);
-    }
-    if definition.bukkit {
-        ecosystems.push(ServerEcosystem::Bukkit);
-    }
-    ecosystems
+    definition.ecosystems.to_vec()
 }
 
 pub(super) fn product_key_from_coordinate(coordinate: &MavenCoordinate) -> Option<String> {
@@ -673,7 +753,7 @@ pub(super) fn api_component(
     let product = product_from_key(product_key);
     let release_channel = release_channel(&version);
     ServerComponent {
-        kind: super::model::ServerComponentKind::Api,
+        kind: ServerComponentKind::Api,
         key: format!("{product_key}-api"),
         name: format!("{} API", product.display_name),
         version: Some(version),

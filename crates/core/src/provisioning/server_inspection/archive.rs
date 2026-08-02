@@ -13,6 +13,13 @@ const MOJANG_VERSION_ENTRY: &str = "version.json";
 pub(super) const VERSIONS_LIST_ENTRY: &str = "META-INF/versions.list";
 pub(super) const PATCHES_LIST_ENTRY: &str = "META-INF/patches.list";
 pub(super) const LIBRARIES_LIST_ENTRY: &str = "META-INF/libraries.list";
+pub(super) const INSTALL_PROPERTIES_ENTRY: &str = "install.properties";
+pub(super) const BOOTSTRAP_PROPERTIES_ENTRY: &str = "bootstrap-shim.properties";
+pub(super) const BOOTSTRAP_LIST_ENTRY: &str = "bootstrap-shim.list";
+pub(super) const WRAPPER_METADATA_ENTRY: &str = "metadata.json";
+pub(super) const FORGE_VERSION_ENTRY: &str = "forge_version.json";
+pub(super) const NEOFORGE_VERSION_PROPERTIES_ENTRY: &str =
+    "net/neoforged/neoforge/common/version.properties";
 
 pub(super) struct ArchiveMetadata {
     pub(super) manifest: Option<Vec<u8>>,
@@ -20,12 +27,27 @@ pub(super) struct ArchiveMetadata {
     pub(super) versions_list: Option<Vec<u8>>,
     pub(super) patches_list: Option<Vec<u8>>,
     pub(super) libraries_list: Option<Vec<u8>>,
+    pub(super) install_properties: Option<Vec<u8>>,
+    pub(super) bootstrap_properties: Option<Vec<u8>>,
+    pub(super) bootstrap_list: Option<Vec<u8>>,
+    pub(super) wrapper_metadata: Option<Vec<u8>>,
+    pub(super) forge_version: Option<Vec<u8>>,
+    pub(super) neoforge_version_properties: Option<Vec<u8>>,
     pub(super) diagnostics: Vec<InspectionDiagnostic>,
 }
 
 pub(super) fn read_metadata(
     path: &Path,
     options: &InspectionOptions,
+) -> Result<ArchiveMetadata, ServerInspectionError> {
+    let mut consumed = 0;
+    read_metadata_with_budget(path, options, &mut consumed)
+}
+
+pub(super) fn read_metadata_with_budget(
+    path: &Path,
+    options: &InspectionOptions,
+    consumed: &mut u64,
 ) -> Result<ArchiveMetadata, ServerInspectionError> {
     let file = File::open(path)
         .map_err(|source| ServerInspectionError::Open { path: path.to_path_buf(), source })?;
@@ -40,13 +62,12 @@ pub(super) fn read_metadata(
     }
 
     let mut diagnostics = Vec::new();
-    let mut consumed = 0_u64;
     let manifest = read_optional_entry(
         &mut archive,
         path,
         MANIFEST_ENTRY,
         options,
-        &mut consumed,
+        consumed,
         &mut diagnostics,
     )?;
     let mojang_version = read_optional_entry(
@@ -54,7 +75,7 @@ pub(super) fn read_metadata(
         path,
         MOJANG_VERSION_ENTRY,
         options,
-        &mut consumed,
+        consumed,
         &mut diagnostics,
     )?;
     let versions_list = read_optional_entry(
@@ -62,7 +83,7 @@ pub(super) fn read_metadata(
         path,
         VERSIONS_LIST_ENTRY,
         options,
-        &mut consumed,
+        consumed,
         &mut diagnostics,
     )?;
     let patches_list = read_optional_entry(
@@ -70,7 +91,7 @@ pub(super) fn read_metadata(
         path,
         PATCHES_LIST_ENTRY,
         options,
-        &mut consumed,
+        consumed,
         &mut diagnostics,
     )?;
     let libraries_list = read_optional_entry(
@@ -78,7 +99,55 @@ pub(super) fn read_metadata(
         path,
         LIBRARIES_LIST_ENTRY,
         options,
-        &mut consumed,
+        consumed,
+        &mut diagnostics,
+    )?;
+    let install_properties = read_optional_entry(
+        &mut archive,
+        path,
+        INSTALL_PROPERTIES_ENTRY,
+        options,
+        consumed,
+        &mut diagnostics,
+    )?;
+    let bootstrap_properties = read_optional_entry(
+        &mut archive,
+        path,
+        BOOTSTRAP_PROPERTIES_ENTRY,
+        options,
+        consumed,
+        &mut diagnostics,
+    )?;
+    let bootstrap_list = read_optional_entry(
+        &mut archive,
+        path,
+        BOOTSTRAP_LIST_ENTRY,
+        options,
+        consumed,
+        &mut diagnostics,
+    )?;
+    let wrapper_metadata = read_optional_entry(
+        &mut archive,
+        path,
+        WRAPPER_METADATA_ENTRY,
+        options,
+        consumed,
+        &mut diagnostics,
+    )?;
+    let forge_version = read_optional_entry(
+        &mut archive,
+        path,
+        FORGE_VERSION_ENTRY,
+        options,
+        consumed,
+        &mut diagnostics,
+    )?;
+    let neoforge_version_properties = read_optional_entry(
+        &mut archive,
+        path,
+        NEOFORGE_VERSION_PROPERTIES_ENTRY,
+        options,
+        consumed,
         &mut diagnostics,
     )?;
 
@@ -88,6 +157,12 @@ pub(super) fn read_metadata(
         versions_list,
         patches_list,
         libraries_list,
+        install_properties,
+        bootstrap_properties,
+        bootstrap_list,
+        wrapper_metadata,
+        forge_version,
+        neoforge_version_properties,
         diagnostics,
     })
 }
