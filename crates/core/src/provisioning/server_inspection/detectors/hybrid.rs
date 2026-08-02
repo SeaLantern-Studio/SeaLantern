@@ -11,6 +11,7 @@ use super::super::model::{
     ArtifactRole, EvidenceLocation, EvidenceSource, MavenCoordinate, ServerComponent,
     ServerComponentKind, ServerEcosystem,
 };
+use super::manifest_attributes::{attribute, section_by_title};
 use super::{
     ecosystems_for_key, manifest_location, manifest_section_location, product_from_key,
     release_channel, ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal,
@@ -118,6 +119,7 @@ fn detect_arclight(
             Some(version),
             PathBuf::from("META-INF/MANIFEST.MF"),
             "arclight-manifest",
+            "arclight-manifest",
             EvidenceSource::ManifestMain,
             manifest_location(path, "Implementation-Version"),
             90,
@@ -138,6 +140,7 @@ fn detect_arclight(
             name,
             None,
             PathBuf::from(ARCLIGHT_LAUNCH_PROPERTIES_ENTRY),
+            "arclight-launch-properties",
             "arclight-launch-properties",
             EvidenceSource::PropertiesField,
             location,
@@ -223,6 +226,7 @@ fn detect_mohist(
             "Mohist",
             Some(version),
             PathBuf::from("META-INF/MANIFEST.MF"),
+            "mohist-manifest-section",
             "mohist-product-section",
             EvidenceSource::ManifestSection,
             version_location,
@@ -239,6 +243,7 @@ fn detect_mohist(
         ServerComponentKind::ModLoader,
         "forge",
         "Forge",
+        "mohist-forge-section",
         findings,
     );
     add_section_component(
@@ -249,6 +254,7 @@ fn detect_mohist(
         ServerComponentKind::Api,
         "spigot",
         "Spigot",
+        "mohist-spigot-section",
         findings,
     );
     if let Some(mcp) = section_by_title(sections, "MCP") {
@@ -274,6 +280,7 @@ fn detect_mohist(
                 "MCP",
                 Some(version),
                 PathBuf::from("META-INF/MANIFEST.MF"),
+                "mohist-mcp-section",
                 "mohist-mcp-section",
                 EvidenceSource::ManifestSection,
                 manifest_section_location(path, mcp.name.as_deref(), "Implementation-Version"),
@@ -364,6 +371,7 @@ fn detect_youer(
             "Youer",
             Some(version),
             PathBuf::from("META-INF/MANIFEST.MF"),
+            "youer-manifest-section",
             "youer-product-section",
             EvidenceSource::ManifestSection,
             location,
@@ -480,6 +488,7 @@ fn add_section_component(
     kind: ServerComponentKind,
     key: &str,
     name: &str,
+    detector: &'static str,
     findings: &mut Findings,
 ) {
     let Some(section) = section_by_title(sections, title) else {
@@ -495,7 +504,8 @@ fn add_section_component(
         name,
         Some(version),
         PathBuf::from("META-INF/MANIFEST.MF"),
-        "hybrid-component-section",
+        detector,
+        detector,
         EvidenceSource::ManifestSection,
         manifest_section_location(path, section.name.as_deref(), "Implementation-Version"),
         85,
@@ -511,6 +521,7 @@ fn add_component(
     name: &str,
     version: Option<&str>,
     source_path: PathBuf,
+    detector: &'static str,
     correlation_group: &'static str,
     source: EvidenceSource,
     location: EvidenceLocation,
@@ -529,7 +540,7 @@ fn add_component(
                 coordinate: None,
                 source_path: Some(source_path),
             },
-            detector: "hybrid-server-metadata",
+            detector,
             source,
             location,
             weight,
@@ -572,24 +583,6 @@ fn add_product_version(
             },
         });
     }
-}
-
-fn section_by_title<'a>(
-    sections: &'a [super::super::model::ManifestSection],
-    title: &str,
-) -> Option<&'a super::super::model::ManifestSection> {
-    sections.iter().find(|section| {
-        attribute(&section.attributes, "Implementation-Title")
-            .is_some_and(|value| value.eq_ignore_ascii_case(title))
-    })
-}
-
-fn attribute<'a>(attributes: &'a BTreeMap<String, String>, key: &str) -> Option<&'a str> {
-    attributes
-        .iter()
-        .find(|(candidate, _)| candidate.eq_ignore_ascii_case(key))
-        .map(|(_, value)| value.as_str())
-        .filter(|value| !value.trim().is_empty())
 }
 
 fn arclight_minecraft_version(version: &str) -> Option<&str> {

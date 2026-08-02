@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
@@ -16,6 +15,7 @@ use super::super::model::{
     ArtifactRole, EvidenceLocation, EvidenceSource, LaunchPlatform, LaunchProfile, LaunchTarget,
     MavenCoordinate, ReleaseChannel, ServerComponent, ServerComponentKind,
 };
+use super::manifest_attributes::attribute;
 use super::{
     ecosystems_for_key, product_from_key, release_channel, ComponentFinding, Findings,
     ProductFinding, ProductValueFinding, Signal,
@@ -849,13 +849,6 @@ fn archive_location(path: &Path, entry: &str, field: Option<&str>) -> EvidenceLo
         manifest_section: None,
         field: field.map(str::to_string),
     }
-}
-
-fn attribute<'a>(attributes: &'a BTreeMap<String, String>, key: &str) -> Option<&'a str> {
-    attributes
-        .iter()
-        .find(|(candidate, _)| candidate.eq_ignore_ascii_case(key))
-        .map(|(_, value)| value.as_str())
 }
 
 fn platform_for_script(kind: StartupScriptKind) -> LaunchPlatform {

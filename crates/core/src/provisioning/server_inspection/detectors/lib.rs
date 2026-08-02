@@ -3,6 +3,7 @@ mod forge;
 mod generic;
 mod hybrid;
 mod limbo;
+mod manifest_attributes;
 mod paperclip;
 mod proxy;
 mod sponge;
@@ -42,14 +43,23 @@ const PRODUCTS: &[ProductDefinition] = &[
         "pufferfish",
         "Pufferfish",
         PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
         "gg.pufferfish.pufferfish",
         "pufferfish-api",
     ),
-    ProductDefinition::new("legacy-fabric", "Legacy Fabric", LEGACY_FABRIC_ECOSYSTEMS, "", ""),
+    ProductDefinition::new(
+        "legacy-fabric",
+        "Legacy Fabric",
+        LEGACY_FABRIC_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
     ProductDefinition::new(
         "divinemc",
         "DivineMC",
         PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
         "org.bxteam.divinemc",
         "divinemc-api",
     ),
@@ -57,6 +67,7 @@ const PRODUCTS: &[ProductDefinition] = &[
         "aspaper",
         "AsPaper",
         PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
         "com.infernalsuite.asp",
         "aspaper-api",
     ),
@@ -64,6 +75,7 @@ const PRODUCTS: &[ProductDefinition] = &[
         "purpur",
         "Purpur",
         PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
         "org.purpurmc.purpur",
         "purpur-api",
     ),
@@ -71,6 +83,7 @@ const PRODUCTS: &[ProductDefinition] = &[
         "canvas",
         "Canvas",
         PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
         "io.canvasmc.canvas",
         "canvas-api",
     ),
@@ -78,30 +91,164 @@ const PRODUCTS: &[ProductDefinition] = &[
         "leaves",
         "Leaves",
         PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
         "org.leavesmc.leaves",
         "leaves-api",
     ),
-    ProductDefinition::new("vanilla", "Vanilla", VANILLA_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("neoforge", "NeoForge", NEOFORGE_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("fabric", "Fabric", FABRIC_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("spigot", "Spigot", BUKKIT_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("paper", "Paper", PAPER_ECOSYSTEMS, "io.papermc.paper", "paper-api"),
-    ProductDefinition::new("folia", "Folia", PAPER_ECOSYSTEMS, "dev.folia", "folia-api"),
-    ProductDefinition::new("pluto", "Pluto", PAPER_ECOSYSTEMS, "dev.yive.pluto", "pluto-api"),
-    ProductDefinition::new("forge", "Forge", FORGE_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("leaf", "Leaf", PAPER_ECOSYSTEMS, "cn.dreeam.leaf", "leaf-api"),
-    ProductDefinition::new("arclight", "Arclight", BUKKIT_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("mohist", "Mohist", MOHIST_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("youer", "Youer", NEOFORGE_HYBRID_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("magma", "Magma", NEOFORGE_HYBRID_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("velocity-ctd", "Velocity-CTD", VELOCITY_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("velocity", "Velocity", VELOCITY_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("bungeecord", "BungeeCord", BUNGEE_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("waterfall", "Waterfall", BUNGEE_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("spongevanilla", "SpongeVanilla", SPONGE_VANILLA_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("limbo", "Limbo", NO_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("nanolimbo", "NanoLimbo", NO_ECOSYSTEMS, "", ""),
-    ProductDefinition::new("craftbukkit", "CraftBukkit", BUKKIT_ECOSYSTEMS, "", ""),
+    ProductDefinition::new(
+        "vanilla",
+        "Vanilla",
+        VANILLA_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "neoforge",
+        "NeoForge",
+        NEOFORGE_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "fabric",
+        "Fabric",
+        FABRIC_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "spigot",
+        "Spigot",
+        BUKKIT_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "paper",
+        "Paper",
+        PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "io.papermc.paper",
+        "paper-api",
+    ),
+    ProductDefinition::new(
+        "folia",
+        "Folia",
+        PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "dev.folia",
+        "folia-api",
+    ),
+    ProductDefinition::new(
+        "pluto",
+        "Pluto",
+        PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "dev.yive.pluto",
+        "pluto-api",
+    ),
+    ProductDefinition::new(
+        "forge",
+        "Forge",
+        FORGE_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "leaf",
+        "Leaf",
+        PAPER_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "cn.dreeam.leaf",
+        "leaf-api",
+    ),
+    ProductDefinition::new(
+        "arclight",
+        "Arclight",
+        BUKKIT_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "mohist",
+        "Mohist",
+        MOHIST_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "youer",
+        "Youer",
+        NEOFORGE_HYBRID_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "magma",
+        "Magma",
+        NEOFORGE_HYBRID_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "velocity-ctd",
+        "Velocity-CTD",
+        VELOCITY_ECOSYSTEMS,
+        ServerCategory::Proxy,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "velocity",
+        "Velocity",
+        VELOCITY_ECOSYSTEMS,
+        ServerCategory::Proxy,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "bungeecord",
+        "BungeeCord",
+        BUNGEE_ECOSYSTEMS,
+        ServerCategory::Proxy,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "waterfall",
+        "Waterfall",
+        BUNGEE_ECOSYSTEMS,
+        ServerCategory::Proxy,
+        "",
+        "",
+    ),
+    ProductDefinition::new(
+        "spongevanilla",
+        "SpongeVanilla",
+        SPONGE_VANILLA_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
+    ProductDefinition::new("limbo", "Limbo", NO_ECOSYSTEMS, ServerCategory::Limbo, "", ""),
+    ProductDefinition::new("nanolimbo", "NanoLimbo", NO_ECOSYSTEMS, ServerCategory::Limbo, "", ""),
+    ProductDefinition::new(
+        "craftbukkit",
+        "CraftBukkit",
+        BUKKIT_ECOSYSTEMS,
+        ServerCategory::JavaGameServer,
+        "",
+        "",
+    ),
 ];
 
 #[derive(Debug, Clone, Copy)]
@@ -109,6 +256,7 @@ struct ProductDefinition {
     key: &'static str,
     display_name: &'static str,
     ecosystems: &'static [ServerEcosystem],
+    category: ServerCategory,
     api_group: Option<&'static str>,
     api_artifact: Option<&'static str>,
 }
@@ -118,6 +266,7 @@ impl ProductDefinition {
         key: &'static str,
         display_name: &'static str,
         ecosystems: &'static [ServerEcosystem],
+        category: ServerCategory,
         api_group: &'static str,
         api_artifact: &'static str,
     ) -> Self {
@@ -125,6 +274,7 @@ impl ProductDefinition {
             key,
             display_name,
             ecosystems,
+            category,
             api_group: if api_group.is_empty() {
                 None
             } else {
@@ -302,7 +452,8 @@ fn finalize(
         .collect::<Vec<_>>();
     category_claims.extend(findings.products.iter().map(|finding| {
         let signal = Signal {
-            value: category_for_key(&finding.signal.value.key),
+            value: product_definition(&finding.signal.value.key)
+                .map_or(ServerCategory::JavaGameServer, |definition| definition.category),
             detector: finding.signal.detector,
             source: finding.signal.source,
             location: finding.signal.location.clone(),
@@ -312,7 +463,7 @@ fn finalize(
         push_claim(
             &signal,
             DetectionTarget::ServerCategory,
-            "java_game_server".to_string(),
+            category_name(signal.value).to_string(),
             evidence,
         )
     }));
@@ -749,14 +900,6 @@ fn product_definition(key: &str) -> Option<&'static ProductDefinition> {
     PRODUCTS.iter().find(|definition| definition.key == key)
 }
 
-fn category_for_key(key: &str) -> ServerCategory {
-    match key {
-        "velocity" | "velocity-ctd" | "bungeecord" | "waterfall" => ServerCategory::Proxy,
-        "limbo" | "nanolimbo" => ServerCategory::Limbo,
-        _ => ServerCategory::JavaGameServer,
-    }
-}
-
 fn is_valid_product_key(key: &str) -> bool {
     !key.is_empty()
         && key.len() <= 64
@@ -851,8 +994,26 @@ pub(super) fn api_component(
 
 #[cfg(test)]
 mod tests {
-    use super::{contains_key_with_boundaries, release_channel, target_product_key};
-    use crate::provisioning::server_inspection::ReleaseChannel;
+    use super::{
+        contains_key_with_boundaries, product_definition, release_channel, target_product_key,
+    };
+    use crate::provisioning::server_inspection::{ReleaseChannel, ServerCategory};
+
+    #[test]
+    fn product_definitions_own_their_server_categories() {
+        assert_eq!(
+            product_definition("velocity").map(|definition| definition.category),
+            Some(ServerCategory::Proxy)
+        );
+        assert_eq!(
+            product_definition("nanolimbo").map(|definition| definition.category),
+            Some(ServerCategory::Limbo)
+        );
+        assert_eq!(
+            product_definition("paper").map(|definition| definition.category),
+            Some(ServerCategory::JavaGameServer)
+        );
+    }
 
     #[test]
     fn filename_boundaries_do_not_treat_aspaper_as_paper() {

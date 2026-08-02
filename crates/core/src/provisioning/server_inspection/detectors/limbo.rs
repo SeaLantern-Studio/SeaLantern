@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use super::super::archive::ArchiveMetadata;
 use super::super::formats::manifest;
 use super::super::model::{EvidenceSource, ServerCategory, ServerComponent, ServerComponentKind};
+use super::manifest_attributes::attribute;
 use super::{
     ecosystems_for_key, manifest_location, product_from_key, release_channel, ComponentFinding,
     Findings, ProductFinding, ProductValueFinding, Signal,
@@ -91,12 +91,4 @@ pub(super) fn detect(path: &Path, archive: &ArchiveMetadata, findings: &mut Find
             correlation_group: "limbo-manifest-version",
         },
     });
-}
-
-fn attribute<'a>(attributes: &'a BTreeMap<String, String>, key: &str) -> Option<&'a str> {
-    attributes
-        .iter()
-        .find(|(candidate, _)| candidate.eq_ignore_ascii_case(key))
-        .map(|(_, value)| value.as_str())
-        .filter(|value| !value.trim().is_empty())
 }

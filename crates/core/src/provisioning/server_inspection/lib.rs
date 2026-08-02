@@ -696,7 +696,7 @@ mod tests {
     use zip::write::FileOptions;
 
     use super::{
-        inspect_server_artifact, ArtifactFormat, ArtifactRole, InspectionOptions,
+        inspect_server_artifact, ArtifactFormat, ArtifactRole, DetectionTarget, InspectionOptions,
         InspectionSubjectKind, LaunchPlatform, LaunchTarget, ReleaseChannel, ServerCategory,
         ServerComponentKind, ServerEcosystem,
     };
@@ -803,6 +803,11 @@ mod tests {
                 .iter()
                 .any(|candidate| candidate.value == ecosystem));
             assert_eq!(report.java.required_major.value, Some(11));
+            assert!(report.evidence.iter().any(|evidence| {
+                evidence.detector == "proxy-manifest-product"
+                    && evidence.target == DetectionTarget::ServerCategory
+                    && evidence.candidate == "proxy"
+            }));
         }
     }
 
@@ -862,10 +867,18 @@ mod tests {
             .ecosystems
             .iter()
             .any(|candidate| candidate.value == ServerEcosystem::Forge));
-        assert!(report
+        let forge_component = report
             .components
             .iter()
-            .any(|component| component.value.key == "forge"));
+            .find(|component| component.value.key == "forge")
+            .expect("Forge loader component");
+        assert!(forge_component.evidence.iter().all(|evidence_id| {
+            report
+                .evidence
+                .iter()
+                .find(|evidence| evidence.id == *evidence_id)
+                .is_some_and(|evidence| evidence.detector == "arclight-launch-properties")
+        }));
         assert!(report
             .artifact
             .roles
