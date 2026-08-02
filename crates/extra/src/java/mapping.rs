@@ -2,7 +2,7 @@ use std::{collections::HashSet, path::Path};
 
 use java_manager::JavaInfo as VendorJavaInfo;
 
-use crate::config::JavaInfo;
+use crate::models::JavaInfo;
 
 pub(crate) fn push_unique(
     results: &mut Vec<JavaInfo>,

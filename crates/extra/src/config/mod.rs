@@ -2,9 +2,10 @@ pub mod data_migration;
 pub mod sealantern;
 pub mod server;
 
+#[allow(deprecated)]
 pub use sealantern::types::{
-    AppSettings, InstanceList, JavaInfo, PartialAppSettings, ServerStatus, SettingsGroup,
-    StartupMode, UpdateResult,
+    AppSettings, InstanceList, JavaInfo, NullablePatch, PartialAppSettings, ServerStatus,
+    SettingsGroup, StartupMode, UpdateResult,
 };
 pub use sealantern::InstanceRegistry;
 pub use sealantern::SettingsManager;
