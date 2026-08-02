@@ -8,6 +8,7 @@ license = "GPL-3.0-only"
 path = "src/lib.rs"
 
 [dependencies]
+async-trait = "0.1"
 axum = "0.8"
 sealantern-core = { path = "../crates/core" }
 serde = { version = "1", features = ["derive"] }

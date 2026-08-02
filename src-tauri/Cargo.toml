@@ -14,6 +14,7 @@ crate-type = ["lib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+async-trait = "0.1"
 tauri = { version = "2.9", features = ["macos-private-api", "protocol-asset"] }
 tauri-plugin-dialog = "2.6"
 tauri-plugin-fs = "2.4"
@@ -23,9 +24,11 @@ tauri-plugin-process = "2.3"
 tauri-plugin-window-state = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1", features = ["sync"] }
 sealantern-extra = { path = "../crates/extra" }
 sealantern-core = { path = "../crates/core" }
 sealantern-infra = { path = "../crates/infra" }
+sealantern-server = { path = "../server" }
 
 [features]
 docker = []

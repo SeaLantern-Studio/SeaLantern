@@ -53,19 +53,20 @@ impl HttpRpcAccessResolver for DenyAll {
 /// 供 `build_router` 测试使用的空实例管理服务。
 struct NoopInstanceService;
 
+#[async_trait::async_trait]
 impl crate::rpc::service::InstanceService for NoopInstanceService {
-    fn list(&self) -> Result<Vec<sealantern_core::instance::Instance>, InstanceServiceError> {
+    async fn list(&self) -> Result<Vec<sealantern_core::instance::Instance>, InstanceServiceError> {
         Ok(Vec::new())
     }
 
-    fn find(
+    async fn find(
         &self,
         _id: &sealantern_core::instance::InstanceId,
     ) -> Result<Option<sealantern_core::instance::Instance>, InstanceServiceError> {
         Ok(None)
     }
 
-    fn status(
+    async fn status(
         &self,
         _id: &sealantern_core::instance::InstanceId,
     ) -> Result<sealantern_core::server::ServerStatus, InstanceServiceError> {
@@ -75,42 +76,42 @@ impl crate::rpc::service::InstanceService for NoopInstanceService {
         })
     }
 
-    fn start(
+    async fn start(
         &self,
         _id: &sealantern_core::instance::InstanceId,
     ) -> Result<(), InstanceServiceError> {
         Ok(())
     }
 
-    fn stop(
+    async fn stop(
         &self,
         _id: &sealantern_core::instance::InstanceId,
     ) -> Result<(), InstanceServiceError> {
         Ok(())
     }
 
-    fn force_stop(
+    async fn force_stop(
         &self,
         _id: &sealantern_core::instance::InstanceId,
     ) -> Result<(), InstanceServiceError> {
         Ok(())
     }
 
-    fn create(
+    async fn create(
         &self,
         _spec: sealantern_core::instance::InstanceSpec,
     ) -> Result<sealantern_core::instance::Instance, InstanceServiceError> {
         Err(InstanceServiceError::Unsupported)
     }
 
-    fn delete(
+    async fn delete(
         &self,
         _id: &sealantern_core::instance::InstanceId,
     ) -> Result<bool, InstanceServiceError> {
         Ok(false)
     }
 
-    fn rename(
+    async fn rename(
         &self,
         _id: &sealantern_core::instance::InstanceId,
         _name: &str,
@@ -118,7 +119,7 @@ impl crate::rpc::service::InstanceService for NoopInstanceService {
         Ok(())
     }
 
-    fn update_path(
+    async fn update_path(
         &self,
         _id: &sealantern_core::instance::InstanceId,
         _path: &str,

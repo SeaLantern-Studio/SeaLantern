@@ -5150,9 +5150,11 @@ dependencies = [
 name = "sealantern"
 version = "1.2.0"
 dependencies = [
+ "async-trait",
  "sealantern-core",
  "sealantern-extra",
  "sealantern-infra",
+ "sealantern-server",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -5161,6 +5163,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-window-state",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
@@ -5231,6 +5234,7 @@ version = "1.2.0"
 name = "sealantern-server"
 version = "1.2.0"
 dependencies = [
+ "async-trait",
  "axum",
  "sealantern-core",
  "serde",
