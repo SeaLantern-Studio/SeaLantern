@@ -30,6 +30,7 @@ pub(super) fn detect(
             manifest_location(path, "Main-Class"),
             90,
             "craftbukkit-main-class",
+            "craftbukkit-main-class",
             findings,
         );
         findings.roles.push(Signal {
@@ -49,6 +50,7 @@ pub(super) fn detect(
                 EvidenceSource::JarEntry,
                 location.clone(),
                 95,
+                "craftbukkit-versions-list",
                 "craftbukkit-versions-list",
                 findings,
             );
@@ -140,13 +142,14 @@ fn add_craftbukkit_product(
     source: EvidenceSource,
     location: super::super::model::EvidenceLocation,
     weight: u8,
+    detector: &'static str,
     correlation_group: &'static str,
     findings: &mut Findings,
 ) {
     findings.products.push(ProductFinding {
         signal: Signal {
             value: product_from_key("craftbukkit"),
-            detector: "craftbukkit-bundler",
+            detector,
             source,
             location,
             weight,

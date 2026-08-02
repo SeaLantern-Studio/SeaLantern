@@ -1090,6 +1090,22 @@ mod tests {
             .ecosystems
             .iter()
             .any(|candidate| candidate.value == ServerEcosystem::Bukkit));
+        let implementation_detectors = report
+            .identity
+            .implementation
+            .evidence
+            .iter()
+            .filter_map(|evidence_id| {
+                report
+                    .evidence
+                    .iter()
+                    .find(|evidence| evidence.id == *evidence_id)
+                    .map(|evidence| evidence.detector.as_str())
+            })
+            .collect::<Vec<_>>();
+        assert!(implementation_detectors.contains(&"craftbukkit-main-class"));
+        assert!(implementation_detectors.contains(&"craftbukkit-versions-list"));
+        assert!(!implementation_detectors.contains(&"craftbukkit-bundler"));
     }
 
     #[test]
