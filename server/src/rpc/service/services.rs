@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use super::console::ConsoleCommandService;
-use super::instance::InstanceService;
+use crate::rpc::traits::console::ConsoleCommandService;
+use crate::rpc::traits::instance::InstanceService;
 
 /// 所有可用的 RPC 宿主服务。
 ///

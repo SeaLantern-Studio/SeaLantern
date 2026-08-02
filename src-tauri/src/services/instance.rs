@@ -12,7 +12,7 @@ use sealantern_core::server::ServerStatus;
 use sealantern_extra::config::InstanceRegistry;
 use sealantern_infra::fs::FsError;
 use sealantern_infra::platform::get_app_data_dir;
-use sealantern_server::rpc::service::{InstanceService, InstanceServiceError};
+use sealantern_server::rpc::traits::{InstanceService, InstanceServiceError};
 
 /// 实例列表数据文件名（沿用 v1.2.0 命名，置于应用数据根目录）。
 const INSTANCES_FILE: &str = "sea_lantern_servers.json";

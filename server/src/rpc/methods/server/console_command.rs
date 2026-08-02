@@ -44,7 +44,7 @@ use serde::Deserialize as DeriveDeserialize;
 
 use crate::observability;
 use crate::rpc::axum::{RpcAxumMethod, RpcHttpMethod};
-use crate::rpc::service::{ConsoleCommandService, ConsoleCommandServiceError};
+use crate::rpc::traits::{ConsoleCommandService, ConsoleCommandServiceError};
 use crate::rpc::{RpcContext, RpcError, RpcMethod, RpcMethodName, RpcPermission, RpcResult};
 
 use crate::rpc::methods::PERMISSION_SERVER_CONSOLE_SEND;

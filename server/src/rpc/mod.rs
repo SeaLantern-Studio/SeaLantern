@@ -16,6 +16,7 @@ pub mod router;
 
 pub mod methods;
 pub mod service;
+pub mod traits;
 
 pub use access::{RpcAccess, RpcPermission};
 pub use context::{RpcContext, RpcRequest, RpcRequestId, RpcTransport};

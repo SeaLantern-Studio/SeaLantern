@@ -1,35 +1,10 @@
-//! 服务器控制台输入的宿主能力端口。
+//! 服务器控制台输入的调度实现。
+//!
+//! 契约（`ConsoleCommandService` / `ConsoleCommandExecutor`）定义于
+//! `super::super::traits::console`，本模块只承载实现逻辑（脱敏追踪辅助）。
 
-use super::ConsoleCommandExecutor;
 use crate::observability;
-
-/// 由受管服务器运行时返回的控制台输入失败类别。
-///
-/// 宿主实现必须在向任何子进程写入前验证该实例的 stdin 确实属于受管服务端进程。脚本、
-/// shell 或自定义启动包装进程的 stdin 必须返回 [`Self::InputUnavailable`]，而不能被视为
-/// 可写控制台。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ConsoleCommandServiceError {
-    /// 指定的服务器实例不存在。
-    InstanceNotFound,
-    /// 实例未运行，或其 stdin 不属于已验证的服务端进程。
-    InputUnavailable,
-    /// 已验证的服务端控制台暂时无法接收输入。
-    DeliveryFailed,
-}
-
-/// 向已验证服务器控制台发送单行命令的宿主能力。
-///
-/// 该端口不接受 Tauri、HTTP 或插件运行时类型。实现必须保证错误不会携带命令正文、凭据
-/// 或主机路径；底层失败详情应仅写入受控的宿主日志。
-pub trait ConsoleCommandService: Send + Sync {
-    /// 向指定实例的受管服务端进程发送一条已验证命令。
-    fn send_console_command(
-        &self,
-        instance_id: &str,
-        command: &str,
-    ) -> Result<(), ConsoleCommandServiceError>;
-}
+use crate::rpc::traits::console::ConsoleCommandExecutor;
 
 /// 调度一条服务器控制台命令并记录一次脱敏追踪事件。
 ///
@@ -58,16 +33,16 @@ fn command_char_count(command: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
-    use std::fmt;
+    use crate::rpc::traits::console::ConsoleCommandExecutor;
 
     use super::*;
+    use std::cell::RefCell;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct TestError;
 
-    impl fmt::Display for TestError {
-        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    impl std::fmt::Display for TestError {
+        fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(formatter, "test executor failed")
         }
     }
