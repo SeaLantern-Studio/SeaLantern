@@ -1,4 +1,6 @@
 mod archive;
+#[path = "detectors/lib.rs"]
+mod detectors;
 mod error;
 mod evidence;
 #[path = "formats/lib.rs"]
@@ -100,6 +102,8 @@ pub fn inspect_server_artifact(
     };
     let mut minecraft = None;
     let mut java = JavaRequirementInfo::default();
+    let mut identity = ServerIdentityInfo::default();
+    let mut components = Vec::new();
 
     if metadata.is_dir() {
         let format_evidence = evidence.push(NewEvidence {
@@ -146,8 +150,8 @@ pub fn inspect_server_artifact(
         format_claims.push(claim(format, format_evidence, format_weight, "file-name"));
 
         if format == ArtifactFormat::Jar {
-            let archive_metadata = archive::read_metadata(path, options)?;
-            diagnostics.extend(archive_metadata.diagnostics);
+            let mut archive_metadata = archive::read_metadata(path, options)?;
+            diagnostics.append(&mut archive_metadata.diagnostics);
             let archive_evidence = evidence.push(NewEvidence {
                 detector: "jar-container",
                 source: EvidenceSource::JarEntry,
@@ -164,8 +168,8 @@ pub fn inspect_server_artifact(
                 "archive-container",
             ));
 
-            if let Some(bytes) = archive_metadata.manifest {
-                let parsed = formats::manifest::parse(&bytes);
+            if let Some(bytes) = archive_metadata.manifest.as_deref() {
+                let parsed = formats::manifest::parse(bytes);
                 if parsed.used_lossy_utf8 {
                     diagnostics.push(InspectionDiagnostic {
                         severity: DiagnosticSeverity::Warning,
@@ -188,8 +192,8 @@ pub fn inspect_server_artifact(
                 artifact.manifest = Some(parsed.summary);
             }
 
-            if let Some(bytes) = archive_metadata.mojang_version {
-                match formats::mojang_version::parse(&bytes) {
+            if let Some(bytes) = archive_metadata.mojang_version.as_deref() {
+                match formats::mojang_version::parse(bytes) {
                     Ok(Some(document)) => {
                         let (minecraft_info, java_info, mut version_diagnostics) =
                             apply_mojang_version(path, document, &mut evidence);
@@ -217,6 +221,36 @@ pub fn inspect_server_artifact(
                     }),
                 }
             }
+
+            let detector_output = detectors::detect_jar(
+                path,
+                &artifact,
+                &archive_metadata,
+                minecraft.as_ref(),
+                &mut evidence,
+            );
+            identity = detector_output.identity;
+            if detector_output.minecraft_version.confidence > 0 {
+                let minecraft_info = minecraft.get_or_insert_with(MinecraftVersionInfo::default);
+                for evidence_id in detector_output.minecraft_version.evidence.iter().chain(
+                    detector_output
+                        .minecraft_version
+                        .alternatives
+                        .iter()
+                        .flat_map(|candidate| candidate.evidence.iter()),
+                ) {
+                    if !minecraft_info.evidence.contains(evidence_id) {
+                        minecraft_info.evidence.push(*evidence_id);
+                    }
+                }
+                minecraft_info.version = detector_output.minecraft_version;
+            }
+            roles.extend(detector_output.roles);
+            components = detector_output.components;
+            for diagnostic in detector_output.diagnostics {
+                diagnostics.retain(|existing| existing.code != diagnostic.code);
+                diagnostics.push(diagnostic);
+            }
         }
     }
 
@@ -227,10 +261,10 @@ pub fn inspect_server_artifact(
         schema_version: SERVER_INSPECTION_SCHEMA_VERSION,
         subject,
         artifact,
-        identity: ServerIdentityInfo::default(),
+        identity,
         minecraft,
         java,
-        components: Vec::new(),
+        components,
         launches,
         evidence: evidence.into_entries(),
         diagnostics,
@@ -622,7 +656,7 @@ mod tests {
 
     use super::{
         inspect_server_artifact, ArtifactFormat, ArtifactRole, InspectionOptions,
-        InspectionSubjectKind, LaunchTarget,
+        InspectionSubjectKind, LaunchTarget, ReleaseChannel, ServerCategory, ServerEcosystem,
     };
 
     fn temporary_path(suffix: &str) -> PathBuf {
@@ -637,21 +671,345 @@ mod tests {
     }
 
     fn write_test_jar(path: &Path, manifest: &str, version_json: &str) {
+        write_test_jar_entries(
+            path,
+            &[("META-INF/MANIFEST.MF", manifest), ("version.json", version_json)],
+        );
+    }
+
+    fn write_test_jar_entries(path: &Path, entries: &[(&str, &str)]) {
         let file = File::create(path).expect("create test JAR");
         let mut archive = zip::ZipWriter::new(file);
-        archive
-            .start_file("META-INF/MANIFEST.MF", FileOptions::<()>::default())
-            .expect("create manifest entry");
-        archive
-            .write_all(manifest.as_bytes())
-            .expect("write manifest");
-        archive
-            .start_file("version.json", FileOptions::<()>::default())
-            .expect("create version entry");
-        archive
-            .write_all(version_json.as_bytes())
-            .expect("write version JSON");
+        for (name, content) in entries {
+            archive
+                .start_file(*name, FileOptions::<()>::default())
+                .expect("create metadata entry");
+            archive
+                .write_all(content.as_bytes())
+                .expect("write metadata entry");
+        }
         archive.finish().expect("finish test JAR");
+    }
+
+    #[test]
+    fn distinguishes_paperclip_products_from_content_evidence() {
+        struct Case {
+            key: &'static str,
+            minecraft: &'static str,
+            main_class: &'static str,
+            coordinate: &'static str,
+            version: &'static str,
+            channel: ReleaseChannel,
+        }
+
+        let cases = [
+            Case {
+                key: "paper",
+                minecraft: "26.2",
+                main_class: "io.papermc.paperclip.Main",
+                coordinate: "io.papermc.paper:paper-api:26.2.build.87-stable",
+                version: "26.2.build.87-stable",
+                channel: ReleaseChannel::Stable,
+            },
+            Case {
+                key: "purpur",
+                minecraft: "26.2",
+                main_class: "io.papermc.paperclip.Main",
+                coordinate: "org.purpurmc.purpur:purpur-api:26.2.build.2618-stable",
+                version: "26.2.build.2618-stable",
+                channel: ReleaseChannel::Stable,
+            },
+            Case {
+                key: "folia",
+                minecraft: "26.2",
+                main_class: "io.papermc.paperclip.Main",
+                coordinate: "dev.folia:folia-api:26.2.build.1-beta",
+                version: "26.2.build.1-beta",
+                channel: ReleaseChannel::Beta,
+            },
+            Case {
+                key: "pufferfish",
+                minecraft: "1.21.10",
+                main_class: "io.papermc.paperclip.Main",
+                coordinate: "gg.pufferfish.pufferfish:pufferfish-api:1.21.10-R0.1-SNAPSHOT",
+                version: "1.21.10-R0.1-SNAPSHOT",
+                channel: ReleaseChannel::Snapshot,
+            },
+            Case {
+                key: "aspaper",
+                minecraft: "26.2",
+                main_class: "io.papermc.paperclip.Main",
+                coordinate: "com.infernalsuite.asp:aspaper-api:26.2.build.62-beta",
+                version: "26.2.build.62-beta",
+                channel: ReleaseChannel::Beta,
+            },
+            Case {
+                key: "canvas",
+                minecraft: "26.2",
+                main_class: "io.papermc.paperclip.Main",
+                coordinate: "io.canvasmc.canvas:canvas-api:26.2.build.890-stable",
+                version: "26.2.build.890-stable",
+                channel: ReleaseChannel::Stable,
+            },
+            Case {
+                key: "divinemc",
+                minecraft: "26.2",
+                main_class: "io.papermc.paperclip.Main",
+                coordinate: "org.bxteam.divinemc:divinemc-api:26.2.build.4-stable",
+                version: "26.2.build.4-stable",
+                channel: ReleaseChannel::Stable,
+            },
+            Case {
+                key: "pluto",
+                minecraft: "26.2",
+                main_class: "io.papermc.paperclip.Main",
+                coordinate: "dev.yive.pluto:pluto-api:26.2-R0.1-SNAPSHOT",
+                version: "26.2-R0.1-SNAPSHOT",
+                channel: ReleaseChannel::Snapshot,
+            },
+            Case {
+                key: "leaf",
+                minecraft: "26.2",
+                main_class: "cn.dreeam.leaper.Main",
+                coordinate: "cn.dreeam.leaf:leaf-api:26.2.build.45-alpha",
+                version: "26.2.build.45-alpha",
+                channel: ReleaseChannel::Alpha,
+            },
+            Case {
+                key: "leaves",
+                minecraft: "1.21.11",
+                main_class: "org.leavesmc.leavesclip.Main",
+                coordinate: "org.leavesmc.leaves:leaves-api:1.21.11-R0.1-SNAPSHOT",
+                version: "1.21.11-R0.1-SNAPSHOT",
+                channel: ReleaseChannel::Snapshot,
+            },
+        ];
+
+        for case in cases {
+            let path = temporary_path(&format!("{}-server.jar", case.key));
+            let manifest = format!("Main-Class: {}\r\n\r\n", case.main_class);
+            let versions = format!(
+                "version-hash\t{}\t{}/{}-{}.jar\n",
+                case.minecraft, case.minecraft, case.key, case.minecraft
+            );
+            let patches = format!(
+                "versions\tinput\tpatch\toutput\t{0}/server-{0}.jar\t{0}/server.patch\t{0}/{1}-{0}.jar\n",
+                case.minecraft, case.key
+            );
+            let artifact = case
+                .coordinate
+                .split(':')
+                .nth(1)
+                .expect("API artifact in coordinate");
+            let libraries =
+                format!("library-hash\t{}\t{artifact}-{}.jar\n", case.coordinate, case.version);
+            let version_json = format!(
+                r#"{{"id":"{}","name":"{}","world_version":4903,"stable":true}}"#,
+                case.minecraft, case.minecraft
+            );
+            write_test_jar_entries(
+                &path,
+                &[
+                    ("META-INF/MANIFEST.MF", &manifest),
+                    ("META-INF/versions.list", &versions),
+                    ("META-INF/patches.list", &patches),
+                    ("META-INF/libraries.list", &libraries),
+                    ("version.json", &version_json),
+                ],
+            );
+
+            let report = inspect_server_artifact(&path, &InspectionOptions::default())
+                .expect("inspect Paperclip fixture");
+            fs::remove_file(&path).expect("remove Paperclip fixture");
+
+            assert_eq!(
+                report
+                    .identity
+                    .implementation
+                    .value
+                    .as_ref()
+                    .map(|product| product.key.as_str()),
+                Some(case.key)
+            );
+            assert_eq!(report.identity.implementation.confidence, 100);
+            assert_eq!(report.identity.version.value.as_deref(), Some(case.version));
+            assert_eq!(report.identity.release_channel.value, Some(case.channel));
+            assert_eq!(report.identity.category.value, Some(ServerCategory::JavaGameServer));
+            assert!(report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|ecosystem| ecosystem.value == ServerEcosystem::Paper));
+            assert!(report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|ecosystem| ecosystem.value == ServerEcosystem::Bukkit));
+            assert!(report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Bootstrapper));
+            assert_eq!(report.components.len(), 1);
+            assert_eq!(
+                report.components[0]
+                    .value
+                    .coordinate
+                    .as_ref()
+                    .map(|coordinate| coordinate.version.as_str()),
+                Some(case.version)
+            );
+            assert_eq!(
+                report
+                    .minecraft
+                    .as_ref()
+                    .and_then(|minecraft| minecraft.version.value.as_deref()),
+                Some(case.minecraft)
+            );
+            let minecraft = report.minecraft.as_ref().expect("Minecraft metadata");
+            assert!(minecraft
+                .version
+                .evidence
+                .iter()
+                .all(|evidence_id| minecraft.evidence.contains(evidence_id)));
+        }
+    }
+
+    #[test]
+    fn detects_vanilla_content_even_when_the_file_is_named_quilt() {
+        let path = temporary_path("quilt-server.jar");
+        write_test_jar_entries(
+            &path,
+            &[
+                ("META-INF/MANIFEST.MF", "Main-Class: net.minecraft.bundler.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/server-26.2.jar\n"),
+                (
+                    "version.json",
+                    r#"{"id":"26.2","name":"26.2","world_version":4903,"stable":true}"#,
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect renamed vanilla JAR");
+        fs::remove_file(&path).expect("remove vanilla fixture");
+
+        assert_eq!(
+            report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str()),
+            Some("vanilla")
+        );
+        assert_eq!(report.identity.implementation.confidence, 100);
+        assert_eq!(report.identity.version.value.as_deref(), Some("26.2"));
+        assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::Stable));
+        assert_eq!(report.identity.ecosystems[0].value, ServerEcosystem::Vanilla);
+    }
+
+    #[test]
+    fn supports_spigot_paperclip_with_a_wildcard_api_coordinate() {
+        let path = temporary_path("spigot.jar");
+        write_test_jar_entries(
+            &path,
+            &[
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/spigot-26.2.jar\n"),
+                (
+                    "META-INF/patches.list",
+                    "versions\tinput\tpatch\toutput\t26.2/server-26.2.jar\t26.2/server.patch\t26.2/spigot-26.2.jar\n",
+                ),
+                (
+                    "META-INF/libraries.list",
+                    "hash\t*\tspigot-api-26.2-R0.1-SNAPSHOT.jar\n",
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect Spigot Paperclip fixture");
+        fs::remove_file(&path).expect("remove Spigot fixture");
+
+        assert_eq!(
+            report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str()),
+            Some("spigot")
+        );
+        assert_eq!(report.identity.version.value.as_deref(), Some("26.2-R0.1-SNAPSHOT"));
+        assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::Snapshot));
+        assert_eq!(report.identity.ecosystems.len(), 1);
+        assert_eq!(report.identity.ecosystems[0].value, ServerEcosystem::Bukkit);
+        assert!(report.components[0].value.coordinate.is_none());
+    }
+
+    #[test]
+    fn accepts_an_unknown_paperclip_product_without_expanding_an_enum() {
+        let path = temporary_path("custom-fork.jar");
+        write_test_jar_entries(
+            &path,
+            &[
+                (
+                    "META-INF/MANIFEST.MF",
+                    "Main-Class: io.papermc.paperclip.Main\r\n\r\n",
+                ),
+                (
+                    "META-INF/versions.list",
+                    "hash\t26.2\t26.2/custom-fork-26.2.jar\n",
+                ),
+                (
+                    "META-INF/libraries.list",
+                    "hash\texample.server:custom-fork-api:26.2.build.1-stable\tcustom-fork-api.jar\n",
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect unknown Paperclip fixture");
+        fs::remove_file(&path).expect("remove unknown Paperclip fixture");
+
+        let product = report
+            .identity
+            .implementation
+            .value
+            .expect("open product identity");
+        assert_eq!(product.key, "custom-fork");
+        assert_eq!(product.display_name, "Custom Fork");
+        assert_eq!(report.identity.version.value.as_deref(), Some("26.2.build.1-stable"));
+        assert_eq!(report.identity.ecosystems.len(), 2);
+    }
+
+    #[test]
+    fn leaves_strong_conflicting_product_evidence_unresolved() {
+        let path = temporary_path("server.jar");
+        write_test_jar_entries(
+            &path,
+            &[
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/purpur-26.2.jar\n"),
+                (
+                    "META-INF/libraries.list",
+                    "hash\tio.papermc.paper:paper-api:26.2.build.87-stable\tpaper-api.jar\n",
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect conflicting Paperclip fixture");
+        fs::remove_file(&path).expect("remove conflicting fixture");
+
+        assert!(report.identity.implementation.value.is_none());
+        assert_eq!(report.identity.implementation.alternatives.len(), 2);
+        assert!(report.identity.ecosystems.is_empty());
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "conflicting_server_implementations"));
     }
 
     #[test]

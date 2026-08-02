@@ -187,7 +187,7 @@ pub enum ReleaseChannel {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MinecraftVersionInfo {
     pub version: Detected<String>,
     pub id: Option<String>,

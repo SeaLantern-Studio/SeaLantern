@@ -1,4 +1,4 @@
-use super::model::{Detected, DetectionCandidate, EvidenceId};
+use super::model::{Attributed, Detected, DetectionCandidate, EvidenceId};
 
 #[derive(Debug, Clone)]
 pub(crate) struct DetectionClaim<T> {
@@ -18,6 +18,51 @@ struct CandidateState<T> {
 
 /// 同一候选的独立来源只提供有限加分，避免同一文件中的重复字段淹没冲突证据。
 pub(crate) fn resolve<T>(claims: Vec<DetectionClaim<T>>) -> Detected<T>
+where
+    T: Clone + Eq,
+{
+    let candidates = rank_candidates(claims);
+    let Some(winner) = candidates.first().cloned() else {
+        return Detected::default();
+    };
+    let conflicts = candidates.get(1).is_some_and(|runner_up| {
+        (winner.confidence >= 80 && runner_up.confidence >= 80)
+            || (runner_up.confidence >= 50
+                && winner.confidence.saturating_sub(runner_up.confidence) < 15)
+    });
+
+    if conflicts {
+        return Detected {
+            value: None,
+            confidence: winner.confidence,
+            evidence: winner.evidence.clone(),
+            alternatives: candidates,
+        };
+    }
+
+    Detected {
+        value: Some(winner.value),
+        confidence: winner.confidence,
+        evidence: winner.evidence,
+        alternatives: candidates.into_iter().skip(1).collect(),
+    }
+}
+
+pub(crate) fn resolve_attributed<T>(claims: Vec<DetectionClaim<T>>) -> Vec<Attributed<T>>
+where
+    T: Clone + Eq,
+{
+    rank_candidates(claims)
+        .into_iter()
+        .map(|candidate| Attributed {
+            value: candidate.value,
+            confidence: candidate.confidence,
+            evidence: candidate.evidence,
+        })
+        .collect()
+}
+
+fn rank_candidates<T>(claims: Vec<DetectionClaim<T>>) -> Vec<DetectionCandidate<T>>
 where
     T: Clone + Eq,
 {
@@ -79,34 +124,10 @@ where
             .then_with(|| left_index.cmp(right_index))
     });
 
-    let Some((winner, _)) = candidates.first().cloned() else {
-        return Detected::default();
-    };
-    let conflicts = candidates.get(1).is_some_and(|(runner_up, _)| {
-        (winner.confidence >= 80 && runner_up.confidence >= 80)
-            || (runner_up.confidence >= 50
-                && winner.confidence.saturating_sub(runner_up.confidence) < 15)
-    });
-    let candidates = candidates
+    candidates
         .into_iter()
         .map(|(candidate, _)| candidate)
-        .collect::<Vec<_>>();
-
-    if conflicts {
-        return Detected {
-            value: None,
-            confidence: winner.confidence,
-            evidence: winner.evidence.clone(),
-            alternatives: candidates,
-        };
-    }
-
-    Detected {
-        value: Some(winner.value),
-        confidence: winner.confidence,
-        evidence: winner.evidence,
-        alternatives: candidates.into_iter().skip(1).collect(),
-    }
+        .collect()
 }
 
 #[cfg(test)]

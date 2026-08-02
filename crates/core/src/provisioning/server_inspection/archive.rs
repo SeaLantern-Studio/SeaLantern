@@ -10,10 +10,16 @@ use super::InspectionOptions;
 
 const MANIFEST_ENTRY: &str = "META-INF/MANIFEST.MF";
 const MOJANG_VERSION_ENTRY: &str = "version.json";
+pub(super) const VERSIONS_LIST_ENTRY: &str = "META-INF/versions.list";
+pub(super) const PATCHES_LIST_ENTRY: &str = "META-INF/patches.list";
+pub(super) const LIBRARIES_LIST_ENTRY: &str = "META-INF/libraries.list";
 
 pub(super) struct ArchiveMetadata {
     pub(super) manifest: Option<Vec<u8>>,
     pub(super) mojang_version: Option<Vec<u8>>,
+    pub(super) versions_list: Option<Vec<u8>>,
+    pub(super) patches_list: Option<Vec<u8>>,
+    pub(super) libraries_list: Option<Vec<u8>>,
     pub(super) diagnostics: Vec<InspectionDiagnostic>,
 }
 
@@ -51,8 +57,39 @@ pub(super) fn read_metadata(
         &mut consumed,
         &mut diagnostics,
     )?;
+    let versions_list = read_optional_entry(
+        &mut archive,
+        path,
+        VERSIONS_LIST_ENTRY,
+        options,
+        &mut consumed,
+        &mut diagnostics,
+    )?;
+    let patches_list = read_optional_entry(
+        &mut archive,
+        path,
+        PATCHES_LIST_ENTRY,
+        options,
+        &mut consumed,
+        &mut diagnostics,
+    )?;
+    let libraries_list = read_optional_entry(
+        &mut archive,
+        path,
+        LIBRARIES_LIST_ENTRY,
+        options,
+        &mut consumed,
+        &mut diagnostics,
+    )?;
 
-    Ok(ArchiveMetadata { manifest, mojang_version, diagnostics })
+    Ok(ArchiveMetadata {
+        manifest,
+        mojang_version,
+        versions_list,
+        patches_list,
+        libraries_list,
+        diagnostics,
+    })
 }
 
 fn read_optional_entry(
