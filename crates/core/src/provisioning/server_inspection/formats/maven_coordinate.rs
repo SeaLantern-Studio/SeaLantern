@@ -14,12 +14,12 @@ pub(crate) fn parse(value: &str) -> Option<MavenCoordinate> {
             classifier: None,
             extension: None,
         }),
-        [group, artifact, extension, version] => Some(MavenCoordinate {
+        [group, artifact, version, classifier] => Some(MavenCoordinate {
             group: (*group).to_string(),
             artifact: (*artifact).to_string(),
             version: (*version).to_string(),
-            classifier: None,
-            extension: Some((*extension).to_string()),
+            classifier: Some((*classifier).to_string()),
+            extension: None,
         }),
         [group, artifact, extension, classifier, version] => Some(MavenCoordinate {
             group: (*group).to_string(),
@@ -47,6 +47,11 @@ mod tests {
         let extended = parse("example:server:jar:mojmap:1.0").expect("extended coordinate");
         assert_eq!(extended.extension.as_deref(), Some("jar"));
         assert_eq!(extended.classifier.as_deref(), Some("mojmap"));
+
+        let classified =
+            parse("net.minecraftforge:forge:26.2-65.1.0:server").expect("classified coordinate");
+        assert_eq!(classified.version, "26.2-65.1.0");
+        assert_eq!(classified.classifier.as_deref(), Some("server"));
     }
 
     #[test]

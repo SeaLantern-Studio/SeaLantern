@@ -1,6 +1,7 @@
 mod archive;
 #[path = "detectors/lib.rs"]
 mod detectors;
+mod directory;
 mod error;
 mod evidence;
 #[path = "formats/lib.rs"]
@@ -131,6 +132,20 @@ pub fn inspect_server_artifact(
             confidence: 100,
             evidence: vec![role_evidence],
         });
+
+        let mut directory_metadata = directory::read_metadata(path, options)?;
+        diagnostics.append(&mut directory_metadata.diagnostics);
+        let detector_output = detectors::detect_directory(path, &directory_metadata, &mut evidence);
+        apply_detector_output(
+            detector_output,
+            &mut identity,
+            &mut minecraft,
+            &mut java,
+            &mut roles,
+            &mut components,
+            &mut launches,
+            &mut diagnostics,
+        );
     } else {
         let format = format_from_path(path);
         let format_weight = if format == ArtifactFormat::Unknown {
@@ -227,30 +242,19 @@ pub fn inspect_server_artifact(
                 &artifact,
                 &archive_metadata,
                 minecraft.as_ref(),
+                Some(&java.required_major),
                 &mut evidence,
             );
-            identity = detector_output.identity;
-            if detector_output.minecraft_version.confidence > 0 {
-                let minecraft_info = minecraft.get_or_insert_with(MinecraftVersionInfo::default);
-                for evidence_id in detector_output.minecraft_version.evidence.iter().chain(
-                    detector_output
-                        .minecraft_version
-                        .alternatives
-                        .iter()
-                        .flat_map(|candidate| candidate.evidence.iter()),
-                ) {
-                    if !minecraft_info.evidence.contains(evidence_id) {
-                        minecraft_info.evidence.push(*evidence_id);
-                    }
-                }
-                minecraft_info.version = detector_output.minecraft_version;
-            }
-            roles.extend(detector_output.roles);
-            components = detector_output.components;
-            for diagnostic in detector_output.diagnostics {
-                diagnostics.retain(|existing| existing.code != diagnostic.code);
-                diagnostics.push(diagnostic);
-            }
+            apply_detector_output(
+                detector_output,
+                &mut identity,
+                &mut minecraft,
+                &mut java,
+                &mut roles,
+                &mut components,
+                &mut launches,
+                &mut diagnostics,
+            );
         }
     }
 
@@ -269,6 +273,43 @@ pub fn inspect_server_artifact(
         evidence: evidence.into_entries(),
         diagnostics,
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_detector_output(
+    detector_output: detectors::DetectorOutput,
+    identity: &mut ServerIdentityInfo,
+    minecraft: &mut Option<MinecraftVersionInfo>,
+    java: &mut JavaRequirementInfo,
+    roles: &mut Vec<Attributed<ArtifactRole>>,
+    components: &mut Vec<Attributed<ServerComponent>>,
+    launches: &mut Vec<Attributed<LaunchProfile>>,
+    diagnostics: &mut Vec<InspectionDiagnostic>,
+) {
+    *identity = detector_output.identity;
+    if detector_output.minecraft_version.confidence > 0 {
+        let minecraft_info = minecraft.get_or_insert_with(MinecraftVersionInfo::default);
+        for evidence_id in detector_output.minecraft_version.evidence.iter().chain(
+            detector_output
+                .minecraft_version
+                .alternatives
+                .iter()
+                .flat_map(|candidate| candidate.evidence.iter()),
+        ) {
+            if !minecraft_info.evidence.contains(evidence_id) {
+                minecraft_info.evidence.push(*evidence_id);
+            }
+        }
+        minecraft_info.version = detector_output.minecraft_version;
+    }
+    roles.extend(detector_output.roles);
+    *components = detector_output.components;
+    launches.extend(detector_output.launches);
+    java.required_major = detector_output.java_major;
+    for diagnostic in detector_output.diagnostics {
+        diagnostics.retain(|existing| existing.code != diagnostic.code);
+        diagnostics.push(diagnostic);
+    }
 }
 
 fn validate_options(options: &InspectionOptions) -> Result<(), ServerInspectionError> {
@@ -656,7 +697,8 @@ mod tests {
 
     use super::{
         inspect_server_artifact, ArtifactFormat, ArtifactRole, InspectionOptions,
-        InspectionSubjectKind, LaunchTarget, ReleaseChannel, ServerCategory, ServerEcosystem,
+        InspectionSubjectKind, LaunchPlatform, LaunchTarget, ReleaseChannel, ServerCategory,
+        ServerComponentKind, ServerEcosystem,
     };
 
     fn temporary_path(suffix: &str) -> PathBuf {
@@ -678,6 +720,9 @@ mod tests {
     }
 
     fn write_test_jar_entries(path: &Path, entries: &[(&str, &str)]) {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create test JAR parent directory");
+        }
         let file = File::create(path).expect("create test JAR");
         let mut archive = zip::ZipWriter::new(file);
         for (name, content) in entries {
@@ -689,6 +734,334 @@ mod tests {
                 .expect("write metadata entry");
         }
         archive.finish().expect("finish test JAR");
+    }
+
+    #[test]
+    fn distinguishes_fabric_loader_from_installer_version() {
+        let cases = [
+            ("fabric", "FabricInstaller", "26.2"),
+            ("legacy-fabric", "LegacyFabricInstaller", "1.13.2"),
+        ];
+
+        for (product_key, title, minecraft_version) in cases {
+            let path = temporary_path(&format!("{product_key}.jar"));
+            let manifest = format!(
+                "Manifest-Version: 1.0\r\nImplementation-Title: {title}\r\nImplementation-Version: 1.1.1\r\nMain-Class: net.fabricmc.installer.ServerLauncher\r\n\r\n"
+            );
+            let properties =
+                format!("fabric-loader-version=0.19.3\ngame-version={minecraft_version}\n");
+            write_test_jar_entries(
+                &path,
+                &[("META-INF/MANIFEST.MF", &manifest), ("install.properties", &properties)],
+            );
+
+            let report = inspect_server_artifact(&path, &InspectionOptions::default())
+                .expect("inspect Fabric launcher");
+            fs::remove_file(&path).expect("remove Fabric fixture");
+
+            assert_eq!(
+                report
+                    .identity
+                    .implementation
+                    .value
+                    .as_ref()
+                    .map(|product| product.key.as_str()),
+                Some(product_key)
+            );
+            assert_eq!(report.identity.version.value.as_deref(), Some("0.19.3"));
+            assert_ne!(report.identity.version.value.as_deref(), Some("1.1.1"));
+            assert_eq!(
+                report
+                    .minecraft
+                    .as_ref()
+                    .and_then(|minecraft| minecraft.version.value.as_deref()),
+                Some(minecraft_version)
+            );
+            assert!(report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Installer));
+            assert!(report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Launcher));
+            assert!(report.components.iter().any(|component| {
+                component.value.kind == ServerComponentKind::ModLoader
+                    && component.value.version.as_deref() == Some("0.19.3")
+            }));
+            assert!(report.components.iter().any(|component| {
+                component.value.kind == ServerComponentKind::Installer
+                    && component.value.version.as_deref() == Some("1.1.1")
+            }));
+        }
+    }
+
+    #[test]
+    fn discovers_a_fabric_launcher_in_an_installation_directory() {
+        let root = temporary_path("fabric-installation");
+        fs::create_dir_all(&root).expect("create Fabric installation directory");
+        write_test_jar_entries(
+            &root.join("fabric-server-launch.jar"),
+            &[
+                (
+                    "META-INF/MANIFEST.MF",
+                    "Implementation-Title: FabricInstaller\r\nImplementation-Version: 1.1.1\r\nMain-Class: net.fabricmc.installer.ServerLauncher\r\n\r\n",
+                ),
+                (
+                    "install.properties",
+                    "fabric-loader-version=0.19.3\ngame-version=26.2\n",
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect Fabric installation directory");
+        fs::remove_dir_all(&root).expect("remove Fabric installation fixture");
+
+        assert_eq!(
+            report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str()),
+            Some("fabric")
+        );
+        assert_eq!(report.identity.version.value.as_deref(), Some("0.19.3"));
+        assert!(report.launches.iter().any(|launch| {
+            matches!(
+                &launch.value.target,
+                LaunchTarget::Jar { path }
+                    if path.file_name().and_then(|name| name.to_str())
+                        == Some("fabric-server-launch.jar")
+            )
+        }));
+    }
+
+    #[test]
+    fn inspects_a_forge_installation_directory_and_launch_profiles() {
+        let root = temporary_path("forge-installation");
+        fs::create_dir_all(&root).expect("create Forge fixture directory");
+        write_test_jar_entries(
+            &root.join("server.jar"),
+            &[
+                (
+                    "META-INF/MANIFEST.MF",
+                    "Manifest-Version: 1.0\r\nMain-Class: net.minecraftforge.bootstrap.shim.Main\r\n\r\nName: net/minecraftforge/bootstrap/shim/\r\nImplementation-Title: bs-shim\r\nImplementation-Version: 2.1.8\r\n\r\n",
+                ),
+                (
+                    "bootstrap-shim.properties",
+                    "Arguments=--launchTarget forge_server\nJava-Version=25\nMain-Class=net.minecraftforge.bootstrap.ForgeBootstrap\n",
+                ),
+                (
+                    "bootstrap-shim.list",
+                    "hash\tnet.minecraftforge:forge:26.2-65.1.0:server\tnet/minecraftforge/forge/26.2-65.1.0/forge-server.jar\n",
+                ),
+            ],
+        );
+        let version_directory = root.join("libraries/net/minecraftforge/forge/26.2-65.1.0");
+        fs::create_dir_all(&version_directory).expect("create Forge version directory");
+        fs::write(
+            version_directory.join("win_args.txt"),
+            "-Dexample=true -jar forge-26.2-65.1.0-shim.jar\n",
+        )
+        .expect("write Forge Windows args");
+        fs::write(
+            version_directory.join("unix_args.txt"),
+            "-Dexample=true -jar forge-26.2-65.1.0-shim.jar\n",
+        )
+        .expect("write Forge Unix args");
+        fs::write(
+            root.join("run.bat"),
+            "java @libraries/net/minecraftforge/forge/26.2-65.1.0/win_args.txt %*\n",
+        )
+        .expect("write Forge startup script");
+        write_test_jar_entries(
+            &root.join(
+                "libraries/net/minecraftforge/fmlloader/26.2-65.1.0/fmlloader-26.2-65.1.0.jar",
+            ),
+            &[(
+                "forge_version.json",
+                r#"{"forge":"65.1.0","mc":"26.2","mcp":"20260616.103818"}"#,
+            )],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect Forge directory");
+        fs::remove_dir_all(&root).expect("remove Forge fixture");
+
+        assert_eq!(
+            report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str()),
+            Some("forge")
+        );
+        assert_eq!(report.identity.version.value.as_deref(), Some("65.1.0"));
+        assert_eq!(
+            report
+                .minecraft
+                .as_ref()
+                .and_then(|minecraft| minecraft.version.value.as_deref()),
+            Some("26.2")
+        );
+        assert_eq!(report.java.required_major.value, Some(25));
+        assert!(report
+            .components
+            .iter()
+            .any(|component| component.value.key == "forge"));
+        assert!(report
+            .components
+            .iter()
+            .any(|component| component.value.key == "mcp"));
+        assert!(report
+            .components
+            .iter()
+            .any(|component| component.value.key == "forge-bootstrap-shim"));
+        assert!(report
+            .launches
+            .iter()
+            .any(|launch| launch.value.platform == LaunchPlatform::Windows));
+        assert!(report
+            .launches
+            .iter()
+            .any(|launch| launch.value.platform == LaunchPlatform::Unix));
+        assert!(report
+            .launches
+            .iter()
+            .any(|launch| matches!(launch.value.target, LaunchTarget::Script { .. })));
+    }
+
+    #[test]
+    fn keeps_multiple_installed_forge_versions_ambiguous() {
+        let root = temporary_path("forge-multiple-versions");
+        for version in ["1.20.1-47.2.0", "1.20.1-47.3.0"] {
+            let directory = root
+                .join("libraries/net/minecraftforge/forge")
+                .join(version);
+            fs::create_dir_all(&directory).expect("create Forge version directory");
+            fs::write(directory.join("win_args.txt"), format!("-jar forge-{version}-shim.jar\n"))
+                .expect("write Forge args");
+        }
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect multi-version Forge directory");
+        fs::remove_dir_all(&root).expect("remove multi-version Forge fixture");
+
+        assert_eq!(
+            report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str()),
+            Some("forge")
+        );
+        assert!(report.identity.version.value.is_none());
+        assert_eq!(report.identity.version.alternatives.len(), 2);
+        assert_eq!(
+            report
+                .components
+                .iter()
+                .filter(|component| component.value.kind == ServerComponentKind::ModLoader)
+                .count(),
+            2
+        );
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "conflicting_server_versions"));
+    }
+
+    #[test]
+    fn inspects_a_neoforge_installation_directory_and_wrapper() {
+        let root = temporary_path("neoforge-server.jar");
+        fs::create_dir_all(&root).expect("create NeoForge fixture directory");
+        write_test_jar_entries(
+            &root.join("server.jar"),
+            &[
+                (
+                    "META-INF/MANIFEST.MF",
+                    "Manifest-Version: 1.0\r\nMain-Class: app.mcjars.serverstarter.ServerStarter\r\n\r\n",
+                ),
+                (
+                    "metadata.json",
+                    r#"{"version":"26.2","neoforge":"26.2.0.41-beta"}"#,
+                ),
+            ],
+        );
+        let version_directory = root.join("libraries/net/neoforged/neoforge/26.2.0.41-beta");
+        fs::create_dir_all(&version_directory).expect("create NeoForge version directory");
+        let arguments = concat!(
+            "-classpath\n",
+            "libraries/net/neoforged/loader.jar\n",
+            "net.neoforged.fml.startup.Server\n",
+            "--fml.neoForgeVersion 26.2.0.41-beta\n",
+            "--fml.mcVersion 26.2\n",
+        );
+        fs::write(version_directory.join("win_args.txt"), arguments)
+            .expect("write NeoForge Windows args");
+        fs::write(version_directory.join("unix_args.txt"), arguments)
+            .expect("write NeoForge Unix args");
+        write_test_jar_entries(
+            &version_directory.join("neoforge-26.2.0.41-beta-universal.jar"),
+            &[(
+                "net/neoforged/neoforge/common/version.properties",
+                "neoforge_version=26.2.0.41-beta\nneoform_version=26.2-2\nminecraft_version=26.2\nbuild_type=BETA\n",
+            )],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect NeoForge directory");
+        fs::remove_dir_all(&root).expect("remove NeoForge fixture");
+
+        assert_eq!(
+            report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str()),
+            Some("neoforge")
+        );
+        assert_eq!(report.identity.version.value.as_deref(), Some("26.2.0.41-beta"));
+        assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::Beta));
+        assert_eq!(
+            report
+                .minecraft
+                .as_ref()
+                .and_then(|minecraft| minecraft.version.value.as_deref()),
+            Some("26.2")
+        );
+        assert!(report
+            .components
+            .iter()
+            .any(|component| component.value.key == "neoforge"));
+        assert!(report
+            .components
+            .iter()
+            .any(|component| component.value.key == "neoform"));
+        assert!(report
+            .artifact
+            .roles
+            .iter()
+            .any(|role| role.value == ArtifactRole::Wrapper));
+        assert!(report.launches.iter().any(|launch| {
+            matches!(launch.value.target, LaunchTarget::Jar { .. })
+                && launch.value.id == "neoforge-wrapper-jar"
+        }));
+        assert_eq!(
+            report
+                .launches
+                .iter()
+                .filter(|launch| matches!(launch.value.target, LaunchTarget::ArgumentFiles { .. }))
+                .count(),
+            2
+        );
     }
 
     #[test]
@@ -1093,7 +1466,7 @@ mod tests {
     }
 
     #[test]
-    fn directories_are_reported_without_scanning_their_contents() {
+    fn empty_directories_are_reported_without_false_identity_claims() {
         let path = temporary_path("directory");
         fs::create_dir(&path).expect("create test directory");
 
