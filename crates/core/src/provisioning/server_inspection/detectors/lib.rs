@@ -1,0 +1,710 @@
+mod paperclip;
+mod vanilla;
+
+use std::path::{Path, PathBuf};
+
+use super::archive::ArchiveMetadata;
+use super::evidence::{EvidenceCollector, NewEvidence};
+use super::model::{
+    ArtifactInfo, ArtifactRole, Attributed, Detected, DetectionTarget, DiagnosticSeverity,
+    EvidenceLocation, EvidenceSource, InspectionDiagnostic, MavenCoordinate, MinecraftVersionInfo,
+    ReleaseChannel, ServerCategory, ServerComponent, ServerEcosystem, ServerIdentityInfo,
+    ServerProduct,
+};
+use super::resolver::{resolve, resolve_attributed, DetectionClaim};
+
+const PRODUCTS: &[ProductDefinition] = &[
+    ProductDefinition::paper(
+        "pufferfish",
+        "Pufferfish",
+        "gg.pufferfish.pufferfish",
+        "pufferfish-api",
+    ),
+    ProductDefinition::paper("divinemc", "DivineMC", "org.bxteam.divinemc", "divinemc-api"),
+    ProductDefinition::paper("aspaper", "AsPaper", "com.infernalsuite.asp", "aspaper-api"),
+    ProductDefinition::paper("purpur", "Purpur", "org.purpurmc.purpur", "purpur-api"),
+    ProductDefinition::paper("canvas", "Canvas", "io.canvasmc.canvas", "canvas-api"),
+    ProductDefinition::paper("leaves", "Leaves", "org.leavesmc.leaves", "leaves-api"),
+    ProductDefinition::vanilla(),
+    ProductDefinition::bukkit("spigot", "Spigot"),
+    ProductDefinition::paper("paper", "Paper", "io.papermc.paper", "paper-api"),
+    ProductDefinition::paper("folia", "Folia", "dev.folia", "folia-api"),
+    ProductDefinition::paper("pluto", "Pluto", "dev.yive.pluto", "pluto-api"),
+    ProductDefinition::paper("leaf", "Leaf", "cn.dreeam.leaf", "leaf-api"),
+];
+
+#[derive(Debug, Clone, Copy)]
+struct ProductDefinition {
+    key: &'static str,
+    display_name: &'static str,
+    paper: bool,
+    bukkit: bool,
+    vanilla: bool,
+    api_group: Option<&'static str>,
+    api_artifact: Option<&'static str>,
+}
+
+impl ProductDefinition {
+    const fn paper(
+        key: &'static str,
+        display_name: &'static str,
+        api_group: &'static str,
+        api_artifact: &'static str,
+    ) -> Self {
+        Self {
+            key,
+            display_name,
+            paper: true,
+            bukkit: true,
+            vanilla: false,
+            api_group: Some(api_group),
+            api_artifact: Some(api_artifact),
+        }
+    }
+
+    const fn bukkit(key: &'static str, display_name: &'static str) -> Self {
+        Self {
+            key,
+            display_name,
+            paper: false,
+            bukkit: true,
+            vanilla: false,
+            api_group: None,
+            api_artifact: None,
+        }
+    }
+
+    const fn vanilla() -> Self {
+        Self {
+            key: "vanilla",
+            display_name: "Vanilla",
+            paper: false,
+            bukkit: false,
+            vanilla: true,
+            api_group: None,
+            api_artifact: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct Signal<T> {
+    pub(super) value: T,
+    pub(super) detector: &'static str,
+    pub(super) source: EvidenceSource,
+    pub(super) location: EvidenceLocation,
+    pub(super) weight: u8,
+    pub(super) correlation_group: &'static str,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct ProductFinding {
+    pub(super) signal: Signal<ServerProduct>,
+    pub(super) ecosystems: Vec<ServerEcosystem>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct ProductValueFinding<T> {
+    pub(super) product_key: String,
+    pub(super) signal: Signal<T>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct ComponentFinding {
+    pub(super) product_key: String,
+    pub(super) signal: Signal<ServerComponent>,
+}
+
+#[derive(Debug, Default)]
+pub(super) struct Findings {
+    pub(super) products: Vec<ProductFinding>,
+    pub(super) categories: Vec<Signal<ServerCategory>>,
+    pub(super) minecraft_versions: Vec<Signal<String>>,
+    pub(super) product_versions: Vec<ProductValueFinding<String>>,
+    pub(super) release_channels: Vec<ProductValueFinding<ReleaseChannel>>,
+    pub(super) roles: Vec<Signal<ArtifactRole>>,
+    pub(super) components: Vec<ComponentFinding>,
+}
+
+impl Findings {
+    pub(super) fn has_product(&self, key: &str) -> bool {
+        self.products
+            .iter()
+            .any(|finding| finding.signal.value.key == key)
+    }
+}
+
+pub(super) struct DetectorOutput {
+    pub(super) identity: ServerIdentityInfo,
+    pub(super) minecraft_version: Detected<String>,
+    pub(super) roles: Vec<Attributed<ArtifactRole>>,
+    pub(super) components: Vec<Attributed<ServerComponent>>,
+    pub(super) diagnostics: Vec<InspectionDiagnostic>,
+}
+
+pub(super) fn detect_jar(
+    path: &Path,
+    artifact: &ArtifactInfo,
+    archive: &ArchiveMetadata,
+    minecraft: Option<&MinecraftVersionInfo>,
+    evidence: &mut EvidenceCollector,
+) -> DetectorOutput {
+    let mut findings = Findings::default();
+    detect_filename(path, &mut findings);
+    paperclip::detect(path, artifact, archive, &mut findings);
+    vanilla::detect(path, artifact, minecraft, &mut findings);
+    finalize(path, findings, minecraft, evidence)
+}
+
+fn finalize(
+    path: &Path,
+    findings: Findings,
+    minecraft: Option<&MinecraftVersionInfo>,
+    evidence: &mut EvidenceCollector,
+) -> DetectorOutput {
+    let implementation = resolve(
+        findings
+            .products
+            .iter()
+            .map(|finding| {
+                push_claim(
+                    &finding.signal,
+                    DetectionTarget::ServerImplementation,
+                    finding.signal.value.key.clone(),
+                    evidence,
+                )
+            })
+            .collect(),
+    );
+    let selected_key = implementation
+        .value
+        .as_ref()
+        .map(|product| product.key.as_str());
+
+    let mut category_claims = findings
+        .categories
+        .iter()
+        .map(|signal| {
+            push_claim(
+                signal,
+                DetectionTarget::ServerCategory,
+                category_name(signal.value).to_string(),
+                evidence,
+            )
+        })
+        .collect::<Vec<_>>();
+    category_claims.extend(findings.products.iter().map(|finding| {
+        let signal = Signal {
+            value: ServerCategory::JavaGameServer,
+            detector: finding.signal.detector,
+            source: finding.signal.source,
+            location: finding.signal.location.clone(),
+            weight: finding.signal.weight,
+            correlation_group: finding.signal.correlation_group,
+        };
+        push_claim(
+            &signal,
+            DetectionTarget::ServerCategory,
+            "java_game_server".to_string(),
+            evidence,
+        )
+    }));
+    let category = resolve(category_claims);
+
+    let version = resolve_product_values(
+        &findings.product_versions,
+        selected_key,
+        DetectionTarget::ServerVersion,
+        |value| value.clone(),
+        evidence,
+    );
+    let release_channel = resolve_product_values(
+        &findings.release_channels,
+        selected_key,
+        DetectionTarget::ReleaseChannel,
+        |value| release_channel_name(*value).to_string(),
+        evidence,
+    );
+
+    let ecosystems = selected_key.map_or_else(Vec::new, |selected_key| {
+        let mut claims = Vec::new();
+        for finding in findings
+            .products
+            .iter()
+            .filter(|finding| finding.signal.value.key == selected_key)
+        {
+            for ecosystem in &finding.ecosystems {
+                let signal = Signal {
+                    value: ecosystem.clone(),
+                    detector: finding.signal.detector,
+                    source: finding.signal.source,
+                    location: finding.signal.location.clone(),
+                    weight: finding.signal.weight,
+                    correlation_group: finding.signal.correlation_group,
+                };
+                let candidate = ecosystem_name(&signal.value);
+                claims.push(push_claim(
+                    &signal,
+                    DetectionTarget::ServerEcosystem,
+                    candidate,
+                    evidence,
+                ));
+            }
+        }
+        resolve_attributed(claims)
+    });
+
+    let components = selected_key.map_or_else(Vec::new, |selected_key| {
+        resolve_attributed(
+            findings
+                .components
+                .iter()
+                .filter(|finding| finding.product_key == selected_key)
+                .map(|finding| {
+                    push_claim(
+                        &finding.signal,
+                        DetectionTarget::Component,
+                        finding.signal.value.key.clone(),
+                        evidence,
+                    )
+                })
+                .collect(),
+        )
+    });
+    let roles = resolve_attributed(
+        findings
+            .roles
+            .iter()
+            .map(|signal| {
+                push_claim(
+                    signal,
+                    DetectionTarget::ArtifactRole,
+                    artifact_role_name(signal.value).to_string(),
+                    evidence,
+                )
+            })
+            .collect(),
+    );
+    let minecraft_version = resolve_minecraft_version(&findings, minecraft, evidence);
+
+    let mut diagnostics = Vec::new();
+    add_conflict_diagnostic(
+        path,
+        "conflicting_server_implementations",
+        "server implementation",
+        &implementation,
+        &mut diagnostics,
+    );
+    add_conflict_diagnostic(
+        path,
+        "conflicting_server_versions",
+        "server implementation version",
+        &version,
+        &mut diagnostics,
+    );
+    add_conflict_diagnostic(
+        path,
+        "conflicting_minecraft_versions",
+        "Minecraft version",
+        &minecraft_version,
+        &mut diagnostics,
+    );
+
+    DetectorOutput {
+        identity: ServerIdentityInfo {
+            category,
+            implementation,
+            version,
+            release_channel,
+            ecosystems,
+        },
+        minecraft_version,
+        roles,
+        components,
+        diagnostics,
+    }
+}
+
+fn resolve_product_values<T, F>(
+    findings: &[ProductValueFinding<T>],
+    selected_key: Option<&str>,
+    target: DetectionTarget,
+    candidate: F,
+    evidence: &mut EvidenceCollector,
+) -> Detected<T>
+where
+    T: Clone + Eq,
+    F: Fn(&T) -> String,
+{
+    let Some(selected_key) = selected_key else {
+        return Detected::default();
+    };
+    resolve(
+        findings
+            .iter()
+            .filter(|finding| finding.product_key == selected_key)
+            .map(|finding| {
+                push_claim(&finding.signal, target, candidate(&finding.signal.value), evidence)
+            })
+            .collect(),
+    )
+}
+
+fn resolve_minecraft_version(
+    findings: &Findings,
+    minecraft: Option<&MinecraftVersionInfo>,
+    evidence: &mut EvidenceCollector,
+) -> Detected<String> {
+    let mut claims = findings
+        .minecraft_versions
+        .iter()
+        .map(|signal| {
+            push_claim(signal, DetectionTarget::MinecraftVersion, signal.value.clone(), evidence)
+        })
+        .collect::<Vec<_>>();
+    if let Some(minecraft) = minecraft {
+        claims.extend(existing_detected_claims(&minecraft.version, "mojang-version-json"));
+    }
+    resolve(claims)
+}
+
+fn existing_detected_claims<T: Clone>(
+    detected: &Detected<T>,
+    correlation_group: &str,
+) -> Vec<DetectionClaim<T>> {
+    let mut claims = Vec::new();
+    if let Some(value) = detected.value.as_ref() {
+        claims.extend(detected.evidence.iter().map(|evidence| DetectionClaim {
+            value: value.clone(),
+            evidence: *evidence,
+            weight: detected.confidence,
+            correlation_group: correlation_group.to_string(),
+        }));
+    }
+    claims.extend(detected.alternatives.iter().flat_map(|candidate| {
+        candidate.evidence.iter().map(|evidence| DetectionClaim {
+            value: candidate.value.clone(),
+            evidence: *evidence,
+            weight: candidate.confidence,
+            correlation_group: correlation_group.to_string(),
+        })
+    }));
+    claims
+}
+
+fn push_claim<T: Clone>(
+    signal: &Signal<T>,
+    target: DetectionTarget,
+    candidate: String,
+    evidence: &mut EvidenceCollector,
+) -> DetectionClaim<T> {
+    let evidence_id = evidence.push(NewEvidence {
+        detector: signal.detector,
+        source: signal.source,
+        location: signal.location.clone(),
+        target,
+        candidate,
+        weight: signal.weight,
+        correlation_group: signal.correlation_group,
+    });
+    DetectionClaim {
+        value: signal.value.clone(),
+        evidence: evidence_id,
+        weight: signal.weight,
+        correlation_group: signal.correlation_group.to_string(),
+    }
+}
+
+fn add_conflict_diagnostic<T>(
+    path: &Path,
+    code: &str,
+    label: &str,
+    detected: &Detected<T>,
+    diagnostics: &mut Vec<InspectionDiagnostic>,
+) {
+    if detected.value.is_some() || detected.alternatives.len() < 2 {
+        return;
+    }
+    diagnostics.push(InspectionDiagnostic {
+        severity: DiagnosticSeverity::Warning,
+        code: code.to_string(),
+        message: format!("conflicting {label} evidence found in {}", path.display()),
+        evidence: detected
+            .alternatives
+            .iter()
+            .flat_map(|candidate| candidate.evidence.iter().copied())
+            .collect(),
+    });
+}
+
+fn detect_filename(path: &Path, findings: &mut Findings) {
+    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+        return;
+    };
+    let stem = stem.to_ascii_lowercase();
+    let Some(definition) = PRODUCTS
+        .iter()
+        .filter(|definition| contains_key_with_boundaries(&stem, definition.key))
+        .max_by_key(|definition| definition.key.len())
+    else {
+        return;
+    };
+    findings.products.push(ProductFinding {
+        signal: Signal {
+            value: product_from_key(definition.key),
+            detector: "server-file-name",
+            source: EvidenceSource::FileName,
+            location: EvidenceLocation::path(path.to_path_buf()),
+            weight: 25,
+            correlation_group: "file-name",
+        },
+        ecosystems: ecosystems_for_key(definition.key, false),
+    });
+}
+
+fn contains_key_with_boundaries(value: &str, key: &str) -> bool {
+    value.match_indices(key).any(|(index, matched)| {
+        let before = value[..index].chars().next_back();
+        let after = value[index + matched.len()..].chars().next();
+        !before.is_some_and(|character| character.is_ascii_alphanumeric())
+            && !after.is_some_and(|character| character.is_ascii_alphanumeric())
+    })
+}
+
+pub(super) fn product_from_key(key: &str) -> ServerProduct {
+    if let Some(definition) = product_definition(key) {
+        return ServerProduct {
+            key: definition.key.to_string(),
+            display_name: definition.display_name.to_string(),
+        };
+    }
+    ServerProduct {
+        key: key.to_string(),
+        display_name: display_name_from_key(key),
+    }
+}
+
+pub(super) fn ecosystems_for_key(key: &str, paperclip_context: bool) -> Vec<ServerEcosystem> {
+    let Some(definition) = product_definition(key) else {
+        return if paperclip_context {
+            vec![ServerEcosystem::Paper, ServerEcosystem::Bukkit]
+        } else {
+            Vec::new()
+        };
+    };
+    let mut ecosystems = Vec::new();
+    if definition.vanilla {
+        ecosystems.push(ServerEcosystem::Vanilla);
+    }
+    if definition.paper {
+        ecosystems.push(ServerEcosystem::Paper);
+    }
+    if definition.bukkit {
+        ecosystems.push(ServerEcosystem::Bukkit);
+    }
+    ecosystems
+}
+
+pub(super) fn product_key_from_coordinate(coordinate: &MavenCoordinate) -> Option<String> {
+    PRODUCTS
+        .iter()
+        .find(|definition| {
+            definition.api_group == Some(coordinate.group.as_str())
+                && definition.api_artifact == Some(coordinate.artifact.as_str())
+        })
+        .map(|definition| definition.key.to_string())
+}
+
+pub(super) fn target_product_key(path: &str, minecraft_version: &str) -> Option<String> {
+    let filename = path.rsplit(['/', '\\']).next()?;
+    let stem = strip_jar_suffix(filename)?;
+    if stem.eq_ignore_ascii_case(&format!("server-{minecraft_version}")) {
+        return Some("vanilla".to_string());
+    }
+    let suffix = format!("-{minecraft_version}");
+    let key = stem.strip_suffix(&suffix)?.to_ascii_lowercase();
+    is_valid_product_key(&key).then_some(key)
+}
+
+pub(super) fn release_channel(version: &str) -> Option<ReleaseChannel> {
+    let version = version.to_ascii_lowercase();
+    if has_version_label(&version, "snapshot") {
+        Some(ReleaseChannel::Snapshot)
+    } else if has_version_label(&version, "alpha") {
+        Some(ReleaseChannel::Alpha)
+    } else if has_version_label(&version, "beta") {
+        Some(ReleaseChannel::Beta)
+    } else if has_version_label(&version, "stable") {
+        Some(ReleaseChannel::Stable)
+    } else {
+        None
+    }
+}
+
+pub(super) fn strip_jar_suffix(filename: &str) -> Option<&str> {
+    let suffix_start = filename.len().checked_sub(4)?;
+    filename
+        .get(suffix_start..)?
+        .eq_ignore_ascii_case(".jar")
+        .then(|| filename.get(..suffix_start))
+        .flatten()
+}
+
+fn has_version_label(version: &str, label: &str) -> bool {
+    version
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|token| {
+            token == label
+                || token.strip_prefix(label).is_some_and(|suffix| {
+                    !suffix.is_empty() && suffix.bytes().all(|b| b.is_ascii_digit())
+                })
+        })
+}
+
+pub(super) fn list_location(path: &Path, entry: &str, line: usize) -> EvidenceLocation {
+    EvidenceLocation {
+        path: path.to_path_buf(),
+        archive_entry: Some(entry.to_string()),
+        manifest_section: None,
+        field: Some(format!("line {line}")),
+    }
+}
+
+pub(super) fn manifest_location(path: &Path, field: &str) -> EvidenceLocation {
+    EvidenceLocation {
+        path: path.to_path_buf(),
+        archive_entry: Some("META-INF/MANIFEST.MF".to_string()),
+        manifest_section: None,
+        field: Some(field.to_string()),
+    }
+}
+
+pub(super) fn version_json_location(path: &Path, field: &str) -> EvidenceLocation {
+    EvidenceLocation {
+        path: path.to_path_buf(),
+        archive_entry: Some("version.json".to_string()),
+        manifest_section: None,
+        field: Some(field.to_string()),
+    }
+}
+
+fn product_definition(key: &str) -> Option<&'static ProductDefinition> {
+    PRODUCTS.iter().find(|definition| definition.key == key)
+}
+
+fn is_valid_product_key(key: &str) -> bool {
+    !key.is_empty()
+        && key.len() <= 64
+        && key
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+}
+
+fn display_name_from_key(key: &str) -> String {
+    key.split(['-', '_', '.'])
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut characters = part.chars();
+            characters.next().map_or_else(String::new, |first| {
+                first.to_ascii_uppercase().to_string() + characters.as_str()
+            })
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn ecosystem_name(ecosystem: &ServerEcosystem) -> String {
+    match ecosystem {
+        ServerEcosystem::Vanilla => "vanilla".to_string(),
+        ServerEcosystem::Bukkit => "bukkit".to_string(),
+        ServerEcosystem::Paper => "paper".to_string(),
+        ServerEcosystem::Fabric => "fabric".to_string(),
+        ServerEcosystem::LegacyFabric => "legacy_fabric".to_string(),
+        ServerEcosystem::Quilt => "quilt".to_string(),
+        ServerEcosystem::Forge => "forge".to_string(),
+        ServerEcosystem::NeoForge => "neoforge".to_string(),
+        ServerEcosystem::Sponge => "sponge".to_string(),
+        ServerEcosystem::Bungee => "bungee".to_string(),
+        ServerEcosystem::Velocity => "velocity".to_string(),
+        ServerEcosystem::Other(value) => value.clone(),
+    }
+}
+
+fn category_name(category: ServerCategory) -> &'static str {
+    match category {
+        ServerCategory::JavaGameServer => "java_game_server",
+        ServerCategory::BedrockGameServer => "bedrock_game_server",
+        ServerCategory::Proxy => "proxy",
+        ServerCategory::Limbo => "limbo",
+        ServerCategory::Unknown => "unknown",
+    }
+}
+
+fn release_channel_name(channel: ReleaseChannel) -> &'static str {
+    match channel {
+        ReleaseChannel::Stable => "stable",
+        ReleaseChannel::Beta => "beta",
+        ReleaseChannel::Alpha => "alpha",
+        ReleaseChannel::Snapshot => "snapshot",
+        ReleaseChannel::Development => "development",
+        ReleaseChannel::Unknown => "unknown",
+    }
+}
+
+fn artifact_role_name(role: ArtifactRole) -> &'static str {
+    match role {
+        ArtifactRole::Runnable => "runnable",
+        ArtifactRole::Bootstrapper => "bootstrapper",
+        ArtifactRole::Installer => "installer",
+        ArtifactRole::Launcher => "launcher",
+        ArtifactRole::Wrapper => "wrapper",
+        ArtifactRole::Library => "library",
+        ArtifactRole::InstallationDirectory => "installation_directory",
+        ArtifactRole::Unknown => "unknown",
+    }
+}
+
+pub(super) fn api_component(
+    product_key: &str,
+    version: String,
+    coordinate: Option<MavenCoordinate>,
+    source_path: PathBuf,
+) -> ServerComponent {
+    let product = product_from_key(product_key);
+    let release_channel = release_channel(&version);
+    ServerComponent {
+        kind: super::model::ServerComponentKind::Api,
+        key: format!("{product_key}-api"),
+        name: format!("{} API", product.display_name),
+        version: Some(version),
+        release_channel,
+        coordinate,
+        source_path: Some(source_path),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{contains_key_with_boundaries, release_channel, target_product_key};
+    use crate::provisioning::server_inspection::ReleaseChannel;
+
+    #[test]
+    fn filename_boundaries_do_not_treat_aspaper_as_paper() {
+        assert!(contains_key_with_boundaries("aspaper-26.2", "aspaper"));
+        assert!(!contains_key_with_boundaries("aspaper-26.2", "paper"));
+        assert!(!contains_key_with_boundaries("paperclip", "paper"));
+    }
+
+    #[test]
+    fn target_paths_produce_open_product_keys() {
+        assert_eq!(target_product_key("26.2/canvas-26.2.jar", "26.2").as_deref(), Some("canvas"));
+        assert_eq!(target_product_key("26.2/server-26.2.jar", "26.2").as_deref(), Some("vanilla"));
+        assert_eq!(target_product_key("26.2/Paper-26.2.Jar", "26.2").as_deref(), Some("paper"));
+    }
+
+    #[test]
+    fn release_channel_requires_a_version_label_boundary() {
+        assert_eq!(release_channel("26.2.build.1-beta2"), Some(ReleaseChannel::Beta));
+        assert_eq!(release_channel("26.2-unstable"), None);
+    }
+}
