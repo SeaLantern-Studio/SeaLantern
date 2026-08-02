@@ -5,6 +5,8 @@ pub mod desktop;
 pub mod observability;
 pub mod services;
 
+use crate::adapter::{server_instance_get, server_instance_list};
+use crate::services::AppServices;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -13,6 +15,9 @@ pub fn run() {
     // 初始化 tracing 日志（在 Tauri 构建之前）
     observability::init();
 
+    // 自托管初始化：加载全局服务（实例注册表等），不绑定 Tauri 生命周期
+    tauri::async_runtime::block_on(AppServices::init()).expect("failed to init services");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
@@ -20,7 +25,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![server_instance_get, server_instance_list,])
         .setup(|app| {
             // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
             #[cfg(not(target_os = "macos"))]

@@ -22,6 +22,21 @@ pub enum InstanceServiceError {
     Unsupported,
 }
 
+impl std::fmt::Display for InstanceServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InstanceNotFound => "server instance not found",
+            Self::AlreadyExists => "server instance already exists",
+            Self::InvalidState => "server instance is in an invalid state",
+            Self::OperationFailed => "server instance operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for InstanceServiceError {}
+
 /// 管理服务器实例的宿主能力端口。
 ///
 /// 覆盖实例的查询、生命周期（启动/停止/强制停止）与 CRUD（创建/删除/重命名/改路径）。
