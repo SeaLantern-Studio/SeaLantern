@@ -4,14 +4,21 @@
 
 mod app;
 mod app_update;
+pub(crate) mod compatibility;
 mod download_link;
 mod java;
 mod server;
 mod task;
 
 pub use app::{AppSettings, SettingsGroup, CURRENT_CONFIG_VERSION};
-pub use app_update::{PartialAppSettings, UpdateResult};
+pub use app_update::{NullablePatch, PartialAppSettings, UpdateResult};
 pub use download_link::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
 pub use java::JavaInfo;
 pub use server::InstanceList;
 pub use task::{TaskProgressResponse, TaskStatus};
+
+#[allow(deprecated)]
+pub use compatibility::ServerInstance;
+
+#[deprecated(note = "请使用 crate::download_link::LinkManager")]
+pub use crate::download_link::LinkManager;

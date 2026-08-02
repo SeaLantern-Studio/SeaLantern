@@ -8,20 +8,25 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct TaskProgressResponse {
     pub id: String,
+    #[serde(alias = "total_size")]
     pub total_size: u64,
     pub downloaded: u64,
     pub progress: f64,
     pub status: TaskStatus,
+    #[serde(alias = "is_finished")]
     pub is_finished: bool,
 }
 
 /// 下载任务状态。
+///
+/// `Error` 变体通过字段重命名序列化为 `{"Error":"message"}`，
+/// 普通状态保持为字符串。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TaskStatus {
     Simple(String),
     Error {
-        #[serde(rename = "Error")]
+        #[serde(rename = "Error", alias = "error")]
         error: String,
     },
 }
@@ -100,5 +105,26 @@ mod tests {
 
         let value = serde_json::to_value(response).expect("task error should serialize");
         assert_eq!(value["status"]["Error"], "connection reset");
+        assert!(value["status"].get("error").is_none());
+    }
+
+    #[test]
+    fn task_progress_accepts_legacy_snake_case_fields() {
+        let response: TaskProgressResponse = serde_json::from_str(
+            r#"{
+                "id":"task-legacy",
+                "total_size":1024,
+                "downloaded":0,
+                "progress":0.0,
+                "status":{"Error":"connection reset"},
+                "is_finished":true
+            }"#,
+        )
+        .expect("legacy task progress should deserialize");
+
+        assert_eq!(response.id, "task-legacy");
+        assert_eq!(response.total_size, 1024);
+        assert!(response.is_finished);
+        assert_eq!(response.status, TaskStatus::Error { error: "connection reset".to_string() });
     }
 }

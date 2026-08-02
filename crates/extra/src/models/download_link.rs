@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct DownloadLink {
     pub version: String,
+    #[serde(alias = "file_name")]
     pub file_name: String,
     pub url: String,
 }
@@ -75,5 +76,19 @@ mod tests {
 
         assert_eq!(value["fileName"], "server.jar");
         assert!(value.get("file_name").is_none());
+    }
+
+    #[test]
+    fn download_link_accepts_legacy_snake_case_field() {
+        let link: DownloadLink = serde_json::from_str(
+            r#"{
+                "version":"1.21.1",
+                "file_name":"server.jar",
+                "url":"https://example.invalid/server.jar"
+            }"#,
+        )
+        .expect("legacy download link should deserialize");
+
+        assert_eq!(link.file_name, "server.jar");
     }
 }

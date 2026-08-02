@@ -169,6 +169,12 @@ impl SettingsManager {
         let old = self.inner.get().clone();
         self.inner.update(|s| partial.merge_into(s));
         let changed_groups = old.changed_groups(self.inner.get());
+        if changed_groups.is_empty() {
+            return Ok(UpdateResult {
+                settings: self.inner.get().clone(),
+                changed_groups,
+            });
+        }
         match self.inner.save(false).await {
             Ok(()) => {
                 observability::config_settings_partial_updated(&self.path, &changed_groups);
@@ -432,7 +438,32 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
 #[cfg(test)]
 mod tests {
     use super::SettingsManager;
-    use crate::config::JavaInfo;
+    use crate::config::{AppSettings, JavaInfo, PartialAppSettings};
+
+    #[tokio::test]
+    async fn empty_partial_update_does_not_rewrite_settings() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let original =
+            serde_json::to_string(&AppSettings::default()).expect("settings should serialize");
+        tokio::fs::write(&path, &original)
+            .await
+            .expect("settings fixture should be written");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings should load");
+
+        let result = manager
+            .update_partial(PartialAppSettings::default())
+            .await
+            .expect("empty update should succeed");
+
+        assert!(result.changed_groups.is_empty());
+        let persisted = tokio::fs::read_to_string(&path)
+            .await
+            .expect("settings should remain readable");
+        assert_eq!(persisted, original);
+    }
 
     #[tokio::test]
     async fn java_cache_persists_confidence() {
