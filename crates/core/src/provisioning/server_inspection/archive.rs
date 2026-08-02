@@ -17,6 +17,7 @@ pub(super) const INSTALL_PROPERTIES_ENTRY: &str = "install.properties";
 pub(super) const BOOTSTRAP_PROPERTIES_ENTRY: &str = "bootstrap-shim.properties";
 pub(super) const BOOTSTRAP_LIST_ENTRY: &str = "bootstrap-shim.list";
 pub(super) const WRAPPER_METADATA_ENTRY: &str = "metadata.json";
+pub(super) const ARCLIGHT_LAUNCH_PROPERTIES_ENTRY: &str = "arclight-server-launch.properties";
 pub(super) const FORGE_VERSION_ENTRY: &str = "forge_version.json";
 pub(super) const NEOFORGE_VERSION_PROPERTIES_ENTRY: &str =
     "net/neoforged/neoforge/common/version.properties";
@@ -31,6 +32,7 @@ pub(super) struct ArchiveMetadata {
     pub(super) bootstrap_properties: Option<Vec<u8>>,
     pub(super) bootstrap_list: Option<Vec<u8>>,
     pub(super) wrapper_metadata: Option<Vec<u8>>,
+    pub(super) arclight_launch_properties: Option<Vec<u8>>,
     pub(super) forge_version: Option<Vec<u8>>,
     pub(super) neoforge_version_properties: Option<Vec<u8>>,
     pub(super) diagnostics: Vec<InspectionDiagnostic>,
@@ -134,6 +136,14 @@ pub(super) fn read_metadata_with_budget(
         consumed,
         &mut diagnostics,
     )?;
+    let arclight_launch_properties = read_optional_entry(
+        &mut archive,
+        path,
+        ARCLIGHT_LAUNCH_PROPERTIES_ENTRY,
+        options,
+        consumed,
+        &mut diagnostics,
+    )?;
     let forge_version = read_optional_entry(
         &mut archive,
         path,
@@ -161,6 +171,7 @@ pub(super) fn read_metadata_with_budget(
         bootstrap_properties,
         bootstrap_list,
         wrapper_metadata,
+        arclight_launch_properties,
         forge_version,
         neoforge_version_properties,
         diagnostics,

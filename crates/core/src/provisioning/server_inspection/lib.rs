@@ -736,6 +736,349 @@ mod tests {
         archive.finish().expect("finish test JAR");
     }
 
+    fn product_key(report: &super::ServerInspectionReport) -> Option<&str> {
+        report
+            .identity
+            .implementation
+            .value
+            .as_ref()
+            .map(|product| product.key.as_str())
+    }
+
+    #[test]
+    fn distinguishes_proxy_forks_that_share_main_classes() {
+        let cases = [
+            (
+                "velocity.jar",
+                "Implementation-Title: Velocity\r\n",
+                "4.1.0-SNAPSHOT (git-e11584ba-b13)",
+                "com.velocitypowered.proxy.Velocity",
+                "velocity",
+                ServerEcosystem::Velocity,
+            ),
+            (
+                "velocity-ctd.jar",
+                "Implementation-Title: Velocity-CTD\r\n",
+                "4.1.0-SNAPSHOT-git-6fd8e660",
+                "com.velocitypowered.proxy.Velocity",
+                "velocity-ctd",
+                ServerEcosystem::Velocity,
+            ),
+            (
+                "bungeecord.jar",
+                "",
+                "git:BungeeCord-Bootstrap:26.1-R0.1-SNAPSHOT:2e72932:2085",
+                "net.md_5.bungee.Bootstrap",
+                "bungeecord",
+                ServerEcosystem::Bungee,
+            ),
+            (
+                "waterfall.jar",
+                "",
+                "git:Waterfall-Bootstrap:26.1-R0.1-SNAPSHOT:4bc2b02:615",
+                "net.md_5.bungee.Bootstrap",
+                "waterfall",
+                ServerEcosystem::Bungee,
+            ),
+        ];
+
+        for (filename, title, version, main_class, expected_key, ecosystem) in cases {
+            let path = temporary_path(filename);
+            let manifest = format!(
+                "Manifest-Version: 1.0\r\n{title}Implementation-Version: {version}\r\nJava-Version: 11\r\nMain-Class: {main_class}\r\n\r\n"
+            );
+            write_test_jar_entries(&path, &[("META-INF/MANIFEST.MF", &manifest)]);
+
+            let report = inspect_server_artifact(&path, &InspectionOptions::default())
+                .expect("inspect proxy fixture");
+            fs::remove_file(&path).expect("remove proxy fixture");
+
+            assert_eq!(product_key(&report), Some(expected_key));
+            assert_eq!(report.identity.category.value, Some(ServerCategory::Proxy));
+            assert_eq!(report.identity.version.value.as_deref(), Some(version));
+            assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::Snapshot));
+            assert!(report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ecosystem));
+            assert_eq!(report.java.required_major.value, Some(11));
+        }
+    }
+
+    #[test]
+    fn shared_proxy_main_class_does_not_choose_a_specific_product() {
+        let path = temporary_path("server.jar");
+        write_test_jar_entries(
+            &path,
+            &[("META-INF/MANIFEST.MF", "Main-Class: com.velocitypowered.proxy.Velocity\r\n\r\n")],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect product-neutral proxy fixture");
+        fs::remove_file(&path).expect("remove proxy fixture");
+
+        assert!(report.identity.implementation.value.is_none());
+        assert_eq!(report.identity.category.value, Some(ServerCategory::Proxy));
+        assert_eq!(report.identity.ecosystems.len(), 1);
+        assert_eq!(report.identity.ecosystems[0].value, ServerEcosystem::Velocity);
+    }
+
+    #[test]
+    fn detects_arclight_and_preserves_its_loader_ecosystem() {
+        let path = temporary_path("arclight.jar");
+        write_test_jar_entries(
+            &path,
+            &[
+                (
+                    "META-INF/MANIFEST.MF",
+                    "Main-Class: io.izzel.arclight.server.Launcher\r\nImplementation-Title: Arclight\r\nImplementation-Version: arclight-1.21.1-1.0.2-SNAPSHOT-8086b06\r\n\r\n",
+                ),
+                (
+                    "arclight-server-launch.properties",
+                    "launch.mainClass=io.izzel.arclight.boot.forge.application.Main_Forge\n",
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect Arclight fixture");
+        fs::remove_file(&path).expect("remove Arclight fixture");
+
+        assert_eq!(product_key(&report), Some("arclight"));
+        assert_eq!(
+            report.identity.version.value.as_deref(),
+            Some("arclight-1.21.1-1.0.2-SNAPSHOT-8086b06")
+        );
+        assert_eq!(
+            report
+                .minecraft
+                .as_ref()
+                .and_then(|minecraft| minecraft.version.value.as_deref()),
+            Some("1.21.1")
+        );
+        assert!(report
+            .identity
+            .ecosystems
+            .iter()
+            .any(|candidate| candidate.value == ServerEcosystem::Forge));
+        assert!(report
+            .components
+            .iter()
+            .any(|component| component.value.key == "forge"));
+        assert!(report
+            .artifact
+            .roles
+            .iter()
+            .any(|role| role.value == ArtifactRole::Launcher));
+    }
+
+    #[test]
+    fn extracts_mohist_named_section_components_without_merging_sections() {
+        let path = temporary_path("mohist.jar");
+        write_test_jar_entries(
+            &path,
+            &[(
+                "META-INF/MANIFEST.MF",
+                "Main-Class: com.mohistmc.MohistMCStart\r\n\r\nName: com/mohistmc/\r\nImplementation-Title: Mohist\r\nImplementation-Version: 1.20.2-00000000\r\n\r\nName: net/minecraftforge/versions/forge/\r\nImplementation-Title: net.minecraftforge\r\nImplementation-Version: 48.1.0\r\n\r\nName: org/bukkit/craftbukkit/v1_20_R2/\r\nImplementation-Title: Spigot\r\nImplementation-Version: build-48.1.0\r\n\r\nName: net/minecraftforge/versions/mcp/\r\nSpecification-Version: 1.20.2\r\nImplementation-Title: MCP\r\nImplementation-Version: 20230921.100330\r\n\r\n",
+            )],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect Mohist fixture");
+        fs::remove_file(&path).expect("remove Mohist fixture");
+
+        assert_eq!(product_key(&report), Some("mohist"));
+        assert_eq!(report.identity.version.value.as_deref(), Some("1.20.2-00000000"));
+        assert_eq!(
+            report
+                .minecraft
+                .as_ref()
+                .and_then(|minecraft| minecraft.version.value.as_deref()),
+            Some("1.20.2")
+        );
+        assert!(report
+            .components
+            .iter()
+            .any(|component| component.value.key == "forge"
+                && component.value.version.as_deref() == Some("48.1.0")));
+        assert!(report
+            .components
+            .iter()
+            .any(|component| component.value.key == "mcp"
+                && component.value.version.as_deref() == Some("20230921.100330")));
+    }
+
+    #[test]
+    fn detects_youer_sections_and_magma_wrapper_metadata() {
+        let youer_path = temporary_path("youer.jar");
+        write_test_jar_entries(
+            &youer_path,
+            &[(
+                "META-INF/MANIFEST.MF",
+                "Main-Class: com.mohistmc.launcher.youer.Main\r\n\r\nName: com/mohistmc/launcher/youer/\r\nImplementation-Title: Youer\r\nImplementation-Version: 1.21.1-d380773e\r\n\r\n",
+            )],
+        );
+        let youer = inspect_server_artifact(&youer_path, &InspectionOptions::default())
+            .expect("inspect Youer fixture");
+        fs::remove_file(&youer_path).expect("remove Youer fixture");
+        assert_eq!(product_key(&youer), Some("youer"));
+        assert!(youer
+            .identity
+            .ecosystems
+            .iter()
+            .any(|candidate| candidate.value == ServerEcosystem::NeoForge));
+
+        let magma_path = temporary_path("server.jar");
+        write_test_jar_entries(
+            &magma_path,
+            &[(
+                "metadata.json",
+                r#"{"version":"1.21.1","magma":{"groupId":"org.magmafoundation","artifactId":"magma","version":"21.1.70-beta"}}"#,
+            )],
+        );
+        let magma = inspect_server_artifact(&magma_path, &InspectionOptions::default())
+            .expect("inspect Magma fixture");
+        fs::remove_file(&magma_path).expect("remove Magma fixture");
+        assert_eq!(product_key(&magma), Some("magma"));
+        assert_eq!(magma.identity.version.value.as_deref(), Some("21.1.70-beta"));
+        assert_eq!(magma.identity.release_channel.value, Some(ReleaseChannel::Beta));
+        assert!(magma
+            .artifact
+            .roles
+            .iter()
+            .any(|role| role.value == ArtifactRole::Wrapper));
+    }
+
+    #[test]
+    fn detects_a_magma_wrapper_directory_and_its_root_jar_launch() {
+        let path = temporary_path("magma-directory");
+        fs::create_dir(&path).expect("create Magma directory");
+        write_test_jar_entries(
+            &path.join("server.jar"),
+            &[
+                (
+                    "META-INF/MANIFEST.MF",
+                    "Main-Class: app.mcjars.serverstarter.ServerStarter\r\n\r\n",
+                ),
+                (
+                    "metadata.json",
+                    r#"{"version":"1.21.1","magma":{"groupId":"org.magmafoundation","artifactId":"magma","version":"21.1.70-beta"}}"#,
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect Magma directory fixture");
+        fs::remove_dir_all(&path).expect("remove Magma directory fixture");
+
+        assert_eq!(product_key(&report), Some("magma"));
+        assert!(report
+            .launches
+            .iter()
+            .any(|launch| matches!(launch.value.target, LaunchTarget::Jar { ref path } if path.ends_with("server.jar"))));
+        assert!(report
+            .artifact
+            .roles
+            .iter()
+            .any(|role| role.value == ArtifactRole::InstallationDirectory));
+        assert!(report
+            .artifact
+            .roles
+            .iter()
+            .any(|role| role.value == ArtifactRole::Wrapper));
+    }
+
+    #[test]
+    fn separates_spongevanilla_identity_from_its_installer_role() {
+        let path = temporary_path("spongevanilla.jar");
+        write_test_jar_entries(
+            &path,
+            &[(
+                "META-INF/MANIFEST.MF",
+                "Main-Class: org.spongepowered.vanilla.installer.InstallerMain\r\nImplementation-Title: SpongeVanilla\r\nImplementation-Version: 26.2-20.0.0-RC2673\r\n\r\n",
+            )],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect SpongeVanilla fixture");
+        fs::remove_file(&path).expect("remove SpongeVanilla fixture");
+
+        assert_eq!(product_key(&report), Some("spongevanilla"));
+        assert_eq!(report.identity.category.value, Some(ServerCategory::JavaGameServer));
+        assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::ReleaseCandidate));
+        assert!(report
+            .artifact
+            .roles
+            .iter()
+            .any(|role| role.value == ArtifactRole::Installer));
+        assert!(report
+            .identity
+            .ecosystems
+            .iter()
+            .any(|candidate| candidate.value == ServerEcosystem::Sponge));
+    }
+
+    #[test]
+    fn detects_limbo_products_without_inventing_a_minecraft_version() {
+        let cases = [
+            (
+                "limbo.jar",
+                "com.loohp.limbo.Limbo",
+                "Limbo-Version: 2026.0.2-ALPHA\r\n",
+                "limbo",
+            ),
+            ("nanolimbo.jar", "ua.nanit.limbo.NanoLimbo", "", "nanolimbo"),
+        ];
+
+        for (filename, main_class, version_line, expected_key) in cases {
+            let path = temporary_path(filename);
+            let manifest = format!("Main-Class: {main_class}\r\n{version_line}\r\n");
+            write_test_jar_entries(&path, &[("META-INF/MANIFEST.MF", &manifest)]);
+            let report = inspect_server_artifact(&path, &InspectionOptions::default())
+                .expect("inspect Limbo fixture");
+            fs::remove_file(&path).expect("remove Limbo fixture");
+
+            assert_eq!(product_key(&report), Some(expected_key));
+            assert_eq!(report.identity.category.value, Some(ServerCategory::Limbo));
+            assert!(report.minecraft.is_none());
+        }
+    }
+
+    #[test]
+    fn detects_craftbukkit_two_field_version_lists() {
+        let path = temporary_path("craftbukkit.jar");
+        write_test_jar_entries(
+            &path,
+            &[
+                (
+                    "META-INF/MANIFEST.MF",
+                    "Main-Class: org.bukkit.craftbukkit.bootstrap.Main\r\n\r\n",
+                ),
+                ("META-INF/versions.list", "hash *craftbukkit-26.2-R0.1-SNAPSHOT.jar\n"),
+            ],
+        );
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect CraftBukkit fixture");
+        fs::remove_file(&path).expect("remove CraftBukkit fixture");
+
+        assert_eq!(product_key(&report), Some("craftbukkit"));
+        assert_eq!(report.identity.version.value.as_deref(), Some("26.2-R0.1-SNAPSHOT"));
+        assert_eq!(
+            report
+                .minecraft
+                .as_ref()
+                .and_then(|minecraft| minecraft.version.value.as_deref()),
+            Some("26.2")
+        );
+        assert!(report
+            .identity
+            .ecosystems
+            .iter()
+            .any(|candidate| candidate.value == ServerEcosystem::Bukkit));
+    }
+
     #[test]
     fn distinguishes_fabric_loader_from_installer_version() {
         let cases = [

@@ -1,6 +1,11 @@
 mod fabric;
 mod forge;
+mod generic;
+mod hybrid;
+mod limbo;
 mod paperclip;
+mod proxy;
+mod sponge;
 mod vanilla;
 
 use std::path::{Path, PathBuf};
@@ -23,6 +28,14 @@ const FABRIC_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Fabric];
 const LEGACY_FABRIC_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::LegacyFabric];
 const FORGE_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Forge];
 const NEOFORGE_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::NeoForge];
+const BUNGEE_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Bungee];
+const VELOCITY_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Velocity];
+const SPONGE_VANILLA_ECOSYSTEMS: &[ServerEcosystem] =
+    &[ServerEcosystem::Sponge, ServerEcosystem::Vanilla];
+const MOHIST_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Bukkit, ServerEcosystem::Forge];
+const NEOFORGE_HYBRID_ECOSYSTEMS: &[ServerEcosystem] =
+    &[ServerEcosystem::Bukkit, ServerEcosystem::NeoForge];
+const NO_ECOSYSTEMS: &[ServerEcosystem] = &[];
 
 const PRODUCTS: &[ProductDefinition] = &[
     ProductDefinition::new(
@@ -77,6 +90,18 @@ const PRODUCTS: &[ProductDefinition] = &[
     ProductDefinition::new("pluto", "Pluto", PAPER_ECOSYSTEMS, "dev.yive.pluto", "pluto-api"),
     ProductDefinition::new("forge", "Forge", FORGE_ECOSYSTEMS, "", ""),
     ProductDefinition::new("leaf", "Leaf", PAPER_ECOSYSTEMS, "cn.dreeam.leaf", "leaf-api"),
+    ProductDefinition::new("arclight", "Arclight", BUKKIT_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("mohist", "Mohist", MOHIST_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("youer", "Youer", NEOFORGE_HYBRID_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("magma", "Magma", NEOFORGE_HYBRID_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("velocity-ctd", "Velocity-CTD", VELOCITY_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("velocity", "Velocity", VELOCITY_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("bungeecord", "BungeeCord", BUNGEE_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("waterfall", "Waterfall", BUNGEE_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("spongevanilla", "SpongeVanilla", SPONGE_VANILLA_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("limbo", "Limbo", NO_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("nanolimbo", "NanoLimbo", NO_ECOSYSTEMS, "", ""),
+    ProductDefinition::new("craftbukkit", "CraftBukkit", BUKKIT_ECOSYSTEMS, "", ""),
 ];
 
 #[derive(Debug, Clone, Copy)]
@@ -146,6 +171,7 @@ pub(super) struct ComponentFinding {
 pub(super) struct Findings {
     pub(super) products: Vec<ProductFinding>,
     pub(super) categories: Vec<Signal<ServerCategory>>,
+    pub(super) ecosystems: Vec<Signal<ServerEcosystem>>,
     pub(super) minecraft_versions: Vec<Signal<String>>,
     pub(super) product_versions: Vec<ProductValueFinding<String>>,
     pub(super) release_channels: Vec<ProductValueFinding<ReleaseChannel>>,
@@ -185,6 +211,11 @@ pub(super) fn detect_jar(
     detect_filename(path, &mut findings);
     fabric::detect(path, archive, None, &mut findings);
     forge::detect_archive(path, None, archive, &mut findings);
+    hybrid::detect(path, archive, &mut findings);
+    proxy::detect(path, archive, &mut findings);
+    sponge::detect(path, archive, &mut findings);
+    limbo::detect(path, archive, &mut findings);
+    generic::detect(path, archive, None, &mut findings);
     paperclip::detect(path, artifact, archive, &mut findings);
     vanilla::detect(path, artifact, minecraft, &mut findings);
     finalize(path, findings, minecraft, java_major, evidence)
@@ -209,6 +240,16 @@ pub(super) fn detect_directory(
             &archive_path,
             Some((path, &root_archive.relative_path)),
             &root_archive.metadata,
+            &mut findings,
+        );
+        hybrid::detect(&archive_path, &root_archive.metadata, &mut findings);
+        proxy::detect(&archive_path, &root_archive.metadata, &mut findings);
+        sponge::detect(&archive_path, &root_archive.metadata, &mut findings);
+        limbo::detect(&archive_path, &root_archive.metadata, &mut findings);
+        generic::detect(
+            &archive_path,
+            &root_archive.metadata,
+            Some((path, &root_archive.relative_path)),
             &mut findings,
         );
     }
@@ -261,7 +302,7 @@ fn finalize(
         .collect::<Vec<_>>();
     category_claims.extend(findings.products.iter().map(|finding| {
         let signal = Signal {
-            value: ServerCategory::JavaGameServer,
+            value: category_for_key(&finding.signal.value.key),
             detector: finding.signal.detector,
             source: finding.signal.source,
             location: finding.signal.location.clone(),
@@ -292,33 +333,46 @@ fn finalize(
         evidence,
     );
 
-    let ecosystems = selected_key.map_or_else(Vec::new, |selected_key| {
-        let mut claims = Vec::new();
-        for finding in findings
-            .products
+    let ecosystems = {
+        let mut claims = findings
+            .ecosystems
             .iter()
-            .filter(|finding| finding.signal.value.key == selected_key)
-        {
-            for ecosystem in &finding.ecosystems {
-                let signal = Signal {
-                    value: ecosystem.clone(),
-                    detector: finding.signal.detector,
-                    source: finding.signal.source,
-                    location: finding.signal.location.clone(),
-                    weight: finding.signal.weight,
-                    correlation_group: finding.signal.correlation_group,
-                };
-                let candidate = ecosystem_name(&signal.value);
-                claims.push(push_claim(
-                    &signal,
+            .map(|signal| {
+                push_claim(
+                    signal,
                     DetectionTarget::ServerEcosystem,
-                    candidate,
+                    ecosystem_name(&signal.value),
                     evidence,
-                ));
+                )
+            })
+            .collect::<Vec<_>>();
+        if let Some(selected_key) = selected_key {
+            for finding in findings
+                .products
+                .iter()
+                .filter(|finding| finding.signal.value.key == selected_key)
+            {
+                for ecosystem in &finding.ecosystems {
+                    let signal = Signal {
+                        value: ecosystem.clone(),
+                        detector: finding.signal.detector,
+                        source: finding.signal.source,
+                        location: finding.signal.location.clone(),
+                        weight: finding.signal.weight,
+                        correlation_group: finding.signal.correlation_group,
+                    };
+                    let candidate = ecosystem_name(&signal.value);
+                    claims.push(push_claim(
+                        &signal,
+                        DetectionTarget::ServerEcosystem,
+                        candidate,
+                        evidence,
+                    ));
+                }
             }
         }
         resolve_attributed(claims)
-    });
+    };
 
     let components = resolve_attributed(
         findings
@@ -610,6 +664,16 @@ pub(super) fn release_channel(version: &str) -> Option<ReleaseChannel> {
     let version = version.to_ascii_lowercase();
     if has_version_label(&version, "snapshot") {
         Some(ReleaseChannel::Snapshot)
+    } else if version
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|token| {
+            token == "rc"
+                || token.strip_prefix("rc").is_some_and(|suffix| {
+                    !suffix.is_empty() && suffix.bytes().all(|b| b.is_ascii_digit())
+                })
+        })
+    {
+        Some(ReleaseChannel::ReleaseCandidate)
     } else if has_version_label(&version, "alpha") {
         Some(ReleaseChannel::Alpha)
     } else if has_version_label(&version, "beta") {
@@ -659,6 +723,19 @@ pub(super) fn manifest_location(path: &Path, field: &str) -> EvidenceLocation {
     }
 }
 
+pub(super) fn manifest_section_location(
+    path: &Path,
+    section: Option<&str>,
+    field: &str,
+) -> EvidenceLocation {
+    EvidenceLocation {
+        path: path.to_path_buf(),
+        archive_entry: Some("META-INF/MANIFEST.MF".to_string()),
+        manifest_section: section.map(str::to_string),
+        field: Some(field.to_string()),
+    }
+}
+
 pub(super) fn version_json_location(path: &Path, field: &str) -> EvidenceLocation {
     EvidenceLocation {
         path: path.to_path_buf(),
@@ -670,6 +747,14 @@ pub(super) fn version_json_location(path: &Path, field: &str) -> EvidenceLocatio
 
 fn product_definition(key: &str) -> Option<&'static ProductDefinition> {
     PRODUCTS.iter().find(|definition| definition.key == key)
+}
+
+fn category_for_key(key: &str) -> ServerCategory {
+    match key {
+        "velocity" | "velocity-ctd" | "bungeecord" | "waterfall" => ServerCategory::Proxy,
+        "limbo" | "nanolimbo" => ServerCategory::Limbo,
+        _ => ServerCategory::JavaGameServer,
+    }
 }
 
 fn is_valid_product_key(key: &str) -> bool {
@@ -723,6 +808,7 @@ fn category_name(category: ServerCategory) -> &'static str {
 fn release_channel_name(channel: ReleaseChannel) -> &'static str {
     match channel {
         ReleaseChannel::Stable => "stable",
+        ReleaseChannel::ReleaseCandidate => "release_candidate",
         ReleaseChannel::Beta => "beta",
         ReleaseChannel::Alpha => "alpha",
         ReleaseChannel::Snapshot => "snapshot",
@@ -785,6 +871,8 @@ mod tests {
     #[test]
     fn release_channel_requires_a_version_label_boundary() {
         assert_eq!(release_channel("26.2.build.1-beta2"), Some(ReleaseChannel::Beta));
+        assert_eq!(release_channel("20.0.0-RC2673"), Some(ReleaseChannel::ReleaseCandidate));
+        assert_eq!(release_channel("20.0.0-RC"), Some(ReleaseChannel::ReleaseCandidate));
         assert_eq!(release_channel("26.2-unstable"), None);
     }
 }
