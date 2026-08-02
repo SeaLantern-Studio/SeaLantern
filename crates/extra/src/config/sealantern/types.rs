@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// 每次配置结构变更（新增/删除/重命名字段）时递增，
 /// 用于触发 `SettingsManager` 中的自动迁移。
-pub const CURRENT_CONFIG_VERSION: u32 = 1;
+pub const CURRENT_CONFIG_VERSION: u32 = 2;
 
 // ---------------------------------------------------------------------------
 // 设置分组
@@ -211,7 +211,7 @@ impl AppSettings {
 // ---------------------------------------------------------------------------
 
 /// 部分更新请求 — 所有字段均为 `Option`，只处理 `Some` 的值
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PartialAppSettings {
     // General
     pub close_servers_on_exit: Option<bool>,
@@ -405,6 +405,30 @@ pub struct JavaInfo {
     pub vendor: String,
     pub is_64bit: bool,
     pub major_version: u32,
+    /// Java 安装信息的规则置信度，范围为 0 到 100。
+    #[serde(default)]
+    pub confidence: u8,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JavaInfo;
+
+    #[test]
+    fn legacy_java_cache_defaults_confidence() {
+        let info: JavaInfo = serde_json::from_str(
+            r#"{
+                "path": "/opt/jdk/bin/java",
+                "version": "21.0.1",
+                "vendor": "OpenJDK",
+                "is_64bit": true,
+                "major_version": 21
+            }"#,
+        )
+        .expect("legacy Java info should remain readable");
+
+        assert_eq!(info.confidence, 0);
+    }
 }
 
 // ===========================================================================
@@ -459,43 +483,21 @@ impl StartupMode {
     }
 }
 
-/// 服务器实例
+/// 实例列表的包装类型
 ///
-/// `#[serde(default)]` 保证未来新增字段时不破坏旧文件的反序列化，
-/// 缺失字段以各类型的默认值填充。
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct ServerInstance {
-    pub id: String,
-    pub name: String,
-    pub core_type: String,
-    pub core_version: String,
-    pub mc_version: String,
-    pub path: String,
-    pub jar_path: String,
-    pub startup_mode: String,
-    pub custom_command: Option<String>,
-    pub java_path: String,
-    pub max_memory: u32,
-    pub min_memory: u32,
-    pub jvm_args: Vec<String>,
-    pub port: u16,
-    pub created_at: u64,
-    pub last_started_at: Option<u64>,
-    pub notes: String,
-}
-
-/// 服务器列表的包装类型
+/// 持久化 `core` 的领域模型 [`Instance`]，`version` 字段保留用于未来结构迁移。
+///
+/// [`Instance`]: sealantern_core::instance::Instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct ServerList {
+pub struct InstanceList {
     pub version: u32,
-    pub servers: Vec<ServerInstance>,
+    pub instances: Vec<sealantern_core::instance::Instance>,
 }
 
-impl Default for ServerList {
+impl Default for InstanceList {
     fn default() -> Self {
-        Self { version: 1, servers: Vec::new() }
+        Self { version: 1, instances: Vec::new() }
     }
 }
 

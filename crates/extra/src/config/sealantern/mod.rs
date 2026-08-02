@@ -4,4 +4,4 @@ pub mod store;
 pub mod types;
 
 pub use manager::SettingsManager;
-pub use registry::ServerRegistry;
+pub use registry::InstanceRegistry;

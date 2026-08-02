@@ -2,8 +2,10 @@ use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
+use serde::{de, Deserialize, Deserializer, Serialize};
+
 /// 由主机为受管实例分配的稳定标识符。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct InstanceId(String);
 
 impl InstanceId {
@@ -21,7 +23,8 @@ impl InstanceId {
 }
 
 /// 用于启动本地实例的已配置机制。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum StartupMode {
     Jar,
     Batch,
@@ -56,12 +59,21 @@ impl StartupMode {
     }
 }
 
+/// 反序列化时复用 [`StartupMode::parse`] 的解析规则，
+/// 容忍大小写差异与别名（如 `"JAR"`、`"batch"`），与持久化值兼容。
+impl<'de> Deserialize<'de> for StartupMode {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        Self::parse(&value).map_err(de::Error::custom)
+    }
+}
+
 /// 实例拥有的本地运行时数据，与进程构造无关。
 ///
 /// `Custom` 模式接受传统的 shell 后端 `custom_command` 文本，或直接的
 /// `custom_executable` 加 `custom_arguments`。两种形式互斥，参数仅对直接可执行文件有效。
 /// 空的可执行文件路径会被规范化为 `None`。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocalLaunch {
     pub startup_mode: StartupMode,
     pub startup_target: Option<PathBuf>,
@@ -119,7 +131,7 @@ impl LocalLaunch {
 }
 
 /// 用于验证和构造 [`Instance`] 的输入。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InstanceSpec {
     pub id: InstanceId,
     pub name: String,
@@ -137,7 +149,7 @@ pub struct InstanceSpec {
 }
 
 /// 一个已验证的受管实例及其本地运行时配置。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Instance {
     pub id: InstanceId,
     pub name: String,

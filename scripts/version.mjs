@@ -6,6 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const workspaceCargo = path.join(rootDir, "Cargo.toml");
+const EXCLUDED_VERSION_MEMBERS = new Set(["crates/vendor/java-manager"]);
 
 // ---------------------------------------------------------------------------
 // 工具函数
@@ -65,6 +66,11 @@ function parseWorkspaceMembers(content) {
     .filter(Boolean);
 }
 
+/** 判断 workspace member 是否由外部 vendoring 管理，不参与项目版本同步。 */
+function isExcludedVersionMember(member) {
+  return EXCLUDED_VERSION_MEMBERS.has(member.replaceAll("\\", "/"));
+}
+
 /** 发现所有需要管理的文件路径。 */
 async function discoverFiles() {
   const workspaceRaw = await readFile(workspaceCargo, "utf8");
@@ -75,6 +81,10 @@ async function discoverFiles() {
 
   // workspace member 的 Cargo.toml
   for (const member of members) {
+    if (isExcludedVersionMember(member)) {
+      continue;
+    }
+
     candidates.push({
       label: `${member}/Cargo.toml`,
       path: path.join(rootDir, member, "Cargo.toml"),
