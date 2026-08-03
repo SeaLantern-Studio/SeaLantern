@@ -1,8 +1,5 @@
 use std::fmt;
-use std::io;
 use std::path::{Path, PathBuf};
-
-use zip::result::ZipError;
 
 use super::server_inspection::{
     inspect_server_artifact, Attributed, Detected, InspectionOptions, ReleaseChannel,
@@ -213,6 +210,7 @@ fn selected_value<T: Clone>(detected: &Detected<T>) -> Option<T> {
 
 fn legacy_kind_from_report(report: &ServerInspectionReport, filename_kind: CoreKind) -> CoreKind {
     let Some(product) = report.identity.implementation.value.as_ref() else {
+        // 多个高置信度实现候选时，不能用文件名擅自打破冲突。
         return CoreKind::Unknown;
     };
     match product.key.as_str() {
@@ -353,27 +351,11 @@ fn extract_version_tokens(input: &str) -> Vec<String> {
     tokens
 }
 
-/// 描述打开或解析服务端核心文件时的失败。
+/// 描述检查服务端核心文件时的失败。
 #[derive(Debug)]
 pub enum CoreParseError {
     InvalidPath {
         path: PathBuf,
-    },
-    Open {
-        path: PathBuf,
-        source: io::Error,
-    },
-    Archive {
-        path: PathBuf,
-        source: ZipError,
-    },
-    Manifest {
-        path: PathBuf,
-        source: ZipError,
-    },
-    ManifestRead {
-        path: PathBuf,
-        source: io::Error,
     },
     Inspection {
         path: PathBuf,
@@ -387,20 +369,6 @@ impl fmt::Display for CoreParseError {
             Self::InvalidPath { path } => {
                 write!(formatter, "core file path has no filename: {}", path.display())
             }
-            Self::Open { path, source } => {
-                write!(formatter, "could not open core file {}: {source}", path.display())
-            }
-            Self::Archive { path, source } => {
-                write!(formatter, "could not parse JAR archive {}: {source}", path.display())
-            }
-            Self::Manifest { path, source } => {
-                write!(formatter, "could not read JAR manifest from {}: {source}", path.display())
-            }
-            Self::ManifestRead { path, source } => write!(
-                formatter,
-                "could not read JAR manifest content from {}: {source}",
-                path.display()
-            ),
             Self::Inspection { path, source } => {
                 write!(formatter, "could not inspect core file {}: {source}", path.display())
             }
@@ -412,8 +380,6 @@ impl std::error::Error for CoreParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::InvalidPath { .. } => None,
-            Self::Open { source, .. } | Self::ManifestRead { source, .. } => Some(source),
-            Self::Archive { source, .. } | Self::Manifest { source, .. } => Some(source),
             Self::Inspection { source, .. } => Some(source),
         }
     }
@@ -421,6 +387,7 @@ impl std::error::Error for CoreParseError {
 
 #[cfg(test)]
 mod tests {
+    use std::error::Error;
     use std::fs::File;
     use std::io::Write;
     use std::path::PathBuf;
@@ -428,7 +395,10 @@ mod tests {
 
     use zip::write::FileOptions;
 
-    use super::{extract_minecraft_version, inspect_core_file, inspect_core_filename, CoreKind};
+    use super::{
+        extract_minecraft_version, inspect_core_file, inspect_core_filename, CoreKind,
+        CoreParseError,
+    };
 
     fn write_test_jar(filename: &str, entries: &[(&str, &str)]) -> PathBuf {
         let timestamp = SystemTime::now()
@@ -624,5 +594,24 @@ mod tests {
         assert_eq!(parsed.kind, CoreKind::Unknown);
         assert_eq!(parsed.core_version, None);
         assert_eq!(parsed.minecraft_version.as_deref(), Some("26.2"));
+    }
+
+    #[test]
+    fn compatibility_projection_wraps_new_inspection_errors() {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after the Unix epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "sealantern-core-provisioning-{}-{timestamp}-invalid.jar",
+            std::process::id()
+        ));
+        std::fs::write(&path, b"not a ZIP archive").expect("write invalid JAR");
+
+        let error = inspect_core_file(&path).expect_err("reject invalid JAR");
+        std::fs::remove_file(&path).expect("remove invalid JAR");
+
+        assert!(matches!(error, CoreParseError::Inspection { .. }));
+        assert!(error.source().is_some());
     }
 }
