@@ -12,20 +12,18 @@ use crate::services::AppServices;
 /// 列出全部实例。
 #[tauri::command]
 pub async fn server_instance_list() -> Result<Vec<Instance>, String> {
-    AppServices::get()
-        .instance
-        .list()
+    let instance = AppServices::instance_service()
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    instance.list().await.map_err(|e| e.to_string())
 }
 
 /// 按 ID 查找实例，不存在返回 `None`。
 #[tauri::command]
 pub async fn server_instance_get(id: String) -> Result<Option<Instance>, String> {
     let id = InstanceId::new(&id).map_err(|_| "invalid instance id".to_string())?;
-    AppServices::get()
-        .instance
-        .find(&id)
+    let instance = AppServices::instance_service()
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    instance.find(&id).await.map_err(|e| e.to_string())
 }
