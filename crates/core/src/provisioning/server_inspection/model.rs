@@ -180,6 +180,7 @@ pub enum ServerEcosystem {
 #[serde(rename_all = "snake_case")]
 pub enum ReleaseChannel {
     Stable,
+    ReleaseCandidate,
     Beta,
     Alpha,
     Snapshot,
