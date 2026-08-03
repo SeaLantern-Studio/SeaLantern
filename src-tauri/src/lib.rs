@@ -5,7 +5,10 @@ pub mod desktop;
 pub mod observability;
 pub mod services;
 
-use crate::adapter::{server_instance_get, server_instance_list};
+use crate::adapter::{
+    server_instance_create, server_instance_delete, server_instance_get, server_instance_list,
+    server_instance_rename, server_instance_update_path,
+};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -21,7 +24,14 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![server_instance_get, server_instance_list,])
+        .invoke_handler(tauri::generate_handler![
+            server_instance_get,
+            server_instance_list,
+            server_instance_create,
+            server_instance_delete,
+            server_instance_rename,
+            server_instance_update_path,
+        ])
         .setup(|app| {
             // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
             #[cfg(not(target_os = "macos"))]

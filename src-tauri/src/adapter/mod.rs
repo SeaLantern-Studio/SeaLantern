@@ -5,4 +5,7 @@
 
 pub mod instances;
 
-pub use instances::{server_instance_get, server_instance_list};
+pub use instances::{
+    server_instance_create, server_instance_delete, server_instance_get, server_instance_list,
+    server_instance_rename, server_instance_update_path,
+};
