@@ -12,13 +12,13 @@
 /// ]);
 /// ```
 ///
-/// `service_field` 是 [`RpcServices`] 的字段名，宏展开后等价于：
+/// `service_field` 是 [`AppServices`] 的字段名，宏展开后等价于：
 ///
 /// ```ignore
 /// rpc_route!(router, path::to::Method::new(services.service_field.clone()));
 /// ```
 ///
-/// [`RpcServices`]: crate::rpc::service::RpcServices
+/// [`AppServices`]: crate::rpc::service::AppServices
 #[macro_export]
 macro_rules! register_methods {
     ($router:ident, $services:ident, [ $( ($method:ty, $field:ident) ),* $(,)? ]) => {

@@ -12,7 +12,7 @@ use super::*;
 use crate::rpc::{
     methods::server::SendConsoleCommand,
     methods::PERMISSION_SERVER_CONSOLE_SEND,
-    service::RpcServices,
+    service::AppServices,
     traits::{ConsoleCommandService, ConsoleCommandServiceError, InstanceServiceError},
     RpcMethodName, RpcPermission,
 };
@@ -232,7 +232,7 @@ fn maps_rpc_errors_to_stable_http_statuses() {
 #[tokio::test]
 async fn build_router_dispatches_requests_through_the_public_entry() {
     let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
-    let services = RpcServices::new(svc.clone(), Arc::new(NoopInstanceService));
+    let services = AppServices::new(svc.clone(), Arc::new(NoopInstanceService));
     let app = crate::rpc::router::build_router(services, AllowConsoleSend);
 
     let response = app
@@ -257,7 +257,7 @@ async fn build_router_dispatches_requests_through_the_public_entry() {
 #[tokio::test]
 async fn build_router_rejects_unprivileged_requests() {
     let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
-    let services = RpcServices::new(svc.clone(), Arc::new(NoopInstanceService));
+    let services = AppServices::new(svc.clone(), Arc::new(NoopInstanceService));
     let app = crate::rpc::router::build_router(services, DenyAll);
 
     let response = app
@@ -282,7 +282,7 @@ async fn build_router_rejects_unprivileged_requests() {
 #[tokio::test]
 async fn build_router_rejects_invalid_json() {
     let svc = Arc::new(RecordingConsoleService { commands: Mutex::new(Vec::new()) });
-    let services = RpcServices::new(svc.clone(), Arc::new(NoopInstanceService));
+    let services = AppServices::new(svc.clone(), Arc::new(NoopInstanceService));
     let app = crate::rpc::router::build_router(services, AllowConsoleSend);
 
     let response = app
