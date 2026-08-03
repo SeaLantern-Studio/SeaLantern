@@ -195,17 +195,13 @@ fn is_ambiguous<T>(detected: &Detected<T>) -> bool {
 }
 
 fn selected_or_fallback<T: Clone>(detected: &Detected<T>, fallback: Option<T>) -> Option<T> {
-    if let Some(value) = selected_value(detected) {
-        Some(value)
+    if let Some(value) = detected.value.as_ref() {
+        Some(value.clone())
     } else if detected.alternatives.is_empty() {
         fallback
     } else {
         None
     }
-}
-
-fn selected_value<T: Clone>(detected: &Detected<T>) -> Option<T> {
-    detected.value.as_ref().cloned()
 }
 
 fn legacy_kind_from_report(report: &ServerInspectionReport, filename_kind: CoreKind) -> CoreKind {
@@ -259,23 +255,27 @@ fn legacy_kind_from_report(report: &ServerInspectionReport, filename_kind: CoreK
 }
 
 fn arclight_legacy_kind(ecosystems: &[Attributed<ServerEcosystem>]) -> CoreKind {
-    if ecosystems
-        .iter()
-        .any(|ecosystem| ecosystem.value == ServerEcosystem::NeoForge)
-    {
-        CoreKind::ArclightNeoForge
-    } else if ecosystems
-        .iter()
-        .any(|ecosystem| ecosystem.value == ServerEcosystem::Fabric)
-    {
-        CoreKind::ArclightFabric
-    } else if ecosystems
-        .iter()
-        .any(|ecosystem| ecosystem.value == ServerEcosystem::Forge)
-    {
-        CoreKind::ArclightForge
-    } else {
-        CoreKind::Unknown
+    let mut result = CoreKind::Unknown;
+    for ecosystem in ecosystems {
+        let candidate = match ecosystem.value {
+            ServerEcosystem::NeoForge => CoreKind::ArclightNeoForge,
+            ServerEcosystem::Fabric => CoreKind::ArclightFabric,
+            ServerEcosystem::Forge => CoreKind::ArclightForge,
+            _ => continue,
+        };
+        if arclight_kind_priority(candidate) > arclight_kind_priority(result) {
+            result = candidate;
+        }
+    }
+    result
+}
+
+fn arclight_kind_priority(kind: CoreKind) -> u8 {
+    match kind {
+        CoreKind::ArclightNeoForge => 3,
+        CoreKind::ArclightFabric => 2,
+        CoreKind::ArclightForge => 1,
+        _ => 0,
     }
 }
 
@@ -396,9 +396,10 @@ mod tests {
     use zip::write::FileOptions;
 
     use super::{
-        extract_minecraft_version, inspect_core_file, inspect_core_filename, CoreKind,
-        CoreParseError,
+        arclight_legacy_kind, extract_minecraft_version, inspect_core_file, inspect_core_filename,
+        CoreKind, CoreParseError,
     };
+    use crate::provisioning::server_inspection::{Attributed, ServerEcosystem};
 
     fn write_test_jar(filename: &str, entries: &[(&str, &str)]) -> PathBuf {
         let timestamp = SystemTime::now()
@@ -536,6 +537,29 @@ mod tests {
 
         assert_eq!(parsed.kind, CoreKind::ArclightNeoForge);
         assert_eq!(parsed.minecraft_version.as_deref(), Some("1.21.1"));
+    }
+
+    #[test]
+    fn arclight_ecosystem_priority_is_independent_of_input_order() {
+        let ecosystems = [
+            Attributed {
+                value: ServerEcosystem::Forge,
+                confidence: 95,
+                evidence: Vec::new(),
+            },
+            Attributed {
+                value: ServerEcosystem::Fabric,
+                confidence: 95,
+                evidence: Vec::new(),
+            },
+            Attributed {
+                value: ServerEcosystem::NeoForge,
+                confidence: 95,
+                evidence: Vec::new(),
+            },
+        ];
+
+        assert_eq!(arclight_legacy_kind(&ecosystems), CoreKind::ArclightNeoForge);
     }
 
     #[test]
