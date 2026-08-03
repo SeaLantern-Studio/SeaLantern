@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -79,9 +78,9 @@ pub struct LocalLaunch {
     pub startup_target: Option<PathBuf>,
     pub custom_command: Option<String>,
     pub custom_executable: Option<PathBuf>,
-    pub custom_arguments: Vec<OsString>,
+    pub custom_arguments: Vec<String>,
     pub java_executable: Option<PathBuf>,
-    pub jvm_arguments: Vec<OsString>,
+    pub jvm_arguments: Vec<String>,
 }
 
 impl LocalLaunch {
@@ -293,7 +292,6 @@ fn normalize_aliases(instance_name: &str, aliases: Vec<String>) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::OsString;
     use std::path::{Path, PathBuf};
 
     use super::{Instance, InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
@@ -319,7 +317,7 @@ mod tests {
                 custom_executable: None,
                 custom_arguments: Vec::new(),
                 java_executable: Some(Path::new("java").to_path_buf()),
-                jvm_arguments: vec![OsString::from("-Xmx4G")],
+                jvm_arguments: vec!["-Xmx4G".to_string()],
             },
         }
     }
@@ -375,12 +373,12 @@ mod tests {
         spec.launch.startup_mode = StartupMode::Custom;
         spec.launch.startup_target = None;
         spec.launch.custom_executable = Some(PathBuf::from("launch-server.exe"));
-        spec.launch.custom_arguments = vec![OsString::from("--nogui")];
+        spec.launch.custom_arguments = vec!["--nogui".to_string()];
 
         let instance = Instance::new(spec).expect("custom launch should be valid");
 
         assert_eq!(instance.launch.custom_executable, Some(PathBuf::from("launch-server.exe")));
-        assert_eq!(instance.launch.custom_arguments, vec![OsString::from("--nogui")]);
+        assert_eq!(instance.launch.custom_arguments, vec!["--nogui".to_string()]);
     }
 
     #[test]
