@@ -1,12 +1,17 @@
 //! 服务器实例管理的 Tauri 传输适配命令。
 //!
-//! 直接对接自托管的 [`AppServices`]（全局单例，非 Tauri State），
-//! 把实例管理的查询/CRUD 暴露为前端可调的 Tauri 命令。
-//! 后续可在保持命令签名的前提下切换为经 RPC 契约的 `dispatch` 调用。
+//! 命令层只做三件事：经 [`AppServices::instance_service`] 拿到服务句柄、
+//! 用 [`super::super::services::rpc`] 提供的方法对象与 request 装配、把
+//! dispatch 结果映射为 Tauri 命令返回值。权限与请求上下文集中由
+//! `services::rpc` 统一构造，不在这里散落。
 
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
-use sealantern_server::rpc::traits::InstanceService;
 
+use crate::services::rpc::instances::{
+    InstanceCreate, InstanceDelete, InstanceGet, InstanceList, InstanceRename, InstanceUpdatePath,
+    RenameRequest, UpdatePathRequest,
+};
+use crate::services::rpc::{rpc_error_message, tauri_request};
 use crate::services::AppServices;
 
 /// 列出全部实例。
@@ -15,7 +20,11 @@ pub async fn server_instance_list() -> Result<Vec<Instance>, String> {
     let instance = AppServices::instance_service()
         .await
         .map_err(|e| e.to_string())?;
-    instance.list().await.map_err(|e| e.to_string())
+    let response =
+        sealantern_server::rpc::dispatch(&InstanceList::new(instance), tauri_request(()))
+            .await
+            .map_err(rpc_error_message)?;
+    Ok(response.into_data())
 }
 
 /// 按 ID 查找实例，不存在返回 `None`。
@@ -25,7 +34,10 @@ pub async fn server_instance_get(id: String) -> Result<Option<Instance>, String>
     let instance = AppServices::instance_service()
         .await
         .map_err(|e| e.to_string())?;
-    instance.find(&id).await.map_err(|e| e.to_string())
+    let response = sealantern_server::rpc::dispatch(&InstanceGet::new(instance), tauri_request(id))
+        .await
+        .map_err(rpc_error_message)?;
+    Ok(response.into_data())
 }
 
 /// 创建新实例并持久化。
@@ -34,7 +46,11 @@ pub async fn server_instance_create(spec: InstanceSpec) -> Result<Instance, Stri
     let instance = AppServices::instance_service()
         .await
         .map_err(|e| e.to_string())?;
-    instance.create(spec).await.map_err(|e| e.to_string())
+    let response =
+        sealantern_server::rpc::dispatch(&InstanceCreate::new(instance), tauri_request(spec))
+            .await
+            .map_err(rpc_error_message)?;
+    Ok(response.into_data())
 }
 
 /// 删除实例，返回是否确实删除了某个实例。
@@ -44,7 +60,11 @@ pub async fn server_instance_delete(id: String) -> Result<bool, String> {
     let instance = AppServices::instance_service()
         .await
         .map_err(|e| e.to_string())?;
-    instance.delete(&id).await.map_err(|e| e.to_string())
+    let response =
+        sealantern_server::rpc::dispatch(&InstanceDelete::new(instance), tauri_request(id))
+            .await
+            .map_err(rpc_error_message)?;
+    Ok(response.into_data())
 }
 
 /// 重命名实例。
@@ -54,7 +74,13 @@ pub async fn server_instance_rename(id: String, name: String) -> Result<(), Stri
     let instance = AppServices::instance_service()
         .await
         .map_err(|e| e.to_string())?;
-    instance.rename(&id, &name).await.map_err(|e| e.to_string())
+    let params = RenameRequest { id, name };
+    let response =
+        sealantern_server::rpc::dispatch(&InstanceRename::new(instance), tauri_request(params))
+            .await
+            .map_err(rpc_error_message)?;
+    response.into_data();
+    Ok(())
 }
 
 /// 更新实例目录路径。
@@ -64,8 +90,11 @@ pub async fn server_instance_update_path(id: String, path: String) -> Result<(),
     let instance = AppServices::instance_service()
         .await
         .map_err(|e| e.to_string())?;
-    instance
-        .update_path(&id, &path)
-        .await
-        .map_err(|e| e.to_string())
+    let params = UpdatePathRequest { id, path };
+    let response =
+        sealantern_server::rpc::dispatch(&InstanceUpdatePath::new(instance), tauri_request(params))
+            .await
+            .map_err(rpc_error_message)?;
+    response.into_data();
+    Ok(())
 }

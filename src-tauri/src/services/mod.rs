@@ -9,6 +9,7 @@
 
 pub mod app_service;
 pub mod instance;
+pub mod rpc;
 
 pub use app_service::AppServices;
 pub use instance::CoreInstanceService;
