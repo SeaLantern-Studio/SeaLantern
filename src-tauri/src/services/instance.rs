@@ -14,7 +14,9 @@ use sealantern_infra::fs::FsError;
 use sealantern_infra::platform::get_app_data_dir;
 use sealantern_server::rpc::traits::{InstanceService, InstanceServiceError};
 
-/// 实例列表数据文件名（沿用 v1.2.0 命名，置于应用数据根目录）。
+/// 实例列表数据文件名，置于应用数据根目录。
+///
+/// 沿用历史版本使用的文件名，以保证旧数据文件可被读取迁移。
 const INSTANCES_FILE: &str = "sea_lantern_servers.json";
 
 /// 基于 `core` + `extra` 的实例管理宿主能力实现。

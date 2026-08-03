@@ -1,8 +1,8 @@
 //! Tauri 传输适配辅助。
 //!
-//! 提供 Tauri `invoke` 到 RPC 契约所需的上下文构造、权限解析和错误映射，
-//! 角色对位 server 的 `rpc::axum`（HTTP 传输适配器），但因 Tauri 本地可信本质
-//! 而采用独立实现：不套用 HTTP 的 header/`HttpRpcAccessResolver` 机制。
+//! 提供 Tauri `invoke` 到 RPC 契约所需的上文构造、权限提供和错误映射，
+//! 与 server 的 `rpc::axum`（HTTP 适配器）对位，但因 Tauri 是本地可信进程，
+//! 采用独立的适配实现，不复用 HTTP 的 header / `HttpRpcAccessResolver` 机制。
 
 use sealantern_server::rpc::{
     RpcAccess, RpcContext, RpcError, RpcRequest, RpcRequestId, RpcTransport,
@@ -10,11 +10,11 @@ use sealantern_server::rpc::{
 
 /// Tauri 端权限解析的集中入口。
 ///
-/// 当前本地进程调用视为受信任，授予全部权限；未来插件桥接时在此按调用方身份
-/// （`RpcContext.transport` / 请求来源）收敛为对应权限集合。命令层不直接构造
-/// `RpcAccess`，避免权限逻辑散落。
+/// 当前桌面进程视为本地可信调用方，授予全部权限；未来引入插件调用方时，可在此
+/// 依据调用来源（`RpcContext.transport` 或请求标识）收敛为调用方对应的权限集合。
+/// 命令层不在各处散落 `RpcAccess` 构造，统一经由本函数获取。
 pub fn tauri_access() -> RpcAccess {
-    // 本地受信任进程：允许全部（尚未引入插件调用方）
+    // 本地受信任进程：授予全部权限（尚未引入插件调用方）
     RpcAccess::allow_all()
 }
 

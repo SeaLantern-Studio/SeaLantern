@@ -1,11 +1,11 @@
-//! 宿主能力实现。
+//! 宿主能力实现与 RPC 方法层。
 //!
-//! 用 `core` / `extra` 的能力实现 `server` crate 定义的 service trait
-//! （`AppServices` 各字段对应的宿主端口）。每个 service trait 对应一个文件，
-//! 例如 `instance.rs` 实现 `server::rpc::traits::InstanceService`。
+//! - `instance.rs` 用 `core` / `extra` 的能力实现 `server` crate 定义的
+//!   `InstanceService` 端口（持久化到 `sea_lantern_servers.json`）；
+//! - `rpc/` 承载桌面端 RPC 方法实现与 Tauri 传输适配；
+//! - `app_service.rs` 承载应用级自托管容器。
 //!
-//! `adapter` 负责传输适配，`services` 负责能力实现，两者方向不同、各归其位。
-//! `app_service.rs` 承载应用级自托管容器。
+//! `adapter` 负责 Tauri 命令的传输适配，`services` 负责能力与 RPC 实现，分层明确。
 
 pub mod app_service;
 pub mod instance;

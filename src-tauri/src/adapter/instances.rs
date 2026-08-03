@@ -3,7 +3,7 @@
 //! 命令层只做三件事：经 [`AppServices::instance_service`] 拿到服务句柄、
 //! 用 [`super::super::services::rpc`] 提供的方法对象与 request 装配、把
 //! dispatch 结果映射为 Tauri 命令返回值。权限与请求上下文集中由
-//! `services::rpc` 统一构造，不在这里散落。
+//! `services::rpc` 统一构造，不在本层分散。
 
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 

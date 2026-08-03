@@ -1,7 +1,7 @@
 //! 服务器实例管理的 RPC 方法实现（Tauri 侧）。
 //!
 //! 每个方法实现 `server::rpc::RpcMethod`，内部借用 [`CoreInstanceService`]，
-//! 让 Tauri 命令与 server 的 HTTP(axum) 端真正共用同一套 `dispatch` 契约。
+//! 使 Tauri 命令与 server 的 HTTP(axum) 端共用同一套 `dispatch` 契约。
 //! 方法本身不接触任何传输细节；权限由命令层统一经 [`super::tauri_request`] 注入。
 
 use std::future::Future;
@@ -16,7 +16,7 @@ use sealantern_server::rpc::{
 
 use crate::services::instance::CoreInstanceService;
 
-/// 实例管理的调读权限（只读操作）。
+/// 实例管理的只读权限（只读操作）。
 pub const PERMISSION_INSTANCE_READ: RpcPermission = RpcPermission::new("server.instance.read");
 /// 实例管理的写权限（创建/删除/改名/改路径）。
 pub const PERMISSION_INSTANCE_WRITE: RpcPermission = RpcPermission::new("server.instance.write");
