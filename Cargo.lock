@@ -5168,6 +5168,14 @@ dependencies = [
 [[package]]
 name = "sealantern-application"
 version = "1.2.0"
+dependencies = [
+ "async-trait",
+ "sealantern-core",
+ "sealantern-extra",
+ "sealantern-infra",
+ "sealantern-interface",
+ "tokio",
+]
 
 [[package]]
 name = "sealantern-core"

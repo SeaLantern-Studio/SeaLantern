@@ -1,3 +1,8 @@
-//! 应用层服务模块。
+//! 应用层服务实现模块。
 //!
-//! 当前为空，后续在此聚合应用层对外提供的各类服务接口。
+//! 存放各类宿主能力的默认实现（如 [`CoreInstanceService`]），
+//! 实现 `interface` 的能力端口，由 `services` 装配层组装进全局容器。
+
+mod instance;
+
+pub use instance::CoreInstanceService;

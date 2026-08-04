@@ -8,3 +8,9 @@ license = "GPL-3.0-only"
 path = "src/lib.rs"
 
 [dependencies]
+async-trait = "0.1.91"
+tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros", "sync", "fs"] }
+sealantern-core = { path = "../crates/core" }
+sealantern-interface = { path = "../crates/interface" }
+sealantern-extra = { path = "../crates/extra" }
+sealantern-infra = { path = "../crates/infra" }
