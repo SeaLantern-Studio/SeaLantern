@@ -23,6 +23,9 @@ tauri-plugin-process = "2.3"
 tauri-plugin-window-state = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1.0", features = ["derive"] }
+uuid = "1"
+tokio = { version = "1", features = ["time"] }
 sealantern-extra = { path = "../crates/extra" }
 sealantern-core = { path = "../crates/core" }
 sealantern-infra = { path = "../crates/infra" }
