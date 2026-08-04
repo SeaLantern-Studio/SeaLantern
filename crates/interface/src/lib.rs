@@ -1,3 +1,16 @@
+//! `sealantern-interface` 接口契约 crate。
+//!
+//! 定义宿主侧能力端口（trait）及其相关模型，供 `server` 实现与上层复用，
+//! 不依赖任何具体 RPC 传输。
+
 #![forbid(unsafe_code)]
 
-pub mod observability;
+/// 接口层错误类型。
+pub mod error;
+/// 服务器实例相关模型与服务端口。
+pub mod instance;
+
+/// 服务器实例管理服务端口。
+pub use instance::InstanceService;
+/// 服务器实例管理错误枚举。
+pub use instance::InstanceServiceError;

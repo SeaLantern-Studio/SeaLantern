@@ -11,3 +11,6 @@ path = "src/lib.rs"
 default = []
 
 [dependencies]
+async-trait = "0.1.91"
+tokio = { version = "1.53.1", features = ["rt", "macros"] }
+sealantern-core = { path = "../core" }

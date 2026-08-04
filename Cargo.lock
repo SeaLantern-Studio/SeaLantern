@@ -5230,6 +5230,11 @@ dependencies = [
 [[package]]
 name = "sealantern-interface"
 version = "1.2.0"
+dependencies = [
+ "async-trait",
+ "sealantern-core",
+ "tokio",
+]
 
 [[package]]
 name = "sealantern-server"
