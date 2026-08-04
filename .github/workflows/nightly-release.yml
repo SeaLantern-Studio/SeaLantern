@@ -299,8 +299,8 @@ jobs:
       - validate-nightly
       - publish-tauri-nightly
     if: >-
-      needs.validate-nightly.outputs.should_build == 'true' &&
-      needs.publish-tauri-nightly.result == 'success'
+      always() &&
+      needs.validate-nightly.outputs.should_build == 'true'
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -309,6 +309,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT_TAG: ${{ needs.validate-nightly.outputs.tag }}
+          PUBLISH_RESULT: ${{ needs.publish-tauri-nightly.result }}
         run: |
           set -euo pipefail
 
@@ -318,7 +319,7 @@ jobs:
 
           deleted=0
           for tag in "${NIGHTLY_TAGS[@]}"; do
-            if [ "$tag" = "$CURRENT_TAG" ]; then
+            if [ "$tag" = "$CURRENT_TAG" ] && [ "$PUBLISH_RESULT" = "success" ]; then
               continue
             fi
 
