@@ -1502,6 +1502,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-primitive-derive"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c375b9c5eadb68d0a6efee2999fef292f45854c3444c86f09d8ab086ba942b0e"
+dependencies = [
+ "num-traits",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "enumflags2"
 version = "0.7.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1574,6 +1585,32 @@ checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener",
  "pin-project-lite",
+]
+
+[[package]]
+name = "everything-sdk"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53ba4925af6797862633ba250466560d3910de163d49523b82e0a785b8a7c260"
+dependencies = [
+ "bitflags 2.13.1",
+ "enum-primitive-derive",
+ "everything-sdk-sys",
+ "num-traits",
+ "thiserror 1.0.69",
+ "tracing",
+ "widestring",
+ "windows 0.52.0",
+]
+
+[[package]]
+name = "everything-sdk-sys"
+version = "0.0.3+2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4c7f4eef3105938140e285d69d4d84ce0b9830374584c6d5f41ba7b07f6f226"
+dependencies = [
+ "cc",
+ "windows 0.52.0",
 ]
 
 [[package]]
@@ -2900,10 +2937,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "is_executable"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82cb6a9f675da968c63b6208c641b9dca58fc0133ae53375736b1767b0cab8bd"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
+
+[[package]]
+name = "java-manager"
+version = "0.3.0"
+dependencies = [
+ "everything-sdk",
+ "glob",
+ "is_executable",
+ "tempfile",
+ "walkdir",
+ "windows 0.62.2",
+ "winreg",
+]
 
 [[package]]
 name = "javascriptcore-rs"
@@ -5110,6 +5169,9 @@ dependencies = [
 name = "sealantern-core"
 version = "1.2.0"
 dependencies = [
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
  "tracing",
  "zip",
 ]
@@ -5122,14 +5184,15 @@ dependencies = [
  "chrono",
  "cron",
  "dirs 5.0.1",
+ "java-manager",
  "mlua",
  "regex",
  "reqwest 0.12.28",
  "sculk",
+ "sealantern-core",
  "sealantern-infra",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "tempfile",
  "tokio",
  "tracing",
@@ -5752,6 +5815,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
+ "quote",
  "unicode-ident",
 ]
 
@@ -7240,6 +7304,16 @@ dependencies = [
 
 [[package]]
 name = "windows"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e48a53791691ab099e5e2ad123536d0fff50652600abaf43bbf952894110d0be"
+dependencies = [
+ "windows-core 0.52.0",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows"
 version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12342cb4d8e3b046f3d80effd474a7a02447231330ef77d71daa6fbc40681143"
@@ -7289,6 +7363,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b2d95af1a8a14a3c7367e1ed4fc9c20e0a26e79551b1454d72583c97cc6610"
 dependencies = [
  "windows-core 0.62.2",
+]
+
+[[package]]
+name = "windows-core"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33ab640c8d7e35bf8ba19b884ba838ceb4fba93a4e8c65a9059d08afcfc683d9"
+dependencies = [
+ "windows-targets 0.52.6",
 ]
 
 [[package]]

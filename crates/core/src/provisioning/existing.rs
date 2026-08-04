@@ -24,4 +24,10 @@ impl std::fmt::Display for ExistingInstanceError {
     }
 }
 
-impl std::error::Error for ExistingInstanceError {}
+impl std::error::Error for ExistingInstanceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Import(error) => Some(error),
+        }
+    }
+}

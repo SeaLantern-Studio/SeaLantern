@@ -1,9 +1,10 @@
-use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
+use serde::{de, Deserialize, Deserializer, Serialize};
+
 /// 由主机为受管实例分配的稳定标识符。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct InstanceId(String);
 
 impl InstanceId {
@@ -21,7 +22,8 @@ impl InstanceId {
 }
 
 /// 用于启动本地实例的已配置机制。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum StartupMode {
     Jar,
     Batch,
@@ -56,20 +58,29 @@ impl StartupMode {
     }
 }
 
+/// 反序列化时复用 [`StartupMode::parse`] 的解析规则，
+/// 容忍大小写差异与别名（如 `"JAR"`、`"batch"`），与持久化值兼容。
+impl<'de> Deserialize<'de> for StartupMode {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        Self::parse(&value).map_err(de::Error::custom)
+    }
+}
+
 /// 实例拥有的本地运行时数据，与进程构造无关。
 ///
 /// `Custom` 模式接受传统的 shell 后端 `custom_command` 文本，或直接的
 /// `custom_executable` 加 `custom_arguments`。两种形式互斥，参数仅对直接可执行文件有效。
 /// 空的可执行文件路径会被规范化为 `None`。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocalLaunch {
     pub startup_mode: StartupMode,
     pub startup_target: Option<PathBuf>,
     pub custom_command: Option<String>,
     pub custom_executable: Option<PathBuf>,
-    pub custom_arguments: Vec<OsString>,
+    pub custom_arguments: Vec<String>,
     pub java_executable: Option<PathBuf>,
-    pub jvm_arguments: Vec<OsString>,
+    pub jvm_arguments: Vec<String>,
 }
 
 impl LocalLaunch {
@@ -119,7 +130,7 @@ impl LocalLaunch {
 }
 
 /// 用于验证和构造 [`Instance`] 的输入。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InstanceSpec {
     pub id: InstanceId,
     pub name: String,
@@ -133,11 +144,13 @@ pub struct InstanceSpec {
     pub min_memory_mib: u32,
     pub created_at_unix_secs: u64,
     pub last_started_at_unix_secs: Option<u64>,
+    #[serde(default)]
+    pub server_metadata: Option<super::server_metadata::ServerMetadataSnapshot>,
     pub launch: LocalLaunch,
 }
 
 /// 一个已验证的受管实例及其本地运行时配置。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Instance {
     pub id: InstanceId,
     pub name: String,
@@ -151,6 +164,8 @@ pub struct Instance {
     pub min_memory_mib: u32,
     pub created_at_unix_secs: u64,
     pub last_started_at_unix_secs: Option<u64>,
+    #[serde(default)]
+    pub server_metadata: Option<super::server_metadata::ServerMetadataSnapshot>,
     pub launch: LocalLaunch,
 }
 
@@ -192,6 +207,7 @@ impl Instance {
             min_memory_mib: spec.min_memory_mib,
             created_at_unix_secs: spec.created_at_unix_secs,
             last_started_at_unix_secs: spec.last_started_at_unix_secs,
+            server_metadata: spec.server_metadata,
             launch: spec.launch,
         })
     }
@@ -281,7 +297,6 @@ fn normalize_aliases(instance_name: &str, aliases: Vec<String>) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::OsString;
     use std::path::{Path, PathBuf};
 
     use super::{Instance, InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
@@ -300,6 +315,7 @@ mod tests {
             min_memory_mib: 1024,
             created_at_unix_secs: 100,
             last_started_at_unix_secs: None,
+            server_metadata: None,
             launch: LocalLaunch {
                 startup_mode: StartupMode::Jar,
                 startup_target: Some(Path::new("servers/instance-a/server.jar").to_path_buf()),
@@ -307,7 +323,7 @@ mod tests {
                 custom_executable: None,
                 custom_arguments: Vec::new(),
                 java_executable: Some(Path::new("java").to_path_buf()),
-                jvm_arguments: vec![OsString::from("-Xmx4G")],
+                jvm_arguments: vec!["-Xmx4G".to_string()],
             },
         }
     }
@@ -363,12 +379,12 @@ mod tests {
         spec.launch.startup_mode = StartupMode::Custom;
         spec.launch.startup_target = None;
         spec.launch.custom_executable = Some(PathBuf::from("launch-server.exe"));
-        spec.launch.custom_arguments = vec![OsString::from("--nogui")];
+        spec.launch.custom_arguments = vec!["--nogui".to_string()];
 
         let instance = Instance::new(spec).expect("custom launch should be valid");
 
         assert_eq!(instance.launch.custom_executable, Some(PathBuf::from("launch-server.exe")));
-        assert_eq!(instance.launch.custom_arguments, vec![OsString::from("--nogui")]);
+        assert_eq!(instance.launch.custom_arguments, vec!["--nogui".to_string()]);
     }
 
     #[test]
@@ -406,5 +422,20 @@ mod tests {
         let error = StartupMode::parse("docker").expect_err("unknown mode should fail");
 
         assert_eq!(error, InstanceError::UnsupportedStartupMode { value: "docker".to_string() });
+    }
+
+    #[test]
+    fn legacy_instance_json_without_server_metadata_still_deserializes() {
+        let instance = Instance::new(base_spec()).expect("base instance should be valid");
+        let mut value = serde_json::to_value(instance).expect("serialize instance");
+        value
+            .as_object_mut()
+            .expect("instance JSON object")
+            .remove("server_metadata");
+
+        let restored: Instance =
+            serde_json::from_value(value).expect("deserialize legacy instance");
+
+        assert!(restored.server_metadata.is_none());
     }
 }
