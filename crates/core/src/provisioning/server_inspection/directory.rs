@@ -5,11 +5,28 @@ use std::path::{Path, PathBuf};
 use super::archive::{self, ArchiveMetadata};
 use super::error::ServerInspectionError;
 use super::model::{DiagnosticSeverity, InspectionDiagnostic};
-use super::InspectionOptions;
+use super::{InspectionOptions, SERVER_INSPECTION_TARGET};
 use crate::provisioning::StartupScriptKind;
 
 const ROOT_SCRIPT_NAMES: &[&str] =
     &["run.bat", "run.sh", "run.ps1", "start.bat", "start.sh", "start.ps1"];
+const KNOWN_ROOT_TOKENS: &[&str] = &[
+    "paper",
+    "purpur",
+    "spigot",
+    "craftbukkit",
+    "fabric",
+    "forge",
+    "neoforge",
+    "arclight",
+    "mohist",
+    "magma",
+    "velocity",
+    "bungeecord",
+    "waterfall",
+    "sponge",
+    "limbo",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ModLoaderFamily {
@@ -57,32 +74,82 @@ pub(super) fn read_metadata(
     let mut consumed = 0_u64;
     let mut diagnostics = Vec::new();
     let root_entries = sorted_entries(path, options)?;
+    let mut root_candidates = Vec::new();
+    for entry in root_entries {
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(source) => {
+                diagnostics.push(limit_diagnostic(
+                    "root_entry_unreadable",
+                    format!(
+                        "root entry {} could not be inspected and was skipped: {source}",
+                        entry.path().display()
+                    ),
+                ));
+                continue;
+            }
+        };
+        // 扩展名只用于构造有界探测集，是否为服务端归档仍由下面的文件名和元数据签名决定。
+        if file_type.is_file() && has_jar_extension(&entry.file_name().to_string_lossy()) {
+            root_candidates.push(entry);
+        }
+    }
+    root_candidates
+        .sort_by_key(|entry| root_archive_sort_key(&entry.file_name().to_string_lossy()));
+    let root_jar_count = root_candidates.len();
     let mut root_archives = Vec::new();
-    for entry in &root_entries {
-        let file_type = entry
-            .file_type()
-            .map_err(|source| ServerInspectionError::Metadata { path: entry.path(), source })?;
-        if !file_type.is_file() || !is_relevant_root_jar(&entry.file_name().to_string_lossy()) {
-            continue;
+    let mut root_archive_limit_reached = false;
+    for entry in root_candidates {
+        if root_archives.len() >= options.max_root_archives {
+            root_archive_limit_reached = true;
+            break;
         }
         let relative_path = PathBuf::from(entry.file_name());
-        if options.max_archive_depth == 0
-            || !nested_archive_allowed(&entry.path(), options, &mut diagnostics)?
-        {
-            continue;
+        let named_candidate = is_likely_root_archive_name(&relative_path);
+        match archive::read_metadata_with_budget(&entry.path(), options, &mut consumed) {
+            Ok(mut metadata) => {
+                if named_candidate || is_likely_server_archive(&metadata) {
+                    diagnostics.append(&mut metadata.diagnostics);
+                    root_archives.push(RootArchive { relative_path, metadata });
+                }
+            }
+            Err(error) => diagnostics.push(limit_diagnostic(
+                "root_archive_unreadable",
+                format!(
+                    "root archive {} could not be inspected and was skipped: {error}",
+                    entry.path().display()
+                ),
+            )),
         }
-        let mut metadata =
-            archive::read_metadata_with_budget(&entry.path(), options, &mut consumed)?;
-        diagnostics.append(&mut metadata.diagnostics);
-        root_archives.push(RootArchive { relative_path, metadata });
+    }
+    if root_archive_limit_reached {
+        diagnostics.push(limit_diagnostic(
+            "root_archive_limit_reached",
+            format!(
+                "directory {} contains {root_jar_count} root JAR candidates; only the first {} server archives were inspected",
+                path.display(),
+                options.max_root_archives
+            ),
+        ));
     }
 
     let mut scripts = Vec::new();
     for name in ROOT_SCRIPT_NAMES {
         let relative_path = PathBuf::from(name);
-        let Some(content) =
-            read_optional_file(path, &relative_path, options, &mut consumed, &mut diagnostics)?
-        else {
+        let content = match read_optional_file(
+            path,
+            &relative_path,
+            options,
+            &mut consumed,
+            &mut diagnostics,
+        ) {
+            Ok(content) => content,
+            Err(error) => {
+                diagnostics.push(optional_metadata_diagnostic(&path.join(&relative_path), &error));
+                None
+            }
+        };
+        let Some(content) = content else {
             continue;
         };
         let Some(kind) = StartupScriptKind::from_path(&relative_path) else {
@@ -141,15 +208,24 @@ fn scan_installations(
         {
             return Ok(());
         }
+        Err(error @ ServerInspectionError::Open { .. }) => {
+            diagnostics.push(optional_metadata_diagnostic(&base, &error));
+            return Ok(());
+        }
         Err(error) => return Err(error),
     };
 
     for entry in entries {
-        if !entry
-            .file_type()
-            .map_err(|source| ServerInspectionError::Metadata { path: entry.path(), source })?
-            .is_dir()
-        {
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(source) => {
+                let entry_path = entry.path();
+                let error = ServerInspectionError::Metadata { path: entry_path.clone(), source };
+                diagnostics.push(optional_metadata_diagnostic(&entry_path, &error));
+                continue;
+            }
+        };
+        if !file_type.is_dir() {
             continue;
         }
         let coordinate_version = entry.file_name().to_string_lossy().into_owned();
@@ -157,20 +233,26 @@ fn scan_installations(
             continue;
         }
         let relative_directory = relative_base.join(&coordinate_version);
-        let windows_args = read_metadata_file(
-            root,
-            &relative_directory.join("win_args.txt"),
-            options,
-            consumed,
-            diagnostics,
-        )?;
-        let unix_args = read_metadata_file(
-            root,
-            &relative_directory.join("unix_args.txt"),
-            options,
-            consumed,
-            diagnostics,
-        )?;
+        let windows_args_path = relative_directory.join("win_args.txt");
+        let windows_args =
+            match read_metadata_file(root, &windows_args_path, options, consumed, diagnostics) {
+                Ok(args) => args,
+                Err(error) => {
+                    diagnostics
+                        .push(optional_metadata_diagnostic(&root.join(&windows_args_path), &error));
+                    None
+                }
+            };
+        let unix_args_path = relative_directory.join("unix_args.txt");
+        let unix_args =
+            match read_metadata_file(root, &unix_args_path, options, consumed, diagnostics) {
+                Ok(args) => args,
+                Err(error) => {
+                    diagnostics
+                        .push(optional_metadata_diagnostic(&root.join(&unix_args_path), &error));
+                    None
+                }
+            };
 
         let nested_relative = match family {
             ModLoaderFamily::Forge => PathBuf::from(format!(
@@ -182,9 +264,18 @@ fn scan_installations(
             }
         };
         let nested_path = root.join(&nested_relative);
-        let nested_metadata = if options.max_archive_depth == 0
-            || !nested_archive_allowed(&nested_path, options, diagnostics)?
-        {
+        let nested_allowed = if options.max_archive_depth == 0 {
+            false
+        } else {
+            match nested_archive_allowed(&nested_path, options, diagnostics) {
+                Ok(allowed) => allowed,
+                Err(error) => {
+                    diagnostics.push(optional_metadata_diagnostic(&nested_path, &error));
+                    false
+                }
+            }
+        };
+        let nested_metadata = if !nested_allowed {
             None
         } else {
             match archive::read_metadata_with_budget(&nested_path, options, consumed) {
@@ -197,7 +288,10 @@ fn scan_installations(
                 {
                     None
                 }
-                Err(error) => return Err(error),
+                Err(error) => {
+                    diagnostics.push(optional_metadata_diagnostic(&nested_path, &error));
+                    None
+                }
             }
         };
 
@@ -340,9 +434,88 @@ fn nested_archive_allowed(
     Ok(false)
 }
 
-fn is_relevant_root_jar(name: &str) -> bool {
-    let name = name.to_ascii_lowercase();
-    name == "server.jar" || (name.ends_with(".jar") && name.contains("fabric"))
+fn has_jar_extension(name: &str) -> bool {
+    name.to_ascii_lowercase().ends_with(".jar")
+}
+
+fn is_likely_root_archive_name(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let lower = name.to_ascii_lowercase();
+    lower == "server.jar"
+        || lower.contains("server")
+        || lower.contains("minecraft")
+        || lower.contains("launcher")
+        || lower.contains("bootstrap")
+        || KNOWN_ROOT_TOKENS.iter().any(|token| lower.contains(token))
+}
+
+fn is_likely_server_archive(metadata: &ArchiveMetadata) -> bool {
+    if metadata.versions_list.is_some()
+        || metadata.patches_list.is_some()
+        || metadata.libraries_list.is_some()
+        || metadata.install_properties.is_some()
+        || metadata.bootstrap_properties.is_some()
+        || metadata.bootstrap_list.is_some()
+        || metadata.wrapper_metadata.is_some()
+        || metadata.arclight_launch_properties.is_some()
+        || metadata.forge_version.is_some()
+        || metadata.neoforge_version_properties.is_some()
+    {
+        return true;
+    }
+
+    let Some(manifest) = metadata.manifest.as_deref() else {
+        return false;
+    };
+    let parsed = super::formats::manifest::parse(manifest);
+    let main_class = parsed.main_value("Main-Class");
+    main_class.is_some_and(is_known_server_main_class)
+        || parsed
+            .main_value("Implementation-Title")
+            .is_some_and(is_known_server_product_name)
+}
+
+fn is_known_server_main_class(value: &str) -> bool {
+    let value = value.to_ascii_lowercase();
+    [
+        "net.minecraft.",
+        "io.papermc.paperclip",
+        "paperclip",
+        "net.fabricmc.installer.serverlauncher",
+        "net.minecraftforge.",
+        "net.neoforged.",
+        "com.velocitypowered.",
+        "net.md_5.bungee.",
+        "org.spongepowered.",
+        "io.izzel.arclight.",
+        "com.mohistmc.",
+        "org.magmafoundation.",
+        "app.mcjars.serverstarter",
+        "com.loohp.limbo.",
+        "ua.nanit.limbo.",
+        "org.bukkit.craftbukkit.bootstrap.",
+    ]
+    .iter()
+    .any(|prefix| value.starts_with(prefix))
+}
+
+fn is_known_server_product_name(value: &str) -> bool {
+    let value = value.to_ascii_lowercase();
+    KNOWN_ROOT_TOKENS.iter().any(|token| value.contains(token))
+}
+
+fn root_archive_sort_key(name: &str) -> (u8, String) {
+    let lower = name.to_ascii_lowercase();
+    if lower == "server.jar" {
+        return (0, lower);
+    }
+    if KNOWN_ROOT_TOKENS.iter().any(|token| lower.contains(token)) {
+        (1, lower)
+    } else {
+        (2, lower)
+    }
 }
 
 fn limit_diagnostic(code: &str, message: String) -> InspectionDiagnostic {
@@ -350,6 +523,24 @@ fn limit_diagnostic(code: &str, message: String) -> InspectionDiagnostic {
         severity: DiagnosticSeverity::Warning,
         code: code.to_string(),
         message,
+        evidence: Vec::new(),
+    }
+}
+
+fn optional_metadata_diagnostic(
+    path: &Path,
+    error: &ServerInspectionError,
+) -> InspectionDiagnostic {
+    tracing::warn!(
+        target: SERVER_INSPECTION_TARGET,
+        path = %path.display(),
+        error = %error,
+        "optional server metadata was skipped"
+    );
+    InspectionDiagnostic {
+        severity: DiagnosticSeverity::Warning,
+        code: "optional_metadata_unreadable".to_string(),
+        message: format!("optional server metadata {} was skipped: {error}", path.display()),
         evidence: Vec::new(),
     }
 }

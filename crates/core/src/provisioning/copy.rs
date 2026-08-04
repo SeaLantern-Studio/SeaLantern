@@ -20,6 +20,12 @@ pub struct CopyInstancePlan {
 }
 
 pub fn plan_copy(request: CopyInstanceRequest) -> Result<CopyInstancePlan, CopyInstanceError> {
+    tracing::debug!(
+        target: "sealantern.core.provisioning.copy",
+        source_directory = %request.source_directory.display(),
+        import_source_directory = %request.import.source_directory.display(),
+        "planning instance copy"
+    );
     if request.source_directory.as_os_str().is_empty() {
         return Err(CopyInstanceError::EmptySourceDirectory);
     }
@@ -31,11 +37,18 @@ pub fn plan_copy(request: CopyInstanceRequest) -> Result<CopyInstancePlan, CopyI
     }
 
     let import = plan_import(request.import).map_err(CopyInstanceError::Import)?;
-    Ok(CopyInstancePlan {
+    let plan = CopyInstancePlan {
         source_directory: request.source_directory,
         destination_directory: import.destination_directory.clone(),
         import,
-    })
+    };
+    tracing::debug!(
+        target: "sealantern.core.provisioning.copy",
+        source_directory = %plan.source_directory.display(),
+        destination_directory = %plan.destination_directory.display(),
+        "instance copy plan ready"
+    );
+    Ok(plan)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,15 +81,24 @@ impl std::fmt::Display for CopyInstanceError {
     }
 }
 
-impl std::error::Error for CopyInstanceError {}
+impl std::error::Error for CopyInstanceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Import(error) => Some(error),
+            Self::EmptySourceDirectory | Self::SourceDirectoryMismatch { .. } => None,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
+    use std::error::Error;
     use std::path::PathBuf;
 
     use super::{plan_copy, CopyInstanceError, CopyInstanceRequest};
     use crate::instance::{
-        InstanceId, InstanceImportRequest, InstanceSpec, LocalLaunch, StartupMode,
+        InstanceId, InstanceImportError, InstanceImportRequest, InstanceSpec, LocalLaunch,
+        StartupMode,
     };
 
     fn import_request(source_directory: PathBuf) -> InstanceImportRequest {
@@ -95,6 +117,7 @@ mod tests {
                 min_memory_mib: 0,
                 created_at_unix_secs: 0,
                 last_started_at_unix_secs: None,
+                server_metadata: None,
                 launch: LocalLaunch {
                     startup_mode: StartupMode::Jar,
                     startup_target: Some(source_directory.join("server.jar")),
@@ -125,5 +148,12 @@ mod tests {
                 import_source_directory,
             }
         );
+    }
+
+    #[test]
+    fn copy_error_exposes_the_import_error_source() {
+        let error = CopyInstanceError::Import(InstanceImportError::EmptySourceDirectory);
+
+        assert!(error.source().is_some());
     }
 }

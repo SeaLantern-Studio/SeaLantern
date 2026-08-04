@@ -51,11 +51,30 @@ pub struct StartupScriptInfo {
 
 /// 从文件解析启动脚本，不执行它。
 pub fn parse_startup_script_file(path: &Path) -> Result<StartupScriptInfo, StartupParseError> {
+    tracing::debug!(
+        target: "sealantern.core.provisioning.startup",
+        path = %path.display(),
+        "reading startup script for static parsing"
+    );
     let kind = StartupScriptKind::from_path(path)
         .ok_or_else(|| StartupParseError::UnsupportedScript { path: path.to_path_buf() })?;
-    let content = fs::read_to_string(path)
-        .map_err(|source| StartupParseError::Read { path: path.to_path_buf(), source })?;
-    Ok(parse_startup_script_content(kind, &content))
+    let content = fs::read_to_string(path).map_err(|source| {
+        tracing::warn!(
+            target: "sealantern.core.provisioning.startup",
+            path = %path.display(),
+            error = %source,
+            "could not read startup script"
+        );
+        StartupParseError::Read { path: path.to_path_buf(), source }
+    })?;
+    let result = parse_startup_script_content(kind, &content);
+    tracing::debug!(
+        target: "sealantern.core.provisioning.startup",
+        path = %path.display(),
+        launches = result.launches.len(),
+        "startup script parsing completed"
+    );
+    Ok(result)
 }
 
 /// 解析启动脚本内容，不执行命令或展开变量。

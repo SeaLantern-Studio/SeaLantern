@@ -2,6 +2,8 @@ pub mod copy;
 pub mod core_parsing;
 pub mod create;
 pub mod existing;
+pub mod import_metadata;
+mod launch_adapter;
 pub mod modpack;
 pub mod run_dir;
 #[path = "server_inspection/lib.rs"]
@@ -14,6 +16,11 @@ pub use core_parsing::{
 };
 pub use create::{plan_create, CreateInstanceError, CreateInstancePlan};
 pub use existing::{plan_existing_instance, ExistingInstanceError};
+pub use import_metadata::{
+    apply_server_inspection, apply_server_inspection_with_options,
+    inspect_and_apply_import_metadata, ImportLaunchCandidate, LaunchProfilePolicy,
+    ServerInspectionProjection, ServerInspectionProjectionOptions,
+};
 pub use modpack::{
     plan_modpack, ModpackProvisionError, ModpackProvisionPlan, ModpackProvisionRequest,
 };

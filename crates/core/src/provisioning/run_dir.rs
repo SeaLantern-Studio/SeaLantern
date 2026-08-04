@@ -17,6 +17,12 @@ pub fn resolve_run_directory(
     state: RunDirectoryState,
 ) -> Result<PathBuf, RunDirectoryError> {
     let requested = requested.into();
+    tracing::debug!(
+        target: "sealantern.core.provisioning.run_directory",
+        path = %requested.display(),
+        state = ?state,
+        "resolving modpack run directory"
+    );
     if requested.as_os_str().is_empty() {
         return Err(RunDirectoryError::Empty);
     }

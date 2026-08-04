@@ -19,10 +19,10 @@ struct CandidateState<T> {
 /// 同一候选的独立来源只提供有限加分，避免同一文件中的重复字段淹没冲突证据。
 pub(crate) fn resolve<T>(claims: Vec<DetectionClaim<T>>) -> Detected<T>
 where
-    T: Clone + Eq,
+    T: Eq,
 {
     let candidates = rank_candidates(claims);
-    let Some(winner) = candidates.first().cloned() else {
+    let Some(winner) = candidates.first() else {
         return Detected::default();
     };
     let conflicts = candidates.get(1).is_some_and(|runner_up| {
@@ -40,17 +40,21 @@ where
         };
     }
 
+    let mut candidates = candidates.into_iter();
+    let Some(winner) = candidates.next() else {
+        return Detected::default();
+    };
     Detected {
         value: Some(winner.value),
         confidence: winner.confidence,
         evidence: winner.evidence,
-        alternatives: candidates.into_iter().skip(1).collect(),
+        alternatives: candidates.collect(),
     }
 }
 
 pub(crate) fn resolve_attributed<T>(claims: Vec<DetectionClaim<T>>) -> Vec<Attributed<T>>
 where
-    T: Clone + Eq,
+    T: Eq,
 {
     rank_candidates(claims)
         .into_iter()
@@ -64,7 +68,7 @@ where
 
 fn rank_candidates<T>(claims: Vec<DetectionClaim<T>>) -> Vec<DetectionCandidate<T>>
 where
-    T: Clone + Eq,
+    T: Eq,
 {
     let mut candidates: Vec<CandidateState<T>> = Vec::new();
     for claim in claims {
