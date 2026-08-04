@@ -23,9 +23,16 @@ function normalizeModrinthHit(hit: any): ResourceSearchResult {
     name: hit.title || hit.name || "",
     summary: hit.summary || hit.description || "",
     source: "modrinth",
-    sourceUrl: hit.website_url || hit.project_url || hit.url || `https://modrinth.com/${hit.project_type || "project"}/${hit.slug || hit.title || hit.project_id}`,
+    sourceUrl:
+      hit.website_url ||
+      hit.project_url ||
+      hit.url ||
+      `https://modrinth.com/${hit.project_type || "project"}/${hit.slug || hit.title || hit.project_id}`,
     iconUrl: hit.icon_url || hit.iconUrl,
-    author: hit.author || hit.authors?.map((author: any) => author.username || author.name).join(", ") || undefined,
+    author:
+      hit.author ||
+      hit.authors?.map((author: any) => author.username || author.name).join(", ") ||
+      undefined,
     downloads: hit.downloads || hit.stats?.downloads_total,
     latestVersion: hit.versions?.[0] || hit.latest_version || undefined,
   };
@@ -62,9 +69,7 @@ async function fetchModrinth(query: string, limit: number): Promise<ResourceSear
   }
 
   const data = await response.json();
-  return Array.isArray(data.hits)
-    ? data.hits.map(normalizeModrinthHit)
-    : [];
+  return Array.isArray(data.hits) ? data.hits.map(normalizeModrinthHit) : [];
 }
 
 async function fetchCurseForge(query: string, limit: number): Promise<ResourceSearchResult[]> {
@@ -90,9 +95,7 @@ async function fetchCurseForge(query: string, limit: number): Promise<ResourceSe
   }
 
   const data = await response.json();
-  return Array.isArray(data.data)
-    ? data.data.map(normalizeCurseForgeHit)
-    : [];
+  return Array.isArray(data.data) ? data.data.map(normalizeCurseForgeHit) : [];
 }
 
 export async function searchResources(query: string, limit = 20): Promise<ResourceSearchResult[]> {
@@ -101,10 +104,7 @@ export async function searchResources(query: string, limit = 20): Promise<Resour
     return [];
   }
 
-  const requests = [
-    fetchModrinth(trimmedQuery, limit),
-    fetchCurseForge(trimmedQuery, limit),
-  ];
+  const requests = [fetchModrinth(trimmedQuery, limit), fetchCurseForge(trimmedQuery, limit)];
 
   const settled = await Promise.allSettled(requests);
   const results: ResourceSearchResult[] = [];
@@ -125,7 +125,7 @@ export async function searchResources(query: string, limit = 20): Promise<Resour
     }
   }
 
-  return results.sort((a, b) => {
+  return results.toSorted((a, b) => {
     const aHeat = a.downloads ?? 0;
     const bHeat = b.downloads ?? 0;
     return bHeat - aHeat;
