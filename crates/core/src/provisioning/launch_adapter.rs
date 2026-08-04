@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::path::Path;
 
 use crate::instance::{LocalLaunch, StartupMode};
@@ -44,11 +43,7 @@ pub(super) fn adapt_launch_profile(
             if !profile.program_arguments.is_empty() {
                 return Err(LaunchAdapterError::ProgramArguments);
             }
-            (
-                StartupMode::Jar,
-                path.clone(),
-                profile.jvm_arguments.iter().map(OsString::from).collect(),
-            )
+            (StartupMode::Jar, path.clone(), profile.jvm_arguments.to_vec())
         }
         LaunchTarget::Script { path } => {
             let Some(mode) = script_startup_mode(path) else {
