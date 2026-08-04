@@ -57,24 +57,55 @@ pub(super) fn read_metadata(
     let mut consumed = 0_u64;
     let mut diagnostics = Vec::new();
     let root_entries = sorted_entries(path, options)?;
+    let mut root_candidates = Vec::new();
+    for entry in root_entries {
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(source) => {
+                diagnostics.push(limit_diagnostic(
+                    "root_entry_unreadable",
+                    format!(
+                        "root entry {} could not be inspected and was skipped: {source}",
+                        entry.path().display()
+                    ),
+                ));
+                continue;
+            }
+        };
+        if file_type.is_file() && is_root_jar(&entry.file_name().to_string_lossy()) {
+            root_candidates.push(entry);
+        }
+    }
+    root_candidates
+        .sort_by_key(|entry| root_archive_sort_key(&entry.file_name().to_string_lossy()));
     let mut root_archives = Vec::new();
-    for entry in &root_entries {
-        let file_type = entry
-            .file_type()
-            .map_err(|source| ServerInspectionError::Metadata { path: entry.path(), source })?;
-        if !file_type.is_file() || !is_relevant_root_jar(&entry.file_name().to_string_lossy()) {
-            continue;
-        }
+    if root_candidates.len() > options.max_root_archives {
+        diagnostics.push(limit_diagnostic(
+            "root_archive_limit_reached",
+            format!(
+                "directory {} contains {} root JARs; only the first {} were inspected",
+                path.display(),
+                root_candidates.len(),
+                options.max_root_archives
+            ),
+        ));
+        root_candidates.truncate(options.max_root_archives);
+    }
+    for entry in root_candidates {
         let relative_path = PathBuf::from(entry.file_name());
-        if options.max_archive_depth == 0
-            || !nested_archive_allowed(&entry.path(), options, &mut diagnostics)?
-        {
-            continue;
+        match archive::read_metadata_with_budget(&entry.path(), options, &mut consumed) {
+            Ok(mut metadata) => {
+                diagnostics.append(&mut metadata.diagnostics);
+                root_archives.push(RootArchive { relative_path, metadata });
+            }
+            Err(error) => diagnostics.push(limit_diagnostic(
+                "root_archive_unreadable",
+                format!(
+                    "root archive {} could not be inspected and was skipped: {error}",
+                    entry.path().display()
+                ),
+            )),
         }
-        let mut metadata =
-            archive::read_metadata_with_budget(&entry.path(), options, &mut consumed)?;
-        diagnostics.append(&mut metadata.diagnostics);
-        root_archives.push(RootArchive { relative_path, metadata });
     }
 
     let mut scripts = Vec::new();
@@ -340,9 +371,37 @@ fn nested_archive_allowed(
     Ok(false)
 }
 
-fn is_relevant_root_jar(name: &str) -> bool {
-    let name = name.to_ascii_lowercase();
-    name == "server.jar" || (name.ends_with(".jar") && name.contains("fabric"))
+fn is_root_jar(name: &str) -> bool {
+    name.to_ascii_lowercase().ends_with(".jar")
+}
+
+fn root_archive_sort_key(name: &str) -> (u8, String) {
+    let lower = name.to_ascii_lowercase();
+    if lower == "server.jar" {
+        return (0, lower);
+    }
+    const KNOWN_TOKENS: &[&str] = &[
+        "paper",
+        "purpur",
+        "spigot",
+        "craftbukkit",
+        "fabric",
+        "forge",
+        "neoforge",
+        "arclight",
+        "mohist",
+        "magma",
+        "velocity",
+        "bungeecord",
+        "waterfall",
+        "sponge",
+        "limbo",
+    ];
+    if KNOWN_TOKENS.iter().any(|token| lower.contains(token)) {
+        (1, lower)
+    } else {
+        (2, lower)
+    }
 }
 
 fn limit_diagnostic(code: &str, message: String) -> InspectionDiagnostic {

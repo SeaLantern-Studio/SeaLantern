@@ -15,7 +15,11 @@ pub use core_parsing::{
 };
 pub use create::{plan_create, CreateInstanceError, CreateInstancePlan};
 pub use existing::{plan_existing_instance, ExistingInstanceError};
-pub use import_metadata::apply_server_inspection;
+pub use import_metadata::{
+    apply_server_inspection, apply_server_inspection_with_options,
+    inspect_and_apply_import_metadata, ImportLaunchCandidate, LaunchProfilePolicy,
+    ServerInspectionProjection, ServerInspectionProjectionOptions,
+};
 pub use modpack::{
     plan_modpack, ModpackProvisionError, ModpackProvisionPlan, ModpackProvisionRequest,
 };

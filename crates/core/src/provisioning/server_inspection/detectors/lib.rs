@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use super::archive::ArchiveMetadata;
 use super::directory::DirectoryMetadata;
 use super::evidence::{EvidenceCollector, NewEvidence};
+use super::formats::manifest;
 use super::model::{
     ArtifactInfo, ArtifactRole, Attributed, Detected, DetectionTarget, DiagnosticSeverity,
     EvidenceLocation, EvidenceSource, InspectionDiagnostic, LaunchProfile, MavenCoordinate,
@@ -374,12 +375,15 @@ pub(super) fn detect_jar(
 pub(super) fn detect_directory(
     path: &Path,
     directory: &DirectoryMetadata,
+    minecraft: Option<&MinecraftVersionInfo>,
+    existing_java_major: Option<&Detected<u16>>,
     evidence: &mut EvidenceCollector,
 ) -> DetectorOutput {
     let mut findings = Findings::default();
     detect_filename(path, &mut findings);
     for root_archive in &directory.root_archives {
         let archive_path = path.join(&root_archive.relative_path);
+        let artifact = root_artifact(&root_archive.metadata);
         fabric::detect(
             &archive_path,
             &root_archive.metadata,
@@ -402,6 +406,20 @@ pub(super) fn detect_directory(
             Some((path, &root_archive.relative_path)),
             &mut findings,
         );
+        paperclip::detect(&archive_path, &artifact, &root_archive.metadata, &mut findings);
+        if artifact
+            .main_class
+            .value
+            .as_deref()
+            .is_some_and(|main_class| {
+                matches!(
+                    main_class,
+                    "net.minecraft.bundler.Main" | "net.minecraft.server.MinecraftServer"
+                )
+            })
+        {
+            vanilla::detect(&archive_path, &artifact, minecraft, &mut findings);
+        }
     }
     for installation in &directory.installations {
         forge::detect_installation(path, installation, &mut findings);
@@ -409,7 +427,33 @@ pub(super) fn detect_directory(
     for script in &directory.scripts {
         forge::detect_script(path, script, &mut findings);
     }
-    finalize(path, findings, None, None, evidence)
+    finalize(path, findings, minecraft, existing_java_major, evidence)
+}
+
+fn root_artifact(archive: &ArchiveMetadata) -> ArtifactInfo {
+    let mut artifact = ArtifactInfo {
+        format: Detected::default(),
+        roles: Vec::new(),
+        main_class: Detected::default(),
+        premain_class: Detected::default(),
+        agent_class: Detected::default(),
+        automatic_module_name: Detected::default(),
+        manifest: None,
+    };
+    let Some(bytes) = archive.manifest.as_deref() else {
+        return artifact;
+    };
+    let parsed = manifest::parse(bytes);
+    if let Some(value) = parsed.main_value("Main-Class") {
+        artifact.main_class = Detected {
+            value: Some(value.to_string()),
+            confidence: 100,
+            evidence: Vec::new(),
+            alternatives: Vec::new(),
+        };
+    }
+    artifact.manifest = Some(parsed.summary);
+    artifact
 }
 
 fn finalize(

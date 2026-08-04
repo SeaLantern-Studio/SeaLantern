@@ -139,6 +139,7 @@ mod tests {
             min_memory_mib: 1024,
             created_at_unix_secs: 100,
             last_started_at_unix_secs: None,
+            server_metadata: None,
             launch: LocalLaunch {
                 startup_mode,
                 startup_target,

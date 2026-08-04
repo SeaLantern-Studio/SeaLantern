@@ -31,6 +31,8 @@ const MOJANG_VERSION_ENTRY: &str = "version.json";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InspectionOptions {
     pub max_archive_entries: usize,
+    /// 根目录中最多读取的候选 JAR 数量，避免无界扫描任意文件。
+    pub max_root_archives: usize,
     pub max_metadata_entry_bytes: u64,
     pub max_total_metadata_bytes: u64,
     /// 后续嵌套归档检测的单归档上限；设为 0 可禁用嵌套归档读取。
@@ -44,6 +46,7 @@ impl Default for InspectionOptions {
     fn default() -> Self {
         Self {
             max_archive_entries: 50_000,
+            max_root_archives: 64,
             max_metadata_entry_bytes: 4 * 1024 * 1024,
             max_total_metadata_bytes: 32 * 1024 * 1024,
             max_nested_archive_bytes: 128 * 1024 * 1024,
@@ -135,7 +138,60 @@ pub fn inspect_server_artifact(
 
         let mut directory_metadata = directory::read_metadata(path, options)?;
         diagnostics.append(&mut directory_metadata.diagnostics);
-        let detector_output = detectors::detect_directory(path, &directory_metadata, &mut evidence);
+        let mut root_version_seen = false;
+        for root_archive in &directory_metadata.root_archives {
+            let archive_path = path.join(&root_archive.relative_path);
+            let Some(bytes) = root_archive.metadata.mojang_version.as_deref() else {
+                continue;
+            };
+            match formats::mojang_version::parse(bytes) {
+                Ok(Some(document)) => {
+                    let (root_minecraft, root_java, mut version_diagnostics) =
+                        apply_mojang_version(&archive_path, document, &mut evidence);
+                    diagnostics.append(&mut version_diagnostics);
+                    if !root_version_seen {
+                        minecraft = Some(root_minecraft);
+                        java = root_java;
+                        root_version_seen = true;
+                    } else {
+                        diagnostics.push(InspectionDiagnostic {
+                            severity: DiagnosticSeverity::Warning,
+                            code: "multiple_root_version_json".to_string(),
+                            message: format!(
+                                "multiple root archives in {} provide version.json; the first recognized document was selected",
+                                path.display()
+                            ),
+                            evidence: Vec::new(),
+                        });
+                    }
+                }
+                Ok(None) => diagnostics.push(InspectionDiagnostic {
+                    severity: DiagnosticSeverity::Info,
+                    code: "unrecognized_root_version_json".to_string(),
+                    message: format!(
+                        "version.json in {} does not match the Mojang version metadata shape",
+                        archive_path.display()
+                    ),
+                    evidence: Vec::new(),
+                }),
+                Err(source) => diagnostics.push(InspectionDiagnostic {
+                    severity: DiagnosticSeverity::Warning,
+                    code: "invalid_root_version_json".to_string(),
+                    message: format!(
+                        "could not parse version.json in {}: {source}",
+                        archive_path.display()
+                    ),
+                    evidence: Vec::new(),
+                }),
+            }
+        }
+        let detector_output = detectors::detect_directory(
+            path,
+            &directory_metadata,
+            minecraft.as_ref(),
+            Some(&java.required_major),
+            &mut evidence,
+        );
         apply_detector_output(
             detector_output,
             &mut identity,
@@ -316,6 +372,11 @@ fn validate_options(options: &InspectionOptions) -> Result<(), ServerInspectionE
     if options.max_archive_entries == 0 {
         return Err(ServerInspectionError::InvalidOptions {
             detail: "max_archive_entries must be greater than zero",
+        });
+    }
+    if options.max_root_archives == 0 {
+        return Err(ServerInspectionError::InvalidOptions {
+            detail: "max_root_archives must be greater than zero",
         });
     }
     if options.max_metadata_entry_bytes == 0 {
@@ -698,7 +759,7 @@ mod tests {
     use super::{
         inspect_server_artifact, ArtifactFormat, ArtifactRole, DetectionTarget, InspectionOptions,
         InspectionSubjectKind, LaunchPlatform, LaunchTarget, ReleaseChannel, ServerCategory,
-        ServerComponentKind, ServerEcosystem,
+        ServerComponentKind, ServerEcosystem, ServerInspectionError,
     };
 
     fn temporary_path(suffix: &str) -> PathBuf {
@@ -1867,5 +1928,152 @@ mod tests {
             report.subject.fingerprint.expect("fingerprint").value,
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         );
+    }
+
+    #[test]
+    fn discovers_a_paperclip_root_archive_without_a_server_filename() {
+        let root = temporary_path("paperclip-root");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar_entries(
+            &root.join("paper-26.2.jar"),
+            &[
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/paper-26.2.jar\n"),
+                (
+                    "META-INF/libraries.list",
+                    "hash\tio.papermc.paper:paper-api:26.2.build.87-stable\tpaper-api.jar\n",
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect Paperclip root archive");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("paper"));
+        assert!(report
+            .launches
+            .iter()
+            .any(|launch| matches!(&launch.value.target, LaunchTarget::Jar { path } if path.ends_with("paper-26.2.jar"))));
+    }
+
+    #[test]
+    fn discovers_a_proxy_root_archive_without_a_server_filename() {
+        let root = temporary_path("velocity-root");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar_entries(
+            &root.join("velocity.jar"),
+            &[
+                (
+                    "META-INF/MANIFEST.MF",
+                    "Main-Class: com.velocitypowered.proxy.Velocity\r\nImplementation-Title: Velocity\r\nImplementation-Version: 4.1.0\r\n\r\n",
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect Velocity root archive");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("velocity"));
+        assert!(report
+            .launches
+            .iter()
+            .any(|launch| matches!(&launch.value.target, LaunchTarget::Jar { path } if path.ends_with("velocity.jar"))));
+    }
+
+    #[test]
+    fn root_archives_are_checked_when_nested_depth_is_zero() {
+        let root = temporary_path("root-depth-zero");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar(
+            &root.join("server.jar"),
+            "Main-Class: net.minecraft.bundler.Main\r\n\r\n",
+            r#"{"id":"26.2","world_version":4903,"java_version":25}"#,
+        );
+        let options = InspectionOptions {
+            max_archive_depth: 0,
+            ..InspectionOptions::default()
+        };
+
+        let report = inspect_server_artifact(&root, &options).expect("inspect root archive");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("vanilla"));
+        assert_eq!(
+            report
+                .minecraft
+                .as_ref()
+                .and_then(|minecraft| minecraft.version.value.as_deref()),
+            Some("26.2")
+        );
+    }
+
+    #[test]
+    fn corrupt_optional_root_archives_do_not_abort_directory_inspection() {
+        let root = temporary_path("corrupt-root");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar(
+            &root.join("server.jar"),
+            "Main-Class: net.minecraft.bundler.Main\r\n\r\n",
+            r#"{"id":"26.2","world_version":4903}"#,
+        );
+        fs::write(root.join("other.jar"), b"not a zip archive")
+            .expect("write corrupt root archive");
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("corrupt optional root should be skipped");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("vanilla"));
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "root_archive_unreadable"));
+    }
+
+    #[test]
+    fn root_archive_limit_is_reported_without_losing_the_first_candidate() {
+        let root = temporary_path("root-limit");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar(
+            &root.join("server.jar"),
+            "Main-Class: net.minecraft.bundler.Main\r\n\r\n",
+            r#"{"id":"26.2","world_version":4903}"#,
+        );
+        write_test_jar_entries(
+            &root.join("paper.jar"),
+            &[("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n")],
+        );
+        let options = InspectionOptions {
+            max_root_archives: 1,
+            ..InspectionOptions::default()
+        };
+
+        let report =
+            inspect_server_artifact(&root, &options).expect("inspect capped root directory");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("vanilla"));
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "root_archive_limit_reached"));
+    }
+
+    #[test]
+    fn rejects_an_empty_root_archive_budget() {
+        let root = temporary_path("invalid-root-budget");
+        fs::create_dir(&root).expect("create root directory");
+        let options = InspectionOptions {
+            max_root_archives: 0,
+            ..InspectionOptions::default()
+        };
+
+        let error =
+            inspect_server_artifact(&root, &options).expect_err("zero root budget must fail");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert!(matches!(error, ServerInspectionError::InvalidOptions { .. }));
     }
 }

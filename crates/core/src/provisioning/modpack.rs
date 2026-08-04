@@ -100,6 +100,7 @@ mod tests {
             min_memory_mib: 0,
             created_at_unix_secs: 0,
             last_started_at_unix_secs: None,
+            server_metadata: None,
             launch: LocalLaunch {
                 startup_mode: StartupMode::Jar,
                 startup_target: Some(directory.join("server.jar")),

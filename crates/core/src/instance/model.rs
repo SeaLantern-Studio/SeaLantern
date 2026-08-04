@@ -145,6 +145,8 @@ pub struct InstanceSpec {
     pub min_memory_mib: u32,
     pub created_at_unix_secs: u64,
     pub last_started_at_unix_secs: Option<u64>,
+    #[serde(default)]
+    pub server_metadata: Option<super::server_metadata::ServerMetadataSnapshot>,
     pub launch: LocalLaunch,
 }
 
@@ -163,6 +165,8 @@ pub struct Instance {
     pub min_memory_mib: u32,
     pub created_at_unix_secs: u64,
     pub last_started_at_unix_secs: Option<u64>,
+    #[serde(default)]
+    pub server_metadata: Option<super::server_metadata::ServerMetadataSnapshot>,
     pub launch: LocalLaunch,
 }
 
@@ -204,6 +208,7 @@ impl Instance {
             min_memory_mib: spec.min_memory_mib,
             created_at_unix_secs: spec.created_at_unix_secs,
             last_started_at_unix_secs: spec.last_started_at_unix_secs,
+            server_metadata: spec.server_metadata,
             launch: spec.launch,
         })
     }
@@ -312,6 +317,7 @@ mod tests {
             min_memory_mib: 1024,
             created_at_unix_secs: 100,
             last_started_at_unix_secs: None,
+            server_metadata: None,
             launch: LocalLaunch {
                 startup_mode: StartupMode::Jar,
                 startup_target: Some(Path::new("servers/instance-a/server.jar").to_path_buf()),
@@ -418,5 +424,20 @@ mod tests {
         let error = StartupMode::parse("docker").expect_err("unknown mode should fail");
 
         assert_eq!(error, InstanceError::UnsupportedStartupMode { value: "docker".to_string() });
+    }
+
+    #[test]
+    fn legacy_instance_json_without_server_metadata_still_deserializes() {
+        let instance = Instance::new(base_spec()).expect("base instance should be valid");
+        let mut value = serde_json::to_value(instance).expect("serialize instance");
+        value
+            .as_object_mut()
+            .expect("instance JSON object")
+            .remove("server_metadata");
+
+        let restored: Instance =
+            serde_json::from_value(value).expect("deserialize legacy instance");
+
+        assert!(restored.server_metadata.is_none());
     }
 }
