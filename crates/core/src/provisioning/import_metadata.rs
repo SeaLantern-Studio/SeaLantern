@@ -570,7 +570,6 @@ fn missing_diagnostic(field: &str) -> InspectionDiagnostic {
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::OsString;
     use std::fs::File;
     use std::io::Write;
     use std::path::PathBuf;
@@ -779,7 +778,7 @@ mod tests {
     #[test]
     fn adopts_a_unique_jar_launch_and_persists_a_fingerprinted_snapshot() {
         let mut instance = instance_spec();
-        instance.launch.jvm_arguments = vec![OsString::from("-Xmx4G")];
+        instance.launch.jvm_arguments = vec![String::from("-Xmx4G")];
         let path = write_test_jar(
             "paper.jar",
             &[
@@ -809,7 +808,7 @@ mod tests {
 
         assert_eq!(projection.adopted_launch_profile.as_deref(), Some("manifest-main"));
         assert_eq!(instance.launch.startup_target, Some(path));
-        assert_eq!(instance.launch.jvm_arguments, vec![OsString::from("-Xmx4G")]);
+        assert_eq!(instance.launch.jvm_arguments, vec![String::from("-Xmx4G")]);
         assert_eq!(
             instance
                 .server_metadata
