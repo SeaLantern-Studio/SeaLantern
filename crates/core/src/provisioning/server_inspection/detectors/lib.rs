@@ -24,8 +24,7 @@ use super::model::{
 use super::resolver::{
     resolve, resolve_attributed, resolve_with_minimum_confidence, DetectionClaim,
 };
-
-const MINIMUM_IMPLEMENTATION_CONFIDENCE: u8 = 50;
+use super::MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE;
 
 const PAPER_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Paper, ServerEcosystem::Bukkit];
 const VANILLA_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Vanilla];
@@ -508,7 +507,7 @@ fn finalize(
                 )
             })
             .collect(),
-        MINIMUM_IMPLEMENTATION_CONFIDENCE,
+        MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE,
     );
     let selected_key = implementation
         .value
@@ -658,19 +657,13 @@ fn finalize(
     let java_major = resolve(java_claims);
 
     let mut diagnostics = Vec::new();
-    add_conflict_diagnostic(
+    add_thresholded_resolution_diagnostic(
         path,
         "conflicting_server_implementations",
-        "server implementation",
-        &implementation,
-        &mut diagnostics,
-    );
-    add_insufficient_evidence_diagnostic(
-        path,
         "insufficient_server_implementation_evidence",
         "server implementation",
         &implementation,
-        MINIMUM_IMPLEMENTATION_CONFIDENCE,
+        MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE,
         &mut diagnostics,
     );
     add_conflict_diagnostic(
@@ -817,20 +810,25 @@ fn add_conflict_diagnostic<T>(
     });
 }
 
-fn add_insufficient_evidence_diagnostic<T>(
+fn add_thresholded_resolution_diagnostic<T>(
     path: &Path,
-    code: &str,
+    conflict_code: &str,
+    insufficient_code: &str,
     label: &str,
     detected: &Detected<T>,
     minimum_confidence: u8,
     diagnostics: &mut Vec<InspectionDiagnostic>,
 ) {
-    if detected.value.is_some() || detected.alternatives.len() != 1 {
+    if detected.value.is_some() || detected.alternatives.is_empty() {
+        return;
+    }
+    if detected.confidence >= minimum_confidence {
+        add_conflict_diagnostic(path, conflict_code, label, detected, diagnostics);
         return;
     }
     diagnostics.push(InspectionDiagnostic {
         severity: DiagnosticSeverity::Info,
-        code: code.to_string(),
+        code: insufficient_code.to_string(),
         message: format!(
             "{label} evidence in {} has confidence {}, below the required {minimum_confidence}",
             path.display(),

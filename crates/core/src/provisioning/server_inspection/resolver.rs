@@ -205,4 +205,16 @@ mod tests {
         assert_eq!(detected.alternatives.len(), 1);
         assert_eq!(detected.alternatives[0].value, "paper");
     }
+
+    #[test]
+    fn multiple_low_confidence_candidates_remain_insufficient() {
+        let detected = resolve_with_minimum_confidence(
+            vec![claim("paper", 0, 25, "file-name"), claim("purpur", 1, 20, "weak-metadata")],
+            50,
+        );
+
+        assert_eq!(detected.value, None);
+        assert_eq!(detected.confidence, 25);
+        assert_eq!(detected.alternatives.len(), 2);
+    }
 }

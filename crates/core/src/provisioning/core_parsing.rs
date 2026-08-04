@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use super::server_inspection::{
     inspect_server_artifact, Attributed, Detected, InspectionOptions, ReleaseChannel,
     ServerEcosystem, ServerInspectionError, ServerInspectionReport,
+    MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE,
 };
 
 /// 一个可识别的服务端核心系列。
@@ -157,8 +158,9 @@ impl CoreFileInfo {
         let fallback_kind = fallback.kind;
         let fallback_core_version = fallback.core_version;
         let fallback_minecraft_version = fallback.minecraft_version;
-        let implementation_is_ambiguous = is_ambiguous(&report.identity.implementation);
-        let kind = if has_detection_evidence(&report.identity.implementation) {
+        let implementation_is_ambiguous =
+            is_ambiguous_implementation(&report.identity.implementation);
+        let kind = if has_decisive_implementation_evidence(&report.identity.implementation) {
             legacy_kind_from_report(report, fallback_kind)
         } else {
             fallback_kind
@@ -187,11 +189,17 @@ impl CoreFileInfo {
 }
 
 fn has_detection_evidence<T>(detected: &Detected<T>) -> bool {
-    detected.value.is_some() || detected.alternatives.len() > 1
+    detected.value.is_some() || !detected.alternatives.is_empty()
 }
 
-fn is_ambiguous<T>(detected: &Detected<T>) -> bool {
-    detected.value.is_none() && detected.alternatives.len() > 1
+fn has_decisive_implementation_evidence<T>(detected: &Detected<T>) -> bool {
+    detected.value.is_some() || is_ambiguous_implementation(detected)
+}
+
+fn is_ambiguous_implementation<T>(detected: &Detected<T>) -> bool {
+    detected.value.is_none()
+        && detected.alternatives.len() > 1
+        && detected.confidence >= MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE
 }
 
 fn selected_or_fallback<T: Clone>(detected: &Detected<T>, fallback: Option<T>) -> Option<T> {

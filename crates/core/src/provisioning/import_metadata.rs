@@ -12,7 +12,7 @@ use super::launch_adapter::adapt_launch_profile;
 use super::server_inspection::{
     inspect_server_artifact, Detected, DiagnosticSeverity, InspectionDiagnostic, InspectionOptions,
     LaunchPlatform, LaunchProfile, LaunchTarget, ReleaseChannel, ServerInspectionError,
-    ServerInspectionReport,
+    ServerInspectionReport, MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE,
 };
 
 /// 控制检查结果是否可以替换已有的启动配置。
@@ -115,7 +115,8 @@ pub fn apply_server_inspection_with_options(
         diagnostics.push(unresolved_diagnostic(
             "server implementation",
             &report.identity.implementation,
-            |product| product.key.clone(),
+            Some(MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE),
+            |product| product.key.as_str(),
         ));
     }
 
@@ -131,7 +132,8 @@ pub fn apply_server_inspection_with_options(
         diagnostics.push(unresolved_diagnostic(
             "server implementation version",
             &report.identity.version,
-            |version| version.clone(),
+            None,
+            String::as_str,
         ));
     }
 
@@ -148,7 +150,8 @@ pub fn apply_server_inspection_with_options(
                 diagnostics.push(unresolved_diagnostic(
                     "Minecraft version",
                     &minecraft.version,
-                    |version| version.clone(),
+                    None,
+                    String::as_str,
                 ));
             }
         }
@@ -521,13 +524,14 @@ fn diagnostic_severity_name(severity: DiagnosticSeverity) -> &'static str {
     }
 }
 
-fn unresolved_diagnostic<T, F>(
+fn unresolved_diagnostic<'a, T, F>(
     field: &str,
-    detected: &Detected<T>,
+    detected: &'a Detected<T>,
+    minimum_confidence: Option<u8>,
     format_candidate: F,
 ) -> InspectionDiagnostic
 where
-    F: Fn(&T) -> String,
+    F: Fn(&'a T) -> &'a str,
 {
     if detected.alternatives.is_empty() {
         return missing_diagnostic(field);
@@ -541,7 +545,7 @@ where
         })
         .collect::<Vec<_>>()
         .join(", ");
-    if detected.alternatives.len() == 1 {
+    if minimum_confidence.is_some_and(|minimum| detected.confidence < minimum) {
         return InspectionDiagnostic {
             severity: DiagnosticSeverity::Warning,
             code: format!(
@@ -591,11 +595,12 @@ mod tests {
 
     use super::{
         apply_server_inspection, apply_server_inspection_with_options, compatible_launch_candidate,
-        LaunchProfilePolicy, ServerInspectionProjectionOptions,
+        unresolved_diagnostic, LaunchProfilePolicy, ServerInspectionProjectionOptions,
     };
     use crate::instance::{InstanceId, InstanceSpec, LocalLaunch, StartupMode};
     use crate::provisioning::server_inspection::{
-        Attributed, LaunchPlatform, LaunchProfile, LaunchTarget,
+        Attributed, Detected, DetectionCandidate, LaunchPlatform, LaunchProfile, LaunchTarget,
+        MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE,
     };
     use crate::provisioning::{inspect_server_artifact, InspectionOptions};
     use zip::write::FileOptions;
@@ -699,6 +704,39 @@ mod tests {
         assert!(!diagnostics.iter().any(|diagnostic| {
             diagnostic.code == "server_inspection_server_implementation_ambiguous"
         }));
+    }
+
+    #[test]
+    fn multiple_low_confidence_candidates_are_reported_as_insufficient() {
+        let detected = Detected {
+            value: None,
+            confidence: 25,
+            evidence: Vec::new(),
+            alternatives: vec![
+                DetectionCandidate {
+                    value: "paper".to_string(),
+                    confidence: 25,
+                    evidence: Vec::new(),
+                },
+                DetectionCandidate {
+                    value: "purpur".to_string(),
+                    confidence: 20,
+                    evidence: Vec::new(),
+                },
+            ],
+        };
+
+        let diagnostic = unresolved_diagnostic(
+            "server implementation",
+            &detected,
+            Some(MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE),
+            String::as_str,
+        );
+
+        assert_eq!(
+            diagnostic.code,
+            "server_inspection_server_implementation_insufficient_evidence"
+        );
     }
 
     #[test]
