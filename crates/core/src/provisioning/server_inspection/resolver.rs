@@ -1,4 +1,13 @@
 use super::model::{Attributed, Detected, DetectionCandidate, EvidenceId};
+use super::MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DetectionOutcome {
+    Missing,
+    Selected,
+    InsufficientEvidence { minimum_confidence: u8 },
+    Conflict,
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct DetectionClaim<T> {
@@ -69,6 +78,37 @@ where
         evidence: winner.evidence,
         alternatives: candidates.collect(),
     }
+}
+
+pub(crate) fn resolve_server_implementation<T>(claims: Vec<DetectionClaim<T>>) -> Detected<T>
+where
+    T: Eq,
+{
+    resolve_with_minimum_confidence(claims, MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE)
+}
+
+pub(crate) fn detection_outcome<T>(detected: &Detected<T>) -> DetectionOutcome {
+    detection_outcome_with_minimum_confidence(detected, 0)
+}
+
+pub(crate) fn server_implementation_outcome<T>(detected: &Detected<T>) -> DetectionOutcome {
+    detection_outcome_with_minimum_confidence(detected, MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE)
+}
+
+fn detection_outcome_with_minimum_confidence<T>(
+    detected: &Detected<T>,
+    minimum_confidence: u8,
+) -> DetectionOutcome {
+    if detected.value.is_some() {
+        return DetectionOutcome::Selected;
+    }
+    if detected.alternatives.is_empty() {
+        return DetectionOutcome::Missing;
+    }
+    if detected.confidence < minimum_confidence || detected.alternatives.len() == 1 {
+        return DetectionOutcome::InsufficientEvidence { minimum_confidence };
+    }
+    DetectionOutcome::Conflict
 }
 
 pub(crate) fn resolve_attributed<T>(claims: Vec<DetectionClaim<T>>) -> Vec<Attributed<T>>
@@ -155,7 +195,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve, resolve_with_minimum_confidence, DetectionClaim};
+    use super::{
+        resolve, resolve_with_minimum_confidence, server_implementation_outcome, DetectionClaim,
+        DetectionOutcome,
+    };
     use crate::provisioning::server_inspection::EvidenceId;
 
     fn claim(value: &str, id: u32, weight: u8, group: &str) -> DetectionClaim<String> {
@@ -216,5 +259,9 @@ mod tests {
         assert_eq!(detected.value, None);
         assert_eq!(detected.confidence, 25);
         assert_eq!(detected.alternatives.len(), 2);
+        assert_eq!(
+            server_implementation_outcome(&detected),
+            DetectionOutcome::InsufficientEvidence { minimum_confidence: 50 }
+        );
     }
 }

@@ -21,10 +21,8 @@ use super::model::{
     MinecraftVersionInfo, ReleaseChannel, ServerCategory, ServerComponent, ServerComponentKind,
     ServerEcosystem, ServerIdentityInfo, ServerProduct,
 };
-use super::resolver::{
-    resolve, resolve_attributed, resolve_with_minimum_confidence, DetectionClaim,
-};
-use super::MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE;
+use super::resolver::{resolve, resolve_attributed, resolve_server_implementation, DetectionClaim};
+use super::{detection_outcome, server_implementation_outcome, DetectionOutcome};
 
 const PAPER_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Paper, ServerEcosystem::Bukkit];
 const VANILLA_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Vanilla];
@@ -494,7 +492,7 @@ fn finalize(
     existing_java_major: Option<&Detected<u16>>,
     evidence: &mut EvidenceCollector,
 ) -> DetectorOutput {
-    let implementation = resolve_with_minimum_confidence(
+    let implementation = resolve_server_implementation(
         findings
             .products
             .iter()
@@ -507,7 +505,6 @@ fn finalize(
                 )
             })
             .collect(),
-        MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE,
     );
     let selected_key = implementation
         .value
@@ -663,7 +660,6 @@ fn finalize(
         "insufficient_server_implementation_evidence",
         "server implementation",
         &implementation,
-        MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE,
         &mut diagnostics,
     );
     add_conflict_diagnostic(
@@ -795,7 +791,7 @@ fn add_conflict_diagnostic<T>(
     detected: &Detected<T>,
     diagnostics: &mut Vec<InspectionDiagnostic>,
 ) {
-    if detected.value.is_some() || detected.alternatives.len() < 2 {
+    if detection_outcome(detected) != DetectionOutcome::Conflict {
         return;
     }
     diagnostics.push(InspectionDiagnostic {
@@ -816,26 +812,26 @@ fn add_thresholded_resolution_diagnostic<T>(
     insufficient_code: &str,
     label: &str,
     detected: &Detected<T>,
-    minimum_confidence: u8,
     diagnostics: &mut Vec<InspectionDiagnostic>,
 ) {
-    if detected.value.is_some() || detected.alternatives.is_empty() {
-        return;
+    match server_implementation_outcome(detected) {
+        DetectionOutcome::Conflict => {
+            add_conflict_diagnostic(path, conflict_code, label, detected, diagnostics);
+        }
+        DetectionOutcome::InsufficientEvidence { minimum_confidence } => {
+            diagnostics.push(InspectionDiagnostic {
+                severity: DiagnosticSeverity::Info,
+                code: insufficient_code.to_string(),
+                message: format!(
+                "{label} evidence in {} has confidence {}, below the required {minimum_confidence}",
+                path.display(),
+                detected.confidence
+            ),
+                evidence: detected.evidence.clone(),
+            })
+        }
+        DetectionOutcome::Missing | DetectionOutcome::Selected => {}
     }
-    if detected.confidence >= minimum_confidence {
-        add_conflict_diagnostic(path, conflict_code, label, detected, diagnostics);
-        return;
-    }
-    diagnostics.push(InspectionDiagnostic {
-        severity: DiagnosticSeverity::Info,
-        code: insufficient_code.to_string(),
-        message: format!(
-            "{label} evidence in {} has confidence {}, below the required {minimum_confidence}",
-            path.display(),
-            detected.confidence
-        ),
-        evidence: detected.evidence.clone(),
-    });
 }
 
 fn detect_filename(path: &Path, findings: &mut Findings) {

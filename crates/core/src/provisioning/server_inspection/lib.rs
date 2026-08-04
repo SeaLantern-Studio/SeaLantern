@@ -22,12 +22,13 @@ pub use model::*;
 use evidence::{EvidenceCollector, NewEvidence};
 use formats::manifest::ParsedManifest;
 use formats::mojang_version::MojangVersionDocument;
+pub(crate) use resolver::{detection_outcome, server_implementation_outcome, DetectionOutcome};
 use resolver::{resolve, DetectionClaim};
 
 const MANIFEST_ENTRY: &str = "META-INF/MANIFEST.MF";
 const MOJANG_VERSION_ENTRY: &str = "version.json";
 const SERVER_INSPECTION_TARGET: &str = "sealantern.core.provisioning.server_inspection";
-pub(crate) const MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE: u8 = 50;
+const MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE: u8 = 50;
 
 /// 控制静态检查的资源预算；检查过程不会执行 JAR、脚本或 shell 展开。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
