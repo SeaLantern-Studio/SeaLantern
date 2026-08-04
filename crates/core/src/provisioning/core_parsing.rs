@@ -187,11 +187,11 @@ impl CoreFileInfo {
 }
 
 fn has_detection_evidence<T>(detected: &Detected<T>) -> bool {
-    detected.value.is_some() || !detected.alternatives.is_empty()
+    detected.value.is_some() || detected.alternatives.len() > 1
 }
 
 fn is_ambiguous<T>(detected: &Detected<T>) -> bool {
-    detected.value.is_none() && !detected.alternatives.is_empty()
+    detected.value.is_none() && detected.alternatives.len() > 1
 }
 
 fn selected_or_fallback<T: Clone>(detected: &Detected<T>, fallback: Option<T>) -> Option<T> {

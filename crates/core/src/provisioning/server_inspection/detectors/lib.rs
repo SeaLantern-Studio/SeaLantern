@@ -21,7 +21,11 @@ use super::model::{
     MinecraftVersionInfo, ReleaseChannel, ServerCategory, ServerComponent, ServerComponentKind,
     ServerEcosystem, ServerIdentityInfo, ServerProduct,
 };
-use super::resolver::{resolve, resolve_attributed, DetectionClaim};
+use super::resolver::{
+    resolve, resolve_attributed, resolve_with_minimum_confidence, DetectionClaim,
+};
+
+const MINIMUM_IMPLEMENTATION_CONFIDENCE: u8 = 50;
 
 const PAPER_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Paper, ServerEcosystem::Bukkit];
 const VANILLA_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Vanilla];
@@ -491,7 +495,7 @@ fn finalize(
     existing_java_major: Option<&Detected<u16>>,
     evidence: &mut EvidenceCollector,
 ) -> DetectorOutput {
-    let implementation = resolve(
+    let implementation = resolve_with_minimum_confidence(
         findings
             .products
             .iter()
@@ -504,6 +508,7 @@ fn finalize(
                 )
             })
             .collect(),
+        MINIMUM_IMPLEMENTATION_CONFIDENCE,
     );
     let selected_key = implementation
         .value
@@ -660,6 +665,14 @@ fn finalize(
         &implementation,
         &mut diagnostics,
     );
+    add_insufficient_evidence_diagnostic(
+        path,
+        "insufficient_server_implementation_evidence",
+        "server implementation",
+        &implementation,
+        MINIMUM_IMPLEMENTATION_CONFIDENCE,
+        &mut diagnostics,
+    );
     add_conflict_diagnostic(
         path,
         "conflicting_server_versions",
@@ -801,6 +814,29 @@ fn add_conflict_diagnostic<T>(
             .iter()
             .flat_map(|candidate| candidate.evidence.iter().copied())
             .collect(),
+    });
+}
+
+fn add_insufficient_evidence_diagnostic<T>(
+    path: &Path,
+    code: &str,
+    label: &str,
+    detected: &Detected<T>,
+    minimum_confidence: u8,
+    diagnostics: &mut Vec<InspectionDiagnostic>,
+) {
+    if detected.value.is_some() || detected.alternatives.len() != 1 {
+        return;
+    }
+    diagnostics.push(InspectionDiagnostic {
+        severity: DiagnosticSeverity::Info,
+        code: code.to_string(),
+        message: format!(
+            "{label} evidence in {} has confidence {}, below the required {minimum_confidence}",
+            path.display(),
+            detected.confidence
+        ),
+        evidence: detected.evidence.clone(),
     });
 }
 

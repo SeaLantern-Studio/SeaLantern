@@ -21,6 +21,16 @@ pub(crate) fn resolve<T>(claims: Vec<DetectionClaim<T>>) -> Detected<T>
 where
     T: Eq,
 {
+    resolve_with_minimum_confidence(claims, 0)
+}
+
+pub(crate) fn resolve_with_minimum_confidence<T>(
+    claims: Vec<DetectionClaim<T>>,
+    minimum_confidence: u8,
+) -> Detected<T>
+where
+    T: Eq,
+{
     let candidates = rank_candidates(claims);
     let Some(winner) = candidates.first() else {
         return Detected::default();
@@ -32,6 +42,15 @@ where
     });
 
     if conflicts {
+        return Detected {
+            value: None,
+            confidence: winner.confidence,
+            evidence: winner.evidence.clone(),
+            alternatives: candidates,
+        };
+    }
+
+    if winner.confidence < minimum_confidence.min(100) {
         return Detected {
             value: None,
             confidence: winner.confidence,
@@ -136,7 +155,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve, DetectionClaim};
+    use super::{resolve, resolve_with_minimum_confidence, DetectionClaim};
     use crate::provisioning::server_inspection::EvidenceId;
 
     fn claim(value: &str, id: u32, weight: u8, group: &str) -> DetectionClaim<String> {
@@ -173,5 +192,17 @@ mod tests {
         assert_eq!(detected.value, None);
         assert_eq!(detected.confidence, 95);
         assert_eq!(detected.alternatives.len(), 2);
+    }
+
+    #[test]
+    fn low_confidence_candidate_remains_available_without_being_selected() {
+        let detected =
+            resolve_with_minimum_confidence(vec![claim("paper", 0, 25, "file-name")], 50);
+
+        assert_eq!(detected.value, None);
+        assert_eq!(detected.confidence, 25);
+        assert_eq!(detected.evidence, vec![EvidenceId(0)]);
+        assert_eq!(detected.alternatives.len(), 1);
+        assert_eq!(detected.alternatives[0].value, "paper");
     }
 }

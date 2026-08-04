@@ -541,6 +541,20 @@ where
         })
         .collect::<Vec<_>>()
         .join(", ");
+    if detected.alternatives.len() == 1 {
+        return InspectionDiagnostic {
+            severity: DiagnosticSeverity::Warning,
+            code: format!(
+                "server_inspection_{}_insufficient_evidence",
+                field.replace(' ', "_").to_ascii_lowercase()
+            ),
+            message: format!(
+                "{field} has insufficient evidence ({candidates}); existing import metadata was preserved; provide stronger metadata or choose a value manually"
+            ),
+            evidence: detected.evidence.clone(),
+        };
+    }
+
     InspectionDiagnostic {
         severity: DiagnosticSeverity::Warning,
         code: format!(
@@ -666,6 +680,25 @@ mod tests {
         assert_eq!(instance.core_type, "custom-fork");
         assert_eq!(instance.core_version, "26.2.build.1-stable");
         assert_eq!(instance.game_version, "26.2");
+    }
+
+    #[test]
+    fn preserves_existing_product_when_filename_is_the_only_evidence() {
+        let mut instance = instance_spec();
+        let path = write_test_jar("purpur.jar", &[("empty", "")]);
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect metadata-free JAR");
+        std::fs::remove_file(&path).expect("remove metadata-free JAR");
+
+        let diagnostics = apply_server_inspection(&mut instance, Ok(&report));
+
+        assert_eq!(instance.core_type, "paper");
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "server_inspection_server_implementation_insufficient_evidence"
+        }));
+        assert!(!diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "server_inspection_server_implementation_ambiguous"
+        }));
     }
 
     #[test]

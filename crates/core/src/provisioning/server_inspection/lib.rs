@@ -1942,6 +1942,28 @@ mod tests {
     }
 
     #[test]
+    fn filename_only_product_remains_an_unselected_candidate() {
+        let path = temporary_path("paper.jar");
+        write_test_jar_entries(&path, &[("empty", "")]);
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect metadata-free JAR");
+        fs::remove_file(&path).expect("remove metadata-free JAR");
+
+        assert!(report.identity.implementation.value.is_none());
+        assert_eq!(report.identity.implementation.confidence, 25);
+        assert_eq!(report.identity.implementation.alternatives.len(), 1);
+        assert_eq!(report.identity.implementation.alternatives[0].value.key, "paper");
+        assert!(report.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "insufficient_server_implementation_evidence"
+        }));
+        assert!(!report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| { diagnostic.code == "conflicting_server_implementations" }));
+    }
+
+    #[test]
     fn empty_directories_are_reported_without_false_identity_claims() {
         let path = temporary_path("directory");
         fs::create_dir(&path).expect("create test directory");
