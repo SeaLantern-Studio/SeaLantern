@@ -36,6 +36,9 @@ export type {
   SystemInfo,
 } from "@api/system";
 
+export { searchResources } from "@api/resource";
+export type { ResourceSearchResult } from "@api/resource";
+
 export * from "@api/update";
 export * from "@api/plugin";
 export * from "@api/remoteLocales";

@@ -45,6 +45,12 @@ const routes = [
     meta: { titleKey: "common.plugins", icon: "puzzle" },
   },
   {
+    path: "/resource-market",
+    name: "resource-market",
+    component: () => import("@views/ResourceMarketView.vue"),
+    meta: { titleKey: "common.resource_market", icon: "store" },
+  },
+  {
     path: "/market",
     redirect: "/plugins?tab=market",
   },
