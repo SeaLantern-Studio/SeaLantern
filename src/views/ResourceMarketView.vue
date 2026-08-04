@@ -10,11 +10,7 @@ const keyword = ref("");
 const results = ref<ResourceSearchResult[]>([]);
 const activeResult = ref<ResourceSearchResult | null>(null);
 
-const {
-  loading,
-  error,
-  execute: executeSearch,
-} = useLoading(async () => {
+const { loading, execute: executeSearch } = useLoading(async () => {
   if (!keyword.value.trim()) {
     results.value = [];
     return [];
@@ -23,16 +19,16 @@ const {
   const found = await searchResources(keyword.value.trim(), 24);
   results.value = found;
   if (found.length === 0) {
-    toast.info(i18n.t("resourceMarket.no_results"));
+    toast.info(i18n.t("common.resourceMarket.no_results"));
   }
   return found;
 });
 
 const resultCountText = computed(() => {
   if (!results.value.length) {
-    return i18n.t("resourceMarket.no_results");
+    return i18n.t("common.resourceMarket.no_results");
   }
-  return i18n.t("resourceMarket.result_count", { count: results.value.length });
+  return i18n.t("common.resourceMarket.result_count", { count: results.value.length });
 });
 
 function handleSearch() {
@@ -62,13 +58,13 @@ function selectResult(item: ResourceSearchResult) {
   <div class="resource-market-view animate-stagger-in">
     <section class="resource-market-header">
       <div>
-        <h2>{{ i18n.t("resourceMarket.title") }}</h2>
-        <p class="resource-market-tip">{{ i18n.t("resourceMarket.tip") }}</p>
+        <h2>{{ i18n.t("common.resourceMarket.title") }}</h2>
+        <p class="resource-market-tip">{{ i18n.t("common.resourceMarket.tip") }}</p>
       </div>
       <div class="resource-market-search">
         <cmz-input
           v-model="keyword"
-          :placeholder="i18n.t('resourceMarket.search_placeholder')"
+          :placeholder="i18n.t('common.resourceMarket.search_placeholder')"
           @keydown="handleKeydown"
           clearable
           class="resource-search-input"
@@ -80,7 +76,7 @@ function selectResult(item: ResourceSearchResult) {
               variant="solid"
               @click="handleSearch"
             >
-              {{ i18n.t('resourceMarket.search') }}
+              {{ i18n.t("common.resourceMarket.search") }}
             </cmz-button>
           </template>
         </cmz-input>
@@ -98,7 +94,9 @@ function selectResult(item: ResourceSearchResult) {
             v-for="item in results"
             :key="item.source + '-' + item.id"
             class="resource-market-card"
-            :class="{ active: activeResult?.id === item.id && activeResult?.source === item.source }"
+            :class="{
+              active: activeResult?.id === item.id && activeResult?.source === item.source,
+            }"
             @click="selectResult(item)"
           >
             <div class="resource-card-avatar">
@@ -113,18 +111,20 @@ function selectResult(item: ResourceSearchResult) {
               <p class="resource-card-summary">{{ item.summary }}</p>
               <div class="resource-card-meta">
                 <span v-if="item.author">{{ item.author }}</span>
-                <span v-if="item.downloads !== undefined">{{ i18n.t("resourceMarket.downloads", { count: item.downloads }) }}</span>
+                <span v-if="item.downloads !== undefined">{{
+                  i18n.t("common.resourceMarket.downloads", { count: item.downloads })
+                }}</span>
               </div>
             </div>
             <cmz-button size="sm" variant="ghost" @click.stop="openSourceUrl(item)">
-              {{ i18n.t('resourceMarket.view') }}
+              {{ i18n.t("common.resourceMarket.view") }}
             </cmz-button>
           </div>
         </template>
 
         <div v-else class="resource-market-empty">
           <div class="empty-state">
-            <p>{{ i18n.t("resourceMarket.no_results") }}</p>
+            <p>{{ i18n.t("common.resourceMarket.no_results") }}</p>
             <span>{{ i18n.t("common.search") }}</span>
           </div>
         </div>
@@ -186,7 +186,10 @@ function selectResult(item: ResourceSearchResult) {
   border-radius: var(--sl-radius-lg);
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
   cursor: pointer;
 }
 
