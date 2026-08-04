@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use super::archive::{self, ArchiveMetadata};
 use super::error::ServerInspectionError;
 use super::model::{DiagnosticSeverity, InspectionDiagnostic};
-use super::InspectionOptions;
+use super::{InspectionOptions, SERVER_INSPECTION_TARGET};
 use crate::provisioning::StartupScriptKind;
 
 const ROOT_SCRIPT_NAMES: &[&str] =
@@ -532,7 +532,7 @@ fn optional_metadata_diagnostic(
     error: &ServerInspectionError,
 ) -> InspectionDiagnostic {
     tracing::warn!(
-        target: "sealantern.core.provisioning.server_inspection",
+        target: SERVER_INSPECTION_TARGET,
         path = %path.display(),
         error = %error,
         "optional server metadata was skipped"

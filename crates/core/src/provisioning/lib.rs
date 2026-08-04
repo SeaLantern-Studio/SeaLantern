@@ -3,6 +3,7 @@ pub mod core_parsing;
 pub mod create;
 pub mod existing;
 pub mod import_metadata;
+mod launch_adapter;
 pub mod modpack;
 pub mod run_dir;
 #[path = "server_inspection/lib.rs"]

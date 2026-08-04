@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -6,9 +5,10 @@ use crate::instance::{
     InstanceSpec, LocalLaunch, ServerMetadataComponent, ServerMetadataDiagnostic,
     ServerMetadataFingerprint, ServerMetadataIdentity, ServerMetadataJava, ServerMetadataLaunch,
     ServerMetadataMinecraft, ServerMetadataSnapshot, ServerMetadataSubject,
-    ServerMetadataSubjectKind, StartupMode,
+    ServerMetadataSubjectKind,
 };
 
+use super::launch_adapter::adapt_launch_profile;
 use super::server_inspection::{
     inspect_server_artifact, Detected, DiagnosticSeverity, InspectionDiagnostic, InspectionOptions,
     LaunchPlatform, LaunchProfile, LaunchTarget, ReleaseChannel, ServerInspectionError,
@@ -238,47 +238,11 @@ fn compatible_launch_candidate(
         return None;
     }
 
-    let (startup_mode, startup_target, jvm_arguments) = match &profile.target {
-        LaunchTarget::Jar { path } => {
-            if !profile.program_arguments.is_empty() {
-                diagnostics.push(launch_diagnostic(
-                    "launch_profile_program_arguments_unsupported",
-                    &profile.id,
-                    "launch profile has program arguments that LocalLaunch cannot represent; choose it manually",
-                ));
-                return None;
-            }
-            (
-                StartupMode::Jar,
-                path.clone(),
-                profile.jvm_arguments.iter().map(OsString::from).collect(),
-            )
-        }
-        LaunchTarget::Script { path } => {
-            let Some(mode) = script_startup_mode(path) else {
-                diagnostics.push(launch_diagnostic(
-                    "launch_profile_script_type_unsupported",
-                    &profile.id,
-                    "launch profile script extension is not supported by LocalLaunch; choose it manually",
-                ));
-                return None;
-            };
-            (mode, path.clone(), Vec::new())
-        }
-        LaunchTarget::MainClass { .. } => {
-            diagnostics.push(launch_diagnostic(
-                "launch_profile_main_class_unrepresentable",
-                &profile.id,
-                "LocalLaunch cannot represent a main-class target; choose a concrete launcher manually",
-            ));
-            return None;
-        }
-        LaunchTarget::ArgumentFiles { .. } => {
-            diagnostics.push(launch_diagnostic(
-                "launch_profile_argument_files_unrepresentable",
-                &profile.id,
-                "LocalLaunch cannot represent argument-file targets; choose a concrete launcher manually",
-            ));
+    let launch = match adapt_launch_profile(profile) {
+        Ok(launch) => launch,
+        Err(error) => {
+            let (code, detail) = error.diagnostic();
+            diagnostics.push(launch_diagnostic(code, &profile.id, detail));
             return None;
         }
     };
@@ -286,15 +250,7 @@ fn compatible_launch_candidate(
     Some(ImportLaunchCandidate {
         profile_id: profile.id.clone(),
         confidence: attributed.confidence,
-        launch: LocalLaunch {
-            startup_mode,
-            startup_target: Some(startup_target),
-            custom_command: None,
-            custom_executable: None,
-            custom_arguments: Vec::new(),
-            java_executable: None,
-            jvm_arguments,
-        },
+        launch,
         required_java_major: profile.required_java_major,
     })
 }
@@ -355,15 +311,6 @@ fn platform_matches_host(platform: LaunchPlatform) -> bool {
         LaunchPlatform::Any => true,
         LaunchPlatform::Windows => cfg!(target_os = "windows"),
         LaunchPlatform::Unix => cfg!(unix),
-    }
-}
-
-fn script_startup_mode(path: &Path) -> Option<StartupMode> {
-    match path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
-        "bat" | "cmd" => Some(StartupMode::Batch),
-        "sh" => Some(StartupMode::Shell),
-        "ps1" => Some(StartupMode::PowerShell),
-        _ => None,
     }
 }
 
