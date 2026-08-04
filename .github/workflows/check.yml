@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-22.04
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      backend-application: ${{ steps.filter.outputs['backend-application'] }}
       backend-core: ${{ steps.filter.outputs['backend-core'] }}
       backend-infra: ${{ steps.filter.outputs['backend-infra'] }}
       backend-extra: ${{ steps.filter.outputs['backend-extra'] }}
@@ -33,6 +34,13 @@ jobs:
               - 'crates/**'
               - 'server/**'
               - 'src-tauri/**'
+              - '.cargo/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rustfmt.toml'
+              - '.github/workflows/check.yml'
+            backend-application:
+              - 'application/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -132,6 +140,24 @@ jobs:
 
       - name: 运行 Clippy 检查
         run: cargo clippy --workspace -- -D warnings
+
+  backend-test-application:
+    name: 后端测试 (application)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-application'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 4
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 运行测试
+        run: cargo test -p sealantern-application
 
   backend-test-core:
     name: 后端测试 (core)
@@ -259,6 +285,7 @@ jobs:
     needs:
       [
         backend-lint,
+        backend-test-application,
         backend-test-core,
         backend-test-infra,
         backend-test-interface,

@@ -5166,6 +5166,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "sealantern-application"
+version = "1.2.0"
+
+[[package]]
 name = "sealantern-core"
 version = "1.2.0"
 dependencies = [
