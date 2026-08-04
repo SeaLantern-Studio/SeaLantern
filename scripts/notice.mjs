@@ -264,7 +264,7 @@ async function generateNotice() {
   noticeLines.push("");
 
   const sortedBackend = [...backendLicenses]
-    .filter((crate) => crate.name !== "sea-lantern")
+    .filter((crate) => crate.name !== "sealantern")
     .toSorted((a, b) => `${a.name}@${a.version}`.localeCompare(`${b.name}@${b.version}`));
 
   id = 1;

@@ -1,6 +1,6 @@
 [package]
 name = "sealantern-infra"
-version = "0.1.0"
+version = "1.2.0"
 edition = "2021"
 license = "GPL-3.0-only"
 
@@ -12,11 +12,28 @@ default = []
 blocking = ["reqwest/blocking"]
 
 [dependencies]
+atomicwrites = "0.4"
+cap-std = "4"
 reqwest = { version = "0.12", features = ["json", "stream"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
 tracing = "0.1"
-tokio = { version = "1", features = ["fs", "io-util", "rt", "rt-multi-thread", "macros", "time"] }
+tokio = { version = "1", features = [
+    "fs",
+    "io-util",
+    "rt",
+    "rt-multi-thread",
+    "macros",
+    "sync",
+    "time",
+] }
 tokio-util = { version = "0.7", features = ["io"] }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"
+toml = "0.8"
 uuid = { version = "1", features = ["v4"] }
+zip = { version = "2.0", default-features = false, features = ["deflate"] }
+sysinfo = "0.32"
+dirs = "5"

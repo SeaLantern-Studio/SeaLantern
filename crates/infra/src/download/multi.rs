@@ -1,7 +1,6 @@
-//! 多线程文件下载器。
+//! 多线程文件下载器实现。
 //!
-//! 提供 `Downloader` 结构体，包装已配置的 `NetClient`，
-//! 调用 `download()` 即可自动探测远端并下载文件。
+//! `Downloader` 不对外公开，多线程下载请通过 `DownloadManager` 使用。
 
 use std::sync::Arc;
 
@@ -12,7 +11,7 @@ use crate::observability;
 
 /// 多线程下载器。
 ///
-/// 持有已配置的 HTTP 客户端，调用 `download()` 即可下载文件。
+/// 持有一个配置好的 HTTP 客户端，调用 `download()` 即可下载文件。
 ///
 /// # Examples
 ///
@@ -21,27 +20,27 @@ use crate::observability;
 /// let downloader = Downloader::new(client);
 /// let status = downloader.download(url, path, 8).await?;
 /// ```
-pub struct Downloader {
+pub(crate) struct Downloader {
     client: NetClient,
 }
 
 impl Downloader {
-    /// 创建下载器。
+    /// 创建一个下载器。
     ///
     /// # Parameters
     ///
     /// - `client`: 已加载代理配置的 HTTP 客户端
-    pub fn new(client: NetClient) -> Self {
+    pub(crate) fn new(client: NetClient) -> Self {
         Self { client }
     }
 
-    /// 下载文件并返回可查询进度的状态句柄。
+    /// 下载文件并返回一个可查询进度的状态句柄。
     ///
     /// 流程：
     /// 1. 探测远端文件信息（是否支持 Range、文件大小）
     /// 2. 创建并预分配本地文件
-    /// 3. 根据是否支持 Range 选择分片或单线程下载
-    /// 4. 启动后台监控任务汇总分片结果
+    /// 3. 根据 Range 支持情况选择分段或单线程下载
+    /// 4. 启动后台监控任务以汇总各段结果
     ///
     /// # Parameters
     ///

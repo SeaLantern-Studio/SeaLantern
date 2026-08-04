@@ -1,7 +1,7 @@
-//! 下载状态与错误类型。
+//! 下载状态和错误类型。
 //!
 //! 提供下载任务的共享状态 `DownloadStatus`、进度快照 `DownloadSnapshot`
-//! 以及统一的错误类型 `DownloadError`。
+//! 和统一的错误类型 `DownloadError`。
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -11,14 +11,14 @@ use tokio_util::sync::CancellationToken;
 use crate::net::error::NetError;
 use crate::observability;
 
-/// 下载过程中可能出现的错误。
+/// 下载过程中可能发生的错误。
 #[derive(Debug)]
 pub enum DownloadError {
     /// HTTP 请求失败
     Reqwest(reqwest::Error),
     /// 本地文件读写失败
     Io(std::io::Error),
-    /// 服务端返回非预期状态码
+    /// 服务端返回了意外的状态码
     Response(u16, String),
     /// 网络层错误
     Net(NetError),
@@ -63,29 +63,29 @@ impl From<NetError> for DownloadError {
 
 /// 下载进度的实时快照，用于传递给前端。
 pub struct DownloadSnapshot {
-    /// 已下载字节数
+    /// 已下载的字节数
     pub downloaded: u64,
     /// 文件总大小
     pub total_size: u64,
-    /// 当前百分比进度（0.0 ~ 100.0）
+    /// 当前进度百分比（0.0 ~ 100.0）
     pub progress_percentage: f64,
-    /// 是否已经结束（完成或出错或取消）
+    /// 是否已完成（完成、出错或取消）
     pub is_finished: bool,
-    /// 错误信息（取消时也会包含取消提示）
+    /// 错误信息（取消时包含取消消息）
     pub error: Option<String>,
 }
 
 /// 单个下载任务的共享状态。
 ///
-/// 使用 `AtomicU64` 记录已下载量，多个分片线程可安全并发累加。
+/// 使用 `AtomicU64` 跟踪已下载字节数，多个分段线程可安全地并发累加。
 /// 通过 `CancellationToken` 实现取消信号。
 ///
-/// 字段对 `download` 模块内可见（分片、传输层直接访问），
-/// 外部通过 `snapshot()` / `cancel()` 等公开方法交互。
+/// 字段在 `download` 模块内可见（由分段层和传输层直接访问），
+/// 外部代码通过 `snapshot()` / `cancel()` 等公共方法交互。
 pub struct DownloadStatus {
     /// 文件总大小
     pub(super) total_size: u64,
-    /// 已下载字节数（原子计数器，多线程安全）
+    /// 已下载的字节数（原子计数器，线程安全）
     pub(super) downloaded: AtomicU64,
     /// 错误信息
     pub(super) error_message: RwLock<Option<String>>,
@@ -94,7 +94,7 @@ pub struct DownloadStatus {
 }
 
 impl DownloadStatus {
-    /// 创建下载状态对象。
+    /// 创建新的下载状态。
     ///
     /// # Parameters
     ///
@@ -114,7 +114,7 @@ impl DownloadStatus {
         self.cancel_token.cancel();
     }
 
-    /// 判断是否已取消。
+    /// 检查下载是否已被取消。
     pub fn cancelled(&self) -> bool {
         self.cancel_token.is_cancelled()
     }
@@ -132,8 +132,8 @@ impl DownloadStatus {
 
     /// 获取当前进度快照。
     ///
-    /// 已取消但未设置具体错误时，`error` 字段会返回"下载已取消"，
-    /// 确保前端能通过 `is_finished` 感知到取消状态。
+    /// 当取消时未设置特定错误时，`error` 字段返回取消消息，
+    /// 确保前端可以通过 `is_finished` 检测到已取消的状态。
     pub async fn snapshot(&self) -> DownloadSnapshot {
         let downloaded = self.downloaded.load(Ordering::Relaxed);
         let error = self.error_message.read().await.clone();

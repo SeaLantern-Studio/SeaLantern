@@ -1,12 +1,8 @@
-name: 同步 Release 到 CNB
-
-# 两个触发条件：
-# 1. 当有新的 Release 发布时自动触发同步
-# - 此时自动同步最新的release到CNB
-# 2. 手动触发
-# - 此时要求手动指定tag，发布特定release到CNB
+name: 同步到 CNB
 
 on:
+  push:
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
@@ -20,26 +16,65 @@ permissions:
   contents: read
 
 concurrency:
-  group: sync-release-to-cnb-${{ github.event.release.tag_name || inputs.tag || github.run_id }}
+  group: sync-to-cnb-${{ github.event.release.tag_name || inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
   sync:
-    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.release.prerelease }}
+    if: ${{ github.event_name != 'release' || !github.event.release.prerelease }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - name: 设置 Go 环境
+        if: github.event_name != 'push'
         uses: actions/setup-go@v5
         with:
           go-version: "1.23.x"
 
       - name: 克隆 release-sync
+        if: github.event_name != 'push'
         run: git clone --depth 1 https://github.com/SeaLantern-Studio/release-sync.git
 
       - name: 下载依赖
+        if: github.event_name != 'push'
         working-directory: release-sync
         run: go mod download
+
+      - name: 强制镜像分支并补齐缺失标签
+        shell: bash
+        env:
+          SOURCE_GITHUB_TOKEN: ${{ secrets.SOURCE_GITHUB_TOKEN }}
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          echo "::add-mask::${SOURCE_GITHUB_TOKEN}"
+          echo "::add-mask::${CNB_TOKEN}"
+
+          SOURCE_URL="https://x-access-token:${SOURCE_GITHUB_TOKEN}@github.com/SeaLantern-Studio/SeaLantern.git"
+          TARGET_URL="https://cnb:${CNB_TOKEN}@cnb.cool/SeaLantern-studio/SeaLantern"
+          MIRROR_DIR="$(mktemp -d)"
+          trap 'rm -rf "$MIRROR_DIR"' EXIT
+
+          git clone --mirror "$SOURCE_URL" "$MIRROR_DIR/repository.git"
+
+          # 覆盖同名分支，并删除 CNB 独有分支。
+          git -C "$MIRROR_DIR/repository.git" push \
+            --force \
+            --prune \
+            "$TARGET_URL" \
+            'refs/heads/*:refs/heads/*'
+
+          # 不改写或删除 CNB 已有标签。
+          while IFS= read -r tag; do
+            if git ls-remote --exit-code --tags "$TARGET_URL" "refs/tags/$tag" >/dev/null 2>&1; then
+              echo "保留 CNB 已有标签: $tag"
+            else
+              git -C "$MIRROR_DIR/repository.git" push \
+                "$TARGET_URL" \
+                "refs/tags/$tag:refs/tags/$tag"
+            fi
+          done < <(git -C "$MIRROR_DIR/repository.git" tag --list)
 
       - name: 同步最新发布（release 事件）
         if: github.event_name == 'release'
@@ -50,6 +85,7 @@ jobs:
           PLUGIN_SOURCE_REPO: SeaLantern-Studio/SeaLantern
           PLUGIN_CNB_ROOT_ORGANIZATION: SeaLantern-studio
           PLUGIN_MIGRATE_ORGANIZATION_MAPPING_LEVEL: "2"
+          PLUGIN_MIGRATE_CODE: "false"
           PLUGIN_MIGRATE_RELEASE: "true"
           PLUGIN_CNB_URL: https://cnb.cool
           PLUGIN_SOURCE_TOKEN: ${{ secrets.SOURCE_GITHUB_TOKEN }}
@@ -65,6 +101,7 @@ jobs:
           PLUGIN_SOURCE_REPO: SeaLantern-Studio/SeaLantern
           PLUGIN_CNB_ROOT_ORGANIZATION: SeaLantern-studio
           PLUGIN_MIGRATE_ORGANIZATION_MAPPING_LEVEL: "2"
+          PLUGIN_MIGRATE_CODE: "false"
           PLUGIN_MIGRATE_RELEASE: "true"
           PLUGIN_MIGRATE_RELEASE_TAG: ${{ inputs.tag }}
           PLUGIN_CNB_URL: https://cnb.cool

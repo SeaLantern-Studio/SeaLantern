@@ -2,7 +2,7 @@ name: "Nightly 发布"
 
 on:
   schedule:
-    - cron: "0 18 * * *"
+    - cron: "0 16 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -14,7 +14,7 @@ permissions:
   actions: read
 
 env:
-  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+  RELEASE_BRANCH: main
 
 jobs:
   validate-nightly:
@@ -22,21 +22,45 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
+      should_build: ${{ steps.hash-check.outputs.should_build }}
       tag: ${{ steps.meta.outputs.tag }}
       version: ${{ steps.meta.outputs.version }}
       release_name: ${{ steps.meta.outputs.release_name }}
       release_body: ${{ steps.meta.outputs.release_body }}
+      source_sha: ${{ steps.meta.outputs.source_sha }}
     steps:
-      - name: 校验仅允许从默认分支发布
-        if: github.ref != format('refs/heads/{0}', env.DEFAULT_BRANCH)
+      - name: 校验仅允许从 main 分支发布
+        if: github.ref != format('refs/heads/{0}', env.RELEASE_BRANCH)
         run: |
-          echo "❌ Nightly 发布仅允许从默认分支 ${DEFAULT_BRANCH} 触发，当前来源：${GITHUB_REF}"
+          echo "❌ Nightly 发布仅允许从 ${RELEASE_BRANCH} 分支触发，当前来源：${GITHUB_REF}"
           exit 1
 
       - name: 检出代码
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: 检查 main 是否有新提交
+        id: hash-check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          CURRENT_SHA="$(git rev-parse HEAD)"
+          LAST_SUCCESS_SHA="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/nightly-release.yml/runs?branch=${RELEASE_BRANCH}&status=success&per_page=1" \
+              --jq '.workflow_runs[0].head_sha // ""'
+          )"
+
+          if [ -n "$LAST_SUCCESS_SHA" ] && [ "$CURRENT_SHA" = "$LAST_SUCCESS_SHA" ]; then
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "main 提交未变化，跳过 Nightly 构建: $CURRENT_SHA"
+          else
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "检测到新的 main 提交，开始 Nightly 构建: ${LAST_SUCCESS_SHA:-无} -> $CURRENT_SHA"
+          fi
 
       - name: 生成 Nightly 标签与 Release 信息
         id: meta
@@ -49,22 +73,22 @@ jobs:
             exit 1
           fi
 
-          DATE_UTC="$(date -u +%Y%m%d)"
-          DATE_LABEL="$(date -u +%Y-%m-%d)"
-          SHORT_SHA="$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
-          TAG="nightly-v${VERSION}-${DATE_UTC}-${SHORT_SHA}"
-          RELEASE_NAME="Sea Lantern Nightly ${DATE_LABEL} (${SHORT_SHA})"
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          DATE_LOCAL="$(TZ=Asia/Shanghai date +%Y%m%d)"
+          DATE_LABEL="$(TZ=Asia/Shanghai date +%Y-%m-%d)"
+          SHORT_SHA="$(printf '%s' "$SOURCE_SHA" | cut -c1-7)"
+          TAG="nightly-${DATE_LOCAL}-${SHORT_SHA}"
+          RELEASE_NAME="Sea Lantern Nightly ${DATE_LABEL} (${RELEASE_BRANCH}@${SHORT_SHA})"
 
           {
             echo "tag=$TAG"
             echo "version=$VERSION"
             echo "release_name=$RELEASE_NAME"
+            echo "source_sha=$SOURCE_SHA"
             echo "release_body<<EOF"
             echo "## 下载说明"
             echo ""
-            echo "这是预览版本，适合想提前体验新内容的用户。"
-            echo ""
-            echo "如果你只想下载后直接运行：Windows 选 portable.zip，Mac 选 portable.tar.gz，Linux 选 AppImage。"
+            echo "每日 0 点自动构建的预览版本，基于最新 main 分支，不保证可用性。"
             echo ""
             echo "- \`x64-setup.exe\`：Windows 64 位安装包。"
             echo "- \`x64_en-US.msi\`：Windows 64 位安装包，适合需要 MSI 的场景。"
@@ -75,33 +99,14 @@ jobs:
             echo "- \`*.AppImage\`：Linux 免安装版，给文件执行权限后即可直接运行。"
             echo "- \`*.deb\` / \`*.rpm\`：Linux 安装包。"
             echo ""
-            echo "本次构建基于 ${DEFAULT_BRANCH} 分支提交 ${SHORT_SHA}，仅发布在 GitHub Release。"
+            echo "本次构建基于 ${RELEASE_BRANCH} 分支提交 ${SHORT_SHA}，仅发布在 GitHub Release。"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-
-      - name: 创建或复用 Nightly GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.meta.outputs.tag }}
-          RELEASE_NAME: ${{ steps.meta.outputs.release_name }}
-          RELEASE_BODY: ${{ steps.meta.outputs.release_body }}
-        run: |
-          set -euo pipefail
-
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "✅ 已存在 Nightly Release，复用标签 $TAG"
-            exit 0
-          fi
-
-          gh release create "$TAG" \
-            --target "$GITHUB_SHA" \
-            --title "$RELEASE_NAME" \
-            --notes "$RELEASE_BODY" \
-            --prerelease
 
   publish-tauri-nightly:
     name: 构建并发布 Nightly 桌面端
     needs: validate-nightly
+    if: ${{ needs.validate-nightly.outputs.should_build == 'true' }}
     permissions:
       contents: write
     timeout-minutes: 90
@@ -132,6 +137,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-nightly.outputs.source_sha }}
 
       - name: 安装系统依赖 (Ubuntu 专用)
         if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
@@ -196,8 +203,8 @@ jobs:
           VERSION: ${{ needs.validate-nightly.outputs.version }}
           ASSET_ARCH: ${{ matrix.asset_arch }}
         run: |
-          $releaseDir = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -Filter "sea-lantern.exe" -ErrorAction SilentlyContinue |
-            Where-Object { $_.FullName -match '\\release\\sea-lantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
+          $releaseDir = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -Filter "sealantern.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\release\\sealantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
             Select-Object -First 1 -ExpandProperty DirectoryName
 
           if (-not $releaseDir) {
@@ -208,7 +215,7 @@ jobs:
           Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path $stageDir | Out-Null
 
-          Copy-Item -LiteralPath (Join-Path $releaseDir "sea-lantern.exe") -Destination $stageDir
+          Copy-Item -LiteralPath (Join-Path $releaseDir "sealantern.exe") -Destination $stageDir
 
           Get-ChildItem -Path $releaseDir -File -Filter "*.dll" -ErrorAction SilentlyContinue |
             ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $stageDir }
@@ -285,3 +292,41 @@ jobs:
           tar -C "$STAGE_DIR" -czf "$ASSET_PATH" "$APP_BASENAME" LICENSE NOTICE
 
           gh release upload "$TAG" "$ASSET_PATH" --clobber
+
+  cleanup-old-nightly:
+    name: 清理旧 Nightly 发布
+    needs:
+      - validate-nightly
+      - publish-tauri-nightly
+    if: >-
+      needs.validate-nightly.outputs.should_build == 'true' &&
+      needs.publish-tauri-nightly.result == 'success'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: 删除当前日期之外的旧 Nightly Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: ${{ needs.validate-nightly.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t NIGHTLY_TAGS < <(
+            gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --paginate --jq '.[] | select(.prerelease and (.tag_name | startswith("nightly-"))) | .tag_name'
+          )
+
+          deleted=0
+          for tag in "${NIGHTLY_TAGS[@]}"; do
+            if [ "$tag" = "$CURRENT_TAG" ]; then
+              continue
+            fi
+
+            echo "删除旧 Nightly Release: $tag"
+            gh release delete "$tag" --cleanup-tag -y
+            deleted=1
+          done
+
+          if [ "$deleted" -eq 0 ]; then
+            echo "没有需要清理的旧 Nightly Release。"
+          fi

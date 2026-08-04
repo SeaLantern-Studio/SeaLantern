@@ -1,19 +1,18 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use super::instance::{Instance, InstanceError, InstanceSpec};
+use super::model::{Instance, InstanceError, InstanceSpec};
 
-/// Input for planning a host-managed local-instance import.
+/// 用于规划主机管理的本地实例导入的输入。
 ///
-/// The source directory and startup target are not read here. The host validates and copies them
-/// after this plan has established the destination-relative startup target.
+/// 此处不读取源目录和启动目标。在此计划确定了相对于目标目录的启动目标后，主机将验证并复制它们。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstanceImportRequest {
     pub source_directory: PathBuf,
     pub instance: InstanceSpec,
 }
 
-/// A validated import plan with a copied instance model for host adapters to persist.
+/// 一个已验证的导入计划，包含供主机适配器持久化的已复制实例模型。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstanceImportPlan {
     pub source_directory: PathBuf,
@@ -22,7 +21,7 @@ pub struct InstanceImportPlan {
     pub instance: Instance,
 }
 
-/// Builds an import plan without performing filesystem operations.
+/// 构建导入计划，不执行文件系统操作。
 pub fn plan_import(
     request: InstanceImportRequest,
 ) -> Result<InstanceImportPlan, InstanceImportError> {
@@ -70,7 +69,7 @@ pub fn plan_import(
     })
 }
 
-/// Describes why an instance import plan could not be created.
+/// 描述无法创建实例导入计划的原因。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstanceImportError {
     EmptySourceDirectory,
@@ -144,6 +143,8 @@ mod tests {
                 startup_mode,
                 startup_target,
                 custom_command: None,
+                custom_executable: None,
+                custom_arguments: Vec::new(),
                 java_executable: Some(PathBuf::from("java")),
                 jvm_arguments: Vec::new(),
             },
@@ -187,7 +188,7 @@ mod tests {
     #[test]
     fn custom_import_needs_no_startup_target() {
         let mut spec = import_spec(None, StartupMode::Custom);
-        spec.launch.custom_command = Some("launch-custom".to_string());
+        spec.launch.custom_command = Some("launch-custom --nogui".to_string());
         let request = InstanceImportRequest {
             source_directory: PathBuf::from("imports/custom"),
             instance: spec,
@@ -197,7 +198,7 @@ mod tests {
 
         assert!(plan.startup_target_relative.is_none());
         assert!(plan.instance.launch.startup_target.is_none());
-        assert_eq!(plan.instance.launch.custom_command.as_deref(), Some("launch-custom"));
+        assert_eq!(plan.instance.launch.custom_command.as_deref(), Some("launch-custom --nogui"));
     }
 
     #[test]

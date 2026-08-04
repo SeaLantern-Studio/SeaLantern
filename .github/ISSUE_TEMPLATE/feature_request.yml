@@ -1,68 +1,67 @@
-name: Request for New Feature | 新功能请求
-description: Request to add a new feature | 请求添加新功能
+name: 新功能请求
+description: 请求添加新功能
 title: "[Feature] "
 labels: ["enhancement", "pending"]
-assignees: []
 body:
   - type: textarea
     id: description
     attributes:
-      label: Feature Description | 功能描述
-      description: What feature do you want? | 你想要什么功能？
-      placeholder: What feature do you want? | 你想要什么功能？
+      label: 功能描述
+      description: 请说明你希望添加的功能
+      placeholder: 在这里描述功能
     validations:
       required: true
 
   - type: textarea
     id: reason
     attributes:
-      label: Reason | 理由
-      description: Explain why you want this feature | 说明你为什么想要这个功能
-      placeholder: Explain why you want this feature | 说明你为什么想要这个功能
+      label: 理由
+      description: 可选，请说明需要这个功能的原因
+      placeholder: 在这里填写理由
     validations:
       required: false
 
   - type: textarea
     id: implementation
     attributes:
-      label: Implementation Details | 实现细节
-      description: Optional - How would you like to implement this feature? | 可选 - 你想要如何实现这个功能？
-      placeholder: How would you like to implement this feature? | 你想要如何实现这个功能？
+      label: 实现细节
+      description: 可选，请说明期望的实现方式
+      placeholder: 在这里填写实现建议
     validations:
       required: false
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives | 替代方案
-      description: Optional - Are there any alternative solutions? | 可选 - 是否有其他替代方案？
-      placeholder: Are there any alternative solutions? | 是否有其他替代方案？
+      label: 替代方案
+      description: 可选，请说明是否存在其他方案
+      placeholder: 在这里填写替代方案
     validations:
       required: false
 
   - type: textarea
     id: impact
     attributes:
-      label: Impact | 影响
-      description: Optional - Does this feature have any impact on existing content? | 可选 - 这个功能是否会对现有内容产生影响？
-      placeholder: Does this feature have any impact on existing content? | 这个功能是否会对现有内容产生影响？
+      label: 影响
+      description: 可选，请说明对现有功能的影响
+      placeholder: 在这里填写可能的影响
     validations:
       required: false
 
   - type: textarea
     id: acceptance
     attributes:
-      label: Acceptance Criteria | 验收标准
-      description: Optional - Under what conditions would you consider this feature complete? | 可选 - 什么样的情况下才算是完成这个功能？
-      placeholder: Under what conditions would you consider this feature complete? | 什么样的情况下才算是完成这个功能？
+      label: 验收标准
+      description: 可选，请说明怎样才算完成该功能
+      placeholder: 在这里填写验收标准
     validations:
       required: false
 
   - type: textarea
     id: additional
     attributes:
-      label: Additional Notes | 其他信息
-      description: Optional - For example, sketches of the UI | 可选 - 例如界面的草图
-      placeholder: Optional - For example, sketches of the UI | 可选 - 例如界面的草图
+      label: 其他信息
+      description: 可选，例如界面草图等补充材料
+      placeholder: 在这里填写其他信息
     validations:
       required: false

@@ -1,15 +1,14 @@
-name: Improvement Request | 优化请求
-description: Request to improve content | 请求优化内容
+name: 优化请求
+description: 请求优化现有功能或体验
 title: "[Perf] "
 labels: ["performance", "pending"]
-assignees: []
 body:
   - type: textarea
     id: content
     attributes:
       label: 内容描述
-      description: What content needs improvement? | 需要优化的内容是什么？
-      placeholder: What content needs improvement? | 需要优化的内容是什么？
+      description: 请说明需要优化的内容
+      placeholder: 在这里描述需要优化的内容
     validations:
       required: true
 
@@ -17,8 +16,8 @@ body:
     id: reason
     attributes:
       label: 理由
-      description: Explain why you want to improve this content | 说明你为什么想要优化这个内容
-      placeholder: Explain why you want to improve this content | 说明你为什么想要优化这个内容
+      description: 请说明需要优化的原因
+      placeholder: 在这里填写理由
     validations:
       required: true
 
@@ -26,8 +25,8 @@ body:
     id: impact
     attributes:
       label: 影响
-      description: Explain the impact of the improvement | 说明优化的影响
-      placeholder: Explain the impact of the improvement | 说明优化的影响
+      description: 可选，请说明优化可能产生的影响
+      placeholder: 在这里填写影响
     validations:
       required: false
 
@@ -35,8 +34,8 @@ body:
     id: acceptance
     attributes:
       label: 验收标准
-      description: Explain the acceptance criteria for the improvement | 说明优化的验收标准
-      placeholder: Explain the acceptance criteria for the improvement | 说明优化的验收标准
+      description: 可选，请说明优化的验收标准
+      placeholder: 在这里填写验收标准
     validations:
       required: false
 
@@ -44,7 +43,7 @@ body:
     id: additional
     attributes:
       label: 附加内容
-      description: Optional - for example, sketches of the interface | 可选 - 例如界面草图
-      placeholder: Optional - for example, sketches of the interface | 可选 - 例如界面草图
+      description: 可选，例如界面草图等补充材料
+      placeholder: 在这里填写附加内容
     validations:
       required: false
