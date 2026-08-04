@@ -31,7 +31,7 @@ const MOJANG_VERSION_ENTRY: &str = "version.json";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InspectionOptions {
     pub max_archive_entries: usize,
-    /// 根目录中最多读取的候选 JAR 数量，避免无界扫描任意文件。
+    /// 根目录中最多接受的服务端 JAR 数量，避免无界纳入普通库文件。
     pub max_root_archives: usize,
     pub max_metadata_entry_bytes: u64,
     pub max_total_metadata_bytes: u64,
@@ -1955,6 +1955,58 @@ mod tests {
             .launches
             .iter()
             .any(|launch| matches!(&launch.value.target, LaunchTarget::Jar { path } if path.ends_with("paper-26.2.jar"))));
+    }
+
+    #[test]
+    fn skips_an_unrelated_root_library_jar() {
+        let root = temporary_path("root-library-filter");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar(
+            &root.join("server.jar"),
+            "Main-Class: net.minecraft.bundler.Main\r\n\r\n",
+            r#"{"id":"26.2","world_version":4903}"#,
+        );
+        write_test_jar_entries(
+            &root.join("a-library.jar"),
+            &[("META-INF/MANIFEST.MF", "Main-Class: com.example.Library\r\n\r\n")],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect root with unrelated library");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("vanilla"));
+        assert_eq!(
+            report
+                .launches
+                .iter()
+                .filter(|launch| matches!(&launch.value.target, LaunchTarget::Jar { .. }))
+                .count(),
+            1
+        );
+        assert!(!report
+            .launches
+            .iter()
+            .any(|launch| matches!(&launch.value.target, LaunchTarget::Jar { path } if path.ends_with("a-library.jar"))));
+    }
+
+    #[test]
+    fn accepts_an_unknown_root_name_when_server_metadata_is_present() {
+        let root = temporary_path("unknown-root-filter");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar_entries(
+            &root.join("custom-runtime.jar"),
+            &[
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/custom-runtime-26.2.jar\n"),
+            ],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect unknown server root");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("custom-runtime"));
     }
 
     #[test]

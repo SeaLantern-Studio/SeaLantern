@@ -18,7 +18,10 @@ use super::server_inspection::{
 /// 控制检查结果是否可以替换已有的启动配置。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LaunchProfilePolicy {
+    /// 只返回可兼容候选，不改变已有 `LocalLaunch`。
     PreserveExisting,
+    /// 采纳唯一最高置信度候选；候选的模式和目标路径替换旧值，
+    /// profile 未提供 JVM 参数时保留已有 JVM 参数，Java 可执行文件始终保留。
     AdoptBestCompatible,
 }
 
@@ -195,7 +198,7 @@ fn compatible_launch_candidate(
         diagnostics.push(launch_diagnostic(
             "launch_profile_platform_mismatch",
             &profile.id,
-            "launch profile targets a different host platform; it was kept as a manual candidate",
+            "launch profile targets a different host platform; it was rejected and not returned as a candidate",
         ));
         return None;
     }
@@ -298,10 +301,17 @@ fn adopt_best_launch(
         });
         return None;
     }
+    // 采用时由检测 profile 决定启动模式和目标路径；profile 未提供 JVM 参数时，
+    // 保留调用方已有参数，避免导入确认无意中丢失内存或诊断配置。
     let candidate = best[0];
+    let existing_jvm_arguments = instance.launch.jvm_arguments.clone();
     let java_executable = instance.launch.java_executable.clone();
-    instance.launch = candidate.launch.clone();
-    instance.launch.java_executable = java_executable;
+    let mut adopted_launch = candidate.launch.clone();
+    if adopted_launch.jvm_arguments.is_empty() {
+        adopted_launch.jvm_arguments = existing_jvm_arguments;
+    }
+    adopted_launch.java_executable = java_executable;
+    instance.launch = adopted_launch;
     Some(candidate.profile_id.clone())
 }
 
@@ -578,16 +588,20 @@ fn missing_diagnostic(field: &str) -> InspectionDiagnostic {
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::OsString;
     use std::fs::File;
     use std::io::Write;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        apply_server_inspection, apply_server_inspection_with_options, LaunchProfilePolicy,
-        ServerInspectionProjectionOptions,
+        apply_server_inspection, apply_server_inspection_with_options, compatible_launch_candidate,
+        LaunchProfilePolicy, ServerInspectionProjectionOptions,
     };
     use crate::instance::{InstanceId, InstanceSpec, LocalLaunch, StartupMode};
+    use crate::provisioning::server_inspection::{
+        Attributed, LaunchPlatform, LaunchProfile, LaunchTarget,
+    };
     use crate::provisioning::{inspect_server_artifact, InspectionOptions};
     use zip::write::FileOptions;
 
@@ -783,6 +797,7 @@ mod tests {
     #[test]
     fn adopts_a_unique_jar_launch_and_persists_a_fingerprinted_snapshot() {
         let mut instance = instance_spec();
+        instance.launch.jvm_arguments = vec![OsString::from("-Xmx4G")];
         let path = write_test_jar(
             "paper.jar",
             &[
@@ -812,6 +827,7 @@ mod tests {
 
         assert_eq!(projection.adopted_launch_profile.as_deref(), Some("manifest-main"));
         assert_eq!(instance.launch.startup_target, Some(path));
+        assert_eq!(instance.launch.jvm_arguments, vec![OsString::from("-Xmx4G")]);
         assert_eq!(
             instance
                 .server_metadata
@@ -852,5 +868,34 @@ mod tests {
                 .map(|snapshot| snapshot.schema_version),
             Some(1)
         );
+    }
+
+    #[test]
+    fn rejects_platform_mismatch_instead_of_returning_a_manual_candidate() {
+        let attributed = Attributed {
+            value: LaunchProfile {
+                id: "wrong-platform".to_string(),
+                platform: if cfg!(target_os = "windows") {
+                    LaunchPlatform::Unix
+                } else {
+                    LaunchPlatform::Windows
+                },
+                working_directory: None,
+                target: LaunchTarget::MainClass { class_name: "example.Main".to_string() },
+                jvm_arguments: Vec::new(),
+                program_arguments: Vec::new(),
+                required_java_major: None,
+            },
+            confidence: 90,
+            evidence: Vec::new(),
+        };
+        let mut diagnostics = Vec::new();
+
+        let candidate = compatible_launch_candidate(&attributed, &mut diagnostics);
+
+        assert!(candidate.is_none());
+        assert!(diagnostics[0]
+            .message
+            .contains("rejected and not returned as a candidate"));
     }
 }

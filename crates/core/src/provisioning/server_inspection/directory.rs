@@ -10,6 +10,23 @@ use crate::provisioning::StartupScriptKind;
 
 const ROOT_SCRIPT_NAMES: &[&str] =
     &["run.bat", "run.sh", "run.ps1", "start.bat", "start.sh", "start.ps1"];
+const KNOWN_ROOT_TOKENS: &[&str] = &[
+    "paper",
+    "purpur",
+    "spigot",
+    "craftbukkit",
+    "fabric",
+    "forge",
+    "neoforge",
+    "arclight",
+    "mohist",
+    "magma",
+    "velocity",
+    "bungeecord",
+    "waterfall",
+    "sponge",
+    "limbo",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ModLoaderFamily {
@@ -72,31 +89,29 @@ pub(super) fn read_metadata(
                 continue;
             }
         };
-        if file_type.is_file() && is_root_jar(&entry.file_name().to_string_lossy()) {
+        // 扩展名只用于构造有界探测集，是否为服务端归档仍由下面的文件名和元数据签名决定。
+        if file_type.is_file() && has_jar_extension(&entry.file_name().to_string_lossy()) {
             root_candidates.push(entry);
         }
     }
     root_candidates
         .sort_by_key(|entry| root_archive_sort_key(&entry.file_name().to_string_lossy()));
+    let root_jar_count = root_candidates.len();
     let mut root_archives = Vec::new();
-    if root_candidates.len() > options.max_root_archives {
-        diagnostics.push(limit_diagnostic(
-            "root_archive_limit_reached",
-            format!(
-                "directory {} contains {} root JARs; only the first {} were inspected",
-                path.display(),
-                root_candidates.len(),
-                options.max_root_archives
-            ),
-        ));
-        root_candidates.truncate(options.max_root_archives);
-    }
+    let mut root_archive_limit_reached = false;
     for entry in root_candidates {
+        if root_archives.len() >= options.max_root_archives {
+            root_archive_limit_reached = true;
+            break;
+        }
         let relative_path = PathBuf::from(entry.file_name());
+        let named_candidate = is_likely_root_archive_name(&relative_path);
         match archive::read_metadata_with_budget(&entry.path(), options, &mut consumed) {
             Ok(mut metadata) => {
-                diagnostics.append(&mut metadata.diagnostics);
-                root_archives.push(RootArchive { relative_path, metadata });
+                if named_candidate || is_likely_server_archive(&metadata) {
+                    diagnostics.append(&mut metadata.diagnostics);
+                    root_archives.push(RootArchive { relative_path, metadata });
+                }
             }
             Err(error) => diagnostics.push(limit_diagnostic(
                 "root_archive_unreadable",
@@ -106,6 +121,16 @@ pub(super) fn read_metadata(
                 ),
             )),
         }
+    }
+    if root_archive_limit_reached {
+        diagnostics.push(limit_diagnostic(
+            "root_archive_limit_reached",
+            format!(
+                "directory {} contains {root_jar_count} root JAR candidates; only the first {} server archives were inspected",
+                path.display(),
+                options.max_root_archives
+            ),
+        ));
     }
 
     let mut scripts = Vec::new();
@@ -371,8 +396,76 @@ fn nested_archive_allowed(
     Ok(false)
 }
 
-fn is_root_jar(name: &str) -> bool {
+fn has_jar_extension(name: &str) -> bool {
     name.to_ascii_lowercase().ends_with(".jar")
+}
+
+fn is_likely_root_archive_name(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let lower = name.to_ascii_lowercase();
+    lower == "server.jar"
+        || lower.contains("server")
+        || lower.contains("minecraft")
+        || lower.contains("launcher")
+        || lower.contains("bootstrap")
+        || KNOWN_ROOT_TOKENS.iter().any(|token| lower.contains(token))
+}
+
+fn is_likely_server_archive(metadata: &ArchiveMetadata) -> bool {
+    if metadata.versions_list.is_some()
+        || metadata.patches_list.is_some()
+        || metadata.libraries_list.is_some()
+        || metadata.install_properties.is_some()
+        || metadata.bootstrap_properties.is_some()
+        || metadata.bootstrap_list.is_some()
+        || metadata.wrapper_metadata.is_some()
+        || metadata.arclight_launch_properties.is_some()
+        || metadata.forge_version.is_some()
+        || metadata.neoforge_version_properties.is_some()
+    {
+        return true;
+    }
+
+    let Some(manifest) = metadata.manifest.as_deref() else {
+        return false;
+    };
+    let parsed = super::formats::manifest::parse(manifest);
+    let main_class = parsed.main_value("Main-Class");
+    main_class.is_some_and(is_known_server_main_class)
+        || parsed
+            .main_value("Implementation-Title")
+            .is_some_and(is_known_server_product_name)
+}
+
+fn is_known_server_main_class(value: &str) -> bool {
+    let value = value.to_ascii_lowercase();
+    [
+        "net.minecraft.",
+        "io.papermc.paperclip",
+        "paperclip",
+        "net.fabricmc.installer.serverlauncher",
+        "net.minecraftforge.",
+        "net.neoforged.",
+        "com.velocitypowered.",
+        "net.md_5.bungee.",
+        "org.spongepowered.",
+        "io.izzel.arclight.",
+        "com.mohistmc.",
+        "org.magmafoundation.",
+        "app.mcjars.serverstarter",
+        "com.loohp.limbo.",
+        "ua.nanit.limbo.",
+        "org.bukkit.craftbukkit.bootstrap.",
+    ]
+    .iter()
+    .any(|prefix| value.starts_with(prefix))
+}
+
+fn is_known_server_product_name(value: &str) -> bool {
+    let value = value.to_ascii_lowercase();
+    KNOWN_ROOT_TOKENS.iter().any(|token| value.contains(token))
 }
 
 fn root_archive_sort_key(name: &str) -> (u8, String) {
@@ -380,24 +473,7 @@ fn root_archive_sort_key(name: &str) -> (u8, String) {
     if lower == "server.jar" {
         return (0, lower);
     }
-    const KNOWN_TOKENS: &[&str] = &[
-        "paper",
-        "purpur",
-        "spigot",
-        "craftbukkit",
-        "fabric",
-        "forge",
-        "neoforge",
-        "arclight",
-        "mohist",
-        "magma",
-        "velocity",
-        "bungeecord",
-        "waterfall",
-        "sponge",
-        "limbo",
-    ];
-    if KNOWN_TOKENS.iter().any(|token| lower.contains(token)) {
+    if KNOWN_ROOT_TOKENS.iter().any(|token| lower.contains(token)) {
         (1, lower)
     } else {
         (2, lower)
