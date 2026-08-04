@@ -384,6 +384,7 @@ pub(super) fn detect_directory(
     for root_archive in &directory.root_archives {
         let archive_path = path.join(&root_archive.relative_path);
         let artifact = root_artifact(&root_archive.metadata);
+        let root_minecraft = root_minecraft_metadata(&root_archive.metadata);
         fabric::detect(
             &archive_path,
             &root_archive.metadata,
@@ -418,7 +419,7 @@ pub(super) fn detect_directory(
                 )
             })
         {
-            vanilla::detect(&archive_path, &artifact, minecraft, &mut findings);
+            vanilla::detect(&archive_path, &artifact, root_minecraft.as_ref(), &mut findings);
         }
     }
     for installation in &directory.installations {
@@ -428,6 +429,33 @@ pub(super) fn detect_directory(
         forge::detect_script(path, script, &mut findings);
     }
     finalize(path, findings, minecraft, existing_java_major, evidence)
+}
+
+fn root_minecraft_metadata(archive: &ArchiveMetadata) -> Option<MinecraftVersionInfo> {
+    let bytes = archive.mojang_version.as_deref()?;
+    let document = super::formats::mojang_version::parse(bytes).ok()??;
+    let id = document.id?;
+    Some(MinecraftVersionInfo {
+        version: Detected {
+            value: Some(id.clone()),
+            confidence: 95,
+            evidence: Vec::new(),
+            alternatives: Vec::new(),
+        },
+        id: Some(id),
+        name: document.name,
+        world_version: document.world_version,
+        series_id: document.series_id,
+        protocol_version: document.protocol_version,
+        pack_version: document.pack_version,
+        build_time: document.build_time,
+        java_component: document.java_component,
+        java_version: document.java_version,
+        stable: document.stable,
+        use_editor: document.use_editor,
+        extra: document.extra,
+        evidence: Vec::new(),
+    })
 }
 
 fn root_artifact(archive: &ArchiveMetadata) -> ArtifactInfo {
