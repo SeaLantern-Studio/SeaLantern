@@ -27,6 +27,13 @@ pub fn plan_import(
 ) -> Result<InstanceImportPlan, InstanceImportError> {
     let InstanceImportRequest { source_directory, mut instance } = request;
 
+    tracing::debug!(
+        target: "sealantern.core.provisioning.import",
+        source_directory = %source_directory.display(),
+        destination_directory = %instance.directory.display(),
+        "planning instance import"
+    );
+
     if source_directory.as_os_str().is_empty() {
         return Err(InstanceImportError::EmptySourceDirectory);
     }
@@ -61,12 +68,20 @@ pub fn plan_import(
 
     let instance = Instance::new(instance).map_err(InstanceImportError::Instance)?;
 
-    Ok(InstanceImportPlan {
+    let plan = InstanceImportPlan {
         source_directory,
         destination_directory: instance.directory.clone(),
         startup_target_relative,
         instance,
-    })
+    };
+    tracing::debug!(
+        target: "sealantern.core.provisioning.import",
+        source_directory = %plan.source_directory.display(),
+        destination_directory = %plan.destination_directory.display(),
+        has_startup_target = plan.startup_target_relative.is_some(),
+        "instance import plan ready"
+    );
+    Ok(plan)
 }
 
 /// 描述无法创建实例导入计划的原因。

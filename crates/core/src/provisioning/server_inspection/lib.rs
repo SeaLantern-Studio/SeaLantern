@@ -26,9 +26,10 @@ use resolver::{resolve, DetectionClaim};
 
 const MANIFEST_ENTRY: &str = "META-INF/MANIFEST.MF";
 const MOJANG_VERSION_ENTRY: &str = "version.json";
+const SERVER_INSPECTION_TARGET: &str = "sealantern.core.provisioning.server_inspection";
 
 /// 控制静态检查的资源预算；检查过程不会执行 JAR、脚本或 shell 展开。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InspectionOptions {
     pub max_archive_entries: usize,
     /// 根目录中最多接受的服务端 JAR 数量，避免无界纳入普通库文件。
@@ -58,6 +59,48 @@ impl Default for InspectionOptions {
 
 /// 检查单个服务端文件或安装目录，不执行其中的任何内容。
 pub fn inspect_server_artifact(
+    path: &Path,
+    options: &InspectionOptions,
+) -> Result<ServerInspectionReport, ServerInspectionError> {
+    tracing::debug!(
+        target: SERVER_INSPECTION_TARGET,
+        path = %path.display(),
+        compute_sha256 = options.compute_sha256,
+        max_archive_entries = options.max_archive_entries,
+        max_archive_depth = options.max_archive_depth,
+        "starting server artifact inspection"
+    );
+    let result = inspect_server_artifact_inner(path, options);
+    match &result {
+        Ok(report) => {
+            let implementation = report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str())
+                .unwrap_or("unknown");
+            tracing::debug!(
+                target: SERVER_INSPECTION_TARGET,
+                path = %path.display(),
+                subject_kind = ?report.subject.kind,
+                implementation,
+                diagnostics = report.diagnostics.len(),
+                launches = report.launches.len(),
+                "server artifact inspection completed"
+            );
+        }
+        Err(error) => tracing::warn!(
+            target: SERVER_INSPECTION_TARGET,
+            path = %path.display(),
+            error = %error,
+            "server artifact inspection failed"
+        ),
+    }
+    result
+}
+
+fn inspect_server_artifact_inner(
     path: &Path,
     options: &InspectionOptions,
 ) -> Result<ServerInspectionReport, ServerInspectionError> {
@@ -2127,5 +2170,42 @@ mod tests {
         fs::remove_dir_all(&root).expect("remove root directory");
 
         assert!(matches!(error, ServerInspectionError::InvalidOptions { .. }));
+    }
+
+    #[test]
+    fn skips_a_corrupt_optional_modloader_archive() {
+        let root = temporary_path("corrupt-nested-loader");
+        let version = "1.20.1-47.2.0";
+        let args_directory = root
+            .join("libraries/net/minecraftforge/forge")
+            .join(version);
+        fs::create_dir_all(&args_directory).expect("create Forge args directory");
+        fs::write(args_directory.join("win_args.txt"), "-jar forge-shim.jar\n")
+            .expect("write Forge args");
+        let nested_path = root
+            .join("libraries/net/minecraftforge/fmlloader")
+            .join(version)
+            .join(format!("fmlloader-{version}.jar"));
+        fs::create_dir_all(nested_path.parent().expect("nested archive parent"))
+            .expect("create nested archive directory");
+        fs::write(&nested_path, b"not a ZIP archive").expect("write corrupt nested archive");
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("corrupt optional nested archive should not abort inspection");
+        fs::remove_dir_all(&root).expect("remove corrupt nested fixture");
+
+        assert_eq!(
+            report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str()),
+            Some("forge")
+        );
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "optional_metadata_unreadable"));
     }
 }

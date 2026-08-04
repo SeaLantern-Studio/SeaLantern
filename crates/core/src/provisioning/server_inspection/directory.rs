@@ -136,9 +136,20 @@ pub(super) fn read_metadata(
     let mut scripts = Vec::new();
     for name in ROOT_SCRIPT_NAMES {
         let relative_path = PathBuf::from(name);
-        let Some(content) =
-            read_optional_file(path, &relative_path, options, &mut consumed, &mut diagnostics)?
-        else {
+        let content = match read_optional_file(
+            path,
+            &relative_path,
+            options,
+            &mut consumed,
+            &mut diagnostics,
+        ) {
+            Ok(content) => content,
+            Err(error) => {
+                diagnostics.push(optional_metadata_diagnostic(&path.join(&relative_path), &error));
+                None
+            }
+        };
+        let Some(content) = content else {
             continue;
         };
         let Some(kind) = StartupScriptKind::from_path(&relative_path) else {
@@ -197,15 +208,24 @@ fn scan_installations(
         {
             return Ok(());
         }
+        Err(error @ ServerInspectionError::Open { .. }) => {
+            diagnostics.push(optional_metadata_diagnostic(&base, &error));
+            return Ok(());
+        }
         Err(error) => return Err(error),
     };
 
     for entry in entries {
-        if !entry
-            .file_type()
-            .map_err(|source| ServerInspectionError::Metadata { path: entry.path(), source })?
-            .is_dir()
-        {
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(source) => {
+                let entry_path = entry.path();
+                let error = ServerInspectionError::Metadata { path: entry_path.clone(), source };
+                diagnostics.push(optional_metadata_diagnostic(&entry_path, &error));
+                continue;
+            }
+        };
+        if !file_type.is_dir() {
             continue;
         }
         let coordinate_version = entry.file_name().to_string_lossy().into_owned();
@@ -213,20 +233,26 @@ fn scan_installations(
             continue;
         }
         let relative_directory = relative_base.join(&coordinate_version);
-        let windows_args = read_metadata_file(
-            root,
-            &relative_directory.join("win_args.txt"),
-            options,
-            consumed,
-            diagnostics,
-        )?;
-        let unix_args = read_metadata_file(
-            root,
-            &relative_directory.join("unix_args.txt"),
-            options,
-            consumed,
-            diagnostics,
-        )?;
+        let windows_args_path = relative_directory.join("win_args.txt");
+        let windows_args =
+            match read_metadata_file(root, &windows_args_path, options, consumed, diagnostics) {
+                Ok(args) => args,
+                Err(error) => {
+                    diagnostics
+                        .push(optional_metadata_diagnostic(&root.join(&windows_args_path), &error));
+                    None
+                }
+            };
+        let unix_args_path = relative_directory.join("unix_args.txt");
+        let unix_args =
+            match read_metadata_file(root, &unix_args_path, options, consumed, diagnostics) {
+                Ok(args) => args,
+                Err(error) => {
+                    diagnostics
+                        .push(optional_metadata_diagnostic(&root.join(&unix_args_path), &error));
+                    None
+                }
+            };
 
         let nested_relative = match family {
             ModLoaderFamily::Forge => PathBuf::from(format!(
@@ -238,9 +264,18 @@ fn scan_installations(
             }
         };
         let nested_path = root.join(&nested_relative);
-        let nested_metadata = if options.max_archive_depth == 0
-            || !nested_archive_allowed(&nested_path, options, diagnostics)?
-        {
+        let nested_allowed = if options.max_archive_depth == 0 {
+            false
+        } else {
+            match nested_archive_allowed(&nested_path, options, diagnostics) {
+                Ok(allowed) => allowed,
+                Err(error) => {
+                    diagnostics.push(optional_metadata_diagnostic(&nested_path, &error));
+                    false
+                }
+            }
+        };
+        let nested_metadata = if !nested_allowed {
             None
         } else {
             match archive::read_metadata_with_budget(&nested_path, options, consumed) {
@@ -253,7 +288,10 @@ fn scan_installations(
                 {
                     None
                 }
-                Err(error) => return Err(error),
+                Err(error) => {
+                    diagnostics.push(optional_metadata_diagnostic(&nested_path, &error));
+                    None
+                }
             }
         };
 
@@ -485,6 +523,24 @@ fn limit_diagnostic(code: &str, message: String) -> InspectionDiagnostic {
         severity: DiagnosticSeverity::Warning,
         code: code.to_string(),
         message,
+        evidence: Vec::new(),
+    }
+}
+
+fn optional_metadata_diagnostic(
+    path: &Path,
+    error: &ServerInspectionError,
+) -> InspectionDiagnostic {
+    tracing::warn!(
+        target: "sealantern.core.provisioning.server_inspection",
+        path = %path.display(),
+        error = %error,
+        "optional server metadata was skipped"
+    );
+    InspectionDiagnostic {
+        severity: DiagnosticSeverity::Warning,
+        code: "optional_metadata_unreadable".to_string(),
+        message: format!("optional server metadata {} was skipped: {error}", path.display()),
         evidence: Vec::new(),
     }
 }

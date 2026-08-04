@@ -72,9 +72,21 @@ pub fn apply_server_inspection_with_options(
     inspection: Result<&ServerInspectionReport, &ServerInspectionError>,
     options: &ServerInspectionProjectionOptions,
 ) -> ServerInspectionProjection {
+    tracing::debug!(
+        target: "sealantern.core.provisioning.import",
+        instance_id = %instance.id.as_str(),
+        launch_policy = ?options.launch_profile_policy,
+        "projecting server inspection into import metadata"
+    );
     let report = match inspection {
         Ok(report) => report,
         Err(error) => {
+            tracing::warn!(
+                target: "sealantern.core.provisioning.import",
+                instance_id = %instance.id.as_str(),
+                error = %error,
+                "server inspection projection skipped after inspection failure"
+            );
             return ServerInspectionProjection {
                 diagnostics: vec![InspectionDiagnostic {
                     severity: DiagnosticSeverity::Error,
@@ -158,6 +170,23 @@ pub fn apply_server_inspection_with_options(
             .unwrap_or_else(current_unix_secs),
     ));
 
+    if !diagnostics.is_empty() {
+        tracing::warn!(
+            target: "sealantern.core.provisioning.import",
+            instance_id = %instance.id.as_str(),
+            diagnostics = diagnostics.len(),
+            launch_candidates = launch_candidates.len(),
+            "server inspection projection completed with diagnostics"
+        );
+    } else {
+        tracing::debug!(
+            target: "sealantern.core.provisioning.import",
+            instance_id = %instance.id.as_str(),
+            launch_candidates = launch_candidates.len(),
+            "server inspection projection completed"
+        );
+    }
+
     ServerInspectionProjection {
         diagnostics,
         launch_candidates,
@@ -172,7 +201,13 @@ pub fn inspect_and_apply_import_metadata(
     inspection_options: &InspectionOptions,
     projection_options: &ServerInspectionProjectionOptions,
 ) -> Result<ServerInspectionProjection, ServerInspectionError> {
-    let mut options = inspection_options.clone();
+    tracing::debug!(
+        target: "sealantern.core.provisioning.import",
+        instance_id = %instance.id.as_str(),
+        subject_path = %subject_path.display(),
+        "inspecting artifact for import projection"
+    );
+    let mut options = *inspection_options;
     options.compute_sha256 = true;
     let report = inspect_server_artifact(subject_path, &options)?;
     Ok(apply_server_inspection_with_options(instance, Ok(&report), projection_options))
