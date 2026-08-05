@@ -14,7 +14,7 @@ use crate::observability;
 const APP_DATA_DIR_ENV: &str = "SEALANTERN_DATA_DIR";
 
 /// 标准安装的应用目录名（macOS 和 Windows MSI 安装使用）。
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 const APP_DIR_NAME: &str = "SeaLantern";
 
 /// Linux 平台的应用目录名（遵循 XDG 规范使用小写）。
