@@ -67,27 +67,25 @@ impl CoreInstanceService {
         Ok(())
     }
 
-    /// 内部重命名实例，返回应用层主错误。
+    /// 内部重命名实例：改字段后经 core 校验再写回，返回应用层主错误。
     async fn rename_inner(&self, id: &InstanceId, name: &str) -> Result<(), InstanceError> {
         let mut registry = self.registry.lock().await;
-        let edited = registry
-            .edit_instance(id, |instance| instance.name = name.to_owned())
-            .await?;
-        if !edited {
-            return Err(InstanceError::NotFound);
-        }
+        let mut instance = registry.get(id).cloned().ok_or(InstanceError::NotFound)?;
+        instance.name = name.to_owned();
+        // 写回前复用 core 字段校验，拒绝空名/纯空白名。
+        instance.validate()?;
+        registry.save_instance(&instance).await?;
         Ok(())
     }
 
-    /// 内部更新实例目录路径，返回应用层主错误。
+    /// 内部更新实例目录路径：改字段后经 core 校验再写回，返回应用层主错误。
     async fn update_path_inner(&self, id: &InstanceId, path: &str) -> Result<(), InstanceError> {
         let mut registry = self.registry.lock().await;
-        let edited = registry
-            .edit_instance(id, |instance| instance.directory = PathBuf::from(path))
-            .await?;
-        if !edited {
-            return Err(InstanceError::NotFound);
-        }
+        let mut instance = registry.get(id).cloned().ok_or(InstanceError::NotFound)?;
+        instance.directory = PathBuf::from(path);
+        // 写回前复用 core 字段校验，拒绝空路径。
+        instance.validate()?;
+        registry.save_instance(&instance).await?;
         Ok(())
     }
 }
@@ -235,6 +233,44 @@ mod tests {
         let listed = service.list().await.expect("list");
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].name, "服务器-dup");
+
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[tokio::test]
+    async fn rename_with_blank_name_is_rejected() {
+        let path = test_path("rename-blank");
+        let service = CoreInstanceService::with_path(&path)
+            .await
+            .expect("load service");
+        let created = service.create(sample_spec("a")).await.expect("create");
+
+        for blank in ["", "   "] {
+            let result = service.rename(&created.id, blank).await;
+            assert_eq!(result, Err(InstanceServiceError::InvalidInput));
+        }
+
+        // 原名称未被修改。
+        let found = service.find(&created.id).await.expect("find");
+        assert_eq!(found.expect("exists").name, "服务器-a");
+
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[tokio::test]
+    async fn update_path_with_blank_path_is_rejected() {
+        let path = test_path("path-blank");
+        let service = CoreInstanceService::with_path(&path)
+            .await
+            .expect("load service");
+        let created = service.create(sample_spec("a")).await.expect("create");
+
+        let result = service.update_path(&created.id, "").await;
+        assert_eq!(result, Err(InstanceServiceError::InvalidInput));
+
+        // 原路径未被修改。
+        let found = service.find(&created.id).await.expect("find");
+        assert_eq!(found.expect("exists").directory, PathBuf::from("/tmp/server-a"));
 
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }

@@ -172,24 +172,13 @@ pub struct Instance {
 impl Instance {
     pub fn new(mut spec: InstanceSpec) -> Result<Self, InstanceError> {
         spec.name = spec.name.trim().to_string();
-        if spec.name.is_empty() {
-            return Err(InstanceError::EmptyName);
-        }
-        if spec.directory.as_os_str().is_empty() {
-            return Err(InstanceError::EmptyDirectory);
-        }
-        if spec.port == 0 {
-            return Err(InstanceError::UnsupportedPortZero);
-        }
-        if spec.max_memory_mib != 0
-            && spec.min_memory_mib != 0
-            && spec.min_memory_mib > spec.max_memory_mib
-        {
-            return Err(InstanceError::InvalidMemoryRange {
-                min_memory_mib: spec.min_memory_mib,
-                max_memory_mib: spec.max_memory_mib,
-            });
-        }
+        validate_instance_fields(
+            &spec.name,
+            &spec.directory,
+            spec.port,
+            spec.max_memory_mib,
+            spec.min_memory_mib,
+        )?;
 
         spec.aliases = normalize_aliases(&spec.name, spec.aliases);
         spec.launch.normalize_and_validate()?;
@@ -211,6 +200,46 @@ impl Instance {
             launch: spec.launch,
         })
     }
+
+    /// 校验已存在的实例当前字段是否仍有效。
+    ///
+    /// 供部分编辑（重命名、改路径）在写回前复用 core 的字段级校验规则，
+    /// 避免绕过 [`Instance::new`] 把非法数据持久化。只做纯校验，不规范化。
+    pub fn validate(&self) -> Result<(), InstanceError> {
+        validate_instance_fields(
+            &self.name,
+            &self.directory,
+            self.port,
+            self.max_memory_mib,
+            self.min_memory_mib,
+        )
+    }
+}
+
+/// 实例字段级校验（名称、目录、端口、内存范围）。
+///
+/// 名称按「空或纯空白视为无效」判定；目录为空视为无效；端口与内存范围沿用
+/// [`Instance::new`] 的规则。供构造与部分编辑两条路径复用。
+fn validate_instance_fields(
+    name: &str,
+    directory: &std::path::Path,
+    port: u16,
+    max_memory_mib: u32,
+    min_memory_mib: u32,
+) -> Result<(), InstanceError> {
+    if name.trim().is_empty() {
+        return Err(InstanceError::EmptyName);
+    }
+    if directory.as_os_str().is_empty() {
+        return Err(InstanceError::EmptyDirectory);
+    }
+    if port == 0 {
+        return Err(InstanceError::UnsupportedPortZero);
+    }
+    if max_memory_mib != 0 && min_memory_mib != 0 && min_memory_mib > max_memory_mib {
+        return Err(InstanceError::InvalidMemoryRange { min_memory_mib, max_memory_mib });
+    }
+    Ok(())
 }
 
 /// 标识无效或内部不一致的实例数据。
