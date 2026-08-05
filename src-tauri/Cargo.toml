@@ -26,6 +26,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sealantern-extra = { path = "../crates/extra" }
 sealantern-core = { path = "../crates/core" }
 sealantern-infra = { path = "../crates/infra" }
+sealantern-application = { path = "../application" }
+sealantern-interface = { path = "../crates/interface" }
+async-trait = "0.1.91"
+serde = { version = "1", features = ["derive"] }
 
 [features]
 docker = []

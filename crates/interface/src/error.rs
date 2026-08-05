@@ -8,7 +8,7 @@
 ///
 /// 分类风格与 `server` 侧 `ConsoleCommandServiceError` 保持一致：
 /// 不携带主机路径、实例内容等敏感细节，底层失败详情由应用层写入受控日志。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum InstanceServiceError {
     /// 指定的实例不存在。
     InstanceNotFound,

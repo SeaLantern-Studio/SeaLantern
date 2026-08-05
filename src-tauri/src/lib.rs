@@ -1,9 +1,15 @@
 //! Sea Lantern 桌面端的 Tauri 宿主入口。
 
+pub mod adapter;
 pub mod desktop;
 pub mod observability;
 
 use tauri::Manager;
+
+use adapter::tauri::commands::instance::{
+    create_instance, delete_instance, force_stop_instance, get_instance, instance_status,
+    list_instances, rename_instance, start_instance, stop_instance, update_instance_path,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// 启动桌面应用。
@@ -18,7 +24,18 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            create_instance,
+            delete_instance,
+            force_stop_instance,
+            get_instance,
+            instance_status,
+            list_instances,
+            rename_instance,
+            start_instance,
+            stop_instance,
+            update_instance_path
+        ])
         .setup(|app| {
             // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
             #[cfg(not(target_os = "macos"))]
