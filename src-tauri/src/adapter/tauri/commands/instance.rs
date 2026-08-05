@@ -30,9 +30,7 @@ async fn instance_service() -> Result<Arc<CoreInstanceService>, InstanceServiceE
 /// 内联解析与错误映射；后续若调整非法输入的错误变体，只需修改此处。
 fn parse_id_for_tauri(id: String) -> Result<InstanceId, InstanceServiceError> {
     InstanceId::new(id)
-        .map_err(|_| InstanceError::Invalid {
-            source: sealantern_core::instance::InstanceError::EmptyId,
-        })
+        .map_err(InstanceError::from)
         .map_err(InstanceServiceError::from)
 }
 
