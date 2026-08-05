@@ -10,7 +10,7 @@ pub mod error;
 /// 服务器实例相关模型与服务端口。
 pub mod instance;
 
-/// 服务器实例管理服务端口。
-pub use instance::InstanceService;
 /// 服务器实例管理错误枚举。
 pub use error::InstanceServiceError;
+/// 服务器实例管理服务端口。
+pub use instance::InstanceService;

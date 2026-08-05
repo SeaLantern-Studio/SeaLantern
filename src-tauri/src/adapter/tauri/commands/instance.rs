@@ -110,10 +110,7 @@ pub async fn rename_instance(id: String, name: String) -> Result<(), InstanceSer
 
 /// 更新实例目录路径。
 #[tauri::command]
-pub async fn update_instance_path(
-    id: String,
-    path: String,
-) -> Result<(), InstanceServiceError> {
+pub async fn update_instance_path(id: String, path: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
     let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
         source: sealantern_core::instance::InstanceError::EmptyId,

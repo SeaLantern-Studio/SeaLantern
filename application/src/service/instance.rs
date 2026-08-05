@@ -76,11 +76,7 @@ impl CoreInstanceService {
     }
 
     /// 内部更新实例目录路径，返回应用层主错误。
-    async fn update_path_inner(
-        &self,
-        id: &InstanceId,
-        path: &str,
-    ) -> Result<(), InstanceError> {
+    async fn update_path_inner(&self, id: &InstanceId, path: &str) -> Result<(), InstanceError> {
         let mut registry = self.registry.lock().await;
         let edited = registry
             .edit_instance(id, |instance| instance.directory = PathBuf::from(path))
