@@ -31,6 +31,7 @@ jobs:
         with:
           filters: |
             backend:
+              - 'application/**'
               - 'crates/**'
               - 'server/**'
               - 'src-tauri/**'
