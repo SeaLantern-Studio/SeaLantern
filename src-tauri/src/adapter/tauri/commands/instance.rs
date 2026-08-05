@@ -88,9 +88,9 @@ pub async fn create_instance(spec: InstanceSpec) -> Result<Instance, InstanceSer
     service.create(spec).await
 }
 
-/// 删除实例，返回是否确实删除了某个实例。
+/// 删除实例；实例不存在时返回 [`InstanceServiceError::InstanceNotFound`]。
 #[tauri::command]
-pub async fn delete_instance(id: String) -> Result<bool, InstanceServiceError> {
+pub async fn delete_instance(id: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
     let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
         source: sealantern_core::instance::InstanceError::EmptyId,

@@ -54,13 +54,13 @@ impl CoreInstanceService {
     }
 
     /// 内部删除实例，返回应用层主错误。
-    async fn delete_inner(&self, id: &InstanceId) -> Result<bool, InstanceError> {
+    async fn delete_inner(&self, id: &InstanceId) -> Result<(), InstanceError> {
         let mut registry = self.registry.lock().await;
         let deleted = registry.delete(id).await?;
         if !deleted {
             return Err(InstanceError::NotFound);
         }
-        Ok(true)
+        Ok(())
     }
 
     /// 内部重命名实例，返回应用层主错误。
@@ -120,7 +120,7 @@ impl InstanceService for CoreInstanceService {
         self.create_inner(spec).await.map_err(Into::into)
     }
 
-    async fn delete(&self, id: &InstanceId) -> Result<bool, InstanceServiceError> {
+    async fn delete(&self, id: &InstanceId) -> Result<(), InstanceServiceError> {
         self.delete_inner(id).await.map_err(Into::into)
     }
 
@@ -193,7 +193,7 @@ mod tests {
         service.rename(&created.id, "改名").await.expect("rename");
         assert_eq!(service.list().await.expect("list")[0].name, "改名");
 
-        assert!(service.delete(&created.id).await.expect("delete"));
+        service.delete(&created.id).await.expect("delete");
         assert!(service.list().await.expect("list").is_empty());
 
         let _ = std::fs::remove_dir_all(path.parent().unwrap());

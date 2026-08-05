@@ -32,8 +32,8 @@ pub trait InstanceService: Send + Sync {
     /// 创建新实例并持久化。
     async fn create(&self, spec: InstanceSpec) -> Result<Instance, InstanceServiceError>;
 
-    /// 删除实例，返回是否确实删除了某个实例。
-    async fn delete(&self, id: &InstanceId) -> Result<bool, InstanceServiceError>;
+    /// 删除实例；实例不存在时返回 [`InstanceServiceError::InstanceNotFound`]。
+    async fn delete(&self, id: &InstanceId) -> Result<(), InstanceServiceError>;
 
     /// 重命名实例。
     async fn rename(&self, id: &InstanceId, name: &str) -> Result<(), InstanceServiceError>;
@@ -126,9 +126,9 @@ mod tests {
             Ok(sample_instance())
         }
 
-        async fn delete(&self, _id: &InstanceId) -> Result<bool, InstanceServiceError> {
+        async fn delete(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
             self.calls.lock().expect("lock").push("delete");
-            Ok(true)
+            Ok(())
         }
 
         async fn rename(&self, _id: &InstanceId, _name: &str) -> Result<(), InstanceServiceError> {
@@ -161,7 +161,7 @@ mod tests {
         service.stop(&id).await.expect("stop");
         service.force_stop(&id).await.expect("force_stop");
         service.create(sample_spec()).await.expect("create");
-        assert!(service.delete(&id).await.expect("delete"));
+        service.delete(&id).await.expect("delete");
         service.rename(&id, "新名字").await.expect("rename");
         service
             .update_path(&id, "/new/path")

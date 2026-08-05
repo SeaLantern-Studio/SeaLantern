@@ -63,7 +63,7 @@ pub async fn get_instance(
     Ok(Json(instance))
 }
 
-/// `DELETE /api/instances/{id}` — 删除实例。
+/// `DELETE /api/instances/{id}` — 删除实例；不存在时返回 404。
 pub async fn delete_instance(
     State(state): State<AppState>,
     Path(id): Path<String>,
