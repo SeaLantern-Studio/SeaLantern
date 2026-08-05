@@ -18,7 +18,19 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            desktop::dialog::pick_archive_file,
+            desktop::dialog::pick_folder,
+            desktop::dialog::pick_image_file,
+            desktop::dialog::pick_jar_file,
+            desktop::dialog::pick_java_file,
+            desktop::dialog::pick_save_file,
+            desktop::dialog::pick_server_executable,
+            desktop::dialog::pick_startup_file,
+            desktop::download::download_file,
+            desktop::download::poll_task,
+            desktop::download::cancel_download_task,
+        ])
         .setup(|app| {
             // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
             #[cfg(not(target_os = "macos"))]

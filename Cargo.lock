@@ -5153,6 +5153,7 @@ dependencies = [
  "sealantern-core",
  "sealantern-extra",
  "sealantern-infra",
+ "serde",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -5161,8 +5162,10 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-window-state",
+ "tokio",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

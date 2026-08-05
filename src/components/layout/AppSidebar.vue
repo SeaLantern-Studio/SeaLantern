@@ -96,6 +96,14 @@ const staticNavItems: NavItem[] = [
     group: "main",
   },
   {
+    name: "resource-market",
+    path: "/resource-market",
+    icon: "store",
+    labelKey: "common.resource_market",
+    label: i18n.t("common.resource_market"),
+    group: "main",
+  },
+  {
     name: "download",
     path: "/download",
     icon: "download",
