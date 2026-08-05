@@ -13,8 +13,7 @@
 
 use std::sync::Arc;
 
-use sealantern_infra::fs::FsError;
-
+use crate::error::InstanceError;
 use crate::service::CoreInstanceService;
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
@@ -49,7 +48,7 @@ impl AppServices {
     ///
     /// 首次调用时异步构造（实例注册表加载），并注册为全局；之后调用复用同一实例。
     /// 并发首次调用也只初始化一次，其余等待并复用首个注册的结果。
-    pub async fn get() -> Result<Self, FsError> {
+    pub async fn get() -> Result<Self, InstanceError> {
         // 快速路径：已初始化直接返回（读锁，无 IO）。
         if let Some(existing) = SERVICES.read().await.as_ref() {
             return Ok(Self { inner: existing.clone() });
@@ -72,7 +71,7 @@ impl AppServices {
     }
 
     /// 显式注册给定服务（启动预热 / 测试注入 / 重载用），覆盖既有实例。
-    pub async fn register(instance: CoreInstanceService) -> Result<Self, FsError> {
+    pub async fn register(instance: CoreInstanceService) -> Result<Self, InstanceError> {
         let services = Self::from_inner(instance);
         let inner = services.inner.clone();
         *SERVICES.write().await = Some(inner.clone());
@@ -93,7 +92,7 @@ impl AppServices {
     }
 
     /// 便捷访问入口：一步拿到实例管理服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn instance_service() -> Result<Arc<CoreInstanceService>, FsError> {
+    pub async fn instance_service() -> Result<Arc<CoreInstanceService>, InstanceError> {
         Ok(Self::get().await?.instance().clone())
     }
 }

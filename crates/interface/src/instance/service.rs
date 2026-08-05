@@ -1,4 +1,4 @@
-use crate::instance::model::InstanceServiceError;
+use crate::error::InstanceServiceError;
 use async_trait::async_trait;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::server::ServerStatus;
