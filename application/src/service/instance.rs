@@ -49,6 +49,10 @@ impl CoreInstanceService {
     async fn create_inner(&self, spec: InstanceSpec) -> Result<Instance, InstanceError> {
         let instance = Instance::new(spec)?;
         let mut registry = self.registry.lock().await;
+        // 持锁检查 ID 是否已存在，避免 save_instance 的 upsert 语义静默覆盖旧数据。
+        if registry.get(&instance.id).is_some() {
+            return Err(InstanceError::AlreadyExists);
+        }
         registry.save_instance(&instance).await?;
         Ok(instance)
     }
@@ -208,6 +212,30 @@ mod tests {
         let missing = InstanceId::new("missing").expect("valid id");
         let result = service.rename(&missing, "x").await;
         assert_eq!(result, Err(InstanceServiceError::InstanceNotFound));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[tokio::test]
+    async fn create_with_duplicate_id_reports_already_exists() {
+        let path = test_path("duplicate");
+        let service = CoreInstanceService::with_path(&path)
+            .await
+            .expect("load service");
+
+        service
+            .create(sample_spec("dup"))
+            .await
+            .expect("first create");
+
+        // 相同 ID 再次创建应被拒绝，而不是覆盖原实例。
+        let result = service.create(sample_spec("dup")).await;
+        assert_eq!(result, Err(InstanceServiceError::AlreadyExists));
+
+        // 原实例未被覆盖。
+        let listed = service.list().await.expect("list");
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].name, "服务器-dup");
+
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }
