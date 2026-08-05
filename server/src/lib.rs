@@ -6,6 +6,5 @@
 //! 能力仍由 `sealantern-core` 等基础 crate 提供。
 
 pub mod adapter;
-pub mod bootstrap;
 pub mod observability;
 pub mod rpc;

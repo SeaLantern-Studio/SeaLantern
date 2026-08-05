@@ -1,3 +1,11 @@
+//! 服务器应用服务的可观测性。
+//!
+//! 提供 tracing 目标与事件常量，以及日志初始化入口。
+
+use std::sync::Once;
+
+use tracing_subscriber::EnvFilter;
+
 /// 服务器应用服务的 tracing 目标。
 pub const SERVER_TARGET: &str = "sealantern.server";
 
@@ -59,4 +67,19 @@ pub fn rpc_http_request_rejected(request_id: &str, reason: &'static str, error_c
         error_code,
         "rpc HTTP request rejected"
     );
+}
+
+static INIT_TRACING: Once = Once::new();
+
+/// 初始化 tracing 日志。
+///
+/// 通过 `RUST_LOG` 环境变量控制日志等级与目标过滤
+/// （未设置时默认 `sealantern.server=info`，即仅输出本 crate 的日志），
+/// 以人类可读格式输出到标准输出。由 `Once` 保证幂等，多次调用安全。
+pub fn init() {
+    INIT_TRACING.call_once(|| {
+        let filter = EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| EnvFilter::new("sealantern.server=info"));
+        tracing_subscriber::fmt().with_env_filter(filter).init();
+    });
 }

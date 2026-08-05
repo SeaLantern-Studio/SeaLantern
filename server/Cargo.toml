@@ -13,11 +13,14 @@ path = "src/lib.rs"
 
 [dependencies]
 axum = "0.8"
+sealantern-application = { path = "../application" }
 sealantern-core = { path = "../crates/core" }
+sealantern-interface = { path = "../crates/interface" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
-tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros", "net", "signal"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt"] }

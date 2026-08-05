@@ -5254,12 +5254,15 @@ name = "sealantern-server"
 version = "1.2.0"
 dependencies = [
  "axum",
+ "sealantern-application",
  "sealantern-core",
+ "sealantern-interface",
  "serde",
  "serde_json",
  "tokio",
  "tower",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
