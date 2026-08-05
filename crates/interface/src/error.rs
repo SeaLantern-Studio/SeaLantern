@@ -14,6 +14,8 @@ pub enum InstanceServiceError {
     InstanceNotFound,
     /// 目标实例标识已存在（创建冲突）。
     AlreadyExists,
+    /// 客户端提供的输入不合法（如空 ID、格式错误）。
+    InvalidInput,
     /// 实例当前状态不允许该操作（如未运行时停止、已运行时重复启动）。
     InvalidState,
     /// 底层 IO / 供给 / 进程操作失败。
@@ -27,6 +29,7 @@ impl std::fmt::Display for InstanceServiceError {
         let message = match self {
             Self::InstanceNotFound => "server instance not found",
             Self::AlreadyExists => "server instance already exists",
+            Self::InvalidInput => "invalid input",
             Self::InvalidState => "server instance is in an invalid state",
             Self::OperationFailed => "server instance operation failed",
             Self::Unsupported => "operation not supported",

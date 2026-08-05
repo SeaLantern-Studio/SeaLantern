@@ -45,6 +45,11 @@ impl HttpError {
                 code: "instance_already_exists",
                 message: error.to_string(),
             },
+            InstanceServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_input",
+                message: error.to_string(),
+            },
             InstanceServiceError::InvalidState => Self {
                 status: StatusCode::BAD_REQUEST,
                 code: "instance_invalid_state",

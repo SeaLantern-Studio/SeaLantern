@@ -24,6 +24,18 @@ async fn instance_service() -> Result<Arc<CoreInstanceService>, InstanceServiceE
     Ok(services.instance().clone())
 }
 
+/// 解析 Tauri 命令传入的实例 ID 字符串。
+///
+/// 统一映射解析错误为 [`InstanceServiceError::InvalidInput`]，避免各命令重复
+/// 内联解析与错误映射；后续若调整非法输入的错误变体，只需修改此处。
+fn parse_id_for_tauri(id: String) -> Result<InstanceId, InstanceServiceError> {
+    InstanceId::new(id)
+        .map_err(|_| InstanceError::Invalid {
+            source: sealantern_core::instance::InstanceError::EmptyId,
+        })
+        .map_err(InstanceServiceError::from)
+}
+
 /// 列出全部实例。
 #[tauri::command]
 pub async fn list_instances() -> Result<Vec<Instance>, InstanceServiceError> {
@@ -35,9 +47,7 @@ pub async fn list_instances() -> Result<Vec<Instance>, InstanceServiceError> {
 #[tauri::command]
 pub async fn get_instance(id: String) -> Result<Option<Instance>, InstanceServiceError> {
     let service = instance_service().await?;
-    let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
-        source: sealantern_core::instance::InstanceError::EmptyId,
-    })?;
+    let id = parse_id_for_tauri(id)?;
     service.find(&id).await
 }
 
@@ -45,9 +55,7 @@ pub async fn get_instance(id: String) -> Result<Option<Instance>, InstanceServic
 #[tauri::command]
 pub async fn instance_status(id: String) -> Result<ServerStatus, InstanceServiceError> {
     let service = instance_service().await?;
-    let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
-        source: sealantern_core::instance::InstanceError::EmptyId,
-    })?;
+    let id = parse_id_for_tauri(id)?;
     service.status(&id).await
 }
 
@@ -55,9 +63,7 @@ pub async fn instance_status(id: String) -> Result<ServerStatus, InstanceService
 #[tauri::command]
 pub async fn start_instance(id: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
-    let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
-        source: sealantern_core::instance::InstanceError::EmptyId,
-    })?;
+    let id = parse_id_for_tauri(id)?;
     service.start(&id).await
 }
 
@@ -65,9 +71,7 @@ pub async fn start_instance(id: String) -> Result<(), InstanceServiceError> {
 #[tauri::command]
 pub async fn stop_instance(id: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
-    let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
-        source: sealantern_core::instance::InstanceError::EmptyId,
-    })?;
+    let id = parse_id_for_tauri(id)?;
     service.stop(&id).await
 }
 
@@ -75,9 +79,7 @@ pub async fn stop_instance(id: String) -> Result<(), InstanceServiceError> {
 #[tauri::command]
 pub async fn force_stop_instance(id: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
-    let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
-        source: sealantern_core::instance::InstanceError::EmptyId,
-    })?;
+    let id = parse_id_for_tauri(id)?;
     service.force_stop(&id).await
 }
 
@@ -92,9 +94,7 @@ pub async fn create_instance(spec: InstanceSpec) -> Result<Instance, InstanceSer
 #[tauri::command]
 pub async fn delete_instance(id: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
-    let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
-        source: sealantern_core::instance::InstanceError::EmptyId,
-    })?;
+    let id = parse_id_for_tauri(id)?;
     service.delete(&id).await
 }
 
@@ -102,9 +102,7 @@ pub async fn delete_instance(id: String) -> Result<(), InstanceServiceError> {
 #[tauri::command]
 pub async fn rename_instance(id: String, name: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
-    let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
-        source: sealantern_core::instance::InstanceError::EmptyId,
-    })?;
+    let id = parse_id_for_tauri(id)?;
     service.rename(&id, &name).await
 }
 
@@ -112,8 +110,6 @@ pub async fn rename_instance(id: String, name: String) -> Result<(), InstanceSer
 #[tauri::command]
 pub async fn update_instance_path(id: String, path: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
-    let id = InstanceId::new(id).map_err(|_| InstanceError::Invalid {
-        source: sealantern_core::instance::InstanceError::EmptyId,
-    })?;
+    let id = parse_id_for_tauri(id)?;
     service.update_path(&id, &path).await
 }

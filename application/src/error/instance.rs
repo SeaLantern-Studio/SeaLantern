@@ -79,7 +79,8 @@ impl From<InstanceError> for InstanceServiceError {
         match error {
             InstanceError::NotFound => Self::InstanceNotFound,
             InstanceError::AlreadyExists => Self::AlreadyExists,
-            InstanceError::Invalid { .. } | InstanceError::InvalidState => Self::InvalidState,
+            InstanceError::Invalid { .. } => Self::InvalidInput,
+            InstanceError::InvalidState => Self::InvalidState,
             InstanceError::OperationFailed { .. } => Self::OperationFailed,
             InstanceError::Unsupported => Self::Unsupported,
         }
