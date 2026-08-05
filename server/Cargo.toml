@@ -21,6 +21,8 @@ serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros", "net", "signal"] }
+axum-vite = "0.3.4"
+include_dir = "0.7"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt"] }
