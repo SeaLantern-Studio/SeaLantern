@@ -105,7 +105,8 @@ pub async fn update_instance_path(
     Ok(Json(instance))
 }
 
-/// 解析路径参数中的实例 ID，空值视为不合法。
+/// 解析路径参数中的实例 ID，非法输入视为客户端错误。
 fn parse_id(raw: &str) -> Result<InstanceId, HttpError> {
-    InstanceId::new(raw.to_owned()).map_err(|_| HttpError::internal("invalid instance id"))
+    InstanceId::new(raw.to_owned())
+        .map_err(|_| HttpError::bad_request("invalid_instance_id", "invalid instance id"))
 }

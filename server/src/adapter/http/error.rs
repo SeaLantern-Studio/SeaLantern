@@ -63,6 +63,15 @@ impl HttpError {
         }
     }
 
+    /// 构建一个客户端输入错误（400），带具体错误码。
+    pub fn bad_request(code: &'static str, message: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code,
+            message: message.into(),
+        }
+    }
+
     /// 构建一个通用内部错误（供非实例类失败使用）。
     pub fn internal(message: impl Into<String>) -> Self {
         Self {
