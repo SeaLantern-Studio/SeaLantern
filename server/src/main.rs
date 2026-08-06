@@ -11,10 +11,46 @@ use sealantern_application::services::AppServices;
 use sealantern_server::adapter::http::build_router;
 use sealantern_server::observability;
 
-/// 监听地址环境变量；未设置时回退到本机 3000 端口。
+/// 监听地址环境变量；设置后完全覆盖默认地址选择。
 const SERVER_ADDR_ENV: &str = "SEALANTERN_SERVER_ADDR";
-/// 默认监听地址
-const DEFAULT_ADDR: &str = "0.0.0.0:3000";
+/// 设置该环境变量为 `1` 时默认监听所有网卡（公网可达）；否则默认仅本机。
+const SERVER_BIND_PUBLIC_ENV: &str = "SEALANTERN_SERVER_BIND_PUBLIC";
+/// 默认监听地址（仅本机访问，安全兜底）。
+const DEFAULT_ADDR: &str = "127.0.0.1:3000";
+/// 公网绑定时的默认监听地址。
+const DEFAULT_PUBLIC_ADDR: &str = "0.0.0.0:3000";
+
+/// 解析监听地址：优先 `SEALANTERN_SERVER_ADDR`，其次按是否开启公网绑定
+/// 选择默认地址，最后回退到仅本机监听。
+fn listen_addr() -> SocketAddr {
+    if let Ok(value) = std::env::var(SERVER_ADDR_ENV) {
+        return match value.parse() {
+            Ok(addr) => addr,
+            Err(_) => {
+                tracing::error!(
+                    env = SERVER_ADDR_ENV,
+                    value = %value,
+                    "invalid listen address, falling back to default"
+                );
+                default_addr()
+            }
+        };
+    }
+    default_addr()
+}
+
+/// 默认监听地址：`SEALANTERN_SERVER_BIND_PUBLIC=1` 时监听所有网卡，否则仅本机。
+fn default_addr() -> SocketAddr {
+    let public = std::env::var(SERVER_BIND_PUBLIC_ENV)
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    let raw = if public {
+        DEFAULT_PUBLIC_ADDR
+    } else {
+        DEFAULT_ADDR
+    };
+    raw.parse().expect("default address must be valid")
+}
 
 /// 服务器入口。
 #[tokio::main]
@@ -36,20 +72,7 @@ pub async fn main() {
 
     let app = build_router(services, vite_config);
 
-    let addr: SocketAddr = match std::env::var(SERVER_ADDR_ENV) {
-        Ok(value) => match value.parse() {
-            Ok(addr) => addr,
-            Err(_) => {
-                tracing::error!(
-                    env = SERVER_ADDR_ENV,
-                    value = %value,
-                    "invalid listen address, falling back to {DEFAULT_ADDR}"
-                );
-                DEFAULT_ADDR.parse().expect("default address must be valid")
-            }
-        },
-        Err(_) => DEFAULT_ADDR.parse().expect("default address must be valid"),
-    };
+    let addr = listen_addr();
 
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(listener) => listener,
