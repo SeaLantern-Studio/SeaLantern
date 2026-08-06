@@ -33,9 +33,9 @@ tower = { version = "0.5", features = ["util"] }
 
 [package.metadata.packager]
 product-name = "Sea Lantern Server"
-identifier = "com.fpsz.sea-lantern-server"
+identifier = "com.dragonhtdev.sea-lantern-server"
 description = "Sea Lantern 服务端"
-authors = ["SeaLantern Studio"]
+authors = ["DragonHTDev"]
 copyright = "Copyright (c) 2026 SeaLantern Studio"
 category = "Game"
 before-packaging-command = "cargo build --release -p sealantern-server"

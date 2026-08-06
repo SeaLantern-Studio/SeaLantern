@@ -20,10 +20,9 @@ fn embed_windows_resources() {
     resource.set("FileVersion", &version);
     resource.set("ProductVersion", &version);
 
-    // 文件信息（与 tauri.conf.json 保持一致）。
     resource.set("FileDescription", "Sea Lantern Server");
     resource.set("ProductName", "Sea Lantern");
-    resource.set("CompanyName", "SeaLantern Studio");
+    resource.set("CompanyName", "DragonHTDev");
     resource.set("LegalCopyright", "Copyright (c) 2026 SeaLantern Studio");
 
     resource

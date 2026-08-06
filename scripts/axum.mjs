@@ -207,9 +207,10 @@ async function main(args) {
       run("pnpm", ["exec", "vite", "build"]);
       const serverDir = fileURLToPath(new URL("../server", import.meta.url));
       const formats = packageFormats();
+      // 每个格式前都要带 -f（如 -f nsis -f wix），否则后续格式会被当作子命令。
       const packagerArgs =
         formats.length > 0
-          ? ["packager", "--release", "-f", ...formats]
+          ? ["packager", "--release", ...formats.flatMap((f) => ["-f", f])]
           : ["packager", "--release"];
       run("cargo", packagerArgs, { cwd: serverDir });
       break;
