@@ -8,12 +8,14 @@
 //! 无参数或参数不合法时打印用法并退出非零码。
 
 import { spawn, spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const isWindows = process.platform === "win32";
 
 const USAGE = `用法:
-  npm run axum dev     # 开发模式：先启动 vite dev server，再前台运行 sealantern-server
-  npm run axum build   # 生产构建：pnpm build 生成前端产物，再 cargo release 构建`;
+  npm run axum dev       # 开发模式：先启动 vite dev server，再以 cargo-watch 运行 server
+  npm run axum build     # 生产构建：pnpm build 生成前端产物，再 cargo release 构建
+  npm run axum package   # 打包：cargo-packager 按当前平台生成原生安装包（NSIS/MSI、DMG、deb 等）`;
 
 /** 同步执行前台子进程（继承 stdio），失败时以子进程退出码结束脚本。 */
 function run(command, args, options = {}) {
@@ -103,6 +105,44 @@ function ensureCargoWatch() {
 }
 
 /**
+ * 确保 cargo-packager 已安装。
+ *
+ * cargo-packager 是生成原生安装包（Windows NSIS/MSI、macOS DMG/.app、
+ * Linux deb/AppImage）的工具；未安装时自动执行 `cargo install cargo-packager`。
+ */
+function ensureCargoPackager() {
+  if (commandAvailable("cargo packager")) {
+    console.log("[axum] cargo-packager 已安装");
+    return;
+  }
+  console.log("[axum] 未检测到 cargo-packager，正在安装（首次编译可能需要数分钟）...");
+  run("cargo", ["install", "cargo-packager", "--locked"]);
+  if (!commandAvailable("cargo packager")) {
+    console.error("[axum] cargo-packager 安装后仍不可用，请手动执行 cargo install cargo-packager");
+    process.exit(1);
+  }
+}
+
+/**
+ * 按当前平台返回 cargo-packager 的安装包格式列表。
+ *
+ * Windows 同时产出 NSIS 安装器与 MSI；macOS 产出 .app 与 DMG；Linux 产出 deb。
+ * 返回空数组时由 cargo-packager 使用平台默认格式。
+ */
+function packageFormats() {
+  switch (process.platform) {
+    case "win32":
+      return ["nsis", "wix"];
+    case "darwin":
+      return ["app", "dmg"];
+    case "linux":
+      return ["deb"];
+    default:
+      return [];
+  }
+}
+
+/**
  * 解析命令行参数，执行对应的构建/运行流程。
  *
  * @param {string[]} args 命令行参数（不含 node 与脚本路径）
@@ -120,7 +160,7 @@ async function main(args) {
       if (await viteReady(viteHost, vitePort, 800)) {
         console.log(`[axum] 检测到已有 vite dev server（${viteUrl}），直接复用`);
       } else {
-        vite = spawnBackground("pnpm dev");
+        vite = spawnBackground("pnpm exec vite");
         const ready = await viteReady(viteHost, vitePort, 15000);
         if (!ready) {
           console.error(`[axum] vite dev server 未在 ${viteUrl} 就绪`);
@@ -130,6 +170,7 @@ async function main(args) {
       }
 
       ensureCargoWatch();
+      console.log("[axum] cargo-watch 正在运行");
       // cargo watch 监听 Rust 源码变化，自动重编译并重启 server（近似 tauri dev 体验）。
       // cargo-watch 是真实可执行文件，直接参数数组 spawn、不经 shell：
       // 避免 cmd 对 -x 内部双引号的解析问题，同时不触发 DEP0190 告警。
@@ -137,9 +178,6 @@ async function main(args) {
       watcher = spawn(watchCommand, ["-x", "run -p sealantern-server"], {
         stdio: "inherit",
         env: { ...process.env, VITE_AUTO_START: "false" },
-      });
-      watcher.on("exit", () => {
-        console.log("[axum] cargo watch 已退出");
       });
 
       // 等待进程结束：cargo watch 常驻，随 Ctrl+C 终止。
@@ -157,9 +195,25 @@ async function main(args) {
     }
 
     case "build":
-      run("pnpm", ["build"]);
+      run("pnpm", ["exec", "vite", "build"]);
       run("cargo", ["build", "-p", "sealantern-server", "--release"]);
       break;
+
+    case "package": {
+      ensureCargoPackager();
+      // 先构建前端（dist 供 release 模式内嵌），再交给 cargo-packager 打包。
+      // cargo-packager 读取 server/Cargo.toml 的 [package.metadata.packager]；
+      // --release 匹配 release 产物；按平台指定安装包格式。
+      run("pnpm", ["exec", "vite", "build"]);
+      const serverDir = fileURLToPath(new URL("../server", import.meta.url));
+      const formats = packageFormats();
+      const packagerArgs =
+        formats.length > 0
+          ? ["packager", "--release", "-f", ...formats]
+          : ["packager", "--release"];
+      run("cargo", packagerArgs, { cwd: serverDir });
+      break;
+    }
 
     default:
       console.error(`[axum] 未知参数: ${mode ?? "(无)"}`);

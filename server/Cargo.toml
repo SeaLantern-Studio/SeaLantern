@@ -24,6 +24,22 @@ tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros", "ne
 axum-vite = "0.3.4"
 include_dir = "0.7"
 
+[build-dependencies]
+winres = "0.1.12"
+
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt"] }
 tower = { version = "0.5", features = ["util"] }
+
+[package.metadata.packager]
+product-name = "Sea Lantern Server"
+identifier = "com.fpsz.sea-lantern-server"
+description = "Sea Lantern 的独立服务器后端"
+authors = ["SeaLantern Studio"]
+copyright = "Copyright (c) 2026 SeaLantern Studio"
+category = "Game"
+before-packaging-command = "cargo build --release -p sealantern-server"
+icons = ["icons/server.ico", "icons/server.icns", "icons/server.png"]
+
+[package.metadata.packager.wix]
+languages = ["zh-CN"]
