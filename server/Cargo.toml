@@ -34,7 +34,7 @@ tower = { version = "0.5", features = ["util"] }
 [package.metadata.packager]
 product-name = "Sea Lantern Server"
 identifier = "com.fpsz.sea-lantern-server"
-description = "Sea Lantern 的独立服务器后端"
+description = "Sea Lantern 服务端"
 authors = ["SeaLantern Studio"]
 copyright = "Copyright (c) 2026 SeaLantern Studio"
 category = "Game"
