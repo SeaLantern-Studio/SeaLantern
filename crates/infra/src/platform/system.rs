@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use sysinfo::{Disks, Networks, Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 
@@ -220,13 +220,16 @@ pub fn directory_size(path: &Path) -> u64 {
 /// 路径不匹配任何已知挂载点时返回 `(0, 0)`。
 pub fn path_disk_capacity(path: &Path) -> (u64, u64) {
     let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    // Windows canonicalize 可能产生 \\?\C:\... verbatim 前缀，与 sysinfo 的
+    // 挂载点（C:\）无法 starts_with 匹配，这里统一归一化。
+    let match_path = normalize_for_mount_match(&canonical_path);
     let disks = Disks::new_with_refreshed_list();
 
     let mut best_match: Option<(usize, u64, u64)> = None;
 
     for disk in disks.iter() {
         let mount_point = disk.mount_point();
-        if canonical_path.starts_with(mount_point) {
+        if match_path.starts_with(mount_point) {
             let mount_len = mount_point.as_os_str().to_string_lossy().len();
             let candidate = (mount_len, disk.total_space(), disk.available_space());
             match best_match {
@@ -239,6 +242,20 @@ pub fn path_disk_capacity(path: &Path) -> (u64, u64) {
     best_match
         .map(|(_, total, available)| (total, available))
         .unwrap_or((0, 0))
+}
+
+/// 归一化路径以匹配挂载点前缀：Windows 上去掉 `\\?\` verbatim 前缀。
+fn normalize_for_mount_match(path: &Path) -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        let as_str = path.to_string_lossy();
+        let stripped = as_str.strip_prefix(r"\\?\").unwrap_or(&as_str);
+        PathBuf::from(stripped)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        path.to_path_buf()
+    }
 }
 
 /// 获取 CPU 型号名称（如 `Intel(R) Core(TM) i7-9700K`）。
@@ -324,9 +341,19 @@ mod tests {
     }
 
     #[test]
-    fn missing_path_has_zero_size_and_capacity() {
+    fn missing_path_has_zero_size() {
         let missing = Path::new("/nonexistent/sl-path");
         assert_eq!(directory_size(missing), 0);
-        assert_eq!(path_disk_capacity(missing), (0, 0));
+    }
+
+    #[test]
+    fn existing_path_resolves_disk_capacity() {
+        // 路径不存在时 canonicalize 回退原始路径，可能解析到根挂载点（Linux）；
+        // 因此容量断言只针对真实存在的目录，保证跨平台稳定。
+        let existing = std::env::temp_dir();
+        let (total, available) = path_disk_capacity(&existing);
+
+        assert!(total > 0);
+        assert!(available <= total);
     }
 }
