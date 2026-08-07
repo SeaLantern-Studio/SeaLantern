@@ -10,6 +10,7 @@ use adapter::tauri::commands::instance::{
     create_instance, delete_instance, force_stop_instance, get_instance, instance_status,
     list_instances, rename_instance, start_instance, stop_instance, update_instance_path,
 };
+use adapter::tauri::commands::settings::get_settings_overview;
 use adapter::tauri::commands::system::{
     get_directory_usage, get_process_usage, get_system_snapshot,
 };
@@ -44,6 +45,8 @@ pub fn run() {
             start_instance,
             stop_instance,
             update_instance_path,
+            //settings能力（由adapter/tauri/commands接入application）
+            get_settings_overview,
             //系统资源能力（由adapter/tauri/commands接入application）
             get_directory_usage,
             get_process_usage,

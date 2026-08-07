@@ -39,6 +39,9 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         //       .route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));
 
+    let settings_routes = Router::new()
+        .route("/settings", get(handlers::settings_overview));
+
     let system_routes = Router::new()
         .route("/system", get(handlers::system_snapshot))
         .route("/system/process/{pid}", get(handlers::process_usage))
@@ -46,6 +49,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
 
     Router::new()
         .nest(API_PREFIX, instance_routes)
+        .nest(API_PREFIX, settings_routes)
         .nest(API_PREFIX, system_routes)
         .merge(spa_router(config))
         .with_state(state)
