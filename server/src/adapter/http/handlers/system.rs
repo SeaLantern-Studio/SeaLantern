@@ -38,9 +38,10 @@ pub async fn process_usage(
         .map_err(HttpError::from)
 }
 
-/// `GET /api/system/directory/{path}` — 计算指定目录的磁盘占用。
+/// `GET /api/system/directory/*path` — 计算指定目录的磁盘占用。
 ///
-/// 路径经 URL 编码传入（如 `/api/system/directory/C%3A%5Cservers%5Cserver-a`）。
+/// 路径使用通配符捕获，支持任意多段路径
+/// （如 `/api/system/directory/var/log`、`/api/system/directory/C:%5Cservers%5Cserver-a`）。
 pub async fn directory_usage(
     State(state): State<AppState>,
     Path(path): Path<String>,

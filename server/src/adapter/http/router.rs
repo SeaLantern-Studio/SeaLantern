@@ -42,7 +42,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
     let system_routes = Router::new()
         .route("/system", get(handlers::system_snapshot))
         .route("/system/process/{pid}", get(handlers::process_usage))
-        .route("/system/directory/{path}", get(handlers::directory_usage));
+        .route("/system/directory/{*path}", get(handlers::directory_usage));
 
     Router::new()
         .nest(API_PREFIX, instance_routes)

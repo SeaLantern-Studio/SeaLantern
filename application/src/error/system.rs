@@ -19,6 +19,11 @@ pub enum SystemError {
         /// 底层来源错误。
         source: std::io::Error,
     },
+    /// 内部异步任务失败（如阻塞任务被取消或 panic）。
+    Internal {
+        /// 底层来源错误。
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
     /// 该能力尚未实现（占位）。
     Unsupported,
 }
@@ -31,6 +36,7 @@ impl fmt::Display for SystemError {
             Self::OperationFailed { source } => {
                 write!(formatter, "system operation failed: {source}")
             }
+            Self::Internal { source } => write!(formatter, "internal system task failed: {source}"),
             Self::Unsupported => write!(formatter, "operation not supported"),
         }
     }
@@ -40,6 +46,7 @@ impl std::error::Error for SystemError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::OperationFailed { source } => Some(source),
+            Self::Internal { source } => Some(source.as_ref()),
             _ => None,
         }
     }
@@ -51,6 +58,12 @@ impl From<std::io::Error> for SystemError {
     }
 }
 
+impl From<tokio::task::JoinError> for SystemError {
+    fn from(source: tokio::task::JoinError) -> Self {
+        Self::Internal { source: Box::new(source) }
+    }
+}
+
 /// 应用层主错误 → 接口契约错误的收敛转换。
 ///
 /// 细节被抹平为分类，敏感字段不跨传输面。
@@ -59,7 +72,9 @@ impl From<SystemError> for SystemServiceError {
         match error {
             SystemError::ProcessNotFound => Self::ProcessNotFound,
             SystemError::PathNotFound => Self::PathNotFound,
-            SystemError::OperationFailed { .. } => Self::OperationFailed,
+            SystemError::OperationFailed { .. } | SystemError::Internal { .. } => {
+                Self::OperationFailed
+            }
             SystemError::Unsupported => Self::Unsupported,
         }
     }

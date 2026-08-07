@@ -32,13 +32,23 @@ pub struct CoreSystemService;
 
 impl CoreSystemService {
     /// 采集整机资源快照，返回应用层主错误。
+    ///
+    /// 同步的 sysinfo 采集经 `spawn_blocking` 调度到阻塞线程池，CPU 采样
+    /// 间隔等待留在异步侧，避免阻塞运行时的核心线程。
     async fn snapshot_inner() -> Result<SystemSnapshot, SystemError> {
-        let info = collect_system_info();
+        // 静态系统信息与首次 CPU 采样（同步采集，阻塞线程池执行）。
+        let info = tokio::task::spawn_blocking(collect_system_info)
+            .await
+            .map_err(SystemError::from)?;
+        let _ = tokio::task::spawn_blocking(collect_resource_snapshot)
+            .await
+            .map_err(SystemError::from)?;
 
         // CPU 间隔两次采样，取后一次的平滑使用率（异步等待，不阻塞 runtime）。
-        let _ = collect_resource_snapshot();
         tokio::time::sleep(CPU_SAMPLE_INTERVAL).await;
-        let second = collect_resource_snapshot();
+        let second = tokio::task::spawn_blocking(collect_resource_snapshot)
+            .await
+            .map_err(SystemError::from)?;
 
         let memory = MemoryInfo {
             total: second.total_memory_bytes,
@@ -55,18 +65,33 @@ impl CoreSystemService {
             usage: percent(second.used_swap_bytes, second.total_swap_bytes),
         };
 
-        let disks: Vec<DiskInfo> = collect_disks()
-            .into_iter()
-            .map(|disk| DiskInfo {
-                name: disk.name,
-                mount_point: disk.mount_point,
-                file_system: disk.file_system,
-                total: disk.total_bytes,
-                used: disk.used_bytes,
-                available: disk.available_bytes,
-                is_removable: disk.is_removable,
-            })
-            .collect();
+        let (disks, networks, cpu_brand) = tokio::task::spawn_blocking(|| {
+            let disks: Vec<DiskInfo> = collect_disks()
+                .into_iter()
+                .map(|disk| DiskInfo {
+                    name: disk.name,
+                    mount_point: disk.mount_point,
+                    file_system: disk.file_system,
+                    total: disk.total_bytes,
+                    used: disk.used_bytes,
+                    available: disk.available_bytes,
+                    is_removable: disk.is_removable,
+                })
+                .collect();
+            let networks: Vec<NetworkInfo> = collect_networks()
+                .into_iter()
+                .map(|network| NetworkInfo {
+                    interface: network.interface,
+                    received: network.received_bytes,
+                    transmitted: network.transmitted_bytes,
+                })
+                .collect();
+            let cpu_brand = cpu_brand_name();
+            (disks, networks, cpu_brand)
+        })
+        .await
+        .map_err(SystemError::from)?;
+
         let disk_total: u64 = disks.iter().map(|d| d.total).sum();
         let disk_used: u64 = disks.iter().map(|d| d.used).sum();
         let disk_available: u64 = disks.iter().map(|d| d.available).sum();
@@ -78,14 +103,9 @@ impl CoreSystemService {
             disks,
         };
 
-        let networks: Vec<NetworkInfo> = collect_networks()
-            .into_iter()
-            .map(|network| NetworkInfo {
-                interface: network.interface,
-                received: network.received_bytes,
-                transmitted: network.transmitted_bytes,
-            })
-            .collect();
+        let process_count = tokio::task::spawn_blocking(process_count)
+            .await
+            .map_err(SystemError::from)?;
 
         Ok(SystemSnapshot {
             os: info.operating_system,
@@ -95,7 +115,7 @@ impl CoreSystemService {
             kernel_version: info.kernel_version.unwrap_or_else(|| "Unknown".into()),
             host_name: info.host_name.unwrap_or_else(|| "Unknown".into()),
             cpu: CpuInfo {
-                name: cpu_brand_name(),
+                name: cpu_brand,
                 count: info.logical_cpu_count,
                 usage: second.cpu_usage.clamp(0.0, 100.0),
             },
@@ -104,16 +124,21 @@ impl CoreSystemService {
             disk,
             networks,
             uptime: info.uptime_seconds,
-            process_count: process_count(),
+            process_count,
         })
     }
 
     /// 采集指定进程资源使用，返回应用层主错误。
     async fn process_usage_inner(pid: u32) -> Result<ProcessResourceUsage, SystemError> {
-        // CPU 间隔两次采样，取后一次的平滑使用率（异步等待，不阻塞 runtime）。
-        let _ = collect_process_usage(pid);
+        // CPU 间隔两次采样，取后一次的平滑使用率。采集为同步 sysinfo 调用，
+        // 经 spawn_blocking 调度；间隔等待留在异步侧。
+        let _ = tokio::task::spawn_blocking(move || collect_process_usage(pid))
+            .await
+            .map_err(SystemError::from)?;
         tokio::time::sleep(CPU_SAMPLE_INTERVAL).await;
-        let usage = collect_process_usage(pid);
+        let usage = tokio::task::spawn_blocking(move || collect_process_usage(pid))
+            .await
+            .map_err(SystemError::from)?;
 
         let Some(usage) = usage else {
             return Ok(ProcessResourceUsage {
@@ -125,7 +150,9 @@ impl CoreSystemService {
             });
         };
 
-        let snapshot = collect_resource_snapshot();
+        let snapshot = tokio::task::spawn_blocking(collect_resource_snapshot)
+            .await
+            .map_err(SystemError::from)?;
         let memory_total = snapshot.total_memory_bytes;
         Ok(ProcessResourceUsage {
             pid: Some(usage.pid),
@@ -137,17 +164,26 @@ impl CoreSystemService {
     }
 
     /// 计算目录磁盘占用，返回应用层主错误。
+    ///
+    /// 目录遍历与容量查询是同步且可能耗时的操作，经 `spawn_blocking` 调度到
+    /// 阻塞线程池，避免阻塞异步运行时的核心线程。
     async fn directory_usage_inner(path: &Path) -> Result<DirectoryUsage, SystemError> {
-        if !path.exists() {
-            return Err(SystemError::PathNotFound);
-        }
+        let path_owned = path.to_path_buf();
+        let (path, used, total, available) =
+            tokio::task::spawn_blocking(move || -> Result<_, SystemError> {
+                if !path_owned.exists() {
+                    return Err(SystemError::PathNotFound);
+                }
 
-        let used = directory_size(path);
-        let (total, available) = path_disk_capacity(path);
+                let used = directory_size(&path_owned);
+                let (total, available) = path_disk_capacity(&path_owned);
+                Ok((path_owned, used, total, available))
+            })
+            .await??;
+
         let total_effective = if total > 0 { total } else { used.max(1) };
-
         Ok(DirectoryUsage {
-            path: path.to_path_buf(),
+            path,
             used,
             total: total_effective,
             available,
