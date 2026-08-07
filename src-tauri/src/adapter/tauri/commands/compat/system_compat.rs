@@ -16,7 +16,9 @@ use tauri_plugin_opener::OpenerExt;
 
 use super::adapter::{process_usage_to_resource_usage, system_snapshot_to_frontend};
 use super::error::instance_err_to_system;
-use super::models::{FrontendServerResourceUsage, FrontendSystemInfo, GetServerResourceUsageParams};
+use super::models::{
+    FrontendServerResourceUsage, FrontendSystemInfo, GetServerResourceUsageParams,
+};
 
 // ── 可用命令 ──────────────────────────────────────────────────────────
 
@@ -46,10 +48,7 @@ pub async fn get_default_run_path() -> Result<String, SystemServiceError> {
 ///
 /// 兼容原生：用 `tauri-plugin-opener` 调用系统默认程序打开文件。
 #[tauri::command]
-pub async fn open_file(
-    app: tauri::AppHandle,
-    path: String,
-) -> Result<(), SystemServiceError> {
+pub async fn open_file(app: tauri::AppHandle, path: String) -> Result<(), SystemServiceError> {
     app.opener()
         .open_path(path, None::<&str>)
         .map_err(|_| SystemServiceError::OperationFailed)
@@ -59,10 +58,7 @@ pub async fn open_file(
 ///
 /// 兼容原生：用 `tauri-plugin-opener` 调用系统文件管理器打开目录。
 #[tauri::command]
-pub async fn open_folder(
-    app: tauri::AppHandle,
-    path: String,
-) -> Result<(), SystemServiceError> {
+pub async fn open_folder(app: tauri::AppHandle, path: String) -> Result<(), SystemServiceError> {
     app.opener()
         .open_path(path, None::<&str>)
         .map_err(|_| SystemServiceError::OperationFailed)

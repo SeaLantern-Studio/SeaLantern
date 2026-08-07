@@ -82,10 +82,7 @@ pub async fn delete_server(id: String) -> Result<(), InstanceServiceError> {
 
 /// 重命名服务器（兼容 `update_server_name`）。
 #[tauri::command]
-pub async fn update_server_name(
-    id: String,
-    name: String,
-) -> Result<(), InstanceServiceError> {
+pub async fn update_server_name(id: String, name: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
     let id = parse_id(id)?;
     service.rename(&id, &name).await
@@ -131,9 +128,7 @@ pub async fn stop_server(id: String) -> Result<(), InstanceServiceError> {
 /// Phase 1 后端无 Daemon，无法验证 token；`prepare_force_stop_server` 同样返回
 /// Unsupported，故此处 token 一并忽略。Phase 2 接入 Daemon 后需恢复 token 校验链路。
 #[tauri::command]
-pub async fn force_stop_server(
-    params: ForceStopServerParams,
-) -> Result<(), InstanceServiceError> {
+pub async fn force_stop_server(params: ForceStopServerParams) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
     let id = parse_id(params.id)?;
     service.force_stop(&id).await
@@ -141,7 +136,9 @@ pub async fn force_stop_server(
 
 /// 获取服务器状态（兼容 `get_server_status`）。
 #[tauri::command]
-pub async fn get_server_status(id: String) -> Result<FrontendServerStatusInfo, InstanceServiceError> {
+pub async fn get_server_status(
+    id: String,
+) -> Result<FrontendServerStatusInfo, InstanceServiceError> {
     let service = instance_service().await?;
     let instance_id = parse_id(id.clone())?;
     let status = service.status(&instance_id).await?;

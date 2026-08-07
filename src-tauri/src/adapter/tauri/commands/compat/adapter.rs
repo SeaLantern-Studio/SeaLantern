@@ -80,8 +80,8 @@ pub(crate) fn create_params_to_spec(
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    let startup_mode = StartupMode::parse(&params.startup_mode)
-        .map_err(|_| InstanceServiceError::InvalidInput)?;
+    let startup_mode =
+        StartupMode::parse(&params.startup_mode).map_err(|_| InstanceServiceError::InvalidInput)?;
 
     Ok(InstanceSpec {
         id,
@@ -128,8 +128,8 @@ pub(crate) fn add_existing_params_to_spec(
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    let startup_mode = StartupMode::parse(&params.startup_mode)
-        .map_err(|_| InstanceServiceError::InvalidInput)?;
+    let startup_mode =
+        StartupMode::parse(&params.startup_mode).map_err(|_| InstanceServiceError::InvalidInput)?;
 
     Ok(InstanceSpec {
         id,
@@ -451,7 +451,11 @@ mod tests {
         // launch 字段
         assert_eq!(spec.launch.startup_mode, StartupMode::Jar);
         assert_eq!(
-            spec.launch.startup_target.as_ref().unwrap().to_string_lossy(),
+            spec.launch
+                .startup_target
+                .as_ref()
+                .unwrap()
+                .to_string_lossy(),
             "/tmp/server.jar"
         );
 
@@ -493,7 +497,11 @@ mod tests {
         let spec = add_existing_params_to_spec(params).expect("spec should build");
         assert_eq!(spec.directory, PathBuf::from("/existing/server"));
         assert_eq!(
-            spec.launch.startup_target.as_ref().unwrap().to_string_lossy(),
+            spec.launch
+                .startup_target
+                .as_ref()
+                .unwrap()
+                .to_string_lossy(),
             "/existing/server.jar"
         );
         // 版本字段留空
