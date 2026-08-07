@@ -1,6 +1,25 @@
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 
 use sysinfo::{Disks, Networks, Pid, ProcessRefreshKind, ProcessesToUpdate, System};
+
+/// 全局共享的 `System` 实例。
+///
+/// `sysinfo` 的 CPU 使用率是「上次刷新到本次刷新」的增量值，必须在**同一个**
+/// 实例上连续采样才能得到真实使用率。若每次调用都新建 `System`，两次采样间
+/// 没有共享状态，拿到的始终是首次刷新的基线值（部分平台表现为 100%）。
+/// 所有采集函数共用此实例以保持采样连续性。
+fn shared_system() -> &'static Mutex<System> {
+    static SYSTEM: OnceLock<Mutex<System>> = OnceLock::new();
+    SYSTEM.get_or_init(|| Mutex::new(System::new()))
+}
+
+/// 获取共享 `System` 实例的锁；忽略 poison 状态（采集场景容忍此前 panic）。
+fn lock_system() -> std::sync::MutexGuard<'static, System> {
+    shared_system()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
 
 /// 当前机器的稳定系统信息快照。
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -67,9 +86,10 @@ pub struct ResourceSnapshot {
 /// 采集一次 CPU / 内存 / 交换用量快照。
 ///
 /// 调用方如需平滑的 CPU 使用率，应间隔一段时间连续调用两次并取后一次的
-/// `cpu_usage`（或自行做差值计算）。
+/// `cpu_usage`（或自行做差值计算）。两次调用共享同一个底层 `System` 实例，
+/// 因此第二次调用能拿到真实差值。
 pub fn collect_resource_snapshot() -> ResourceSnapshot {
-    let mut system = System::new();
+    let mut system = lock_system();
     system.refresh_memory();
     system.refresh_cpu_usage();
 
@@ -167,7 +187,7 @@ pub struct ProcessUsage {
 /// 进程不存在或无权访问时返回 `None`。
 pub fn collect_process_usage(pid: u32) -> Option<ProcessUsage> {
     let process_pid = Pid::from_u32(pid);
-    let mut system = System::new();
+    let mut system = lock_system();
     system.refresh_memory();
     system.refresh_processes_specifics(
         ProcessesToUpdate::Some(&[process_pid]),
