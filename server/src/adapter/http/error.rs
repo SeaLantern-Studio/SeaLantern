@@ -9,7 +9,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Serialize;
 
-use sealantern_interface::InstanceServiceError;
+use sealantern_interface::{InstanceServiceError, SystemServiceError};
 
 /// 展平的 HTTP 错误响应体。
 #[derive(Debug, Serialize)]
@@ -68,6 +68,27 @@ impl HttpError {
         }
     }
 
+    /// 由系统资源信息服务契约错误构建 HTTP 错误。
+    pub fn from_system_error(error: SystemServiceError) -> Self {
+        match error {
+            SystemServiceError::ProcessNotFound | SystemServiceError::PathNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "system_resource_not_found",
+                message: error.to_string(),
+            },
+            SystemServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "system_operation_failed",
+                message: error.to_string(),
+            },
+            SystemServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 构建一个客户端输入错误（400），带具体错误码。
     pub fn bad_request(code: &'static str, message: impl Into<String>) -> Self {
         Self {
@@ -90,6 +111,12 @@ impl HttpError {
 impl From<InstanceServiceError> for HttpError {
     fn from(error: InstanceServiceError) -> Self {
         Self::from_instance_error(error)
+    }
+}
+
+impl From<SystemServiceError> for HttpError {
+    fn from(error: SystemServiceError) -> Self {
+        Self::from_system_error(error)
     }
 }
 
