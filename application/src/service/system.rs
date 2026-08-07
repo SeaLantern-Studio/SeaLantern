@@ -32,12 +32,12 @@ pub struct CoreSystemService;
 
 impl CoreSystemService {
     /// 采集整机资源快照，返回应用层主错误。
-    fn snapshot_inner() -> Result<SystemSnapshot, SystemError> {
+    async fn snapshot_inner() -> Result<SystemSnapshot, SystemError> {
         let info = collect_system_info();
 
-        // CPU 间隔两次采样，取后一次的平滑使用率。
+        // CPU 间隔两次采样，取后一次的平滑使用率（异步等待，不阻塞 runtime）。
         let _ = collect_resource_snapshot();
-        std::thread::sleep(CPU_SAMPLE_INTERVAL);
+        tokio::time::sleep(CPU_SAMPLE_INTERVAL).await;
         let second = collect_resource_snapshot();
 
         let memory = MemoryInfo {
@@ -109,10 +109,10 @@ impl CoreSystemService {
     }
 
     /// 采集指定进程资源使用，返回应用层主错误。
-    fn process_usage_inner(pid: u32) -> Result<ProcessResourceUsage, SystemError> {
-        // CPU 间隔两次采样，取后一次的平滑使用率。
+    async fn process_usage_inner(pid: u32) -> Result<ProcessResourceUsage, SystemError> {
+        // CPU 间隔两次采样，取后一次的平滑使用率（异步等待，不阻塞 runtime）。
         let _ = collect_process_usage(pid);
-        std::thread::sleep(CPU_SAMPLE_INTERVAL);
+        tokio::time::sleep(CPU_SAMPLE_INTERVAL).await;
         let usage = collect_process_usage(pid);
 
         let Some(usage) = usage else {
@@ -137,7 +137,7 @@ impl CoreSystemService {
     }
 
     /// 计算目录磁盘占用，返回应用层主错误。
-    fn directory_usage_inner(path: &PathBuf) -> Result<DirectoryUsage, SystemError> {
+    async fn directory_usage_inner(path: &PathBuf) -> Result<DirectoryUsage, SystemError> {
         if !path.exists() {
             return Err(SystemError::PathNotFound);
         }
@@ -159,15 +159,15 @@ impl CoreSystemService {
 #[async_trait]
 impl SystemService for CoreSystemService {
     async fn system_snapshot(&self) -> Result<SystemSnapshot, SystemServiceError> {
-        Self::snapshot_inner().map_err(Into::into)
+        Self::snapshot_inner().await.map_err(Into::into)
     }
 
     async fn process_usage(&self, pid: u32) -> Result<ProcessResourceUsage, SystemServiceError> {
-        Self::process_usage_inner(pid).map_err(Into::into)
+        Self::process_usage_inner(pid).await.map_err(Into::into)
     }
 
     async fn directory_usage(&self, path: &PathBuf) -> Result<DirectoryUsage, SystemServiceError> {
-        Self::directory_usage_inner(path).map_err(Into::into)
+        Self::directory_usage_inner(path).await.map_err(Into::into)
     }
 }
 
