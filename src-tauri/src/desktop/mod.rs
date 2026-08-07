@@ -6,6 +6,7 @@
 pub mod dialog;
 
 pub use dialog::{
-    pick_archive_file, pick_folder, pick_image_file, pick_jar_file, pick_java_file, pick_save_file,
-    pick_server_executable, pick_startup_file,
+    desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
+    desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
+    desktop_pick_startup_file,
 };

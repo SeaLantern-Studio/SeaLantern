@@ -136,14 +136,14 @@ export const systemApi = {
     if (isUploadSupported()) {
       return this.pickAndUploadBrowserFile(".jar");
     }
-    return tauriInvoke("pick_jar_file");
+    return tauriInvoke("desktop_pick_jar_file");
   },
 
   async pickArchiveFile(): Promise<string | null> {
     if (isUploadSupported()) {
       return this.pickAndUploadBrowserFile(".zip,.tar,.tar.gz,.tgz,.jar");
     }
-    return tauriInvoke("pick_archive_file");
+    return tauriInvoke("desktop_pick_archive_file");
   },
 
   async pickStartupFile(mode: "jar" | "bat" | "sh"): Promise<string | null> {
@@ -160,7 +160,7 @@ export const systemApi = {
       }
       return null;
     }
-    return tauriInvoke("pick_startup_file", { mode });
+    return tauriInvoke("desktop_pick_startup_file", { mode });
   },
 
   async pickServerExecutable(): Promise<{ path: string; mode: "jar" | "bat" | "sh" } | null> {
@@ -174,7 +174,7 @@ export const systemApi = {
       }
       return null;
     }
-    const result = await tauriInvoke<[string, string] | null>("pick_server_executable");
+    const result = await tauriInvoke<[string, string] | null>("desktop_pick_server_executable");
     if (result) {
       return { path: result[0], mode: result[1] as "jar" | "bat" | "sh" };
     }
@@ -190,21 +190,21 @@ export const systemApi = {
       }
       return null;
     }
-    return tauriInvoke("pick_java_file");
+    return tauriInvoke("desktop_pick_java_file");
   },
 
   async pickSaveFile(): Promise<string | null> {
     if (isUploadSupported()) {
       throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
     }
-    return tauriInvoke("pick_save_file");
+    return tauriInvoke("desktop_pick_save_file");
   },
 
   async pickFolder(): Promise<string | null> {
     if (isUploadSupported()) {
       throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
     }
-    return tauriInvoke("pick_folder");
+    return tauriInvoke("desktop_pick_folder");
   },
 
   async pickImageFile(): Promise<string | null> {
@@ -216,7 +216,7 @@ export const systemApi = {
       }
       return null;
     }
-    return tauriInvoke("pick_image_file");
+    return tauriInvoke("desktop_pick_image_file");
   },
 
   async openFile(path: string): Promise<void> {
