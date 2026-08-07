@@ -48,6 +48,8 @@ No Electron. No Node.js backend. No Webpack.
 
 Sea Lantern starts quickly, has a small footprint, and keeps memory usage low.
 
+The backend uses a layered architecture: `interface` (trait contracts) -> `application` (service wiring) -> `core`/`extra`/`infra` (building blocks). The Tauri adapter (`src-tauri/src/adapter/tauri/commands/`) includes a `compat` sublayer that registers the frontend's legacy command names, adapting parameters/responses internally before calling the new services, so the frontend works without changes. See [Tauri Compat Layer docs](docs/tauri-compat-layer.md).
+
 > The interface is rendered using the operating system's native WebView.
 
 ## Roadmap

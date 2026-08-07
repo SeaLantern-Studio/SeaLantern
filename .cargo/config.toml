@@ -1,2 +1,9 @@
 [target.x86_64-pc-windows-gnu]
 rustflags = ["-C", "link-arg=-Wl,--exclude-libs,ALL"]
+
+# 国内 crates.io 镜像（rsproxy，解决 SSL/网络问题）
+[source.crates-io]
+replace-with = "rsproxy-sparse"
+
+[source.rsproxy-sparse]
+registry = "sparse+https://rsproxy.cn/index/"

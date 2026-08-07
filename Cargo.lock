@@ -5210,6 +5210,7 @@ dependencies = [
  "tauri-plugin-window-state",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

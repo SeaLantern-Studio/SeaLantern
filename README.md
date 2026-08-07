@@ -45,6 +45,8 @@
 
 没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
 
+后端采用分层架构：`interface`（契约 trait）→ `application`（服务装配）→ `core`/`extra`/`infra`（积木）。Tauri 适配层（`src-tauri/src/adapter/tauri/commands/`）下设 `compat` 兼容子层，注册前端旧命令名，内部做参数/响应适配后调用新 service，前端零改动即可对接新后端。详见 [Tauri 兼容层文档](docs/tauri-compat-layer.md)。
+
 > 使用系统 Webview 渲染。
 
 ## 待开发功能
