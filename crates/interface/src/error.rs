@@ -39,3 +39,33 @@ impl std::fmt::Display for InstanceServiceError {
 }
 
 impl std::error::Error for InstanceServiceError {}
+
+/// 系统资源信息服务失败的契约错误类别。
+///
+/// 分类风格与 [`InstanceServiceError`] 一致：不携带主机路径、进程细节等敏感
+/// 信息，底层失败详情由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum SystemServiceError {
+    /// 指定的进程不存在或无权访问。
+    ProcessNotFound,
+    /// 指定的路径不存在或不可访问。
+    PathNotFound,
+    /// 底层系统采集 / IO 操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
+impl std::fmt::Display for SystemServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::ProcessNotFound => "process not found",
+            Self::PathNotFound => "path not found",
+            Self::OperationFailed => "system operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for SystemServiceError {}

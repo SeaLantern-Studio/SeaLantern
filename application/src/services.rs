@@ -14,7 +14,7 @@
 use std::sync::Arc;
 
 use crate::error::InstanceError;
-use crate::service::CoreInstanceService;
+use crate::service::{CoreInstanceService, CoreSystemService};
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
 #[derive(Clone)]
@@ -30,6 +30,8 @@ pub struct AppServices {
 pub struct AppServicesInner {
     /// 服务器实例管理服务。
     pub instance: Arc<CoreInstanceService>,
+    /// 系统资源信息服务。
+    pub system: Arc<CoreSystemService>,
 }
 
 /// 进程级全局容器。惰性初始化，可替换。
@@ -38,9 +40,14 @@ static SERVICES: tokio::sync::RwLock<Option<Arc<AppServicesInner>>> =
 
 impl AppServices {
     /// 从既有实例构造句柄（供测试/重载注入 `register`）。
+    ///
+    /// 系统资源服务为无状态实现，内部自动构造，无需外部传入。
     pub fn from_inner(instance: CoreInstanceService) -> Self {
         Self {
-            inner: Arc::new(AppServicesInner { instance: Arc::new(instance) }),
+            inner: Arc::new(AppServicesInner {
+                instance: Arc::new(instance),
+                system: Arc::new(CoreSystemService),
+            }),
         }
     }
 
@@ -94,5 +101,15 @@ impl AppServices {
     /// 便捷访问入口：一步拿到实例管理服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn instance_service() -> Result<Arc<CoreInstanceService>, InstanceError> {
         Ok(Self::get().await?.instance().clone())
+    }
+
+    /// 访问系统资源信息服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn system(&self) -> &Arc<CoreSystemService> {
+        &self.inner.system
+    }
+
+    /// 便捷访问入口：一步拿到系统资源信息服务的共享句柄（惰性初始化 + 可替换）。
+    pub async fn system_service() -> Result<Arc<CoreSystemService>, InstanceError> {
+        Ok(Self::get().await?.system().clone())
     }
 }

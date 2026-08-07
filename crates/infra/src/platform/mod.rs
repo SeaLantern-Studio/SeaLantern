@@ -19,6 +19,6 @@ pub use error::PlatformError;
 pub use locations::{get_app_data_dir, get_or_create_app_data_dir};
 pub use system::{
     collect_disks, collect_networks, collect_process_usage, collect_resource_snapshot,
-    collect_system_info, directory_size, path_disk_capacity, DiskUsage, NetworkUsage, ProcessUsage,
-    ResourceSnapshot, SystemInfo,
+    collect_system_info, cpu_brand_name, directory_size, path_disk_capacity, process_count,
+    DiskUsage, NetworkUsage, ProcessUsage, ResourceSnapshot, SystemInfo,
 };

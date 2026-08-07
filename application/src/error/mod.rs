@@ -12,8 +12,11 @@ pub mod instance;
 pub mod plugin;
 /// 服务器管理领域错误。
 pub mod server;
+/// 系统资源信息领域错误。
+pub mod system;
 
 pub use config::ConfigError;
 pub use instance::InstanceError;
 pub use plugin::PluginError;
 pub use server::ServerError;
+pub use system::SystemError;

@@ -241,6 +241,24 @@ pub fn path_disk_capacity(path: &Path) -> (u64, u64) {
         .unwrap_or((0, 0))
 }
 
+/// 获取 CPU 型号名称（如 `Intel(R) Core(TM) i7-9700K`）。
+///
+/// 无法获取时返回 `"Unknown"`。
+pub fn cpu_brand_name() -> String {
+    let mut system = System::new();
+    system.refresh_cpu_all();
+    system
+        .cpus()
+        .first()
+        .map(|cpu| cpu.brand().to_string())
+        .unwrap_or_else(|| "Unknown".into())
+}
+
+/// 获取当前运行的进程数。
+pub fn process_count() -> usize {
+    System::new_all().processes().len()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
