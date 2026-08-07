@@ -7,7 +7,7 @@
 //! 错误分层：内部以应用层主错误 [`SystemError`] 为源头，暴露
 //! [`SystemService`] 时统一转为接口契约错误 [`SystemServiceError`]。
 
-use std::path::PathBuf;
+use std::path::Path;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -137,7 +137,7 @@ impl CoreSystemService {
     }
 
     /// 计算目录磁盘占用，返回应用层主错误。
-    async fn directory_usage_inner(path: &PathBuf) -> Result<DirectoryUsage, SystemError> {
+    async fn directory_usage_inner(path: &Path) -> Result<DirectoryUsage, SystemError> {
         if !path.exists() {
             return Err(SystemError::PathNotFound);
         }
@@ -147,7 +147,7 @@ impl CoreSystemService {
         let total_effective = if total > 0 { total } else { used.max(1) };
 
         Ok(DirectoryUsage {
-            path: path.clone(),
+            path: path.to_path_buf(),
             used,
             total: total_effective,
             available,
@@ -166,7 +166,7 @@ impl SystemService for CoreSystemService {
         Self::process_usage_inner(pid).await.map_err(Into::into)
     }
 
-    async fn directory_usage(&self, path: &PathBuf) -> Result<DirectoryUsage, SystemServiceError> {
+    async fn directory_usage(&self, path: &Path) -> Result<DirectoryUsage, SystemServiceError> {
         Self::directory_usage_inner(path).await.map_err(Into::into)
     }
 }
@@ -220,7 +220,7 @@ mod tests {
     async fn missing_directory_reports_path_not_found() {
         let service = CoreSystemService;
         let result = service
-            .directory_usage(&PathBuf::from("/nonexistent/sl-path"))
+            .directory_usage(Path::new("/nonexistent/sl-path"))
             .await;
 
         assert_eq!(result, Err(SystemServiceError::PathNotFound));

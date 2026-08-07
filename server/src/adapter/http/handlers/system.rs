@@ -45,10 +45,10 @@ pub async fn directory_usage(
     State(state): State<AppState>,
     Path(path): Path<String>,
 ) -> Result<Json<DirectoryUsage>, HttpError> {
-    let path = std::path::PathBuf::from(path);
+    let path = std::path::Path::new(&path);
     state
         .system()
-        .directory_usage(&path)
+        .directory_usage(path)
         .await
         .map(Json)
         .map_err(HttpError::from)

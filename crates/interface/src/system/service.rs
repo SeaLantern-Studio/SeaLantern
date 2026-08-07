@@ -1,6 +1,6 @@
 //! 系统资源信息服务端口。
 
-use std::path::PathBuf;
+use std::path::Path;
 
 use async_trait::async_trait;
 
@@ -25,5 +25,5 @@ pub trait SystemService: Send + Sync {
     async fn process_usage(&self, pid: u32) -> Result<ProcessResourceUsage, SystemServiceError>;
 
     /// 计算目录磁盘占用。
-    async fn directory_usage(&self, path: &PathBuf) -> Result<DirectoryUsage, SystemServiceError>;
+    async fn directory_usage(&self, path: &Path) -> Result<DirectoryUsage, SystemServiceError>;
 }

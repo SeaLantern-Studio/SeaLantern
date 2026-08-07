@@ -7,7 +7,7 @@
 //! 错误统一为接口契约错误 [`SystemServiceError`]，可序列化回前端，
 //! 不携带底层敏感细节。
 
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
 use sealantern_application::service::CoreSystemService;
@@ -43,5 +43,5 @@ pub async fn get_process_usage(pid: u32) -> Result<ProcessResourceUsage, SystemS
 #[tauri::command]
 pub async fn get_directory_usage(path: String) -> Result<DirectoryUsage, SystemServiceError> {
     let service = system_service().await?;
-    service.directory_usage(&PathBuf::from(path)).await
+    service.directory_usage(Path::new(&path)).await
 }
