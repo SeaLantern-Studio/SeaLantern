@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
-use sealantern_infra::platform::get_app_data_dir;
 use sealantern_interface::server::{ServerSnapshot, ServerState};
 use sealantern_interface::system::{
     CpuInfo, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage, SystemSnapshot,
@@ -75,7 +74,13 @@ pub(crate) fn create_params_to_spec(
 ) -> Result<InstanceSpec, InstanceServiceError> {
     let id_str = uuid::Uuid::new_v4().to_string();
     let id = InstanceId::new(id_str).map_err(|_| InstanceServiceError::InvalidInput)?;
-    let directory = get_app_data_dir().join("servers").join(id.as_str());
+    // 服务器目录取 jar 文件所在目录（进程工作目录需真实存在，否则 spawn 失败）。
+    let jar_path_obj = PathBuf::from(&params.jar_path);
+    let directory = jar_path_obj
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(|path| path.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."));
     let created_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -443,9 +448,8 @@ mod tests {
         let spec = create_params_to_spec(params).expect("spec should build");
         // UUID 非空
         assert!(!spec.id.as_str().is_empty());
-        // 目录以 servers/{id} 结尾
-        assert!(spec.directory.ends_with(spec.id.as_str()));
-        assert!(spec.directory.starts_with(get_app_data_dir()));
+        // 服务器目录为 jar 所在目录（进程工作目录）
+        assert_eq!(spec.directory, PathBuf::from("/tmp"));
         // created_at > 0（除非系统时钟异常）
         assert!(spec.created_at_unix_secs > 0);
         // core_version 留空

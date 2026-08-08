@@ -21,8 +21,7 @@ use super::adapter::{
     server_status_to_frontend,
 };
 use super::models::{
-    AddExistingServerParams, CreateServerParams, ForceStopServerParams, FrontendServerInstance,
-    FrontendServerStatusInfo, UpdateServerPathParams,
+    AddExistingServerParams, CreateServerParams, FrontendServerInstance, FrontendServerStatusInfo,
 };
 
 // ── 服务句柄获取（复用 instance.rs 的模式）────────────────────────────
@@ -58,10 +57,32 @@ fn parse_id_server(id: String) -> Result<InstanceId, ServerServiceError> {
 // ── 可用命令（后端已对接）──────────────────────────────────────────────
 
 /// 创建新服务器实例（兼容 `create_server`）。
-#[tauri::command]
+///
+/// `rename_all = "camelCase"` 使前端键名对齐 `src/api/server.ts` 的调用形状。
+#[allow(clippy::too_many_arguments)]
+#[tauri::command(rename_all = "camelCase")]
 pub async fn create_server(
-    params: CreateServerParams,
+    name: String,
+    core_type: String,
+    mc_version: String,
+    max_memory: u32,
+    min_memory: u32,
+    port: u16,
+    java_path: String,
+    jar_path: String,
+    startup_mode: String,
 ) -> Result<FrontendServerInstance, InstanceServiceError> {
+    let params = CreateServerParams {
+        name,
+        core_type,
+        mc_version,
+        max_memory,
+        min_memory,
+        port,
+        java_path,
+        jar_path,
+        startup_mode,
+    };
     let spec = create_params_to_spec(params)?;
     let service = instance_service().await?;
     let instance = service.create(spec).await?;
@@ -69,10 +90,30 @@ pub async fn create_server(
 }
 
 /// 添加已存在的服务器（兼容 `add_existing_server`）。
-#[tauri::command]
+///
+/// `rename_all = "camelCase"` 使前端键名对齐 `src/api/server.ts` 的调用形状。
+#[allow(clippy::too_many_arguments)]
+#[tauri::command(rename_all = "camelCase")]
 pub async fn add_existing_server(
-    params: AddExistingServerParams,
+    name: String,
+    server_path: String,
+    java_path: String,
+    max_memory: u32,
+    min_memory: u32,
+    port: u16,
+    startup_mode: String,
+    executable_path: Option<String>,
 ) -> Result<FrontendServerInstance, InstanceServiceError> {
+    let params = AddExistingServerParams {
+        name,
+        server_path,
+        java_path,
+        max_memory,
+        min_memory,
+        port,
+        startup_mode,
+        executable_path,
+    };
     let spec = add_existing_params_to_spec(params)?;
     let service = instance_service().await?;
     let instance = service.create(spec).await?;
@@ -106,13 +147,17 @@ pub async fn update_server_name(id: String, name: String) -> Result<(), Instance
 /// 更新服务器路径（兼容 `update_server_path`）。
 ///
 /// 第一阶段只改目录，丢弃 `newJarPath`/`newStartupMode`（待 Phase 2 扩展）。
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 pub async fn update_server_path(
-    params: UpdateServerPathParams,
+    id: String,
+    new_path: String,
+    new_jar_path: Option<String>,
+    new_startup_mode: Option<String>,
 ) -> Result<FrontendServerInstance, InstanceServiceError> {
+    let _ = (new_jar_path, new_startup_mode);
     let service = instance_service().await?;
-    let id = parse_id(params.id)?;
-    service.update_path(&id, &params.new_path).await?;
+    let id = parse_id(id)?;
+    service.update_path(&id, &new_path).await?;
     let instance = service
         .find(&id)
         .await?
@@ -142,10 +187,14 @@ pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {
 ///
 /// Phase 1 后端无 Daemon，无法验证 token；`prepare_force_stop_server` 同样返回
 /// Unsupported，故此处 token 一并忽略。Phase 2 接入 Daemon 后需恢复 token 校验链路。
-#[tauri::command]
-pub async fn force_stop_server(params: ForceStopServerParams) -> Result<(), ServerServiceError> {
+#[tauri::command(rename_all = "camelCase")]
+pub async fn force_stop_server(
+    id: String,
+    confirmation_token: String,
+) -> Result<(), ServerServiceError> {
+    let _ = confirmation_token;
     let service = server_service().await?;
-    let id = parse_id_server(params.id)?;
+    let id = parse_id_server(id)?;
     service.force_stop(&id).await
 }
 

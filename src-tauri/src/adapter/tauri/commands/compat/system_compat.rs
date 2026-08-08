@@ -16,9 +16,7 @@ use tauri_plugin_opener::OpenerExt;
 
 use super::adapter::{process_usage_to_resource_usage, system_snapshot_to_frontend};
 use super::error::instance_err_to_system;
-use super::models::{
-    FrontendServerResourceUsage, FrontendSystemInfo, GetServerResourceUsageParams,
-};
+use super::models::{FrontendServerResourceUsage, FrontendSystemInfo};
 
 // ── 可用命令 ──────────────────────────────────────────────────────────
 
@@ -68,17 +66,16 @@ pub async fn open_folder(app: tauri::AppHandle, path: String) -> Result<(), Syst
 
 /// 获取服务器资源占用（兼容 `get_server_resource_usage`）。
 ///
-/// 跨域调用：先调 instance 服务取 pid，再调 system 服务取进程占用。
-/// 第一阶段因 instance.status 未接 Daemon 而返回 Unsupported；适配代码前向就绪。
-#[tauri::command]
+/// 跨域调用：先经 server 服务取进程状态与 pid，再调 system 服务取进程占用。
+#[tauri::command(rename_all = "camelCase")]
 pub async fn get_server_resource_usage(
-    params: GetServerResourceUsageParams,
+    server_id: String,
 ) -> Result<FrontendServerResourceUsage, SystemServiceError> {
     let services = AppServices::get()
         .await
         .map_err(|_| SystemServiceError::OperationFailed)?;
-    let instance_id = InstanceId::new(params.server_id.clone())
-        .map_err(|_| SystemServiceError::OperationFailed)?;
+    let instance_id =
+        InstanceId::new(server_id.clone()).map_err(|_| SystemServiceError::OperationFailed)?;
 
     // 取实例状态获取 pid（经服务器进程管理服务）。
     let status = services
@@ -103,7 +100,7 @@ pub async fn get_server_resource_usage(
         .ok_or(SystemServiceError::OperationFailed)?;
 
     Ok(process_usage_to_resource_usage(
-        params.server_id,
+        server_id,
         instance.name,
         "Running".to_string(),
         usage,

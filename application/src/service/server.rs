@@ -10,6 +10,7 @@
 //! [`ServerService`] 时统一转为接口契约错误 [`ServerServiceError`]。
 
 use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -17,8 +18,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use async_trait::async_trait;
 use sealantern_core::instance::{Instance, InstanceId, StartupMode};
 use sealantern_core::process::{
-    build_command, CommandBuildMode, CommandBuildRequest, Daemon, Terminal, TerminalOutput,
-    TerminalStream,
+    build_command, CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal,
+    TerminalOutput, TerminalStream, WindowsConsoleEncoding,
 };
 use sealantern_interface::server::{ServerSnapshot, ServerState};
 use sealantern_interface::{InstanceService, ServerService, ServerServiceError};
@@ -66,8 +67,8 @@ impl CoreServerService {
         self.instance_service
             .find(id)
             .await
-            .map_err(|_| ServerError::OperationFailed {
-                source: Box::new(std::io::Error::other("instance lookup failed")),
+            .map_err(|e| ServerError::OperationFailed {
+                source: Box::new(std::io::Error::other(format!("instance lookup failed: {e}"))),
             })?
             .ok_or(ServerError::InstanceNotFound)
     }
@@ -86,18 +87,29 @@ impl CoreServerService {
             StartupMode::Custom => CommandBuildMode::Custom,
         };
 
+        // 组装 JVM 参数（Xmx/Xms/编码 + 实例自定义参数）。
+        // 默认 JVM 参数（全局配置）当前为空，待配置功能恢复后接入。
+        let jvm_arguments = build_jvm_arguments(instance, "");
+        // 从 Java 可执行文件推导 JAVA_HOME / bin（供脚本与自定义模式注入环境）。
+        let java_environment = launch
+            .java_executable
+            .as_deref()
+            .map(JavaEnvironment::from_java_executable)
+            .transpose()
+            .map_err(|e| ServerError::OperationFailed { source: Box::new(e) })?;
+
         let request = CommandBuildRequest {
             mode,
             working_directory: Path::new(&instance.directory),
             java_executable: launch.java_executable.as_deref(),
-            java_environment: None,
-            jvm_arguments: &[],
+            java_environment: java_environment.as_ref(),
+            jvm_arguments: &jvm_arguments,
             entry_path: launch.startup_target.as_deref(),
             custom_command: launch.custom_command.as_deref(),
             custom_executable: launch.custom_executable.as_deref(),
             custom_arguments: &[],
             installer_url: None,
-            windows_console_encoding: sealantern_core::process::WindowsConsoleEncoding::Utf8,
+            windows_console_encoding: WindowsConsoleEncoding::Utf8,
         };
 
         build_command(&request).map_err(|e| ServerError::OperationFailed { source: Box::new(e) })
@@ -212,13 +224,34 @@ impl ServerService for CoreServerService {
             }
         }
 
-        let mut command = self.build_process_command(&instance)?;
+        let mut command = match self.build_process_command(&instance) {
+            Ok(command) => command,
+            Err(error) => {
+                tracing::error!(
+                    target: "sealantern.application.server",
+                    instance_id = %id_str,
+                    error = %error,
+                    "failed to build process command"
+                );
+                return Err(error.into());
+            }
+        };
         command.stdin(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());
         command.stderr(std::process::Stdio::piped());
 
-        let mut daemon = Daemon::spawn(&mut command)
-            .map_err(|e| ServerError::OperationFailed { source: Box::new(e) })?;
+        let mut daemon = match Daemon::spawn(&mut command) {
+            Ok(daemon) => daemon,
+            Err(error) => {
+                tracing::error!(
+                    target: "sealantern.application.server",
+                    instance_id = %id_str,
+                    error = %error,
+                    "failed to spawn server process"
+                );
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+            }
+        };
         let terminal = Terminal::from_daemon_with_input(&mut daemon, true);
 
         self.mark_starting(&id_str);
@@ -377,4 +410,29 @@ fn current_timestamp_secs() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+/// 组装服务器进程的 JVM 参数。
+///
+/// 顺序（对齐历史版本 `build_managed_jvm_args`）：
+/// 1. `-Xmx{max}M` / `-Xms{min}M`（来自实例内存配置）
+/// 2. 编码参数（`-Dfile.encoding` 等，当前固定 UTF-8）
+/// 3. 全局默认 JVM 参数（`default_jvm_args`，配置功能恢复前为空）
+/// 4. 实例自定义参数（`launch.jvm_arguments`）
+fn build_jvm_arguments(instance: &Instance, default_jvm_args: &str) -> Vec<OsString> {
+    let mut args = vec![
+        OsString::from(format!("-Xmx{}M", instance.max_memory_mib)),
+        OsString::from(format!("-Xms{}M", instance.min_memory_mib)),
+        OsString::from("-Dfile.encoding=UTF-8"),
+        OsString::from("-Dsun.stdout.encoding=UTF-8"),
+        OsString::from("-Dsun.stderr.encoding=UTF-8"),
+    ];
+
+    // 全局默认 JVM 参数（配置功能恢复后接入真实值）。
+    for arg in default_jvm_args.split_whitespace() {
+        args.push(OsString::from(arg));
+    }
+
+    args.extend(instance.launch.jvm_arguments.iter().map(OsString::from));
+    args
 }
