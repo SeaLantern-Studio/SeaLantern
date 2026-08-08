@@ -75,9 +75,6 @@
   "lint-staged": {
     "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md,toml}": [
       "pnpm exec oxfmt"
-    ],
-    "*.rs": [
-      "cargo fmt"
     ]
   },
   "packageManager": "pnpm@9.15.9"

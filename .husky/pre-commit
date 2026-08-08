@@ -6,3 +6,4 @@ if ! pnpm exec lint-staged --version >/dev/null 2>&1; then
 fi
 
 pnpm exec lint-staged
+cargo fmt
