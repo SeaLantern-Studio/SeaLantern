@@ -14,7 +14,9 @@
 use std::sync::Arc;
 
 use crate::error::InstanceError;
-use crate::service::{CoreInstanceService, CoreServerService, CoreSystemService};
+use crate::service::{
+    CoreDownloadService, CoreInstanceService, CoreServerService, CoreSystemService,
+};
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
 #[derive(Clone)]
@@ -28,6 +30,8 @@ pub struct AppServices {
 /// 后续新增服务只需在此加一个 `Arc<XxxService>` 字段，在 [`AppServices`]
 /// 下补一条 `pub async fn xxx_service()` 便捷函数即可，无需改动调用方。
 pub struct AppServicesInner {
+    /// 下载任务管理服务。
+    pub download: Arc<CoreDownloadService>,
     /// 服务器实例记录管理服务。
     pub instance: Arc<CoreInstanceService>,
     /// 服务器进程管理服务。
@@ -43,11 +47,12 @@ static SERVICES: tokio::sync::RwLock<Option<Arc<AppServicesInner>>> =
 impl AppServices {
     /// 从既有实例构造句柄（供测试/重载注入 `register`）。
     ///
-    /// 服务器进程服务共享同一实例服务句柄；系统资源服务为无状态实现，自动构造。
+    /// 服务器进程服务共享同一实例服务句柄；下载/系统资源服务自动构造。
     pub fn from_inner(instance: CoreInstanceService) -> Self {
         let instance = Arc::new(instance);
         Self {
             inner: Arc::new(AppServicesInner {
+                download: Arc::new(CoreDownloadService::default()),
                 server: Arc::new(CoreServerService::new(instance.clone())),
                 instance,
                 system: Arc::new(CoreSystemService),
@@ -95,6 +100,16 @@ impl AppServices {
             .try_read()
             .ok()
             .and_then(|g| g.clone().map(|inner| Self { inner }))
+    }
+
+    /// 访问下载任务管理服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn download(&self) -> &Arc<CoreDownloadService> {
+        &self.inner.download
+    }
+
+    /// 便捷访问入口：一步拿到下载任务管理服务的共享句柄（惰性初始化 + 可替换）。
+    pub async fn download_service() -> Result<Arc<CoreDownloadService>, InstanceError> {
+        Ok(Self::get().await?.download().clone())
     }
 
     /// 访问实例管理服务（`Arc` 共享句柄，clone 廉价）。
