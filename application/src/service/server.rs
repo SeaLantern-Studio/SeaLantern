@@ -153,17 +153,10 @@ impl CoreServerService {
 #[async_trait]
 impl ServerService for CoreServerService {
     async fn status(&self, id: &InstanceId) -> Result<ServerSnapshot, ServerServiceError> {
-        // 确认实例存在。
-        self.find_instance(id).await?;
-
+        // 确认实例存在，并复用实例信息避免重复查询与状态不一致。
+        let instance = self.find_instance(id).await?;
         let id_str = id.as_str().to_string();
-        let started_at = self
-            .instance_service
-            .find(id)
-            .await
-            .ok()
-            .flatten()
-            .and_then(|instance| instance.last_started_at_unix_secs);
+        let started_at = instance.last_started_at_unix_secs;
 
         let mut processes = self.processes_lock()?;
         if let Some(managed) = processes.get_mut(&id_str) {
@@ -247,6 +240,9 @@ impl ServerService for CoreServerService {
             let stderr = managed.terminal.take_output(TerminalStream::Stderr);
             spawn_output_reader(id_str.clone(), stdout, stderr);
         }
+
+        // 进程已成功拉起并注册，退出 Starting 状态（Starting 仅覆盖 spawn 竞态窗口）。
+        self.clear_starting(&id_str);
 
         Ok(())
     }
@@ -355,9 +351,15 @@ fn spawn_output_reader(
                 let mut buffer = [0u8; 4096];
                 match std::io::Read::read(&mut reader, &mut buffer) {
                     Ok(0) => {} // EOF：丢弃该流。
-                    Ok(_n) => {
-                        // 占位：输出暂不处理。接入日志管线后在此记录。
-                        let _ = instance_id.clone();
+                    Ok(n) => {
+                        // 当前仅消费输出以防管道阻塞；debug 级记录便于诊断进程问题。
+                        let text = String::from_utf8_lossy(&buffer[..n]);
+                        tracing::debug!(
+                            target: "sealantern.application.server",
+                            instance_id,
+                            output = %text.trim_end(),
+                            "server process output"
+                        );
                         next.push(reader);
                     }
                     Err(_) => {} // 读取错误：丢弃该流。

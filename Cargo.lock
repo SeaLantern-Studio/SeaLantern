@@ -5223,6 +5223,7 @@ dependencies = [
  "sealantern-infra",
  "sealantern-interface",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
