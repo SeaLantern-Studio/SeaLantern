@@ -69,3 +69,36 @@ impl std::fmt::Display for SystemServiceError {
 }
 
 impl std::error::Error for SystemServiceError {}
+
+/// 服务器进程管理失败的契约错误类别。
+///
+/// 分类风格与其他契约错误一致：不携带主机路径、进程细节等敏感信息，
+/// 底层失败详情由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum ServerServiceError {
+    /// 指定的实例不存在。
+    InstanceNotFound,
+    /// 服务器进程当前状态不允许该操作（如未运行时停止、已运行时重复启动）。
+    InvalidState,
+    /// 客户端提供的输入不合法。
+    InvalidInput,
+    /// 底层进程 / IO 操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
+impl std::fmt::Display for ServerServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InstanceNotFound => "server instance not found",
+            Self::InvalidState => "server is in an invalid state for this operation",
+            Self::InvalidInput => "invalid input",
+            Self::OperationFailed => "server operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for ServerServiceError {}

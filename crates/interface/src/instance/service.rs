@@ -1,14 +1,13 @@
 use crate::error::InstanceServiceError;
 use async_trait::async_trait;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
-use sealantern_core::server::ServerStatus;
 
-/// 管理服务器实例的宿主能力端口。
+/// 管理服务器实例记录的宿主能力端口。
 ///
-/// 覆盖实例的查询、生命周期（启动/停止/强制停止）与 CRUD（创建/删除/重命名/改路径）。
-/// 方法均为异步：内部涉及持久化 IO 与进程管理。供给（导入、整合包、扫描等）方法在
-/// 后续迭代补充。实现方负责组合 `core` 的 repository、provisioning plan 与 process 能力，
-/// 不依赖任何具体传输。
+/// 覆盖实例记录的查询与 CRUD（创建/删除/重命名/改路径），不涉及进程操作。
+/// 实例的启动/停止/状态等进程生命周期由 [`ServerService`](crate::ServerService)
+/// 提供。方法均为异步：内部涉及持久化 IO。供给（导入、整合包、扫描等）方法在
+/// 后续迭代补充。实现方负责组合 `core` 的 repository 能力，不依赖任何具体传输。
 #[async_trait]
 pub trait InstanceService: Send + Sync {
     /// 列出全部实例。
@@ -16,18 +15,6 @@ pub trait InstanceService: Send + Sync {
 
     /// 按 ID 查找实例，不存在时返回 `None`。
     async fn find(&self, id: &InstanceId) -> Result<Option<Instance>, InstanceServiceError>;
-
-    /// 查询实例的当前运行状态。
-    async fn status(&self, id: &InstanceId) -> Result<ServerStatus, InstanceServiceError>;
-
-    /// 启动实例。
-    async fn start(&self, id: &InstanceId) -> Result<(), InstanceServiceError>;
-
-    /// 优雅停止实例。
-    async fn stop(&self, id: &InstanceId) -> Result<(), InstanceServiceError>;
-
-    /// 强制停止实例（终止进程树）。
-    async fn force_stop(&self, id: &InstanceId) -> Result<(), InstanceServiceError>;
 
     /// 创建新实例并持久化。
     async fn create(&self, spec: InstanceSpec) -> Result<Instance, InstanceServiceError>;
@@ -98,29 +85,6 @@ mod tests {
             Ok(Some(sample_instance()))
         }
 
-        async fn status(&self, _id: &InstanceId) -> Result<ServerStatus, InstanceServiceError> {
-            self.calls.lock().expect("lock").push("status");
-            Ok(ServerStatus {
-                process_id: 0,
-                state: sealantern_core::server::ServerProcessState::Running,
-            })
-        }
-
-        async fn start(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
-            self.calls.lock().expect("lock").push("start");
-            Ok(())
-        }
-
-        async fn stop(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
-            self.calls.lock().expect("lock").push("stop");
-            Ok(())
-        }
-
-        async fn force_stop(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
-            self.calls.lock().expect("lock").push("force_stop");
-            Ok(())
-        }
-
         async fn create(&self, _spec: InstanceSpec) -> Result<Instance, InstanceServiceError> {
             self.calls.lock().expect("lock").push("create");
             Ok(sample_instance())
@@ -147,19 +111,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn service_contract_supports_query_lifecycle_and_crud_calls() {
+    async fn service_contract_supports_query_and_crud_calls() {
         let service = FakeInstanceService { calls: Mutex::new(Vec::new()) };
         let id = InstanceId::new("server-42").expect("valid id");
 
         assert_eq!(service.list().await.expect("list").len(), 1);
         assert!(service.find(&id).await.expect("find").is_some());
-        assert!(matches!(
-            service.status(&id).await.expect("status").state,
-            sealantern_core::server::ServerProcessState::Running
-        ));
-        service.start(&id).await.expect("start");
-        service.stop(&id).await.expect("stop");
-        service.force_stop(&id).await.expect("force_stop");
         service.create(sample_spec()).await.expect("create");
         service.delete(&id).await.expect("delete");
         service.rename(&id, "新名字").await.expect("rename");
@@ -170,18 +127,7 @@ mod tests {
 
         assert_eq!(
             *service.calls.lock().expect("lock"),
-            vec![
-                "list",
-                "find",
-                "status",
-                "start",
-                "stop",
-                "force_stop",
-                "create",
-                "delete",
-                "rename",
-                "update_path"
-            ]
+            vec!["list", "find", "create", "delete", "rename", "update_path"]
         );
     }
 }

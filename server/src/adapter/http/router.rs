@@ -34,9 +34,20 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         .route("/instances/{id}", get(handlers::get_instance))
         .route("/instances/{id}", delete(handlers::delete_instance))
         .route("/instances/{id}", patch(handlers::rename_instance))
+        // ── 嵌套子资源（服务器进程生命周期） ──
+        .route("/instances/{id}/status", get(handlers::server_status))
+        .route("/instances/{id}/start", post(handlers::start_server))
+        .route("/instances/{id}/stop", post(handlers::stop_server))
+        .route(
+            "/instances/{id}/force-stop",
+            post(handlers::force_stop_server),
+        )
+        .route(
+            "/instances/{id}/command",
+            post(handlers::send_server_command),
+        )
         // ── 嵌套子资源（后续扩展） ──
-        // 示例：.route("/instances/{id}/status", get(handlers::instance_status))
-        //       .route("/instances/{id}/logs", get(handlers::instance_logs))
+        // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));
 
     let system_routes = Router::new()

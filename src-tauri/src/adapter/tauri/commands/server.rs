@@ -1,0 +1,71 @@
+//! 服务器进程管理 Tauri 命令。
+//!
+//! 前端通过 `invoke` 调用这些命令，命令内部经应用装配层拿到
+//! [`CoreServerService`](sealantern_application::service::CoreServerService)
+//! 管理服务器进程生命周期（启动/停止/强制停止/状态/控制台命令）。
+//!
+//! 错误统一为接口契约错误 [`ServerServiceError`]，可序列化回前端，
+//! 不携带底层敏感细节。
+
+use std::sync::Arc;
+
+use sealantern_application::service::CoreServerService;
+use sealantern_application::services::AppServices;
+use sealantern_core::instance::InstanceId;
+use sealantern_interface::server::ServerSnapshot;
+use sealantern_interface::{ServerService, ServerServiceError};
+
+/// 获取全局服务器进程管理服务句柄（惰性初始化容器）。
+async fn server_service() -> Result<Arc<CoreServerService>, ServerServiceError> {
+    let services = AppServices::get()
+        .await
+        .map_err(|_| ServerServiceError::OperationFailed)?;
+    Ok(services.server().clone())
+}
+
+/// 解析 Tauri 命令传入的实例 ID 字符串。
+///
+/// 统一映射解析错误为 [`ServerServiceError::InvalidInput`]。
+fn parse_id_for_tauri(id: String) -> Result<InstanceId, ServerServiceError> {
+    InstanceId::new(id).map_err(|_| ServerServiceError::InvalidInput)
+}
+
+/// 查询服务器进程状态。
+#[tauri::command]
+pub async fn server_status(id: String) -> Result<ServerSnapshot, ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_for_tauri(id)?;
+    service.status(&id).await
+}
+
+/// 启动服务器进程。
+#[tauri::command]
+pub async fn start_server(id: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_for_tauri(id)?;
+    service.start(&id).await
+}
+
+/// 优雅停止服务器进程。
+#[tauri::command]
+pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_for_tauri(id)?;
+    service.stop(&id).await
+}
+
+/// 强制停止服务器进程（终止进程树）。
+#[tauri::command]
+pub async fn force_stop_server(id: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_for_tauri(id)?;
+    service.force_stop(&id).await
+}
+
+/// 向服务器控制台发送单行命令。
+#[tauri::command]
+pub async fn send_server_command(id: String, command: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_for_tauri(id)?;
+    service.send_command(&id, &command).await
+}
