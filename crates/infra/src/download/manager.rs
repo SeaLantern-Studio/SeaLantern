@@ -39,7 +39,11 @@ pub struct DownloadManager {
 }
 
 impl DownloadManager {
-    pub(crate) fn new(client: NetClient) -> Self {
+    /// 创建下载任务管理器（供上层显式持有与注入）。
+    ///
+    /// 也可通过 [`Self::instance`] 获取进程级全局单例；显式构造便于
+    /// application 层按服务装配方式持有，而非被全局单例反向绑定。
+    pub fn new(client: NetClient) -> Self {
         Self {
             downloader: Downloader::new(client),
             tasks: Arc::new(RwLock::new(HashMap::new())),

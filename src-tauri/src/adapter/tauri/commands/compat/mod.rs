@@ -14,6 +14,7 @@
 //! 未对接后端的命令一律返回 `Unsupported`，绝不静默 no-op。
 
 pub mod adapter;
+pub mod download_compat;
 pub mod error;
 pub mod instance_compat;
 pub mod models;

@@ -102,3 +102,33 @@ impl std::fmt::Display for ServerServiceError {
 }
 
 impl std::error::Error for ServerServiceError {}
+
+/// 下载任务管理失败的契约错误类别。
+///
+/// 分类风格与其他契约错误一致：不携带 URL、路径等敏感信息，底层失败详情
+/// 由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum DownloadServiceError {
+    /// 指定的下载任务不存在。
+    TaskNotFound,
+    /// 客户端提供的输入不合法（如空 URL）。
+    InvalidInput,
+    /// 底层网络 / IO 操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
+impl std::fmt::Display for DownloadServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::TaskNotFound => "download task not found",
+            Self::InvalidInput => "invalid input",
+            Self::OperationFailed => "download operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for DownloadServiceError {}

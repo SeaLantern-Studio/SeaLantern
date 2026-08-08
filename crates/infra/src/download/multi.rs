@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use crate::download::single::stream_download;
 use crate::download::status::{DownloadError, DownloadStatus};
 use crate::download::tasks::{spawn_download_tasks, spawn_task_monitor};
 use crate::net::client::NetClient;
@@ -63,12 +64,10 @@ impl Downloader {
 
         let remote = self.client.probe(url).await?;
 
+        // 服务器未提供 Content-Length（如 chunked 响应）：多线程分段无法预分配，
+        // 改用单线程流式下载，避免「建空文件 + 立即标记完成」的状态失效。
         if remote.total_size == 0 {
-            if let Some(parent) = std::path::Path::new(output_path).parent() {
-                tokio::fs::create_dir_all(parent).await?;
-            }
-            tokio::fs::File::create(output_path).await?;
-            return Ok(Arc::new(DownloadStatus::new(0)));
+            return stream_download(&self.client, url, output_path).await;
         }
 
         let actual_thread_count = if remote.supports_range {
