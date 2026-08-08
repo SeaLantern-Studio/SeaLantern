@@ -9,7 +9,9 @@
 
 use std::sync::Arc;
 
-use sealantern_application::service::{CoreInstanceService, CoreServerService, CoreSystemService};
+use sealantern_application::service::{
+    CoreInstanceService, CoreServerService, CoreSettingsService, CoreSystemService,
+};
 use sealantern_application::services::AppServices;
 
 /// HTTP 层的共享应用状态。
@@ -34,6 +36,11 @@ impl AppState {
     /// 访问服务器进程管理服务（`Arc` 共享句柄，clone 廉价）。
     pub fn server(&self) -> Arc<CoreServerService> {
         self.services.server().clone()
+    }
+
+    /// 访问设置信息服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn settings(&self) -> Arc<CoreSettingsService> {
+        self.services.settings().clone()
     }
 
     /// 访问系统资源信息服务（`Arc` 共享句柄，clone 廉价）。

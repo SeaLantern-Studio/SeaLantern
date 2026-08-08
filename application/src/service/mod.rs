@@ -6,8 +6,10 @@
 
 mod instance;
 mod server;
+mod settings;
 mod system;
 
 pub use instance::CoreInstanceService;
 pub use server::CoreServerService;
+pub use settings::CoreSettingsService;
 pub use system::CoreSystemService;

@@ -9,7 +9,9 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Serialize;
 
-use sealantern_interface::{InstanceServiceError, ServerServiceError, SystemServiceError};
+use sealantern_interface::{
+    InstanceServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
+};
 
 /// 展平的 HTTP 错误响应体。
 #[derive(Debug, Serialize)]
@@ -68,27 +70,6 @@ impl HttpError {
         }
     }
 
-    /// 由系统资源信息服务契约错误构建 HTTP 错误。
-    pub fn from_system_error(error: SystemServiceError) -> Self {
-        match error {
-            SystemServiceError::ProcessNotFound | SystemServiceError::PathNotFound => Self {
-                status: StatusCode::NOT_FOUND,
-                code: "system_resource_not_found",
-                message: error.to_string(),
-            },
-            SystemServiceError::OperationFailed => Self {
-                status: StatusCode::INTERNAL_SERVER_ERROR,
-                code: "system_operation_failed",
-                message: error.to_string(),
-            },
-            SystemServiceError::Unsupported => Self {
-                status: StatusCode::NOT_IMPLEMENTED,
-                code: "operation_unsupported",
-                message: error.to_string(),
-            },
-        }
-    }
-
     /// 由服务器进程管理契约错误构建 HTTP 错误。
     pub fn from_server_error(error: ServerServiceError) -> Self {
         match error {
@@ -113,6 +94,48 @@ impl HttpError {
                 message: error.to_string(),
             },
             ServerServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// 由设置信息服务契约错误构建 HTTP 错误。
+    pub fn from_settings_error(error: SettingsServiceError) -> Self {
+        match error {
+            SettingsServiceError::NotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "settings_not_found",
+                message: error.to_string(),
+            },
+            SettingsServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "settings_operation_failed",
+                message: error.to_string(),
+            },
+            SettingsServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// 由系统资源信息服务契约错误构建 HTTP 错误。
+    pub fn from_system_error(error: SystemServiceError) -> Self {
+        match error {
+            SystemServiceError::ProcessNotFound | SystemServiceError::PathNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "system_resource_not_found",
+                message: error.to_string(),
+            },
+            SystemServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "system_operation_failed",
+                message: error.to_string(),
+            },
+            SystemServiceError::Unsupported => Self {
                 status: StatusCode::NOT_IMPLEMENTED,
                 code: "operation_unsupported",
                 message: error.to_string(),
@@ -145,15 +168,21 @@ impl From<InstanceServiceError> for HttpError {
     }
 }
 
-impl From<SystemServiceError> for HttpError {
-    fn from(error: SystemServiceError) -> Self {
-        Self::from_system_error(error)
-    }
-}
-
 impl From<ServerServiceError> for HttpError {
     fn from(error: ServerServiceError) -> Self {
         Self::from_server_error(error)
+    }
+}
+
+impl From<SettingsServiceError> for HttpError {
+    fn from(error: SettingsServiceError) -> Self {
+        Self::from_settings_error(error)
+    }
+}
+
+impl From<SystemServiceError> for HttpError {
+    fn from(error: SystemServiceError) -> Self {
+        Self::from_system_error(error)
     }
 }
 

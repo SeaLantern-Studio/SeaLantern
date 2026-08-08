@@ -30,6 +30,8 @@ pub enum InstanceError {
     },
     /// 该能力尚未实现（占位）。
     Unsupported,
+    /// 内部错误（如设置管理器加载失败）。
+    Internal(String),
 }
 
 impl fmt::Display for InstanceError {
@@ -45,6 +47,7 @@ impl fmt::Display for InstanceError {
                 write!(formatter, "server instance operation failed: {source}")
             }
             Self::Unsupported => write!(formatter, "operation not supported"),
+            Self::Internal(msg) => write!(formatter, "internal error: {msg}"),
         }
     }
 }
@@ -83,6 +86,7 @@ impl From<InstanceError> for InstanceServiceError {
             InstanceError::InvalidState => Self::InvalidState,
             InstanceError::OperationFailed { .. } => Self::OperationFailed,
             InstanceError::Unsupported => Self::Unsupported,
+            InstanceError::Internal(_) => Self::OperationFailed,
         }
     }
 }

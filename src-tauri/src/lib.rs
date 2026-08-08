@@ -13,9 +13,17 @@ use adapter::tauri::commands::compat::instance_compat::{
     scan_startup_candidates, send_command, start_server, stop_server, update_server_name,
     update_server_path, validate_server_path,
 };
+use adapter::tauri::commands::compat::settings_compat::{
+    export_settings, get_settings, import_settings, reset_settings, save_settings,
+    save_settings_with_diff, update_settings_partial,
+};
 use adapter::tauri::commands::compat::system_compat::{
     get_default_run_path, get_safe_mode_status, get_server_resource_usage, get_system_info,
     open_file, open_folder, remove_file, test_ipv6_connectivity,
+};
+use adapter::tauri::commands::settings::get_settings_overview;
+use adapter::tauri::commands::system::{
+    get_directory_usage, get_process_usage, get_system_snapshot,
 };
 use desktop::{
     desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
@@ -46,12 +54,19 @@ pub fn run() {
             desktop_pick_save_file,
             desktop_pick_server_executable,
             desktop_pick_startup_file,
+            //settings能力（由adapter/tauri/commands接入application）
+            get_settings_overview,
+            //系统资源能力（由adapter/tauri/commands接入application）
+            get_directory_usage,
+            get_process_usage,
+            get_system_snapshot,
             //兼容层（前端旧命令名 → 新服务，由adapter/tauri/commands/compat提供）
             add_existing_server,
             collect_copy_conflicts,
             copy_directory_contents,
             create_server,
             delete_server,
+            export_settings,
             force_stop_server,
             get_default_run_path,
             get_safe_mode_status,
@@ -59,14 +74,19 @@ pub fn run() {
             get_server_logs,
             get_server_resource_usage,
             get_server_status,
+            get_settings,
             get_system_info,
             import_modpack,
             import_server,
+            import_settings,
             open_file,
             open_folder,
             parse_server_core_type,
             prepare_force_stop_server,
             remove_file,
+            reset_settings,
+            save_settings,
+            save_settings_with_diff,
             scan_startup_candidates,
             send_command,
             start_server,
@@ -74,6 +94,7 @@ pub fn run() {
             test_ipv6_connectivity,
             update_server_name,
             update_server_path,
+            update_settings_partial,
             validate_server_path
         ])
         .setup(|app| {

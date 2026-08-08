@@ -4,6 +4,7 @@
 
 pub mod instance;
 pub mod server;
+pub mod settings;
 pub mod system;
 
 pub use instance::{
@@ -13,4 +14,5 @@ pub use instance::{
 pub use server::{
     force_stop_server, send_server_command, server_status, start_server, stop_server,
 };
+pub use settings::settings_overview;
 pub use system::{directory_usage, process_usage, system_snapshot};
