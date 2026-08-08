@@ -50,8 +50,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));
 
-    let settings_routes = Router::new()
-        .route("/settings", get(handlers::settings_overview));
+    let settings_routes = Router::new().route("/settings", get(handlers::settings_overview));
 
     let system_routes = Router::new()
         .route("/system", get(handlers::system_snapshot))

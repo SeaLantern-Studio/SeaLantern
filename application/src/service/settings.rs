@@ -275,12 +275,10 @@ fn build_appearance_group() -> SettingsGroupInfo {
                 required: false,
                 has_value: true,
                 default_value: Some("\"default\"".to_string()),
-                options: vec![
-                    SettingsOption {
-                        value: "default".to_string(),
-                        display_name: "settings.color_default".to_string(),
-                    },
-                ],
+                options: vec![SettingsOption {
+                    value: "default".to_string(),
+                    display_name: "settings.color_default".to_string(),
+                }],
             },
             SettingsEntry {
                 id: "font_size".to_string(),

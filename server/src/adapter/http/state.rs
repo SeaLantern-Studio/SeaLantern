@@ -9,7 +9,9 @@
 
 use std::sync::Arc;
 
-use sealantern_application::service::{CoreInstanceService, CoreServerService, CoreSettingsService, CoreSystemService};
+use sealantern_application::service::{
+    CoreInstanceService, CoreServerService, CoreSettingsService, CoreSystemService,
+};
 use sealantern_application::services::AppServices;
 
 /// HTTP 层的共享应用状态。

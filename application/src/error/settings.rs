@@ -28,7 +28,9 @@ impl fmt::Display for SettingsError {
             Self::OperationFailed { source } => {
                 write!(formatter, "settings operation failed: {source}")
             }
-            Self::Internal { source } => write!(formatter, "internal settings task failed: {source}"),
+            Self::Internal { source } => {
+                write!(formatter, "internal settings task failed: {source}")
+            }
         }
     }
 }

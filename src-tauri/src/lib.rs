@@ -13,6 +13,10 @@ use adapter::tauri::commands::compat::instance_compat::{
     scan_startup_candidates, send_command, start_server, stop_server, update_server_name,
     update_server_path, validate_server_path,
 };
+use adapter::tauri::commands::compat::settings_compat::{
+    export_settings, get_settings, import_settings, reset_settings, save_settings,
+    save_settings_with_diff, update_settings_partial,
+};
 use adapter::tauri::commands::compat::system_compat::{
     get_default_run_path, get_safe_mode_status, get_server_resource_usage, get_system_info,
     open_file, open_folder, remove_file, test_ipv6_connectivity,
@@ -62,6 +66,7 @@ pub fn run() {
             copy_directory_contents,
             create_server,
             delete_server,
+            export_settings,
             force_stop_server,
             get_default_run_path,
             get_safe_mode_status,
@@ -69,14 +74,19 @@ pub fn run() {
             get_server_logs,
             get_server_resource_usage,
             get_server_status,
+            get_settings,
             get_system_info,
             import_modpack,
             import_server,
+            import_settings,
             open_file,
             open_folder,
             parse_server_core_type,
             prepare_force_stop_server,
             remove_file,
+            reset_settings,
+            save_settings,
+            save_settings_with_diff,
             scan_startup_candidates,
             send_command,
             start_server,
@@ -84,6 +94,7 @@ pub fn run() {
             test_ipv6_connectivity,
             update_server_name,
             update_server_path,
+            update_settings_partial,
             validate_server_path
         ])
         .setup(|app| {

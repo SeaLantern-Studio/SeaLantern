@@ -9,7 +9,9 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Serialize;
 
-use sealantern_interface::{InstanceServiceError, ServerServiceError, SettingsServiceError, SystemServiceError};
+use sealantern_interface::{
+    InstanceServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
+};
 
 /// 展平的 HTTP 错误响应体。
 #[derive(Debug, Serialize)]
