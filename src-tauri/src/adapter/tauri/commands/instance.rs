@@ -13,7 +13,6 @@ use sealantern_application::error::InstanceError;
 use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
-use sealantern_core::server::ServerStatus;
 use sealantern_interface::{InstanceService, InstanceServiceError};
 
 /// 获取全局实例管理服务句柄（惰性初始化容器）。
@@ -47,38 +46,6 @@ pub async fn get_instance(id: String) -> Result<Option<Instance>, InstanceServic
     let service = instance_service().await?;
     let id = parse_id_for_tauri(id)?;
     service.find(&id).await
-}
-
-/// 查询实例的当前运行状态。
-#[tauri::command]
-pub async fn instance_status(id: String) -> Result<ServerStatus, InstanceServiceError> {
-    let service = instance_service().await?;
-    let id = parse_id_for_tauri(id)?;
-    service.status(&id).await
-}
-
-/// 启动实例。
-#[tauri::command]
-pub async fn start_instance(id: String) -> Result<(), InstanceServiceError> {
-    let service = instance_service().await?;
-    let id = parse_id_for_tauri(id)?;
-    service.start(&id).await
-}
-
-/// 优雅停止实例。
-#[tauri::command]
-pub async fn stop_instance(id: String) -> Result<(), InstanceServiceError> {
-    let service = instance_service().await?;
-    let id = parse_id_for_tauri(id)?;
-    service.stop(&id).await
-}
-
-/// 强制停止实例（终止进程树）。
-#[tauri::command]
-pub async fn force_stop_instance(id: String) -> Result<(), InstanceServiceError> {
-    let service = instance_service().await?;
-    let id = parse_id_for_tauri(id)?;
-    service.force_stop(&id).await
 }
 
 /// 创建新实例并持久化。

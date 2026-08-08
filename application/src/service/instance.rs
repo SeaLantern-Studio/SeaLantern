@@ -1,9 +1,9 @@
-//! 服务器实例管理服务实现。
+//! 服务器实例记录管理服务实现。
 //!
 //! 实现 [`sealantern_interface::InstanceService`] 能力端口，用 `extra` 的
 //! [`InstanceRegistry`](sealantern_extra::config::InstanceRegistry)（持久化到
-//! `sea_lantern_servers.json`）驱动查询与 CRUD。进程管理（Daemon）接入后补全
-//! 生命周期（当前返回 [`InstanceError::Unsupported`]）。
+//! `sea_lantern_servers.json`）驱动实例记录的查询与 CRUD。服务器进程生命周期
+//! 由 [`sealantern_interface::ServerService`] 负责（见 `service/server.rs`）。
 //!
 //! 错误分层：内部以应用层主错误 [`InstanceError`] 为源头，沿
 //! `core/extra/infra` → `application::error::instance` → `interface::error`
@@ -13,7 +13,6 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
-use sealantern_core::server::ServerStatus;
 use sealantern_extra::config::InstanceRegistry;
 use sealantern_infra::platform::get_app_data_dir;
 use sealantern_interface::{InstanceService, InstanceServiceError};
@@ -43,6 +42,22 @@ impl CoreInstanceService {
         Ok(Self {
             registry: tokio::sync::Mutex::new(registry),
         })
+    }
+
+    /// 更新实例的最后启动时间（服务器进程成功拉起后调用）。
+    pub async fn update_last_started(&self, id: &InstanceId) -> Result<(), InstanceError> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let mut registry = self.registry.lock().await;
+        let edited = registry
+            .edit_instance(id, |instance| instance.last_started_at_unix_secs = Some(now))
+            .await?;
+        if !edited {
+            return Err(InstanceError::NotFound);
+        }
+        Ok(())
     }
 
     /// 内部创建实例：core 校验规范化后持久化登记，返回应用层主错误。
@@ -100,22 +115,6 @@ impl InstanceService for CoreInstanceService {
     async fn find(&self, id: &InstanceId) -> Result<Option<Instance>, InstanceServiceError> {
         let registry = self.registry.lock().await;
         Ok(registry.get(id).cloned())
-    }
-
-    async fn status(&self, _id: &InstanceId) -> Result<ServerStatus, InstanceServiceError> {
-        Err(InstanceError::Unsupported.into())
-    }
-
-    async fn start(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
-        Err(InstanceError::Unsupported.into())
-    }
-
-    async fn stop(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
-        Err(InstanceError::Unsupported.into())
-    }
-
-    async fn force_stop(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
-        Err(InstanceError::Unsupported.into())
     }
 
     async fn create(&self, spec: InstanceSpec) -> Result<Instance, InstanceServiceError> {

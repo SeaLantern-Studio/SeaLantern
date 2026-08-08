@@ -7,8 +7,10 @@
 
 /// 接口契约错误类型。
 pub mod error;
-/// 服务器实例相关模型与服务端口。
+/// 服务器实例记录相关模型与服务端口。
 pub mod instance;
+/// 服务器进程管理相关模型与服务端口。
+pub mod server;
 /// 设置信息相关模型与服务端口。
 pub mod settings;
 /// 系统资源信息相关模型与服务端口。
@@ -16,12 +18,16 @@ pub mod system;
 
 /// 服务器实例管理错误枚举。
 pub use error::InstanceServiceError;
+/// 服务器进程管理错误枚举。
+pub use error::ServerServiceError;
 /// 设置信息服务错误枚举。
 pub use error::SettingsServiceError;
 /// 系统资源信息服务错误枚举。
 pub use error::SystemServiceError;
-/// 服务器实例管理服务端口。
+/// 服务器实例记录管理服务端口。
 pub use instance::InstanceService;
+/// 服务器进程管理服务端口。
+pub use server::ServerService;
 /// 设置信息服务端口。
 pub use settings::SettingsService;
 /// 系统资源信息服务端口。

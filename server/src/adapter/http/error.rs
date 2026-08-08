@@ -9,7 +9,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Serialize;
 
-use sealantern_interface::{InstanceServiceError, SettingsServiceError, SystemServiceError};
+use sealantern_interface::{InstanceServiceError, ServerServiceError, SettingsServiceError, SystemServiceError};
 
 /// 展平的 HTTP 错误响应体。
 #[derive(Debug, Serialize)]
@@ -61,6 +61,37 @@ impl HttpError {
                 message: error.to_string(),
             },
             InstanceServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// 由服务器进程管理契约错误构建 HTTP 错误。
+    pub fn from_server_error(error: ServerServiceError) -> Self {
+        match error {
+            ServerServiceError::InstanceNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "instance_not_found",
+                message: error.to_string(),
+            },
+            ServerServiceError::InvalidState => Self {
+                status: StatusCode::CONFLICT,
+                code: "server_invalid_state",
+                message: error.to_string(),
+            },
+            ServerServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_input",
+                message: error.to_string(),
+            },
+            ServerServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "server_operation_failed",
+                message: error.to_string(),
+            },
+            ServerServiceError::Unsupported => Self {
                 status: StatusCode::NOT_IMPLEMENTED,
                 code: "operation_unsupported",
                 message: error.to_string(),
@@ -132,6 +163,12 @@ impl HttpError {
 impl From<InstanceServiceError> for HttpError {
     fn from(error: InstanceServiceError) -> Self {
         Self::from_instance_error(error)
+    }
+}
+
+impl From<ServerServiceError> for HttpError {
+    fn from(error: ServerServiceError) -> Self {
+        Self::from_server_error(error)
     }
 }
 
