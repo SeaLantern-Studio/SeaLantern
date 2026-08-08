@@ -9,10 +9,12 @@
 use std::sync::Arc;
 
 use sealantern_application::error::InstanceError;
-use sealantern_application::service::CoreInstanceService;
+use sealantern_application::service::{CoreInstanceService, CoreServerService};
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::InstanceId;
-use sealantern_interface::{InstanceService, InstanceServiceError};
+use sealantern_interface::{
+    InstanceService, InstanceServiceError, ServerService, ServerServiceError,
+};
 
 use super::adapter::{
     add_existing_params_to_spec, create_params_to_spec, instance_to_frontend,
@@ -25,7 +27,7 @@ use super::models::{
 
 // ── 服务句柄获取（复用 instance.rs 的模式）────────────────────────────
 
-/// 获取全局实例管理服务句柄（惰性初始化容器）。
+/// 获取全局实例记录管理服务句柄（惰性初始化容器）。
 ///
 /// 应用层主错误 [`InstanceError`] 经 `From` 收敛为契约错误 [`InstanceServiceError`]。
 async fn instance_service() -> Result<Arc<CoreInstanceService>, InstanceServiceError> {
@@ -33,11 +35,24 @@ async fn instance_service() -> Result<Arc<CoreInstanceService>, InstanceServiceE
     Ok(services.instance().clone())
 }
 
+/// 获取全局服务器进程管理服务句柄（惰性初始化容器）。
+async fn server_service() -> Result<Arc<CoreServerService>, ServerServiceError> {
+    let services = AppServices::get()
+        .await
+        .map_err(|_| ServerServiceError::OperationFailed)?;
+    Ok(services.server().clone())
+}
+
 /// 解析实例 ID 字符串。
 fn parse_id(id: String) -> Result<InstanceId, InstanceServiceError> {
     InstanceId::new(id)
         .map_err(InstanceError::from)
         .map_err(InstanceServiceError::from)
+}
+
+/// 解析实例 ID 字符串（服务器进程命令用，错误为 `ServerServiceError`）。
+fn parse_id_server(id: String) -> Result<InstanceId, ServerServiceError> {
+    InstanceId::new(id).map_err(|_| ServerServiceError::InvalidInput)
 }
 
 // ── 可用命令（后端已对接）──────────────────────────────────────────────
@@ -105,21 +120,21 @@ pub async fn update_server_path(
     Ok(instance_to_frontend(&instance))
 }
 
-// ── 前向就绪但后端暂 Unsupported（生命周期未接 Daemon）────────────────
+// ── 服务器进程生命周期（经 ServerService 接入）────────────────────────
 
 /// 启动服务器（兼容 `start_server`）。
 #[tauri::command]
-pub async fn start_server(id: String) -> Result<(), InstanceServiceError> {
-    let service = instance_service().await?;
-    let id = parse_id(id)?;
+pub async fn start_server(id: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_server(id)?;
     service.start(&id).await
 }
 
 /// 停止服务器（兼容 `stop_server`）。
 #[tauri::command]
-pub async fn stop_server(id: String) -> Result<(), InstanceServiceError> {
-    let service = instance_service().await?;
-    let id = parse_id(id)?;
+pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_server(id)?;
     service.stop(&id).await
 }
 
@@ -128,21 +143,27 @@ pub async fn stop_server(id: String) -> Result<(), InstanceServiceError> {
 /// Phase 1 后端无 Daemon，无法验证 token；`prepare_force_stop_server` 同样返回
 /// Unsupported，故此处 token 一并忽略。Phase 2 接入 Daemon 后需恢复 token 校验链路。
 #[tauri::command]
-pub async fn force_stop_server(params: ForceStopServerParams) -> Result<(), InstanceServiceError> {
-    let service = instance_service().await?;
-    let id = parse_id(params.id)?;
+pub async fn force_stop_server(params: ForceStopServerParams) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_server(params.id)?;
     service.force_stop(&id).await
 }
 
 /// 获取服务器状态（兼容 `get_server_status`）。
 #[tauri::command]
-pub async fn get_server_status(
-    id: String,
-) -> Result<FrontendServerStatusInfo, InstanceServiceError> {
-    let service = instance_service().await?;
-    let instance_id = parse_id(id.clone())?;
+pub async fn get_server_status(id: String) -> Result<FrontendServerStatusInfo, ServerServiceError> {
+    let service = server_service().await?;
+    let instance_id = parse_id_server(id.clone())?;
     let status = service.status(&instance_id).await?;
     Ok(server_status_to_frontend(id, status))
+}
+
+/// 发送控制台命令（兼容 `send_command`）。
+#[tauri::command]
+pub async fn send_command(id: String, command: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let instance_id = parse_id_server(id)?;
+    service.send_command(&instance_id, &command).await
 }
 
 // ── 显式 Unsupported（后端能力未装配）─────────────────────────────────
@@ -186,12 +207,6 @@ pub async fn copy_directory_contents() -> Result<(), InstanceServiceError> {
 /// 准备强制停止（与 force_stop 一致返回 Unsupported，避免 token 流半通）。
 #[tauri::command]
 pub async fn prepare_force_stop_server() -> Result<(), InstanceServiceError> {
-    Err(InstanceServiceError::Unsupported)
-}
-
-/// 发送控制台命令（Phase 2 接 RPC console 服务）。
-#[tauri::command]
-pub async fn send_command() -> Result<(), InstanceServiceError> {
     Err(InstanceServiceError::Unsupported)
 }
 

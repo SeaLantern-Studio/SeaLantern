@@ -9,9 +9,9 @@
 
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::InstanceId;
-use sealantern_core::server::ServerProcessState;
 use sealantern_infra::platform::get_app_data_dir;
-use sealantern_interface::{InstanceService, SystemService, SystemServiceError};
+use sealantern_interface::server::ServerState;
+use sealantern_interface::{InstanceService, ServerService, SystemService, SystemServiceError};
 use tauri_plugin_opener::OpenerExt;
 
 use super::adapter::{process_usage_to_resource_usage, system_snapshot_to_frontend};
@@ -80,18 +80,18 @@ pub async fn get_server_resource_usage(
     let instance_id = InstanceId::new(params.server_id.clone())
         .map_err(|_| SystemServiceError::OperationFailed)?;
 
-    // 取实例状态获取 pid
+    // 取实例状态获取 pid（经服务器进程管理服务）。
     let status = services
-        .instance()
+        .server()
         .status(&instance_id)
         .await
-        .map_err(instance_err_to_system)?;
+        .map_err(|_| SystemServiceError::ProcessNotFound)?;
 
-    // 仅 Running 时才有有效 pid；Exited 时 process_id 为 stale 值，不可用于查询
-    if !matches!(status.state, ServerProcessState::Running) {
+    // 仅 Running 时才有有效 pid；其余状态不可用于进程资源查询。
+    if status.state != ServerState::Running {
         return Err(SystemServiceError::ProcessNotFound);
     }
-    let pid = status.process_id;
+    let pid = status.pid.ok_or(SystemServiceError::ProcessNotFound)?;
     let usage = services.system().process_usage(pid).await?;
 
     // 取实例名

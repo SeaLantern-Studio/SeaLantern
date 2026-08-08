@@ -1,11 +1,9 @@
-//! 服务器进程管理 Tauri 命令。
+//! 服务器进程管理（后端语义 API，保留参考）。
 //!
-//! 前端通过 `invoke` 调用这些命令，命令内部经应用装配层拿到
-//! [`CoreServerService`](sealantern_application::service::CoreServerService)
-//! 管理服务器进程生命周期（启动/停止/强制停止/状态/控制台命令）。
-//!
-//! 错误统一为接口契约错误 [`ServerServiceError`]，可序列化回前端，
-//! 不携带底层敏感细节。
+//! 前端命令名已由 `compat` 兼容层接管（`start_server`/`stop_server`/...），
+//! 本文件保留新命名的服务调用函数作为后端语义 API，不注册为 Tauri 命令，
+//! 供未来前端适配新版本命令时使用。
+#![allow(dead_code)]
 
 use std::sync::Arc;
 
@@ -31,7 +29,6 @@ fn parse_id_for_tauri(id: String) -> Result<InstanceId, ServerServiceError> {
 }
 
 /// 查询服务器进程状态。
-#[tauri::command]
 pub async fn server_status(id: String) -> Result<ServerSnapshot, ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -39,7 +36,6 @@ pub async fn server_status(id: String) -> Result<ServerSnapshot, ServerServiceEr
 }
 
 /// 启动服务器进程。
-#[tauri::command]
 pub async fn start_server(id: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -47,7 +43,6 @@ pub async fn start_server(id: String) -> Result<(), ServerServiceError> {
 }
 
 /// 优雅停止服务器进程。
-#[tauri::command]
 pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -55,7 +50,6 @@ pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {
 }
 
 /// 强制停止服务器进程（终止进程树）。
-#[tauri::command]
 pub async fn force_stop_server(id: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -63,7 +57,6 @@ pub async fn force_stop_server(id: String) -> Result<(), ServerServiceError> {
 }
 
 /// 向服务器控制台发送单行命令。
-#[tauri::command]
 pub async fn send_server_command(id: String, command: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
