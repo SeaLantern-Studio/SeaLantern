@@ -576,6 +576,16 @@ watch(
   z-index: 1;
 }
 
+[data-acrylic="on"] .pill-panel {
+  backdrop-filter: blur(var(--sl-acrylic-blur)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-acrylic-blur)) saturate(var(--sl-saturate-normal));
+}
+
+[data-acrylic="off"] .pill-panel {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 [data-theme="dark"] .pill-panel {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
 }

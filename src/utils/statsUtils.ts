@@ -76,7 +76,7 @@ const baseChartConfig: EChartsOption = {
 const createGaugeOption = (rawValue: number, colorVar: string, label: string): EChartsOption => {
   const value = Number.isFinite(rawValue) ? Math.min(100, Math.max(0, rawValue)) : 0;
   const fontSize = parseFontSize("--sl-font-size-sm", 13);
-  const fontFamily = getCssVar("--sl-font-mono", "monospace");
+  const fontFamily = getCssVar("--sl-font-sans", "sans-serif");
   const color = getCssVar(colorVar, "#3b82f6");
   const textColor = getCssVar("--sl-text-primary", "#1f2937");
   const borderColor = getCssVar("--sl-border", "#e5e7eb");
@@ -264,20 +264,23 @@ function startThemeObserver() {
   stopThemeObserver();
 
   themeObserver = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (
+    const shouldRefresh = mutations.some(
+      (mutation) =>
         mutation.type === "attributes" &&
-        (mutation.attributeName === "data-theme" || mutation.attributeName === "data-senior")
-      ) {
-        invalidateCssVarCache();
-        themeVersion.value++;
-      }
-    });
+        (mutation.attributeName === "data-theme" ||
+          mutation.attributeName === "data-senior" ||
+          mutation.attributeName === "style"),
+    );
+
+    if (!shouldRefresh) return;
+
+    invalidateCssVarCache();
+    themeVersion.value++;
   });
 
   themeObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-theme", "data-senior"],
+    attributeFilter: ["data-theme", "data-senior", "style"],
   });
 }
 
