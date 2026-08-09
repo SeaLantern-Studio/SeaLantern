@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// 提供更新信息的发布源。
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum UpdateSource {
     /// GitHub Releases。
@@ -14,7 +14,7 @@ pub enum UpdateSource {
 }
 
 /// 当前平台的应用更新检查结果。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct UpdateInfo {
     /// 是否存在适合当前平台的新版本资源。
