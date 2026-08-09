@@ -1,4 +1,4 @@
-import type { AcrylicBlurLevel } from "@api/settings";
+import { DEFAULT_ACRYLIC_BLUR_LEVEL, type AcrylicBlurLevel } from "@api/settings";
 
 export const ACRYLIC_BLUR_VALUES: Record<AcrylicBlurLevel, string> = {
   off: "0px",
@@ -10,17 +10,22 @@ export const ACRYLIC_BLUR_VALUES: Record<AcrylicBlurLevel, string> = {
 export function normalizeAcrylicBlurLevel(level?: string): AcrylicBlurLevel {
   return level === "off" || level === "low" || level === "medium" || level === "high"
     ? level
-    : "medium";
+    : DEFAULT_ACRYLIC_BLUR_LEVEL;
 }
 
 export function applyAcrylicEffect(enabled: boolean, level?: string): void {
-  const normalizedLevel = normalizeAcrylicBlurLevel(level);
   const root = document.documentElement;
 
   root.setAttribute("data-acrylic", enabled ? "on" : "off");
+
+  // 关闭时清理模糊属性和变量，避免残留值误导其他依赖方
+  if (!enabled) {
+    root.removeAttribute("data-acrylic-blur");
+    root.style.removeProperty("--sl-acrylic-blur");
+    return;
+  }
+
+  const normalizedLevel = normalizeAcrylicBlurLevel(level);
   root.setAttribute("data-acrylic-blur", normalizedLevel);
-  root.style.setProperty(
-    "--sl-acrylic-blur",
-    enabled ? ACRYLIC_BLUR_VALUES[normalizedLevel] : "0px",
-  );
+  root.style.setProperty("--sl-acrylic-blur", ACRYLIC_BLUR_VALUES[normalizedLevel]);
 }

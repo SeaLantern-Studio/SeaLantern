@@ -9,6 +9,9 @@ use super::JavaInfo;
 /// 每次配置结构变更时递增，由配置管理器据此执行数据迁移。
 pub const CURRENT_CONFIG_VERSION: u32 = 2;
 
+/// 亚克力模糊级别的默认值，旧配置缺字段时回落到这里。
+pub const DEFAULT_ACRYLIC_BLUR_LEVEL: &str = "medium";
+
 /// 设置变更分组，用于调用方按组刷新状态。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SettingsGroup {
@@ -97,7 +100,7 @@ impl Default for AppSettings {
             background_brightness: 1.0,
             background_size: "cover".into(),
             acrylic_enabled: false,
-            acrylic_blur_level: "medium".into(),
+            acrylic_blur_level: DEFAULT_ACRYLIC_BLUR_LEVEL.to_string(),
             theme: "auto".into(),
             color: "default".into(),
             font_size: 14,
@@ -196,14 +199,14 @@ impl AppSettings {
 
 #[cfg(test)]
 mod tests {
-    use super::{AppSettings, SettingsGroup};
+    use super::{AppSettings, SettingsGroup, DEFAULT_ACRYLIC_BLUR_LEVEL};
 
     #[test]
     fn legacy_settings_default_to_medium_acrylic_blur() {
         let settings: AppSettings =
             serde_json::from_str("{}").expect("legacy settings should load");
 
-        assert_eq!(settings.acrylic_blur_level, "medium");
+        assert_eq!(settings.acrylic_blur_level, DEFAULT_ACRYLIC_BLUR_LEVEL);
     }
 
     #[test]

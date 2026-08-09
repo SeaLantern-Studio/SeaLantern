@@ -7,6 +7,7 @@
 //! [`SettingsService`] 时统一转为接口契约错误 [`SettingsServiceError`]。
 
 use async_trait::async_trait;
+use sealantern_extra::models::DEFAULT_ACRYLIC_BLUR_LEVEL;
 use sealantern_interface::settings::{
     SettingsEntry, SettingsEntryType, SettingsGroupInfo, SettingsOption, SettingsOverview,
 };
@@ -347,7 +348,7 @@ fn build_appearance_group() -> SettingsGroupInfo {
                 entry_type: SettingsEntryType::Enum,
                 required: false,
                 has_value: true,
-                default_value: Some("\"medium\"".to_string()),
+                default_value: Some(format!("\"{DEFAULT_ACRYLIC_BLUR_LEVEL}\"")),
                 options: vec![
                     SettingsOption {
                         value: "off".to_string(),

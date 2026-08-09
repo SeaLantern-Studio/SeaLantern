@@ -9,6 +9,7 @@ import ImportSettingsModal from "@components/views/paint/ImportSettingsModal.vue
 import ResetConfirmModal from "@components/views/paint/ResetConfirmModal.vue";
 import {
   settingsApi,
+  DEFAULT_ACRYLIC_BLUR_LEVEL,
   getSystemFonts,
   type AcrylicBlurLevel,
   type AppSettings,
@@ -347,7 +348,7 @@ function clearBackgroundImage() {
         :font-family-options="fontFamilyOptions"
         :fonts-loading="fontsLoading"
         :acrylic-enabled="settings.acrylic_enabled"
-        :acrylic-blur-level="settings.acrylic_blur_level || 'medium'"
+        :acrylic-blur-level="settings.acrylic_blur_level || DEFAULT_ACRYLIC_BLUR_LEVEL"
         :is-theme-proxied="isThemeProxied"
         :theme-proxy-plugin-name="themeProxyPluginName"
         :background-image="settings.background_image"
