@@ -5314,6 +5314,7 @@ dependencies = [
  "sealantern-interface",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "tower",
  "tracing",

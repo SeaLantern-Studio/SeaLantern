@@ -80,24 +80,18 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{SystemTime, UNIX_EPOCH};
-
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use sealantern_application::service::CoreInstanceService;
+    use tempfile::tempdir;
     use tower::ServiceExt;
 
     use super::*;
 
     #[tokio::test]
     async fn update_route_returns_snake_case_contract() {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system time")
-            .as_nanos();
-        let path = std::env::temp_dir()
-            .join(format!("sealantern-update-route-{}-{unique}.json", std::process::id()));
-        let instance = CoreInstanceService::with_path(path)
+        let directory = tempdir().expect("create temporary directory");
+        let instance = CoreInstanceService::with_path(directory.path().join("instances.json"))
             .await
             .expect("create instance service");
         let router = build_router(AppServices::from_inner(instance), ViteConfig::default());
