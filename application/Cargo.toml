@@ -12,7 +12,11 @@ async-trait = "0.1.91"
 tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros", "sync", "fs", "time"] }
 tracing = "0.1"
 uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
 sealantern-core = { path = "../crates/core" }
 sealantern-interface = { path = "../crates/interface" }
 sealantern-extra = { path = "../crates/extra" }
 sealantern-infra = { path = "../crates/infra" }
+
+[dev-dependencies]
+tempfile = "3"

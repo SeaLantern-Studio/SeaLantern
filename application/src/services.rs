@@ -15,7 +15,8 @@ use std::sync::Arc;
 
 use crate::error::InstanceError;
 use crate::service::{
-    CoreDownloadService, CoreInstanceService, CoreServerService, CoreSystemService,
+    CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreServerService,
+    CoreSystemService,
 };
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
@@ -36,6 +37,8 @@ pub struct AppServicesInner {
     pub instance: Arc<CoreInstanceService>,
     /// 服务器进程管理服务。
     pub server: Arc<CoreServerService>,
+    /// 服务器定时任务服务。
+    pub cron: Arc<CoreCronTaskService>,
     /// 系统资源信息服务。
     pub system: Arc<CoreSystemService>,
 }
@@ -50,12 +53,14 @@ impl AppServices {
     /// 服务器进程服务共享同一实例服务句柄；下载/系统资源服务自动构造。
     pub fn from_inner(instance: CoreInstanceService) -> Self {
         let instance = Arc::new(instance);
+        let server = Arc::new(CoreServerService::new(instance.clone()));
         Self {
             inner: Arc::new(AppServicesInner {
                 download: Arc::new(
                     CoreDownloadService::new().expect("failed to init download service"),
                 ),
-                server: Arc::new(CoreServerService::new(instance.clone())),
+                cron: Arc::new(CoreCronTaskService::new(server.clone())),
+                server,
                 instance,
                 system: Arc::new(CoreSystemService),
             }),
@@ -132,6 +137,16 @@ impl AppServices {
     /// 便捷访问入口：一步拿到服务器进程管理服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn server_service() -> Result<Arc<CoreServerService>, InstanceError> {
         Ok(Self::get().await?.server().clone())
+    }
+
+    /// 访问服务器定时任务服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn cron(&self) -> &Arc<CoreCronTaskService> {
+        &self.inner.cron
+    }
+
+    /// 便捷访问入口：一步拿到定时任务服务的共享句柄（惰性初始化 + 可替换）。
+    pub async fn cron_service() -> Result<Arc<CoreCronTaskService>, InstanceError> {
+        Ok(Self::get().await?.cron().clone())
     }
 
     /// 访问系统资源信息服务（`Arc` 共享句柄，clone 廉价）。

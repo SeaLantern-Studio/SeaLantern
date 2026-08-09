@@ -212,7 +212,7 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
             let failed_run = CronTaskRun {
                 task_id: task.id.clone(),
                 server_id: task.server_id.clone(),
-                action: task.action.as_str(),
+                action: task.action.clone(),
                 succeeded: false,
                 error: None,
             };
@@ -253,7 +253,7 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
         let run = CronTaskRun {
             task_id: task.id.clone(),
             server_id: task.server_id.clone(),
-            action,
+            action: task.action.clone(),
             succeeded: execution_error.is_none(),
             error: execution_error.clone(),
         };

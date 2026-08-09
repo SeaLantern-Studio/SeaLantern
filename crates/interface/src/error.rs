@@ -4,6 +4,36 @@
 //! 由 `application` 层的主错误（`application::error`）转换而来。
 //! 底层失败详情由应用层记录到受控日志，不跨传输面泄漏。
 
+/// 服务器定时任务操作失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum CronTaskServiceError {
+    /// 指定的任务不存在。
+    TaskNotFound,
+    /// 任务配置或标识不合法。
+    InvalidInput,
+    /// JSON 持久化读写失败。
+    StorageFailed,
+    /// 任务对应的服务器动作执行失败。
+    ExecutionFailed,
+    /// 该能力尚未实现。
+    Unsupported,
+}
+
+impl std::fmt::Display for CronTaskServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::TaskNotFound => "cron task not found",
+            Self::InvalidInput => "invalid cron task input",
+            Self::StorageFailed => "cron task storage failed",
+            Self::ExecutionFailed => "cron task execution failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for CronTaskServiceError {}
+
 /// 实例管理操作失败的契约错误类别。
 ///
 /// 分类风格与 `server` 侧 `ConsoleCommandServiceError` 保持一致：

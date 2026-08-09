@@ -5,6 +5,8 @@
 
 #![forbid(unsafe_code)]
 
+/// 服务器定时任务相关模型与服务端口。
+pub mod cron;
 /// 下载任务管理相关模型与服务端口。
 pub mod download;
 /// 接口契约错误类型。
@@ -16,6 +18,10 @@ pub mod server;
 /// 系统资源信息相关模型与服务端口。
 pub mod system;
 
+/// 服务器定时任务服务端口。
+pub use cron::CronTaskService;
+/// 服务器定时任务错误枚举。
+pub use error::CronTaskServiceError;
 /// 下载任务管理服务端口。
 pub use download::DownloadService;
 /// 下载任务管理错误枚举。
