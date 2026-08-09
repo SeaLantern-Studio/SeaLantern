@@ -10,6 +10,7 @@
 //! - [`error`]：跨域错误映射辅助（instance_err ↔ system_err）。
 //! - [`instance_compat`]：`src/api/server.ts` 对应的兼容命令。
 //! - [`system_compat`]：`src/api/system.ts` 对应的兼容命令。
+//! - [`settings_compat`]：`src/api/settings.ts` 对应的兼容命令。
 //!
 //! 未对接后端的命令一律返回 `Unsupported`，绝不静默 no-op。
 
@@ -18,4 +19,5 @@ pub mod download_compat;
 pub mod error;
 pub mod instance_compat;
 pub mod models;
+pub mod settings_compat;
 pub mod system_compat;

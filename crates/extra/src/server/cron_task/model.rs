@@ -20,6 +20,7 @@ impl CronTaskAction {
 
 /// 创建或更新定时任务时可修改的字段。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CronTaskDraft {
     pub name: String,
     pub server_id: String,
@@ -30,6 +31,7 @@ pub struct CronTaskDraft {
 
 /// 已持久化的服务器定时任务。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CronTask {
     pub id: String,
     pub name: String,
@@ -44,6 +46,7 @@ pub struct CronTask {
 
 /// 定时任务持久化文件的根对象。
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CronTaskList {
     pub tasks: Vec<CronTask>,
 }
@@ -53,7 +56,7 @@ pub struct CronTaskList {
 pub struct CronTaskRun {
     pub task_id: String,
     pub server_id: String,
-    pub action: &'static str,
+    pub action: CronTaskAction,
     pub succeeded: bool,
     pub error: Option<String>,
 }

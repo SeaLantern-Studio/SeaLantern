@@ -4,6 +4,40 @@
 //! 由 `application` 层的主错误（`application::error`）转换而来。
 //! 底层失败详情由应用层记录到受控日志，不跨传输面泄漏。
 
+/// 服务器定时任务操作失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CronTaskServiceError {
+    /// 指定的任务不存在。
+    TaskNotFound,
+    /// 任务配置或标识不合法。
+    InvalidInput,
+    /// JSON 持久化读写失败。
+    StorageFailed,
+    /// 任务对应的服务器动作执行失败。
+    ExecutionFailed,
+    /// 未分类的内部操作失败。
+    OperationFailed,
+    /// 该能力尚未实现。
+    Unsupported,
+}
+
+impl std::fmt::Display for CronTaskServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::TaskNotFound => "cron task not found",
+            Self::InvalidInput => "invalid cron task input",
+            Self::StorageFailed => "cron task storage failed",
+            Self::ExecutionFailed => "cron task execution failed",
+            Self::OperationFailed => "cron task operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for CronTaskServiceError {}
+
 /// 实例管理操作失败的契约错误类别。
 ///
 /// 分类风格与 `server` 侧 `ConsoleCommandServiceError` 保持一致：
@@ -40,36 +74,6 @@ impl std::fmt::Display for InstanceServiceError {
 
 impl std::error::Error for InstanceServiceError {}
 
-/// 系统资源信息服务失败的契约错误类别。
-///
-/// 分类风格与 [`InstanceServiceError`] 一致：不携带主机路径、进程细节等敏感
-/// 信息，底层失败详情由应用层写入受控日志。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-pub enum SystemServiceError {
-    /// 指定的进程不存在或无权访问。
-    ProcessNotFound,
-    /// 指定的路径不存在或不可访问。
-    PathNotFound,
-    /// 底层系统采集 / IO 操作失败。
-    OperationFailed,
-    /// 该能力尚未实现（占位）。
-    Unsupported,
-}
-
-impl std::fmt::Display for SystemServiceError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let message = match self {
-            Self::ProcessNotFound => "process not found",
-            Self::PathNotFound => "path not found",
-            Self::OperationFailed => "system operation failed",
-            Self::Unsupported => "operation not supported",
-        };
-        formatter.write_str(message)
-    }
-}
-
-impl std::error::Error for SystemServiceError {}
-
 /// 服务器进程管理失败的契约错误类别。
 ///
 /// 分类风格与其他契约错误一致：不携带主机路径、进程细节等敏感信息，
@@ -103,6 +107,20 @@ impl std::fmt::Display for ServerServiceError {
 
 impl std::error::Error for ServerServiceError {}
 
+/// 设置信息服务失败的契约错误类别。
+///
+/// 分类风格与 [`InstanceServiceError`] 一致：不携带敏感细节，
+/// 底层失败详情由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum SettingsServiceError {
+    /// 设置分组或设置项不存在。
+    NotFound,
+    /// 底层配置加载/保存操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
 /// 下载任务管理失败的契约错误类别。
 ///
 /// 分类风格与其他契约错误一致：不携带 URL、路径等敏感信息，底层失败详情
@@ -119,6 +137,17 @@ pub enum DownloadServiceError {
     Unsupported,
 }
 
+impl std::fmt::Display for SettingsServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::NotFound => "settings not found",
+            Self::OperationFailed => "settings operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
 impl std::fmt::Display for DownloadServiceError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = match self {
@@ -131,4 +160,36 @@ impl std::fmt::Display for DownloadServiceError {
     }
 }
 
+impl std::error::Error for SettingsServiceError {}
+
 impl std::error::Error for DownloadServiceError {}
+
+/// 系统资源信息服务失败的契约错误类别。
+///
+/// 分类风格与 [`InstanceServiceError`] 一致：不携带主机路径、进程细节等敏感
+/// 信息，底层失败详情由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum SystemServiceError {
+    /// 指定的进程不存在或无权访问。
+    ProcessNotFound,
+    /// 指定的路径不存在或不可访问。
+    PathNotFound,
+    /// 底层系统采集 / IO 操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
+impl std::fmt::Display for SystemServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::ProcessNotFound => "process not found",
+            Self::PathNotFound => "path not found",
+            Self::OperationFailed => "system operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for SystemServiceError {}
