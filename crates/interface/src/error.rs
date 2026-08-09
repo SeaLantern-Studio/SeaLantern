@@ -193,3 +193,25 @@ impl std::fmt::Display for SystemServiceError {
 }
 
 impl std::error::Error for SystemServiceError {}
+
+/// 应用更新检查失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UpdateCheckServiceError {
+    /// 更新源检查或响应处理失败。
+    CheckFailed,
+    /// 当前宿主不支持更新检查。
+    Unsupported,
+}
+
+impl std::fmt::Display for UpdateCheckServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::CheckFailed => "update check failed",
+            Self::Unsupported => "update check not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for UpdateCheckServiceError {}

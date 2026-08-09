@@ -19,6 +19,8 @@ pub mod server;
 pub mod settings;
 /// 系统资源信息相关模型与服务端口。
 pub mod system;
+/// 应用更新检查相关模型与服务端口。
+pub mod update;
 
 /// 服务器定时任务服务端口。
 pub use cron::CronTaskService;
@@ -36,6 +38,8 @@ pub use error::ServerServiceError;
 pub use error::SettingsServiceError;
 /// 系统资源信息服务错误枚举。
 pub use error::SystemServiceError;
+/// 应用更新检查错误枚举。
+pub use error::UpdateCheckServiceError;
 /// 服务器实例记录管理服务端口。
 pub use instance::InstanceService;
 /// 服务器进程管理服务端口。
@@ -44,3 +48,5 @@ pub use server::ServerService;
 pub use settings::SettingsService;
 /// 系统资源信息服务端口。
 pub use system::SystemService;
+/// 应用更新检查服务端口。
+pub use update::UpdateCheckService;
