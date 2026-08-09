@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use sealantern_infra::fs::{read_string_limited, write_atomic, DataLimit, FileLock, FsError};
 use sealantern_infra::persistence::config::ConfigFile;
 use sealantern_infra::persistence::process_lock_registry;
+use sealantern_infra::platform::get_app_data_dir;
 use serde::Deserialize;
 use tokio::sync::OwnedRwLockWriteGuard;
 
@@ -25,6 +26,14 @@ use crate::observability;
 
 /// 配置文件读取上限：最大 10 MiB。
 const CONFIG_READ_LIMIT: DataLimit = DataLimit::new(10 * 1024 * 1024);
+
+/// SeaLantern 应用设置文件名。
+const SETTINGS_FILE_NAME: &str = "sea_lantern_settings.json";
+
+/// 解析 SeaLantern 应用设置文件的默认路径。
+fn default_settings_path() -> PathBuf {
+    get_app_data_dir().join(SETTINGS_FILE_NAME)
+}
 
 /// 旧版嵌套配置格式（v1：`{ version, preferences: {...} }`）。
 ///
@@ -61,6 +70,14 @@ pub struct SettingsManager {
 }
 
 impl SettingsManager {
+    /// 从 SeaLantern 默认配置位置加载或创建设置文件。
+    ///
+    /// 默认路径、文件名和持久化策略均由配置模块统一管理；调用方无需了解
+    /// 配置文件在不同运行环境中的具体位置。
+    pub async fn load_default() -> Result<Self, FsError> {
+        Self::load(default_settings_path()).await
+    }
+
     /// 加载或创建设置文件，检测版本号并执行迁移。
     ///
     /// 处理顺序：
@@ -437,8 +454,18 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::SettingsManager;
+    use super::{default_settings_path, SettingsManager, SETTINGS_FILE_NAME};
     use crate::config::{AppSettings, JavaInfo, PartialAppSettings};
+
+    #[test]
+    fn default_path_uses_owned_settings_file_name() {
+        assert_eq!(
+            default_settings_path()
+                .file_name()
+                .and_then(|name| name.to_str()),
+            Some(SETTINGS_FILE_NAME)
+        );
+    }
 
     #[tokio::test]
     async fn empty_partial_update_does_not_rewrite_settings() {

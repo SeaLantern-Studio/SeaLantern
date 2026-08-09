@@ -15,7 +15,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use sealantern_extra::config::SettingsManager;
-use sealantern_infra::platform::get_app_data_dir;
 
 use crate::error::InstanceError;
 use crate::service::{
@@ -88,9 +87,8 @@ impl AppServices {
     ) -> Result<Self, InstanceError> {
         let instance = Arc::new(instance);
 
-        // 加载设置管理器
-        let settings_path = get_app_data_dir().join("sea_lantern_settings.json");
-        let settings_manager = SettingsManager::load(&settings_path)
+        // 由 extra 配置模块统一解析默认路径并加载设置。
+        let settings_manager = SettingsManager::load_default()
             .await
             .map_err(|e| InstanceError::Internal(e.to_string()))?;
 
