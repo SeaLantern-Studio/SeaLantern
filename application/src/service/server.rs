@@ -16,7 +16,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
-use sealantern_core::instance::{Instance, InstanceId, StartupMode};
+use sealantern_core::instance::{
+    restart_instance, Instance, InstanceId, InstanceLifecycleState, InstanceRestartDriver,
+    RestartPolicy, StartupMode,
+};
 use sealantern_core::process::{
     build_command, CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal,
     TerminalOutput, TerminalStream, WindowsConsoleEncoding,
@@ -37,6 +40,51 @@ const POLL_INTERVAL: Duration = Duration::from_millis(200);
 struct ManagedProcess {
     daemon: Daemon,
     terminal: Terminal,
+}
+
+struct ServerRestartDriver<'a> {
+    service: &'a CoreServerService,
+}
+
+#[async_trait]
+impl InstanceRestartDriver for ServerRestartDriver<'_> {
+    type Error = ServerServiceError;
+
+    async fn state(&self, instance: &Instance) -> Result<InstanceLifecycleState, Self::Error> {
+        let snapshot = self.service.status(&instance.id).await?;
+        Ok(match snapshot.state {
+            ServerState::Starting => InstanceLifecycleState::Starting,
+            ServerState::Running => InstanceLifecycleState::Running,
+            ServerState::Stopping => InstanceLifecycleState::Stopping,
+            ServerState::Stopped => InstanceLifecycleState::Stopped,
+        })
+    }
+
+    async fn request_stop(&self, instance: &Instance) -> Result<(), Self::Error> {
+        self.service.request_stop_for_restart(&instance.id).await
+    }
+
+    async fn await_terminal(
+        &self,
+        instance: &Instance,
+        timeout: Duration,
+    ) -> Result<InstanceLifecycleState, Self::Error> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            let state = self.state(instance).await?;
+            if !state.is_active() || Instant::now() >= deadline {
+                return Ok(state);
+            }
+            tokio::time::sleep(
+                POLL_INTERVAL.min(deadline.saturating_duration_since(Instant::now())),
+            )
+            .await;
+        }
+    }
+
+    async fn start(&self, instance: &Instance) -> Result<(), Self::Error> {
+        self.service.start(&instance.id).await
+    }
 }
 
 /// 基于 `core` 进程原语的服务器进程管理服务实现。
@@ -90,6 +138,11 @@ impl CoreServerService {
         // 组装 JVM 参数（Xmx/Xms/编码 + 实例自定义参数）。
         // 默认 JVM 参数（全局配置）当前为空，待配置功能恢复后接入。
         let jvm_arguments = build_jvm_arguments(instance, "");
+        let custom_arguments = launch
+            .custom_arguments
+            .iter()
+            .map(OsString::from)
+            .collect::<Vec<_>>();
         // 从 Java 可执行文件推导 JAVA_HOME / bin（供脚本与自定义模式注入环境）。
         let java_environment = launch
             .java_executable
@@ -107,7 +160,7 @@ impl CoreServerService {
             entry_path: launch.startup_target.as_deref(),
             custom_command: launch.custom_command.as_deref(),
             custom_executable: launch.custom_executable.as_deref(),
-            custom_arguments: &[],
+            custom_arguments: &custom_arguments,
             installer_url: None,
             windows_console_encoding: WindowsConsoleEncoding::Utf8,
         };
@@ -280,6 +333,23 @@ impl ServerService for CoreServerService {
         Ok(())
     }
 
+    async fn restart(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        let instance = self.find_instance(id).await?;
+        let driver = ServerRestartDriver { service: self };
+        restart_instance(&driver, &instance, RestartPolicy { stop_timeout: STOP_GRACEFUL_TIMEOUT })
+            .await
+            .map_err(|error| {
+                tracing::error!(
+                    target: "sealantern.application.server",
+                    instance_id = id.as_str(),
+                    error = %error,
+                    "failed to restart server process"
+                );
+                ServerServiceError::OperationFailed
+            })?;
+        Ok(())
+    }
+
     async fn stop(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
         let id_str = id.as_str().to_string();
         self.find_instance(id).await?;
@@ -343,6 +413,13 @@ impl ServerService for CoreServerService {
 }
 
 impl CoreServerService {
+    /// 为重启流程请求优雅停止，不等待退出或执行超时强杀。
+    async fn request_stop_for_restart(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        self.send_command_inner(id, "stop").await?;
+        self.mark_stopping(id.as_str());
+        Ok(())
+    }
+
     /// 向服务器控制台发送命令（内部实现）。
     async fn send_command_inner(
         &self,

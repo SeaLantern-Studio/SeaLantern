@@ -23,6 +23,11 @@ pub trait ServerService: Send + Sync {
     /// 启动实例对应的服务器进程。
     async fn start(&self, id: &InstanceId) -> Result<(), ServerServiceError>;
 
+    /// 按实例当前生命周期状态完成一次重启。
+    ///
+    /// 已停止实例直接启动；活动实例必须先确认停止后才能再次启动。
+    async fn restart(&self, id: &InstanceId) -> Result<(), ServerServiceError>;
+
     /// 优雅停止服务器进程（向控制台发送 stop 并等待退出，超时后强制终止）。
     async fn stop(&self, id: &InstanceId) -> Result<(), ServerServiceError>;
 
