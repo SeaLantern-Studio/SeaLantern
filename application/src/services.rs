@@ -11,6 +11,7 @@
 //!
 //! `AppServices` 是内部 `Arc` 的轻量句柄（clone 廉价 → 可跨 async 边界随处持有）。
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use crate::error::InstanceError;
@@ -31,6 +32,7 @@ pub struct AppServices {
 /// 后续新增服务只需在此加一个 `Arc<XxxService>` 字段，在 [`AppServices`]
 /// 下补一条 `pub async fn xxx_service()` 便捷函数即可，无需改动调用方。
 pub struct AppServicesInner {
+    background_started: AtomicBool,
     /// 下载任务管理服务。
     pub download: Arc<CoreDownloadService>,
     /// 服务器实例记录管理服务。
@@ -56,6 +58,7 @@ impl AppServices {
         let server = Arc::new(CoreServerService::new(instance.clone()));
         Self {
             inner: Arc::new(AppServicesInner {
+                background_started: AtomicBool::new(false),
                 download: Arc::new(
                     CoreDownloadService::new().expect("failed to init download service"),
                 ),
@@ -160,6 +163,14 @@ impl AppServices {
     }
 
     async fn start_background_services(&self) {
+        if self
+            .inner
+            .background_started
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return;
+        }
         if self.inner.cron.start_scheduler().await {
             tracing::info!(
                 target: "sealantern.application.cron_task",
