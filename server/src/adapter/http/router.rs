@@ -37,6 +37,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         // ── 嵌套子资源（服务器进程生命周期） ──
         .route("/instances/{id}/status", get(handlers::server_status))
         .route("/instances/{id}/start", post(handlers::start_server))
+        .route("/instances/{id}/restart", post(handlers::restart_server))
         .route("/instances/{id}/stop", post(handlers::stop_server))
         .route(
             "/instances/{id}/force-stop",

@@ -6,12 +6,15 @@ pub mod observability;
 
 use tauri::Manager;
 
+use adapter::tauri::commands::compat::download_compat::{
+    cancel_download_task, download_file, poll_task,
+};
 use adapter::tauri::commands::compat::instance_compat::{
     add_existing_server, collect_copy_conflicts, copy_directory_contents, create_server,
     delete_server, force_stop_server, get_server_list, get_server_logs, get_server_status,
     import_modpack, import_server, parse_server_core_type, prepare_force_stop_server,
-    scan_startup_candidates, send_command, start_server, stop_server, update_server_name,
-    update_server_path, validate_server_path,
+    restart_server, scan_startup_candidates, send_command, start_server, stop_server,
+    update_server_name, update_server_path, validate_server_path,
 };
 use adapter::tauri::commands::compat::settings_compat::{
     export_settings, get_settings, import_settings, reset_settings, save_settings,
@@ -62,10 +65,12 @@ pub fn run() {
             get_system_snapshot,
             //兼容层（前端旧命令名 → 新服务，由adapter/tauri/commands/compat提供）
             add_existing_server,
+            cancel_download_task,
             collect_copy_conflicts,
             copy_directory_contents,
             create_server,
             delete_server,
+            download_file,
             export_settings,
             force_stop_server,
             get_default_run_path,
@@ -82,9 +87,11 @@ pub fn run() {
             open_file,
             open_folder,
             parse_server_core_type,
+            poll_task,
             prepare_force_stop_server,
             remove_file,
             reset_settings,
+            restart_server,
             save_settings,
             save_settings_with_diff,
             scan_startup_candidates,

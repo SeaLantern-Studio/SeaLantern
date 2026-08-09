@@ -1,21 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// 定时任务的实际服务器动作。
+/// 定时任务执行的服务器动作。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum CronTaskAction {
+    /// 重启指定服务器。
     Restart,
+    /// 向指定服务器控制台发送命令。
     Command { command: String },
-}
-
-impl CronTaskAction {
-    pub(crate) const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Restart => "restart",
-            Self::Command { .. } => "command",
-        }
-    }
 }
 
 /// 创建或更新定时任务时可修改的字段。
@@ -28,7 +21,7 @@ pub struct CronTaskDraft {
     pub enabled: bool,
 }
 
-/// 已持久化的服务器定时任务。
+/// 宿主可见的定时任务快照。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CronTask {
     pub id: String,
@@ -42,14 +35,8 @@ pub struct CronTask {
     pub last_error: Option<String>,
 }
 
-/// 定时任务持久化文件的根对象。
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct CronTaskList {
-    pub tasks: Vec<CronTask>,
-}
-
-/// 一次定时任务执行的结果。
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// 一次定时任务执行结果。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CronTaskRun {
     pub task_id: String,
     pub server_id: String,

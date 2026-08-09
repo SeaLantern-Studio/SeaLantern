@@ -12,17 +12,21 @@
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
-use sealantern_core::instance::{Instance, InstanceId, StartupMode};
+use sealantern_core::instance::{
+    restart_instance, Instance, InstanceId, InstanceLifecycleState, InstanceRestartDriver,
+    RestartPolicy, StartupMode,
+};
 use sealantern_core::process::{
     build_command, CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal,
     TerminalOutput, TerminalStream, WindowsConsoleEncoding,
 };
 use sealantern_interface::server::{ServerSnapshot, ServerState};
 use sealantern_interface::{InstanceService, ServerService, ServerServiceError};
+use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
 
 use crate::error::ServerError;
 
@@ -39,6 +43,56 @@ struct ManagedProcess {
     terminal: Terminal,
 }
 
+struct ServerRestartDriver<'a> {
+    service: &'a CoreServerService,
+    _lifecycle_guard: &'a OwnedMutexGuard<()>,
+}
+
+#[async_trait]
+impl InstanceRestartDriver for ServerRestartDriver<'_> {
+    type Error = ServerServiceError;
+
+    async fn state(&self, instance: &Instance) -> Result<InstanceLifecycleState, Self::Error> {
+        let snapshot = self.service.status_for_instance(instance)?;
+        let state = match snapshot.state {
+            ServerState::Starting => InstanceLifecycleState::Starting,
+            ServerState::Running => InstanceLifecycleState::Running,
+            ServerState::Stopping => InstanceLifecycleState::Stopping,
+            ServerState::Stopped => InstanceLifecycleState::Stopped,
+        };
+        if !state.is_active() {
+            self.service.clear_lifecycle_flags(instance.id.as_str());
+        }
+        Ok(state)
+    }
+
+    async fn request_stop(&self, instance: &Instance) -> Result<(), Self::Error> {
+        self.service.request_stop_for_restart(&instance.id).await
+    }
+
+    async fn await_terminal(
+        &self,
+        instance: &Instance,
+        timeout: Duration,
+    ) -> Result<InstanceLifecycleState, Self::Error> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            let state = self.state(instance).await?;
+            if !state.is_active() || Instant::now() >= deadline {
+                return Ok(state);
+            }
+            tokio::time::sleep(
+                POLL_INTERVAL.min(deadline.saturating_duration_since(Instant::now())),
+            )
+            .await;
+        }
+    }
+
+    async fn start(&self, instance: &Instance) -> Result<(), Self::Error> {
+        self.service.start_unlocked(&instance.id, instance).await
+    }
+}
+
 /// 基于 `core` 进程原语的服务器进程管理服务实现。
 pub struct CoreServerService {
     /// 实例记录服务（读取启动配置与更新状态）。
@@ -49,6 +103,8 @@ pub struct CoreServerService {
     starting: Mutex<HashSet<String>>,
     /// 停止中的实例集合。
     stopping: Mutex<HashSet<String>>,
+    /// 每个实例独立的生命周期操作锁。
+    lifecycle_locks: Mutex<HashMap<String, Weak<AsyncMutex<()>>>>,
 }
 
 impl CoreServerService {
@@ -59,7 +115,28 @@ impl CoreServerService {
             processes: Mutex::new(HashMap::new()),
             starting: Mutex::new(HashSet::new()),
             stopping: Mutex::new(HashSet::new()),
+            lifecycle_locks: Mutex::new(HashMap::new()),
         }
+    }
+
+    async fn lock_lifecycle(&self, id: &InstanceId) -> Result<OwnedMutexGuard<()>, ServerError> {
+        let lock = {
+            let mut locks = self
+                .lifecycle_locks
+                .lock()
+                .map_err(|_| ServerError::Internal {
+                    source: Box::new(std::io::Error::other("lifecycle locks poisoned")),
+                })?;
+            // 失效弱引用只在对应实例再次访问时覆盖，避免每次获取都扫描整张表。
+            if let Some(lock) = locks.get(id.as_str()).and_then(Weak::upgrade) {
+                lock
+            } else {
+                let lock = Arc::new(AsyncMutex::new(()));
+                locks.insert(id.as_str().to_owned(), Arc::downgrade(&lock));
+                lock
+            }
+        };
+        Ok(lock.lock_owned().await)
     }
 
     /// 按实例 ID 查找实例记录。
@@ -90,6 +167,11 @@ impl CoreServerService {
         // 组装 JVM 参数（Xmx/Xms/编码 + 实例自定义参数）。
         // 默认 JVM 参数（全局配置）当前为空，待配置功能恢复后接入。
         let jvm_arguments = build_jvm_arguments(instance, "");
+        let custom_arguments = launch
+            .custom_arguments
+            .iter()
+            .map(OsString::from)
+            .collect::<Vec<_>>();
         // 从 Java 可执行文件推导 JAVA_HOME / bin（供脚本与自定义模式注入环境）。
         let java_environment = launch
             .java_executable
@@ -107,7 +189,7 @@ impl CoreServerService {
             entry_path: launch.startup_target.as_deref(),
             custom_command: launch.custom_command.as_deref(),
             custom_executable: launch.custom_executable.as_deref(),
-            custom_arguments: &[],
+            custom_arguments: &custom_arguments,
             installer_url: None,
             windows_console_encoding: WindowsConsoleEncoding::Utf8,
         };
@@ -160,16 +242,18 @@ impl CoreServerService {
             s.remove(id);
         }
     }
-}
 
-#[async_trait]
-impl ServerService for CoreServerService {
-    async fn status(&self, id: &InstanceId) -> Result<ServerSnapshot, ServerServiceError> {
-        // 确认实例存在，并复用实例信息避免重复查询与状态不一致。
-        let instance = self.find_instance(id).await?;
-        let id_str = id.as_str().to_string();
+    fn clear_lifecycle_flags(&self, id: &str) {
+        self.clear_starting(id);
+        self.clear_stopping(id);
+    }
+
+    fn status_for_instance(
+        &self,
+        instance: &Instance,
+    ) -> Result<ServerSnapshot, ServerServiceError> {
+        let id_str = instance.id.as_str().to_owned();
         let started_at = instance.last_started_at_unix_secs;
-
         let mut processes = self.processes_lock()?;
         if let Some(managed) = processes.get_mut(&id_str) {
             let is_running = managed
@@ -177,30 +261,31 @@ impl ServerService for CoreServerService {
                 .poll()
                 .map(|status| status.is_none())
                 .unwrap_or(false);
-
+            if !is_running {
+                processes.remove(&id_str);
+                return Ok(ServerSnapshot {
+                    instance_id: id_str,
+                    state: ServerState::Stopped,
+                    pid: None,
+                    uptime_secs: None,
+                    error_message: None,
+                });
+            }
             let state = if self.is_stopping(&id_str) {
                 ServerState::Stopping
-            } else if is_running && self.is_starting(&id_str) {
+            } else if self.is_starting(&id_str) {
                 ServerState::Starting
-            } else if is_running {
-                ServerState::Running
             } else {
-                ServerState::Stopped
+                ServerState::Running
             };
-
             return Ok(ServerSnapshot {
                 instance_id: id_str,
                 state,
-                pid: if is_running {
-                    Some(managed.daemon.id())
-                } else {
-                    None
-                },
-                uptime_secs: started_at.and_then(|t| current_timestamp_secs().checked_sub(t)),
+                pid: Some(managed.daemon.id()),
+                uptime_secs: started_at.and_then(|time| current_timestamp_secs().checked_sub(time)),
                 error_message: None,
             });
         }
-
         Ok(ServerSnapshot {
             instance_id: id_str,
             state: ServerState::Stopped,
@@ -209,9 +294,65 @@ impl ServerService for CoreServerService {
             error_message: None,
         })
     }
+}
+
+#[async_trait]
+impl ServerService for CoreServerService {
+    async fn status(&self, id: &InstanceId) -> Result<ServerSnapshot, ServerServiceError> {
+        let instance = self.find_instance(id).await?;
+        self.status_for_instance(&instance)
+    }
 
     async fn start(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        let _guard = self.lock_lifecycle(id).await?;
         let instance = self.find_instance(id).await?;
+        self.start_unlocked(id, &instance).await
+    }
+
+    async fn restart(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        let lifecycle_guard = self.lock_lifecycle(id).await?;
+        let instance = self.find_instance(id).await?;
+        let driver = ServerRestartDriver {
+            service: self,
+            _lifecycle_guard: &lifecycle_guard,
+        };
+        restart_instance(&driver, &instance, RestartPolicy { stop_timeout: STOP_GRACEFUL_TIMEOUT })
+            .await
+            .map_err(|error| {
+                tracing::error!(
+                    target: "sealantern.application.server",
+                    instance_id = id.as_str(),
+                    error = %error,
+                    "failed to restart server process"
+                );
+                ServerServiceError::OperationFailed
+            })?;
+        Ok(())
+    }
+
+    async fn stop(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        let _guard = self.lock_lifecycle(id).await?;
+        self.find_instance(id).await?;
+        self.stop_unlocked(id).await
+    }
+
+    async fn force_stop(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        let _guard = self.lock_lifecycle(id).await?;
+        self.find_instance(id).await?;
+        self.force_stop_unlocked(id)
+    }
+
+    async fn send_command(&self, id: &InstanceId, command: &str) -> Result<(), ServerServiceError> {
+        self.send_command_inner(id, command).await
+    }
+}
+
+impl CoreServerService {
+    async fn start_unlocked(
+        &self,
+        id: &InstanceId,
+        instance: &Instance,
+    ) -> Result<(), ServerServiceError> {
         let id_str = id.as_str().to_string();
 
         {
@@ -224,7 +365,7 @@ impl ServerService for CoreServerService {
             }
         }
 
-        let mut command = match self.build_process_command(&instance) {
+        let mut command = match self.build_process_command(instance) {
             Ok(command) => command,
             Err(error) => {
                 tracing::error!(
@@ -258,14 +399,28 @@ impl ServerService for CoreServerService {
         self.processes_lock()?
             .insert(id_str.clone(), ManagedProcess { daemon, terminal });
 
-        // 更新实例的最后启动时间。
-        let _ = self
-            .instance_service
-            .update_last_started(id)
-            .await
-            .map_err(|_| ServerError::OperationFailed {
+        // 启动元数据持久化失败时回滚进程，保证返回失败即没有运行中的新进程。
+        if let Err(error) = self.instance_service.update_last_started(id).await {
+            tracing::error!(
+                target: "sealantern.application.server",
+                instance_id = %id_str,
+                error = %error,
+                "failed to persist server start metadata"
+            );
+            if let Err(rollback_error) = self.force_stop_unlocked(id) {
+                tracing::error!(
+                    target: "sealantern.application.server",
+                    instance_id = %id_str,
+                    error = %rollback_error,
+                    "failed to roll back server process after metadata persistence failure"
+                );
+            }
+            self.clear_starting(&id_str);
+            return Err(ServerError::OperationFailed {
                 source: Box::new(std::io::Error::other("failed to update last started")),
-            })?;
+            }
+            .into());
+        }
 
         // 后台读取进程输出，避免管道阻塞（当前先消费，后续接入日志管线）。
         if let Some(managed) = self.processes_lock()?.get_mut(&id_str) {
@@ -280,12 +435,11 @@ impl ServerService for CoreServerService {
         Ok(())
     }
 
-    async fn stop(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+    async fn stop_unlocked(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
         let id_str = id.as_str().to_string();
-        self.find_instance(id).await?;
 
         // 优雅停止：向控制台发送 stop，等待退出。
-        let _ = self.send_command_inner(id, "stop").await;
+        self.send_command_inner(id, "stop").await?;
         self.mark_stopping(&id_str);
 
         let deadline = Instant::now() + STOP_GRACEFUL_TIMEOUT;
@@ -312,37 +466,36 @@ impl ServerService for CoreServerService {
         // 超时：强制终止进程树。
         let mut processes = self.processes_lock()?;
         if let Some(mut managed) = processes.remove(&id_str) {
-            managed
-                .daemon
-                .terminate_tree()
-                .map_err(|e| ServerError::OperationFailed { source: Box::new(e) })?;
+            if let Err(error) = managed.daemon.terminate_tree() {
+                processes.insert(id_str.clone(), managed);
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+            }
         }
         self.clear_stopping(&id_str);
         Ok(())
     }
 
-    async fn force_stop(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+    fn force_stop_unlocked(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
         let id_str = id.as_str().to_string();
-        self.find_instance(id).await?;
 
         let mut processes = self.processes_lock()?;
         if let Some(mut managed) = processes.remove(&id_str) {
-            managed
-                .daemon
-                .terminate_tree()
-                .map_err(|e| ServerError::OperationFailed { source: Box::new(e) })?;
+            if let Err(error) = managed.daemon.terminate_tree() {
+                processes.insert(id_str.clone(), managed);
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+            }
         }
-        self.clear_starting(&id_str);
-        self.clear_stopping(&id_str);
+        self.clear_lifecycle_flags(&id_str);
         Ok(())
     }
 
-    async fn send_command(&self, id: &InstanceId, command: &str) -> Result<(), ServerServiceError> {
-        self.send_command_inner(id, command).await
+    /// 为重启流程请求优雅停止，不等待退出或执行超时强杀。
+    async fn request_stop_for_restart(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        self.send_command_inner(id, "stop").await?;
+        self.mark_stopping(id.as_str());
+        Ok(())
     }
-}
 
-impl CoreServerService {
     /// 向服务器控制台发送命令（内部实现）。
     async fn send_command_inner(
         &self,
@@ -435,4 +588,66 @@ fn build_jvm_arguments(instance: &Instance, default_jvm_args: &str) -> Vec<OsStr
 
     args.extend(instance.launch.jvm_arguments.iter().map(OsString::from));
     args
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use std::sync::Arc;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    use sealantern_core::instance::InstanceId;
+
+    use super::{CoreInstanceService, CoreServerService};
+
+    fn registry_path() -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir()
+            .join(format!("sealantern-server-lock-{}-{nonce}", std::process::id()))
+            .join("instances.json")
+    }
+
+    #[tokio::test]
+    async fn lifecycle_operations_serialize_per_instance() {
+        let path = registry_path();
+        let instances = CoreInstanceService::with_path(&path)
+            .await
+            .expect("instance service");
+        let service = CoreServerService::new(Arc::new(instances));
+        let first = InstanceId::new("first").expect("first id");
+        let second = InstanceId::new("second").expect("second id");
+
+        let first_guard = service.lock_lifecycle(&first).await.expect("first lock");
+        assert!(tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&first))
+            .await
+            .is_err());
+        let second_guard =
+            tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&second))
+                .await
+                .expect("different instance must not wait")
+                .expect("second lock");
+
+        drop(first_guard);
+        drop(second_guard);
+        let reacquired =
+            tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&first))
+                .await
+                .expect("same instance must continue after release")
+                .expect("reacquired lock");
+
+        let locks = service.lifecycle_locks.lock().expect("lifecycle locks");
+        assert_eq!(locks.len(), 2);
+        assert!(locks
+            .get(second.as_str())
+            .expect("second lock slot")
+            .upgrade()
+            .is_none());
+        drop(locks);
+        drop(reacquired);
+
+        let _ = std::fs::remove_dir_all(path.parent().expect("parent"));
+    }
 }

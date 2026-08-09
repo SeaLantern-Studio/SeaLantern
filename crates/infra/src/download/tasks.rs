@@ -133,6 +133,8 @@ pub(super) fn spawn_task_monitor(
         if !has_error && !status.cancelled() {
             let elapsed = start.elapsed().as_millis() as u64;
             observability::download_completed(&url, total_size, elapsed);
+            // 全部块成功：标记完成，供进度查询判定（不依赖 total_size 比较）。
+            status.mark_completed();
         }
     });
 }

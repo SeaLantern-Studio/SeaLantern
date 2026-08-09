@@ -42,6 +42,13 @@ pub async fn start_server(id: String) -> Result<(), ServerServiceError> {
     service.start(&id).await
 }
 
+/// 重启服务器进程。
+pub async fn restart_server(id: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_for_tauri(id)?;
+    service.restart(&id).await
+}
+
 /// 优雅停止服务器进程。
 pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;

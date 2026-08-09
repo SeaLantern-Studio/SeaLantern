@@ -6,6 +6,10 @@
 
 /// 配置管理领域错误。
 pub mod config;
+/// 服务器定时任务领域错误。
+pub mod cron;
+/// 下载任务管理领域错误。
+pub mod download;
 /// 实例管理领域错误。
 pub mod instance;
 /// 插件管理领域错误。
@@ -18,6 +22,8 @@ pub mod settings;
 pub mod system;
 
 pub use config::ConfigError;
+pub use cron::CronTaskError;
+pub use download::DownloadError;
 pub use instance::InstanceError;
 pub use plugin::PluginError;
 pub use server::ServerError;

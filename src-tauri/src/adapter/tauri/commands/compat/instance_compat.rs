@@ -175,6 +175,14 @@ pub async fn start_server(id: String) -> Result<(), ServerServiceError> {
     service.start(&id).await
 }
 
+/// 重启服务器（兼容 `restart_server`）。
+#[tauri::command]
+pub async fn restart_server(id: String) -> Result<(), ServerServiceError> {
+    let service = server_service().await?;
+    let id = parse_id_server(id)?;
+    service.restart(&id).await
+}
+
 /// 停止服务器（兼容 `stop_server`）。
 #[tauri::command]
 pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {

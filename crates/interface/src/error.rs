@@ -4,6 +4,39 @@
 //! 由 `application` 层的主错误（`application::error`）转换而来。
 //! 底层失败详情由应用层记录到受控日志，不跨传输面泄漏。
 
+/// 服务器定时任务操作失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum CronTaskServiceError {
+    /// 指定的任务不存在。
+    TaskNotFound,
+    /// 任务配置或标识不合法。
+    InvalidInput,
+    /// JSON 持久化读写失败。
+    StorageFailed,
+    /// 任务对应的服务器动作执行失败。
+    ExecutionFailed,
+    /// 未分类的内部操作失败。
+    OperationFailed,
+    /// 该能力尚未实现。
+    Unsupported,
+}
+
+impl std::fmt::Display for CronTaskServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::TaskNotFound => "cron task not found",
+            Self::InvalidInput => "invalid cron task input",
+            Self::StorageFailed => "cron task storage failed",
+            Self::ExecutionFailed => "cron task execution failed",
+            Self::OperationFailed => "cron task operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for CronTaskServiceError {}
+
 /// 实例管理操作失败的契约错误类别。
 ///
 /// 分类风格与 `server` 侧 `ConsoleCommandServiceError` 保持一致：
@@ -87,6 +120,22 @@ pub enum SettingsServiceError {
     Unsupported,
 }
 
+/// 下载任务管理失败的契约错误类别。
+///
+/// 分类风格与其他契约错误一致：不携带 URL、路径等敏感信息，底层失败详情
+/// 由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum DownloadServiceError {
+    /// 指定的下载任务不存在。
+    TaskNotFound,
+    /// 客户端提供的输入不合法（如空 URL）。
+    InvalidInput,
+    /// 底层网络 / IO 操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
 impl std::fmt::Display for SettingsServiceError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = match self {
@@ -98,7 +147,21 @@ impl std::fmt::Display for SettingsServiceError {
     }
 }
 
+impl std::fmt::Display for DownloadServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::TaskNotFound => "download task not found",
+            Self::InvalidInput => "invalid input",
+            Self::OperationFailed => "download operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
 impl std::error::Error for SettingsServiceError {}
+
+impl std::error::Error for DownloadServiceError {}
 
 /// 系统资源信息服务失败的契约错误类别。
 ///

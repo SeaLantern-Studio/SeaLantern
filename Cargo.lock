@@ -5218,21 +5218,26 @@ name = "sealantern-application"
 version = "1.2.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "sealantern-core",
  "sealantern-extra",
  "sealantern-infra",
  "sealantern-interface",
+ "tempfile",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
 name = "sealantern-core"
 version = "1.2.0"
 dependencies = [
+ "async-trait",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "tokio",
  "tracing",
  "zip",
 ]
@@ -5289,8 +5294,10 @@ name = "sealantern-interface"
 version = "1.2.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "sealantern-core",
  "serde",
+ "serde_json",
  "tokio",
 ]
 
