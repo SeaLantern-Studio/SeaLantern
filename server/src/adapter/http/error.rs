@@ -9,7 +9,9 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Serialize;
 
-use sealantern_interface::{InstanceServiceError, ServerServiceError, SystemServiceError};
+use sealantern_interface::{
+    CronTaskServiceError, InstanceServiceError, ServerServiceError, SystemServiceError,
+};
 
 /// 展平的 HTTP 错误响应体。
 #[derive(Debug, Serialize)]
@@ -32,6 +34,42 @@ pub struct HttpError {
 }
 
 impl HttpError {
+    /// 由定时任务契约错误构建 HTTP 错误。
+    pub fn from_cron_error(error: CronTaskServiceError) -> Self {
+        match error {
+            CronTaskServiceError::TaskNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "cron_task_not_found",
+                message: error.to_string(),
+            },
+            CronTaskServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_cron_task",
+                message: error.to_string(),
+            },
+            CronTaskServiceError::StorageFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "cron_task_storage_failed",
+                message: error.to_string(),
+            },
+            CronTaskServiceError::ExecutionFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "cron_task_execution_failed",
+                message: error.to_string(),
+            },
+            CronTaskServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "cron_task_operation_failed",
+                message: error.to_string(),
+            },
+            CronTaskServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 由接口契约错误构建 HTTP 错误。
     pub fn from_instance_error(error: InstanceServiceError) -> Self {
         match error {
@@ -142,6 +180,12 @@ impl HttpError {
 impl From<InstanceServiceError> for HttpError {
     fn from(error: InstanceServiceError) -> Self {
         Self::from_instance_error(error)
+    }
+}
+
+impl From<CronTaskServiceError> for HttpError {
+    fn from(error: CronTaskServiceError) -> Self {
+        Self::from_cron_error(error)
     }
 }
 

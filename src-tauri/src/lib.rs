@@ -9,6 +9,10 @@ use tauri::Manager;
 use adapter::tauri::commands::compat::download_compat::{
     cancel_download_task, download_file, poll_task,
 };
+use adapter::tauri::commands::cron::{
+    create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
+    update_cron_task,
+};
 use adapter::tauri::commands::compat::instance_compat::{
     add_existing_server, collect_copy_conflicts, copy_directory_contents, create_server,
     delete_server, force_stop_server, get_server_list, get_server_logs, get_server_status,
@@ -49,6 +53,13 @@ pub fn run() {
             desktop_pick_save_file,
             desktop_pick_server_executable,
             desktop_pick_startup_file,
+            //服务器定时任务契约命令
+            create_cron_task,
+            delete_cron_task,
+            list_cron_tasks,
+            run_cron_task,
+            set_cron_task_enabled,
+            update_cron_task,
             //兼容层（前端旧命令名 → 新服务，由adapter/tauri/commands/compat提供）
             add_existing_server,
             cancel_download_task,
