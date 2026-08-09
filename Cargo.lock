@@ -5297,6 +5297,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "sealantern-core",
+ "sealantern-extra",
  "serde",
  "serde_json",
  "tokio",

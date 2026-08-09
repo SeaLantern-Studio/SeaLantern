@@ -162,6 +162,21 @@ impl HttpError {
                 code: "settings_not_found",
                 message: error.to_string(),
             },
+            SettingsServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_settings",
+                message: error.to_string(),
+            },
+            SettingsServiceError::StorageFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "settings_storage_failed",
+                message: error.to_string(),
+            },
+            SettingsServiceError::Unavailable => Self {
+                status: StatusCode::SERVICE_UNAVAILABLE,
+                code: "settings_unavailable",
+                message: error.to_string(),
+            },
             SettingsServiceError::OperationFailed => Self {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 code: "settings_operation_failed",
@@ -281,5 +296,20 @@ mod tests {
 
         assert_eq!(error.status, StatusCode::NOT_IMPLEMENTED);
         assert_eq!(error.code, "operation_unsupported");
+    }
+
+    #[test]
+    fn settings_errors_have_stable_http_classification() {
+        let invalid = HttpError::from(SettingsServiceError::InvalidInput);
+        assert_eq!(invalid.status, StatusCode::BAD_REQUEST);
+        assert_eq!(invalid.code, "invalid_settings");
+
+        let storage = HttpError::from(SettingsServiceError::StorageFailed);
+        assert_eq!(storage.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(storage.code, "settings_storage_failed");
+
+        let unavailable = HttpError::from(SettingsServiceError::Unavailable);
+        assert_eq!(unavailable.status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(unavailable.code, "settings_unavailable");
     }
 }

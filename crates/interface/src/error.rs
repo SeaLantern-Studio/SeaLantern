@@ -115,7 +115,13 @@ impl std::error::Error for ServerServiceError {}
 pub enum SettingsServiceError {
     /// 设置分组或设置项不存在。
     NotFound,
-    /// 底层配置加载/保存操作失败。
+    /// 客户端提供的设置或导入内容不合法。
+    InvalidInput,
+    /// 底层配置加载、锁定或持久化失败。
+    StorageFailed,
+    /// 设置服务暂时不可用或尚未完成装配。
+    Unavailable,
+    /// 未分类的设置操作失败。
     OperationFailed,
     /// 该能力尚未实现（占位）。
     Unsupported,
@@ -141,6 +147,9 @@ impl std::fmt::Display for SettingsServiceError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = match self {
             Self::NotFound => "settings not found",
+            Self::InvalidInput => "invalid settings input",
+            Self::StorageFailed => "settings storage failed",
+            Self::Unavailable => "settings service unavailable",
             Self::OperationFailed => "settings operation failed",
             Self::Unsupported => "operation not supported",
         };
