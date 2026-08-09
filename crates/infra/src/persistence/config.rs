@@ -62,6 +62,12 @@ impl<E> From<FsError> for UpdatePersistedError<E> {
     }
 }
 
+impl<E> From<ConfigError> for UpdatePersistedError<E> {
+    fn from(error: ConfigError) -> Self {
+        Self::Storage(error.into())
+    }
+}
+
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -290,21 +296,13 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
         update: impl FnOnce(&mut T) -> Result<bool, E>,
     ) -> Result<T, UpdatePersistedError<E>> {
         let path = path.into();
-        let format = ConfigFormat::from_extension(&path)
-            .map_err(FsError::from)
-            .map_err(UpdatePersistedError::Storage)?;
-        let _guard = lock_config(&path)
-            .await
-            .map_err(UpdatePersistedError::Storage)?;
-        let mut data = load_data_or_default(&path, format, default)
-            .await
-            .map_err(UpdatePersistedError::Storage)?;
+        let format = ConfigFormat::from_extension(&path)?;
+        let _guard = lock_config(&path).await?;
+        let mut data = load_data_or_default(&path, format, default).await?;
 
         if update(&mut data).map_err(UpdatePersistedError::Update)? {
             if auto_backup && path.exists() {
-                backup_path(&path)
-                    .await
-                    .map_err(UpdatePersistedError::Storage)?;
+                backup_path(&path).await?;
             }
             let content = format.serialize(&data).map_err(|error| {
                 UpdatePersistedError::Storage(FsError::serialization(
@@ -314,9 +312,7 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
                     error.to_string(),
                 ))
             })?;
-            write_atomic(&path, content.as_bytes())
-                .await
-                .map_err(UpdatePersistedError::Storage)?;
+            write_atomic(&path, content.as_bytes()).await?;
         }
         Ok(data)
     }
@@ -679,5 +675,21 @@ mod tests {
         assert!(matches!(result, Err(UpdatePersistedError::Update(Rejected))));
         assert_eq!(tokio::fs::read_to_string(&path).await.unwrap(), original);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn fallible_update_preserves_config_format_error_classification() {
+        let result = ConfigFile::<TestConfig>::try_update_persisted_if_changed(
+            "settings.invalid",
+            TestConfig::default(),
+            false,
+            |_| Ok::<bool, Infallible>(false),
+        )
+        .await;
+
+        assert!(matches!(
+            result,
+            Err(UpdatePersistedError::Storage(FsError::InvalidPath { .. }))
+        ));
     }
 }
