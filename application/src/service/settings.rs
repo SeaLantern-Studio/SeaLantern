@@ -1,13 +1,16 @@
 //! 设置信息服务实现。
 //!
-//! 实现 [`sealantern_interface::SettingsService`] 能力端口，提供设置分组、
-//! 设置项列表等查询能力。
+//! 实现 [`sealantern_interface::SettingsService`] 能力端口，统一提供设置概览、
+//! 读取、更新、重置与导入导出能力。
 //!
 //! 错误分层：内部以应用层主错误 [`SettingsError`] 为源头，暴露
 //! [`SettingsService`] 时统一转为接口契约错误 [`SettingsServiceError`]。
 
 use async_trait::async_trait;
-use sealantern_extra::models::DEFAULT_ACRYLIC_BLUR_LEVEL;
+use sealantern_extra::config::SettingsManager;
+use sealantern_extra::models::{
+    AppSettings, PartialAppSettings, UpdateResult, DEFAULT_ACRYLIC_BLUR_LEVEL,
+};
 use sealantern_interface::settings::{
     SettingsEntry, SettingsEntryType, SettingsGroupInfo, SettingsOption, SettingsOverview,
 };
@@ -15,13 +18,49 @@ use sealantern_interface::{SettingsService, SettingsServiceError};
 
 use crate::error::SettingsError;
 
-/// 基于 `extra` 配置管理的设置信息服务实现。
-#[derive(Debug, Default)]
-pub struct CoreSettingsService;
+/// 基于 `extra` 配置管理的设置服务实现。
+pub struct CoreSettingsService {
+    /// 惰性加载的唯一设置管理器；首次真实配置操作时初始化。
+    manager: tokio::sync::OnceCell<tokio::sync::Mutex<SettingsManager>>,
+}
 
 impl CoreSettingsService {
-    /// 构造设置概览，返回应用层主错误。
-    fn build_overview_inner() -> Result<SettingsOverview, SettingsError> {
+    /// 创建使用默认配置位置的惰性设置服务。
+    pub fn new() -> Self {
+        Self { manager: tokio::sync::OnceCell::new() }
+    }
+
+    /// 使用既有设置管理器构造服务，供测试和受控注入使用。
+    pub fn with_manager(manager: SettingsManager) -> Self {
+        Self {
+            manager: tokio::sync::OnceCell::new_with(Some(tokio::sync::Mutex::new(manager))),
+        }
+    }
+
+    /// 获取设置管理器；并发首次调用只执行一次初始化，失败后允许重试。
+    async fn manager(&self) -> Result<&tokio::sync::Mutex<SettingsManager>, SettingsError> {
+        self.manager
+            .get_or_try_init(|| async {
+                SettingsManager::load_default()
+                    .await
+                    .map(tokio::sync::Mutex::new)
+                    .map_err(SettingsError::from)
+            })
+            .await
+    }
+
+    /// 将应用层设置错误记录并收敛为宿主契约错误。
+    fn contract_error(error: SettingsError) -> SettingsServiceError {
+        tracing::error!(
+            target: "sealantern.application.settings",
+            error = %error,
+            "settings operation failed"
+        );
+        SettingsServiceError::from(error)
+    }
+
+    /// 构造设置概览。
+    fn build_overview_inner() -> SettingsOverview {
         // 构建所有设置分组及其设置项
         let groups = vec![
             build_general_group(),
@@ -40,25 +79,87 @@ impl CoreSettingsService {
             .filter(|e| e.has_value)
             .count();
 
-        Ok(SettingsOverview {
+        SettingsOverview {
             groups,
             total_entries,
             configured_entries,
-        })
+        }
+    }
+}
+
+impl Default for CoreSettingsService {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 #[async_trait]
 impl SettingsService for CoreSettingsService {
     async fn settings_overview(&self) -> Result<SettingsOverview, SettingsServiceError> {
-        // 设置概览构造为纯计算，经 spawn_blocking 调度到阻塞线程池，
-        // 避免阻塞运行时的核心线程。
-        let overview = tokio::task::spawn_blocking(Self::build_overview_inner)
-            .await
-            .map_err(SettingsError::from)?
-            .map_err(SettingsServiceError::from)?;
+        Ok(Self::build_overview_inner())
+    }
 
-        Ok(overview)
+    async fn get(&self) -> Result<AppSettings, SettingsServiceError> {
+        let manager = self.manager().await.map_err(Self::contract_error)?;
+        let manager = manager.lock().await;
+        Ok(manager.get().clone())
+    }
+
+    async fn update(&self, settings: AppSettings) -> Result<UpdateResult, SettingsServiceError> {
+        let manager = self.manager().await.map_err(Self::contract_error)?;
+        manager
+            .lock()
+            .await
+            .update(settings)
+            .await
+            .map_err(SettingsError::from)
+            .map_err(Self::contract_error)
+    }
+
+    async fn update_partial(
+        &self,
+        partial: PartialAppSettings,
+    ) -> Result<UpdateResult, SettingsServiceError> {
+        let manager = self.manager().await.map_err(Self::contract_error)?;
+        manager
+            .lock()
+            .await
+            .update_partial(partial)
+            .await
+            .map_err(SettingsError::from)
+            .map_err(Self::contract_error)
+    }
+
+    async fn reset(&self) -> Result<AppSettings, SettingsServiceError> {
+        let manager = self.manager().await.map_err(Self::contract_error)?;
+        manager
+            .lock()
+            .await
+            .reset()
+            .await
+            .map_err(SettingsError::from)
+            .map_err(Self::contract_error)
+    }
+
+    async fn export_json(&self) -> Result<String, SettingsServiceError> {
+        let manager = self.manager().await.map_err(Self::contract_error)?;
+        manager
+            .lock()
+            .await
+            .export_json()
+            .map_err(SettingsError::from)
+            .map_err(Self::contract_error)
+    }
+
+    async fn import_json(&self, json: &str) -> Result<UpdateResult, SettingsServiceError> {
+        let manager = self.manager().await.map_err(Self::contract_error)?;
+        manager
+            .lock()
+            .await
+            .import_json(json)
+            .await
+            .map_err(SettingsError::from)
+            .map_err(Self::contract_error)
     }
 }
 
@@ -470,5 +571,91 @@ fn build_developer_group() -> SettingsGroupInfo {
                 options: vec![],
             },
         ],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sealantern_extra::models::SettingsGroup;
+
+    #[tokio::test]
+    async fn overview_does_not_initialize_settings_manager() {
+        let service = CoreSettingsService::new();
+        assert!(service.manager.get().is_none());
+
+        let overview = service
+            .settings_overview()
+            .await
+            .expect("settings overview should be available without storage");
+
+        assert!(!overview.groups.is_empty());
+        assert!(service.manager.get().is_none());
+    }
+
+    #[tokio::test]
+    async fn manages_settings_through_the_service_contract() {
+        let root = tempfile::tempdir().expect("temporary settings directory should be created");
+        let path = root.path().join("settings.json");
+        let manager = SettingsManager::load(&path)
+            .await
+            .expect("settings manager should load");
+        let service = CoreSettingsService::with_manager(manager);
+
+        let initial = service
+            .get()
+            .await
+            .expect("default settings should be returned");
+        assert_eq!(initial.theme, "auto");
+        assert_eq!(initial.language, "zh-CN");
+
+        let mut replacement = initial;
+        replacement.theme = "dark".to_string();
+        replacement.language = "en-US".to_string();
+        let updated = service
+            .update(replacement)
+            .await
+            .expect("full settings update should succeed");
+        assert!(updated.changed_groups.contains(&SettingsGroup::Appearance));
+        assert!(updated.changed_groups.contains(&SettingsGroup::Developer));
+
+        let partial = PartialAppSettings {
+            default_port: Some(25566),
+            ..PartialAppSettings::default()
+        };
+        let partially_updated = service
+            .update_partial(partial)
+            .await
+            .expect("partial settings update should succeed");
+        assert_eq!(partially_updated.settings.default_port, 25566);
+        assert_eq!(partially_updated.settings.theme, "dark");
+        assert!(partially_updated
+            .changed_groups
+            .contains(&SettingsGroup::ServerDefaults));
+
+        let exported = service
+            .export_json()
+            .await
+            .expect("settings should export as JSON");
+        let reset = service
+            .reset()
+            .await
+            .expect("settings reset should succeed");
+        assert_eq!(reset.theme, AppSettings::default().theme);
+        assert_eq!(reset.default_port, AppSettings::default().default_port);
+
+        let imported = service
+            .import_json(&exported)
+            .await
+            .expect("exported settings should import");
+        assert_eq!(imported.settings.theme, "dark");
+        assert_eq!(imported.settings.language, "en-US");
+        assert_eq!(imported.settings.default_port, 25566);
+
+        let reloaded = SettingsManager::load(&path)
+            .await
+            .expect("persisted settings should reload");
+        assert_eq!(reloaded.get().theme, "dark");
+        assert_eq!(reloaded.get().default_port, 25566);
     }
 }
