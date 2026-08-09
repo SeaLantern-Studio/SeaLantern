@@ -262,11 +262,24 @@ impl IntoResponse for HttpError {
 mod tests {
     use super::*;
 
-    #[test]
-    fn update_check_failure_maps_to_bad_gateway() {
-        let error = HttpError::from(UpdateCheckServiceError::CheckFailed);
+    #[tokio::test]
+    async fn update_check_failure_has_stable_http_response() {
+        let response = HttpError::from(UpdateCheckServiceError::CheckFailed).into_response();
 
-        assert_eq!(error.status, StatusCode::BAD_GATEWAY);
-        assert_eq!(error.code, "update_check_failed");
+        assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value["code"], "update_check_failed");
+        assert_eq!(value["message"], "update check failed");
+    }
+
+    #[test]
+    fn unsupported_update_check_maps_to_not_implemented() {
+        let error = HttpError::from(UpdateCheckServiceError::Unsupported);
+
+        assert_eq!(error.status, StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(error.code, "operation_unsupported");
     }
 }

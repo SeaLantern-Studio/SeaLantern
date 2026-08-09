@@ -77,3 +77,49 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         .merge(spa_router(config))
         .with_state(state)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use sealantern_application::service::CoreInstanceService;
+    use tower::ServiceExt;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn update_route_returns_snake_case_contract() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time")
+            .as_nanos();
+        let path = std::env::temp_dir()
+            .join(format!("sealantern-update-route-{}-{unique}.json", std::process::id()));
+        let instance = CoreInstanceService::with_path(path)
+            .await
+            .expect("create instance service");
+        let router = build_router(AppServices::from_inner(instance), ViteConfig::default());
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/update")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call update route");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read update response");
+        let value: serde_json::Value =
+            serde_json::from_slice(&body).expect("parse update response");
+        assert!(value.get("has_update").is_some());
+        assert!(value.get("latest_version").is_some());
+        assert!(value.get("hasUpdate").is_none());
+    }
+}
