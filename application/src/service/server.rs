@@ -61,15 +61,25 @@ impl InstanceRestartDriver for ServerRestartDriver<'_> {
     }
 
     async fn request_stop(&self, instance: &Instance) -> Result<(), Self::Error> {
-        self.service.stop(&instance.id).await
+        self.service.request_stop_for_restart(&instance.id).await
     }
 
     async fn await_terminal(
         &self,
         instance: &Instance,
-        _: Duration,
+        timeout: Duration,
     ) -> Result<InstanceLifecycleState, Self::Error> {
-        self.state(instance).await
+        let deadline = Instant::now() + timeout;
+        loop {
+            let state = self.state(instance).await?;
+            if !state.is_active() || Instant::now() >= deadline {
+                return Ok(state);
+            }
+            tokio::time::sleep(
+                POLL_INTERVAL.min(deadline.saturating_duration_since(Instant::now())),
+            )
+            .await;
+        }
     }
 
     async fn start(&self, instance: &Instance) -> Result<(), Self::Error> {
@@ -403,6 +413,13 @@ impl ServerService for CoreServerService {
 }
 
 impl CoreServerService {
+    /// 为重启流程请求优雅停止，不等待退出或执行超时强杀。
+    async fn request_stop_for_restart(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        self.send_command_inner(id, "stop").await?;
+        self.mark_stopping(id.as_str());
+        Ok(())
+    }
+
     /// 向服务器控制台发送命令（内部实现）。
     async fn send_command_inner(
         &self,
