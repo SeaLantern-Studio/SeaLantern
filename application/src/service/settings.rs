@@ -332,13 +332,40 @@ fn build_appearance_group() -> SettingsGroupInfo {
             },
             SettingsEntry {
                 id: "acrylic_enabled".to_string(),
-                display_name: "settings.acrylic_enabled".to_string(),
-                description: "settings.acrylic_enabled_desc".to_string(),
+                display_name: "settings.advanced_material".to_string(),
+                description: "settings.advanced_material_desc".to_string(),
                 entry_type: SettingsEntryType::Boolean,
                 required: false,
                 has_value: true,
                 default_value: Some("false".to_string()),
                 options: vec![],
+            },
+            SettingsEntry {
+                id: "acrylic_blur_level".to_string(),
+                display_name: "settings.acrylic_blur".to_string(),
+                description: "settings.acrylic_blur_desc".to_string(),
+                entry_type: SettingsEntryType::Enum,
+                required: false,
+                has_value: true,
+                default_value: Some("\"medium\"".to_string()),
+                options: vec![
+                    SettingsOption {
+                        value: "off".to_string(),
+                        display_name: "settings.acrylic_blur_options.off".to_string(),
+                    },
+                    SettingsOption {
+                        value: "low".to_string(),
+                        display_name: "settings.acrylic_blur_options.low".to_string(),
+                    },
+                    SettingsOption {
+                        value: "medium".to_string(),
+                        display_name: "settings.acrylic_blur_options.medium".to_string(),
+                    },
+                    SettingsOption {
+                        value: "high".to_string(),
+                        display_name: "settings.acrylic_blur_options.high".to_string(),
+                    },
+                ],
             },
             SettingsEntry {
                 id: "minimal_mode".to_string(),

@@ -378,11 +378,11 @@ watch(
 
         <div class="panel-actions">
           <button class="pill-btn" @click="openFolder">
-            <FolderOpen v-if="FolderOpen" :size="14" class="btn-icon" />
+            <FolderOpen :size="14" class="btn-icon" />
             <span>{{ i18n.t("taskPill.openFolder") }}</span>
           </button>
           <button class="pill-btn" @click="gotoDownloadPage">
-            <ExternalLink v-if="ExternalLink" :size="14" class="btn-icon" />
+            <ExternalLink :size="14" class="btn-icon" />
             <span>{{ i18n.t("taskPill.gotoDownload") }}</span>
           </button>
           <button v-if="store.isDownloading" class="pill-btn pill-btn-warn" @click="cancelDownload">
@@ -420,9 +420,17 @@ watch(
 
 /* 任务态：border 撅掉用 SVG 进度环代替，阴影加强 */
 .task-capsule.has-task {
-  border-color: transparent;
-  box-shadow: var(--sl-shadow-md);
+  border-color: var(--sl-border-light);
+  box-shadow: var(--sl-shadow-sm);
   cursor: pointer;
+}
+
+[data-acrylic="on"] .task-capsule,
+[data-acrylic="on"] .pill-panel {
+  background: var(--sl-glass-strong-bg, var(--sl-surface));
+  backdrop-filter: blur(var(--sl-acrylic-blur, 16px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-acrylic-blur, 16px))
+    saturate(var(--sl-saturate-normal, 180%));
 }
 
 /* 胶囊始终保持 full 圆角，面板跟胶囊之间留 6px 间距 */

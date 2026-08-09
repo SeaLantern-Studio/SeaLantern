@@ -711,6 +711,16 @@
       "console_letter_spacing_desc": "Adjust spacing between console characters, default 0; negative values make text tighter",
       "acrylic": "Acrylic Effect (Glass)",
       "acrylic_desc": "Enable soft Gaussian blur glass effect, supports all platforms, compatible with background images",
+      "advanced_material": "Advanced Material",
+      "advanced_material_desc": "Enable translucent materials and window blending while keeping compatibility with existing acrylic settings",
+      "acrylic_blur": "Acrylic Blur Strength",
+      "acrylic_blur_desc": "Adjust material background blur without changing the background image blur",
+      "acrylic_blur_options": {
+        "off": "Off",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
       "background": "Background Image",
       "background_desc": "Upload an image as software background, supports PNG, JPG, WEBP and other formats",
       "opacity": "Opacity",

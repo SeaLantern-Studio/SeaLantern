@@ -9,6 +9,8 @@ export type SettingsGroup =
   | "Window"
   | "Developer";
 
+export type AcrylicBlurLevel = "off" | "low" | "medium" | "high";
+
 export interface AppSettings {
   close_servers_on_exit: boolean;
   close_servers_on_update: boolean;
@@ -34,6 +36,7 @@ export interface AppSettings {
   window_y?: number | null;
   window_maximized?: boolean;
   acrylic_enabled: boolean;
+  acrylic_blur_level: AcrylicBlurLevel;
   theme: string;
   font_size: number;
   font_family: string;
@@ -72,6 +75,7 @@ export interface PartialSettings {
   window_y?: number | null;
   window_maximized?: boolean;
   acrylic_enabled?: boolean;
+  acrylic_blur_level?: AcrylicBlurLevel;
   theme?: string;
   font_size?: number;
   font_family?: string;

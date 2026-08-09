@@ -7,9 +7,15 @@ import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.
 import SettingsActions from "@components/views/paint/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/paint/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/paint/ResetConfirmModal.vue";
-import { settingsApi, getSystemFonts, type AppSettings } from "@api/settings";
+import {
+  settingsApi,
+  getSystemFonts,
+  type AcrylicBlurLevel,
+  type AppSettings,
+} from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
+import { applyAcrylicEffect } from "@utils/acrylic";
 import { usePluginStore } from "@stores/pluginStore";
 import {
   dispatchSettingsUpdate,
@@ -180,7 +186,12 @@ function handleFontFamilyChange() {
 
 function handleAcrylicChange(enabled: boolean) {
   markChanged();
-  document.documentElement.setAttribute("data-acrylic", enabled ? "on" : "off");
+  applyAcrylicEffect(enabled, settings.value?.acrylic_blur_level);
+}
+
+function handleAcrylicBlurChange(level: AcrylicBlurLevel) {
+  markChanged();
+  applyAcrylicEffect(settings.value?.acrylic_enabled ?? false, level);
 }
 
 function handleMinimalModeChange(enabled: boolean) {
@@ -257,6 +268,7 @@ async function resetSettings() {
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    dispatchSettingsUpdate(["Appearance"], s);
   } catch (e) {
     error.value = String(e);
   }
@@ -282,6 +294,7 @@ async function handleImport(json: string) {
     applyTheme(s.theme);
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
+    dispatchSettingsUpdate(["Appearance"], s);
   } catch (e) {
     error.value = String(e);
   }
@@ -334,6 +347,7 @@ function clearBackgroundImage() {
         :font-family-options="fontFamilyOptions"
         :fonts-loading="fontsLoading"
         :acrylic-enabled="settings.acrylic_enabled"
+        :acrylic-blur-level="settings.acrylic_blur_level || 'medium'"
         :is-theme-proxied="isThemeProxied"
         :theme-proxy-plugin-name="themeProxyPluginName"
         :background-image="settings.background_image"
@@ -347,6 +361,7 @@ function clearBackgroundImage() {
         @update:font-size="fontSize = $event"
         @update:font-family="settings.font_family = $event"
         @update:acrylic-enabled="settings.acrylic_enabled = $event"
+        @update:acrylic-blur-level="settings.acrylic_blur_level = $event"
         @update:bg-settings-expanded="bgSettingsExpanded = $event"
         @update:bg-opacity="bgOpacity = $event"
         @update:bg-blur="bgBlur = $event"
@@ -357,6 +372,7 @@ function clearBackgroundImage() {
         @font-size-change="handleFontSizeChange"
         @font-family-change="handleFontFamilyChange"
         @acrylic-change="handleAcrylicChange"
+        @acrylic-blur-change="handleAcrylicBlurChange"
         @minimal-mode-change="handleMinimalModeChange"
         @pick-image="pickBackgroundImage"
         @clear-image="clearBackgroundImage"

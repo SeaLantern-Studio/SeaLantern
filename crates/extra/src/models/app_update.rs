@@ -70,6 +70,7 @@ pub struct PartialAppSettings {
     pub background_brightness: Option<f32>,
     pub background_size: Option<String>,
     pub acrylic_enabled: Option<bool>,
+    pub acrylic_blur_level: Option<String>,
     pub theme: Option<String>,
     pub color: Option<String>,
     pub font_size: Option<u32>,
@@ -160,6 +161,9 @@ impl PartialAppSettings {
         }
         if let Some(value) = self.acrylic_enabled {
             target.acrylic_enabled = value;
+        }
+        if let Some(value) = &self.acrylic_blur_level {
+            target.acrylic_blur_level.clone_from(value);
         }
         if let Some(value) = &self.theme {
             target.theme.clone_from(value);

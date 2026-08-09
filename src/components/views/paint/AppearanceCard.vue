@@ -2,6 +2,7 @@
 import BackgroundSettings from "./BackgroundSettings.vue";
 import { i18n } from "@language";
 import { computed } from "vue";
+import type { AcrylicBlurLevel } from "@api/settings";
 
 defineProps<{
   theme: string;
@@ -10,6 +11,7 @@ defineProps<{
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
   acrylicEnabled: boolean;
+  acrylicBlurLevel: AcrylicBlurLevel;
   isThemeProxied: boolean;
   themeProxyPluginName: string;
   backgroundImage: string;
@@ -26,6 +28,7 @@ const emit = defineEmits<{
   (e: "update:fontSize", value: string): void;
   (e: "update:fontFamily", value: string): void;
   (e: "update:acrylicEnabled", value: boolean): void;
+  (e: "update:acrylicBlurLevel", value: AcrylicBlurLevel): void;
   (e: "update:bgSettingsExpanded", value: boolean): void;
   (e: "update:bgOpacity", value: string): void;
   (e: "update:bgBlur", value: string): void;
@@ -36,6 +39,7 @@ const emit = defineEmits<{
   (e: "fontSizeChange"): void;
   (e: "fontFamilyChange"): void;
   (e: "acrylicChange", value: boolean): void;
+  (e: "acrylicBlurChange", value: AcrylicBlurLevel): void;
   (e: "minimalModeChange", value: boolean): void;
   (e: "pickImage"): void;
   (e: "clearImage"): void;
@@ -46,6 +50,13 @@ const themeOptions = computed(() => [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
   { label: i18n.t("settings.theme_options.light"), value: "light" },
   { label: i18n.t("settings.theme_options.dark"), value: "dark" },
+]);
+
+const acrylicBlurOptions = computed(() => [
+  { label: i18n.t("settings.acrylic_blur_options.off"), value: "off" },
+  { label: i18n.t("settings.acrylic_blur_options.low"), value: "low" },
+  { label: i18n.t("settings.acrylic_blur_options.medium"), value: "medium" },
+  { label: i18n.t("settings.acrylic_blur_options.high"), value: "high" },
 ]);
 
 function handleThemeChange(value: string) {
@@ -66,6 +77,11 @@ function handleFontFamilyChange(value: string) {
 function handleAcrylicChange(value: boolean) {
   emit("update:acrylicEnabled", value);
   emit("acrylicChange", value);
+}
+
+function handleAcrylicBlurChange(value: AcrylicBlurLevel) {
+  emit("update:acrylicBlurLevel", value);
+  emit("acrylicBlurChange", value);
 }
 
 function handleMinimalModeChange(value: boolean) {
@@ -136,10 +152,24 @@ function handleMinimalModeChange(value: boolean) {
 
       <div class="settings-entry">
         <div class="settings-entry-info">
-          <span class="settings-entry-title">{{ i18n.t("settings.acrylic") }}</span>
-          <span class="settings-entry-desc">{{ i18n.t("settings.acrylic_desc") }}</span>
+          <span class="settings-entry-title">{{ i18n.t("settings.advanced_material") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.advanced_material_desc") }}</span>
         </div>
         <cmz-switch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
+      </div>
+
+      <div v-if="acrylicEnabled" class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.acrylic_blur") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.acrylic_blur_desc") }}</span>
+        </div>
+        <div class="sl-input-md">
+          <cmz-select
+            :model-value="acrylicBlurLevel"
+            :options="acrylicBlurOptions"
+            @update:model-value="handleAcrylicBlurChange"
+          />
+        </div>
       </div>
 
       <div class="settings-entry">

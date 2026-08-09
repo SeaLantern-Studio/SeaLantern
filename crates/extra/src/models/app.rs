@@ -50,6 +50,7 @@ pub struct AppSettings {
     pub background_brightness: f32,
     pub background_size: String,
     pub acrylic_enabled: bool,
+    pub acrylic_blur_level: String,
     pub theme: String,
     pub color: String,
     pub font_size: u32,
@@ -96,6 +97,7 @@ impl Default for AppSettings {
             background_brightness: 1.0,
             background_size: "cover".into(),
             acrylic_enabled: false,
+            acrylic_blur_level: "medium".into(),
             theme: "auto".into(),
             color: "default".into(),
             font_size: 14,
@@ -154,6 +156,7 @@ impl AppSettings {
             || self.background_brightness != other.background_brightness
             || self.background_size != other.background_size
             || self.acrylic_enabled != other.acrylic_enabled
+            || self.acrylic_blur_level != other.acrylic_blur_level
             || self.theme != other.theme
             || self.color != other.color
             || self.font_size != other.font_size
@@ -188,5 +191,27 @@ impl AppSettings {
         }
 
         groups
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AppSettings, SettingsGroup};
+
+    #[test]
+    fn legacy_settings_default_to_medium_acrylic_blur() {
+        let settings: AppSettings =
+            serde_json::from_str("{}").expect("legacy settings should load");
+
+        assert_eq!(settings.acrylic_blur_level, "medium");
+    }
+
+    #[test]
+    fn acrylic_blur_change_marks_appearance_group() {
+        let current = AppSettings::default();
+        let mut changed = current.clone();
+        changed.acrylic_blur_level = "high".into();
+
+        assert_eq!(current.changed_groups(&changed), vec![SettingsGroup::Appearance]);
     }
 }
