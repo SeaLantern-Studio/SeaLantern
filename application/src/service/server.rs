@@ -45,6 +45,7 @@ struct ManagedProcess {
 
 struct ServerRestartDriver<'a> {
     service: &'a CoreServerService,
+    _lifecycle_guard: &'a OwnedMutexGuard<()>,
 }
 
 #[async_trait]
@@ -53,12 +54,16 @@ impl InstanceRestartDriver for ServerRestartDriver<'_> {
 
     async fn state(&self, instance: &Instance) -> Result<InstanceLifecycleState, Self::Error> {
         let snapshot = self.service.status_for_instance(instance)?;
-        Ok(match snapshot.state {
+        let state = match snapshot.state {
             ServerState::Starting => InstanceLifecycleState::Starting,
             ServerState::Running => InstanceLifecycleState::Running,
             ServerState::Stopping => InstanceLifecycleState::Stopping,
             ServerState::Stopped => InstanceLifecycleState::Stopped,
-        })
+        };
+        if !state.is_active() {
+            self.service.clear_lifecycle_flags(instance.id.as_str());
+        }
+        Ok(state)
     }
 
     async fn request_stop(&self, instance: &Instance) -> Result<(), Self::Error> {
@@ -122,7 +127,7 @@ impl CoreServerService {
                 .map_err(|_| ServerError::Internal {
                     source: Box::new(std::io::Error::other("lifecycle locks poisoned")),
                 })?;
-            locks.retain(|_, lock| lock.strong_count() > 0);
+            // 失效弱引用只在对应实例再次访问时覆盖，避免每次获取都扫描整张表。
             if let Some(lock) = locks.get(id.as_str()).and_then(Weak::upgrade) {
                 lock
             } else {
@@ -238,6 +243,11 @@ impl CoreServerService {
         }
     }
 
+    fn clear_lifecycle_flags(&self, id: &str) {
+        self.clear_starting(id);
+        self.clear_stopping(id);
+    }
+
     fn status_for_instance(
         &self,
         instance: &Instance,
@@ -253,9 +263,6 @@ impl CoreServerService {
                 .unwrap_or(false);
             if !is_running {
                 processes.remove(&id_str);
-                drop(processes);
-                self.clear_starting(&id_str);
-                self.clear_stopping(&id_str);
                 return Ok(ServerSnapshot {
                     instance_id: id_str,
                     state: ServerState::Stopped,
@@ -303,9 +310,12 @@ impl ServerService for CoreServerService {
     }
 
     async fn restart(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
-        let _guard = self.lock_lifecycle(id).await?;
+        let lifecycle_guard = self.lock_lifecycle(id).await?;
         let instance = self.find_instance(id).await?;
-        let driver = ServerRestartDriver { service: self };
+        let driver = ServerRestartDriver {
+            service: self,
+            _lifecycle_guard: &lifecycle_guard,
+        };
         restart_instance(&driver, &instance, RestartPolicy { stop_timeout: STOP_GRACEFUL_TIMEOUT })
             .await
             .map_err(|error| {
@@ -455,12 +465,11 @@ impl CoreServerService {
 
         // 超时：强制终止进程树。
         let mut processes = self.processes_lock()?;
-        if let Some(managed) = processes.get_mut(&id_str) {
-            managed
-                .daemon
-                .terminate_tree()
-                .map_err(|e| ServerError::OperationFailed { source: Box::new(e) })?;
-            processes.remove(&id_str);
+        if let Some(mut managed) = processes.remove(&id_str) {
+            if let Err(error) = managed.daemon.terminate_tree() {
+                processes.insert(id_str.clone(), managed);
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+            }
         }
         self.clear_stopping(&id_str);
         Ok(())
@@ -470,15 +479,13 @@ impl CoreServerService {
         let id_str = id.as_str().to_string();
 
         let mut processes = self.processes_lock()?;
-        if let Some(managed) = processes.get_mut(&id_str) {
-            managed
-                .daemon
-                .terminate_tree()
-                .map_err(|e| ServerError::OperationFailed { source: Box::new(e) })?;
-            processes.remove(&id_str);
+        if let Some(mut managed) = processes.remove(&id_str) {
+            if let Err(error) = managed.daemon.terminate_tree() {
+                processes.insert(id_str.clone(), managed);
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+            }
         }
-        self.clear_starting(&id_str);
-        self.clear_stopping(&id_str);
+        self.clear_lifecycle_flags(&id_str);
         Ok(())
     }
 
@@ -624,11 +631,22 @@ mod tests {
                 .expect("second lock");
 
         drop(first_guard);
-        tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&first))
-            .await
-            .expect("same instance must continue after release")
-            .expect("reacquired lock");
         drop(second_guard);
+        let reacquired =
+            tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&first))
+                .await
+                .expect("same instance must continue after release")
+                .expect("reacquired lock");
+
+        let locks = service.lifecycle_locks.lock().expect("lifecycle locks");
+        assert_eq!(locks.len(), 2);
+        assert!(locks
+            .get(second.as_str())
+            .expect("second lock slot")
+            .upgrade()
+            .is_none());
+        drop(locks);
+        drop(reacquired);
 
         let _ = std::fs::remove_dir_all(path.parent().expect("parent"));
     }
