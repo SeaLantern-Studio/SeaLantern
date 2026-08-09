@@ -52,7 +52,9 @@ impl AppServices {
         let instance = Arc::new(instance);
         Self {
             inner: Arc::new(AppServicesInner {
-                download: Arc::new(CoreDownloadService::default()),
+                download: Arc::new(
+                    CoreDownloadService::new().expect("failed to init download service"),
+                ),
                 server: Arc::new(CoreServerService::new(instance.clone())),
                 instance,
                 system: Arc::new(CoreSystemService),
