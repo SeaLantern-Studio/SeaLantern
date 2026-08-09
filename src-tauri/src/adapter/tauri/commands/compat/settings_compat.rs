@@ -12,9 +12,14 @@ use sealantern_interface::{SettingsService, SettingsServiceError};
 
 /// 获取统一设置服务，并将容器初始化失败收敛为契约错误。
 async fn settings_service() -> Result<Arc<CoreSettingsService>, String> {
-    AppServices::settings_service()
-        .await
-        .map_err(|_| SettingsServiceError::Unavailable.to_string())
+    AppServices::settings_service().await.map_err(|error| {
+        tracing::error!(
+            target: "sealantern.tauri.settings_compat",
+            error = %error,
+            "failed to acquire settings service"
+        );
+        SettingsServiceError::Unavailable.to_string()
+    })
 }
 
 /// 获取应用设置（兼容 `get_settings`）。
