@@ -25,6 +25,7 @@ pub trait CronTaskExecutor: Send + Sync {
 
 /// Cron 任务服务错误。
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum CronTaskError {
     Storage(FsError),
     TaskNotFound(String),

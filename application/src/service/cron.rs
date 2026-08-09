@@ -65,7 +65,7 @@ where
 {
     path: PathBuf,
     executor: ServerCronTaskExecutor<S>,
-    inner: tokio::sync::Mutex<Option<InnerCronTaskService<S>>>,
+    inner: tokio::sync::OnceCell<tokio::sync::Mutex<InnerCronTaskService<S>>>,
 }
 
 impl CoreCronTaskService<CoreServerService> {
@@ -84,7 +84,7 @@ where
         Self {
             path: path.into(),
             executor: ServerCronTaskExecutor { server },
-            inner: tokio::sync::Mutex::new(None),
+            inner: tokio::sync::OnceCell::new(),
         }
     }
 
@@ -92,8 +92,6 @@ where
     pub async fn run_due(&self) -> Result<Vec<CronTaskRun>, CronTaskServiceError> {
         let mut service = self.service().await?;
         service
-            .as_mut()
-            .expect("cron task service initialized")
             .run_due(Utc::now())
             .await
             .map(|runs| runs.into_iter().map(run_to_contract).collect())
@@ -102,16 +100,17 @@ where
 
     async fn service(
         &self,
-    ) -> Result<tokio::sync::MutexGuard<'_, Option<InnerCronTaskService<S>>>, CronTaskServiceError>
-    {
-        let mut service = self.inner.lock().await;
-        if service.is_none() {
-            let loaded = ExtraCronTaskService::load(self.path.clone(), self.executor.clone())
-                .await
-                .map_err(contract_error)?;
-            *service = Some(loaded);
-        }
-        Ok(service)
+    ) -> Result<tokio::sync::MutexGuard<'_, InnerCronTaskService<S>>, CronTaskServiceError> {
+        let service = self
+            .inner
+            .get_or_try_init(|| async {
+                ExtraCronTaskService::load(self.path.clone(), self.executor.clone())
+                    .await
+                    .map(tokio::sync::Mutex::new)
+                    .map_err(contract_error)
+            })
+            .await?;
+        Ok(service.lock().await)
     }
 }
 
@@ -123,8 +122,6 @@ where
     async fn list(&self) -> Result<Vec<CronTask>, CronTaskServiceError> {
         let service = self.service().await?;
         Ok(service
-            .as_ref()
-            .expect("cron task service initialized")
             .tasks()
             .iter()
             .cloned()
@@ -135,8 +132,6 @@ where
     async fn create(&self, draft: CronTaskDraft) -> Result<CronTask, CronTaskServiceError> {
         let mut service = self.service().await?;
         service
-            .as_mut()
-            .expect("cron task service initialized")
             .create(draft_to_extra(draft))
             .await
             .map(task_to_contract)
@@ -150,8 +145,6 @@ where
     ) -> Result<CronTask, CronTaskServiceError> {
         let mut service = self.service().await?;
         service
-            .as_mut()
-            .expect("cron task service initialized")
             .update(id, draft_to_extra(draft))
             .await
             .map(task_to_contract)
@@ -160,19 +153,12 @@ where
 
     async fn delete(&self, id: &str) -> Result<(), CronTaskServiceError> {
         let mut service = self.service().await?;
-        service
-            .as_mut()
-            .expect("cron task service initialized")
-            .delete(id)
-            .await
-            .map_err(contract_error)
+        service.delete(id).await.map_err(contract_error)
     }
 
     async fn set_enabled(&self, id: &str, enabled: bool) -> Result<CronTask, CronTaskServiceError> {
         let mut service = self.service().await?;
         service
-            .as_mut()
-            .expect("cron task service initialized")
             .set_enabled(id, enabled)
             .await
             .map(task_to_contract)
@@ -182,8 +168,6 @@ where
     async fn run_now(&self, id: &str) -> Result<CronTaskRun, CronTaskServiceError> {
         let mut service = self.service().await?;
         service
-            .as_mut()
-            .expect("cron task service initialized")
             .run_now(id, Utc::now())
             .await
             .map(run_to_contract)

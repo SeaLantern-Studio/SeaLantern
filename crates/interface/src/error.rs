@@ -15,6 +15,8 @@ pub enum CronTaskServiceError {
     StorageFailed,
     /// 任务对应的服务器动作执行失败。
     ExecutionFailed,
+    /// 未分类的内部操作失败。
+    OperationFailed,
     /// 该能力尚未实现。
     Unsupported,
 }
@@ -26,6 +28,7 @@ impl std::fmt::Display for CronTaskServiceError {
             Self::InvalidInput => "invalid cron task input",
             Self::StorageFailed => "cron task storage failed",
             Self::ExecutionFailed => "cron task execution failed",
+            Self::OperationFailed => "cron task operation failed",
             Self::Unsupported => "operation not supported",
         };
         formatter.write_str(message)

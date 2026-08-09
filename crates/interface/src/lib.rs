@@ -20,10 +20,10 @@ pub mod system;
 
 /// 服务器定时任务服务端口。
 pub use cron::CronTaskService;
-/// 服务器定时任务错误枚举。
-pub use error::CronTaskServiceError;
 /// 下载任务管理服务端口。
 pub use download::DownloadService;
+/// 服务器定时任务错误枚举。
+pub use error::CronTaskServiceError;
 /// 下载任务管理错误枚举。
 pub use error::DownloadServiceError;
 /// 服务器实例管理错误枚举。

@@ -16,6 +16,8 @@ pub enum CronTaskError {
     StorageFailed { source: ExtraCronTaskError },
     /// 服务器动作执行失败。
     ExecutionFailed { source: ExtraCronTaskError },
+    /// 上游新增且尚未显式分类的错误。
+    Unexpected { source: ExtraCronTaskError },
     /// 该能力尚未实现。
     Unsupported,
 }
@@ -31,6 +33,9 @@ impl fmt::Display for CronTaskError {
             Self::ExecutionFailed { source } => {
                 write!(formatter, "cron task execution failed: {source}")
             }
+            Self::Unexpected { source } => {
+                write!(formatter, "cron task operation failed: {source}")
+            }
             Self::Unsupported => write!(formatter, "operation not supported"),
         }
     }
@@ -42,7 +47,8 @@ impl std::error::Error for CronTaskError {
             Self::TaskNotFound { source }
             | Self::InvalidInput { source }
             | Self::StorageFailed { source }
-            | Self::ExecutionFailed { source } => Some(source),
+            | Self::ExecutionFailed { source }
+            | Self::Unexpected { source } => Some(source),
             Self::Unsupported => None,
         }
     }
@@ -57,6 +63,10 @@ impl From<ExtraCronTaskError> for CronTaskError {
             }
             ExtraCronTaskError::Storage(_) => Self::StorageFailed { source },
             ExtraCronTaskError::Execution { .. } => Self::ExecutionFailed { source },
+            other => {
+                debug_assert!(false, "unmapped extra cron task error: {other}");
+                Self::Unexpected { source: other }
+            }
         }
     }
 }
@@ -68,6 +78,7 @@ impl From<CronTaskError> for CronTaskServiceError {
             CronTaskError::InvalidInput { .. } => Self::InvalidInput,
             CronTaskError::StorageFailed { .. } => Self::StorageFailed,
             CronTaskError::ExecutionFailed { .. } => Self::ExecutionFailed,
+            CronTaskError::Unexpected { .. } => Self::OperationFailed,
             CronTaskError::Unsupported => Self::Unsupported,
         }
     }
