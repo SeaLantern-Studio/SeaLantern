@@ -13,8 +13,8 @@ use adapter::tauri::commands::compat::instance_compat::{
     add_existing_server, collect_copy_conflicts, copy_directory_contents, create_server,
     delete_server, force_stop_server, get_server_list, get_server_logs, get_server_status,
     import_modpack, import_server, parse_server_core_type, prepare_force_stop_server,
-    scan_startup_candidates, send_command, start_server, stop_server, update_server_name,
-    update_server_path, validate_server_path,
+    restart_server, scan_startup_candidates, send_command, start_server, stop_server,
+    update_server_name, update_server_path, validate_server_path,
 };
 use adapter::tauri::commands::compat::system_compat::{
     get_default_run_path, get_safe_mode_status, get_server_resource_usage, get_system_info,
@@ -73,6 +73,7 @@ pub fn run() {
             poll_task,
             prepare_force_stop_server,
             remove_file,
+            restart_server,
             scan_startup_candidates,
             send_command,
             start_server,

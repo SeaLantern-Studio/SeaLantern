@@ -11,6 +11,7 @@ pub use instance::{
     update_instance_path,
 };
 pub use server::{
-    force_stop_server, send_server_command, server_status, start_server, stop_server,
+    force_stop_server, restart_server, send_server_command, server_status, start_server,
+    stop_server,
 };
 pub use system::{directory_usage, process_usage, system_snapshot};

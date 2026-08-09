@@ -1,6 +1,6 @@
 //! 服务器进程管理 REST handler。
 //!
-//! 提供服务器进程生命周期（状态/启动/停止/强制停止/控制台命令）接口，
+//! 提供服务器进程生命周期（状态/启动/重启/停止/强制停止/控制台命令）接口，
 //! 薄转发到 [`CoreServerService`](sealantern_application::service::CoreServerService)
 //! 并收敛错误为 [`HttpError`](super::super::error::HttpError)。
 
@@ -41,6 +41,21 @@ pub async fn start_server(
 ) -> Result<Json<ServerSnapshot>, HttpError> {
     let id = parse_id(&id)?;
     state.server().start(&id).await?;
+    state
+        .server()
+        .status(&id)
+        .await
+        .map(Json)
+        .map_err(HttpError::from)
+}
+
+/// `POST /api/instances/{id}/restart` — 重启服务器进程。
+pub async fn restart_server(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<ServerSnapshot>, HttpError> {
+    let id = parse_id(&id)?;
+    state.server().restart(&id).await?;
     state
         .server()
         .status(&id)
