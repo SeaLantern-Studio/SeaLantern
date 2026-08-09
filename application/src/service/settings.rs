@@ -55,7 +55,7 @@ impl SettingsService for CoreSettingsService {
         let overview = tokio::task::spawn_blocking(Self::build_overview_inner)
             .await
             .map_err(SettingsError::from)?
-            .map_err(|e| SettingsServiceError::from(e))?;
+            .map_err(SettingsServiceError::from)?;
 
         Ok(overview)
     }
