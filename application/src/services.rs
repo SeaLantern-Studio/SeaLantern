@@ -184,7 +184,6 @@ impl AppServices {
         Ok(Self::get().await?.server().clone())
     }
 
-<<<<<<< HEAD
     /// 访问设置信息服务（`Arc` 共享句柄，clone 廉价）。
     pub fn settings(&self) -> &Arc<CoreSettingsService> {
         &self.inner.settings
