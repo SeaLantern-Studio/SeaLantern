@@ -12,6 +12,37 @@ pub const CURRENT_CONFIG_VERSION: u32 = 2;
 /// 亚克力模糊级别的默认值，旧配置缺字段时回落到这里。
 pub const DEFAULT_ACRYLIC_BLUR_LEVEL: &str = "medium";
 
+/// 完整设置不符合业务约束。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SettingsValidationError {
+    field: &'static str,
+    message: &'static str,
+}
+
+impl SettingsValidationError {
+    fn new(field: &'static str, message: &'static str) -> Self {
+        Self { field, message }
+    }
+
+    /// 返回违反约束的设置字段。
+    pub fn field(self) -> &'static str {
+        self.field
+    }
+
+    /// 返回不包含用户数据的稳定校验原因。
+    pub fn message(self) -> &'static str {
+        self.message
+    }
+}
+
+impl std::fmt::Display for SettingsValidationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "invalid setting '{}': {}", self.field, self.message)
+    }
+}
+
+impl std::error::Error for SettingsValidationError {}
+
 /// 设置变更分组，用于调用方按组刷新状态。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SettingsGroup {
@@ -123,6 +154,46 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
+    /// 校验写入配置文件前必须满足的业务不变量。
+    pub fn validate(&self) -> Result<(), SettingsValidationError> {
+        if self.default_min_memory == 0 {
+            return Err(SettingsValidationError::new(
+                "default_min_memory",
+                "must be greater than zero",
+            ));
+        }
+        if self.default_max_memory == 0 {
+            return Err(SettingsValidationError::new(
+                "default_max_memory",
+                "must be greater than zero",
+            ));
+        }
+        if self.default_min_memory > self.default_max_memory {
+            return Err(SettingsValidationError::new(
+                "default_min_memory",
+                "must not exceed default_max_memory",
+            ));
+        }
+        if self.default_port == 0 {
+            return Err(SettingsValidationError::new("default_port", "must be greater than zero"));
+        }
+        validate_unit_interval("background_opacity", self.background_opacity)?;
+        validate_unit_interval("background_brightness", self.background_brightness)?;
+        if self.window_width == Some(0) {
+            return Err(SettingsValidationError::new(
+                "window_width",
+                "must be greater than zero when set",
+            ));
+        }
+        if self.window_height == Some(0) {
+            return Err(SettingsValidationError::new(
+                "window_height",
+                "must be greater than zero when set",
+            ));
+        }
+        Ok(())
+    }
+
     /// 返回与 `other` 相比发生变更的分组列表。
     pub fn changed_groups(&self, other: &Self) -> Vec<SettingsGroup> {
         let mut groups = Vec::new();
@@ -197,6 +268,17 @@ impl AppSettings {
     }
 }
 
+fn validate_unit_interval(field: &'static str, value: f32) -> Result<(), SettingsValidationError> {
+    if value.is_finite() && (0.0..=1.0).contains(&value) {
+        Ok(())
+    } else {
+        Err(SettingsValidationError::new(
+            field,
+            "must be a finite value between zero and one",
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{AppSettings, SettingsGroup, DEFAULT_ACRYLIC_BLUR_LEVEL};
@@ -216,5 +298,116 @@ mod tests {
         changed.acrylic_blur_level = "high".into();
 
         assert_eq!(current.changed_groups(&changed), vec![SettingsGroup::Appearance]);
+    }
+
+    #[test]
+    fn default_settings_satisfy_validation_rules() {
+        AppSettings::default()
+            .validate()
+            .expect("default settings should always remain valid");
+    }
+
+    #[test]
+    fn validation_rejects_invalid_memory_and_port_values() {
+        let settings = AppSettings {
+            default_min_memory: 0,
+            ..AppSettings::default()
+        };
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("zero minimum memory should fail")
+                .field(),
+            "default_min_memory"
+        );
+
+        let settings = AppSettings {
+            default_max_memory: 0,
+            ..AppSettings::default()
+        };
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("zero maximum memory should fail")
+                .field(),
+            "default_max_memory"
+        );
+
+        let settings = AppSettings {
+            default_min_memory: AppSettings::default().default_max_memory + 1,
+            ..AppSettings::default()
+        };
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("minimum memory above maximum should fail")
+                .field(),
+            "default_min_memory"
+        );
+
+        let settings = AppSettings {
+            default_port: 0,
+            ..AppSettings::default()
+        };
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("zero port should fail")
+                .field(),
+            "default_port"
+        );
+    }
+
+    #[test]
+    fn validation_rejects_invalid_visual_numeric_values() {
+        for invalid in [-0.1, 1.1, f32::NAN, f32::INFINITY] {
+            let settings = AppSettings {
+                background_opacity: invalid,
+                ..AppSettings::default()
+            };
+            assert_eq!(
+                settings
+                    .validate()
+                    .expect_err("invalid opacity should fail")
+                    .field(),
+                "background_opacity"
+            );
+        }
+
+        let settings = AppSettings {
+            background_brightness: f32::NEG_INFINITY,
+            ..AppSettings::default()
+        };
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("invalid brightness should fail")
+                .field(),
+            "background_brightness"
+        );
+
+        let settings = AppSettings {
+            window_width: Some(0),
+            ..AppSettings::default()
+        };
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("zero window width should fail")
+                .field(),
+            "window_width"
+        );
+
+        let settings = AppSettings {
+            window_height: Some(0),
+            ..AppSettings::default()
+        };
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("zero window height should fail")
+                .field(),
+            "window_height"
+        );
     }
 }

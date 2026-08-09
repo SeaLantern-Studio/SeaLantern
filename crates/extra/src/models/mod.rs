@@ -10,7 +10,10 @@ mod java;
 mod server;
 mod task;
 
-pub use app::{AppSettings, SettingsGroup, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL};
+pub use app::{
+    AppSettings, SettingsGroup, SettingsValidationError, CURRENT_CONFIG_VERSION,
+    DEFAULT_ACRYLIC_BLUR_LEVEL,
+};
 pub use app_update::{NullablePatch, PartialAppSettings, UpdateResult};
 pub use download_link::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
 pub use java::JavaInfo;
