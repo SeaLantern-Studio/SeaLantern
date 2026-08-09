@@ -11,6 +11,7 @@
 //!
 //! `AppServices` 是内部 `Arc` 的轻量句柄（clone 廉价 → 可跨 async 边界随处持有）。
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use sealantern_extra::config::SettingsManager;
@@ -34,6 +35,7 @@ pub struct AppServices {
 /// 后续新增服务只需在此加一个 `Arc<XxxService>` 字段，在 [`AppServices`]
 /// 下补一条 `pub async fn xxx_service()` 便捷函数即可，无需改动调用方。
 pub struct AppServicesInner {
+    background_started: AtomicBool,
     /// 下载任务管理服务。
     pub download: Arc<CoreDownloadService>,
     /// 服务器实例记录管理服务。
@@ -63,6 +65,7 @@ impl AppServices {
         let server = Arc::new(CoreServerService::new(instance.clone()));
         Self {
             inner: Arc::new(AppServicesInner {
+                background_started: AtomicBool::new(false),
                 download: Arc::new(
                     CoreDownloadService::new().expect("failed to init download service"),
                 ),
@@ -105,8 +108,10 @@ impl AppServices {
     /// 并发首次调用也只初始化一次，其余等待并复用首个注册的结果。
     pub async fn get() -> Result<Self, InstanceError> {
         // 快速路径：已初始化直接返回（读锁，无 IO）。
-        if let Some(existing) = SERVICES.read().await.as_ref() {
-            return Ok(Self { inner: existing.clone() });
+        if let Some(existing) = SERVICES.read().await.clone() {
+            let services = Self { inner: existing };
+            services.start_background_services().await;
+            return Ok(services);
         }
 
         // 惰性构造：释放读锁后异步加载，避免持锁阻塞。
@@ -114,23 +119,31 @@ impl AppServices {
 
         // 注册：加写锁；若并发期间已有人注册,则复用其结果，丢弃本次构造。
         let mut guard = SERVICES.write().await;
-        Ok(Self {
-            inner: match guard.as_ref() {
-                Some(existing) => existing.clone(),
-                None => {
-                    guard.replace(built.inner.clone());
-                    built.inner.clone()
-                }
-            },
-        })
+        let inner = match guard.as_ref() {
+            Some(existing) => existing.clone(),
+            None => {
+                guard.replace(built.inner.clone());
+                built.inner.clone()
+            }
+        };
+        drop(guard);
+
+        let services = Self { inner };
+        services.start_background_services().await;
+        Ok(services)
     }
 
     /// 显式注册给定服务（启动预热 / 测试注入 / 重载用），覆盖既有实例。
     pub async fn register(instance: CoreInstanceService) -> Result<Self, InstanceError> {
         let services = Self::from_inner(instance);
         let inner = services.inner.clone();
-        *SERVICES.write().await = Some(inner.clone());
-        Ok(Self { inner })
+        let previous = SERVICES.write().await.replace(inner.clone());
+        if let Some(previous) = previous {
+            previous.cron.deactivate_scheduler().await;
+        }
+        let services = Self { inner };
+        services.start_background_services().await;
+        Ok(services)
     }
 
     /// 非阻塞尝试取全局服务；未初始化时返回 `None`（供无需初始化的路径判断）。
@@ -190,6 +203,23 @@ impl AppServices {
     /// 便捷访问入口：一步拿到定时任务服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn cron_service() -> Result<Arc<CoreCronTaskService>, InstanceError> {
         Ok(Self::get().await?.cron().clone())
+    }
+
+    async fn start_background_services(&self) {
+        if self
+            .inner
+            .background_started
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return;
+        }
+        if self.inner.cron.start_scheduler().await {
+            tracing::info!(
+                target: "sealantern.application.cron_task",
+                "cron scheduler started"
+            );
+        }
     }
 
     /// 访问系统资源信息服务（`Arc` 共享句柄，clone 廉价）。

@@ -24,6 +24,10 @@ use adapter::tauri::commands::compat::system_compat::{
     get_default_run_path, get_safe_mode_status, get_server_resource_usage, get_system_info,
     open_file, open_folder, remove_file, test_ipv6_connectivity,
 };
+use adapter::tauri::commands::cron::{
+    create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
+    update_cron_task,
+};
 use adapter::tauri::commands::settings::get_settings_overview;
 use adapter::tauri::commands::system::{
     get_directory_usage, get_process_usage, get_system_snapshot,
@@ -57,6 +61,13 @@ pub fn run() {
             desktop_pick_save_file,
             desktop_pick_server_executable,
             desktop_pick_startup_file,
+            //服务器定时任务契约命令
+            create_cron_task,
+            delete_cron_task,
+            list_cron_tasks,
+            run_cron_task,
+            set_cron_task_enabled,
+            update_cron_task,
             //settings能力（由adapter/tauri/commands接入application）
             get_settings_overview,
             //系统资源能力（由adapter/tauri/commands接入application）

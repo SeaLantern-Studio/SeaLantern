@@ -4,7 +4,9 @@
 //! [`ServerService`] 执行重启和控制台命令。宿主仅依赖 `interface` 契约。
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use chrono::Utc;
@@ -27,6 +29,15 @@ use super::CoreServerService;
 
 /// 定时任务 JSON 文件名，置于应用数据根目录。
 const CRON_TASKS_FILE: &str = "cron_tasks.json";
+/// 自动调度检查间隔；Cron 表达式支持秒级粒度。
+const SCHEDULER_TICK_INTERVAL: Duration = Duration::from_secs(1);
+/// 存储等系统错误发生后的退避时间，避免持续刷日志和磁盘。
+const SCHEDULER_ERROR_RETRY_INTERVAL: Duration = Duration::from_secs(30);
+
+struct CronSchedulerHandle {
+    shutdown: tokio::sync::watch::Sender<bool>,
+    task: tokio::task::JoinHandle<()>,
+}
 
 struct ServerCronTaskExecutor<S> {
     server: Arc<S>,
@@ -66,6 +77,8 @@ where
     path: PathBuf,
     executor: ServerCronTaskExecutor<S>,
     inner: tokio::sync::OnceCell<tokio::sync::Mutex<InnerCronTaskService<S>>>,
+    scheduler: tokio::sync::Mutex<Option<CronSchedulerHandle>>,
+    scheduler_active: AtomicBool,
 }
 
 impl CoreCronTaskService<CoreServerService> {
@@ -85,7 +98,87 @@ where
             path: path.into(),
             executor: ServerCronTaskExecutor { server },
             inner: tokio::sync::OnceCell::new(),
+            scheduler: tokio::sync::Mutex::new(None),
+            scheduler_active: AtomicBool::new(true),
         }
+    }
+
+    /// 启动此服务的唯一后台调度器；已运行时返回 `false`。
+    pub async fn start_scheduler(self: &Arc<Self>) -> bool {
+        self.start_scheduler_with_intervals(SCHEDULER_TICK_INTERVAL, SCHEDULER_ERROR_RETRY_INTERVAL)
+            .await
+    }
+
+    /// 停止后台调度器并等待任务退出；未运行时返回 `false`。
+    pub async fn stop_scheduler(&self) -> bool {
+        let handle = self.scheduler.lock().await.take();
+        let Some(handle) = handle else {
+            return false;
+        };
+
+        let _ = handle.shutdown.send(true);
+        if let Err(error) = handle.task.await {
+            tracing::error!(
+                target: "sealantern.application.cron_task",
+                error = %error,
+                "cron scheduler task failed while stopping"
+            );
+        }
+        true
+    }
+
+    /// 永久停用此服务的后台调度器，供应用服务容器替换旧实例时调用。
+    pub(crate) async fn deactivate_scheduler(&self) {
+        self.scheduler_active.store(false, Ordering::Release);
+        self.stop_scheduler().await;
+    }
+
+    async fn start_scheduler_with_intervals(
+        self: &Arc<Self>,
+        tick_interval: Duration,
+        error_retry_interval: Duration,
+    ) -> bool {
+        if !self.scheduler_active.load(Ordering::Acquire) {
+            return false;
+        }
+        let mut scheduler = self.scheduler.lock().await;
+        if !self.scheduler_active.load(Ordering::Acquire) {
+            return false;
+        }
+        if scheduler
+            .as_ref()
+            .is_some_and(|handle| !handle.task.is_finished())
+        {
+            return false;
+        }
+
+        let (shutdown, mut shutdown_rx) = tokio::sync::watch::channel(false);
+        let service = Arc::downgrade(self);
+        let task = tokio::spawn(async move {
+            let mut delay = tick_interval;
+            loop {
+                tokio::select! {
+                    _ = tokio::time::sleep(delay) => {}
+                    result = shutdown_rx.changed() => {
+                        if result.is_err() || *shutdown_rx.borrow() {
+                            break;
+                        }
+                        continue;
+                    }
+                }
+
+                let Some(service) = service.upgrade() else {
+                    break;
+                };
+                delay = match service.run_due().await {
+                    Ok(_) => tick_interval,
+                    Err(_) => error_retry_interval,
+                };
+            }
+        });
+
+        *scheduler = Some(CronSchedulerHandle { shutdown, task });
+        true
     }
 
     /// 执行当前所有到期任务，供后续后台调度器周期调用。
@@ -361,5 +454,63 @@ mod tests {
 
         assert_eq!(task, Err(CronTaskServiceError::InvalidInput));
         assert!(server.calls.lock().expect("calls lock").is_empty());
+    }
+
+    #[tokio::test]
+    async fn scheduler_runs_due_tasks_once_and_stops_cleanly() {
+        let directory = tempdir().expect("temp directory");
+        let server = Arc::new(FakeServerService::default());
+        let service = Arc::new(CoreCronTaskService::with_path(
+            directory.path().join("cron_tasks.json"),
+            server.clone(),
+        ));
+        service
+            .create(CronTaskDraft {
+                cron_expression: "* * * * * *".to_owned(),
+                ..draft(CronTaskAction::Restart)
+            })
+            .await
+            .expect("create scheduled task");
+
+        assert!(
+            service
+                .start_scheduler_with_intervals(
+                    Duration::from_millis(10),
+                    Duration::from_millis(20),
+                )
+                .await
+        );
+        assert!(
+            !service
+                .start_scheduler_with_intervals(
+                    Duration::from_millis(10),
+                    Duration::from_millis(20),
+                )
+                .await
+        );
+
+        tokio::time::timeout(Duration::from_secs(2), async {
+            loop {
+                if !server.calls.lock().expect("calls lock").is_empty() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("scheduler executes due task");
+
+        assert!(service.stop_scheduler().await);
+        assert!(!service.stop_scheduler().await);
+        service.deactivate_scheduler().await;
+        assert!(
+            !service
+                .start_scheduler_with_intervals(
+                    Duration::from_millis(10),
+                    Duration::from_millis(20),
+                )
+                .await
+        );
+        assert_eq!(*server.calls.lock().expect("calls lock"), ["restart:server-a"]);
     }
 }

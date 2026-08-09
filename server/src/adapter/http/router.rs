@@ -58,10 +58,19 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         .route("/system/process/{pid}", get(handlers::process_usage))
         .route("/system/directory/{*path}", get(handlers::directory_usage));
 
+    let cron_routes = Router::new()
+        .route("/cron-tasks", get(handlers::list_cron_tasks))
+        .route("/cron-tasks", post(handlers::create_cron_task))
+        .route("/cron-tasks/{id}", put(handlers::update_cron_task))
+        .route("/cron-tasks/{id}", delete(handlers::delete_cron_task))
+        .route("/cron-tasks/{id}/enabled", put(handlers::set_cron_task_enabled))
+        .route("/cron-tasks/{id}/run", post(handlers::run_cron_task));
+
     Router::new()
         .nest(API_PREFIX, instance_routes)
         .nest(API_PREFIX, settings_routes)
         .nest(API_PREFIX, system_routes)
+        .nest(API_PREFIX, cron_routes)
         .merge(spa_router(config))
         .with_state(state)
 }

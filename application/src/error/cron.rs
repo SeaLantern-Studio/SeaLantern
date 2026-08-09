@@ -64,7 +64,7 @@ impl From<ExtraCronTaskError> for CronTaskError {
             ExtraCronTaskError::Storage(_) => Self::StorageFailed { source },
             ExtraCronTaskError::Execution { .. } => Self::ExecutionFailed { source },
             other => {
-                debug_assert!(false, "unmapped extra cron task error: {other}");
+                debug_assert!(false, "unmapped extra cron task error: {:?}", other);
                 Self::Unexpected { source: other }
             }
         }
