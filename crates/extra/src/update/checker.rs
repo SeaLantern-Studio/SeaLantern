@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 
-use super::constants::UPDATE_HTTP_USER_AGENT;
+use super::constants::{UPDATE_HTTP_CONNECT_TIMEOUT, UPDATE_HTTP_TIMEOUT, UPDATE_HTTP_USER_AGENT};
 use super::error::UpdateCheckError;
 use super::types::UpdateInfo;
 
@@ -23,6 +23,8 @@ impl ReleaseUpdateChecker {
     pub fn new() -> Result<Self, UpdateCheckError> {
         let client = reqwest::Client::builder()
             .user_agent(UPDATE_HTTP_USER_AGENT)
+            .connect_timeout(UPDATE_HTTP_CONNECT_TIMEOUT)
+            .timeout(UPDATE_HTTP_TIMEOUT)
             .build()
             .map_err(|source| UpdateCheckError::ClientInitialization { source })?;
         Ok(Self { client })
@@ -48,7 +50,7 @@ impl UpdateChecker for ReleaseUpdateChecker {
         #[cfg(all(not(debug_assertions), target_os = "linux"))]
         {
             if super::is_arch_linux() {
-                return super::check_aur_update(current_version)
+                return super::arch::check_aur_update_with_client(&self.client, current_version)
                     .await
                     .map_err(|message| UpdateCheckError::ProviderFailed {
                         provider: "arch-aur",
@@ -56,13 +58,14 @@ impl UpdateChecker for ReleaseUpdateChecker {
                     });
             }
 
-            let cnb = super::fetch_cnb_release(&self.client, current_version).await;
-            let github = super::fetch_github_release(
-                &self.client,
-                &super::get_github_config(),
-                current_version,
-            )
-            .await;
+            let (cnb, github) = tokio::join!(
+                super::fetch_cnb_release(&self.client, current_version),
+                super::fetch_github_release(
+                    &self.client,
+                    &super::get_github_config(),
+                    current_version,
+                )
+            );
             return select_linux_result(cnb, github);
         }
 

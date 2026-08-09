@@ -5250,6 +5250,7 @@ dependencies = [
  "chrono",
  "cron",
  "dirs 5.0.1",
+ "dom_query",
  "java-manager",
  "mlua",
  "regex",
