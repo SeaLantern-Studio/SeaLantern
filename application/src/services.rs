@@ -91,9 +91,15 @@ impl AppServices {
             .await
             .map_err(|e| InstanceError::Internal(e.to_string()))?;
 
+        let server = Arc::new(CoreServerService::new(instance.clone()));
         Ok(Self {
             inner: Arc::new(AppServicesInner {
-                server: Arc::new(CoreServerService::new(instance.clone())),
+                background_started: AtomicBool::new(false),
+                download: Arc::new(
+                    CoreDownloadService::new().expect("failed to init download service"),
+                ),
+                cron: Arc::new(CoreCronTaskService::new(server.clone())),
+                server,
                 instance,
                 settings: Arc::new(CoreSettingsService),
                 system: Arc::new(CoreSystemService),
