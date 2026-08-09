@@ -308,8 +308,6 @@ export const usePluginStore = defineStore("plugin", () => {
         );
         await loadNavItems();
 
-        const currentPath = window.location.hash.replace(/^#/, "") || "/";
-        await pluginApi.onPageChanged(currentPath);
         await replayUiSnapshot();
         setTimeout(() => replayUiSnapshot(), 300);
 
