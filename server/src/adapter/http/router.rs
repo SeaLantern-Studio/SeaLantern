@@ -66,11 +66,14 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         .route("/cron-tasks/{id}/enabled", put(handlers::set_cron_task_enabled))
         .route("/cron-tasks/{id}/run", post(handlers::run_cron_task));
 
+    let update_routes = Router::new().route("/update", get(handlers::check_update));
+
     Router::new()
         .nest(API_PREFIX, instance_routes)
         .nest(API_PREFIX, settings_routes)
         .nest(API_PREFIX, system_routes)
         .nest(API_PREFIX, cron_routes)
+        .nest(API_PREFIX, update_routes)
         .merge(spa_router(config))
         .with_state(state)
 }

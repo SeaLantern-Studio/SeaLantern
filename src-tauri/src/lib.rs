@@ -32,6 +32,7 @@ use adapter::tauri::commands::settings::get_settings_overview;
 use adapter::tauri::commands::system::{
     get_directory_usage, get_process_usage, get_system_snapshot,
 };
+use adapter::tauri::commands::update::check_update;
 use desktop::{
     desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
     desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
@@ -74,6 +75,8 @@ pub fn run() {
             get_directory_usage,
             get_process_usage,
             get_system_snapshot,
+            //应用更新检查契约命令
+            check_update,
             //兼容层（前端旧命令名 → 新服务，由adapter/tauri/commands/compat提供）
             add_existing_server,
             cancel_download_task,

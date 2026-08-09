@@ -7,6 +7,7 @@ pub mod instance;
 pub mod server;
 pub mod settings;
 pub mod system;
+pub mod update;
 
 pub use cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
@@ -22,3 +23,4 @@ pub use server::{
 };
 pub use settings::settings_overview;
 pub use system::{directory_usage, process_usage, system_snapshot};
+pub use update::check_update;

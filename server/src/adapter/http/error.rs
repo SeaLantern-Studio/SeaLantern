@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use sealantern_interface::{
     CronTaskServiceError, InstanceServiceError, ServerServiceError, SettingsServiceError,
-    SystemServiceError,
+    SystemServiceError, UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -35,6 +35,22 @@ pub struct HttpError {
 }
 
 impl HttpError {
+    /// 由应用更新检查契约错误构建 HTTP 错误。
+    pub fn from_update_error(error: UpdateCheckServiceError) -> Self {
+        match error {
+            UpdateCheckServiceError::CheckFailed => Self {
+                status: StatusCode::BAD_GATEWAY,
+                code: "update_check_failed",
+                message: error.to_string(),
+            },
+            UpdateCheckServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 由定时任务契约错误构建 HTTP 错误。
     pub fn from_cron_error(error: CronTaskServiceError) -> Self {
         match error {
@@ -229,9 +245,28 @@ impl From<SystemServiceError> for HttpError {
     }
 }
 
+impl From<UpdateCheckServiceError> for HttpError {
+    fn from(error: UpdateCheckServiceError) -> Self {
+        Self::from_update_error(error)
+    }
+}
+
 impl IntoResponse for HttpError {
     fn into_response(self) -> Response {
         let body = HttpErrorBody { code: self.code, message: self.message };
         (self.status, Json(body)).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn update_check_failure_maps_to_bad_gateway() {
+        let error = HttpError::from(UpdateCheckServiceError::CheckFailed);
+
+        assert_eq!(error.status, StatusCode::BAD_GATEWAY);
+        assert_eq!(error.code, "update_check_failed");
     }
 }
