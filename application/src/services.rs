@@ -14,8 +14,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use sealantern_extra::config::SettingsManager;
-
 use crate::error::InstanceError;
 use crate::service::{
     CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreServerService,
@@ -47,8 +45,6 @@ pub struct AppServicesInner {
     pub settings: Arc<CoreSettingsService>,
     /// 系统资源信息服务。
     pub system: Arc<CoreSystemService>,
-    /// 设置管理器（持久化配置）。
-    pub settings_manager: Option<tokio::sync::Mutex<SettingsManager>>,
     /// 应用更新检查服务。
     pub update: Arc<CoreUpdateCheckService>,
 }
@@ -75,39 +71,9 @@ impl AppServices {
                 instance,
                 settings: Arc::new(CoreSettingsService::new()),
                 system: Arc::new(CoreSystemService),
-                settings_manager: None,
                 update: Arc::new(CoreUpdateCheckService::new()),
             }),
         }
-    }
-
-    /// 从既有实例和设置管理器构造句柄（用于实际初始化）。
-    async fn from_inner_with_settings(
-        instance: CoreInstanceService,
-    ) -> Result<Self, InstanceError> {
-        let instance = Arc::new(instance);
-
-        // 由 extra 配置模块统一解析默认路径并加载设置。
-        let settings_manager = SettingsManager::load_default()
-            .await
-            .map_err(|e| InstanceError::Internal(e.to_string()))?;
-
-        let server = Arc::new(CoreServerService::new(instance.clone()));
-        Ok(Self {
-            inner: Arc::new(AppServicesInner {
-                background_started: AtomicBool::new(false),
-                download: Arc::new(
-                    CoreDownloadService::new().expect("failed to init download service"),
-                ),
-                cron: Arc::new(CoreCronTaskService::new(server.clone())),
-                server,
-                instance,
-                settings: Arc::new(CoreSettingsService::new()),
-                system: Arc::new(CoreSystemService),
-                settings_manager: Some(tokio::sync::Mutex::new(settings_manager)),
-                update: Arc::new(CoreUpdateCheckService::new()),
-            }),
-        })
     }
 
     /// 惰性获取全局服务。
@@ -123,7 +89,7 @@ impl AppServices {
         }
 
         // 惰性构造：释放读锁后异步加载，避免持锁阻塞。
-        let built = Self::from_inner_with_settings(CoreInstanceService::new().await?).await?;
+        let built = Self::from_inner(CoreInstanceService::new().await?);
 
         // 注册：加写锁；若并发期间已有人注册,则复用其结果，丢弃本次构造。
         let mut guard = SERVICES.write().await;
@@ -237,14 +203,6 @@ impl AppServices {
     /// 便捷访问入口：一步拿到系统资源信息服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn system_service() -> Result<Arc<CoreSystemService>, InstanceError> {
         Ok(Self::get().await?.system().clone())
-    }
-
-    /// 访问设置管理器（异步互斥锁保护）。
-    pub fn settings_manager(&self) -> Result<&tokio::sync::Mutex<SettingsManager>, InstanceError> {
-        self.inner
-            .settings_manager
-            .as_ref()
-            .ok_or(InstanceError::Internal("settings manager not initialized".to_string()))
     }
 
     /// 访问应用更新检查服务（`Arc` 共享句柄，clone 廉价）。
