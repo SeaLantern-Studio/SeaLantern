@@ -6,6 +6,7 @@
 
 /// 服务器定时任务操作失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CronTaskServiceError {
     /// 指定的任务不存在。
     TaskNotFound,

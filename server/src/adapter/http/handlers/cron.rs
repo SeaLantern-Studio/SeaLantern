@@ -12,6 +12,7 @@ use super::super::state::AppState;
 
 /// 启停定时任务请求体。
 #[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SetEnabledRequest {
     pub enabled: bool,
 }

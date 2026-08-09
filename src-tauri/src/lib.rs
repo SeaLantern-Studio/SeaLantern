@@ -9,10 +9,6 @@ use tauri::Manager;
 use adapter::tauri::commands::compat::download_compat::{
     cancel_download_task, download_file, poll_task,
 };
-use adapter::tauri::commands::cron::{
-    create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
-    update_cron_task,
-};
 use adapter::tauri::commands::compat::instance_compat::{
     add_existing_server, collect_copy_conflicts, copy_directory_contents, create_server,
     delete_server, force_stop_server, get_server_list, get_server_logs, get_server_status,
@@ -23,6 +19,10 @@ use adapter::tauri::commands::compat::instance_compat::{
 use adapter::tauri::commands::compat::system_compat::{
     get_default_run_path, get_safe_mode_status, get_server_resource_usage, get_system_info,
     open_file, open_folder, remove_file, test_ipv6_connectivity,
+};
+use adapter::tauri::commands::cron::{
+    create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
+    update_cron_task,
 };
 use desktop::{
     desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
