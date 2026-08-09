@@ -83,18 +83,26 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use sealantern_application::service::CoreInstanceService;
-    use tempfile::tempdir;
+    use tempfile::{tempdir, TempDir};
     use tower::ServiceExt;
 
     use super::*;
 
-    #[tokio::test]
-    async fn update_route_returns_snake_case_contract() {
+    async fn test_router() -> (Router, TempDir) {
         let directory = tempdir().expect("create temporary directory");
         let instance = CoreInstanceService::with_path(directory.path().join("instances.json"))
             .await
             .expect("create instance service");
-        let router = build_router(AppServices::from_inner(instance), ViteConfig::default());
+        (
+            build_router(AppServices::from_inner(instance), ViteConfig::default()),
+            directory,
+        )
+    }
+
+    #[cfg(debug_assertions)]
+    #[tokio::test]
+    async fn update_route_returns_snake_case_contract() {
+        let (router, _directory) = test_router().await;
 
         let response = router
             .oneshot(
@@ -115,5 +123,21 @@ mod tests {
         assert!(value.get("has_update").is_some());
         assert!(value.get("latest_version").is_some());
         assert!(value.get("hasUpdate").is_none());
+    }
+
+    #[tokio::test]
+    async fn update_route_rejects_post_requests() {
+        let (router, _directory) = test_router().await;
+
+        let response = router
+            .oneshot(
+                Request::post("/api/update")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call update route");
+
+        assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
 }
