@@ -25,6 +25,7 @@ sealantern-infra = { path = "../infra" }
 regex = "1"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 dirs = "5"
+dom_query = "0.27"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
 sculk = { version = "=0.3.1", default-features = false, optional = true }
 uuid = { version = "1", features = ["v4"] }
