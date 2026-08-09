@@ -12,7 +12,6 @@
 mod imp {
     use super::super::constants::{
         AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL, PLUGIN_MARKET_HTTP_USER_AGENT,
-        UPDATE_HTTP_CONNECT_TIMEOUT, UPDATE_HTTP_TIMEOUT,
     };
     use super::super::types::UpdateInfo;
     use super::super::version::compare_versions;
@@ -49,13 +48,9 @@ mod imp {
 
     /// 检查 AUR 更新
     pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, String> {
-        let client = reqwest::Client::builder()
-            .user_agent(PLUGIN_MARKET_HTTP_USER_AGENT)
-            .connect_timeout(UPDATE_HTTP_CONNECT_TIMEOUT)
-            .timeout(UPDATE_HTTP_TIMEOUT)
-            .build()
+        let client = super::super::checker::build_update_http_client(PLUGIN_MARKET_HTTP_USER_AGENT)
             .map_err(|error| format!("创建 AUR 更新客户端失败: {error}"))?;
-        check_aur_update_with_client(&client, current_version).await
+        check_aur_update_with_client(client.get_reqwest_client(), current_version).await
     }
 
     /// 使用调用方提供的网络策略检查 AUR 更新。

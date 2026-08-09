@@ -1,6 +1,7 @@
 //! 多来源应用更新检查编排。
 
 use async_trait::async_trait;
+use sealantern_infra::net::{ClientConfig, NetClient, NetError, TimeoutPolicy};
 
 use super::constants::{UPDATE_HTTP_CONNECT_TIMEOUT, UPDATE_HTTP_TIMEOUT, UPDATE_HTTP_USER_AGENT};
 use super::error::UpdateCheckError;
@@ -15,25 +16,35 @@ pub trait UpdateChecker: Send + Sync {
 
 /// 基于 SeaLantern 官方发布源的更新检查器。
 pub struct ReleaseUpdateChecker {
-    client: reqwest::Client,
+    client: NetClient,
 }
 
 impl ReleaseUpdateChecker {
     /// 使用官方更新 User-Agent 构造检查器。
     pub fn new() -> Result<Self, UpdateCheckError> {
-        let client = reqwest::Client::builder()
-            .user_agent(UPDATE_HTTP_USER_AGENT)
-            .connect_timeout(UPDATE_HTTP_CONNECT_TIMEOUT)
-            .timeout(UPDATE_HTTP_TIMEOUT)
-            .build()
+        let client = build_update_http_client(UPDATE_HTTP_USER_AGENT)
             .map_err(|source| UpdateCheckError::ClientInitialization { source })?;
         Ok(Self { client })
     }
 
     /// 使用既有 HTTP 客户端构造检查器，供上层注入代理或测试客户端。
-    pub fn with_client(client: reqwest::Client) -> Self {
+    pub fn with_client(client: NetClient) -> Self {
         Self { client }
     }
+}
+
+/// 通过 infra 统一客户端构建更新检查网络入口。
+pub(crate) fn build_update_http_client(user_agent: &str) -> Result<NetClient, NetError> {
+    let config = ClientConfig {
+        timeout: TimeoutPolicy {
+            connect: UPDATE_HTTP_CONNECT_TIMEOUT,
+            read: UPDATE_HTTP_TIMEOUT,
+            total: UPDATE_HTTP_TIMEOUT,
+        },
+        user_agent: user_agent.to_owned(),
+        ..ClientConfig::default()
+    };
+    NetClient::from_config(&config)
 }
 
 #[async_trait]
@@ -49,8 +60,9 @@ impl UpdateChecker for ReleaseUpdateChecker {
 
         #[cfg(all(not(debug_assertions), target_os = "linux"))]
         {
+            let client = self.client.get_reqwest_client();
             if super::is_arch_linux() {
-                return super::arch::check_aur_update_with_client(&self.client, current_version)
+                return super::arch::check_aur_update_with_client(client, current_version)
                     .await
                     .map_err(|message| UpdateCheckError::ProviderFailed {
                         provider: "arch-aur",
@@ -59,21 +71,21 @@ impl UpdateChecker for ReleaseUpdateChecker {
             }
 
             let (cnb, github) = tokio::join!(
-                super::fetch_cnb_release(&self.client, current_version),
-                super::fetch_github_release(
-                    &self.client,
-                    &super::get_github_config(),
-                    current_version,
-                )
+                super::fetch_cnb_release(client, current_version),
+                super::fetch_github_release(client, &super::get_github_config(), current_version)
             );
             return select_linux_result(cnb, github);
         }
 
         #[cfg(all(not(debug_assertions), not(target_os = "linux")))]
         {
-            super::fetch_github_release(&self.client, &super::get_github_config(), current_version)
-                .await
-                .map_err(|message| UpdateCheckError::ProviderFailed { provider: "github", message })
+            super::fetch_github_release(
+                self.client.get_reqwest_client(),
+                &super::get_github_config(),
+                current_version,
+            )
+            .await
+            .map_err(|message| UpdateCheckError::ProviderFailed { provider: "github", message })
         }
     }
 }

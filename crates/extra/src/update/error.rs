@@ -6,7 +6,9 @@ use std::fmt;
 #[derive(Debug)]
 pub enum UpdateCheckError {
     /// HTTP 客户端初始化失败。
-    ClientInitialization { source: reqwest::Error },
+    ClientInitialization {
+        source: sealantern_infra::net::NetError,
+    },
     /// 单一更新源检查失败。
     ProviderFailed {
         provider: &'static str,
