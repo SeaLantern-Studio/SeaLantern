@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { onPageChanged } from "@api/plugin";
 
 const routes = [
   {
@@ -108,20 +107,6 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-});
-
-// 路由切换后通知插件页面变化;原实现注册 250ms/900ms 两个定时器冗余触发,改为单次延时
-let pageChangedTimer: number | null = null;
-
-router.afterEach((to) => {
-  if (pageChangedTimer !== null) {
-    clearTimeout(pageChangedTimer);
-  }
-  // 300ms 等待页面渲染稳定后再通知,避免插件在过渡动画期间收到事件
-  pageChangedTimer = window.setTimeout(() => {
-    pageChangedTimer = null;
-    onPageChanged(to.path).catch(() => {});
-  }, 300);
 });
 
 export default router;
