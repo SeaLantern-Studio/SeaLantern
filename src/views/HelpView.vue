@@ -32,16 +32,16 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { isBrowserEnv } from "@api/tauri";
 
 // 文档页面配置
-const docPages = [
-  { key: "intro", label: "项目简介" },
-  { key: "download", label: "下载安装" },
-  { key: "getting-started", label: "快速开始" },
-  { key: "server-jar", label: "核心获取" },
-  { key: "tutorial", label: "使用教程" },
-  { key: "features", label: "功能总览" },
-  { key: "faq", label: "常见问题" },
-  { key: "contributor", label: "贡献者" },
-];
+const docPages = computed(() => [
+  { key: "intro", label: i18n.t("help.sections.intro") },
+  { key: "download", label: i18n.t("help.sections.download") },
+  { key: "getting-started", label: i18n.t("help.sections.getting_started") },
+  { key: "server-jar", label: i18n.t("help.sections.server_jar") },
+  { key: "tutorial", label: i18n.t("help.sections.tutorial") },
+  { key: "features", label: i18n.t("help.sections.features") },
+  { key: "faq", label: i18n.t("help.sections.faq") },
+  { key: "contributor", label: i18n.t("help.sections.contributor") },
+]);
 
 const currentSection = ref("intro");
 const sidebarOpen = ref(true);
@@ -136,7 +136,7 @@ onMounted(() => {
       <div class="sidebar-footer">
         <cmz-button variant="outline" size="sm" class="open-browser-btn" @click="openInBrowser">
           <ExternalLink :size="16" />
-          <span>在浏览器打开</span>
+          <span>{{ i18n.t("help.open_in_browser") }}</span>
         </cmz-button>
       </div>
     </aside>
@@ -147,7 +147,7 @@ onMounted(() => {
       <!-- 项目简介：顶部 + 特性卡片网格 + 底部 -->
       <template v-if="pageType === 'intro'">
         <cmz-markdown :content="introTop" variant="glass" />
-        <h2 class="section-heading">特性</h2>
+        <h2 class="section-heading">{{ i18n.t("help.features_heading") }}</h2>
         <div class="feature-grid">
           <div v-for="feature in introFeatures" :key="feature.title" class="feature-card">
             <h3 class="feature-title">{{ feature.title }}</h3>
@@ -160,8 +160,8 @@ onMounted(() => {
 
       <!-- 下载安装：平台卡片 -->
       <template v-else-if="pageType === 'download'">
-        <h1 class="page-title">下载安装</h1>
-        <p class="page-subtitle">当前最新版本：<strong>v1.3.0</strong></p>
+        <h1 class="page-title">{{ i18n.t("help.sections.download") }}</h1>
+        <p class="page-subtitle">{{ i18n.t("help.latest_version") }}<strong>v1.3.0</strong></p>
         <div v-for="platform in downloadPlatforms" :key="platform.name" class="platform-section">
           <h2 class="section-heading">{{ platform.name }}</h2>
           <p class="platform-subtitle">{{ platform.subtitle }}</p>
@@ -173,7 +173,7 @@ onMounted(() => {
               </div>
               <a :href="item.url" class="download-btn" target="_blank" rel="noreferrer">
                 <Download :size="16" />
-                <span>下载</span>
+                <span>{{ i18n.t("help.download_btn") }}</span>
               </a>
             </div>
           </div>
@@ -184,8 +184,8 @@ onMounted(() => {
 
       <!-- 核心获取：服务端类型对比卡片 -->
       <template v-else-if="pageType === 'server-jar'">
-        <h1 class="page-title">核心获取</h1>
-        <p class="page-subtitle">Minecraft 服务器需要一个服务端核心（JAR 文件）才能运行。</p>
+        <h1 class="page-title">{{ i18n.t("help.sections.server_jar") }}</h1>
+        <p class="page-subtitle">{{ i18n.t("help.server_jar_subtitle") }}</p>
         <div class="server-grid">
           <div v-for="server in serverTypes" :key="server.name" class="server-card">
             <div class="server-card-header">
@@ -195,25 +195,25 @@ onMounted(() => {
                   v-for="tag in server.tags"
                   :key="tag"
                   class="server-tag"
-                  :class="{ 'tag-recommend': tag === '推荐' }"
+                  :class="{ 'tag-recommend': tag === i18n.t('help.recommendation') }"
                   >{{ tag }}</span
                 >
               </div>
             </div>
             <p class="server-desc">{{ server.desc }}</p>
             <div class="server-stars">
-              <span>性能</span>
+              <span>{{ i18n.t("help.performance") }}</span>
               <span class="stars"
                 >{{ "★".repeat(server.performance) }}{{ "☆".repeat(4 - server.performance) }}</span
               >
-              <span>推荐</span>
+              <span>{{ i18n.t("help.recommendation") }}</span>
               <span class="stars"
                 >{{ "★".repeat(server.recommendation)
                 }}{{ "☆".repeat(4 - server.recommendation) }}</span
               >
             </div>
             <div class="server-compat">
-              <span class="compat-label">插件</span>
+              <span class="compat-label">{{ i18n.t("help.plugins_label") }}</span>
               <span>{{ server.pluginCompat }}</span>
               <span class="compat-label">Mod</span>
               <span>{{ server.modCompat }}</span>
@@ -225,7 +225,7 @@ onMounted(() => {
               <li v-for="con in server.cons" :key="con">{{ con }}</li>
             </ul>
             <a :href="server.url" class="server-link" target="_blank" rel="noreferrer">
-              <span>前往下载</span>
+              <span>{{ i18n.t("help.go_download") }}</span>
               <ChevronRight :size="14" />
             </a>
           </div>
@@ -235,7 +235,7 @@ onMounted(() => {
 
       <!-- 快速开始：步骤编号卡片 -->
       <template v-else-if="pageType === 'getting-started'">
-        <h1 class="page-title">快速开始</h1>
+        <h1 class="page-title">{{ i18n.t("help.sections.getting_started") }}</h1>
         <div class="steps-container">
           <div v-for="step in gettingStartedSteps" :key="step.number" class="step-card">
             <div class="step-number">{{ step.number }}</div>
@@ -251,8 +251,8 @@ onMounted(() => {
 
       <!-- 功能总览：特性卡片网格 -->
       <template v-else-if="pageType === 'features'">
-        <h1 class="page-title">功能总览</h1>
-        <p class="page-subtitle">快速了解 Sea Lantern 现阶段可用能力与适用场景。</p>
+        <h1 class="page-title">{{ i18n.t("help.sections.features") }}</h1>
+        <p class="page-subtitle">{{ i18n.t("help.features_subtitle") }}</p>
         <div class="feature-grid">
           <div v-for="feature in featureItems" :key="feature.title" class="feature-card">
             <h3 class="feature-title">{{ feature.title }}</h3>
@@ -268,21 +268,25 @@ onMounted(() => {
           <cmz-markdown v-if="seg.type === 'md'" :content="seg.content" variant="glass" />
           <!-- 配置项卡片 -->
           <template v-else-if="seg.type === 'config-cards'">
-            <h2 class="section-heading" style="margin-top: var(--sl-space-lg)">常用配置项</h2>
+            <h2 class="section-heading" style="margin-top: var(--sl-space-lg)">
+              {{ i18n.t("help.common_configs") }}
+            </h2>
             <div class="config-grid">
               <div v-for="item in configItems" :key="item.key" class="mini-card">
                 <code class="mini-card-key">{{ item.key }}</code>
                 <p class="mini-card-desc">{{ item.desc }}</p>
                 <span class="mini-card-default"
-                  >默认：<code>{{ item.default }}</code></span
+                  >{{ i18n.t("help.default_label") }}<code>{{ item.default }}</code></span
                 >
               </div>
             </div>
           </template>
           <!-- 插件推荐卡片 -->
           <template v-else-if="seg.type === 'plugin-cards'">
-            <h2 class="section-heading" style="margin-top: var(--sl-space-lg)">常用插件推荐</h2>
-            <p class="mini-card-note">点击插件名称可跳转到下载页面。</p>
+            <h2 class="section-heading" style="margin-top: var(--sl-space-lg)">
+              {{ i18n.t("help.common_plugins") }}
+            </h2>
+            <p class="mini-card-note">{{ i18n.t("help.plugin_click_hint") }}</p>
             <div class="plugin-grid">
               <div v-for="plugin in pluginRecommendations" :key="plugin.name" class="plugin-card">
                 <div class="plugin-card-header">
@@ -297,7 +301,9 @@ onMounted(() => {
           </template>
           <!-- 内存分配建议卡片 -->
           <template v-else-if="seg.type === 'memory-cards'">
-            <h2 class="section-heading" style="margin-top: var(--sl-space-lg)">内存分配建议</h2>
+            <h2 class="section-heading" style="margin-top: var(--sl-space-lg)">
+              {{ i18n.t("help.memory_suggestions") }}
+            </h2>
             <div class="memory-grid">
               <div v-for="item in memorySuggestions" :key="item.players" class="memory-card">
                 <span class="memory-players">{{ item.players }}</span>
@@ -311,7 +317,7 @@ onMounted(() => {
 
       <!-- 常见问题：Accordion 折叠面板 -->
       <template v-else-if="pageType === 'faq'">
-        <h1 class="page-title">常见问题</h1>
+        <h1 class="page-title">{{ i18n.t("help.sections.faq") }}</h1>
         <div v-for="category in faqCategories" :key="category.title" class="faq-category">
           <h2 class="section-heading">{{ category.title }}</h2>
           <Cmz_Accordion

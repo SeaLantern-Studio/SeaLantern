@@ -103,11 +103,11 @@ const validationStatus = computed(() => {
           class="detected-info"
         >
           <div class="detected-item">
-            <span class="detected-label">启动文件:</span>
+            <span class="detected-label">{{ i18n.t("home.change_path_detected_jar") }}</span>
             <code class="detected-value">{{ changePathValidationResult.jarPath }}</code>
           </div>
           <div class="detected-item">
-            <span class="detected-label">启动方式:</span>
+            <span class="detected-label">{{ i18n.t("home.change_path_startup_mode") }}</span>
             <span class="detected-value">{{
               changePathValidationResult.startupMode?.toUpperCase() || "JAR"
             }}</span>
