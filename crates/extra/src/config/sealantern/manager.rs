@@ -177,33 +177,40 @@ impl SettingsManager {
         }
     }
 
-    /// 部分更新（只传需要改的字段）
-    /// 持久化失败时回滚内存状态
+    /// 部分更新（只传需要改的字段）。
+    ///
+    /// 在单个持久化锁内重新加载磁盘最新值、合并请求并按需写回，避免多个
+    /// 管理器基于过期内存快照覆盖彼此修改。成功后同步内存快照；失败时内存
+    /// 保持调用前状态。
     pub async fn update_partial(
         &mut self,
         partial: PartialAppSettings,
     ) -> Result<UpdateResult, sealantern_infra::fs::FsError> {
-        let old = self.inner.get().clone();
-        self.inner.update(|s| partial.merge_into(s));
-        let changed_groups = old.changed_groups(self.inner.get());
-        if changed_groups.is_empty() {
-            return Ok(UpdateResult {
-                settings: self.inner.get().clone(),
-                changed_groups,
-            });
-        }
-        match self.inner.save(false).await {
-            Ok(()) => {
-                observability::config_settings_partial_updated(&self.path, &changed_groups);
-                Ok(UpdateResult {
-                    settings: self.inner.get().clone(),
-                    changed_groups,
-                })
+        let mut changed_groups = Vec::new();
+        let updated = ConfigFile::update_persisted_if_changed(
+            &self.path,
+            AppSettings::default(),
+            false,
+            |settings| {
+                let previous = settings.clone();
+                partial.merge_into(settings);
+                changed_groups = previous.changed_groups(settings);
+                !changed_groups.is_empty()
+            },
+        )
+        .await;
+
+        match updated {
+            Ok(settings) => {
+                self.inner.set(settings.clone());
+                if !changed_groups.is_empty() {
+                    observability::config_settings_partial_updated(&self.path, &changed_groups);
+                }
+                Ok(UpdateResult { settings, changed_groups })
             }
-            Err(e) => {
-                self.inner.set(old);
-                observability::config_settings_persist_failed(&self.path, "update_partial", &e);
-                Err(e)
+            Err(error) => {
+                observability::config_settings_persist_failed(&self.path, "update_partial", &error);
+                Err(error)
             }
         }
     }
@@ -456,6 +463,7 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
 mod tests {
     use super::{default_settings_path, SettingsManager, SETTINGS_FILE_NAME};
     use crate::config::{AppSettings, JavaInfo, PartialAppSettings};
+    use sealantern_infra::fs::{FileLock, FsError};
 
     #[test]
     fn default_path_uses_owned_settings_file_name() {
@@ -516,5 +524,106 @@ mod tests {
             .await
             .expect("persisted settings should reload");
         assert_eq!(reloaded.get().cached_java_list[0].confidence, 87);
+    }
+
+    #[tokio::test]
+    async fn partial_updates_merge_with_the_latest_persisted_settings() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut first = SettingsManager::load(&path)
+            .await
+            .expect("first settings manager should load");
+        let mut second = SettingsManager::load(&path)
+            .await
+            .expect("second settings manager should load");
+
+        first
+            .update_partial(PartialAppSettings {
+                theme: Some("dark".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("first partial update should persist");
+
+        let second_result = second
+            .update_partial(PartialAppSettings {
+                default_port: Some(25566),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("second partial update should merge with persisted state");
+
+        assert_eq!(second_result.settings.theme, "dark");
+        assert_eq!(second_result.settings.default_port, 25566);
+        assert_eq!(second.get().theme, "dark");
+        assert_eq!(second.get().default_port, 25566);
+
+        let reloaded = SettingsManager::load(&path)
+            .await
+            .expect("merged settings should reload");
+        assert_eq!(reloaded.get().theme, "dark");
+        assert_eq!(reloaded.get().default_port, 25566);
+    }
+
+    #[tokio::test]
+    async fn partial_updates_keep_last_writer_semantics_for_the_same_field() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut first = SettingsManager::load(&path)
+            .await
+            .expect("first settings manager should load");
+        let mut second = SettingsManager::load(&path)
+            .await
+            .expect("second settings manager should load");
+
+        first
+            .update_partial(PartialAppSettings {
+                theme: Some("dark".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("first theme update should persist");
+        second
+            .update_partial(PartialAppSettings {
+                theme: Some("light".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("second theme update should persist");
+
+        let reloaded = SettingsManager::load(&path)
+            .await
+            .expect("latest settings should reload");
+        assert_eq!(reloaded.get().theme, "light");
+    }
+
+    #[tokio::test]
+    async fn failed_partial_update_keeps_memory_and_disk_unchanged() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings manager should load");
+        let before = tokio::fs::read_to_string(&path)
+            .await
+            .expect("settings fixture should be readable");
+        let file_lock = FileLock::try_acquire(&path).expect("test should acquire settings lock");
+
+        let result = manager
+            .update_partial(PartialAppSettings {
+                theme: Some("dark".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await;
+
+        assert!(matches!(result, Err(FsError::AlreadyLocked(_))));
+        assert_eq!(manager.get().theme, "auto");
+        assert_eq!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("settings should remain readable"),
+            before
+        );
+        drop(file_lock);
     }
 }

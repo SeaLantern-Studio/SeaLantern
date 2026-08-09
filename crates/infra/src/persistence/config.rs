@@ -210,19 +210,37 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
         auto_backup: bool,
         update: impl FnOnce(&mut T),
     ) -> Result<T, FsError> {
+        Self::update_persisted_if_changed(path, default, auto_backup, |data| {
+            update(data);
+            true
+        })
+        .await
+    }
+
+    /// 在单个文件锁内加载并按需持久化配置。
+    ///
+    /// `update` 在磁盘最新值上执行，并通过返回值声明是否需要写回。即使无需
+    /// 写回，本方法仍返回锁内加载的最新配置，供调用方同步内存快照。
+    pub async fn update_persisted_if_changed(
+        path: impl Into<PathBuf>,
+        default: T,
+        auto_backup: bool,
+        update: impl FnOnce(&mut T) -> bool,
+    ) -> Result<T, FsError> {
         let path = path.into();
         let format = ConfigFormat::from_extension(&path)?;
         let _guard = lock_config(&path).await?;
         let mut data = load_data_or_default(&path, format, default).await?;
 
-        update(&mut data);
-        if auto_backup && path.exists() {
-            backup_path(&path).await?;
+        if update(&mut data) {
+            if auto_backup && path.exists() {
+                backup_path(&path).await?;
+            }
+            let content = format.serialize(&data).map_err(|error| {
+                FsError::serialization("config", "encode", &path, error.to_string())
+            })?;
+            write_atomic(&path, content.as_bytes()).await?;
         }
-        let content = format.serialize(&data).map_err(|error| {
-            FsError::serialization("config", "encode", &path, error.to_string())
-        })?;
-        write_atomic(&path, content.as_bytes()).await?;
         Ok(data)
     }
 
@@ -535,6 +553,28 @@ mod tests {
         let saved = ConfigFile::<TestConfig>::load(&path).await.unwrap();
         assert_eq!(saved.get().port, 30000);
         assert!(!saved.get().enabled);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn conditional_update_returns_latest_data_without_rewriting() {
+        let dir = test_dir("conditional_update");
+        let path = dir.join("settings.json");
+        let original = r#"{"name":"latest","port":30000,"enabled":false}"#;
+        tokio::fs::write(&path, original).await.unwrap();
+
+        let loaded = ConfigFile::<TestConfig>::update_persisted_if_changed(
+            &path,
+            TestConfig::default(),
+            false,
+            |_| false,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(loaded.port, 30000);
+        assert!(!loaded.enabled);
+        assert_eq!(tokio::fs::read_to_string(&path).await.unwrap(), original);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
