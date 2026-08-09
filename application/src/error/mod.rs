@@ -20,6 +20,8 @@ pub mod server;
 pub mod settings;
 /// 系统资源信息领域错误。
 pub mod system;
+/// 应用更新检查领域错误。
+pub mod update;
 
 pub use config::ConfigError;
 pub use cron::CronTaskError;
@@ -29,3 +31,4 @@ pub use plugin::PluginError;
 pub use server::ServerError;
 pub use settings::SettingsError;
 pub use system::SystemError;
+pub use update::UpdateCheckError;

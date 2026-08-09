@@ -10,6 +10,7 @@ mod instance;
 mod server;
 mod settings;
 mod system;
+mod update;
 
 pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
@@ -17,3 +18,4 @@ pub use instance::CoreInstanceService;
 pub use server::CoreServerService;
 pub use settings::CoreSettingsService;
 pub use system::CoreSystemService;
+pub use update::CoreUpdateCheckService;

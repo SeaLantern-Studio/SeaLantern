@@ -20,7 +20,7 @@ use sealantern_infra::platform::get_app_data_dir;
 use crate::error::InstanceError;
 use crate::service::{
     CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreServerService,
-    CoreSettingsService, CoreSystemService,
+    CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
 };
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
@@ -50,6 +50,8 @@ pub struct AppServicesInner {
     pub system: Arc<CoreSystemService>,
     /// 设置管理器（持久化配置）。
     pub settings_manager: Option<tokio::sync::Mutex<SettingsManager>>,
+    /// 应用更新检查服务。
+    pub update: Arc<CoreUpdateCheckService>,
 }
 
 /// 进程级全局容器。惰性初始化，可替换。
@@ -75,6 +77,7 @@ impl AppServices {
                 settings: Arc::new(CoreSettingsService),
                 system: Arc::new(CoreSystemService),
                 settings_manager: None,
+                update: Arc::new(CoreUpdateCheckService::new()),
             }),
         }
     }
@@ -104,6 +107,7 @@ impl AppServices {
                 settings: Arc::new(CoreSettingsService),
                 system: Arc::new(CoreSystemService),
                 settings_manager: Some(tokio::sync::Mutex::new(settings_manager)),
+                update: Arc::new(CoreUpdateCheckService::new()),
             }),
         })
     }
@@ -243,5 +247,15 @@ impl AppServices {
             .settings_manager
             .as_ref()
             .ok_or(InstanceError::Internal("settings manager not initialized".to_string()))
+    }
+
+    /// 访问应用更新检查服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn update(&self) -> &Arc<CoreUpdateCheckService> {
+        &self.inner.update
+    }
+
+    /// 便捷访问入口：一步拿到更新检查服务的共享句柄（惰性初始化 + 可替换）。
+    pub async fn update_service() -> Result<Arc<CoreUpdateCheckService>, InstanceError> {
+        Ok(Self::get().await?.update().clone())
     }
 }
