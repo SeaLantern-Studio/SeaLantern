@@ -5230,9 +5230,11 @@ dependencies = [
 name = "sealantern-core"
 version = "1.2.0"
 dependencies = [
+ "async-trait",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "tokio",
  "tracing",
  "zip",
 ]

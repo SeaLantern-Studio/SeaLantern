@@ -16,7 +16,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
-use sealantern_core::instance::{Instance, InstanceId, StartupMode};
+use sealantern_core::instance::{
+    restart_instance, Instance, InstanceId, InstanceLifecycleState, InstanceRestartDriver,
+    RestartPolicy, StartupMode,
+};
 use sealantern_core::process::{
     build_command, CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal,
     TerminalOutput, TerminalStream, WindowsConsoleEncoding,
@@ -37,6 +40,41 @@ const POLL_INTERVAL: Duration = Duration::from_millis(200);
 struct ManagedProcess {
     daemon: Daemon,
     terminal: Terminal,
+}
+
+struct ServerRestartDriver<'a> {
+    service: &'a CoreServerService,
+}
+
+#[async_trait]
+impl InstanceRestartDriver for ServerRestartDriver<'_> {
+    type Error = ServerServiceError;
+
+    async fn state(&self, instance: &Instance) -> Result<InstanceLifecycleState, Self::Error> {
+        let snapshot = self.service.status(&instance.id).await?;
+        Ok(match snapshot.state {
+            ServerState::Starting => InstanceLifecycleState::Starting,
+            ServerState::Running => InstanceLifecycleState::Running,
+            ServerState::Stopping => InstanceLifecycleState::Stopping,
+            ServerState::Stopped => InstanceLifecycleState::Stopped,
+        })
+    }
+
+    async fn request_stop(&self, instance: &Instance) -> Result<(), Self::Error> {
+        self.service.stop(&instance.id).await
+    }
+
+    async fn await_terminal(
+        &self,
+        instance: &Instance,
+        _: Duration,
+    ) -> Result<InstanceLifecycleState, Self::Error> {
+        self.state(instance).await
+    }
+
+    async fn start(&self, instance: &Instance) -> Result<(), Self::Error> {
+        self.service.start(&instance.id).await
+    }
 }
 
 /// 基于 `core` 进程原语的服务器进程管理服务实现。
@@ -90,6 +128,11 @@ impl CoreServerService {
         // 组装 JVM 参数（Xmx/Xms/编码 + 实例自定义参数）。
         // 默认 JVM 参数（全局配置）当前为空，待配置功能恢复后接入。
         let jvm_arguments = build_jvm_arguments(instance, "");
+        let custom_arguments = launch
+            .custom_arguments
+            .iter()
+            .map(OsString::from)
+            .collect::<Vec<_>>();
         // 从 Java 可执行文件推导 JAVA_HOME / bin（供脚本与自定义模式注入环境）。
         let java_environment = launch
             .java_executable
@@ -107,7 +150,7 @@ impl CoreServerService {
             entry_path: launch.startup_target.as_deref(),
             custom_command: launch.custom_command.as_deref(),
             custom_executable: launch.custom_executable.as_deref(),
-            custom_arguments: &[],
+            custom_arguments: &custom_arguments,
             installer_url: None,
             windows_console_encoding: WindowsConsoleEncoding::Utf8,
         };
@@ -277,6 +320,23 @@ impl ServerService for CoreServerService {
         // 进程已成功拉起并注册，退出 Starting 状态（Starting 仅覆盖 spawn 竞态窗口）。
         self.clear_starting(&id_str);
 
+        Ok(())
+    }
+
+    async fn restart(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
+        let instance = self.find_instance(id).await?;
+        let driver = ServerRestartDriver { service: self };
+        restart_instance(&driver, &instance, RestartPolicy { stop_timeout: STOP_GRACEFUL_TIMEOUT })
+            .await
+            .map_err(|error| {
+                tracing::error!(
+                    target: "sealantern.application.server",
+                    instance_id = id.as_str(),
+                    error = %error,
+                    "failed to restart server process"
+                );
+                ServerServiceError::OperationFailed
+            })?;
         Ok(())
     }
 
