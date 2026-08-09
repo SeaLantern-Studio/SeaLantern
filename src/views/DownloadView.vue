@@ -3,21 +3,19 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import DownloadForm from "@components/views/download/DownloadForm.vue";
 import DownloadServerForm from "@components/views/download/DownloadServerForm.vue";
-import DownloadProgress from "@components/views/download/DownloadProgress.vue";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
-import { downloadApi, downloadServerApi, type DownloadLink } from "@api/downloader";
+import { downloadServerApi, type DownloadLink } from "@api/downloader";
 import { systemApi } from "@api/system";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
+import { useDownloadStore } from "@stores/downloadStore";
 import { i18n } from "@language";
 
 const router = useRouter();
 const createServerDraftStore = useCreateServerDraftStore();
+const downloadStore = useDownloadStore();
 const toast = useToast();
 const { loading: submitting, start: startLoading, stop: stopLoading } = useLoading();
-
-// 追踪下载任务来源
-const taskOriginTab = ref<"file" | "server" | null>(null);
 
 // File download state
 const url = ref("");
@@ -39,15 +37,11 @@ const loadingTypes = ref(false);
 const loadingVersions = ref(false);
 const loadingInfo = ref(false);
 
-// Download task state
-const {
-  taskInfo,
-  start: startTask,
-  reset: resetTask,
-  errorMessage: taskError,
-} = downloadApi.useDownload();
-
-const isDownloading = computed(() => taskInfo.id !== "" && !taskInfo.isFinished);
+// 下载任务状态（来自全局 store，任意页面可读，顶部任务球依赖此）
+const isDownloading = computed(() => downloadStore.isDownloading);
+const isFinished = computed(() => downloadStore.isFinished);
+const taskError = computed(() => downloadStore.taskError);
+const taskOriginTab = computed(() => downloadStore.taskOriginTab);
 const loadingAny = computed(() => loadingTypes.value || loadingVersions.value || loadingInfo.value);
 const combinedLoading = computed(() => submitting.value || isDownloading.value || loadingAny.value);
 
@@ -107,13 +101,13 @@ const canServerDownload = computed(() => {
 });
 
 const canGoCreate = computed(() => {
-  return taskOriginTab.value === "server" && taskInfo.isFinished && !taskError.value;
+  return taskOriginTab.value === "server" && isFinished.value && !taskError.value;
 });
 
 const fileDownloadButtonLabel = computed(() => {
   if (isDownloading.value && taskOriginTab.value === "file")
     return i18n.t("download-file.downloading");
-  if (taskInfo.isFinished && taskOriginTab.value === "file" && !taskError.value)
+  if (isFinished.value && taskOriginTab.value === "file" && !taskError.value)
     return i18n.t("downloadServerView.status.finished");
   return i18n.t("download-file.download");
 });
@@ -121,7 +115,7 @@ const fileDownloadButtonLabel = computed(() => {
 const serverDownloadButtonLabel = computed(() => {
   if (isDownloading.value && taskOriginTab.value === "server")
     return i18n.t("downloadServerView.actions.downloading");
-  if (taskInfo.isFinished && taskOriginTab.value === "server" && !taskError.value)
+  if (isFinished.value && taskOriginTab.value === "server" && !taskError.value)
     return i18n.t("downloadServerView.status.finished");
   return i18n.t("downloadServerView.actions.startDownload");
 });
@@ -251,12 +245,7 @@ function gotoCreatePage(sourcePath: string) {
 // Common methods
 async function cancelDownload() {
   try {
-    if (taskInfo.id) {
-      await downloadApi.cancelDownloadTask(taskInfo.id);
-    }
-
-    resetTask();
-    taskOriginTab.value = null;
+    await downloadStore.cancelTask();
   } catch (e) {
     toast.error(String(e));
   } finally {
@@ -282,17 +271,16 @@ async function handleFileDownload() {
   }
   const threadCountInt = parseInt(threadCountValue, 10);
 
-  resetTask();
-  taskOriginTab.value = "file";
   startLoading();
 
+  const normalizedSavePath = savePath.value.replace(/\\/g, "/");
+  const fullSavePath = normalizedSavePath + "/" + filename.value;
+
   try {
-    const normalizedSavePath = savePath.value.replace(/\\/g, "/");
-    await startTask({
-      url: url.value,
-      savePath: normalizedSavePath + "/" + filename.value,
-      threadCount: threadCountInt,
-    });
+    await downloadStore.startTask(
+      { url: url.value, savePath: fullSavePath, threadCount: threadCountInt },
+      { filename: filename.value, savePath: fullSavePath, origin: "file" },
+    );
 
     if (taskError.value) toast.error(taskError.value);
   } catch (e) {
@@ -305,18 +293,19 @@ async function handleFileDownload() {
 async function handleServerDownload() {
   if (!canServerDownload.value || !info.value) return;
 
-  resetTask();
-  taskOriginTab.value = "server";
   startLoading();
 
   const targetPath = buildServerSavePath();
 
   try {
-    await startTask({
-      url: info.value.url,
-      savePath: targetPath,
-      threadCount: parseInt(serverThreadCount.value, 10),
-    });
+    await downloadStore.startTask(
+      {
+        url: info.value.url,
+        savePath: targetPath,
+        threadCount: parseInt(serverThreadCount.value, 10),
+      },
+      { filename: serverFilename.value, savePath: targetPath, origin: "server" },
+    );
 
     if (taskError.value) {
       toast.error(taskError.value);
@@ -327,12 +316,6 @@ async function handleServerDownload() {
     stopLoading();
   }
 }
-
-const statusLabel = computed(() => {
-  if (taskError.value) return i18n.t("download-file.failed");
-  if (taskInfo.isFinished) return i18n.t("downloadServerView.status.finished");
-  return i18n.t("download-file.downloading");
-});
 
 // Watchers
 watch(selectedType, (val) => {
@@ -380,14 +363,8 @@ onMounted(() => {
         />
         <div class="card-actions">
           <cmz-button
-            :variant="
-              taskInfo.isFinished && taskOriginTab === 'server' && !taskError ? 'solid' : undefined
-            "
-            :color="
-              taskInfo.isFinished && taskOriginTab === 'server' && !taskError
-                ? '#22c55e'
-                : undefined
-            "
+            :variant="isFinished && taskOriginTab === 'server' && !taskError ? 'solid' : undefined"
+            :color="isFinished && taskOriginTab === 'server' && !taskError ? '#22c55e' : undefined"
             :disabled="!canServerDownload"
             @click="handleServerDownload"
             :loading="isDownloading && taskOriginTab === 'server'"
@@ -421,12 +398,8 @@ onMounted(() => {
         />
         <div class="card-actions">
           <cmz-button
-            :variant="
-              taskInfo.isFinished && taskOriginTab === 'file' && !taskError ? 'solid' : undefined
-            "
-            :color="
-              taskInfo.isFinished && taskOriginTab === 'file' && !taskError ? '#22c55e' : undefined
-            "
+            :variant="isFinished && taskOriginTab === 'file' && !taskError ? 'solid' : undefined"
+            :color="isFinished && taskOriginTab === 'file' && !taskError ? '#22c55e' : undefined"
             :disabled="!canFileDownload"
             @click="handleFileDownload"
             :loading="isDownloading && taskOriginTab === 'file'"
@@ -439,13 +412,6 @@ onMounted(() => {
         </div>
       </cmz-card>
     </div>
-
-    <!-- Download progress -->
-    <Transition name="fade">
-      <div v-if="taskInfo.id !== ''" class="bottom-progress-area">
-        <DownloadProgress :taskInfo="taskInfo" :taskError="taskError" :statusLabel="statusLabel" />
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -466,13 +432,6 @@ onMounted(() => {
   display: flex;
   gap: var(--sl-space-sm);
   margin-top: var(--sl-space-md);
-}
-
-.bottom-progress-area {
-  margin-top: var(--sl-space-lg);
-  display: flex;
-  justify-content: center;
-  width: 100%;
 }
 
 @media (max-width: 780px) {

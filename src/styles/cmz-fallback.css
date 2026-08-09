@@ -454,7 +454,40 @@
 }
 
 /* === Progress === */
+/* 不可限制高度或裁切，否则文字会被撅 */
 .cmz-progress {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 顶部信息行：左侧标签 + 右侧百分比 */
+.cmz-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--sl-font-size-xs, 12px);
+  color: var(--sl-text-secondary);
+}
+
+/* 左侧标签：超长省略，避免与百分比挤压 */
+.cmz-progress-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* 右侧百分比：等宽数字，防止跳动 */
+.cmz-progress-percent {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 轨道：8px 高度与裁切只作用于轨道本身 */
+.cmz-progress-track {
   width: 100%;
   height: 8px;
   background: var(--sl-bg-secondary);
@@ -462,14 +495,14 @@
   overflow: hidden;
 }
 
-.cmz-progress__bar {
+.cmz-progress-bar {
   height: 100%;
   border-radius: var(--sl-radius-full, 9999px);
   background: var(--sl-primary);
   transition: width 0.3s ease;
 }
 
-.cmz-progress--indeterminate .cmz-progress__bar {
+.cmz-progress--indeterminate .cmz-progress-bar {
   width: 30%;
   animation: cmz-progress-indeterminate 1.5s ease-in-out infinite;
 }

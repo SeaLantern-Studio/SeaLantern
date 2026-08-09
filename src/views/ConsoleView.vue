@@ -878,15 +878,13 @@ async function syncLogsOnce(sid: string) {
   try {
     const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
     if (lines.length === 0) {
-      consoleOutputRef.value?.appendLines(["[Sea Lantern] 该服务器尚无日志输出，请先启动服务器。"]);
+      consoleOutputRef.value?.appendLines([i18n.t("console.no_logs_yet")]);
     } else {
       consoleOutputRef.value?.appendLines(lines);
     }
   } catch (e) {
     console.warn("加载服务器日志失败:", e);
-    consoleOutputRef.value?.appendLines([
-      "[Sea Lantern] 无法加载此服务器的日志，该服务器可能尚未启动。",
-    ]);
+    consoleOutputRef.value?.appendLines([i18n.t("console.logs_load_failed")]);
   }
 }
 

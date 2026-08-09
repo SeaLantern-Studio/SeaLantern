@@ -17,6 +17,7 @@ import {
 } from "lucide-vue-next";
 import { useI18nStore } from "@stores/i18nStore";
 import { i18n } from "@language";
+import TaskPill from "@components/layout/TaskPill.vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { settingsApi, type AppSettings } from "@api/settings";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
@@ -398,10 +399,8 @@ function saveThemeDebounced() {
         </button>
       </div>
 
-      <div class="header-status">
-        <cmz-badge dot pulse variant="success" />
-        <span class="status-text">{{ i18n.t("common.app_name") }}</span>
-      </div>
+      <!-- 任务球，复用原 .header-status 位置，没活儿显示状态指示器，然后变进度球 -->
+      <TaskPill />
 
       <div v-if="!isMacOS" class="window-controls">
         <button class="win-btn" @click="minimizeWindow" :title="i18n.t('common.minimize')">
