@@ -157,3 +157,5 @@ pub use imp::{get_aur_helper, is_arch_linux};
 
 #[cfg(target_os = "linux")]
 pub use imp::check_aur_update;
+#[cfg(target_os = "linux")]
+pub(crate) use imp::check_aur_update_with_client;
