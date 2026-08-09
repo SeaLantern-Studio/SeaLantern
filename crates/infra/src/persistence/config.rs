@@ -221,6 +221,13 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
     ///
     /// `update` 在磁盘最新值上执行，并通过返回值声明是否需要写回。即使无需
     /// 写回，本方法仍返回锁内加载的最新配置，供调用方同步内存快照。
+    ///
+    /// # 使用约定
+    ///
+    /// `update` 会在进程内写锁和跨进程文件锁均被持有时执行，因此只应完成
+    /// 配置值的内存内变更及是否写回的判断。不得在回调中执行文件或网络 IO、
+    /// 长时间计算等耗时操作；与持久化无关的处理应放在本方法返回后执行。
+    /// 推荐使用体积较小的内联闭包，并避免捕获不必要的大量外部状态。
     pub async fn update_persisted_if_changed(
         path: impl Into<PathBuf>,
         default: T,
