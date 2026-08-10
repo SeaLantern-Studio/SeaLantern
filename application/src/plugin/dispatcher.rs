@@ -1,4 +1,5 @@
 use std::collections::{HashMap, VecDeque};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -191,6 +192,7 @@ impl CoreCapabilityDispatcher {
         &self,
         capability_id: &str,
         scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
+        payload: &Value,
     ) -> Result<Value, CapabilityDispatchError> {
         let host = self
             .host
@@ -203,6 +205,13 @@ impl CoreCapabilityDispatcher {
             "server.status.read" => {
                 let id = server_scope(scope)?;
                 host.server_status(id).await
+            }
+            "server.file.metadata"
+            | "server.file.read"
+            | "plugin.bundle.metadata"
+            | "plugin.bundle.read" => {
+                let path = read_path(payload)?;
+                host.scoped_file(capability_id, scope, &path).await
             }
             "server.metrics.read" | "server.metadata.read" | "server.config.redacted" => Err(
                 CapabilityDispatchError::Unavailable("server read capability is not implemented"),
@@ -255,7 +264,7 @@ impl CapabilityDispatcher for CoreCapabilityDispatcher {
                     .await
             }
             capability => {
-                self.dispatch_read_host(capability, invocation.scope.as_ref())
+                self.dispatch_read_host(capability, invocation.scope.as_ref(), &invocation.payload)
                     .await
             }
         }
@@ -269,6 +278,12 @@ pub trait PluginReadHost: Send + Sync {
     async fn installed_plugins(&self) -> Result<Value, CapabilityDispatchError>;
     async fn instances(&self) -> Result<Value, CapabilityDispatchError>;
     async fn server_status(&self, instance_id: &str) -> Result<Value, CapabilityDispatchError>;
+    async fn scoped_file(
+        &self,
+        capability_id: &str,
+        scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
+        relative_path: &Path,
+    ) -> Result<Value, CapabilityDispatchError>;
 }
 
 /// 基于既有应用服务的只读宿主适配器。
@@ -276,6 +291,7 @@ pub struct ApplicationPluginReadHost {
     system: Arc<dyn SystemService>,
     instance: Arc<dyn InstanceService>,
     server: Arc<dyn ServerService>,
+    plugin_root: PathBuf,
 }
 
 impl ApplicationPluginReadHost {
@@ -283,8 +299,14 @@ impl ApplicationPluginReadHost {
         system: Arc<dyn SystemService>,
         instance: Arc<dyn InstanceService>,
         server: Arc<dyn ServerService>,
+        plugin_root: impl Into<PathBuf>,
     ) -> Self {
-        Self { system, instance, server }
+        Self {
+            system,
+            instance,
+            server,
+            plugin_root: plugin_root.into(),
+        }
     }
 }
 
@@ -325,6 +347,82 @@ impl PluginReadHost for ApplicationPluginReadHost {
         serde_json::to_value(status)
             .map_err(|_| CapabilityDispatchError::Failed("host response encoding"))
     }
+
+    async fn scoped_file(
+        &self,
+        capability_id: &str,
+        scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
+        relative_path: &Path,
+    ) -> Result<Value, CapabilityDispatchError> {
+        let scope = scope.ok_or(CapabilityDispatchError::InvalidRequest("file scope"))?;
+        let root = match scope.kind {
+            ScopeKind::ServerInstance => {
+                let id = sealantern_core::instance::InstanceId::new(&scope.value)
+                    .map_err(|_| CapabilityDispatchError::InvalidRequest("server instance id"))?;
+                self.instance
+                    .find(&id)
+                    .await
+                    .map_err(|error| host_error("instance lookup", error))?
+                    .ok_or(CapabilityDispatchError::Unavailable("server instance not found"))?
+                    .directory
+            }
+            ScopeKind::PluginBundle => self.plugin_root.join(&scope.value),
+            _ => return Err(CapabilityDispatchError::InvalidRequest("file scope kind")),
+        };
+        read_scoped_file(capability_id, root, relative_path).await
+    }
+}
+
+async fn read_scoped_file(
+    capability_id: &str,
+    root: PathBuf,
+    relative_path: &Path,
+) -> Result<Value, CapabilityDispatchError> {
+    let root = tokio::fs::canonicalize(&root)
+        .await
+        .map_err(|_| CapabilityDispatchError::Unavailable("file scope root unavailable"))?;
+    let path = root.join(relative_path);
+    let resolved = tokio::fs::canonicalize(&path)
+        .await
+        .map_err(|_| CapabilityDispatchError::Unavailable("scoped file unavailable"))?;
+    if !resolved.starts_with(&root) {
+        return Err(CapabilityDispatchError::InvalidRequest("scoped file escapes root"));
+    }
+    let metadata = tokio::fs::metadata(&resolved)
+        .await
+        .map_err(|_| CapabilityDispatchError::Unavailable("scoped file metadata unavailable"))?;
+    if capability_id.ends_with("metadata") {
+        return Ok(serde_json::json!({
+            "path": relative_path,
+            "isFile": metadata.is_file(),
+            "isDirectory": metadata.is_dir(),
+            "length": metadata.len(),
+        }));
+    }
+    if !metadata.is_file() || metadata.len() > 1024 * 1024 {
+        return Err(CapabilityDispatchError::Unavailable("scoped file exceeds read limit"));
+    }
+    let content = tokio::fs::read_to_string(&resolved)
+        .await
+        .map_err(|_| CapabilityDispatchError::Failed("scoped file read failed"))?;
+    Ok(serde_json::json!({ "path": relative_path, "content": content }))
+}
+
+fn read_path(payload: &Value) -> Result<PathBuf, CapabilityDispatchError> {
+    let path = payload
+        .get("path")
+        .and_then(Value::as_str)
+        .ok_or(CapabilityDispatchError::InvalidRequest("scoped file path"))?;
+    let path = Path::new(path);
+    if path.as_os_str().is_empty()
+        || path.is_absolute()
+        || path
+            .components()
+            .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        return Err(CapabilityDispatchError::InvalidRequest("scoped file path"));
+    }
+    Ok(path.to_owned())
 }
 
 #[derive(Deserialize)]
@@ -420,6 +518,15 @@ mod tests {
 
         async fn server_status(&self, instance_id: &str) -> Result<Value, CapabilityDispatchError> {
             Ok(serde_json::json!({"instanceId": instance_id, "state": "stopped"}))
+        }
+
+        async fn scoped_file(
+            &self,
+            _: &str,
+            _: Option<&sealantern_core::app_plugin::ScopeBinding>,
+            _: &Path,
+        ) -> Result<Value, CapabilityDispatchError> {
+            Err(CapabilityDispatchError::Unavailable("not used"))
         }
     }
 
@@ -537,5 +644,31 @@ mod tests {
         };
 
         assert_eq!(dispatcher.invoke(invocation).await.unwrap()["instanceId"], "server-a");
+    }
+
+    #[tokio::test]
+    async fn scoped_file_read_is_bounded_and_rejects_parent_paths() {
+        let root = tempfile::tempdir().unwrap();
+        tokio::fs::write(root.path().join("config.txt"), "safe content")
+            .await
+            .unwrap();
+        let result =
+            read_scoped_file("plugin.bundle.read", root.path().to_owned(), Path::new("config.txt"))
+                .await
+                .unwrap();
+        assert_eq!(result["content"], "safe content");
+        assert!(matches!(
+            read_path(&serde_json::json!({"path":"../config.txt"})),
+            Err(CapabilityDispatchError::InvalidRequest("scoped file path"))
+        ));
+
+        tokio::fs::write(root.path().join("large.txt"), vec![b'x'; 1024 * 1024 + 1])
+            .await
+            .unwrap();
+        assert!(matches!(
+            read_scoped_file("plugin.bundle.read", root.path().to_owned(), Path::new("large.txt"))
+                .await,
+            Err(CapabilityDispatchError::Unavailable("scoped file exceeds read limit"))
+        ));
     }
 }

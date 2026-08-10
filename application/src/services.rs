@@ -251,7 +251,7 @@ impl AppServices {
                     &root,
                     root.join("data"),
                     root.join("plugin-state.sqlite"),
-                    Some(Arc::new(ApplicationPluginReadHost::new(system, instance, server))),
+                    Some(Arc::new(ApplicationPluginReadHost::new(system, instance, server, &root))),
                 )
                 .await
                 .map(Arc::new)
