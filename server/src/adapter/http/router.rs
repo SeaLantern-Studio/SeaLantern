@@ -10,6 +10,10 @@ use axum_vite::{spa_router, ViteConfig};
 
 use sealantern_application::services::AppServices;
 
+use crate::rpc::axum::AxumRpcState;
+use crate::rpc::methods::plugin::InvokePluginCapability;
+use crate::rpc::plugin_auth::PluginRpcTokenResolver;
+
 use super::handlers;
 use super::state::AppState;
 
@@ -27,6 +31,12 @@ const API_PREFIX: &str = "/api";
 /// 调用方持有，drop 时会终止 vite 子进程）。
 pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
     let state = AppState::new(services);
+
+    let mut plugin_rpc_routes = Router::new();
+    crate::rpc_route!(plugin_rpc_routes, InvokePluginCapability::new(state.services().clone()));
+    let plugin_rpc_routes = plugin_rpc_routes.with_state(AxumRpcState {
+        access_resolver: std::sync::Arc::new(PluginRpcTokenResolver::from_env()),
+    });
 
     let instance_routes = Router::new()
         .route("/instances", get(handlers::list_instances))
@@ -74,6 +84,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         .nest(API_PREFIX, system_routes)
         .nest(API_PREFIX, cron_routes)
         .nest(API_PREFIX, update_routes)
+        .merge(plugin_rpc_routes)
         .merge(spa_router(config))
         .with_state(state)
 }
@@ -139,5 +150,23 @@ mod tests {
             .expect("call update route");
 
         assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn plugin_rpc_requires_a_valid_bearer_token() {
+        let (router, _directory) = test_router().await;
+
+        let response = router
+            .oneshot(
+                Request::post("/api/rpc/plugin/v2/invoke")
+                    .header("content-type", "application/json")
+                    .body(Body::from("{}"))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call plugin RPC route");
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert!(response.headers().contains_key("x-request-id"));
     }
 }

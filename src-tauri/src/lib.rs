@@ -29,6 +29,12 @@ use adapter::tauri::commands::cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
     update_cron_task,
 };
+use adapter::tauri::commands::plugin::{
+    plugin_v2_approve_session, plugin_v2_audit, plugin_v2_disable, plugin_v2_discover,
+    plugin_v2_enable, plugin_v2_grant_persistent, plugin_v2_grant_session, plugin_v2_invoke,
+    plugin_v2_issue_approval_token, plugin_v2_load, plugin_v2_plugins, plugin_v2_revoke_persistent,
+    plugin_v2_set_trust, plugin_v2_unload,
+};
 use adapter::tauri::commands::system::{
     get_directory_usage, get_process_usage, get_system_snapshot,
 };
@@ -114,7 +120,22 @@ pub fn run() {
             update_server_name,
             update_server_path,
             update_settings_partial,
-            validate_server_path
+            validate_server_path,
+            //插件 v2 宿主能力与策略管理
+            plugin_v2_approve_session,
+            plugin_v2_audit,
+            plugin_v2_disable,
+            plugin_v2_discover,
+            plugin_v2_enable,
+            plugin_v2_grant_persistent,
+            plugin_v2_grant_session,
+            plugin_v2_invoke,
+            plugin_v2_issue_approval_token,
+            plugin_v2_load,
+            plugin_v2_plugins,
+            plugin_v2_revoke_persistent,
+            plugin_v2_set_trust,
+            plugin_v2_unload
         ])
         .setup(|app| {
             tauri::async_runtime::block_on(async {

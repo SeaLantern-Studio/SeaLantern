@@ -1,6 +1,6 @@
 use crate::rpc::axum::HttpRpcAccessResolver;
 use crate::rpc::{RpcAccess, RpcError, RpcPermission, RpcResult};
-use axum::http::{header::AUTHORIZATION, HeaderMap};
+use axum::http::{header::AUTHORIZATION, HeaderMap, StatusCode};
 
 /// Server 插件 RPC 的 bearer token 认证解析器。
 #[derive(Clone)]
@@ -25,33 +25,40 @@ impl PluginRpcTokenResolver {
             permission: RpcPermission::new("plugin.v2.invoke"),
         }
     }
-}
 
-impl HttpRpcAccessResolver for PluginRpcTokenResolver {
-    fn resolve(&self, headers: &HeaderMap) -> RpcResult<RpcAccess> {
+    fn authenticated(&self, headers: &HeaderMap) -> bool {
         let Some(expected) = self.token.as_deref() else {
-            return Err(RpcError::permission_denied());
+            return false;
         };
         let Some(value) = headers
             .get(AUTHORIZATION)
             .and_then(|value| value.to_str().ok())
         else {
-            return Err(RpcError::permission_denied());
+            return false;
         };
         let Some(provided) = value.strip_prefix("Bearer ") else {
-            return Err(RpcError::permission_denied());
+            return false;
         };
-        if provided.len() != expected.len()
-            || !provided
+        provided.len() == expected.len()
+            && provided
                 .as_bytes()
                 .iter()
                 .zip(expected.as_bytes())
                 .fold(0u8, |different, (left, right)| different | (left ^ right))
-                .eq(&0)
-        {
+                == 0
+    }
+}
+
+impl HttpRpcAccessResolver for PluginRpcTokenResolver {
+    fn resolve(&self, headers: &HeaderMap) -> RpcResult<RpcAccess> {
+        if !self.authenticated(headers) {
             return Err(RpcError::permission_denied());
         }
         Ok(RpcAccess::allow([self.permission]))
+    }
+
+    fn rejection_status(&self) -> StatusCode {
+        StatusCode::UNAUTHORIZED
     }
 }
 

@@ -7,3 +7,6 @@ use crate::rpc::RpcPermission;
 
 /// 向受管服务器控制台写入命令所需的 RPC 权限。
 pub const PERMISSION_SERVER_CONSOLE_SEND: RpcPermission = RpcPermission::new("server.console.send");
+
+/// 调用受 bearer 保护的插件 v2 能力入口所需的 RPC 权限。
+pub const PERMISSION_PLUGIN_V2_INVOKE: RpcPermission = RpcPermission::new("plugin.v2.invoke");

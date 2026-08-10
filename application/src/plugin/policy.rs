@@ -50,7 +50,7 @@ impl From<PersistenceError> for PluginPolicyError {
 }
 
 /// 一条脱敏后的插件审计事件。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
 pub struct AuditEntry {
     pub id: i64,
     pub plugin_id: String,
@@ -62,7 +62,7 @@ pub struct AuditEntry {
 }
 
 /// 会话授权记录。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct SessionGrant {
     pub session_id: String,
     pub plugin_id: String,
@@ -71,7 +71,7 @@ pub struct SessionGrant {
 }
 
 /// 已签发的会话审批状态；token 只在内存中保存。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct SessionApproval {
     pub session_id: String,
     pub plugin_id: String,

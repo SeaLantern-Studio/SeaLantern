@@ -45,7 +45,7 @@ impl PluginManagerConfig {
 }
 
 /// 已加载插件的可观察状态。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, serde::Serialize, PartialEq, Eq)]
 pub enum PluginState {
     /// 主脚本及 \`on_load\` 已执行，尚未启用。
     Loaded,
@@ -54,7 +54,7 @@ pub enum PluginState {
 }
 
 /// 不暴露 Lua 引擎的插件状态快照。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
 pub struct PluginInfo {
     /// 通过 v2 校验的插件清单。
     pub manifest: PluginManifest,
