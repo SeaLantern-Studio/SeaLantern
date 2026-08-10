@@ -83,21 +83,29 @@ impl ProxyMonitoringService {
             loop {
                 tokio::select! {
                     _ = tokio::time::sleep(interval) => {
-                        match refresh_proxy(service.runtime.as_ref(), &mut previous) {
-                            Ok(Some(update)) => tracing::info!(
-                                target: "sealantern.application.proxy_monitoring",
-                                client_rebuilt = update.client_rebuilt,
-                                state_revision = update.state_revision,
-                                client_revision = update.client_revision,
-                                "system proxy snapshot applied"
-                            ),
-                            Ok(None) => {}
-                            Err(error) => tracing::warn!(
-                                target: "sealantern.application.proxy_monitoring",
-                                stage = error.stage(),
-                                error = %error,
-                                "system proxy refresh failed; keeping previous runtime"
-                            ),
+                        let runtime = service.runtime.clone();
+                        let refresh = tokio::task::spawn_blocking(move || {
+                            let mut previous = previous;
+                            let result = refresh_proxy(runtime.as_ref(), &mut previous);
+                            (previous, result)
+                        })
+                        .await;
+                        match refresh {
+                            Ok((next_previous, result)) => {
+                                previous = next_previous;
+                                report_refresh_result(result);
+                            }
+                            Err(error) => {
+                                // 阻塞任务异常退出时无法取回被移动的快照；下一轮从
+                                // 未知状态重新应用当前快照，避免错误地跳过刷新。
+                                previous = None;
+                                tracing::warn!(
+                                    target: "sealantern.application.proxy_monitoring",
+                                    stage = "task",
+                                    error = %error,
+                                    "system proxy refresh task failed"
+                                );
+                            }
                         }
                     }
                     changed = shutdown_rx.changed() => {
@@ -118,6 +126,25 @@ impl ProxyMonitoringService {
             runtime,
             handle: tokio::sync::Mutex::new(None),
         }
+    }
+}
+
+fn report_refresh_result(result: Result<Option<NetworkUpdate>, ProxyRefreshError>) {
+    match result {
+        Ok(Some(update)) => tracing::info!(
+            target: "sealantern.application.proxy_monitoring",
+            client_rebuilt = update.client_rebuilt,
+            state_revision = update.state_revision,
+            client_revision = update.client_revision,
+            "system proxy snapshot applied"
+        ),
+        Ok(None) => {}
+        Err(error) => tracing::warn!(
+            target: "sealantern.application.proxy_monitoring",
+            stage = error.stage(),
+            error = %error,
+            "system proxy refresh failed; keeping previous runtime"
+        ),
     }
 }
 
