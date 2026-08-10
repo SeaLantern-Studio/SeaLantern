@@ -1,0 +1,520 @@
+use super::{ApprovalMode, AuditMode, GrantKind, RiskLevel, ScopeKind};
+
+/// 由宿主编译进程序的不可变能力元数据。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CapabilityDescriptor {
+    pub id: &'static str,
+    pub risk: RiskLevel,
+    pub grant: GrantKind,
+    pub approval: ApprovalMode,
+    pub audit: AuditMode,
+    pub scope: Option<ScopeKind>,
+    pub declaration_required: bool,
+    pub max_calls_per_minute: Option<u32>,
+    pub enabled: bool,
+}
+
+macro_rules! capability {
+    ($id:literal, $risk:ident, $grant:ident, $approval:ident, $audit:ident, $scope:expr, $declared:expr, $rate:expr, $enabled:expr) => {
+        CapabilityDescriptor {
+            id: $id,
+            risk: RiskLevel::$risk,
+            grant: GrantKind::$grant,
+            approval: ApprovalMode::$approval,
+            audit: AuditMode::$audit,
+            scope: $scope,
+            declaration_required: $declared,
+            max_calls_per_minute: $rate,
+            enabled: $enabled,
+        }
+    };
+}
+
+const CAPABILITIES: &[CapabilityDescriptor] = &[
+    capability!("plugin.log.emit", L0, None, None, None, None, false, None, true),
+    capability!(
+        "market.search",
+        L0,
+        None,
+        None,
+        None,
+        Some(ScopeKind::MarketArtifact),
+        true,
+        Some(20),
+        true
+    ),
+    capability!(
+        "market.resource.read",
+        L0,
+        None,
+        None,
+        None,
+        Some(ScopeKind::MarketArtifact),
+        true,
+        Some(20),
+        true
+    ),
+    capability!(
+        "market.versions.read",
+        L0,
+        None,
+        None,
+        None,
+        Some(ScopeKind::MarketArtifact),
+        true,
+        Some(20),
+        true
+    ),
+    capability!(
+        "host.system.facts",
+        L1,
+        Persistent,
+        None,
+        Default,
+        Some(ScopeKind::AppGlobal),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "plugin.installed.list",
+        L1,
+        Persistent,
+        None,
+        Default,
+        Some(ScopeKind::AppGlobal),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "server.instance.list",
+        L1,
+        Persistent,
+        None,
+        Default,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "server.status.read",
+        L1,
+        Persistent,
+        None,
+        Default,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "server.metrics.read",
+        L1,
+        Persistent,
+        None,
+        Default,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "server.metadata.read",
+        L1,
+        Persistent,
+        None,
+        Default,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "server.config.redacted",
+        L1,
+        Persistent,
+        None,
+        Default,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "server.config.sensitive",
+        L2,
+        Persistent,
+        None,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(30),
+        true
+    ),
+    capability!(
+        "server.logs.read",
+        L2,
+        Persistent,
+        None,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(30),
+        true
+    ),
+    capability!(
+        "server.file.metadata",
+        L2,
+        Persistent,
+        None,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "server.file.read",
+        L2,
+        Persistent,
+        None,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(30),
+        true
+    ),
+    capability!(
+        "plugin.bundle.metadata",
+        L2,
+        Persistent,
+        None,
+        Required,
+        Some(ScopeKind::PluginBundle),
+        true,
+        Some(60),
+        true
+    ),
+    capability!(
+        "plugin.bundle.read",
+        L2,
+        Persistent,
+        None,
+        Required,
+        Some(ScopeKind::PluginBundle),
+        true,
+        Some(30),
+        true
+    ),
+    capability!(
+        "plugin.storage.read",
+        M1,
+        Session,
+        PerSession,
+        Required,
+        Some(ScopeKind::PluginData),
+        true,
+        Some(300),
+        true
+    ),
+    capability!(
+        "plugin.storage.write",
+        M1,
+        Session,
+        PerSession,
+        Required,
+        Some(ScopeKind::PluginData),
+        true,
+        Some(300),
+        true
+    ),
+    capability!(
+        "plugin.lifecycle.load",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::PluginBundle),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "plugin.lifecycle.enable",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::PluginBundle),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "plugin.lifecycle.disable",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::PluginBundle),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "plugin.lifecycle.unload",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::PluginBundle),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "server.lifecycle.start",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "server.lifecycle.stop",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "server.lifecycle.restart",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "server.console.send",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "server.config.patch",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::ServerInstance),
+        true,
+        Some(10),
+        true
+    ),
+    capability!(
+        "network.request.public_allowlisted",
+        M2,
+        Session,
+        PerCall,
+        Required,
+        Some(ScopeKind::NetworkOrigin),
+        true,
+        Some(20),
+        true
+    ),
+    capability!(
+        "fs.write",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::AppGlobal),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "fs.delete",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::AppGlobal),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "fs.rename",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::AppGlobal),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "fs.move",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::AppGlobal),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "fs.create",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::AppGlobal),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "market.install",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::MarketArtifact),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "market.uninstall",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::MarketArtifact),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "market.update",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::MarketArtifact),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "security.secrets.read",
+        H2,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::AppGlobal),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "security.permissions.change",
+        H2,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::AppGlobal),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "process.execute",
+        H2,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::ApprovedExecutable),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "network.request.authenticated_private",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::NetworkOrigin),
+        true,
+        None,
+        false
+    ),
+    capability!(
+        "network.request.unrestricted",
+        H1,
+        None,
+        PerCall,
+        Required,
+        Some(ScopeKind::NetworkOrigin),
+        true,
+        None,
+        false
+    ),
+];
+
+pub fn capabilities() -> &'static [CapabilityDescriptor] {
+    CAPABILITIES
+}
+
+pub fn capability(id: &str) -> Option<&'static CapabilityDescriptor> {
+    CAPABILITIES.iter().find(|descriptor| descriptor.id == id)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::*;
+
+    #[test]
+    fn catalog_ids_are_unique_and_valid() {
+        let mut ids = HashSet::new();
+        for descriptor in capabilities() {
+            assert!(ids.insert(descriptor.id), "duplicate capability {}", descriptor.id);
+            assert!(crate::app_plugin::CapabilityId::new(descriptor.id).is_ok());
+        }
+    }
+
+    #[test]
+    fn high_risk_capabilities_are_registered_but_disabled() {
+        for descriptor in capabilities()
+            .iter()
+            .filter(|item| item.risk >= RiskLevel::H1)
+        {
+            assert!(!descriptor.enabled, "{} must remain disabled", descriptor.id);
+        }
+    }
+}
