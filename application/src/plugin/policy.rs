@@ -381,6 +381,9 @@ impl PluginPolicyStore {
         declared: bool,
         single_use_approved: bool,
     ) -> Result<PolicyDecision, PluginPolicyError> {
+        if !self.is_enabled(plugin_id).await? {
+            return Ok(PolicyDecision::Deny(PolicyDenialReason::PluginNotEnabled));
+        }
         let trust = self.trust_source(plugin_id).await?;
         let persistent = self
             .has_persistent_grant(plugin_id, capability_id, scope)

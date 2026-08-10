@@ -203,6 +203,7 @@ pub struct CapabilityInvocation {
     pub trust_source: TrustSource,
     pub capability: CapabilityId,
     pub scope: Option<ScopeBinding>,
+    pub declared: bool,
     #[serde(default)]
     pub payload: Value,
     pub approval_token: Option<String>,
@@ -246,6 +247,7 @@ impl std::error::Error for CapabilityDispatchError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PolicyDenialReason {
+    PluginNotEnabled,
     UnknownCapability,
     CapabilityNotDeclared,
     ScopeRequired,
@@ -261,6 +263,7 @@ pub enum PolicyDenialReason {
 impl PolicyDenialReason {
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::PluginNotEnabled => "plugin_not_enabled",
             Self::UnknownCapability => "unknown_capability",
             Self::CapabilityNotDeclared => "capability_not_declared",
             Self::ScopeRequired => "scope_required",

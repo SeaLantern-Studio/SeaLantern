@@ -11,11 +11,16 @@ use std::{
 };
 
 use mlua::{HookTriggers, Lua, LuaOptions, StdLib, Table, Value, VmState};
+use sealantern_core::app_plugin::{
+    CapabilityDispatchError, CapabilityDispatcher, CapabilityId, CapabilityInvocation,
+    ExecutionPrincipal, ScopeBinding, ScopeKind, TrustSource,
+};
+use serde_json::Value as JsonValue;
 
 use crate::app_plugin::{AppPluginError, PluginManifest};
 use crate::observability;
 
-use self::storage::PluginStorage;
+use self::storage::{json_to_lua, lua_to_json, PluginStorage};
 
 const EXECUTION_HOOK_INTERVAL: u32 = 1_000;
 const MAX_EXECUTION_INSTRUCTIONS: u64 = 1_000_000;
@@ -28,6 +33,9 @@ pub struct PluginEngine {
     plugin_dir: PathBuf,
     main: String,
     execution_budget: Arc<Mutex<Option<u64>>>,
+    dispatcher: Option<Arc<dyn CapabilityDispatcher>>,
+    runtime_handle: Option<tokio::runtime::Handle>,
+    trust_source: TrustSource,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -50,10 +58,21 @@ impl Lifecycle {
 }
 
 impl PluginEngine {
+    #[cfg(test)]
     pub(crate) fn new(
         manifest: &PluginManifest,
         plugin_dir: &Path,
         data_dir: &Path,
+    ) -> Result<Self, AppPluginError> {
+        Self::new_with_dispatcher(manifest, plugin_dir, data_dir, None, TrustSource::UntrustedLocal)
+    }
+
+    pub(crate) fn new_with_dispatcher(
+        manifest: &PluginManifest,
+        plugin_dir: &Path,
+        data_dir: &Path,
+        dispatcher: Option<Arc<dyn CapabilityDispatcher>>,
+        trust_source: TrustSource,
     ) -> Result<Self, AppPluginError> {
         // Hook 只作用于当前 Lua 线程，因此首版不暴露 coroutine 以避免绕过执行预算。
         let lua = Lua::new_with(
@@ -87,6 +106,9 @@ impl PluginEngine {
             plugin_dir: plugin_dir.to_path_buf(),
             main: manifest.main.clone(),
             execution_budget,
+            dispatcher,
+            runtime_handle: tokio::runtime::Handle::try_current().ok(),
+            trust_source,
         };
         engine.install_sl(manifest, data_dir)?;
         Ok(engine)
@@ -126,6 +148,7 @@ impl PluginEngine {
         let sl = self.lua.create_table().map_err(engine_error)?;
         self.install_storage(&sl, manifest, data_dir)?;
         self.install_log(&sl, manifest)?;
+        self.install_capabilities(&sl, manifest)?;
         self.lua.globals().set("sl", sl).map_err(engine_error)
     }
 
@@ -220,6 +243,62 @@ impl PluginEngine {
         sl.set("log", table).map_err(engine_error)
     }
 
+    fn install_capabilities(
+        &self,
+        sl: &Table,
+        manifest: &PluginManifest,
+    ) -> Result<(), AppPluginError> {
+        let table = self.lua.create_table().map_err(engine_error)?;
+        let Some(dispatcher) = self.dispatcher.as_ref().cloned() else {
+            sl.set("capabilities", table).map_err(engine_error)?;
+            return Ok(());
+        };
+        let Some(handle) = self.runtime_handle.as_ref().cloned() else {
+            return Err(AppPluginError::Engine(
+                "plugin capability dispatcher requires a Tokio runtime".to_string(),
+            ));
+        };
+        let plugin_id = self.plugin_id.clone();
+        let trust_source = self.trust_source;
+        let declarations = manifest.capabilities.clone();
+        table
+            .set(
+                "invoke",
+                self.lua
+                    .create_function(
+                        move |lua, (id, payload, scope): (String, Option<Value>, Option<Value>)| {
+                            let capability = CapabilityId::new(&id)
+                                .map_err(|error| mlua::Error::runtime(error.to_string()))?;
+                            let scope = parse_scope(scope)?;
+                            let declared = declarations.iter().any(|declaration| {
+                                declaration.id == id && declaration.scope.as_ref() == scope.as_ref()
+                            });
+                            let payload = payload
+                                .map(|value| lua_to_json(&value, 0))
+                                .transpose()?
+                                .unwrap_or(JsonValue::Null);
+                            let invocation = CapabilityInvocation {
+                                principal: ExecutionPrincipal::Plugin(plugin_id.clone()),
+                                trust_source,
+                                capability,
+                                scope,
+                                declared,
+                                payload,
+                                approval_token: None,
+                                request_id: uuid::Uuid::new_v4().to_string(),
+                            };
+                            let response = handle
+                                .block_on(dispatcher.invoke(invocation))
+                                .map_err(dispatcher_error)?;
+                            json_to_lua(lua, &response, 0)
+                        },
+                    )
+                    .map_err(engine_error)?,
+            )
+            .map_err(engine_error)?;
+        sl.set("capabilities", table).map_err(engine_error)
+    }
+
     fn run_with_execution_budget<T>(
         &self,
         operation: &'static str,
@@ -249,6 +328,33 @@ impl PluginEngine {
             }
         })
     }
+}
+
+fn parse_scope(value: Option<Value>) -> mlua::Result<Option<ScopeBinding>> {
+    let Some(Value::Table(table)) = value else {
+        return Ok(None);
+    };
+    let kind: String = table.get("kind")?;
+    let value: String = table.get("value")?;
+    let kind = match kind.as_str() {
+        "plugin_data" => ScopeKind::PluginData,
+        "plugin_bundle" => ScopeKind::PluginBundle,
+        "server_instance" => ScopeKind::ServerInstance,
+        "app_global" => ScopeKind::AppGlobal,
+        "network_origin" => ScopeKind::NetworkOrigin,
+        "ui_extension" => ScopeKind::UiExtension,
+        "host_element" => ScopeKind::HostElement,
+        "market_artifact" => ScopeKind::MarketArtifact,
+        "approved_executable" => ScopeKind::ApprovedExecutable,
+        _ => return Err(mlua::Error::runtime("plugin capability scope kind is invalid")),
+    };
+    ScopeBinding::new(kind, value)
+        .map(Some)
+        .map_err(|error| mlua::Error::runtime(error.to_string()))
+}
+
+fn dispatcher_error(error: CapabilityDispatchError) -> mlua::Error {
+    mlua::Error::runtime(error.to_string())
 }
 
 fn resolve_main_path(plugin_dir: &Path, main: &str) -> Result<PathBuf, AppPluginError> {

@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use sealantern_extra::app_plugin::{AsyncPluginManager, PluginInfo, PluginManagerConfig};
 use sealantern_infra::platform::get_app_data_dir;
 
-use super::{PluginPolicyError, PluginPolicyStore};
+use super::{CoreCapabilityDispatcher, DefaultMarketGateway, PluginPolicyError, PluginPolicyStore};
 
 /// 应用插件生命周期的宿主入口。
 #[async_trait]
@@ -71,9 +71,15 @@ impl CorePluginService {
         data_dir: impl Into<PathBuf>,
         state_path: impl Into<PathBuf>,
     ) -> Result<Self, PluginServiceError> {
+        let policy = Arc::new(PluginPolicyStore::open(state_path).await?);
+        let market =
+            Arc::new(DefaultMarketGateway::new().map_err(PluginServiceError::Initialization)?);
+        let dispatcher = Arc::new(CoreCapabilityDispatcher::new(policy.clone(), market));
         Ok(Self {
-            runtime: AsyncPluginManager::new(PluginManagerConfig::new(plugins_dir, data_dir)),
-            policy: Arc::new(PluginPolicyStore::open(state_path).await?),
+            runtime: AsyncPluginManager::new(
+                PluginManagerConfig::new(plugins_dir, data_dir).with_dispatcher(dispatcher),
+            ),
+            policy,
         })
     }
 

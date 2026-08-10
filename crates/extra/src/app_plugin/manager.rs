@@ -5,14 +5,19 @@ use std::sync::{Arc, Mutex};
 use super::engine::{Lifecycle, PluginEngine};
 use super::{AppPluginError, PluginLoader, PluginManifest};
 use crate::observability;
+use sealantern_core::app_plugin::{CapabilityDispatcher, TrustSource};
 
 /// 插件管理器需要的宿主无关目录配置。
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PluginManagerConfig {
     /// 已安装插件的根目录。
     pub plugins_dir: PathBuf,
     /// 插件私有持久化数据的根目录。
     pub data_dir: PathBuf,
+    /// 注入后的唯一宿主能力调度器。
+    pub dispatcher: Option<Arc<dyn CapabilityDispatcher>>,
+    /// 宿主已验证的插件来源信任级别。
+    pub trust_source: TrustSource,
 }
 
 impl PluginManagerConfig {
@@ -21,7 +26,19 @@ impl PluginManagerConfig {
         Self {
             plugins_dir: plugins_dir.into(),
             data_dir: data_dir.into(),
+            dispatcher: None,
+            trust_source: TrustSource::UntrustedLocal,
         }
+    }
+
+    pub fn with_dispatcher(mut self, dispatcher: Arc<dyn CapabilityDispatcher>) -> Self {
+        self.dispatcher = Some(dispatcher);
+        self
+    }
+
+    pub fn with_trust_source(mut self, trust_source: TrustSource) -> Self {
+        self.trust_source = trust_source;
+        self
     }
 }
 
@@ -167,7 +184,13 @@ impl PluginManager {
 
         let data_dir = self.config.data_dir.join(&manifest.id);
 
-        let engine = PluginEngine::new(&manifest, &plugin_dir, &data_dir)?;
+        let engine = PluginEngine::new_with_dispatcher(
+            &manifest,
+            &plugin_dir,
+            &data_dir,
+            self.config.dispatcher.clone(),
+            self.config.trust_source,
+        )?;
         if let Err(error) = engine.load() {
             observability::app_plugin_load_failed(&manifest.id, "entry_script", error.kind());
             return Err(error);

@@ -5223,6 +5223,7 @@ dependencies = [
  "sealantern-extra",
  "sealantern-infra",
  "sealantern-interface",
+ "serde",
  "serde_json",
  "tempfile",
  "tokio",

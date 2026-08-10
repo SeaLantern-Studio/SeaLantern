@@ -32,17 +32,7 @@ macro_rules! capability {
 
 const CAPABILITIES: &[CapabilityDescriptor] = &[
     capability!("plugin.log.emit", L0, None, None, None, None, false, None, true),
-    capability!(
-        "market.search",
-        L0,
-        None,
-        None,
-        None,
-        Some(ScopeKind::MarketArtifact),
-        true,
-        Some(20),
-        true
-    ),
+    capability!("market.search", L0, None, None, None, None, true, Some(20), true),
     capability!(
         "market.resource.read",
         L0,
