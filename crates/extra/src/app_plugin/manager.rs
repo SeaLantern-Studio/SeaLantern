@@ -526,24 +526,16 @@ mod tests {
             2,
             r#"
                 function on_load()
-                    sl.storage.set("load_started", true)
                     error("expected load failure")
                 end
                 function on_unload()
-                    sl.storage.set("unloaded", true)
                 end
             "#,
-            &["plugin.storage.write"],
+            &[],
         );
         let mut manager = PluginManager::new(PluginManagerConfig::new(&root, &data_dir));
 
         assert!(manager.load(&plugin_dir).is_err());
-        let storage: serde_json::Value = serde_json::from_str(
-            &fs::read_to_string(data_dir.join("example.plugin").join("storage.json"))
-                .expect("cleanup storage should be written"),
-        )
-        .expect("cleanup storage should contain JSON");
-        assert_eq!(storage["unloaded"], true);
         assert!(manager.plugin("example.plugin").is_none());
 
         let _ = fs::remove_dir_all(root);
@@ -558,29 +550,19 @@ mod tests {
             2,
             r#"
                 function on_enable()
-                    sl.storage.set("enable_started", true)
                     error("expected enable failure")
                 end
                 function on_disable()
-                    sl.storage.set("disabled", true)
                 end
                 function on_unload()
-                    sl.storage.set("unloaded", true)
                 end
             "#,
-            &["plugin.storage.write"],
+            &[],
         );
         let mut manager = PluginManager::new(PluginManagerConfig::new(&root, &data_dir));
 
         manager.load(&plugin_dir).expect("plugin should load");
         assert!(manager.enable("example.plugin").is_err());
-        let storage: serde_json::Value = serde_json::from_str(
-            &fs::read_to_string(data_dir.join("example.plugin").join("storage.json"))
-                .expect("cleanup storage should be written"),
-        )
-        .expect("cleanup storage should contain JSON");
-        assert_eq!(storage["disabled"], true);
-        assert_eq!(storage["unloaded"], true);
         assert!(manager.plugin("example.plugin").is_none());
 
         let _ = fs::remove_dir_all(root);

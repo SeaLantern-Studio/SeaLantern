@@ -36,6 +36,7 @@ pub struct PluginEngine {
     dispatcher: Option<Arc<dyn CapabilityDispatcher>>,
     runtime_handle: Option<tokio::runtime::Handle>,
     trust_source: TrustSource,
+    direct_storage_enabled: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -64,7 +65,7 @@ impl PluginEngine {
         plugin_dir: &Path,
         data_dir: &Path,
     ) -> Result<Self, AppPluginError> {
-        Self::new_with_dispatcher(manifest, plugin_dir, data_dir, None, TrustSource::UntrustedLocal)
+        Self::new_inner(manifest, plugin_dir, data_dir, None, TrustSource::UntrustedLocal, true)
     }
 
     pub(crate) fn new_with_dispatcher(
@@ -73,6 +74,17 @@ impl PluginEngine {
         data_dir: &Path,
         dispatcher: Option<Arc<dyn CapabilityDispatcher>>,
         trust_source: TrustSource,
+    ) -> Result<Self, AppPluginError> {
+        Self::new_inner(manifest, plugin_dir, data_dir, dispatcher, trust_source, false)
+    }
+
+    fn new_inner(
+        manifest: &PluginManifest,
+        plugin_dir: &Path,
+        data_dir: &Path,
+        dispatcher: Option<Arc<dyn CapabilityDispatcher>>,
+        trust_source: TrustSource,
+        direct_storage_enabled: bool,
     ) -> Result<Self, AppPluginError> {
         // Hook 只作用于当前 Lua 线程，因此首版不暴露 coroutine 以避免绕过执行预算。
         let lua = Lua::new_with(
@@ -109,6 +121,7 @@ impl PluginEngine {
             dispatcher,
             runtime_handle: tokio::runtime::Handle::try_current().ok(),
             trust_source,
+            direct_storage_enabled,
         };
         engine.install_sl(manifest, data_dir)?;
         Ok(engine)
@@ -159,9 +172,16 @@ impl PluginEngine {
         data_dir: &Path,
     ) -> Result<(), AppPluginError> {
         let table = self.lua.create_table().map_err(engine_error)?;
-        let permitted = manifest.capabilities.iter().any(|capability| {
-            matches!(capability.id.as_str(), "plugin.storage.read" | "plugin.storage.write")
-        });
+        let read_permitted = self.direct_storage_enabled
+            && manifest
+                .capabilities
+                .iter()
+                .any(|capability| capability.id == "plugin.storage.read");
+        let write_permitted = self.direct_storage_enabled
+            && manifest
+                .capabilities
+                .iter()
+                .any(|capability| capability.id == "plugin.storage.write");
         let storage = PluginStorage::new(&self.plugin_id, data_dir);
 
         let context = storage.clone();
@@ -170,7 +190,7 @@ impl PluginEngine {
                 "get",
                 self.lua
                     .create_function(move |lua, key: String| {
-                        require_permission(permitted, "storage")?;
+                        require_permission(read_permitted, "storage read")?;
                         context.get(lua, key)
                     })
                     .map_err(engine_error)?,
@@ -183,7 +203,7 @@ impl PluginEngine {
                 "keys",
                 self.lua
                     .create_function(move |lua, ()| {
-                        require_permission(permitted, "storage")?;
+                        require_permission(read_permitted, "storage read")?;
                         context.keys(lua)
                     })
                     .map_err(engine_error)?,
@@ -196,7 +216,7 @@ impl PluginEngine {
                 "set",
                 self.lua
                     .create_function(move |_, (key, value): (String, Value)| {
-                        require_permission(permitted, "storage")?;
+                        require_permission(write_permitted, "storage write")?;
                         context.set(key, value)
                     })
                     .map_err(engine_error)?,
@@ -208,7 +228,7 @@ impl PluginEngine {
                 "remove",
                 self.lua
                     .create_function(move |_, key: String| {
-                        require_permission(permitted, "storage")?;
+                        require_permission(write_permitted, "storage write")?;
                         storage.remove(key)
                     })
                     .map_err(engine_error)?,
@@ -480,7 +500,10 @@ mod tests {
         let root = test_dir("storage");
         fs::create_dir_all(&root).expect("plugin directory should be created");
         let engine = PluginEngine::new(
-            &manifest(vec![crate::app_plugin::PluginCapability::new("plugin.storage.read")]),
+            &manifest(vec![
+                crate::app_plugin::PluginCapability::new("plugin.storage.read"),
+                crate::app_plugin::PluginCapability::new("plugin.storage.write"),
+            ]),
             &root,
             &root.join("data"),
         )
@@ -512,6 +535,41 @@ mod tests {
         let allowed: bool = engine
             .lua
             .load("return pcall(function() sl.storage.keys() end)")
+            .eval()
+            .expect("Lua should evaluate");
+        assert!(!allowed);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[tokio::test]
+    async fn production_engine_does_not_expose_direct_storage() {
+        struct Dispatcher;
+
+        #[async_trait::async_trait]
+        impl CapabilityDispatcher for Dispatcher {
+            async fn invoke(
+                &self,
+                _: CapabilityInvocation,
+            ) -> Result<JsonValue, CapabilityDispatchError> {
+                Err(CapabilityDispatchError::Unavailable("not used"))
+            }
+        }
+
+        let root = test_dir("managed-storage");
+        fs::create_dir_all(&root).expect("plugin directory should be created");
+        let engine = PluginEngine::new_with_dispatcher(
+            &manifest(vec![crate::app_plugin::PluginCapability::new("plugin.storage.read")]),
+            &root,
+            &root.join("data"),
+            Some(Arc::new(Dispatcher)),
+            TrustSource::UntrustedLocal,
+        )
+        .expect("engine should initialize");
+
+        let allowed: bool = engine
+            .lua
+            .load("return pcall(function() sl.storage.get('key') end)")
             .eval()
             .expect("Lua should evaluate");
         assert!(!allowed);
