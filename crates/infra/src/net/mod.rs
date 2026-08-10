@@ -2,6 +2,7 @@ pub mod client;
 pub mod error;
 pub mod proxy;
 pub mod request;
+mod runtime;
 
 pub use client::{ClientConfig, NetClient, RemoteFileInfo, RetryPolicy, TimeoutPolicy};
 pub use error::NetError;
@@ -10,6 +11,9 @@ pub use proxy::{
     ProxyUpdate, SystemProxyProvider, SystemProxySnapshot,
 };
 pub use request::RequestBuilder;
+pub use runtime::{
+    apply_proxy_settings, apply_system_proxy_snapshot, global_client, NetworkUpdate,
+};
 
 #[cfg(feature = "blocking")]
 pub use client::NetBlockingClient;
