@@ -182,6 +182,24 @@ impl NetworkRuntime {
             (current.client.clone(), current.client_revision, false)
         };
 
+        let effective_routes = next_controller.effective_proxy().routes_ref();
+        tracing::info!(
+            target: "sealantern.infra.net.runtime",
+            policy = next_controller.settings().mode.as_str(),
+            uses_proxy = effective_routes.is_some(),
+            http_proxy = ?effective_routes
+                .and_then(|routes| routes.http_proxy())
+                .and_then(sanitized_proxy_endpoint),
+            https_proxy = ?effective_routes
+                .and_then(|routes| routes.https_proxy())
+                .and_then(sanitized_proxy_endpoint),
+            expected_state_revision = current.state_revision,
+            candidate_state_revision = state_revision,
+            candidate_client_revision = client_revision,
+            client_rebuilt,
+            "prepared global network proxy update"
+        );
+
         Ok(PreparedNetworkUpdate {
             expected_state_revision: current.state_revision,
             candidate: NetworkState {
@@ -216,6 +234,13 @@ impl NetworkRuntime {
             client_revision: prepared.candidate.client_revision,
         };
         *state = Some(prepared.candidate);
+        tracing::info!(
+            target: "sealantern.infra.net.runtime",
+            state_revision = update.state_revision,
+            client_revision = update.client_revision,
+            client_rebuilt = update.client_rebuilt,
+            "committed global network proxy update"
+        );
         Ok(update)
     }
 
@@ -287,6 +312,18 @@ fn commit_proxy_update(
 
 fn controller_changed(current: &ProxyController, next: &ProxyController) -> bool {
     current.settings() != next.settings() || current.effective_proxy() != next.effective_proxy()
+}
+
+fn sanitized_proxy_endpoint(value: &str) -> Option<String> {
+    let url = url::Url::parse(value).ok()?;
+    let host = url.host_str()?;
+    let port = url.port_or_known_default()?;
+    let host = if host.contains(':') {
+        format!("[{host}]")
+    } else {
+        host.to_owned()
+    };
+    Some(format!("{}://{host}:{port}", url.scheme()))
 }
 
 fn proxy_config_error(error: ProxyConfigError) -> NetError {

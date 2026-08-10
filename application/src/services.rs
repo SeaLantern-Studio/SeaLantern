@@ -17,7 +17,7 @@ use std::sync::Arc;
 use crate::error::InstanceError;
 use crate::service::{
     CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreServerService,
-    CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
+    CoreSettingsService, CoreSystemService, CoreUpdateCheckService, ProxyMonitoringService,
 };
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
@@ -43,6 +43,8 @@ pub struct AppServicesInner {
     pub cron: Arc<CoreCronTaskService>,
     /// 设置信息服务。
     pub settings: Arc<CoreSettingsService>,
+    /// 系统代理轮询服务。
+    pub proxy_monitoring: Arc<ProxyMonitoringService>,
     /// 系统资源信息服务。
     pub system: Arc<CoreSystemService>,
     /// 应用更新检查服务。
@@ -70,6 +72,7 @@ impl AppServices {
                 server,
                 instance,
                 settings: Arc::new(CoreSettingsService::new()),
+                proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 system: Arc::new(CoreSystemService),
                 update: Arc::new(CoreUpdateCheckService::new()),
             }),
@@ -114,6 +117,7 @@ impl AppServices {
         let previous = SERVICES.write().await.replace(inner.clone());
         if let Some(previous) = previous {
             previous.cron.deactivate_scheduler().await;
+            previous.proxy_monitoring.stop().await;
         }
         let services = Self { inner };
         services.start_background_services().await;
@@ -167,7 +171,15 @@ impl AppServices {
     pub async fn initialize_network_settings(
         &self,
     ) -> Result<(), sealantern_interface::SettingsServiceError> {
-        self.inner.settings.initialize().await
+        self.inner.settings.initialize().await?;
+        if self.inner.proxy_monitoring.start().await {
+            tracing::info!(
+                target: "sealantern.application.proxy_monitoring",
+                poll_interval_seconds = 3,
+                "system proxy monitoring started"
+            );
+        }
+        Ok(())
     }
 
     /// 便捷访问入口：一步拿到设置信息服务的共享句柄（惰性初始化 + 可替换）。
