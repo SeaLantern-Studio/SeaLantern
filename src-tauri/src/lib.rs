@@ -31,9 +31,9 @@ use adapter::tauri::commands::cron::{
 };
 use adapter::tauri::commands::plugin::{
     plugin_v2_approve_session, plugin_v2_audit, plugin_v2_disable, plugin_v2_discover,
-    plugin_v2_enable, plugin_v2_grant_persistent, plugin_v2_grant_session, plugin_v2_invoke,
-    plugin_v2_issue_approval_token, plugin_v2_load, plugin_v2_plugins, plugin_v2_revoke_persistent,
-    plugin_v2_set_trust, plugin_v2_unload,
+    plugin_v2_enable, plugin_v2_end_session, plugin_v2_grant_persistent, plugin_v2_grant_session,
+    plugin_v2_invoke, plugin_v2_issue_approval_token, plugin_v2_load, plugin_v2_plugins,
+    plugin_v2_revoke_persistent, plugin_v2_set_trust, plugin_v2_unload,
 };
 use adapter::tauri::commands::system::{
     get_directory_usage, get_process_usage, get_system_snapshot,
@@ -127,6 +127,7 @@ pub fn run() {
             plugin_v2_disable,
             plugin_v2_discover,
             plugin_v2_enable,
+            plugin_v2_end_session,
             plugin_v2_grant_persistent,
             plugin_v2_grant_session,
             plugin_v2_invoke,

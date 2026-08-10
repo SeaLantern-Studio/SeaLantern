@@ -12,6 +12,10 @@ use uuid::Uuid;
 
 const TOKEN_TTL: Duration = Duration::from_secs(5 * 60);
 const MAX_AUDIT_ROWS: i64 = 10_000;
+const MAX_SESSIONS: usize = 1_024;
+const MAX_SESSION_GRANTS: usize = 1_024;
+const MAX_SESSION_APPROVALS: usize = 1_024;
+const MAX_SESSION_TOKENS: usize = 1_024;
 
 /// 插件授权状态服务的错误。
 #[derive(Debug)]
@@ -21,6 +25,7 @@ pub enum PluginPolicyError {
     Denied(PolicyDenialReason),
     TokenExpired,
     TokenUnknown,
+    CapacityExceeded(&'static str),
 }
 
 impl std::fmt::Display for PluginPolicyError {
@@ -36,6 +41,9 @@ impl std::fmt::Display for PluginPolicyError {
             Self::TokenExpired => formatter.write_str("plugin approval token expired"),
             Self::TokenUnknown => {
                 formatter.write_str("plugin approval token is unknown or already used")
+            }
+            Self::CapacityExceeded(subject) => {
+                write!(formatter, "plugin policy capacity exceeded: {subject}")
             }
         }
     }
@@ -173,6 +181,7 @@ impl PluginPolicyStore {
         scope: Option<&ScopeBinding>,
     ) -> Result<(), PluginPolicyError> {
         validate_ids(plugin_id, capability_id)?;
+        validate_scope(scope)?;
         let (kind, value) = scope_columns(scope);
         self.database
             .execute(
@@ -199,6 +208,7 @@ impl PluginPolicyStore {
         scope: Option<&ScopeBinding>,
     ) -> Result<(), PluginPolicyError> {
         validate_ids(plugin_id, capability_id)?;
+        validate_scope(scope)?;
         let (kind, value) = scope_columns(scope);
         self.database
             .execute(
@@ -284,16 +294,20 @@ impl PluginPolicyStore {
     /// 为当前会话授予临时能力。
     pub async fn grant_session(&self, grant: SessionGrant) -> Result<(), PluginPolicyError> {
         validate_ids(&grant.plugin_id, &grant.capability_id)?;
+        validate_session_id(&grant.session_id)?;
+        validate_scope(grant.scope.as_ref())?;
         let mut sessions = self.sessions.lock().await;
-        sessions
-            .entry(grant.session_id)
-            .or_default()
-            .grants
-            .insert(SessionGrantKey {
-                plugin_id: grant.plugin_id,
-                capability_id: grant.capability_id,
-                scope: grant.scope,
-            });
+        cleanup_sessions(&mut sessions);
+        let session = session_state(&mut sessions, &grant.session_id)?;
+        let key = SessionGrantKey {
+            plugin_id: grant.plugin_id,
+            capability_id: grant.capability_id,
+            scope: grant.scope,
+        };
+        if !session.grants.contains(&key) && session.grants.len() >= MAX_SESSION_GRANTS {
+            return Err(PluginPolicyError::CapacityExceeded("session grants"));
+        }
+        session.grants.insert(key);
         Ok(())
     }
 
@@ -302,14 +316,20 @@ impl PluginPolicyStore {
         approval: SessionApproval,
     ) -> Result<(), PluginPolicyError> {
         validate_ids(&approval.plugin_id, &approval.capability_id)?;
+        validate_session_id(&approval.session_id)?;
+        validate_scope(approval.scope.as_ref())?;
         let mut sessions = self.sessions.lock().await;
-        let session = sessions.entry(approval.session_id).or_default();
+        cleanup_sessions(&mut sessions);
+        let session = session_state(&mut sessions, &approval.session_id)?;
         let key = SessionApprovalKey {
             plugin_id: approval.plugin_id,
             capability_id: approval.capability_id,
             scope: approval.scope.clone(),
         };
-        session.approvals.insert(key.clone());
+        if !session.approvals.contains(&key) && session.approvals.len() >= MAX_SESSION_APPROVALS {
+            return Err(PluginPolicyError::CapacityExceeded("session approvals"));
+        }
+        session.approvals.insert(key);
         Ok(())
     }
 
@@ -322,23 +342,34 @@ impl PluginPolicyStore {
         scope: Option<ScopeBinding>,
     ) -> Result<String, PluginPolicyError> {
         validate_ids(plugin_id, capability_id)?;
+        validate_session_id(session_id)?;
+        validate_scope(scope.as_ref())?;
         let token = Uuid::new_v4().to_string();
         let mut sessions = self.sessions.lock().await;
-        sessions
-            .entry(session_id.to_owned())
-            .or_default()
-            .tokens
-            .insert(
-                token.clone(),
-                ApprovalToken {
-                    session_id: session_id.to_owned(),
-                    plugin_id: plugin_id.to_owned(),
-                    capability_id: capability_id.to_owned(),
-                    scope,
-                    expires_at: SystemTime::now() + TOKEN_TTL,
-                },
-            );
+        cleanup_sessions(&mut sessions);
+        let session = session_state(&mut sessions, session_id)?;
+        if session.tokens.len() >= MAX_SESSION_TOKENS {
+            return Err(PluginPolicyError::CapacityExceeded("session approval tokens"));
+        }
+        session.tokens.insert(
+            token.clone(),
+            ApprovalToken {
+                session_id: session_id.to_owned(),
+                plugin_id: plugin_id.to_owned(),
+                capability_id: capability_id.to_owned(),
+                scope,
+                expires_at: SystemTime::now() + TOKEN_TTL,
+            },
+        );
         Ok(token)
+    }
+
+    /// 清除一项会话中的所有临时授权和审批材料。
+    pub async fn end_session(&self, session_id: &str) -> Result<(), PluginPolicyError> {
+        validate_session_id(session_id)?;
+        let mut sessions = self.sessions.lock().await;
+        sessions.remove(session_id);
+        Ok(())
     }
 
     /// 消费单次 token；不匹配、过期或重复使用均失败。
@@ -350,7 +381,10 @@ impl PluginPolicyStore {
         capability_id: &str,
         scope: Option<&ScopeBinding>,
     ) -> Result<(), PluginPolicyError> {
+        validate_session_id(session_id)?;
+        validate_scope(scope)?;
         let mut sessions = self.sessions.lock().await;
+        cleanup_sessions(&mut sessions);
         let session = sessions
             .get_mut(session_id)
             .ok_or(PluginPolicyError::TokenUnknown)?;
@@ -381,6 +415,11 @@ impl PluginPolicyStore {
         declared: bool,
         single_use_approved: bool,
     ) -> Result<PolicyDecision, PluginPolicyError> {
+        validate_ids(plugin_id, capability_id)?;
+        validate_scope(scope)?;
+        if let Some(session_id) = session_id {
+            validate_session_id(session_id)?;
+        }
         if !self.is_enabled(plugin_id).await? {
             return Ok(PolicyDecision::Deny(PolicyDenialReason::PluginNotEnabled));
         }
@@ -557,6 +596,39 @@ fn validate_plugin_id(plugin_id: &str) -> Result<(), PluginPolicyError> {
         return Err(PluginPolicyError::InvalidInput("plugin_id"));
     }
     Ok(())
+}
+
+fn validate_session_id(session_id: &str) -> Result<(), PluginPolicyError> {
+    if session_id.is_empty() || session_id.len() > 128 || session_id.chars().any(char::is_control) {
+        return Err(PluginPolicyError::InvalidInput("session_id"));
+    }
+    Ok(())
+}
+
+fn validate_scope(scope: Option<&ScopeBinding>) -> Result<(), PluginPolicyError> {
+    if let Some(scope) = scope {
+        ScopeBinding::new(scope.kind, &scope.value)
+            .map_err(|_| PluginPolicyError::InvalidInput("scope"))?;
+    }
+    Ok(())
+}
+
+fn cleanup_sessions(sessions: &mut HashMap<String, SessionState>) {
+    let now = SystemTime::now();
+    sessions.retain(|_, session| {
+        session.tokens.retain(|_, token| token.expires_at > now);
+        !session.grants.is_empty() || !session.approvals.is_empty() || !session.tokens.is_empty()
+    });
+}
+
+fn session_state<'a>(
+    sessions: &'a mut HashMap<String, SessionState>,
+    session_id: &str,
+) -> Result<&'a mut SessionState, PluginPolicyError> {
+    if !sessions.contains_key(session_id) && sessions.len() >= MAX_SESSIONS {
+        return Err(PluginPolicyError::CapacityExceeded("sessions"));
+    }
+    Ok(sessions.entry(session_id.to_owned()).or_default())
 }
 
 fn scope_columns(scope: Option<&ScopeBinding>) -> (String, String) {

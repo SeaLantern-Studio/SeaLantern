@@ -142,6 +142,16 @@ pub async fn plugin_v2_issue_approval_token(
 }
 
 #[tauri::command]
+pub async fn plugin_v2_end_session(session_id: String) -> Result<(), String> {
+    plugin_service()
+        .await?
+        .policy()
+        .end_session(&session_id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub async fn plugin_v2_audit(limit: u32) -> Result<Vec<AuditEntry>, String> {
     plugin_service()
         .await?
