@@ -704,7 +704,7 @@
     "thread_count_empty": "Le nombre de threads ne peut pas être vide",
     "thread_count_invalid": "Caractère invalide",
     "thread_count_positive": "Le nombre de threads doit être un entier positif",
-    "thread_count_too_big": "Le nombre de threads ne peut pas dépasser 256",
+    "thread_count_too_big": "Le nombre de threads ne peut pas dépasser 64",
     "cancel": "Annuler",
     "download": "Télécharger",
     "browse": "Parcourir",

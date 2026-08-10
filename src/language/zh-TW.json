@@ -705,7 +705,7 @@
     "thread_count_empty": "線程數不能為空",
     "thread_count_invalid": "字符不合法",
     "thread_count_positive": "線程數必須是一個正整數",
-    "thread_count_too_big": "執行緒數不能超過 256",
+    "thread_count_too_big": "執行緒數不能超過 64",
     "cancel": "取消",
     "download": "下載",
     "browse": "瀏覽",

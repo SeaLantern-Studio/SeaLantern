@@ -26,6 +26,7 @@ const emit = defineEmits<{
   (e: "update:saveDir", value: string): void;
   (e: "update:threadCount", value: string): void;
   (e: "pickFolder"): void;
+  (e: "checkThreadCount"): void;
 }>();
 
 function handlePickFolder() {
@@ -124,6 +125,7 @@ function handlePickFolder() {
           :placeholder="i18n.t('downloadServerView.form.threadCountPlaceholder')"
           :disabled="isDownloading"
           @update:modelValue="emit('update:threadCount', $event)"
+          @blur="emit('checkThreadCount')"
         >
           <template #prefix>
             <Cpu :size="16" class="input-icon" />
@@ -175,11 +177,6 @@ function handlePickFolder() {
   font-size: 0.82rem;
   color: var(--sl-text-tertiary);
   font-weight: 500;
-}
-
-.loading-text {
-  font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
 }
 
 .field input,

@@ -17,7 +17,6 @@ const emit = defineEmits<{
   (e: "update:savePath", value: string): void;
   (e: "update:filename", value: string): void;
   (e: "update:threadCount", value: string): void;
-  (e: "checkUrl"): void;
   (e: "pickFolder"): void;
   (e: "checkThreadCount"): void;
 }>();
@@ -38,7 +37,6 @@ function handlePickFolder() {
         :placeholder="i18n.t('download-file.url_placeholder')"
         :disabled="isDownloading"
         @update:modelValue="emit('update:url', $event)"
-        @blur="emit('checkUrl')"
       >
         <template #prefix>
           <Link :size="16" class="input-icon" />

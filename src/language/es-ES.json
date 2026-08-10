@@ -687,7 +687,7 @@
     "thread_count_empty": "El número de hilos no puede estar vacío",
     "thread_count_invalid": "Carácter no válido",
     "thread_count_positive": "El número de hilos debe ser un número entero positivo",
-    "thread_count_too_big": "El número de hilos no puede superar 256",
+    "thread_count_too_big": "El número de hilos no puede superar 64",
     "cancel": "Cancelar",
     "download": "Descargar",
     "browse": "Examinar",

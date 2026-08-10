@@ -17,6 +17,8 @@ const downloadStore = useDownloadStore();
 const toast = useToast();
 const { loading: submitting, start: startLoading, stop: stopLoading } = useLoading();
 
+const MAX_DOWNLOAD_THREADS = 64;
+
 // File download state
 const url = ref("");
 const savePath = ref("");
@@ -57,14 +59,12 @@ const canFileDownload = computed(() => {
     return false;
   }
 
-  // 验证线程数
-  if (!checkThreadCount()) {
-    return false;
-  }
+  if (!isValidThreadCount(threadCount.value)) return false;
 
   // 验证URL格式
   try {
-    const validatedUrl = new URL(url.value.trim());
+    const parsedUrl = new URL(url.value.trim());
+    if (!parsedUrl.protocol || !parsedUrl.hostname) return false;
   } catch {
     return false;
   }
@@ -97,7 +97,7 @@ const canServerDownload = computed(() => {
   if (!selectedType.value || !selectedVersion.value) return false;
   if (!info.value?.url) return false;
   if (!serverSaveDir.value.trim() || !serverFilename.value.trim()) return false;
-  return /^[1-9]\d*$/.test(serverThreadCount.value.trim());
+  return isValidThreadCount(serverThreadCount.value);
 });
 
 const canGoCreate = computed(() => {
@@ -126,17 +126,28 @@ const savePathPreview = computed(() => {
 });
 
 // File download methods
-function checkUrl() {
+function parseFilenameFromUrl(value: string): string | null {
   try {
-    const urlObj = new URL(url.value);
-    const pathName = urlObj.pathname;
-    const segments = pathName.split("/");
-    if (segments.length > 1) {
-      filename.value = segments[segments.length - 1];
+    const parsedUrl = new URL(value.trim());
+    const encodedFilename = parsedUrl.pathname.match(/\/([^/]+)\/*$/)?.[1];
+    if (!encodedFilename) return null;
+
+    try {
+      const decodedFilename = decodeURIComponent(encodedFilename);
+      // 解码结果若包含路径分隔符，则保留编码形式，避免生成不安全的文件名。
+      return /[\\/]/.test(decodedFilename) ? encodedFilename : decodedFilename;
+    } catch {
+      return encodedFilename;
     }
   } catch {
-    // 当URL无效时，不重置filename，因为用户可能手动输入了文件名
+    return null;
   }
+}
+
+function handleUrlChange(value: string) {
+  url.value = value;
+  const parsedFilename = parseFilenameFromUrl(value);
+  if (parsedFilename) filename.value = parsedFilename;
 }
 
 async function pickFileFolder() {
@@ -148,8 +159,16 @@ async function pickFileFolder() {
   }
 }
 
-function checkThreadCount() {
-  const threadCountValue = threadCount.value;
+function isValidThreadCount(value: string): boolean {
+  const normalized = value.trim();
+  if (!/^[1-9]\d*$/.test(normalized)) return false;
+
+  const parsed = Number(normalized);
+  return parsed >= 1 && parsed <= MAX_DOWNLOAD_THREADS;
+}
+
+function checkThreadCount(value = threadCount.value) {
+  const threadCountValue = value.trim();
   if (threadCountValue == "") {
     return false;
   }
@@ -161,7 +180,7 @@ function checkThreadCount() {
     toast.error(i18n.t("download-file.thread_count_positive"));
     return false;
   }
-  if (parseInt(threadCountValue, 10) > 256) {
+  if (parseInt(threadCountValue, 10) > MAX_DOWNLOAD_THREADS) {
     toast.error(i18n.t("download-file.thread_count_too_big"));
     return false;
   }
@@ -256,19 +275,8 @@ async function cancelDownload() {
 async function handleFileDownload() {
   if (combinedLoading.value) return;
 
-  const threadCountValue = threadCount.value;
-  if (threadCountValue == "") {
-    toast.error(i18n.t("download-file.thread_count_empty"));
-    return;
-  }
-  if (!/^-?\d+$/.test(threadCountValue)) {
-    toast.error(i18n.t("download-file.thread_count_invalid"));
-    return;
-  }
-  if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    toast.error(i18n.t("download-file.thread_count_positive"));
-    return;
-  }
+  if (!checkThreadCount()) return;
+  const threadCountValue = threadCount.value.trim();
   const threadCountInt = parseInt(threadCountValue, 10);
 
   startLoading();
@@ -291,7 +299,8 @@ async function handleFileDownload() {
 }
 
 async function handleServerDownload() {
-  if (!canServerDownload.value || !info.value) return;
+  if (!info.value || !checkThreadCount(serverThreadCount.value)) return;
+  if (!canServerDownload.value) return;
 
   startLoading();
 
@@ -360,6 +369,7 @@ onMounted(() => {
           @update:saveDir="serverSaveDir = $event"
           @update:threadCount="serverThreadCount = $event"
           @pickFolder="pickServerFolder"
+          @checkThreadCount="checkThreadCount(serverThreadCount)"
         />
         <div class="card-actions">
           <cmz-button
@@ -388,11 +398,10 @@ onMounted(() => {
           :filename="filename"
           :threadCount="threadCount"
           :isDownloading="isDownloading"
-          @update:url="url = $event"
+          @update:url="handleUrlChange"
           @update:savePath="savePath = $event"
           @update:filename="filename = $event"
           @update:threadCount="threadCount = $event"
-          @checkUrl="checkUrl()"
           @pickFolder="pickFileFolder"
           @checkThreadCount="checkThreadCount"
         />

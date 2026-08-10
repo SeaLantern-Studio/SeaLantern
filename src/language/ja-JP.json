@@ -705,7 +705,7 @@
     "thread_count_empty": "スレッド数を入力してください",
     "thread_count_invalid": "無効な文字です",
     "thread_count_positive": "スレッド数は正の整数で入力してください",
-    "thread_count_too_big": "スレッド数は256を超えることはできません",
+    "thread_count_too_big": "スレッド数は64を超えることはできません",
     "cancel": "キャンセル",
     "download": "ダウンロード",
     "browse": "参照",

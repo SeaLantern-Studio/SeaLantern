@@ -702,7 +702,7 @@
     "thread_count_empty": "Số luồng không được để trống",
     "thread_count_invalid": "Ký tự không hợp lệ",
     "thread_count_positive": "Số luồng phải là số nguyên dương",
-    "thread_count_too_big": "Số luồng không được vượt quá 256",
+    "thread_count_too_big": "Số luồng không được vượt quá 64",
     "cancel": "Hủy",
     "download": "Tải xuống",
     "browse": "Duyệt",

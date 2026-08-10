@@ -702,7 +702,7 @@
     "thread_count_empty": "Thread-Anzahl darf nicht leer sein",
     "thread_count_invalid": "Ungültiges Zeichen",
     "thread_count_positive": "Thread-Anzahl muss eine positive ganze Zahl sein",
-    "thread_count_too_big": "Die Anzahl der Threads darf 256 nicht überschreiten",
+    "thread_count_too_big": "Die Anzahl der Threads darf 64 nicht überschreiten",
     "cancel": "Abbrechen",
     "download": "Herunterladen",
     "browse": "Durchsuchen",
