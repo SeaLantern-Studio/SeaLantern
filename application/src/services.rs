@@ -163,6 +163,13 @@ impl AppServices {
         &self.inner.settings
     }
 
+    /// 加载持久化设置并同步全局网络运行时。
+    pub async fn initialize_network_settings(
+        &self,
+    ) -> Result<(), sealantern_interface::SettingsServiceError> {
+        self.inner.settings.initialize().await
+    }
+
     /// 便捷访问入口：一步拿到设置信息服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn settings_service() -> Result<Arc<CoreSettingsService>, InstanceError> {
         Ok(Self::get().await?.settings().clone())

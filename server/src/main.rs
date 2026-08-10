@@ -64,6 +64,10 @@ pub async fn main() {
             std::process::exit(1);
         }
     };
+    if let Err(error) = services.initialize_network_settings().await {
+        tracing::error!(error = %error, "failed to initialize persisted network settings");
+        std::process::exit(1);
+    }
 
     // 构建 Vite 配置并（在 dev 模式下）拉起 dev server。
     // 手柄必须在此持有，drop 时会终止 vite 子进程。

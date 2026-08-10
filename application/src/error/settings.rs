@@ -3,6 +3,8 @@
 use std::fmt;
 
 use sealantern_extra::config::SettingsError as ExtraSettingsError;
+use sealantern_infra::net::{NetError, NetworkCommitError};
+use sealantern_infra::platform::SystemProxyReadError;
 use sealantern_interface::error::SettingsServiceError;
 
 /// 设置服务主错误类型。
@@ -26,6 +28,11 @@ pub enum SettingsError {
         /// 底层来源错误。
         source: Box<dyn std::error::Error + Send + Sync>,
     },
+    /// 持久化代理设置与进程网络运行时同步失败。
+    NetworkSyncFailed {
+        /// 不包含代理凭据的底层失败。
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
 }
 
 impl fmt::Display for SettingsError {
@@ -40,6 +47,9 @@ impl fmt::Display for SettingsError {
             Self::OperationFailed { source } => {
                 write!(formatter, "settings operation failed: {source}")
             }
+            Self::NetworkSyncFailed { source } => {
+                write!(formatter, "settings network synchronization failed: {source}")
+            }
         }
     }
 }
@@ -49,8 +59,28 @@ impl std::error::Error for SettingsError {
         match self {
             Self::InvalidInput { source } => Some(source),
             Self::StorageFailed { source } => Some(source),
-            Self::OperationFailed { source } => Some(source.as_ref()),
+            Self::OperationFailed { source } | Self::NetworkSyncFailed { source } => {
+                Some(source.as_ref())
+            }
         }
+    }
+}
+
+impl From<NetError> for SettingsError {
+    fn from(source: NetError) -> Self {
+        Self::NetworkSyncFailed { source: Box::new(source) }
+    }
+}
+
+impl From<NetworkCommitError> for SettingsError {
+    fn from(source: NetworkCommitError) -> Self {
+        Self::NetworkSyncFailed { source: Box::new(source) }
+    }
+}
+
+impl From<SystemProxyReadError> for SettingsError {
+    fn from(source: SystemProxyReadError) -> Self {
+        Self::NetworkSyncFailed { source: Box::new(source) }
     }
 }
 
@@ -72,6 +102,7 @@ impl From<SettingsError> for SettingsServiceError {
             SettingsError::InvalidInput { .. } => Self::InvalidInput,
             SettingsError::StorageFailed { .. } => Self::StorageFailed,
             SettingsError::OperationFailed { .. } => Self::OperationFailed,
+            SettingsError::NetworkSyncFailed { .. } => Self::Unavailable,
         }
     }
 }

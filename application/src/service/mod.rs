@@ -7,6 +7,7 @@
 mod cron;
 mod download;
 mod instance;
+mod network_settings;
 mod server;
 mod settings;
 mod system;

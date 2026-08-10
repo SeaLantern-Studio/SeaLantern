@@ -4,6 +4,7 @@ pub mod adapter;
 pub mod desktop;
 pub mod observability;
 
+use sealantern_application::services::AppServices;
 use tauri::Manager;
 
 use adapter::tauri::commands::compat::download_compat::{
@@ -116,6 +117,23 @@ pub fn run() {
             validate_server_path
         ])
         .setup(|app| {
+            tauri::async_runtime::block_on(async {
+                let services = AppServices::get().await.map_err(|error| {
+                    std::io::Error::other(format!(
+                        "failed to assemble application services: {error}"
+                    ))
+                })?;
+                services
+                    .initialize_network_settings()
+                    .await
+                    .map_err(|error| {
+                        std::io::Error::other(format!(
+                            "failed to initialize persisted network settings: {error}"
+                        ))
+                    })?;
+                Ok::<(), std::io::Error>(())
+            })?;
+
             // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
             #[cfg(not(target_os = "macos"))]
             if let Some(window) = app.get_webview_window("main") {
