@@ -67,7 +67,7 @@ impl NetworkRuntime {
         system_proxy: SystemProxySnapshot,
     ) -> Result<NetworkUpdate, NetError> {
         let mut state = self.write_state()?;
-        let Some(current) = state.as_ref() else {
+        let Some(current) = state.as_mut() else {
             let initialized = build_state(settings, system_proxy, 1)?;
             *state = Some(initialized);
             return Ok(NetworkUpdate { client_rebuilt: true, revision: 1 });
@@ -78,28 +78,7 @@ impl NetworkRuntime {
             .update_settings(settings, system_proxy)
             .map_err(proxy_config_error)?;
 
-        if update.changed() {
-            let next_client = NetClient::from_config_with_effective_proxy(
-                &ClientConfig::default(),
-                &update.current,
-            )?;
-            let revision = next_revision(current.revision)?;
-            *state = Some(NetworkState {
-                controller: next_controller,
-                client: next_client,
-                revision,
-            });
-            Ok(NetworkUpdate { client_rebuilt: true, revision })
-        } else {
-            let revision = current.revision;
-            let client = current.client.clone();
-            *state = Some(NetworkState {
-                controller: next_controller,
-                client,
-                revision,
-            });
-            Ok(NetworkUpdate { client_rebuilt: false, revision })
-        }
+        commit_proxy_update(current, next_controller, update)
     }
 
     /// 应用操作系统代理变化。
@@ -110,7 +89,7 @@ impl NetworkRuntime {
         system_proxy: SystemProxySnapshot,
     ) -> Result<NetworkUpdate, NetError> {
         let mut state = self.write_state()?;
-        let Some(current) = state.as_ref() else {
+        let Some(current) = state.as_mut() else {
             let initialized = build_state(ProxySettings::default(), system_proxy, 1)?;
             *state = Some(initialized);
             return Ok(NetworkUpdate { client_rebuilt: true, revision: 1 });
@@ -118,42 +97,17 @@ impl NetworkRuntime {
 
         let mut next_controller = current.controller.clone();
         let update = next_controller.handle_system_proxy_change(system_proxy);
-        if update.changed() {
-            let next_client = NetClient::from_config_with_effective_proxy(
-                &ClientConfig::default(),
-                &update.current,
-            )?;
-            let revision = next_revision(current.revision)?;
-            *state = Some(NetworkState {
-                controller: next_controller,
-                client: next_client,
-                revision,
-            });
-            Ok(NetworkUpdate { client_rebuilt: true, revision })
-        } else {
-            let revision = current.revision;
-            let client = current.client.clone();
-            *state = Some(NetworkState {
-                controller: next_controller,
-                client,
-                revision,
-            });
-            Ok(NetworkUpdate { client_rebuilt: false, revision })
-        }
+        commit_proxy_update(current, next_controller, update)
     }
 
     fn read_state(&self) -> Result<std::sync::RwLockReadGuard<'_, Option<NetworkState>>, NetError> {
-        self.state
-            .read()
-            .map_err(|_| NetError::Config("全局网络运行时不可用".into()))
+        self.state.read().map_err(runtime_lock_poisoned)
     }
 
     fn write_state(
         &self,
     ) -> Result<std::sync::RwLockWriteGuard<'_, Option<NetworkState>>, NetError> {
-        self.state
-            .write()
-            .map_err(|_| NetError::Config("全局网络运行时不可用".into()))
+        self.state.write().map_err(runtime_lock_poisoned)
     }
 }
 
@@ -170,8 +124,37 @@ fn build_state(
     Ok(NetworkState { controller, client, revision })
 }
 
-fn proxy_config_error(_error: ProxyConfigError) -> NetError {
-    NetError::Config("代理设置无效".into())
+fn commit_proxy_update(
+    current: &mut NetworkState,
+    next_controller: ProxyController,
+    update: super::ProxyUpdate,
+) -> Result<NetworkUpdate, NetError> {
+    if !update.changed() {
+        current.controller = next_controller;
+        return Ok(NetworkUpdate {
+            client_rebuilt: false,
+            revision: current.revision,
+        });
+    }
+
+    let next_client =
+        NetClient::from_config_with_effective_proxy(&ClientConfig::default(), &update.current)?;
+    let revision = next_revision(current.revision)?;
+    current.controller = next_controller;
+    current.client = next_client;
+    current.revision = revision;
+    Ok(NetworkUpdate { client_rebuilt: true, revision })
+}
+
+fn proxy_config_error(error: ProxyConfigError) -> NetError {
+    let message = match error {
+        ProxyConfigError::EmptyManualProxy => "手动代理地址不能为空",
+    };
+    NetError::Config(message.into())
+}
+
+fn runtime_lock_poisoned<T>(_error: std::sync::PoisonError<T>) -> NetError {
+    NetError::Config("全局网络运行时状态锁已污染".into())
 }
 
 fn next_revision(revision: u64) -> Result<u64, NetError> {
@@ -257,6 +240,41 @@ mod tests {
 
         assert_eq!(first, NetworkUpdate { client_rebuilt: true, revision: 2 });
         assert_eq!(repeated, NetworkUpdate { client_rebuilt: false, revision: 2 });
+    }
+
+    #[test]
+    fn policy_change_without_effective_proxy_change_updates_only_controller() {
+        let runtime = NetworkRuntime::new();
+        runtime.client().expect("default client should initialize");
+
+        let update = runtime
+            .apply_proxy_settings(settings(ProxyMode::Disabled), SystemProxySnapshot::direct())
+            .expect("disabled mode should apply");
+
+        assert_eq!(update, NetworkUpdate { client_rebuilt: false, revision: 1 });
+        let state = runtime_state(&runtime);
+        assert_eq!(state.controller.settings().mode, ProxyMode::Disabled);
+        assert_eq!(state.controller.effective_proxy(), &EffectiveProxy::Direct);
+    }
+
+    #[test]
+    fn invalid_proxy_settings_return_a_specific_reason_and_keep_state() {
+        let runtime = NetworkRuntime::new();
+        runtime.client().expect("default client should initialize");
+        let before = runtime_state(&runtime);
+
+        let error = runtime
+            .apply_proxy_settings(
+                settings(ProxyMode::Manual { proxy_url: "  ".into() }),
+                SystemProxySnapshot::direct(),
+            )
+            .unwrap_err();
+
+        assert_eq!(error.to_string(), "配置错误: 手动代理地址不能为空");
+        let after = runtime_state(&runtime);
+        assert_eq!(after.revision, before.revision);
+        assert_eq!(after.controller.settings(), before.controller.settings());
+        assert_eq!(after.controller.effective_proxy(), before.controller.effective_proxy());
     }
 
     #[test]
