@@ -116,7 +116,7 @@ fn snapshot_from_sysproxy(
     tracing::debug!(
         target: "sealantern.infra.platform.proxy",
         enabled = proxy.enable,
-        host = %proxy.host,
+        host = diagnostic_proxy_host(&proxy.host),
         port = proxy.port,
         bypass_bytes = proxy.bypass.len(),
         "raw platform proxy settings loaded"
@@ -132,6 +132,14 @@ fn snapshot_from_sysproxy(
     Ok(SystemProxySnapshot::from_routes(
         ProxyRoutes::all(proxy_url).with_no_proxy(no_proxy),
     ))
+}
+
+fn diagnostic_proxy_host(host: &str) -> &str {
+    if host.contains('@') {
+        "<redacted>"
+    } else {
+        host
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -249,6 +257,13 @@ mod tests {
         let snapshot = snapshot_from_sysproxy(&enabled_proxy("proxy.example.com", 80, "")).unwrap();
 
         assert_eq!(snapshot.routes().http_proxy(), Some("http://proxy.example.com:80"));
+    }
+
+    #[test]
+    fn diagnostic_host_preserves_normal_hosts_and_redacts_possible_userinfo() {
+        assert_eq!(diagnostic_proxy_host("127.0.0.1"), "127.0.0.1");
+        assert_eq!(diagnostic_proxy_host("proxy.example.com"), "proxy.example.com");
+        assert_eq!(diagnostic_proxy_host("user:password@proxy.example.com"), "<redacted>");
     }
 
     #[test]
