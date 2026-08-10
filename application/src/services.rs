@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use crate::error::InstanceError;
-use crate::plugin::{CorePluginService, PluginServiceError};
+use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceError};
 use crate::service::{
     CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreServerService,
     CoreSettingsService, CoreSystemService, CoreUpdateCheckService, ProxyMonitoringService,
@@ -240,9 +240,22 @@ impl AppServices {
 
     /// 获取应用插件服务；首次调用才打开策略数据库，避免阻塞常规启动路径。
     pub async fn plugin(&self) -> Result<&Arc<CorePluginService>, PluginServiceError> {
+        let system = self.inner.system.clone();
+        let instance = self.inner.instance.clone();
+        let server = self.inner.server.clone();
         self.inner
             .plugin
-            .get_or_try_init(|| async { CorePluginService::open_default().await.map(Arc::new) })
+            .get_or_try_init(move || async move {
+                let root = sealantern_infra::platform::get_app_data_dir().join("plugins");
+                CorePluginService::open_with_read_host(
+                    &root,
+                    root.join("data"),
+                    root.join("plugin-state.sqlite"),
+                    Some(Arc::new(ApplicationPluginReadHost::new(system, instance, server))),
+                )
+                .await
+                .map(Arc::new)
+            })
             .await
     }
 

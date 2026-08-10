@@ -5,7 +5,10 @@ use async_trait::async_trait;
 use sealantern_extra::app_plugin::{AsyncPluginManager, PluginInfo, PluginManagerConfig};
 use sealantern_infra::platform::get_app_data_dir;
 
-use super::{CoreCapabilityDispatcher, DefaultMarketGateway, PluginPolicyError, PluginPolicyStore};
+use super::{
+    CoreCapabilityDispatcher, DefaultMarketGateway, PluginPolicyError, PluginPolicyStore,
+    PluginReadHost,
+};
 
 /// 应用插件生命周期的宿主入口。
 #[async_trait]
@@ -71,10 +74,25 @@ impl CorePluginService {
         data_dir: impl Into<PathBuf>,
         state_path: impl Into<PathBuf>,
     ) -> Result<Self, PluginServiceError> {
+        Self::open_with_read_host(plugins_dir, data_dir, state_path, None).await
+    }
+
+    /// 使用明确的只读宿主能力构造服务。
+    pub async fn open_with_read_host(
+        plugins_dir: impl Into<PathBuf>,
+        data_dir: impl Into<PathBuf>,
+        state_path: impl Into<PathBuf>,
+        read_host: Option<Arc<dyn PluginReadHost>>,
+    ) -> Result<Self, PluginServiceError> {
         let policy = Arc::new(PluginPolicyStore::open(state_path).await?);
         let market =
             Arc::new(DefaultMarketGateway::new().map_err(PluginServiceError::Initialization)?);
-        let dispatcher = Arc::new(CoreCapabilityDispatcher::new(policy.clone(), market));
+        let dispatcher = CoreCapabilityDispatcher::new(policy.clone(), market);
+        let dispatcher = match read_host {
+            Some(host) => dispatcher.with_read_host(host),
+            None => dispatcher,
+        };
+        let dispatcher = Arc::new(dispatcher);
         Ok(Self {
             runtime: AsyncPluginManager::new(
                 PluginManagerConfig::new(plugins_dir, data_dir).with_dispatcher(dispatcher),

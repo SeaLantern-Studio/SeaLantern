@@ -4,6 +4,9 @@ mod dispatcher;
 mod policy;
 mod service;
 
-pub use dispatcher::{CoreCapabilityDispatcher, DefaultMarketGateway, MarketGateway};
+pub use dispatcher::{
+    ApplicationPluginReadHost, CoreCapabilityDispatcher, DefaultMarketGateway, MarketGateway,
+    PluginReadHost,
+};
 pub use policy::{AuditEntry, PluginPolicyError, PluginPolicyStore, SessionApproval, SessionGrant};
 pub use service::{CorePluginService, PluginService, PluginServiceError};

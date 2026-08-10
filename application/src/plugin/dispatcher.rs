@@ -10,6 +10,7 @@ use sealantern_core::app_plugin::{
 use sealantern_extra::market::{
     Fetcher, MarketError, MarketSource, ResourceInfo, SearchResult, Version,
 };
+use sealantern_interface::{InstanceService, ServerService, SystemService};
 use serde::Deserialize;
 use serde_json::Value;
 use tokio::sync::Mutex;
@@ -82,6 +83,7 @@ impl MarketGateway for DefaultMarketGateway {
 pub struct CoreCapabilityDispatcher {
     policy: Arc<PluginPolicyStore>,
     market: Arc<dyn MarketGateway>,
+    host: Option<Arc<dyn PluginReadHost>>,
     calls: Mutex<HashMap<(String, String), VecDeque<Instant>>>,
 }
 
@@ -90,8 +92,14 @@ impl CoreCapabilityDispatcher {
         Self {
             policy,
             market,
+            host: None,
             calls: Mutex::new(HashMap::new()),
         }
+    }
+
+    pub fn with_read_host(mut self, host: Arc<dyn PluginReadHost>) -> Self {
+        self.host = Some(host);
+        self
     }
 
     async fn check_rate_limit(
@@ -178,6 +186,32 @@ impl CoreCapabilityDispatcher {
             )),
         }
     }
+
+    async fn dispatch_read_host(
+        &self,
+        capability_id: &str,
+        scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
+    ) -> Result<Value, CapabilityDispatchError> {
+        let host = self
+            .host
+            .as_ref()
+            .ok_or(CapabilityDispatchError::Unavailable("plugin read host is not configured"))?;
+        match capability_id {
+            "host.system.facts" => host.system_facts().await,
+            "plugin.installed.list" => host.installed_plugins().await,
+            "server.instance.list" => host.instances().await,
+            "server.status.read" => {
+                let id = server_scope(scope)?;
+                host.server_status(id).await
+            }
+            "server.metrics.read" | "server.metadata.read" | "server.config.redacted" => Err(
+                CapabilityDispatchError::Unavailable("server read capability is not implemented"),
+            ),
+            _ => Err(CapabilityDispatchError::Unavailable(
+                "capability implementation is not available",
+            )),
+        }
+    }
 }
 
 #[async_trait]
@@ -215,12 +249,81 @@ impl CapabilityDispatcher for CoreCapabilityDispatcher {
         }
         self.check_rate_limit(plugin_id, invocation.capability.as_str())
             .await?;
-        self.dispatch_market(
-            invocation.capability.as_str(),
-            invocation.scope.as_ref(),
-            &invocation.payload,
-        )
-        .await
+        match invocation.capability.as_str() {
+            capability @ ("market.search" | "market.resource.read" | "market.versions.read") => {
+                self.dispatch_market(capability, invocation.scope.as_ref(), &invocation.payload)
+                    .await
+            }
+            capability => {
+                self.dispatch_read_host(capability, invocation.scope.as_ref())
+                    .await
+            }
+        }
+    }
+}
+
+/// 服务器与宿主只读数据的应用层端口。
+#[async_trait]
+pub trait PluginReadHost: Send + Sync {
+    async fn system_facts(&self) -> Result<Value, CapabilityDispatchError>;
+    async fn installed_plugins(&self) -> Result<Value, CapabilityDispatchError>;
+    async fn instances(&self) -> Result<Value, CapabilityDispatchError>;
+    async fn server_status(&self, instance_id: &str) -> Result<Value, CapabilityDispatchError>;
+}
+
+/// 基于既有应用服务的只读宿主适配器。
+pub struct ApplicationPluginReadHost {
+    system: Arc<dyn SystemService>,
+    instance: Arc<dyn InstanceService>,
+    server: Arc<dyn ServerService>,
+}
+
+impl ApplicationPluginReadHost {
+    pub fn new(
+        system: Arc<dyn SystemService>,
+        instance: Arc<dyn InstanceService>,
+        server: Arc<dyn ServerService>,
+    ) -> Self {
+        Self { system, instance, server }
+    }
+}
+
+#[async_trait]
+impl PluginReadHost for ApplicationPluginReadHost {
+    async fn system_facts(&self) -> Result<Value, CapabilityDispatchError> {
+        let snapshot = self
+            .system
+            .system_snapshot()
+            .await
+            .map_err(|error| host_error("system facts", error))?;
+        serde_json::to_value(snapshot)
+            .map_err(|_| CapabilityDispatchError::Failed("host response encoding"))
+    }
+
+    async fn installed_plugins(&self) -> Result<Value, CapabilityDispatchError> {
+        Ok(Value::Array(vec![]))
+    }
+
+    async fn instances(&self) -> Result<Value, CapabilityDispatchError> {
+        let instances = self
+            .instance
+            .list()
+            .await
+            .map_err(|error| host_error("instance list", error))?;
+        serde_json::to_value(instances)
+            .map_err(|_| CapabilityDispatchError::Failed("host response encoding"))
+    }
+
+    async fn server_status(&self, instance_id: &str) -> Result<Value, CapabilityDispatchError> {
+        let id = sealantern_core::instance::InstanceId::new(instance_id)
+            .map_err(|_| CapabilityDispatchError::InvalidRequest("server instance id"))?;
+        let status = self
+            .server
+            .status(&id)
+            .await
+            .map_err(|error| host_error("server status", error))?;
+        serde_json::to_value(status)
+            .map_err(|_| CapabilityDispatchError::Failed("host response encoding"))
     }
 }
 
@@ -254,6 +357,15 @@ fn market_scope(
         .ok_or(CapabilityDispatchError::InvalidRequest("market resource id"))
 }
 
+fn server_scope(
+    scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
+) -> Result<&str, CapabilityDispatchError> {
+    let scope = scope.ok_or(CapabilityDispatchError::InvalidRequest("server scope"))?;
+    (scope.kind == ScopeKind::ServerInstance)
+        .then_some(scope.value.as_str())
+        .ok_or(CapabilityDispatchError::InvalidRequest("server scope kind"))
+}
+
 fn market_error(operation: &'static str, error: MarketError) -> CapabilityDispatchError {
     tracing::warn!(
         target: "sealantern.application.plugin",
@@ -269,6 +381,16 @@ fn market_error(operation: &'static str, error: MarketError) -> CapabilityDispat
     }
 }
 
+fn host_error(operation: &'static str, error: impl std::fmt::Display) -> CapabilityDispatchError {
+    tracing::warn!(
+        target: "sealantern.application.plugin",
+        operation,
+        error = %error,
+        "plugin host read capability failed"
+    );
+    CapabilityDispatchError::Failed("host read request failed")
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -278,6 +400,27 @@ mod tests {
 
     struct FakeMarket {
         searches: AtomicUsize,
+    }
+
+    struct FakeReadHost;
+
+    #[async_trait]
+    impl PluginReadHost for FakeReadHost {
+        async fn system_facts(&self) -> Result<Value, CapabilityDispatchError> {
+            Ok(serde_json::json!({"os": "test"}))
+        }
+
+        async fn installed_plugins(&self) -> Result<Value, CapabilityDispatchError> {
+            Ok(Value::Array(vec![]))
+        }
+
+        async fn instances(&self) -> Result<Value, CapabilityDispatchError> {
+            Ok(Value::Array(vec![]))
+        }
+
+        async fn server_status(&self, instance_id: &str) -> Result<Value, CapabilityDispatchError> {
+            Ok(serde_json::json!({"instanceId": instance_id, "state": "stopped"}))
+        }
     }
 
     #[async_trait]
@@ -361,5 +504,38 @@ mod tests {
                 sealantern_core::app_plugin::PolicyDenialReason::CapabilityNotDeclared
             ))
         ));
+    }
+
+    #[tokio::test]
+    async fn server_status_uses_scoped_persistent_grant_and_read_host() {
+        let root = tempfile::tempdir().unwrap();
+        let policy = Arc::new(
+            PluginPolicyStore::open(root.path().join("state.sqlite"))
+                .await
+                .unwrap(),
+        );
+        let scope = ScopeBinding::new(ScopeKind::ServerInstance, "server-a").unwrap();
+        policy.set_enabled("example.plugin", true).await.unwrap();
+        policy
+            .grant_persistent("example.plugin", "server.status.read", Some(&scope))
+            .await
+            .unwrap();
+        let dispatcher = CoreCapabilityDispatcher::new(
+            policy,
+            Arc::new(FakeMarket { searches: AtomicUsize::new(0) }),
+        )
+        .with_read_host(Arc::new(FakeReadHost));
+        let invocation = CapabilityInvocation {
+            principal: ExecutionPrincipal::Plugin("example.plugin".to_string()),
+            trust_source: TrustSource::UntrustedLocal,
+            capability: CapabilityId::new("server.status.read").unwrap(),
+            scope: Some(scope),
+            declared: true,
+            payload: Value::Null,
+            approval_token: None,
+            request_id: "request-3".to_string(),
+        };
+
+        assert_eq!(dispatcher.invoke(invocation).await.unwrap()["instanceId"], "server-a");
     }
 }
