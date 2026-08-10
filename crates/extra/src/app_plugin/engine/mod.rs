@@ -12,7 +12,7 @@ use std::{
 
 use mlua::{HookTriggers, Lua, LuaOptions, StdLib, Table, Value, VmState};
 
-use crate::app_plugin::{AppPluginError, PluginManifest, PluginPermission};
+use crate::app_plugin::{AppPluginError, PluginManifest};
 use crate::observability;
 
 use self::storage::PluginStorage;
@@ -136,7 +136,9 @@ impl PluginEngine {
         data_dir: &Path,
     ) -> Result<(), AppPluginError> {
         let table = self.lua.create_table().map_err(engine_error)?;
-        let permitted = manifest.permissions.contains(&PluginPermission::Storage);
+        let permitted = manifest.capabilities.iter().any(|capability| {
+            matches!(capability.id.as_str(), "plugin.storage.read" | "plugin.storage.write")
+        });
         let storage = PluginStorage::new(&self.plugin_id, data_dir);
 
         let context = storage.clone();
@@ -194,7 +196,10 @@ impl PluginEngine {
 
     fn install_log(&self, sl: &Table, manifest: &PluginManifest) -> Result<(), AppPluginError> {
         let table = self.lua.create_table().map_err(engine_error)?;
-        let permitted = manifest.permissions.contains(&PluginPermission::Log);
+        let permitted = manifest
+            .capabilities
+            .iter()
+            .any(|capability| capability.id == "plugin.log.emit");
         for (name, level) in
             [("debug", "debug"), ("info", "info"), ("warn", "warn"), ("error", "error")]
         {
@@ -316,14 +321,14 @@ mod tests {
             .join(format!("sealantern-extra-engine-{label}-{}-{nonce}", std::process::id()))
     }
 
-    fn manifest(permissions: Vec<PluginPermission>) -> PluginManifest {
+    fn manifest(capabilities: Vec<crate::app_plugin::PluginCapability>) -> PluginManifest {
         PluginManifest {
             api_version: 2,
             id: "example.plugin".to_string(),
             name: "Example".to_string(),
             version: "1.0.0".to_string(),
             main: "main.lua".to_string(),
-            permissions,
+            capabilities,
         }
     }
 
@@ -361,7 +366,7 @@ mod tests {
         let root = test_dir("storage");
         fs::create_dir_all(&root).expect("plugin directory should be created");
         let engine = PluginEngine::new(
-            &manifest(vec![PluginPermission::Storage]),
+            &manifest(vec![crate::app_plugin::PluginCapability::new("plugin.storage.read")]),
             &root,
             &root.join("data"),
         )
@@ -466,7 +471,7 @@ mod tests {
         let root = test_dir("storage-quota");
         fs::create_dir_all(&root).expect("plugin directory should be created");
         let engine = PluginEngine::new(
-            &manifest(vec![PluginPermission::Storage]),
+            &manifest(vec![crate::app_plugin::PluginCapability::new("plugin.storage.write")]),
             &root,
             &root.join("data"),
         )

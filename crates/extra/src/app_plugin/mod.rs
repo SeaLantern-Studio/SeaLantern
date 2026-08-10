@@ -15,5 +15,7 @@ pub mod manifest;
 
 pub use error::AppPluginError;
 pub use loader::PluginLoader;
-pub use manager::{PluginInfo, PluginManager, PluginManagerConfig, PluginState};
-pub use manifest::{PluginManifest, PluginPermission, PLUGIN_API_VERSION};
+pub use manager::{
+    AsyncPluginManager, PluginInfo, PluginManager, PluginManagerConfig, PluginState,
+};
+pub use manifest::{PluginCapability, PluginManifest, PLUGIN_API_VERSION};

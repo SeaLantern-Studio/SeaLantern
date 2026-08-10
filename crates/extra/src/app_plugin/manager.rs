@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use super::engine::{Lifecycle, PluginEngine};
 use super::{AppPluginError, PluginLoader, PluginManifest};
@@ -53,6 +54,73 @@ struct ManagedPlugin {
 pub struct PluginManager {
     config: PluginManagerConfig,
     plugins: HashMap<String, ManagedPlugin>,
+}
+
+/// 在 Tokio 的阻塞线程池中调度 Lua 生命周期，避免阻塞异步宿主线程。
+#[derive(Clone)]
+pub struct AsyncPluginManager {
+    inner: Arc<Mutex<PluginManager>>,
+}
+
+impl AsyncPluginManager {
+    pub fn new(config: PluginManagerConfig) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(PluginManager::new(config))),
+        }
+    }
+
+    pub async fn discover(&self) -> Result<Vec<PathBuf>, AppPluginError> {
+        self.run(|manager| manager.discover()).await
+    }
+
+    pub async fn load(&self, plugin_dir: impl Into<PathBuf>) -> Result<PluginInfo, AppPluginError> {
+        let plugin_dir = plugin_dir.into();
+        self.run(move |manager| manager.load(&plugin_dir)).await
+    }
+
+    pub async fn enable(&self, plugin_id: impl Into<String>) -> Result<(), AppPluginError> {
+        let plugin_id = plugin_id.into();
+        self.run(move |manager| manager.enable(&plugin_id)).await
+    }
+
+    pub async fn disable(&self, plugin_id: impl Into<String>) -> Result<(), AppPluginError> {
+        let plugin_id = plugin_id.into();
+        self.run(move |manager| manager.disable(&plugin_id)).await
+    }
+
+    pub async fn unload(&self, plugin_id: impl Into<String>) -> Result<(), AppPluginError> {
+        let plugin_id = plugin_id.into();
+        self.run(move |manager| manager.unload(&plugin_id)).await
+    }
+
+    pub async fn plugin(
+        &self,
+        plugin_id: impl Into<String>,
+    ) -> Result<Option<PluginInfo>, AppPluginError> {
+        let plugin_id = plugin_id.into();
+        self.run(move |manager| Ok(manager.plugin(&plugin_id)))
+            .await
+    }
+
+    pub async fn plugins(&self) -> Result<Vec<PluginInfo>, AppPluginError> {
+        self.run(|manager| Ok(manager.plugins())).await
+    }
+
+    async fn run<T, F>(&self, operation: F) -> Result<T, AppPluginError>
+    where
+        T: Send + 'static,
+        F: FnOnce(&mut PluginManager) -> Result<T, AppPluginError> + Send + 'static,
+    {
+        let inner = Arc::clone(&self.inner);
+        tokio::task::spawn_blocking(move || {
+            let mut manager = inner.lock().map_err(|_| {
+                AppPluginError::Engine("plugin manager lock is poisoned".to_string())
+            })?;
+            operation(&mut manager)
+        })
+        .await
+        .map_err(|error| AppPluginError::Engine(format!("plugin runtime task failed: {error}")))?
+    }
 }
 
 impl PluginManager {
@@ -292,20 +360,20 @@ mod tests {
     }
 
     fn write_plugin(root: &Path, api_version: u32, script: &str) -> PathBuf {
-        write_plugin_with_permissions(root, api_version, script, &[])
+        write_plugin_with_capabilities(root, api_version, script, &[])
     }
 
-    fn write_plugin_with_permissions(
+    fn write_plugin_with_capabilities(
         root: &Path,
         api_version: u32,
         script: &str,
-        permissions: &[&str],
+        capabilities: &[&str],
     ) -> PathBuf {
         let plugin_dir = root.join("example.plugin");
         fs::create_dir_all(&plugin_dir).expect("plugin directory should be created");
-        let permissions = permissions
+        let capabilities = capabilities
             .iter()
-            .map(|permission| format!(r#""{permission}""#))
+            .map(|capability| format!(r#"{{"id":"{capability}"}}"#))
             .collect::<Vec<_>>()
             .join(", ");
         fs::write(
@@ -317,7 +385,7 @@ mod tests {
                     "name": "Example",
                     "version": "1.0.0",
                     "main": "main.lua",
-                    "permissions": [{permissions}]
+                    "capabilities": [{capabilities}]
                 }}"#
             ),
         )
@@ -408,7 +476,7 @@ mod tests {
     fn load_failure_runs_unload_cleanup() {
         let root = test_root("load-cleanup");
         let data_dir = root.join("data");
-        let plugin_dir = write_plugin_with_permissions(
+        let plugin_dir = write_plugin_with_capabilities(
             &root,
             2,
             r#"
@@ -420,7 +488,7 @@ mod tests {
                     sl.storage.set("unloaded", true)
                 end
             "#,
-            &["storage"],
+            &["plugin.storage.write"],
         );
         let mut manager = PluginManager::new(PluginManagerConfig::new(&root, &data_dir));
 
@@ -440,7 +508,7 @@ mod tests {
     fn enable_failure_runs_disable_then_unload_cleanup() {
         let root = test_root("enable-cleanup");
         let data_dir = root.join("data");
-        let plugin_dir = write_plugin_with_permissions(
+        let plugin_dir = write_plugin_with_capabilities(
             &root,
             2,
             r#"
@@ -455,7 +523,7 @@ mod tests {
                     sl.storage.set("unloaded", true)
                 end
             "#,
-            &["storage"],
+            &["plugin.storage.write"],
         );
         let mut manager = PluginManager::new(PluginManagerConfig::new(&root, &data_dir));
 
@@ -484,6 +552,37 @@ mod tests {
             PluginManager::new(PluginManagerConfig::new(&plugins_root, root.join("data")));
 
         assert!(matches!(manager.load(&plugin_dir), Err(AppPluginError::InvalidPath { .. })));
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[tokio::test]
+    async fn async_manager_runs_lifecycle_off_the_async_host_api() {
+        let root = test_root("async-lifecycle");
+        let plugin_dir = write_plugin(
+            &root,
+            2,
+            r#"
+                function on_load() end
+                function on_enable() end
+            "#,
+        );
+        let manager = AsyncPluginManager::new(PluginManagerConfig::new(&root, root.join("data")));
+
+        manager.load(&plugin_dir).await.expect("plugin should load");
+        manager
+            .enable("example.plugin")
+            .await
+            .expect("plugin should enable");
+        assert_eq!(
+            manager
+                .plugin("example.plugin")
+                .await
+                .expect("plugin lookup should work")
+                .expect("plugin should remain loaded")
+                .state,
+            PluginState::Enabled
+        );
 
         let _ = fs::remove_dir_all(root);
     }
