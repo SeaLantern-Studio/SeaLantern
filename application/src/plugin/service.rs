@@ -155,14 +155,14 @@ impl PluginService for CorePluginService {
     }
 
     async fn disable(&self, plugin_id: &str) -> Result<(), PluginServiceError> {
-        self.runtime.disable(plugin_id).await?;
         self.policy.set_enabled(plugin_id, false).await?;
+        self.runtime.disable(plugin_id).await?;
         Ok(())
     }
 
     async fn unload(&self, plugin_id: &str) -> Result<(), PluginServiceError> {
-        self.runtime.unload(plugin_id).await?;
         self.policy.set_enabled(plugin_id, false).await?;
+        self.runtime.unload(plugin_id).await?;
         Ok(())
     }
 
