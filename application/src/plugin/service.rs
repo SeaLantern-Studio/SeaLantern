@@ -3,7 +3,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use sealantern_core::app_plugin::{CapabilityDispatchError, CapabilityInvocation};
-use sealantern_extra::app_plugin::{AsyncPluginManager, PluginInfo, PluginManagerConfig};
+use sealantern_extra::app_plugin::{
+    AsyncPluginManager, PluginInfo, PluginLoader, PluginManagerConfig,
+};
 use sealantern_infra::platform::get_app_data_dir;
 
 use super::{
@@ -122,8 +124,11 @@ impl PluginService for CorePluginService {
     }
 
     async fn load(&self, plugin_dir: &Path) -> Result<PluginInfo, PluginServiceError> {
+        // 先清除上次进程留下的启用状态，再允许 entry/on_load 执行能力调用。
+        let manifest =
+            PluginLoader::load_manifest(plugin_dir).map_err(PluginServiceError::Runtime)?;
+        self.policy.set_enabled(&manifest.id, false).await?;
         let info = self.runtime.load(plugin_dir).await?;
-        self.policy.set_enabled(&info.manifest.id, false).await?;
         Ok(info)
     }
 
@@ -230,6 +235,11 @@ mod tests {
         .await
         .expect("service should open");
 
+        service
+            .policy()
+            .set_enabled("example.plugin", true)
+            .await
+            .expect("stale enabled state should be writable");
         service.load(&plugin_dir).await.expect("plugin should load");
         assert!(!service.policy().is_enabled("example.plugin").await.unwrap());
         service
