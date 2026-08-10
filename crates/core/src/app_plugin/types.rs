@@ -1,7 +1,7 @@
 use std::fmt;
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
 /// 插件能力的风险等级，顺序同时表示风险递增关系。
@@ -106,11 +106,25 @@ pub enum ScopeKind {
 }
 
 /// 经过结构化解析的具体作用域绑定。
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ScopeBinding {
     pub kind: ScopeKind,
     pub value: String,
+}
+
+impl<'de> Deserialize<'de> for ScopeBinding {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase", deny_unknown_fields)]
+        struct RawScopeBinding {
+            kind: ScopeKind,
+            value: String,
+        }
+
+        let raw = RawScopeBinding::deserialize(deserializer)?;
+        Self::new(raw.kind, raw.value).map_err(serde::de::Error::custom)
+    }
 }
 
 impl ScopeBinding {
@@ -147,9 +161,15 @@ impl fmt::Display for ScopeBindingError {
 impl std::error::Error for ScopeBindingError {}
 
 /// 经过语法校验的点分能力标识。
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct CapabilityId(String);
+
+impl<'de> Deserialize<'de> for CapabilityId {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        Self::new(value).map_err(serde::de::Error::custom)
+    }
+}
 
 impl CapabilityId {
     pub fn new(value: impl Into<String>) -> Result<Self, CapabilityIdError> {
@@ -289,6 +309,16 @@ pub enum PolicyDecision {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn serde_rejects_invalid_scopes_and_capability_ids() {
+        let oversized = serde_json::json!({
+            "kind": "app_global",
+            "value": "x".repeat(2049)
+        });
+        assert!(serde_json::from_value::<ScopeBinding>(oversized).is_err());
+        assert!(serde_json::from_str::<CapabilityId>("\"Server.Status\"").is_err());
+    }
 
     #[test]
     fn capability_ids_require_lowercase_dot_segments() {
