@@ -4,9 +4,7 @@ use std::time::Instant;
 
 use bytes::Bytes;
 use futures::StreamExt;
-use reqwest::header::{
-    HeaderMap, HeaderName, AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE, COOKIE, LOCATION,
-};
+use reqwest::header::{HeaderMap, CONTENT_LENGTH, CONTENT_TYPE, LOCATION};
 use reqwest::{Method, StatusCode};
 use tokio::sync::Semaphore;
 use url::{Host, Url};
@@ -15,7 +13,7 @@ use super::{
     canonical_ip, AllowedNetworkTarget, PluginHttpMethod, PluginNetworkAddressPolicy,
     PluginNetworkError, PluginNetworkExecution, PluginNetworkLimits, PluginNetworkRequest,
     PluginNetworkResponse, PluginNetworkScope, PluginNetworkTrace, PluginTransportErrorKind,
-    PluginTransportStage, ResolvedNetworkTarget,
+    PluginTransportStage, ResolvedNetworkTarget, MAX_HEADER_BYTES, MAX_REQUEST_HEADERS,
 };
 
 pub(super) const MAX_DNS_ADDRESSES: usize = 32;
@@ -71,7 +69,7 @@ impl PluginNetworkClient {
         limits: PluginNetworkLimits,
     ) -> Result<PluginNetworkExecution, PluginNetworkError> {
         validate_limits(limits)?;
-        validate_headers(&request.headers, &scope.address_policy)?;
+        validate_request_headers(&request, &scope.address_policy)?;
         let started = Instant::now();
         tokio::time::timeout(
             limits.total_timeout,
@@ -191,6 +189,7 @@ async fn execute_request(
     started: Instant,
 ) -> Result<PluginNetworkExecution, PluginNetworkError> {
     let mut target = parse_target(&request.url, &scope)?;
+    let headers = request_headers(&request);
     let mut redirects = 0u8;
     let mut resolved_targets = Vec::new();
 
@@ -211,7 +210,7 @@ async fn execute_request(
         let client = build_pinned_client(&target, &addresses, &scope.address_policy, limits)?;
         let response = client
             .request(method(request.method), target.clone())
-            .headers(request.headers.clone())
+            .headers(headers.clone())
             .send()
             .await
             .map_err(|error| transport_error(PluginTransportStage::RequestSend, error))?;
@@ -330,37 +329,29 @@ fn validate_target(target: &Url, scope: &PluginNetworkScope) -> Result<(), Plugi
     Ok(())
 }
 
-pub(super) fn validate_headers(
-    headers: &HeaderMap,
+pub(super) fn validate_request_headers(
+    request: &PluginNetworkRequest,
     policy: &PluginNetworkAddressPolicy,
 ) -> Result<(), PluginNetworkError> {
-    const FORBIDDEN: &[&str] = &[
-        "host",
-        "proxy-authorization",
-        "connection",
-        "upgrade",
-        "transfer-encoding",
-        "te",
-        "trailer",
-        "forwarded",
-        "x-forwarded-for",
-        "x-forwarded-host",
-        "x-forwarded-proto",
-        "x-real-ip",
-    ];
-    for name in headers.keys() {
-        if FORBIDDEN.iter().any(|forbidden| name == *forbidden)
-            || (matches!(policy, PluginNetworkAddressPolicy::PublicOnly)
-                && is_credential_header(name))
-        {
-            return Err(PluginNetworkError::ForbiddenHeader(name.to_string()));
-        }
+    if matches!(policy, PluginNetworkAddressPolicy::PublicOnly) && !request.credentials.is_empty() {
+        return Err(PluginNetworkError::CredentialsNotAllowed);
+    }
+    let header_count = request.headers.values.len() + request.credentials.values.len();
+    let header_bytes = request
+        .headers
+        .bytes
+        .checked_add(request.credentials.bytes)
+        .ok_or(PluginNetworkError::RequestHeadersTooLarge)?;
+    if header_count > MAX_REQUEST_HEADERS || header_bytes > MAX_HEADER_BYTES {
+        return Err(PluginNetworkError::RequestHeadersTooLarge);
     }
     Ok(())
 }
 
-fn is_credential_header(name: &HeaderName) -> bool {
-    name == AUTHORIZATION || name == COOKIE
+fn request_headers(request: &PluginNetworkRequest) -> HeaderMap {
+    let mut headers = request.headers.values.clone();
+    headers.extend(request.credentials.values.clone());
+    headers
 }
 
 fn method(method: PluginHttpMethod) -> Method {

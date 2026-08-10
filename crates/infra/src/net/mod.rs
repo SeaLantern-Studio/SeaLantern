@@ -9,9 +9,10 @@ pub use client::{ClientConfig, NetClient, RemoteFileInfo, RetryPolicy, TimeoutPo
 pub use error::NetError;
 pub use plugin::{
     AllowedNetworkTarget, NetworkOrigin, PluginHttpMethod, PluginNetworkAddressPolicy,
-    PluginNetworkClient, PluginNetworkError, PluginNetworkExecution, PluginNetworkExecutor,
-    PluginNetworkLimits, PluginNetworkRequest, PluginNetworkResponse, PluginNetworkScope,
-    PluginNetworkTrace, PluginTransportErrorKind, PluginTransportStage, ResolvedNetworkTarget,
+    PluginNetworkClient, PluginNetworkCredentials, PluginNetworkError, PluginNetworkExecution,
+    PluginNetworkExecutor, PluginNetworkLimits, PluginNetworkRequest, PluginNetworkResponse,
+    PluginNetworkScope, PluginNetworkTrace, PluginRequestHeaders, PluginTransportErrorKind,
+    PluginTransportStage, ResolvedNetworkTarget,
 };
 pub use proxy::{
     EffectiveProxy, ProxyConfigError, ProxyController, ProxyMode, ProxyMonitor, ProxySettings,

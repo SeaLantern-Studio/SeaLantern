@@ -3,17 +3,18 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_LENGTH, HOST};
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_LENGTH};
 use reqwest::StatusCode;
 use url::Url;
 
 use super::executor::{
     declared_body_too_large, is_public_ip, is_redirect, parse_target, validate_address,
-    validate_headers, PluginDnsResolver, MAX_DNS_ADDRESSES,
+    validate_request_headers, PluginDnsResolver, MAX_DNS_ADDRESSES,
 };
 use super::{
-    AllowedNetworkTarget, NetworkOrigin, PluginNetworkAddressPolicy, PluginNetworkClient,
-    PluginNetworkError, PluginNetworkExecutor, PluginNetworkLimits, PluginNetworkScope,
+    AllowedNetworkTarget, NetworkOrigin, PluginHttpMethod, PluginNetworkAddressPolicy,
+    PluginNetworkClient, PluginNetworkCredentials, PluginNetworkError, PluginNetworkExecutor,
+    PluginNetworkLimits, PluginNetworkRequest, PluginNetworkScope, PluginRequestHeaders,
 };
 
 struct FixedResolver(Vec<IpAddr>);
@@ -170,16 +171,60 @@ fn private_policy_requires_explicit_target_and_keeps_hard_denials() {
 }
 
 #[test]
-fn public_requests_reject_credentials_and_transport_headers() {
-    let mut headers = HeaderMap::new();
-    headers.insert(AUTHORIZATION, HeaderValue::from_static("Bearer secret"));
-    assert!(validate_headers(&headers, &PluginNetworkAddressPolicy::PublicOnly).is_err());
+fn regular_headers_use_an_explicit_allowlist() {
+    let mut headers = PluginRequestHeaders::new();
+    assert!(headers.insert("accept", "application/json").is_ok());
+    assert_eq!(headers.len(), 1);
+    assert_eq!(
+        headers.insert("host", "internal.example"),
+        Err(PluginNetworkError::ForbiddenHeader("host".to_owned()))
+    );
+    assert_eq!(
+        headers.insert("authorization", "Bearer secret"),
+        Err(PluginNetworkError::ForbiddenHeader("authorization".to_owned()))
+    );
+}
 
-    let mut headers = HeaderMap::new();
-    headers.insert(HOST, HeaderValue::from_static("internal.example"));
-    let private =
-        PluginNetworkAddressPolicy::AuthenticatedOrPrivate { allowed_targets: Vec::new() };
-    assert!(validate_headers(&headers, &private).is_err());
+#[test]
+fn credentials_accept_only_explicit_sensitive_headers_and_redact_debug_output() {
+    let mut credentials = PluginNetworkCredentials::new();
+    assert!(credentials.insert("authorization", "Bearer secret").is_ok());
+    assert!(credentials.insert("x-api-key", "secret-key").is_ok());
+    assert_eq!(
+        credentials.insert("x-forwarded-for", "127.0.0.1"),
+        Err(PluginNetworkError::ForbiddenHeader("x-forwarded-for".to_owned()))
+    );
+    let debug = format!("{credentials:?}");
+    assert!(!debug.contains("secret"));
+    assert!(!debug.contains("authorization"));
+}
+
+#[test]
+fn request_headers_enforce_value_and_total_limits() {
+    let mut headers = PluginRequestHeaders::new();
+    assert_eq!(
+        headers.insert("accept", &"a".repeat(4097)),
+        Err(PluginNetworkError::RequestHeadersTooLarge)
+    );
+    assert_eq!(
+        headers.insert("accept", "line\r\nbreak"),
+        Err(PluginNetworkError::InvalidHeaderValue)
+    );
+}
+
+#[test]
+fn public_request_rejects_dedicated_credentials_before_transport() {
+    let mut credentials = PluginNetworkCredentials::new();
+    credentials
+        .insert("authorization", "Bearer secret")
+        .expect("测试凭据应有效");
+    let request = PluginNetworkRequest::new(PluginHttpMethod::Get, "https://api.example.com")
+        .with_credentials(credentials);
+
+    assert_eq!(
+        validate_request_headers(&request, &PluginNetworkAddressPolicy::PublicOnly),
+        Err(PluginNetworkError::CredentialsNotAllowed)
+    );
 }
 
 #[test]
