@@ -13,13 +13,16 @@ blocking = ["reqwest/blocking"]
 
 [dependencies]
 atomicwrites = "0.4"
+bytes = "1"
 cap-std = "4"
+ipnet = "2"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 tracing = "0.1"
 tokio = { version = "1", features = [
     "fs",
     "io-util",
+    "net",
     "rt",
     "rt-multi-thread",
     "macros",

@@ -5272,9 +5272,11 @@ name = "sealantern-infra"
 version = "1.2.0"
 dependencies = [
  "atomicwrites",
+ "bytes",
  "cap-std",
  "dirs 5.0.1",
  "futures",
+ "ipnet",
  "reqwest 0.12.28",
  "rusqlite",
  "serde",
