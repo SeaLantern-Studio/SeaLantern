@@ -702,7 +702,7 @@
     "filename": "파일 이름",
     "thread_count": "스레드 수",
     "thread_count_empty": "스레드 수를 입력하세요",
-    "thread_count_invalid": "잘못된 문자입니다",
+    "thread_count_invalid": "스레드 수에 잘못된 문자가 포함되어 있습니다",
     "thread_count_positive": "스레드 수는 양의 정수여야 합니다",
     "thread_count_too_big": "스레드 수는 64를 초과할 수 없습니다",
     "cancel": "취소",

@@ -1189,7 +1189,7 @@
       "filename": "File Name",
       "thread_count": "Thread Count",
       "thread_count_empty": "Thread count cannot be empty",
-      "thread_count_invalid": "Invalid character",
+      "thread_count_invalid": "Thread count contains invalid characters",
       "thread_count_positive": "Thread count must be a positive integer",
       "thread_count_too_big": "Thread count cannot exceed 64",
       "cancel": "Cancel",

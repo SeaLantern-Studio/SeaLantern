@@ -685,7 +685,7 @@
     "filename": "Nombre del archivo",
     "thread_count": "Número de hilos",
     "thread_count_empty": "El número de hilos no puede estar vacío",
-    "thread_count_invalid": "Carácter no válido",
+    "thread_count_invalid": "El número de hilos contiene caracteres no válidos",
     "thread_count_positive": "El número de hilos debe ser un número entero positivo",
     "thread_count_too_big": "El número de hilos no puede superar 64",
     "cancel": "Cancelar",

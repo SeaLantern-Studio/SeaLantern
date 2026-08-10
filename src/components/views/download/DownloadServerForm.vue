@@ -10,6 +10,7 @@ interface Props {
   filename: string;
   saveDir: string;
   threadCount: string;
+  threadCountInvalid: boolean;
   loadingTypes: boolean;
   loadingVersions: boolean;
   isDownloading: boolean;
@@ -120,12 +121,15 @@ function handlePickFolder() {
       <div class="field">
         <label>{{ i18n.t("downloadServerView.form.threadCount") }}</label>
         <cmz-input
+          class="thread-count-input"
+          :class="{ 'thread-count-input--invalid': threadCountInvalid }"
           :model-value="threadCount"
           type="text"
           :placeholder="i18n.t('downloadServerView.form.threadCountPlaceholder')"
           :disabled="isDownloading"
+          :aria-invalid="threadCountInvalid"
           @update:modelValue="emit('update:threadCount', $event)"
-          @blur="emit('checkThreadCount')"
+          @focusout="emit('checkThreadCount')"
         >
           <template #prefix>
             <Cpu :size="16" class="input-icon" />
@@ -207,6 +211,15 @@ function handlePickFolder() {
 .input-icon {
   color: var(--sl-text-tertiary);
   pointer-events: none;
+}
+
+.thread-count-input--invalid :deep(.cmz-input-container) {
+  border-color: var(--sl-error);
+}
+
+.thread-count-input--invalid :deep(.cmz-input-container:focus-within) {
+  border-color: var(--sl-error);
+  box-shadow: 0 0 0 3px var(--sl-error-bg);
 }
 
 .path-picker {

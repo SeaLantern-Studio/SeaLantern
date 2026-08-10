@@ -38,6 +38,8 @@ const info = ref<DownloadLink | null>(null);
 const loadingTypes = ref(false);
 const loadingVersions = ref(false);
 const loadingInfo = ref(false);
+const threadCountInvalid = ref(false);
+const serverThreadCountInvalid = ref(false);
 
 // 下载任务状态（来自全局 store，任意页面可读，顶部任务球依赖此）
 const isDownloading = computed(() => downloadStore.isDownloading);
@@ -170,6 +172,7 @@ function isValidThreadCount(value: string): boolean {
 function checkThreadCount(value = threadCount.value) {
   const threadCountValue = value.trim();
   if (threadCountValue == "") {
+    toast.error(i18n.t("download-file.thread_count_empty"));
     return false;
   }
   if (!/^-?\d+$/.test(threadCountValue)) {
@@ -185,6 +188,24 @@ function checkThreadCount(value = threadCount.value) {
     return false;
   }
   return true;
+}
+
+function handleThreadCountChange(value: string) {
+  threadCount.value = value;
+  if (isValidThreadCount(value)) threadCountInvalid.value = false;
+}
+
+function handleServerThreadCountChange(value: string) {
+  serverThreadCount.value = value;
+  if (isValidThreadCount(value)) serverThreadCountInvalid.value = false;
+}
+
+function validateFileThreadCount() {
+  threadCountInvalid.value = !checkThreadCount(threadCount.value);
+}
+
+function validateServerThreadCount() {
+  serverThreadCountInvalid.value = !checkThreadCount(serverThreadCount.value);
 }
 
 // Server download methods
@@ -358,6 +379,7 @@ onMounted(() => {
           :filename="serverFilename"
           :saveDir="serverSaveDir"
           :threadCount="serverThreadCount"
+          :threadCountInvalid="serverThreadCountInvalid"
           :loadingTypes="loadingTypes"
           :loadingVersions="loadingVersions"
           :isDownloading="isDownloading"
@@ -367,9 +389,9 @@ onMounted(() => {
           @update:selectedVersion="selectedVersion = $event"
           @update:filename="serverFilename = $event"
           @update:saveDir="serverSaveDir = $event"
-          @update:threadCount="serverThreadCount = $event"
+          @update:threadCount="handleServerThreadCountChange"
           @pickFolder="pickServerFolder"
-          @checkThreadCount="checkThreadCount(serverThreadCount)"
+          @checkThreadCount="validateServerThreadCount"
         />
         <div class="card-actions">
           <cmz-button
@@ -397,13 +419,14 @@ onMounted(() => {
           :savePath="savePath"
           :filename="filename"
           :threadCount="threadCount"
+          :threadCountInvalid="threadCountInvalid"
           :isDownloading="isDownloading"
           @update:url="handleUrlChange"
           @update:savePath="savePath = $event"
           @update:filename="filename = $event"
-          @update:threadCount="threadCount = $event"
+          @update:threadCount="handleThreadCountChange"
           @pickFolder="pickFileFolder"
-          @checkThreadCount="checkThreadCount"
+          @checkThreadCount="validateFileThreadCount"
         />
         <div class="card-actions">
           <cmz-button
