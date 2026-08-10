@@ -137,9 +137,19 @@ fn proxy_url(host: &str, port: u16) -> Result<String, SystemProxyReadError> {
         format!("{host}:{port}")
     };
     let proxy_url = format!("http://{authority}");
-    reqwest::Proxy::all(&proxy_url)
-        .map(|_| proxy_url)
-        .map_err(|_| SystemProxyReadError::InvalidProxy)
+    let parsed = url::Url::parse(&proxy_url).map_err(|_| SystemProxyReadError::InvalidProxy)?;
+    let valid = parsed.scheme() == "http"
+        && parsed.host().is_some()
+        && parsed.port_or_known_default() == Some(port)
+        && parsed.username().is_empty()
+        && parsed.password().is_none()
+        && parsed.path() == "/"
+        && parsed.query().is_none()
+        && parsed.fragment().is_none();
+    if !valid {
+        return Err(SystemProxyReadError::InvalidProxy);
+    }
+    Ok(proxy_url)
 }
 
 fn convert_bypass_rules(bypass: &str) -> (Vec<String>, usize) {
@@ -218,12 +228,22 @@ mod tests {
     }
 
     #[test]
+    fn default_http_proxy_port_is_valid() {
+        let snapshot = snapshot_from_sysproxy(&enabled_proxy("proxy.example.com", 80, "")).unwrap();
+
+        assert_eq!(snapshot.routes().http_proxy(), Some("http://proxy.example.com:80"));
+    }
+
+    #[test]
     fn invalid_enabled_proxy_is_rejected() {
         let empty_host = snapshot_from_sysproxy(&enabled_proxy("", 7890, "")).unwrap_err();
         let zero_port = snapshot_from_sysproxy(&enabled_proxy("127.0.0.1", 0, "")).unwrap_err();
+        let injected_scheme =
+            snapshot_from_sysproxy(&enabled_proxy("http://example.com", 7890, "")).unwrap_err();
 
         assert!(matches!(empty_host, SystemProxyReadError::InvalidProxy));
         assert!(matches!(zero_port, SystemProxyReadError::InvalidProxy));
+        assert!(matches!(injected_scheme, SystemProxyReadError::InvalidProxy));
     }
 
     #[test]
