@@ -134,6 +134,7 @@ fn snapshot_from_sysproxy(
     ))
 }
 
+#[cfg(any(target_os = "windows", test))]
 fn diagnostic_proxy_host(host: &str) -> &str {
     if host.contains('@') {
         "<redacted>"
