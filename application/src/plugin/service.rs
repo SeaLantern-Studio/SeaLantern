@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use sealantern_core::app_plugin::{CapabilityDispatchError, CapabilityInvocation};
 use sealantern_extra::app_plugin::{AsyncPluginManager, PluginInfo, PluginManagerConfig};
 use sealantern_infra::platform::get_app_data_dir;
 
@@ -19,6 +20,10 @@ pub trait PluginService: Send + Sync {
     async fn disable(&self, plugin_id: &str) -> Result<(), PluginServiceError>;
     async fn unload(&self, plugin_id: &str) -> Result<(), PluginServiceError>;
     async fn plugins(&self) -> Result<Vec<PluginInfo>, PluginServiceError>;
+    async fn invoke(
+        &self,
+        invocation: CapabilityInvocation,
+    ) -> Result<serde_json::Value, PluginServiceError>;
 }
 
 /// 应用插件服务的可恢复错误。
@@ -26,6 +31,7 @@ pub trait PluginService: Send + Sync {
 pub enum PluginServiceError {
     Runtime(sealantern_extra::app_plugin::AppPluginError),
     Policy(PluginPolicyError),
+    Dispatch(CapabilityDispatchError),
     Initialization(String),
 }
 
@@ -34,6 +40,9 @@ impl std::fmt::Display for PluginServiceError {
         match self {
             Self::Runtime(error) => write!(formatter, "plugin runtime failed: {error}"),
             Self::Policy(error) => write!(formatter, "plugin policy state failed: {error}"),
+            Self::Dispatch(error) => {
+                write!(formatter, "plugin capability dispatch failed: {error}")
+            }
             Self::Initialization(error) => {
                 write!(formatter, "plugin service initialization failed: {error}")
             }
@@ -147,6 +156,16 @@ impl PluginService for CorePluginService {
 
     async fn plugins(&self) -> Result<Vec<PluginInfo>, PluginServiceError> {
         self.runtime.plugins().await.map_err(Into::into)
+    }
+
+    async fn invoke(
+        &self,
+        invocation: CapabilityInvocation,
+    ) -> Result<serde_json::Value, PluginServiceError> {
+        self.runtime
+            .invoke(invocation)
+            .await
+            .map_err(PluginServiceError::Dispatch)
     }
 }
 

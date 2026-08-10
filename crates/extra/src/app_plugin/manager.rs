@@ -5,7 +5,9 @@ use std::sync::{Arc, Mutex};
 use super::engine::{Lifecycle, PluginEngine};
 use super::{AppPluginError, PluginLoader, PluginManifest};
 use crate::observability;
-use sealantern_core::app_plugin::{CapabilityDispatcher, TrustSource};
+use sealantern_core::app_plugin::{
+    CapabilityDispatchError, CapabilityDispatcher, CapabilityInvocation, TrustSource,
+};
 
 /// 插件管理器需要的宿主无关目录配置。
 #[derive(Clone)]
@@ -121,6 +123,26 @@ impl AsyncPluginManager {
 
     pub async fn plugins(&self) -> Result<Vec<PluginInfo>, AppPluginError> {
         self.run(|manager| Ok(manager.plugins())).await
+    }
+
+    pub async fn invoke(
+        &self,
+        invocation: CapabilityInvocation,
+    ) -> Result<serde_json::Value, CapabilityDispatchError> {
+        let dispatcher = {
+            let manager = self
+                .inner
+                .lock()
+                .map_err(|_| CapabilityDispatchError::Failed("plugin manager lock is poisoned"))?;
+            manager
+                .config
+                .dispatcher
+                .clone()
+                .ok_or(CapabilityDispatchError::Unavailable(
+                    "plugin dispatcher is not configured",
+                ))?
+        };
+        dispatcher.invoke(invocation).await
     }
 
     async fn run<T, F>(&self, operation: F) -> Result<T, AppPluginError>
