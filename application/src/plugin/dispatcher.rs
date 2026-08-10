@@ -206,6 +206,21 @@ impl CoreCapabilityDispatcher {
                 let id = server_scope(scope)?;
                 host.server_status(id).await
             }
+            "server.lifecycle.start" | "server.lifecycle.stop" | "server.lifecycle.restart" => {
+                let id = server_scope(scope)?;
+                host.server_lifecycle(capability_id, id).await
+            }
+            "server.console.send" => {
+                let id = server_scope(scope)?;
+                let command = payload
+                    .get("command")
+                    .and_then(Value::as_str)
+                    .ok_or(CapabilityDispatchError::InvalidRequest("server console command"))?;
+                host.server_console(id, command).await
+            }
+            "server.config.patch" => {
+                Err(CapabilityDispatchError::Unavailable("server config patch is not implemented"))
+            }
             "server.file.metadata"
             | "server.file.read"
             | "plugin.bundle.metadata"
@@ -235,12 +250,12 @@ impl CapabilityDispatcher for CoreCapabilityDispatcher {
         let decision = self
             .policy
             .evaluate(
-                None,
+                invocation.session_id.as_deref(),
                 plugin_id,
                 invocation.capability.as_str(),
                 invocation.scope.as_ref(),
                 invocation.declared,
-                false,
+                invocation.approval_token.is_some(),
             )
             .await
             .map_err(|error| {
@@ -255,6 +270,24 @@ impl CapabilityDispatcher for CoreCapabilityDispatcher {
             })?;
         if let PolicyDecision::Deny(reason) = decision {
             return Err(CapabilityDispatchError::Denied(reason));
+        }
+        if let (Some(session_id), Some(token)) =
+            (invocation.session_id.as_deref(), invocation.approval_token.as_deref())
+        {
+            self.policy
+                .consume_single_use_token(
+                    session_id,
+                    token,
+                    plugin_id,
+                    invocation.capability.as_str(),
+                    invocation.scope.as_ref(),
+                )
+                .await
+                .map_err(|_| {
+                    CapabilityDispatchError::Denied(
+                        sealantern_core::app_plugin::PolicyDenialReason::SingleUseApprovalRequired,
+                    )
+                })?;
         }
         self.check_rate_limit(plugin_id, invocation.capability.as_str())
             .await?;
@@ -278,6 +311,16 @@ pub trait PluginReadHost: Send + Sync {
     async fn installed_plugins(&self) -> Result<Value, CapabilityDispatchError>;
     async fn instances(&self) -> Result<Value, CapabilityDispatchError>;
     async fn server_status(&self, instance_id: &str) -> Result<Value, CapabilityDispatchError>;
+    async fn server_lifecycle(
+        &self,
+        capability_id: &str,
+        instance_id: &str,
+    ) -> Result<Value, CapabilityDispatchError>;
+    async fn server_console(
+        &self,
+        instance_id: &str,
+        command: &str,
+    ) -> Result<Value, CapabilityDispatchError>;
     async fn scoped_file(
         &self,
         capability_id: &str,
@@ -370,6 +413,42 @@ impl PluginReadHost for ApplicationPluginReadHost {
             _ => return Err(CapabilityDispatchError::InvalidRequest("file scope kind")),
         };
         read_scoped_file(capability_id, root, relative_path).await
+    }
+
+    async fn server_lifecycle(
+        &self,
+        capability_id: &str,
+        instance_id: &str,
+    ) -> Result<Value, CapabilityDispatchError> {
+        let id = sealantern_core::instance::InstanceId::new(instance_id)
+            .map_err(|_| CapabilityDispatchError::InvalidRequest("server instance id"))?;
+        match capability_id {
+            "server.lifecycle.start" => self.server.start(&id).await,
+            "server.lifecycle.stop" => self.server.stop(&id).await,
+            "server.lifecycle.restart" => self.server.restart(&id).await,
+            _ => {
+                return Err(CapabilityDispatchError::InvalidRequest("server lifecycle capability"))
+            }
+        }
+        .map(|_| Value::Null)
+        .map_err(|error| host_error("server lifecycle", error))
+    }
+
+    async fn server_console(
+        &self,
+        instance_id: &str,
+        command: &str,
+    ) -> Result<Value, CapabilityDispatchError> {
+        if command.trim().is_empty() || command.len() > 4096 {
+            return Err(CapabilityDispatchError::InvalidRequest("server console command"));
+        }
+        let id = sealantern_core::instance::InstanceId::new(instance_id)
+            .map_err(|_| CapabilityDispatchError::InvalidRequest("server instance id"))?;
+        self.server
+            .send_command(&id, command)
+            .await
+            .map(|_| Value::Null)
+            .map_err(|error| host_error("server console", error))
     }
 }
 
@@ -494,6 +573,7 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::*;
+    use crate::plugin::SessionGrant;
     use sealantern_core::app_plugin::{CapabilityId, ScopeBinding, TrustSource};
 
     struct FakeMarket {
@@ -518,6 +598,18 @@ mod tests {
 
         async fn server_status(&self, instance_id: &str) -> Result<Value, CapabilityDispatchError> {
             Ok(serde_json::json!({"instanceId": instance_id, "state": "stopped"}))
+        }
+
+        async fn server_lifecycle(
+            &self,
+            _: &str,
+            _: &str,
+        ) -> Result<Value, CapabilityDispatchError> {
+            Ok(Value::Null)
+        }
+
+        async fn server_console(&self, _: &str, _: &str) -> Result<Value, CapabilityDispatchError> {
+            Err(CapabilityDispatchError::Unavailable("not used"))
         }
 
         async fn scoped_file(
@@ -574,6 +666,7 @@ mod tests {
             capability: CapabilityId::new("market.search").unwrap(),
             scope: None,
             declared: true,
+            session_id: None,
             payload: serde_json::json!({"source":"Modrinth", "query":"paper", "page":1, "pageSize":20}),
             approval_token: None,
             request_id: "request-1".to_string(),
@@ -601,6 +694,7 @@ mod tests {
             capability: CapabilityId::new("market.resource.read").unwrap(),
             scope: Some(ScopeBinding::new(ScopeKind::MarketArtifact, "modrinth:paper").unwrap()),
             declared: false,
+            session_id: None,
             payload: Value::Null,
             approval_token: None,
             request_id: "request-2".to_string(),
@@ -624,6 +718,10 @@ mod tests {
         let scope = ScopeBinding::new(ScopeKind::ServerInstance, "server-a").unwrap();
         policy.set_enabled("example.plugin", true).await.unwrap();
         policy
+            .set_trust("example.plugin", TrustSource::LocallyTrusted)
+            .await
+            .unwrap();
+        policy
             .grant_persistent("example.plugin", "server.status.read", Some(&scope))
             .await
             .unwrap();
@@ -638,6 +736,7 @@ mod tests {
             capability: CapabilityId::new("server.status.read").unwrap(),
             scope: Some(scope),
             declared: true,
+            session_id: None,
             payload: Value::Null,
             approval_token: None,
             request_id: "request-3".to_string(),
@@ -669,6 +768,63 @@ mod tests {
             read_scoped_file("plugin.bundle.read", root.path().to_owned(), Path::new("large.txt"))
                 .await,
             Err(CapabilityDispatchError::Unavailable("scoped file exceeds read limit"))
+        ));
+    }
+
+    #[tokio::test]
+    async fn server_operation_consumes_single_use_approval_token_once() {
+        let root = tempfile::tempdir().unwrap();
+        let policy = Arc::new(
+            PluginPolicyStore::open(root.path().join("state.sqlite"))
+                .await
+                .unwrap(),
+        );
+        let scope = ScopeBinding::new(ScopeKind::ServerInstance, "server-a").unwrap();
+        policy.set_enabled("example.plugin", true).await.unwrap();
+        policy
+            .set_trust("example.plugin", TrustSource::LocallyTrusted)
+            .await
+            .unwrap();
+        policy
+            .grant_session(SessionGrant {
+                session_id: "session-1".to_string(),
+                plugin_id: "example.plugin".to_string(),
+                capability_id: "server.lifecycle.restart".to_string(),
+                scope: Some(scope.clone()),
+            })
+            .await
+            .unwrap();
+        let token = policy
+            .issue_single_use_token(
+                "session-1",
+                "example.plugin",
+                "server.lifecycle.restart",
+                Some(scope.clone()),
+            )
+            .await
+            .unwrap();
+        let dispatcher = CoreCapabilityDispatcher::new(
+            policy.clone(),
+            Arc::new(FakeMarket { searches: AtomicUsize::new(0) }),
+        )
+        .with_read_host(Arc::new(FakeReadHost));
+        let invocation = CapabilityInvocation {
+            principal: ExecutionPrincipal::Plugin("example.plugin".to_string()),
+            trust_source: TrustSource::LocallyTrusted,
+            capability: CapabilityId::new("server.lifecycle.restart").unwrap(),
+            scope: Some(scope.clone()),
+            declared: true,
+            session_id: Some("session-1".to_string()),
+            payload: Value::Null,
+            approval_token: Some(token.clone()),
+            request_id: "request-m2".to_string(),
+        };
+        dispatcher.invoke(invocation.clone()).await.unwrap();
+        assert!(matches!(
+            dispatcher.invoke(invocation).await,
+            Err(CapabilityDispatchError::Denied(
+                sealantern_core::app_plugin::PolicyDenialReason::SingleUseApprovalRequired
+            ))
         ));
     }
 }

@@ -266,7 +266,14 @@ impl PluginEngine {
                 "invoke",
                 self.lua
                     .create_function(
-                        move |lua, (id, payload, scope): (String, Option<Value>, Option<Value>)| {
+                        move |lua,
+                              (id, payload, scope, session_id, approval_token): (
+                            String,
+                            Option<Value>,
+                            Option<Value>,
+                            Option<String>,
+                            Option<String>,
+                        )| {
                             let capability = CapabilityId::new(&id)
                                 .map_err(|error| mlua::Error::runtime(error.to_string()))?;
                             let scope = parse_scope(scope)?;
@@ -283,8 +290,9 @@ impl PluginEngine {
                                 capability,
                                 scope,
                                 declared,
+                                session_id,
                                 payload,
-                                approval_token: None,
+                                approval_token,
                                 request_id: uuid::Uuid::new_v4().to_string(),
                             };
                             let response = handle

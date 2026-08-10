@@ -204,6 +204,7 @@ pub struct CapabilityInvocation {
     pub capability: CapabilityId,
     pub scope: Option<ScopeBinding>,
     pub declared: bool,
+    pub session_id: Option<String>,
     #[serde(default)]
     pub payload: Value,
     pub approval_token: Option<String>,
