@@ -11,6 +11,10 @@ use sealantern_core::app_plugin::{
 use sealantern_extra::market::{
     Fetcher, MarketError, MarketSource, ResourceInfo, SearchResult, Version,
 };
+use sealantern_infra::net::{
+    NetworkOrigin, PluginHttpMethod, PluginNetworkAddressPolicy, PluginNetworkExecutor,
+    PluginNetworkLimits, PluginNetworkRequest, PluginNetworkScope,
+};
 use sealantern_interface::{InstanceService, ServerService, SystemService};
 use serde::Deserialize;
 use serde_json::Value;
@@ -19,6 +23,7 @@ use tokio::sync::Mutex;
 use super::PluginPolicyStore;
 
 const MARKET_PAGE_SIZE_LIMIT: u32 = 100;
+const MAX_PLUGIN_NETWORK_IN_FLIGHT: usize = 8;
 const RATE_WINDOW: Duration = Duration::from_secs(60);
 
 /// 只读市场能力的宿主端口。
@@ -85,6 +90,7 @@ pub struct CoreCapabilityDispatcher {
     policy: Arc<PluginPolicyStore>,
     market: Arc<dyn MarketGateway>,
     host: Option<Arc<dyn PluginReadHost>>,
+    network: PluginNetworkExecutor,
     calls: Mutex<HashMap<(String, String), VecDeque<Instant>>>,
 }
 
@@ -94,6 +100,11 @@ impl CoreCapabilityDispatcher {
             policy,
             market,
             host: None,
+            network: PluginNetworkExecutor::new(
+                MAX_PLUGIN_NETWORK_IN_FLIGHT,
+                PluginNetworkLimits::default(),
+            )
+            .expect("default plugin network limits must be valid"),
             calls: Mutex::new(HashMap::new()),
         }
     }
@@ -236,6 +247,46 @@ impl CoreCapabilityDispatcher {
             )),
         }
     }
+
+    async fn dispatch_network(
+        &self,
+        scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
+        payload: &Value,
+    ) -> Result<Value, CapabilityDispatchError> {
+        let scope = scope.ok_or(CapabilityDispatchError::InvalidRequest("network origin scope"))?;
+        if scope.kind != ScopeKind::NetworkOrigin {
+            return Err(CapabilityDispatchError::InvalidRequest("network origin scope kind"));
+        }
+        let request: NetworkRequest = serde_json::from_value(payload.clone())
+            .map_err(|_| CapabilityDispatchError::InvalidRequest("network request payload"))?;
+        if request.method != "GET" {
+            return Err(CapabilityDispatchError::InvalidRequest("plugin network method"));
+        }
+        let origin = NetworkOrigin::parse(&scope.value)
+            .map_err(|_| CapabilityDispatchError::InvalidRequest("network origin scope value"))?;
+        let scope = PluginNetworkScope::new(origin, PluginNetworkAddressPolicy::PublicOnly)
+            .map_err(|_| CapabilityDispatchError::InvalidRequest("network origin scope value"))?;
+        let execution = self
+            .network
+            .execute(PluginNetworkRequest::new(PluginHttpMethod::Get, request.url), scope)
+            .await
+            .map_err(|error| {
+                tracing::warn!(
+                    target: "sealantern.application.plugin",
+                    error = %error,
+                    "plugin allowlisted network request failed"
+                );
+                CapabilityDispatchError::Failed("plugin network request failed")
+            })?;
+        let response = execution.response;
+        let body = String::from_utf8(response.body.to_vec())
+            .map_err(|_| CapabilityDispatchError::Failed("plugin network response is not UTF-8"))?;
+        Ok(serde_json::json!({
+            "status": response.status,
+            "contentType": response.content_type,
+            "body": body,
+        }))
+    }
 }
 
 #[async_trait]
@@ -294,6 +345,10 @@ impl CapabilityDispatcher for CoreCapabilityDispatcher {
         match invocation.capability.as_str() {
             capability @ ("market.search" | "market.resource.read" | "market.versions.read") => {
                 self.dispatch_market(capability, invocation.scope.as_ref(), &invocation.payload)
+                    .await
+            }
+            "network.request.public_allowlisted" => {
+                self.dispatch_network(invocation.scope.as_ref(), &invocation.payload)
                     .await
             }
             capability => {
@@ -511,6 +566,13 @@ struct MarketSearchRequest {
     query: String,
     page: Option<u32>,
     page_size: Option<u32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct NetworkRequest {
+    method: String,
+    url: String,
 }
 
 fn market_scope(
