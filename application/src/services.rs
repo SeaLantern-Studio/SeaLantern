@@ -15,6 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use crate::error::InstanceError;
+use crate::plugin::{CorePluginService, PluginServiceError};
 use crate::service::{
     CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreServerService,
     CoreSettingsService, CoreSystemService, CoreUpdateCheckService, ProxyMonitoringService,
@@ -49,6 +50,8 @@ pub struct AppServicesInner {
     pub system: Arc<CoreSystemService>,
     /// 应用更新检查服务。
     pub update: Arc<CoreUpdateCheckService>,
+    /// 惰性初始化的应用插件服务。
+    plugin: tokio::sync::OnceCell<Arc<CorePluginService>>,
 }
 
 /// 进程级全局容器。惰性初始化，可替换。
@@ -75,6 +78,7 @@ impl AppServices {
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 system: Arc::new(CoreSystemService),
                 update: Arc::new(CoreUpdateCheckService::new()),
+                plugin: tokio::sync::OnceCell::new(),
             }),
         }
     }
@@ -232,5 +236,23 @@ impl AppServices {
     /// 便捷访问入口：一步拿到更新检查服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn update_service() -> Result<Arc<CoreUpdateCheckService>, InstanceError> {
         Ok(Self::get().await?.update().clone())
+    }
+
+    /// 获取应用插件服务；首次调用才打开策略数据库，避免阻塞常规启动路径。
+    pub async fn plugin(&self) -> Result<&Arc<CorePluginService>, PluginServiceError> {
+        self.inner
+            .plugin
+            .get_or_try_init(|| async { CorePluginService::open_default().await.map(Arc::new) })
+            .await
+    }
+
+    /// 便捷访问入口：一步拿到应用插件服务的共享句柄。
+    pub async fn plugin_service() -> Result<Arc<CorePluginService>, PluginServiceError> {
+        Ok(Self::get()
+            .await
+            .map_err(|error| PluginServiceError::Initialization(error.to_string()))?
+            .plugin()
+            .await?
+            .clone())
     }
 }
