@@ -19,6 +19,10 @@ const { loading: submitting, start: startLoading, stop: stopLoading } = useLoadi
 
 const MAX_DOWNLOAD_THREADS = 64;
 
+type ThreadCountValidationResult =
+  | { valid: true; value: number }
+  | { valid: false; error: "empty" | "invalid" | "non_positive" | "too_large" };
+
 // File download state
 const url = ref("");
 const savePath = ref("");
@@ -61,17 +65,9 @@ const canFileDownload = computed(() => {
     return false;
   }
 
-  if (!isValidThreadCount(threadCount.value)) return false;
+  if (!validateThreadCount(threadCount.value).valid) return false;
 
-  // 验证URL格式
-  try {
-    const parsedUrl = new URL(url.value.trim());
-    if (!parsedUrl.protocol || !parsedUrl.hostname) return false;
-  } catch {
-    return false;
-  }
-
-  return true;
+  return parseDownloadUrl(url.value) !== null;
 });
 
 // Server download computed properties
@@ -99,7 +95,7 @@ const canServerDownload = computed(() => {
   if (!selectedType.value || !selectedVersion.value) return false;
   if (!info.value?.url) return false;
   if (!serverSaveDir.value.trim() || !serverFilename.value.trim()) return false;
-  return isValidThreadCount(serverThreadCount.value);
+  return validateThreadCount(serverThreadCount.value).valid;
 });
 
 const canGoCreate = computed(() => {
@@ -128,21 +124,29 @@ const savePathPreview = computed(() => {
 });
 
 // File download methods
-function parseFilenameFromUrl(value: string): string | null {
+function parseDownloadUrl(value: string): URL | null {
   try {
     const parsedUrl = new URL(value.trim());
-    const encodedFilename = parsedUrl.pathname.match(/\/([^/]+)\/*$/)?.[1];
-    if (!encodedFilename) return null;
-
-    try {
-      const decodedFilename = decodeURIComponent(encodedFilename);
-      // 解码结果若包含路径分隔符，则保留编码形式，避免生成不安全的文件名。
-      return /[\\/]/.test(decodedFilename) ? encodedFilename : decodedFilename;
-    } catch {
-      return encodedFilename;
-    }
+    if (!["http:", "https:"].includes(parsedUrl.protocol) || !parsedUrl.hostname) return null;
+    return parsedUrl;
   } catch {
     return null;
+  }
+}
+
+function parseFilenameFromUrl(value: string): string | null {
+  const parsedUrl = parseDownloadUrl(value);
+  if (!parsedUrl) return null;
+
+  const encodedFilename = parsedUrl.pathname.match(/\/([^/]+)\/*$/)?.[1];
+  if (!encodedFilename) return null;
+
+  try {
+    const decodedFilename = decodeURIComponent(encodedFilename);
+    // 解码结果若包含路径分隔符，则保留编码形式，避免生成不安全的文件名。
+    return /[\\/]/.test(decodedFilename) ? encodedFilename : decodedFilename;
+  } catch {
+    return encodedFilename;
   }
 }
 
@@ -161,43 +165,40 @@ async function pickFileFolder() {
   }
 }
 
-function isValidThreadCount(value: string): boolean {
+function validateThreadCount(value: string): ThreadCountValidationResult {
   const normalized = value.trim();
-  if (!/^[1-9]\d*$/.test(normalized)) return false;
+  if (!normalized) return { valid: false, error: "empty" };
+  if (!/^-?\d+$/.test(normalized)) return { valid: false, error: "invalid" };
+  if (!/^[1-9]\d*$/.test(normalized)) return { valid: false, error: "non_positive" };
 
   const parsed = Number(normalized);
-  return parsed >= 1 && parsed <= MAX_DOWNLOAD_THREADS;
+  if (parsed > MAX_DOWNLOAD_THREADS) return { valid: false, error: "too_large" };
+
+  return { valid: true, value: parsed };
 }
 
 function checkThreadCount(value = threadCount.value) {
-  const threadCountValue = value.trim();
-  if (threadCountValue == "") {
-    toast.error(i18n.t("download-file.thread_count_empty"));
-    return false;
-  }
-  if (!/^-?\d+$/.test(threadCountValue)) {
-    toast.error(i18n.t("download-file.thread_count_invalid"));
-    return false;
-  }
-  if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    toast.error(i18n.t("download-file.thread_count_positive"));
-    return false;
-  }
-  if (parseInt(threadCountValue, 10) > MAX_DOWNLOAD_THREADS) {
-    toast.error(i18n.t("download-file.thread_count_too_big"));
-    return false;
-  }
-  return true;
+  const result = validateThreadCount(value);
+  if (result.valid) return true;
+
+  const messageKey = {
+    empty: "download-file.thread_count_empty",
+    invalid: "download-file.thread_count_invalid",
+    non_positive: "download-file.thread_count_positive",
+    too_large: "download-file.thread_count_too_big",
+  }[result.error];
+  toast.error(i18n.t(messageKey));
+  return false;
 }
 
 function handleThreadCountChange(value: string) {
   threadCount.value = value;
-  if (isValidThreadCount(value)) threadCountInvalid.value = false;
+  if (validateThreadCount(value).valid) threadCountInvalid.value = false;
 }
 
 function handleServerThreadCountChange(value: string) {
   serverThreadCount.value = value;
-  if (isValidThreadCount(value)) serverThreadCountInvalid.value = false;
+  if (validateThreadCount(value).valid) serverThreadCountInvalid.value = false;
 }
 
 function validateFileThreadCount() {
