@@ -201,6 +201,7 @@ impl CoreCapabilityDispatcher {
 
     async fn dispatch_read_host(
         &self,
+        plugin_id: &str,
         capability_id: &str,
         scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
         payload: &Value,
@@ -237,7 +238,8 @@ impl CoreCapabilityDispatcher {
             | "plugin.bundle.metadata"
             | "plugin.bundle.read" => {
                 let path = read_path(payload)?;
-                host.scoped_file(capability_id, scope, &path).await
+                host.scoped_file(plugin_id, capability_id, scope, &path)
+                    .await
             }
             "server.metrics.read" | "server.metadata.read" | "server.config.redacted" => Err(
                 CapabilityDispatchError::Unavailable("server read capability is not implemented"),
@@ -352,8 +354,13 @@ impl CapabilityDispatcher for CoreCapabilityDispatcher {
                     .await
             }
             capability => {
-                self.dispatch_read_host(capability, invocation.scope.as_ref(), &invocation.payload)
-                    .await
+                self.dispatch_read_host(
+                    plugin_id,
+                    capability,
+                    invocation.scope.as_ref(),
+                    &invocation.payload,
+                )
+                .await
             }
         }
     }
@@ -378,6 +385,7 @@ pub trait PluginReadHost: Send + Sync {
     ) -> Result<Value, CapabilityDispatchError>;
     async fn scoped_file(
         &self,
+        plugin_id: &str,
         capability_id: &str,
         scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
         relative_path: &Path,
@@ -448,6 +456,7 @@ impl PluginReadHost for ApplicationPluginReadHost {
 
     async fn scoped_file(
         &self,
+        plugin_id: &str,
         capability_id: &str,
         scope: Option<&sealantern_core::app_plugin::ScopeBinding>,
         relative_path: &Path,
@@ -464,7 +473,7 @@ impl PluginReadHost for ApplicationPluginReadHost {
                     .ok_or(CapabilityDispatchError::Unavailable("server instance not found"))?
                     .directory
             }
-            ScopeKind::PluginBundle => self.plugin_root.join(&scope.value),
+            ScopeKind::PluginBundle => plugin_bundle_root(&self.plugin_root, plugin_id, scope)?,
             _ => return Err(CapabilityDispatchError::InvalidRequest("file scope kind")),
         };
         read_scoped_file(capability_id, root, relative_path).await
@@ -505,6 +514,17 @@ impl PluginReadHost for ApplicationPluginReadHost {
             .map(|_| Value::Null)
             .map_err(|error| host_error("server console", error))
     }
+}
+
+fn plugin_bundle_root(
+    plugin_root: &Path,
+    plugin_id: &str,
+    scope: &sealantern_core::app_plugin::ScopeBinding,
+) -> Result<PathBuf, CapabilityDispatchError> {
+    if scope.value != plugin_id {
+        return Err(CapabilityDispatchError::InvalidRequest("plugin bundle scope"));
+    }
+    Ok(plugin_root.join(plugin_id))
 }
 
 async fn read_scoped_file(
@@ -677,6 +697,7 @@ mod tests {
         async fn scoped_file(
             &self,
             _: &str,
+            _: &str,
             _: Option<&sealantern_core::app_plugin::ScopeBinding>,
             _: &Path,
         ) -> Result<Value, CapabilityDispatchError> {
@@ -830,6 +851,22 @@ mod tests {
             read_scoped_file("plugin.bundle.read", root.path().to_owned(), Path::new("large.txt"))
                 .await,
             Err(CapabilityDispatchError::Unavailable("scoped file exceeds read limit"))
+        ));
+    }
+
+    #[test]
+    fn plugin_bundle_scope_is_bound_to_the_calling_plugin() {
+        let root = Path::new("plugins");
+        let own = ScopeBinding::new(ScopeKind::PluginBundle, "example.plugin").unwrap();
+        let other = ScopeBinding::new(ScopeKind::PluginBundle, "other.plugin").unwrap();
+
+        assert_eq!(
+            plugin_bundle_root(root, "example.plugin", &own).unwrap(),
+            root.join("example.plugin")
+        );
+        assert!(matches!(
+            plugin_bundle_root(root, "example.plugin", &other),
+            Err(CapabilityDispatchError::InvalidRequest("plugin bundle scope"))
         ));
     }
 
