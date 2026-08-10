@@ -94,10 +94,19 @@ impl CoreSettingsService {
 
     /// 加载持久化设置并同步代理运行时，供网络消费者建立启动屏障。
     pub async fn initialize(&self) -> Result<(), SettingsServiceError> {
-        let manager = self.manager().await.map_err(Self::contract_error)?;
-        let manager = manager.lock().await;
-        self.repair_network_if_needed(manager.get())
+        self.lock_synchronized_manager()
+            .await
+            .map(|_| ())
             .map_err(Self::contract_error)
+    }
+
+    async fn lock_synchronized_manager(
+        &self,
+    ) -> Result<tokio::sync::MutexGuard<'_, SettingsManager>, SettingsError> {
+        let manager = self.manager().await?;
+        let manager = manager.lock().await;
+        self.repair_network_if_needed(manager.get())?;
+        Ok(manager)
     }
 
     fn repair_network_if_needed(&self, settings: &AppSettings) -> Result<(), SettingsError> {
@@ -127,18 +136,20 @@ impl CoreSettingsService {
     fn commit_proxy_change(
         &self,
         prepared: Option<Box<dyn PreparedProxyUpdate>>,
-        result: &UpdateResult,
+        previous: &sealantern_infra::net::proxy::ProxySettings,
+        persisted: &sealantern_infra::net::proxy::ProxySettings,
     ) -> Result<(), SettingsError> {
-        if !result
-            .changed_groups
-            .contains(&sealantern_extra::models::SettingsGroup::Network)
-        {
+        if previous == persisted {
             return Ok(());
         }
-        let prepared = prepared.ok_or_else(|| SettingsError::OperationFailed {
-            source: Box::new(std::io::Error::other("网络设置发生未准备的并发变更")),
-        })?;
-        self.commit_prepared_persisted_proxy(prepared, result.settings.proxy.clone())
+        // 部分更新会在配置锁内重读磁盘。若其他进程刚修改了代理，本次调用即使
+        // 没携带 proxy，也可能观察到真实的 Network 变更；此时应按最终持久化值
+        // 重新准备，而不是把正常的跨进程合并误报为内部不变量错误。
+        let prepared = match prepared {
+            Some(prepared) => prepared,
+            None => self.network_runtime.prepare(persisted.clone())?,
+        };
+        self.commit_prepared_persisted_proxy(prepared, persisted.clone())
     }
 
     fn commit_prepared_persisted_proxy(
@@ -205,23 +216,24 @@ impl SettingsService for CoreSettingsService {
     }
 
     async fn get(&self) -> Result<AppSettings, SettingsServiceError> {
-        let manager = self.manager().await.map_err(Self::contract_error)?;
-        let manager = manager.lock().await;
-        self.repair_network_if_needed(manager.get())
+        let manager = self
+            .lock_synchronized_manager()
+            .await
             .map_err(Self::contract_error)?;
         Ok(manager.get().clone())
     }
 
     async fn update(&self, settings: AppSettings) -> Result<UpdateResult, SettingsServiceError> {
-        let manager = self.manager().await.map_err(Self::contract_error)?;
         settings
             .validate()
             .map_err(sealantern_extra::config::SettingsError::from)
             .map_err(SettingsError::from)
             .map_err(Self::contract_error)?;
-        let mut manager = manager.lock().await;
-        self.repair_network_if_needed(manager.get())
+        let mut manager = self
+            .lock_synchronized_manager()
+            .await
             .map_err(Self::contract_error)?;
+        let previous_proxy = manager.get().proxy.clone();
         let prepared = self
             .prepare_proxy_change(manager.get(), &settings)
             .map_err(Self::contract_error)?;
@@ -230,7 +242,7 @@ impl SettingsService for CoreSettingsService {
             .await
             .map_err(SettingsError::from)
             .map_err(Self::contract_error)?;
-        self.commit_proxy_change(prepared, &result)
+        self.commit_proxy_change(prepared, &previous_proxy, &result.settings.proxy)
             .map_err(Self::contract_error)?;
         Ok(result)
     }
@@ -239,10 +251,11 @@ impl SettingsService for CoreSettingsService {
         &self,
         partial: PartialAppSettings,
     ) -> Result<UpdateResult, SettingsServiceError> {
-        let manager = self.manager().await.map_err(Self::contract_error)?;
-        let mut manager = manager.lock().await;
-        self.repair_network_if_needed(manager.get())
+        let mut manager = self
+            .lock_synchronized_manager()
+            .await
             .map_err(Self::contract_error)?;
+        let previous_proxy = manager.get().proxy.clone();
         let prepared = match partial.proxy.as_ref() {
             Some(proxy) => Some(
                 self.network_runtime
@@ -256,15 +269,15 @@ impl SettingsService for CoreSettingsService {
             .await
             .map_err(SettingsError::from)
             .map_err(Self::contract_error)?;
-        self.commit_proxy_change(prepared, &result)
+        self.commit_proxy_change(prepared, &previous_proxy, &result.settings.proxy)
             .map_err(Self::contract_error)?;
         Ok(result)
     }
 
     async fn reset(&self) -> Result<AppSettings, SettingsServiceError> {
-        let manager = self.manager().await.map_err(Self::contract_error)?;
-        let mut manager = manager.lock().await;
-        self.repair_network_if_needed(manager.get())
+        let mut manager = self
+            .lock_synchronized_manager()
+            .await
             .map_err(Self::contract_error)?;
         let default = AppSettings::default();
         let prepared = self
@@ -277,11 +290,13 @@ impl SettingsService for CoreSettingsService {
             .map_err(SettingsError::from)
             .map_err(Self::contract_error)?;
         if settings.proxy != previous_proxy {
-            let prepared = prepared.ok_or_else(|| {
-                Self::contract_error(SettingsError::OperationFailed {
-                    source: Box::new(std::io::Error::other("网络设置发生未准备的重置")),
-                })
-            })?;
+            let prepared = match prepared {
+                Some(prepared) => prepared,
+                None => self
+                    .network_runtime
+                    .prepare(settings.proxy.clone())
+                    .map_err(Self::contract_error)?,
+            };
             self.commit_prepared_persisted_proxy(prepared, settings.proxy.clone())
                 .map_err(Self::contract_error)?;
         }
@@ -289,9 +304,9 @@ impl SettingsService for CoreSettingsService {
     }
 
     async fn export_json(&self) -> Result<String, SettingsServiceError> {
-        let manager = self.manager().await.map_err(Self::contract_error)?;
-        let manager = manager.lock().await;
-        self.repair_network_if_needed(manager.get())
+        let manager = self
+            .lock_synchronized_manager()
+            .await
             .map_err(Self::contract_error)?;
         manager
             .export_json()
@@ -300,7 +315,6 @@ impl SettingsService for CoreSettingsService {
     }
 
     async fn import_json(&self, json: &str) -> Result<UpdateResult, SettingsServiceError> {
-        let manager = self.manager().await.map_err(Self::contract_error)?;
         let candidate: AppSettings = serde_json::from_str(json).map_err(|error| {
             Self::contract_error(SettingsError::InvalidInput {
                 source: sealantern_extra::config::SettingsError::invalid_input(
@@ -314,9 +328,11 @@ impl SettingsService for CoreSettingsService {
             .map_err(sealantern_extra::config::SettingsError::from)
             .map_err(SettingsError::from)
             .map_err(Self::contract_error)?;
-        let mut manager = manager.lock().await;
-        self.repair_network_if_needed(manager.get())
+        let mut manager = self
+            .lock_synchronized_manager()
+            .await
             .map_err(Self::contract_error)?;
+        let previous_proxy = manager.get().proxy.clone();
         let prepared = self
             .prepare_proxy_change(manager.get(), &candidate)
             .map_err(Self::contract_error)?;
@@ -325,7 +341,7 @@ impl SettingsService for CoreSettingsService {
             .await
             .map_err(SettingsError::from)
             .map_err(Self::contract_error)?;
-        self.commit_proxy_change(prepared, &result)
+        self.commit_proxy_change(prepared, &previous_proxy, &result.settings.proxy)
             .map_err(Self::contract_error)?;
         Ok(result)
     }
@@ -1074,6 +1090,41 @@ mod tests {
                 .filter(|event| matches!(event, NetworkEvent::Commit))
                 .count(),
             4
+        );
+    }
+
+    #[tokio::test]
+    async fn non_network_partial_update_adopts_and_applies_external_proxy_change() {
+        let root = tempfile::tempdir().expect("临时目录应创建");
+        let path = root.path().join("settings.json");
+        let (service, _runtime, events) = recording_service(&path).await;
+        let mut external = SettingsManager::load(&path)
+            .await
+            .expect("外部设置管理器应加载");
+        external
+            .update_partial(PartialAppSettings {
+                proxy: Some(ProxySettings { mode: ProxyMode::Disabled }),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("外部代理更新应持久化");
+
+        let result = service
+            .update_partial(PartialAppSettings {
+                default_port: Some(25566),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("非网络部分更新应合并外部代理并同步运行时");
+
+        assert_eq!(result.settings.proxy.mode, ProxyMode::Disabled);
+        assert_eq!(result.settings.default_port, 25566);
+        assert_eq!(
+            *events.lock().expect("测试事件锁不应污染"),
+            vec![
+                NetworkEvent::Prepare(ProxySettings { mode: ProxyMode::Disabled }),
+                NetworkEvent::Commit,
+            ]
         );
     }
 }
