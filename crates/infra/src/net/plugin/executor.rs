@@ -14,10 +14,11 @@ use url::{Host, Url};
 use super::{
     canonical_ip, AllowedNetworkTarget, PluginHttpMethod, PluginNetworkAddressPolicy,
     PluginNetworkError, PluginNetworkExecution, PluginNetworkLimits, PluginNetworkRequest,
-    PluginNetworkResponse, PluginNetworkScope, PluginNetworkTrace, ResolvedNetworkTarget,
+    PluginNetworkResponse, PluginNetworkScope, PluginNetworkTrace, PluginTransportErrorKind,
+    PluginTransportStage, ResolvedNetworkTarget,
 };
 
-const MAX_DNS_ADDRESSES: usize = 32;
+pub(super) const MAX_DNS_ADDRESSES: usize = 32;
 
 pub(super) trait PluginDnsResolver: Send + Sync {
     fn resolve<'a>(
@@ -36,7 +37,7 @@ impl PluginDnsResolver for SystemPluginDnsResolver {
         Box::pin(async move {
             tokio::net::lookup_host((host, 0))
                 .await
-                .map_err(|_| PluginNetworkError::DnsResolutionFailed)
+                .map_err(|error| PluginNetworkError::DnsResolutionFailed(error.kind()))
                 .map(|addresses| {
                     addresses
                         .map(|address| canonical_ip(address.ip()))
@@ -213,7 +214,7 @@ async fn execute_request(
             .headers(request.headers.clone())
             .send()
             .await
-            .map_err(transport_error)?;
+            .map_err(|error| transport_error(PluginTransportStage::RequestSend, error))?;
 
         if is_redirect(response.status()) {
             if redirects >= limits.max_redirects {
@@ -290,7 +291,7 @@ fn build_pinned_client(
     }
     builder
         .build()
-        .map_err(|_| PluginNetworkError::TransportFailed)
+        .map_err(|error| transport_error(PluginTransportStage::ClientBuild, error))
 }
 
 fn validate_limits(limits: PluginNetworkLimits) -> Result<(), PluginNetworkError> {
@@ -485,7 +486,8 @@ async fn read_bounded_body(
     let mut stream = response.bytes_stream();
     let mut body = Vec::with_capacity(max_bytes.min(16 * 1024));
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(transport_error)?;
+        let chunk =
+            chunk.map_err(|error| transport_error(PluginTransportStage::ResponseBody, error))?;
         let next_len = body
             .len()
             .checked_add(chunk.len())
@@ -498,10 +500,21 @@ async fn read_bounded_body(
     Ok(Bytes::from(body))
 }
 
-fn transport_error(error: reqwest::Error) -> PluginNetworkError {
+fn transport_error(stage: PluginTransportStage, error: reqwest::Error) -> PluginNetworkError {
     if error.is_timeout() {
         PluginNetworkError::Timeout
     } else {
-        PluginNetworkError::TransportFailed
+        let kind = if error.is_connect() {
+            PluginTransportErrorKind::Connect
+        } else if error.is_decode() {
+            PluginTransportErrorKind::Decode
+        } else if error.is_body() {
+            PluginTransportErrorKind::Body
+        } else if error.is_request() {
+            PluginTransportErrorKind::Request
+        } else {
+            PluginTransportErrorKind::Other
+        };
+        PluginNetworkError::TransportFailed { stage, kind }
     }
 }

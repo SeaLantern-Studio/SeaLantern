@@ -98,8 +98,33 @@ pub enum PluginNetworkAddressPolicy {
 /// 已获批准的精确网络执行作用域。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PluginNetworkScope {
-    pub origin: NetworkOrigin,
-    pub address_policy: PluginNetworkAddressPolicy,
+    origin: NetworkOrigin,
+    address_policy: PluginNetworkAddressPolicy,
+}
+
+impl PluginNetworkScope {
+    /// 构造已经通过上层策略审批的执行作用域。
+    ///
+    /// 公网能力在构造阶段即要求 HTTPS，避免将错误配置延迟到请求执行时发现。
+    pub fn new(
+        origin: NetworkOrigin,
+        address_policy: PluginNetworkAddressPolicy,
+    ) -> Result<Self, PluginNetworkError> {
+        if matches!(address_policy, PluginNetworkAddressPolicy::PublicOnly)
+            && origin.scheme() != "https"
+        {
+            return Err(PluginNetworkError::SchemeNotAllowed);
+        }
+        Ok(Self { origin, address_policy })
+    }
+
+    pub fn origin(&self) -> &NetworkOrigin {
+        &self.origin
+    }
+
+    pub fn address_policy(&self) -> &PluginNetworkAddressPolicy {
+        &self.address_policy
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -167,6 +192,24 @@ pub struct PluginNetworkExecution {
     pub trace: PluginNetworkTrace,
 }
 
+/// 传输失败发生的阶段，不包含 URL 或请求数据。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PluginTransportStage {
+    ClientBuild,
+    RequestSend,
+    ResponseBody,
+}
+
+/// 从 `reqwest::Error` 提取的脱敏失败类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PluginTransportErrorKind {
+    Connect,
+    Decode,
+    Body,
+    Request,
+    Other,
+}
+
 /// 网络执行失败分类；插件策略拒绝理由仍由上层定义。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PluginNetworkError {
@@ -180,13 +223,16 @@ pub enum PluginNetworkError {
     AddressNotAllowed(IpAddr),
     EmptyDnsResult,
     TooManyDnsAddresses,
-    DnsResolutionFailed,
+    DnsResolutionFailed(std::io::ErrorKind),
     RedirectMissingLocation,
     RedirectLimitExceeded,
     ResponseTooLarge,
     ConcurrencyLimitExceeded,
     Timeout,
-    TransportFailed,
+    TransportFailed {
+        stage: PluginTransportStage,
+        kind: PluginTransportErrorKind,
+    },
 }
 
 impl fmt::Display for PluginNetworkError {
@@ -204,13 +250,17 @@ impl fmt::Display for PluginNetworkError {
             }
             Self::EmptyDnsResult => formatter.write_str("插件网络 DNS 未返回地址"),
             Self::TooManyDnsAddresses => formatter.write_str("插件网络 DNS 返回地址过多"),
-            Self::DnsResolutionFailed => formatter.write_str("插件网络 DNS 解析失败"),
+            Self::DnsResolutionFailed(kind) => {
+                write!(formatter, "插件网络 DNS 解析失败: {kind:?}")
+            }
             Self::RedirectMissingLocation => formatter.write_str("插件网络重定向缺少有效 Location"),
             Self::RedirectLimitExceeded => formatter.write_str("插件网络重定向次数超限"),
             Self::ResponseTooLarge => formatter.write_str("插件网络响应体超限"),
             Self::ConcurrencyLimitExceeded => formatter.write_str("插件网络并发已达上限"),
             Self::Timeout => formatter.write_str("插件网络请求超时"),
-            Self::TransportFailed => formatter.write_str("插件网络传输失败"),
+            Self::TransportFailed { stage, kind } => {
+                write!(formatter, "插件网络传输失败: {stage:?}/{kind:?}")
+            }
         }
     }
 }

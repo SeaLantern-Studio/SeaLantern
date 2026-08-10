@@ -1,4 +1,5 @@
-use std::net::IpAddr;
+use std::io::ErrorKind;
+use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
@@ -8,7 +9,7 @@ use url::Url;
 
 use super::executor::{
     declared_body_too_large, is_public_ip, is_redirect, parse_target, validate_address,
-    validate_headers, PluginDnsResolver,
+    validate_headers, PluginDnsResolver, MAX_DNS_ADDRESSES,
 };
 use super::{
     AllowedNetworkTarget, NetworkOrigin, PluginNetworkAddressPolicy, PluginNetworkClient,
@@ -16,6 +17,8 @@ use super::{
 };
 
 struct FixedResolver(Vec<IpAddr>);
+
+struct ErrorResolver;
 
 impl PluginDnsResolver for FixedResolver {
     fn resolve<'a>(
@@ -26,11 +29,23 @@ impl PluginDnsResolver for FixedResolver {
     }
 }
 
-fn public_scope(origin: &str) -> PluginNetworkScope {
-    PluginNetworkScope {
-        origin: NetworkOrigin::parse(origin).expect("测试 origin 应有效"),
-        address_policy: PluginNetworkAddressPolicy::PublicOnly,
+impl PluginDnsResolver for ErrorResolver {
+    fn resolve<'a>(
+        &'a self,
+        _host: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<IpAddr>, PluginNetworkError>> {
+        Box::pin(async {
+            Err(PluginNetworkError::DnsResolutionFailed(ErrorKind::ConnectionAborted))
+        })
     }
+}
+
+fn public_scope(origin: &str) -> PluginNetworkScope {
+    PluginNetworkScope::new(
+        NetworkOrigin::parse(origin).expect("测试 origin 应有效"),
+        PluginNetworkAddressPolicy::PublicOnly,
+    )
+    .expect("测试作用域应有效")
 }
 
 #[test]
@@ -66,6 +81,17 @@ fn target_must_stay_inside_exact_origin() {
 }
 
 #[test]
+fn public_scope_rejects_http_origin_during_construction() {
+    assert_eq!(
+        PluginNetworkScope::new(
+            NetworkOrigin::parse("http://api.example.com").expect("HTTP origin 本身应可解析"),
+            PluginNetworkAddressPolicy::PublicOnly,
+        ),
+        Err(PluginNetworkError::SchemeNotAllowed)
+    );
+}
+
+#[test]
 fn public_policy_rejects_special_use_and_mapped_addresses() {
     for address in [
         "0.1.2.3",
@@ -92,6 +118,35 @@ fn public_policy_rejects_special_use_and_mapped_addresses() {
     }
     assert!(is_public_ip("8.8.8.8".parse().expect("测试 IP 应有效")));
     assert!(is_public_ip("2606:4700:4700::1111".parse().expect("测试 IP 应有效")));
+}
+
+#[test]
+fn public_policy_accepts_addresses_adjacent_to_excluded_networks() {
+    for address in [
+        "9.255.255.255",
+        "11.0.0.0",
+        "100.63.255.255",
+        "100.128.0.0",
+        "126.255.255.255",
+        "128.0.0.0",
+        "169.253.255.255",
+        "169.255.0.0",
+        "172.15.255.255",
+        "172.32.0.0",
+        "192.0.1.255",
+        "192.0.3.0",
+        "198.17.255.255",
+        "198.20.0.0",
+        "198.51.99.255",
+        "198.51.101.0",
+        "203.0.112.255",
+        "203.0.114.0",
+        "2001:db7:ffff:ffff:ffff:ffff:ffff:ffff",
+        "2001:db9::",
+    ] {
+        let address: IpAddr = address.parse().expect("测试 IP 应有效");
+        assert!(is_public_ip(address), "{address}");
+    }
 }
 
 #[test]
@@ -187,5 +242,47 @@ async fn client_rejects_dns_answer_when_any_address_is_private() {
         Err(PluginNetworkError::AddressNotAllowed(
             "192.168.1.20".parse().expect("测试 IP 应有效")
         ))
+    );
+}
+
+#[tokio::test]
+async fn client_rejects_empty_dns_answer() {
+    let client = PluginNetworkClient::with_resolver(Arc::new(FixedResolver(Vec::new())));
+    let target = Url::parse("https://api.example.com/data").expect("测试 URL 应有效");
+
+    assert_eq!(
+        client
+            .resolve_and_validate(&target, &PluginNetworkAddressPolicy::PublicOnly)
+            .await,
+        Err(PluginNetworkError::EmptyDnsResult)
+    );
+}
+
+#[tokio::test]
+async fn client_rejects_too_many_dns_addresses_before_address_validation() {
+    let addresses = (1..=(MAX_DNS_ADDRESSES + 1))
+        .map(|suffix| IpAddr::V4(Ipv4Addr::new(9, 9, 0, suffix as u8)))
+        .collect();
+    let client = PluginNetworkClient::with_resolver(Arc::new(FixedResolver(addresses)));
+    let target = Url::parse("https://api.example.com/data").expect("测试 URL 应有效");
+
+    assert_eq!(
+        client
+            .resolve_and_validate(&target, &PluginNetworkAddressPolicy::PublicOnly)
+            .await,
+        Err(PluginNetworkError::TooManyDnsAddresses)
+    );
+}
+
+#[tokio::test]
+async fn client_propagates_dns_resolution_error_kind() {
+    let client = PluginNetworkClient::with_resolver(Arc::new(ErrorResolver));
+    let target = Url::parse("https://api.example.com/data").expect("测试 URL 应有效");
+
+    assert_eq!(
+        client
+            .resolve_and_validate(&target, &PluginNetworkAddressPolicy::PublicOnly)
+            .await,
+        Err(PluginNetworkError::DnsResolutionFailed(ErrorKind::ConnectionAborted))
     );
 }
