@@ -23,6 +23,7 @@ urlencoding = "2"
 sealantern-core = { path = "../core" }
 sealantern-infra = { path = "../infra" }
 regex = "1"
+sha2 = "0.10"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 dirs = "5"
 dom_query = "0.27"

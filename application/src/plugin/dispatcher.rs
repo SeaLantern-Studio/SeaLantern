@@ -24,6 +24,7 @@ use super::PluginPolicyStore;
 
 const MARKET_PAGE_SIZE_LIMIT: u32 = 100;
 const MAX_PLUGIN_NETWORK_IN_FLIGHT: usize = 8;
+const MAX_RATE_LIMIT_KEYS: usize = 1_024;
 const RATE_WINDOW: Duration = Duration::from_secs(60);
 
 /// 只读市场能力的宿主端口。
@@ -126,15 +127,22 @@ impl CoreCapabilityDispatcher {
         };
         let now = Instant::now();
         let mut calls = self.calls.lock().await;
-        let entries = calls
-            .entry((plugin_id.to_owned(), capability_id.to_owned()))
-            .or_default();
-        while entries
-            .front()
-            .is_some_and(|timestamp| now.duration_since(*timestamp) >= RATE_WINDOW)
-        {
-            entries.pop_front();
+        calls.retain(|_, entries| {
+            while entries
+                .front()
+                .is_some_and(|timestamp| now.duration_since(*timestamp) >= RATE_WINDOW)
+            {
+                entries.pop_front();
+            }
+            !entries.is_empty()
+        });
+        let key = (plugin_id.to_owned(), capability_id.to_owned());
+        if !calls.contains_key(&key) && calls.len() >= MAX_RATE_LIMIT_KEYS {
+            return Err(CapabilityDispatchError::Unavailable(
+                "capability rate limiter is at capacity",
+            ));
         }
+        let entries = calls.entry(key).or_default();
         if entries.len() >= limit as usize {
             return Err(CapabilityDispatchError::Unavailable("capability rate limit exceeded"));
         }
@@ -300,6 +308,8 @@ impl CapabilityDispatcher for CoreCapabilityDispatcher {
         let ExecutionPrincipal::Plugin(plugin_id) = &invocation.principal else {
             return Err(CapabilityDispatchError::InvalidRequest("plugin principal"));
         };
+        self.check_rate_limit(plugin_id, invocation.capability.as_str())
+            .await?;
         let decision = self
             .policy
             .evaluate(
@@ -342,8 +352,6 @@ impl CapabilityDispatcher for CoreCapabilityDispatcher {
                     )
                 })?;
         }
-        self.check_rate_limit(plugin_id, invocation.capability.as_str())
-            .await?;
         match invocation.capability.as_str() {
             capability @ ("market.search" | "market.resource.read" | "market.versions.read") => {
                 self.dispatch_market(capability, invocation.scope.as_ref(), &invocation.payload)
@@ -756,6 +764,34 @@ mod tests {
         };
         assert!(dispatcher.invoke(invocation).await.is_ok());
         assert_eq!(market.searches.load(Ordering::Relaxed), 1);
+    }
+
+    #[tokio::test]
+    async fn rate_limiter_prunes_expired_plugin_keys() {
+        let root = tempfile::tempdir().unwrap();
+        let dispatcher = CoreCapabilityDispatcher::new(
+            Arc::new(
+                PluginPolicyStore::open(root.path().join("state.sqlite"))
+                    .await
+                    .unwrap(),
+            ),
+            Arc::new(FakeMarket { searches: AtomicUsize::new(0) }),
+        );
+        let expired = ("old.plugin".to_owned(), "market.search".to_owned());
+        dispatcher
+            .calls
+            .lock()
+            .await
+            .insert(expired.clone(), VecDeque::from([Instant::now() - RATE_WINDOW]));
+
+        dispatcher
+            .check_rate_limit("example.plugin", "market.search")
+            .await
+            .unwrap();
+
+        let calls = dispatcher.calls.lock().await;
+        assert!(!calls.contains_key(&expired));
+        assert!(calls.contains_key(&("example.plugin".to_owned(), "market.search".to_owned())));
     }
 
     #[tokio::test]

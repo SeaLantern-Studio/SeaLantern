@@ -1,7 +1,9 @@
 use std::fs;
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
 use serde_json::{Map, Value};
+use sha2::{Digest, Sha256};
 
 use super::error::AppPluginError;
 use super::manifest::{PluginManifest, PLUGIN_API_VERSION};
@@ -12,6 +14,47 @@ pub struct PluginLoader;
 
 impl PluginLoader {
     pub const MANIFEST_FILE_NAME: &'static str = "manifest.json";
+
+    /// Returns a stable digest for every regular file the bundle can expose to its runtime.
+    pub fn bundle_fingerprint(plugin_dir: &Path) -> Result<String, AppPluginError> {
+        let mut files = Vec::new();
+        collect_bundle_files(plugin_dir, plugin_dir, &mut files)?;
+        files.sort_by(|(left, _), (right, _)| left.cmp(right));
+
+        let mut hasher = Sha256::new();
+        let mut total_bytes = 0u64;
+        for (relative_path, path) in files {
+            let metadata = fs::metadata(&path).map_err(|error| AppPluginError::Io {
+                path: path.clone(),
+                message: error.to_string(),
+            })?;
+            total_bytes = total_bytes
+                .checked_add(metadata.len())
+                .ok_or_else(|| invalid_bundle_path(&path, "plugin bundle is too large"))?;
+            if total_bytes > MAX_BUNDLE_BYTES {
+                return Err(invalid_bundle_path(&path, "plugin bundle is too large"));
+            }
+
+            hasher.update(relative_path.to_string_lossy().as_bytes());
+            hasher.update([0]);
+            let mut file = fs::File::open(&path).map_err(|error| AppPluginError::Io {
+                path: path.clone(),
+                message: error.to_string(),
+            })?;
+            let mut buffer = [0u8; 8192];
+            loop {
+                let read = file.read(&mut buffer).map_err(|error| AppPluginError::Io {
+                    path: path.clone(),
+                    message: error.to_string(),
+                })?;
+                if read == 0 {
+                    break;
+                }
+                hasher.update(&buffer[..read]);
+            }
+        }
+        Ok(format!("{:x}", hasher.finalize()))
+    }
 
     /// Returns immediate child directories that contain a regular manifest file.
     ///
@@ -196,6 +239,57 @@ impl PluginLoader {
     }
 }
 
+const MAX_BUNDLE_FILES: usize = 1_024;
+const MAX_BUNDLE_BYTES: u64 = 32 * 1024 * 1024;
+
+fn collect_bundle_files(
+    root: &Path,
+    directory: &Path,
+    files: &mut Vec<(PathBuf, PathBuf)>,
+) -> Result<(), AppPluginError> {
+    for entry in fs::read_dir(directory).map_err(|error| AppPluginError::Io {
+        path: directory.to_path_buf(),
+        message: error.to_string(),
+    })? {
+        let entry = entry.map_err(|error| AppPluginError::Io {
+            path: directory.to_path_buf(),
+            message: error.to_string(),
+        })?;
+        let path = entry.path();
+        let file_type = entry.file_type().map_err(|error| AppPluginError::Io {
+            path: path.clone(),
+            message: error.to_string(),
+        })?;
+        if file_type.is_symlink() {
+            return Err(invalid_bundle_path(&path, "plugin bundle must not contain symlinks"));
+        }
+        if file_type.is_dir() {
+            collect_bundle_files(root, &path, files)?;
+        } else if file_type.is_file() {
+            if files.len() >= MAX_BUNDLE_FILES {
+                return Err(invalid_bundle_path(&path, "plugin bundle contains too many files"));
+            }
+            let relative_path = path.strip_prefix(root).map_err(|_| {
+                invalid_bundle_path(&path, "plugin bundle path is outside its root")
+            })?;
+            files.push((relative_path.to_path_buf(), path));
+        } else {
+            return Err(invalid_bundle_path(
+                &path,
+                "plugin bundle must contain only regular files and directories",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn invalid_bundle_path(path: &Path, message: &str) -> AppPluginError {
+    AppPluginError::InvalidPath {
+        path: path.to_path_buf(),
+        message: message.to_owned(),
+    }
+}
+
 fn is_safe_plugin_id(id: &str) -> bool {
     let mut chars = id.bytes();
     match chars.next() {
@@ -278,6 +372,22 @@ mod tests {
                 "capabilities": [{{"id": "plugin.log.emit"}}, {{"id": "plugin.storage.read"}}]
             }}"#
         )
+    }
+
+    #[test]
+    fn bundle_fingerprint_changes_when_bundle_content_changes() {
+        let root = TestDirectory::new();
+        let plugin_dir = write_manifest(root.path(), "fingerprint", &valid_manifest());
+        fs::write(plugin_dir.join("main.lua"), "return 'first'").expect("script should be written");
+        let first = PluginLoader::bundle_fingerprint(&plugin_dir)
+            .expect("bundle fingerprint should be calculated");
+
+        fs::write(plugin_dir.join("main.lua"), "return 'second'")
+            .expect("script should be updated");
+        let second = PluginLoader::bundle_fingerprint(&plugin_dir)
+            .expect("bundle fingerprint should be recalculated");
+
+        assert_ne!(first, second);
     }
 
     #[test]

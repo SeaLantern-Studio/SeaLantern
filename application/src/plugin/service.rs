@@ -127,6 +127,11 @@ impl PluginService for CorePluginService {
         // 先清除上次进程留下的启用状态，再允许 entry/on_load 执行能力调用。
         let manifest =
             PluginLoader::load_manifest(plugin_dir).map_err(PluginServiceError::Runtime)?;
+        let fingerprint =
+            PluginLoader::bundle_fingerprint(plugin_dir).map_err(PluginServiceError::Runtime)?;
+        self.policy
+            .reconcile_bundle(&manifest.id, &fingerprint)
+            .await?;
         self.policy.set_enabled(&manifest.id, false).await?;
         let info = self.runtime.load(plugin_dir).await?;
         Ok(info)
@@ -251,6 +256,57 @@ mod tests {
             .disable("example.plugin")
             .await
             .expect("plugin should disable");
+        assert!(!service.policy().is_enabled("example.plugin").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn loading_replaced_bundle_revokes_existing_trust() {
+        let root = tempfile::tempdir().expect("temporary root should be created");
+        let plugin_dir = root.path().join("plugins").join("example.plugin");
+        fs::create_dir_all(&plugin_dir).expect("plugin directory should be created");
+        fs::write(plugin_dir.join("manifest.json"), manifest())
+            .expect("manifest should be written");
+        let script = plugin_dir.join("main.lua");
+        fs::write(&script, "function on_load() end function on_enable() end")
+            .expect("script should be written");
+        let service = CorePluginService::open(
+            root.path().join("plugins"),
+            root.path().join("data"),
+            root.path().join("plugin-state.sqlite"),
+        )
+        .await
+        .expect("service should open");
+
+        service.load(&plugin_dir).await.expect("plugin should load");
+        service
+            .policy()
+            .set_trust("example.plugin", TrustSource::LocallyTrusted)
+            .await
+            .expect("trust should persist");
+        service
+            .enable("example.plugin")
+            .await
+            .expect("plugin should enable");
+        service
+            .unload("example.plugin")
+            .await
+            .expect("plugin should unload");
+
+        fs::write(&script, "function on_load() end function on_enable() return 1 end")
+            .expect("replacement script should be written");
+        service
+            .load(&plugin_dir)
+            .await
+            .expect("replacement plugin should load");
+
+        assert_eq!(
+            service
+                .policy()
+                .trust_source("example.plugin")
+                .await
+                .unwrap(),
+            TrustSource::UntrustedLocal
+        );
         assert!(!service.policy().is_enabled("example.plugin").await.unwrap());
     }
 

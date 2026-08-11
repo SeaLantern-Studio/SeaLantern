@@ -129,10 +129,11 @@ impl PluginPolicyStore {
     pub async fn open(path: impl Into<PathBuf>) -> Result<Self, PluginPolicyError> {
         let database = SqliteDatabase::open(path).await?;
         database
-            .migrate(vec![Migration {
-                version: 1,
-                name: "create plugin policy state",
-                sql: "CREATE TABLE IF NOT EXISTS plugin_policy_grants (\
+            .migrate(vec![
+                Migration {
+                    version: 1,
+                    name: "create plugin policy state",
+                    sql: "CREATE TABLE IF NOT EXISTS plugin_policy_grants (\
                     plugin_id TEXT NOT NULL,\
                     capability_id TEXT NOT NULL,\
                     scope_kind TEXT NOT NULL,\
@@ -161,7 +162,17 @@ impl PluginPolicyStore {
                     detail TEXT NOT NULL,\
                     created_at INTEGER NOT NULL\
                  );",
-            }])
+                },
+                Migration {
+                    version: 2,
+                    name: "bind plugin policy to bundle fingerprint",
+                    sql: "CREATE TABLE IF NOT EXISTS plugin_policy_bundles (\
+                    plugin_id TEXT PRIMARY KEY NOT NULL,\
+                    fingerprint TEXT NOT NULL,\
+                    updated_at INTEGER NOT NULL\
+                 );",
+                },
+            ])
             .await?;
         Ok(Self {
             database,
@@ -171,6 +182,60 @@ impl PluginPolicyStore {
 
     pub fn database_path(&self) -> &Path {
         self.database.path()
+    }
+
+    /// Binds policy state to the bundle that is about to execute plugin code.
+    /// A first observation deliberately invalidates legacy id-only state.
+    pub async fn reconcile_bundle(
+        &self,
+        plugin_id: &str,
+        fingerprint: &str,
+    ) -> Result<(), PluginPolicyError> {
+        validate_plugin_id(plugin_id)?;
+        if fingerprint.len() != 64 || !fingerprint.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err(PluginPolicyError::InvalidInput("bundle fingerprint"));
+        }
+        let rows = self
+            .database
+            .query(
+                "SELECT fingerprint FROM plugin_policy_bundles WHERE plugin_id=?1",
+                params(vec![text(plugin_id)]),
+                |row| row.get::<_, String>(0),
+            )
+            .await?;
+        if rows.first().is_some_and(|stored| stored == fingerprint) {
+            return Ok(());
+        }
+
+        let timestamp = now();
+        self.database
+            .execute(
+                "UPDATE plugin_policy_grants SET revoked_at=?2 WHERE plugin_id=?1 AND revoked_at IS NULL",
+                params(vec![text(plugin_id), SqlValue::Integer(timestamp)]),
+            )
+            .await?;
+        self.database
+            .execute(
+                "DELETE FROM plugin_policy_trust WHERE plugin_id=?1",
+                params(vec![text(plugin_id)]),
+            )
+            .await?;
+        self.database
+            .execute(
+                "INSERT INTO plugin_policy_plugins(plugin_id, enabled, updated_at) VALUES(?1, 0, ?2) \
+                 ON CONFLICT(plugin_id) DO UPDATE SET enabled=0, updated_at=excluded.updated_at",
+                params(vec![text(plugin_id), SqlValue::Integer(timestamp)]),
+            )
+            .await?;
+        self.database
+            .execute(
+                "INSERT INTO plugin_policy_bundles(plugin_id, fingerprint, updated_at) VALUES(?1, ?2, ?3) \
+                 ON CONFLICT(plugin_id) DO UPDATE SET fingerprint=excluded.fingerprint, updated_at=excluded.updated_at",
+                params(vec![text(plugin_id), text(fingerprint), SqlValue::Integer(timestamp)]),
+            )
+            .await?;
+        self.clear_plugin_session_state(plugin_id).await;
+        Ok(())
     }
 
     /// 写入或恢复一个持久能力授权。
@@ -571,11 +636,25 @@ impl PluginPolicyStore {
             .await?;
         self.database
             .execute(
-                "DELETE FROM plugin_policy_audit WHERE id NOT IN (SELECT id FROM plugin_policy_audit ORDER BY id DESC LIMIT ?1)",
+                "DELETE FROM plugin_policy_audit WHERE id <= COALESCE((\
+                    SELECT id FROM plugin_policy_audit ORDER BY id DESC LIMIT 1 OFFSET ?1\
+                 ), 0)",
                 params(vec![SqlValue::Integer(MAX_AUDIT_ROWS)]),
             )
             .await?;
         Ok(())
+    }
+
+    async fn clear_plugin_session_state(&self, plugin_id: &str) {
+        let mut sessions = self.sessions.lock().await;
+        sessions.retain(|_, state| {
+            state.grants.retain(|grant| grant.plugin_id != plugin_id);
+            state
+                .approvals
+                .retain(|approval| approval.plugin_id != plugin_id);
+            state.tokens.retain(|_, token| token.plugin_id != plugin_id);
+            !state.grants.is_empty() || !state.approvals.is_empty() || !state.tokens.is_empty()
+        });
     }
 }
 
@@ -760,6 +839,71 @@ mod tests {
                 .unwrap(),
             PolicyDecision::Allow
         );
+        cleanup(database);
+    }
+
+    #[tokio::test]
+    async fn changed_bundle_does_not_inherit_policy_state() {
+        let database = path("bundle-identity");
+        let store = PluginPolicyStore::open(&database).await.unwrap();
+        store
+            .reconcile_bundle("example.plugin", &"a".repeat(64))
+            .await
+            .unwrap();
+        store
+            .grant_persistent("example.plugin", "server.status.read", Some(&scope()))
+            .await
+            .unwrap();
+        store
+            .set_trust("example.plugin", TrustSource::LocallyTrusted)
+            .await
+            .unwrap();
+        store.set_enabled("example.plugin", true).await.unwrap();
+        store
+            .grant_session(SessionGrant {
+                session_id: "session-1".to_owned(),
+                plugin_id: "example.plugin".to_owned(),
+                capability_id: "server.status.read".to_owned(),
+                scope: Some(scope()),
+            })
+            .await
+            .unwrap();
+        let token = store
+            .issue_single_use_token(
+                "session-1",
+                "example.plugin",
+                "server.status.read",
+                Some(scope()),
+            )
+            .await
+            .unwrap();
+
+        store
+            .reconcile_bundle("example.plugin", &"b".repeat(64))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            store.trust_source("example.plugin").await.unwrap(),
+            TrustSource::UntrustedLocal
+        );
+        assert!(!store.is_enabled("example.plugin").await.unwrap());
+        assert!(!store
+            .has_persistent_grant("example.plugin", "server.status.read", Some(&scope()))
+            .await
+            .unwrap());
+        assert!(matches!(
+            store
+                .consume_single_use_token(
+                    "session-1",
+                    &token,
+                    "example.plugin",
+                    "server.status.read",
+                    Some(&scope())
+                )
+                .await,
+            Err(PluginPolicyError::TokenUnknown)
+        ));
         cleanup(database);
     }
 
