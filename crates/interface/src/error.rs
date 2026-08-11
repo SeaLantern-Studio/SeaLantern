@@ -236,7 +236,7 @@ impl std::error::Error for UpdateCheckServiceError {}
 pub enum ProvisioningServiceError {
     /// 客户端提供的输入不合法（如路径为空、请求字段冲突）。
     InvalidInput,
-    /// 服务器目录检查或启动脚本解析失败。
+    /// 服务器目录检查失败。
     InspectionFailed,
     /// 未分类的内部供给计划操作失败。
     OperationFailed,
@@ -296,7 +296,7 @@ impl std::error::Error for ServerCatalogServiceError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UpdateInstallServiceError {
-    /// 客户端提供的安装输入不合法（如 URL 为空、哈希格式错误）。
+    /// 客户端提供的安装输入不合法（如版本号为空）。
     InvalidInput,
     /// 底层下载、校验或安装过程失败。
     OperationFailed,

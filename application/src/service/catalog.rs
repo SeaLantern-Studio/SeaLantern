@@ -4,9 +4,9 @@
 //! `extra` 的下载链接管理能力（[`LinkManager`]），向宿主提供可用的
 //! 服务器类型、版本与下载详情查询。
 //!
-//! 错误分层：底层配置拉取失败统一收敛为
-//! [`ServerCatalogServiceError::OperationFailed`]；指定类型不存在
-//! （版本 / 详情查询依赖类型存在性）收敛为
+//! 错误分层：类型列表查询失败统一收敛为
+//! [`ServerCatalogServiceError::OperationFailed`]；版本与详情查询失败
+//! （类型不存在或底层配置不可用）统一收敛为
 //! [`ServerCatalogServiceError::NotFound`]。
 
 use async_trait::async_trait;
@@ -30,7 +30,7 @@ impl ServerCatalogService for CoreServerCatalogService {
     }
     /// 查询指定服务器类型支持的版本列表。
     ///
-    /// 依赖类型存在性：类型不存在时收敛为
+    /// 查询失败（类型不存在或底层配置不可用）统一收敛为
     /// [`ServerCatalogServiceError::NotFound`]。
     async fn versions(
         &self,
@@ -42,7 +42,7 @@ impl ServerCatalogService for CoreServerCatalogService {
     }
     /// 查询指定服务器类型的下载详情（版本 → 文件下载链接）。
     ///
-    /// 依赖类型存在性：类型不存在时收敛为
+    /// 查询失败（类型不存在或底层配置不可用）统一收敛为
     /// [`ServerCatalogServiceError::NotFound`]。
     async fn details(
         &self,
