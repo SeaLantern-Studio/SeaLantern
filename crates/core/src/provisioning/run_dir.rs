@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 /// 主机检查运行目录后传入 core 的目录状态。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RunDirectoryState {
     Missing,
     EmptyDirectory,

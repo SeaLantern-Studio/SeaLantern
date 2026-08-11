@@ -1,7 +1,8 @@
 use crate::instance::{Instance, InstanceError, InstanceSpec};
 
 /// 新建空实例的无副作用计划。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CreateInstancePlan {
     pub instance: Instance,
 }

@@ -20,6 +20,10 @@ use adapter::tauri::commands::plugin::{
     plugin_v2_audit, plugin_v2_disable, plugin_v2_discover, plugin_v2_enable, plugin_v2_load,
     plugin_v2_plugins, plugin_v2_unload,
 };
+use adapter::tauri::commands::provisioning::{
+    inspect_server, parse_startup_script, plan_existing_instance, plan_instance_copy,
+    plan_modpack_provision,
+};
 use adapter::tauri::commands::server::{
     force_stop_server, restart_server, send_server_command, server_status, start_server,
     stop_server,
@@ -96,6 +100,12 @@ pub fn run() {
             settings_overview,
             update_settings,
             update_settings_partial,
+            //服务端检查与供给计划
+            inspect_server,
+            parse_startup_script,
+            plan_existing_instance,
+            plan_instance_copy,
+            plan_modpack_provision,
             //应用更新检查契约命令
             check_update,
             //插件 v2 宿主能力与策略管理

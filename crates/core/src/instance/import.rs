@@ -6,14 +6,16 @@ use super::model::{Instance, InstanceError, InstanceSpec};
 /// 用于规划主机管理的本地实例导入的输入。
 ///
 /// 此处不读取源目录和启动目标。在此计划确定了相对于目标目录的启动目标后，主机将验证并复制它们。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct InstanceImportRequest {
     pub source_directory: PathBuf,
     pub instance: InstanceSpec,
 }
 
 /// 一个已验证的导入计划，包含供主机适配器持久化的已复制实例模型。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct InstanceImportPlan {
     pub source_directory: PathBuf,
     pub destination_directory: PathBuf,

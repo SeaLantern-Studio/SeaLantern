@@ -5,14 +5,16 @@ use crate::instance::{
 };
 
 /// 复制已有目录到受管实例目录的无副作用计划。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CopyInstanceRequest {
     pub source_directory: PathBuf,
     pub import: InstanceImportRequest,
 }
 
 /// 复制计划。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CopyInstancePlan {
     pub source_directory: PathBuf,
     pub destination_directory: PathBuf,

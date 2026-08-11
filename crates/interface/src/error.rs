@@ -230,6 +230,27 @@ impl std::fmt::Display for UpdateCheckServiceError {
 
 impl std::error::Error for UpdateCheckServiceError {}
 
+/// 服务端检查或供给计划失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProvisioningServiceError {
+    InvalidInput,
+    InspectionFailed,
+    OperationFailed,
+}
+
+impl std::fmt::Display for ProvisioningServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidInput => "invalid provisioning input",
+            Self::InspectionFailed => "server inspection failed",
+            Self::OperationFailed => "provisioning operation failed",
+        })
+    }
+}
+
+impl std::error::Error for ProvisioningServiceError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,6 +271,10 @@ mod tests {
                 "\"process_not_found\"",
             ),
             (serde_json::to_string(&UpdateCheckServiceError::CheckFailed), "\"check_failed\""),
+            (
+                serde_json::to_string(&ProvisioningServiceError::InspectionFailed),
+                "\"inspection_failed\"",
+            ),
         ];
 
         for (serialized, expected) in cases {

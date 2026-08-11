@@ -2,6 +2,7 @@ pub mod cron;
 pub mod download;
 pub mod instance;
 pub mod plugin;
+pub mod provisioning;
 pub mod server;
 pub mod settings;
 pub mod system;

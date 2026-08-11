@@ -5,7 +5,8 @@ use crate::instance::{Instance, InstanceError, InstanceSpec};
 use super::{resolve_run_directory, RunDirectoryError, RunDirectoryState};
 
 /// 整合包导入的无副作用输入。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ModpackProvisionRequest {
     pub archive_path: PathBuf,
     pub requested_run_directory: PathBuf,
@@ -14,7 +15,8 @@ pub struct ModpackProvisionRequest {
 }
 
 /// 整合包导入计划。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ModpackProvisionPlan {
     pub archive_path: PathBuf,
     pub run_directory: PathBuf,
