@@ -30,6 +30,7 @@ sealantern-application = { path = "../application" }
 sealantern-interface = { path = "../crates/interface" }
 async-trait = "0.1.91"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 # 兼容层生成实例 ID 用（v4 随机 UUID）
 uuid = { version = "1", features = ["v4"] }
 

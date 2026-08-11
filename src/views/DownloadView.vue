@@ -17,6 +17,12 @@ const downloadStore = useDownloadStore();
 const toast = useToast();
 const { loading: submitting, start: startLoading, stop: stopLoading } = useLoading();
 
+const MAX_DOWNLOAD_THREADS = 64;
+
+type ThreadCountValidationResult =
+  | { valid: true; value: number }
+  | { valid: false; error: "empty" | "invalid" | "non_positive" | "too_large" };
+
 // File download state
 const url = ref("");
 const savePath = ref("");
@@ -36,6 +42,8 @@ const info = ref<DownloadLink | null>(null);
 const loadingTypes = ref(false);
 const loadingVersions = ref(false);
 const loadingInfo = ref(false);
+const threadCountInvalid = ref(false);
+const serverThreadCountInvalid = ref(false);
 
 // 下载任务状态（来自全局 store，任意页面可读，顶部任务球依赖此）
 const isDownloading = computed(() => downloadStore.isDownloading);
@@ -57,19 +65,9 @@ const canFileDownload = computed(() => {
     return false;
   }
 
-  // 验证线程数
-  if (!checkThreadCount()) {
-    return false;
-  }
+  if (!validateThreadCount(threadCount.value).valid) return false;
 
-  // 验证URL格式
-  try {
-    const validatedUrl = new URL(url.value.trim());
-  } catch {
-    return false;
-  }
-
-  return true;
+  return parseDownloadUrl(url.value) !== null;
 });
 
 // Server download computed properties
@@ -97,7 +95,7 @@ const canServerDownload = computed(() => {
   if (!selectedType.value || !selectedVersion.value) return false;
   if (!info.value?.url) return false;
   if (!serverSaveDir.value.trim() || !serverFilename.value.trim()) return false;
-  return /^[1-9]\d*$/.test(serverThreadCount.value.trim());
+  return validateThreadCount(serverThreadCount.value).valid;
 });
 
 const canGoCreate = computed(() => {
@@ -126,17 +124,36 @@ const savePathPreview = computed(() => {
 });
 
 // File download methods
-function checkUrl() {
+function parseDownloadUrl(value: string): URL | null {
   try {
-    const urlObj = new URL(url.value);
-    const pathName = urlObj.pathname;
-    const segments = pathName.split("/");
-    if (segments.length > 1) {
-      filename.value = segments[segments.length - 1];
-    }
+    const parsedUrl = new URL(value.trim());
+    if (!["http:", "https:"].includes(parsedUrl.protocol) || !parsedUrl.hostname) return null;
+    return parsedUrl;
   } catch {
-    // 当URL无效时，不重置filename，因为用户可能手动输入了文件名
+    return null;
   }
+}
+
+function parseFilenameFromUrl(value: string): string | null {
+  const parsedUrl = parseDownloadUrl(value);
+  if (!parsedUrl) return null;
+
+  const encodedFilename = parsedUrl.pathname.match(/\/([^/]+)\/*$/)?.[1];
+  if (!encodedFilename) return null;
+
+  try {
+    const decodedFilename = decodeURIComponent(encodedFilename);
+    // 解码结果若包含路径分隔符，则保留编码形式，避免生成不安全的文件名。
+    return /[\\/]/.test(decodedFilename) ? encodedFilename : decodedFilename;
+  } catch {
+    return encodedFilename;
+  }
+}
+
+function handleUrlChange(value: string) {
+  url.value = value;
+  const parsedFilename = parseFilenameFromUrl(value);
+  if (parsedFilename) filename.value = parsedFilename;
 }
 
 async function pickFileFolder() {
@@ -148,24 +165,48 @@ async function pickFileFolder() {
   }
 }
 
-function checkThreadCount() {
-  const threadCountValue = threadCount.value;
-  if (threadCountValue == "") {
-    return false;
-  }
-  if (!/^-?\d+$/.test(threadCountValue)) {
-    toast.error(i18n.t("download-file.thread_count_invalid"));
-    return false;
-  }
-  if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    toast.error(i18n.t("download-file.thread_count_positive"));
-    return false;
-  }
-  if (parseInt(threadCountValue, 10) > 256) {
-    toast.error(i18n.t("download-file.thread_count_too_big"));
-    return false;
-  }
-  return true;
+function validateThreadCount(value: string): ThreadCountValidationResult {
+  const normalized = value.trim();
+  if (!normalized) return { valid: false, error: "empty" };
+  if (!/^-?\d+$/.test(normalized)) return { valid: false, error: "invalid" };
+  if (!/^[1-9]\d*$/.test(normalized)) return { valid: false, error: "non_positive" };
+
+  const parsed = Number(normalized);
+  if (parsed > MAX_DOWNLOAD_THREADS) return { valid: false, error: "too_large" };
+
+  return { valid: true, value: parsed };
+}
+
+function checkThreadCount(value = threadCount.value) {
+  const result = validateThreadCount(value);
+  if (result.valid) return true;
+
+  const messageKey = {
+    empty: "download-file.thread_count_empty",
+    invalid: "download-file.thread_count_invalid",
+    non_positive: "download-file.thread_count_positive",
+    too_large: "download-file.thread_count_too_big",
+  }[result.error];
+  toast.error(i18n.t(messageKey));
+  return false;
+}
+
+function handleThreadCountChange(value: string) {
+  threadCount.value = value;
+  if (validateThreadCount(value).valid) threadCountInvalid.value = false;
+}
+
+function handleServerThreadCountChange(value: string) {
+  serverThreadCount.value = value;
+  if (validateThreadCount(value).valid) serverThreadCountInvalid.value = false;
+}
+
+function validateFileThreadCount() {
+  threadCountInvalid.value = !checkThreadCount(threadCount.value);
+}
+
+function validateServerThreadCount() {
+  serverThreadCountInvalid.value = !checkThreadCount(serverThreadCount.value);
 }
 
 // Server download methods
@@ -256,19 +297,8 @@ async function cancelDownload() {
 async function handleFileDownload() {
   if (combinedLoading.value) return;
 
-  const threadCountValue = threadCount.value;
-  if (threadCountValue == "") {
-    toast.error(i18n.t("download-file.thread_count_empty"));
-    return;
-  }
-  if (!/^-?\d+$/.test(threadCountValue)) {
-    toast.error(i18n.t("download-file.thread_count_invalid"));
-    return;
-  }
-  if (!/^[1-9]\d*$/.test(threadCountValue)) {
-    toast.error(i18n.t("download-file.thread_count_positive"));
-    return;
-  }
+  if (!checkThreadCount()) return;
+  const threadCountValue = threadCount.value.trim();
   const threadCountInt = parseInt(threadCountValue, 10);
 
   startLoading();
@@ -291,7 +321,8 @@ async function handleFileDownload() {
 }
 
 async function handleServerDownload() {
-  if (!canServerDownload.value || !info.value) return;
+  if (!info.value || !checkThreadCount(serverThreadCount.value)) return;
+  if (!canServerDownload.value) return;
 
   startLoading();
 
@@ -349,6 +380,7 @@ onMounted(() => {
           :filename="serverFilename"
           :saveDir="serverSaveDir"
           :threadCount="serverThreadCount"
+          :threadCountInvalid="serverThreadCountInvalid"
           :loadingTypes="loadingTypes"
           :loadingVersions="loadingVersions"
           :isDownloading="isDownloading"
@@ -358,8 +390,9 @@ onMounted(() => {
           @update:selectedVersion="selectedVersion = $event"
           @update:filename="serverFilename = $event"
           @update:saveDir="serverSaveDir = $event"
-          @update:threadCount="serverThreadCount = $event"
+          @update:threadCount="handleServerThreadCountChange"
           @pickFolder="pickServerFolder"
+          @checkThreadCount="validateServerThreadCount"
         />
         <div class="card-actions">
           <cmz-button
@@ -387,14 +420,14 @@ onMounted(() => {
           :savePath="savePath"
           :filename="filename"
           :threadCount="threadCount"
+          :threadCountInvalid="threadCountInvalid"
           :isDownloading="isDownloading"
-          @update:url="url = $event"
+          @update:url="handleUrlChange"
           @update:savePath="savePath = $event"
           @update:filename="filename = $event"
-          @update:threadCount="threadCount = $event"
-          @checkUrl="checkUrl()"
+          @update:threadCount="handleThreadCountChange"
           @pickFolder="pickFileFolder"
-          @checkThreadCount="checkThreadCount"
+          @checkThreadCount="validateFileThreadCount"
         />
         <div class="card-actions">
           <cmz-button

@@ -8,6 +8,8 @@
 pub mod error;
 /// 可观测性（日志/指标）事件与常量。
 pub mod observability;
+/// 插件安全策略和运行状态服务。
+pub mod plugin;
 /// 应用层服务接口。
 pub mod service;
 /// 服务实现与注册集合。

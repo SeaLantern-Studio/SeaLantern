@@ -1,16 +1,60 @@
 use std::fs;
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
 use serde_json::{Map, Value};
+use sha2::{Digest, Sha256};
 
 use super::error::AppPluginError;
-use super::manifest::{PluginManifest, PluginPermission, PLUGIN_API_VERSION};
+use super::manifest::{PluginManifest, PLUGIN_API_VERSION};
+use sealantern_core::app_plugin::capability;
 
 /// Locates and validates plugin manifests without evaluating plugin code.
 pub struct PluginLoader;
 
 impl PluginLoader {
     pub const MANIFEST_FILE_NAME: &'static str = "manifest.json";
+
+    /// Returns a stable digest for every regular file the bundle can expose to its runtime.
+    pub fn bundle_fingerprint(plugin_dir: &Path) -> Result<String, AppPluginError> {
+        let mut files = Vec::new();
+        collect_bundle_files(plugin_dir, plugin_dir, &mut files)?;
+        files.sort_by(|(left, _), (right, _)| left.cmp(right));
+
+        let mut hasher = Sha256::new();
+        let mut total_bytes = 0u64;
+        for (relative_path, path) in files {
+            let metadata = fs::metadata(&path).map_err(|error| AppPluginError::Io {
+                path: path.clone(),
+                message: error.to_string(),
+            })?;
+            total_bytes = total_bytes
+                .checked_add(metadata.len())
+                .ok_or_else(|| invalid_bundle_path(&path, "plugin bundle is too large"))?;
+            if total_bytes > MAX_BUNDLE_BYTES {
+                return Err(invalid_bundle_path(&path, "plugin bundle is too large"));
+            }
+
+            hasher.update(relative_path.to_string_lossy().as_bytes());
+            hasher.update([0]);
+            let mut file = fs::File::open(&path).map_err(|error| AppPluginError::Io {
+                path: path.clone(),
+                message: error.to_string(),
+            })?;
+            let mut buffer = [0u8; 8192];
+            loop {
+                let read = file.read(&mut buffer).map_err(|error| AppPluginError::Io {
+                    path: path.clone(),
+                    message: error.to_string(),
+                })?;
+                if read == 0 {
+                    break;
+                }
+                hasher.update(&buffer[..read]);
+            }
+        }
+        Ok(format!("{:x}", hasher.finalize()))
+    }
 
     /// Returns immediate child directories that contain a regular manifest file.
     ///
@@ -80,7 +124,12 @@ impl PluginLoader {
             })?;
 
         Self::validate_api_version(object, &manifest_path)?;
-        Self::validate_permission_names(object, &manifest_path)?;
+        if object.contains_key("permissions") {
+            return Err(AppPluginError::InvalidManifest {
+                message: "field 'permissions' was removed in plugin API v2; use structured 'capabilities' declarations".to_string(),
+            });
+        }
+        Self::validate_capability_declarations(object, &manifest_path)?;
 
         let manifest: PluginManifest =
             serde_json::from_value(value).map_err(|error| AppPluginError::MalformedManifest {
@@ -151,32 +200,30 @@ impl PluginLoader {
         }
     }
 
-    fn validate_permission_names(
+    fn validate_capability_declarations(
         object: &Map<String, Value>,
         manifest_path: &Path,
     ) -> Result<(), AppPluginError> {
-        let Some(value) = object.get("permissions") else {
+        let Some(value) = object.get("capabilities") else {
             return Ok(());
         };
-        let permissions = value
+        let capabilities = value
             .as_array()
             .ok_or_else(|| AppPluginError::MalformedManifest {
                 path: manifest_path.to_path_buf(),
-                message: "field 'permissions' must be an array of strings".to_string(),
+                message: "field 'capabilities' must be an array of objects".to_string(),
             })?;
 
-        for permission in permissions {
-            let permission =
-                permission
-                    .as_str()
-                    .ok_or_else(|| AppPluginError::MalformedManifest {
-                        path: manifest_path.to_path_buf(),
-                        message: "field 'permissions' must be an array of strings".to_string(),
-                    })?;
-            if PluginPermission::parse(permission).is_none() {
-                return Err(AppPluginError::UnsupportedCapability {
-                    capability: permission.to_string(),
-                });
+        for capability_declaration in capabilities {
+            let id = capability_declaration
+                .get("id")
+                .and_then(Value::as_str)
+                .ok_or_else(|| AppPluginError::MalformedManifest {
+                    path: manifest_path.to_path_buf(),
+                    message: "each capability declaration requires a string 'id'".to_string(),
+                })?;
+            if capability(id).is_none() {
+                return Err(AppPluginError::UnsupportedCapability { capability: id.to_string() });
             }
         }
         Ok(())
@@ -189,6 +236,57 @@ impl PluginLoader {
             });
         }
         Ok(())
+    }
+}
+
+const MAX_BUNDLE_FILES: usize = 1_024;
+const MAX_BUNDLE_BYTES: u64 = 32 * 1024 * 1024;
+
+fn collect_bundle_files(
+    root: &Path,
+    directory: &Path,
+    files: &mut Vec<(PathBuf, PathBuf)>,
+) -> Result<(), AppPluginError> {
+    for entry in fs::read_dir(directory).map_err(|error| AppPluginError::Io {
+        path: directory.to_path_buf(),
+        message: error.to_string(),
+    })? {
+        let entry = entry.map_err(|error| AppPluginError::Io {
+            path: directory.to_path_buf(),
+            message: error.to_string(),
+        })?;
+        let path = entry.path();
+        let file_type = entry.file_type().map_err(|error| AppPluginError::Io {
+            path: path.clone(),
+            message: error.to_string(),
+        })?;
+        if file_type.is_symlink() {
+            return Err(invalid_bundle_path(&path, "plugin bundle must not contain symlinks"));
+        }
+        if file_type.is_dir() {
+            collect_bundle_files(root, &path, files)?;
+        } else if file_type.is_file() {
+            if files.len() >= MAX_BUNDLE_FILES {
+                return Err(invalid_bundle_path(&path, "plugin bundle contains too many files"));
+            }
+            let relative_path = path.strip_prefix(root).map_err(|_| {
+                invalid_bundle_path(&path, "plugin bundle path is outside its root")
+            })?;
+            files.push((relative_path.to_path_buf(), path));
+        } else {
+            return Err(invalid_bundle_path(
+                &path,
+                "plugin bundle must contain only regular files and directories",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn invalid_bundle_path(path: &Path, message: &str) -> AppPluginError {
+    AppPluginError::InvalidPath {
+        path: path.to_path_buf(),
+        message: message.to_owned(),
     }
 }
 
@@ -229,7 +327,7 @@ mod tests {
 
     use super::PluginLoader;
     use crate::app_plugin::error::AppPluginError;
-    use crate::app_plugin::manifest::{PluginPermission, PLUGIN_API_VERSION};
+    use crate::app_plugin::manifest::PLUGIN_API_VERSION;
 
     static NEXT_TEST_DIRECTORY: AtomicU64 = AtomicU64::new(0);
 
@@ -271,9 +369,25 @@ mod tests {
                 "name": "Example Plugin",
                 "version": "1.0.0",
                 "main": "main.lua",
-                "permissions": ["log", "storage"]
+                "capabilities": [{{"id": "plugin.log.emit"}}, {{"id": "plugin.storage.read"}}]
             }}"#
         )
+    }
+
+    #[test]
+    fn bundle_fingerprint_changes_when_bundle_content_changes() {
+        let root = TestDirectory::new();
+        let plugin_dir = write_manifest(root.path(), "fingerprint", &valid_manifest());
+        fs::write(plugin_dir.join("main.lua"), "return 'first'").expect("script should be written");
+        let first = PluginLoader::bundle_fingerprint(&plugin_dir)
+            .expect("bundle fingerprint should be calculated");
+
+        fs::write(plugin_dir.join("main.lua"), "return 'second'")
+            .expect("script should be updated");
+        let second = PluginLoader::bundle_fingerprint(&plugin_dir)
+            .expect("bundle fingerprint should be recalculated");
+
+        assert_ne!(first, second);
     }
 
     #[test]
@@ -300,7 +414,7 @@ mod tests {
                 "name": "",
                 "version": "",
                 "main": "../old.lua",
-                "permissions": ["network"]
+                "capabilities": [{"id": "network.request"}]
             }"#,
         );
 
@@ -336,7 +450,7 @@ mod tests {
     }
 
     #[test]
-    fn unknown_permission_has_a_capability_error() {
+    fn unknown_capability_has_a_capability_error() {
         let root = TestDirectory::new();
         let plugin_dir = write_manifest(
             root.path(),
@@ -347,7 +461,7 @@ mod tests {
                 "name": "Example Plugin",
                 "version": "1.0.0",
                 "main": "main.lua",
-                "permissions": ["network"]
+                "capabilities": [{"id": "network.request"}]
             }"#,
         );
 
@@ -356,7 +470,7 @@ mod tests {
 
         assert!(matches!(
             error,
-            AppPluginError::UnsupportedCapability { ref capability } if capability == "network"
+            AppPluginError::UnsupportedCapability { ref capability } if capability == "network.request"
         ));
     }
 
@@ -381,12 +495,35 @@ mod tests {
     }
 
     #[test]
-    fn valid_manifest_returns_typed_permissions() {
+    fn valid_manifest_returns_typed_capabilities() {
         let root = TestDirectory::new();
         let plugin_dir = write_manifest(root.path(), "valid", &valid_manifest());
 
         let manifest = PluginLoader::load_manifest(&plugin_dir).expect("manifest should load");
 
-        assert_eq!(manifest.permissions, vec![PluginPermission::Log, PluginPermission::Storage]);
+        assert_eq!(manifest.capabilities.len(), 2);
+        assert_eq!(manifest.capabilities[0].id, "plugin.log.emit");
+    }
+
+    #[test]
+    fn legacy_permissions_field_has_actionable_migration_error() {
+        let root = TestDirectory::new();
+        let plugin_dir = write_manifest(
+            root.path(),
+            "legacy-permissions",
+            r#"{
+                "apiVersion": 2,
+                "id": "example.plugin",
+                "name": "Example Plugin",
+                "version": "1.0.0",
+                "main": "main.lua",
+                "permissions": ["log"]
+            }"#,
+        );
+
+        let error = PluginLoader::load_manifest(&plugin_dir)
+            .expect_err("legacy permissions must be rejected");
+
+        assert!(error.to_string().contains("use structured 'capabilities'"));
     }
 }

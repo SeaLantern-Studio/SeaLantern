@@ -29,6 +29,11 @@ impl AppState {
         Self { services }
     }
 
+    /// 返回共享应用服务容器，供需要异步初始化子服务的传输适配器使用。
+    pub fn services(&self) -> &AppServices {
+        &self.services
+    }
+
     /// 访问实例记录管理服务（`Arc` 共享句柄，clone 廉价）。
     pub fn instance(&self) -> Arc<CoreInstanceService> {
         self.services.instance().clone()
