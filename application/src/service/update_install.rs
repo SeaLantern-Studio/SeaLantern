@@ -53,7 +53,10 @@ impl UpdateInstallService for CoreUpdateInstallService {
         // 期望哈希格式校验：必须是偶数长度的十六进制字符串。
         let trimmed_hash = expected_hash.as_deref().map(str::trim);
         if let Some(hash) = trimmed_hash {
-            if hash.is_empty() || !hash.chars().all(|c| c.is_ascii_hexdigit()) || hash.len() % 2 != 0 {
+            if hash.is_empty()
+                || !hash.chars().all(|c| c.is_ascii_hexdigit())
+                || hash.len() % 2 != 0
+            {
                 return Err(UpdateInstallServiceError::InvalidInput);
             }
         }
