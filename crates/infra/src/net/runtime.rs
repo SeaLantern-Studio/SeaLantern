@@ -345,6 +345,20 @@ fn next_revision(revision: u64, exhausted_message: &'static str) -> Result<u64, 
 
 static GLOBAL_NETWORK_RUNTIME: NetworkRuntime = NetworkRuntime::new();
 
+/// 进程级全局客户端获取器。
+///
+/// 服务在构造时注入该 provider，并在每次发起请求前调用以获取
+/// 当前全局客户端；避免服务缓存固定客户端导致代理更新不生效。
+pub type ClientProvider = Box<dyn Fn() -> Result<NetClient, NetError> + Send + Sync>;
+
+/// 构造默认全局客户端 provider。
+///
+/// 返回的 provider 每次调用都会读取进程级全局网络运行时，
+/// 从而拿到与当前代理策略一致的客户端。
+pub fn global_client_provider() -> ClientProvider {
+    Box::new(global_client)
+}
+
 /// 获取进程级全局网络客户端。
 pub fn global_client() -> Result<NetClient, NetError> {
     GLOBAL_NETWORK_RUNTIME.client()
@@ -407,6 +421,18 @@ mod tests {
     #[test]
     fn prepared_network_update_can_cross_async_boundaries() {
         assert_send_static::<PreparedNetworkUpdate>();
+    }
+
+    #[test]
+    fn default_client_provider_yields_the_global_client() {
+        let provider = global_client_provider();
+        assert!(provider().is_ok());
+    }
+
+    #[test]
+    fn client_provider_is_send_and_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<ClientProvider>();
     }
 
     #[test]

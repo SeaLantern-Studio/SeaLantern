@@ -1,9 +1,8 @@
 //! 多来源应用更新检查编排。
 
 use async_trait::async_trait;
-use sealantern_infra::net::{ClientConfig, NetClient, NetError, TimeoutPolicy};
+use sealantern_infra::net::{ClientProvider, NetClient};
 
-use super::constants::{UPDATE_HTTP_CONNECT_TIMEOUT, UPDATE_HTTP_TIMEOUT, UPDATE_HTTP_USER_AGENT};
 use super::error::UpdateCheckError;
 use super::types::UpdateInfo;
 
@@ -15,36 +14,32 @@ pub trait UpdateChecker: Send + Sync {
 }
 
 /// 基于 SeaLantern 官方发布源的更新检查器。
+///
+/// 持有客户端获取器（provider），每次检查时获取当前全局客户端，
+/// 避免缓存固定客户端导致代理更新不生效。
 pub struct ReleaseUpdateChecker {
-    client: NetClient,
+    client_provider: ClientProvider,
 }
 
 impl ReleaseUpdateChecker {
-    /// 使用官方更新 User-Agent 构造检查器。
+    /// 使用全局网络客户端构造检查器。
     pub fn new() -> Result<Self, UpdateCheckError> {
-        let client = build_update_http_client(UPDATE_HTTP_USER_AGENT)
-            .map_err(|source| UpdateCheckError::ClientInitialization { source })?;
-        Ok(Self { client })
+        Ok(Self {
+            client_provider: sealantern_infra::net::global_client_provider(),
+        })
     }
 
-    /// 使用既有 HTTP 客户端构造检查器，供上层注入代理或测试客户端。
+    /// 使用客户端获取器构造检查器，供上层注入代理或测试替换。
+    pub fn with_provider(client_provider: ClientProvider) -> Self {
+        Self { client_provider }
+    }
+
+    /// 使用既有 HTTP 客户端构造检查器，兼容旧调用与测试注入。
     pub fn with_client(client: NetClient) -> Self {
-        Self { client }
+        Self {
+            client_provider: Box::new(move || Ok(client.clone())),
+        }
     }
-}
-
-/// 通过 infra 统一客户端构建更新检查网络入口。
-pub(crate) fn build_update_http_client(user_agent: &str) -> Result<NetClient, NetError> {
-    let config = ClientConfig {
-        timeout: TimeoutPolicy {
-            connect: UPDATE_HTTP_CONNECT_TIMEOUT,
-            read: UPDATE_HTTP_TIMEOUT,
-            total: UPDATE_HTTP_TIMEOUT,
-        },
-        user_agent: user_agent.to_owned(),
-        ..ClientConfig::default()
-    };
-    NetClient::from_config(&config)
 }
 
 #[async_trait]
@@ -52,15 +47,19 @@ impl UpdateChecker for ReleaseUpdateChecker {
     async fn check(&self, current_version: &str) -> Result<UpdateInfo, UpdateCheckError> {
         #[cfg(debug_assertions)]
         {
-            let _ = &self.client;
+            let _ = &self.client_provider;
             crate::observability::update_check_started("disabled", current_version);
             crate::observability::update_check_completed("disabled", false, Some(current_version));
             return Ok(no_update(current_version));
         }
 
+        #[cfg(not(debug_assertions))]
+        let client = (self.client_provider)()
+            .map_err(|source| UpdateCheckError::ClientInitialization { source })?;
+
         #[cfg(all(not(debug_assertions), target_os = "linux"))]
         {
-            let client = self.client.get_reqwest_client();
+            let client = client.get_reqwest_client();
             if super::is_arch_linux() {
                 return super::arch::check_aur_update_with_client(client, current_version)
                     .await
@@ -80,7 +79,7 @@ impl UpdateChecker for ReleaseUpdateChecker {
         #[cfg(all(not(debug_assertions), not(target_os = "linux")))]
         {
             super::fetch_github_release(
-                self.client.get_reqwest_client(),
+                client.get_reqwest_client(),
                 &super::get_github_config(),
                 current_version,
             )

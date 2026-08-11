@@ -21,7 +21,8 @@ pub use proxy::{
 pub use request::RequestBuilder;
 pub use runtime::{
     apply_proxy_settings, apply_system_proxy_snapshot, commit_prepared_proxy_update, global_client,
-    prepare_proxy_settings, NetworkCommitError, NetworkUpdate, PreparedNetworkUpdate,
+    global_client_provider, prepare_proxy_settings, ClientProvider, NetworkCommitError,
+    NetworkUpdate, PreparedNetworkUpdate,
 };
 
 #[cfg(feature = "blocking")]

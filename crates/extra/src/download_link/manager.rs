@@ -2,7 +2,6 @@
 
 use super::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
 use sealantern_infra::download::fetch_to_bytes;
-use sealantern_infra::net::client::{ClientConfig, NetClient};
 use serde_json::Value;
 use tokio::sync::{Mutex, OnceCell};
 
@@ -35,12 +34,8 @@ impl LinkManager {
 
     /// 从远程加载下载链接配置
     async fn init() -> Result<BaseDownloadLinks, String> {
-        let config = ClientConfig {
-            user_agent: crate::update::UPDATE_HTTP_USER_AGENT.to_string(),
-            ..Default::default()
-        };
-
-        let client = NetClient::from_config(&config)
+        // 获取当前全局客户端，与全局代理设置保持一致。
+        let client = sealantern_infra::net::global_client()
             .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
         let response_body = fetch_to_bytes(&client, DOWNLOAD_LINK_LIST_URL)

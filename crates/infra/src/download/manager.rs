@@ -16,6 +16,7 @@ use uuid::Uuid;
 use crate::download::multi::Downloader;
 use crate::download::status::{DownloadError, DownloadSnapshot, DownloadStatus};
 use crate::net::client::NetClient;
+use crate::net::{global_client_provider, ClientProvider};
 use crate::observability;
 
 /// 下载任务管理器。
@@ -43,9 +44,20 @@ impl DownloadManager {
     ///
     /// 也可通过 [`Self::instance`] 获取进程级全局单例；显式构造便于
     /// application 层按服务装配方式持有，而非被全局单例反向绑定。
+    ///
+    /// 从既有客户端构造：内部包装为固定 provider，便于测试注入。
+    /// 生产代码应优先使用 [`Self::with_provider`] 获取全局客户端。
     pub fn new(client: NetClient) -> Self {
+        Self::with_provider(Box::new(move || Ok(client.clone())))
+    }
+
+    /// 从客户端获取器构造下载任务管理器。
+    ///
+    /// 每次创建下载任务时都会调用 provider 获取当前全局客户端，
+    /// 避免缓存固定客户端导致代理更新不生效。
+    pub fn with_provider(client_provider: ClientProvider) -> Self {
         Self {
-            downloader: Downloader::new(client),
+            downloader: Downloader::new(client_provider),
             tasks: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -193,13 +205,11 @@ static GLOBAL_DOWNLOAD_MANAGER: OnceLock<DownloadManager> = OnceLock::new();
 impl DownloadManager {
     /// 获取全局下载管理器实例（懒加载）。
     ///
-    /// 首次调用时使用默认的 `NetClient` 配置创建管理器实例。
+    /// 管理器内部持有全局客户端 provider：每次创建下载任务时都会
+    /// 重新获取当前全局客户端，与代理设置同步。
     pub fn instance() -> &'static Self {
-        GLOBAL_DOWNLOAD_MANAGER.get_or_init(|| {
-            let client = NetClient::from_config(&Default::default())
-                .expect("failed to create default HTTP client for global DownloadManager");
-            DownloadManager::new(client)
-        })
+        GLOBAL_DOWNLOAD_MANAGER
+            .get_or_init(|| DownloadManager::with_provider(global_client_provider()))
     }
 }
 

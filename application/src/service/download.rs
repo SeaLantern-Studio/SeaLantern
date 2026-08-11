@@ -9,7 +9,7 @@
 
 use async_trait::async_trait;
 use sealantern_infra::download::DownloadManager;
-use sealantern_infra::net::client::{ClientConfig, NetClient};
+use sealantern_infra::net::{global_client_provider, ClientProvider};
 use sealantern_interface::download::{DownloadRequest, DownloadTaskInfo, DownloadTaskStatus};
 use sealantern_interface::DownloadServiceError;
 
@@ -25,33 +25,32 @@ pub struct CoreDownloadService {
 }
 
 impl CoreDownloadService {
-    /// 以直连方式构造下载服务（不配置代理）。
+    /// 以全局网络客户端构造下载服务。
     ///
-    /// 需要代理时使用 [`Self::with_proxy`]。
-    pub fn new() -> Result<Self, DownloadError> {
-        let client = NetClient::from_config(&ClientConfig::default())
-            .map_err(|e| DownloadError::OperationFailed { source: Box::new(e) })?;
-        Ok(Self { manager: DownloadManager::new(client) })
+    /// 下载管理器内部持有全局客户端 provider，每次创建下载任务时
+    /// 获取当前全局客户端，与代理设置保持一致。
+    pub fn new() -> Self {
+        Self {
+            manager: DownloadManager::with_provider(global_client_provider()),
+        }
     }
 
-    /// 从代理 URL 构造下载服务。
-    ///
-    /// `proxy_url` 为已解析的代理地址（如 `http://127.0.0.1:7890`）；
-    /// 从 `ProxySettings` 解析出 URL 是 proxy 模块/配置层的职责，
-    /// 配置系统恢复后由装配层在此传入。
-    pub fn with_proxy(proxy_url: String) -> Result<Self, DownloadError> {
-        let config = ClientConfig {
-            proxy: Some(proxy_url),
-            ..Default::default()
-        };
-        let client = NetClient::from_config(&config)
-            .map_err(|e| DownloadError::OperationFailed { source: Box::new(e) })?;
-        Ok(Self { manager: DownloadManager::new(client) })
+    /// 从客户端获取器构造下载服务（便于测试注入假 provider）。
+    pub fn with_provider(client_provider: ClientProvider) -> Self {
+        Self {
+            manager: DownloadManager::with_provider(client_provider),
+        }
     }
 
     /// 从既有管理器构造下载服务（便于测试注入）。
     pub fn with_manager(manager: DownloadManager) -> Self {
         Self { manager }
+    }
+}
+
+impl Default for CoreDownloadService {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -114,5 +113,31 @@ fn to_frontend_status(
         DownloadTaskStatus::Downloading
     } else {
         DownloadTaskStatus::Pending
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use sealantern_interface::DownloadService;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn provider_failure_propagates_without_network() {
+        // 假 provider：每次创建任务前被调用并返回失败，验证不会发出网络请求。
+        let service = CoreDownloadService::with_provider(Box::new(|| {
+            Err(sealantern_infra::net::NetError::Config("模拟获取客户端失败".into()))
+        }));
+        let request = DownloadRequest {
+            url: "https://example.com/file.zip".to_owned(),
+            save_path: "C:\\temp\\file.zip".to_owned(),
+            thread_count: 8,
+        };
+
+        let error = service
+            .create(request)
+            .await
+            .expect_err("provider failure must fail");
+        assert_eq!(error, DownloadServiceError::OperationFailed);
     }
 }

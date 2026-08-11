@@ -10,9 +10,7 @@
 
 #[cfg(target_os = "linux")]
 mod imp {
-    use super::super::constants::{
-        AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL, PLUGIN_MARKET_HTTP_USER_AGENT,
-    };
+    use super::super::constants::{AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL};
     use super::super::types::UpdateInfo;
     use super::super::version::compare_versions;
     use crate::observability;
@@ -48,7 +46,8 @@ mod imp {
 
     /// 检查 AUR 更新
     pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, String> {
-        let client = super::super::checker::build_update_http_client(PLUGIN_MARKET_HTTP_USER_AGENT)
+        // 获取当前全局客户端，与全局代理设置保持一致。
+        let client = sealantern_infra::net::global_client()
             .map_err(|error| format!("创建 AUR 更新客户端失败: {error}"))?;
         check_aur_update_with_client(client.get_reqwest_client(), current_version).await
     }
