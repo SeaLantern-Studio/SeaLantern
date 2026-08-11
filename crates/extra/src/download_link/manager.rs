@@ -7,7 +7,7 @@ use tokio::sync::{Mutex, OnceCell};
 
 /// 下载链接配置 URL
 const DOWNLOAD_LINK_LIST_URL: &str =
-    "https://raw.githubusercontent.com/SeaLantern-Studio/SeaLanternData/main/server_download.json";
+    "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/releases/download/26.02.27/jar_lfs_links.json";
 
 /// 下载链接查询错误。
 ///
