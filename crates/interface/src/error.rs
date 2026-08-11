@@ -296,7 +296,7 @@ impl std::error::Error for ServerCatalogServiceError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UpdateInstallServiceError {
-    /// 客户端提供的安装输入不合法（如版本号为空）。
+    /// 客户端提供的安装输入不合法（如 URL 为空或协议非法、版本号为空、哈希格式错误）。
     InvalidInput,
     /// 底层下载、校验或安装过程失败。
     OperationFailed,

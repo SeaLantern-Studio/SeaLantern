@@ -6,9 +6,10 @@
 //! 更新文件下载、待安装记录查询 / 清理与安装进程拉起。
 //!
 //! 错误分层：底层下载 / 落盘 / 查询失败统一收敛为
-//! [`UpdateInstallServiceError::OperationFailed`]；版本号为空等非法参数
-//! 收敛为 [`UpdateInstallServiceError::InvalidInput`]；非 Windows 平台
-//! 无法拉起安装进程，返回 [`UpdateInstallServiceError::Unsupported`]。
+//! [`UpdateInstallServiceError::OperationFailed`]；URL 非法、版本号为空、
+//! 哈希格式非法等参数问题收敛为 [`UpdateInstallServiceError::InvalidInput`]；
+//! 非 Windows 平台无法拉起安装进程，返回
+//! [`UpdateInstallServiceError::Unsupported`]。
 
 use async_trait::async_trait;
 use sealantern_extra::update::{
@@ -25,20 +26,41 @@ pub struct CoreUpdateInstallService;
 impl UpdateInstallService for CoreUpdateInstallService {
     /// 下载更新文件并登记为待安装。
     ///
-    /// 版本号为空视为非法输入；下载成功后把文件路径与版本写入待安装
-    /// 记录，供应用重启后的安装流程读取。
+    /// 参数校验：`url` 必须非空且为 http / https 协议，`version` 不能为空，
+    /// `expected_hash` 若存在必须是偶数长度的十六进制字符串，不满足时视为
+    /// 非法输入；下载成功后把文件路径与版本写入待安装记录，供应用重启后的
+    /// 安装流程读取。
     async fn download(
         &self,
         url: String,
         expected_hash: Option<String>,
         version: String,
     ) -> Result<String, UpdateInstallServiceError> {
+        // URL 基本校验：非空 + 基础协议检查。
+        let trimmed_url = url.trim();
+        if trimmed_url.is_empty()
+            || !(trimmed_url.starts_with("http://") || trimmed_url.starts_with("https://"))
+        {
+            return Err(UpdateInstallServiceError::InvalidInput);
+        }
+        // 版本号校验（原有语义保留）。
         if version.trim().is_empty() {
             return Err(UpdateInstallServiceError::InvalidInput);
         }
-        let path = download_update_file_without_events(url, expected_hash, get_update_cache_dir())
-            .await
-            .map_err(|_| UpdateInstallServiceError::OperationFailed)?;
+        // 期望哈希格式校验：必须是偶数长度的十六进制字符串。
+        let trimmed_hash = expected_hash.as_deref().map(str::trim);
+        if let Some(hash) = trimmed_hash {
+            if hash.is_empty() || !hash.chars().all(|c| c.is_ascii_hexdigit()) || hash.len() % 2 != 0 {
+                return Err(UpdateInstallServiceError::InvalidInput);
+            }
+        }
+        let path = download_update_file_without_events(
+            trimmed_url.to_string(),
+            trimmed_hash.map(str::to_string),
+            get_update_cache_dir(),
+        )
+        .await
+        .map_err(|_| UpdateInstallServiceError::OperationFailed)?;
         write_pending_update(&get_pending_update_file(), &path, version)
             .map_err(|_| UpdateInstallServiceError::OperationFailed)?;
         Ok(path)
