@@ -771,15 +771,66 @@ fn parse_trust(value: &str) -> Result<TrustSource, PluginPolicyError> {
     }
 }
 
+const SENSITIVE_AUDIT_KEYS: [&str; 6] =
+    ["password", "token", "secret", "authorization", "cookie", "private_key"];
+
 fn redact_detail(value: &str) -> String {
-    ["password", "token", "secret", "authorization", "cookie", "private_key"]
+    if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(value) {
+        redact_json(&mut json);
+        return serde_json::to_string(&json).unwrap_or_else(|_| "<redacted json>".to_owned());
+    }
+    value
+        .split_inclusive(is_audit_pair_delimiter)
+        .map(redact_text_segment)
+        .collect()
+}
+
+fn redact_json(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(values) => {
+            for (key, value) in values {
+                if is_sensitive_audit_key(key) {
+                    *value = serde_json::Value::String("<redacted>".to_owned());
+                } else {
+                    redact_json(value);
+                }
+            }
+        }
+        serde_json::Value::Array(values) => values.iter_mut().for_each(redact_json),
+        _ => {}
+    }
+}
+
+fn redact_text_segment(segment: &str) -> String {
+    let suffix_len = segment
+        .chars()
+        .last()
+        .filter(|value| is_audit_pair_delimiter(*value))
+        .map_or(0, char::len_utf8);
+    let (body, suffix) = segment.split_at(segment.len() - suffix_len);
+    let Some((index, separator)) = body
+        .char_indices()
+        .find(|(_, value)| matches!(value, '=' | ':'))
+    else {
+        return segment.to_owned();
+    };
+    let key = &body[..index];
+    if !is_sensitive_audit_key(key.trim_matches(|value: char| {
+        value.is_ascii_whitespace() || matches!(value, '\"' | '\'' | '{' | '}')
+    })) {
+        return segment.to_owned();
+    }
+    format!("{key}{separator}<redacted>{suffix}")
+}
+
+fn is_audit_pair_delimiter(value: char) -> bool {
+    matches!(value, '&' | ';' | ',' | '\r' | '\n')
+}
+
+fn is_sensitive_audit_key(value: &str) -> bool {
+    SENSITIVE_AUDIT_KEYS
         .iter()
-        .fold(value.to_owned(), |value, key| {
-            value
-                .split_once('=')
-                .filter(|(left, _)| left.trim().eq_ignore_ascii_case(key))
-                .map_or(value.clone(), |(left, _)| format!("{left}=<redacted>"))
-        })
+        .any(|key| value.eq_ignore_ascii_case(key))
 }
 
 fn text(value: &str) -> SqlValue {
@@ -958,6 +1009,18 @@ mod tests {
         assert_eq!(entries[0].detail, "token=<redacted>");
         assert!(CapabilityId::new("plugin.log.emit").is_ok());
         cleanup(database);
+    }
+
+    #[test]
+    fn audit_detail_redacts_json_headers_and_query_pairs() {
+        let json = redact_detail(r#"{"token":"secret","nested":{"password":"hidden"}}"#);
+        assert!(!json.contains("secret"));
+        assert!(!json.contains("hidden"));
+        assert!(json.contains("<redacted>"));
+        assert_eq!(
+            redact_detail("Authorization: Bearer secret;token=another&public=value"),
+            "Authorization:<redacted>;token=<redacted>&public=value"
+        );
     }
 
     fn cleanup(path: PathBuf) {

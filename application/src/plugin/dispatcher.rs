@@ -25,6 +25,7 @@ use super::PluginPolicyStore;
 const MARKET_PAGE_SIZE_LIMIT: u32 = 100;
 const MAX_PLUGIN_NETWORK_IN_FLIGHT: usize = 8;
 const MAX_RATE_LIMIT_KEYS: usize = 1_024;
+const MAX_SERVER_CONSOLE_COMMAND_BYTES: usize = 4_096;
 const RATE_WINDOW: Duration = Duration::from_secs(60);
 
 /// 只读市场能力的宿主端口。
@@ -437,7 +438,9 @@ impl PluginReadHost for ApplicationPluginReadHost {
     }
 
     async fn installed_plugins(&self) -> Result<Value, CapabilityDispatchError> {
-        Ok(Value::Array(vec![]))
+        Err(CapabilityDispatchError::Unavailable(
+            "installed plugin inventory is not implemented",
+        ))
     }
 
     async fn instances(&self) -> Result<Value, CapabilityDispatchError> {
@@ -511,7 +514,7 @@ impl PluginReadHost for ApplicationPluginReadHost {
         instance_id: &str,
         command: &str,
     ) -> Result<Value, CapabilityDispatchError> {
-        if command.trim().is_empty() || command.len() > 4096 {
+        if command.trim().is_empty() || command.len() > MAX_SERVER_CONSOLE_COMMAND_BYTES {
             return Err(CapabilityDispatchError::InvalidRequest("server console command"));
         }
         let id = sealantern_core::instance::InstanceId::new(instance_id)

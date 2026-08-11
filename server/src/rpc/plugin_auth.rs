@@ -2,6 +2,8 @@ use crate::rpc::axum::HttpRpcAccessResolver;
 use crate::rpc::{RpcAccess, RpcError, RpcPermission, RpcResult};
 use axum::http::{header::AUTHORIZATION, HeaderMap, StatusCode};
 
+const PLUGIN_INVOKE_PERMISSION: &str = "plugin.v2.invoke";
+
 /// Server 插件 RPC 的 bearer token 认证解析器。
 #[derive(Clone)]
 pub struct PluginRpcTokenResolver {
@@ -15,14 +17,14 @@ impl PluginRpcTokenResolver {
             token: std::env::var("SEALANTERN_PLUGIN_RPC_TOKEN")
                 .ok()
                 .filter(|token| token.len() >= 32),
-            permission: RpcPermission::new("plugin.v2.invoke"),
+            permission: plugin_invoke_permission(),
         }
     }
 
     pub fn with_token(token: impl Into<String>) -> Self {
         Self {
             token: Some(token.into()),
-            permission: RpcPermission::new("plugin.v2.invoke"),
+            permission: plugin_invoke_permission(),
         }
     }
 
@@ -47,6 +49,10 @@ impl PluginRpcTokenResolver {
                 .fold(0u8, |different, (left, right)| different | (left ^ right))
                 == 0
     }
+}
+
+fn plugin_invoke_permission() -> RpcPermission {
+    RpcPermission::new(PLUGIN_INVOKE_PERMISSION)
 }
 
 impl HttpRpcAccessResolver for PluginRpcTokenResolver {

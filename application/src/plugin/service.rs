@@ -66,6 +66,12 @@ impl From<PluginPolicyError> for PluginServiceError {
     }
 }
 
+impl From<CapabilityDispatchError> for PluginServiceError {
+    fn from(error: CapabilityDispatchError) -> Self {
+        Self::Dispatch(error)
+    }
+}
+
 /// 将插件运行时和安全策略状态组合为单一宿主服务。
 pub struct CorePluginService {
     runtime: AsyncPluginManager,
@@ -182,21 +188,18 @@ impl PluginService for CorePluginService {
         let sealantern_core::app_plugin::ExecutionPrincipal::Plugin(plugin_id) =
             &invocation.principal
         else {
-            return Err(PluginServiceError::Dispatch(CapabilityDispatchError::InvalidRequest(
-                "plugin principal",
-            )));
+            return Err(CapabilityDispatchError::InvalidRequest("plugin principal").into());
         };
-        let plugin = self.runtime.plugin(plugin_id).await?.ok_or_else(|| {
-            PluginServiceError::Dispatch(CapabilityDispatchError::InvalidRequest("loaded plugin"))
-        })?;
+        let plugin = self
+            .runtime
+            .plugin(plugin_id)
+            .await?
+            .ok_or(CapabilityDispatchError::InvalidRequest("loaded plugin"))?;
         invocation.declared = plugin.manifest.capabilities.iter().any(|capability| {
             capability.id == invocation.capability.as_str()
                 && capability.scope.as_ref() == invocation.scope.as_ref()
         });
-        self.runtime
-            .invoke(invocation)
-            .await
-            .map_err(PluginServiceError::Dispatch)
+        self.runtime.invoke(invocation).await.map_err(Into::into)
     }
 }
 
