@@ -356,10 +356,7 @@ mod tests {
                 serde_json::to_string(&UpdateInstallServiceError::OperationFailed),
                 "\"operation_failed\"",
             ),
-            (
-                serde_json::to_string(&OnlineTunnelServiceError::NotRunning),
-                "\"not_running\"",
-            ),
+            (serde_json::to_string(&OnlineTunnelServiceError::NotRunning), "\"not_running\""),
         ];
 
         for (serialized, expected) in cases {
