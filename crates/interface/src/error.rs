@@ -43,6 +43,7 @@ impl std::error::Error for CronTaskServiceError {}
 /// 分类风格与 `server` 侧 `ConsoleCommandServiceError` 保持一致：
 /// 不携带主机路径、实例内容等敏感细节，底层失败详情由应用层写入受控日志。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum InstanceServiceError {
     /// 指定的实例不存在。
     InstanceNotFound,
@@ -79,6 +80,7 @@ impl std::error::Error for InstanceServiceError {}
 /// 分类风格与其他契约错误一致：不携带主机路径、进程细节等敏感信息，
 /// 底层失败详情由应用层写入受控日志。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ServerServiceError {
     /// 指定的实例不存在。
     InstanceNotFound,
@@ -112,6 +114,7 @@ impl std::error::Error for ServerServiceError {}
 /// 分类风格与 [`InstanceServiceError`] 一致：不携带敏感细节，
 /// 底层失败详情由应用层写入受控日志。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SettingsServiceError {
     /// 设置分组或设置项不存在。
     NotFound,
@@ -132,6 +135,7 @@ pub enum SettingsServiceError {
 /// 分类风格与其他契约错误一致：不携带 URL、路径等敏感信息，底层失败详情
 /// 由应用层写入受控日志。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DownloadServiceError {
     /// 指定的下载任务不存在。
     TaskNotFound,
@@ -178,6 +182,7 @@ impl std::error::Error for DownloadServiceError {}
 /// 分类风格与 [`InstanceServiceError`] 一致：不携带主机路径、进程细节等敏感
 /// 信息，底层失败详情由应用层写入受控日志。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SystemServiceError {
     /// 指定的进程不存在或无权访问。
     ProcessNotFound,
@@ -224,3 +229,31 @@ impl std::fmt::Display for UpdateCheckServiceError {
 }
 
 impl std::error::Error for UpdateCheckServiceError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn public_service_errors_serialize_as_snake_case() {
+        let cases = [
+            (serde_json::to_string(&CronTaskServiceError::TaskNotFound), "\"task_not_found\""),
+            (serde_json::to_string(&InstanceServiceError::InvalidInput), "\"invalid_input\""),
+            (serde_json::to_string(&ServerServiceError::InvalidState), "\"invalid_state\""),
+            (
+                serde_json::to_string(&SettingsServiceError::StorageFailed),
+                "\"storage_failed\"",
+            ),
+            (serde_json::to_string(&DownloadServiceError::TaskNotFound), "\"task_not_found\""),
+            (
+                serde_json::to_string(&SystemServiceError::ProcessNotFound),
+                "\"process_not_found\"",
+            ),
+            (serde_json::to_string(&UpdateCheckServiceError::CheckFailed), "\"check_failed\""),
+        ];
+
+        for (serialized, expected) in cases {
+            assert_eq!(serialized.expect("error enum must serialize"), expected);
+        }
+    }
+}

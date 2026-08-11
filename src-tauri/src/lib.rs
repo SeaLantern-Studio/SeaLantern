@@ -136,3 +136,56 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running Sea Lantern");
 }
+
+#[cfg(test)]
+mod tests {
+    const SNAKE_CASE_SERVICE_COMMANDS: &[&str] = &[
+        "create_cron_task",
+        "delete_cron_task",
+        "list_cron_tasks",
+        "run_cron_task",
+        "set_cron_task_enabled",
+        "update_cron_task",
+        "get_directory_usage",
+        "get_process_usage",
+        "get_system_snapshot",
+        "create_instance",
+        "delete_instance",
+        "get_instance",
+        "list_instances",
+        "rename_instance",
+        "update_instance_path",
+        "force_stop_server",
+        "restart_server",
+        "send_server_command",
+        "server_status",
+        "start_server",
+        "stop_server",
+        "download_cancel",
+        "download_create",
+        "download_query",
+        "export_settings",
+        "get_settings",
+        "import_settings",
+        "reset_settings",
+        "settings_overview",
+        "update_settings",
+        "update_settings_partial",
+        "check_update",
+    ];
+
+    #[test]
+    fn snake_case_service_commands_are_registered() {
+        let source = include_str!("lib.rs");
+        let (_, handler) = source
+            .split_once(".invoke_handler(tauri::generate_handler![")
+            .expect("Tauri handler must exist");
+        let (handler, _) = handler
+            .split_once("])\n        .setup")
+            .expect("Tauri handler must close before setup");
+
+        for command in SNAKE_CASE_SERVICE_COMMANDS {
+            assert!(handler.contains(command), "snake_case command {command} must be registered");
+        }
+    }
+}
