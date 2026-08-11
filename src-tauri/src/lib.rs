@@ -24,8 +24,10 @@ use adapter::tauri::commands::online_tunnel::{
     OnlineTunnelEventForwarder,
 };
 use adapter::tauri::commands::plugin::{
-    plugin_v2_audit, plugin_v2_disable, plugin_v2_discover, plugin_v2_enable, plugin_v2_load,
-    plugin_v2_plugins, plugin_v2_unload,
+    plugin_v2_approve_session, plugin_v2_audit, plugin_v2_disable, plugin_v2_discover,
+    plugin_v2_enable, plugin_v2_end_session, plugin_v2_grant_persistent, plugin_v2_grant_session,
+    plugin_v2_invoke, plugin_v2_issue_approval_token, plugin_v2_load, plugin_v2_plugins,
+    plugin_v2_revoke_persistent, plugin_v2_set_trust, plugin_v2_unload,
 };
 use adapter::tauri::commands::provisioning::{
     inspect_server, parse_startup_script, plan_existing_instance, plan_instance_copy,
@@ -133,12 +135,20 @@ pub fn run() {
             update_install,
             update_pending,
             //插件 v2 宿主能力与策略管理
+            plugin_v2_approve_session,
             plugin_v2_audit,
             plugin_v2_disable,
             plugin_v2_discover,
             plugin_v2_enable,
+            plugin_v2_end_session,
+            plugin_v2_grant_persistent,
+            plugin_v2_grant_session,
+            plugin_v2_invoke,
+            plugin_v2_issue_approval_token,
             plugin_v2_load,
             plugin_v2_plugins,
+            plugin_v2_revoke_persistent,
+            plugin_v2_set_trust,
             plugin_v2_unload
         ])
         .setup(|app| {
