@@ -1,0 +1,4 @@
+interface:
+  display_name: "全局网络客户端与下载管理器"
+  short_description: "在 crates/application 层使用全局客户端与下载管理器的规范"
+  default_prompt: "使用 $network-client-usage 规范来编写或审查涉及全局网络客户端与下载任务的 Rust 代码。"
