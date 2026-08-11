@@ -4,13 +4,12 @@
 //! `extra` 的下载链接管理能力（[`LinkManager`]），向宿主提供可用的
 //! 服务器类型、版本与下载详情查询。
 //!
-//! 错误分层：类型列表查询失败统一收敛为
-//! [`ServerCatalogServiceError::OperationFailed`]；版本与详情查询失败
-//! （类型不存在或底层配置不可用）统一收敛为
-//! [`ServerCatalogServiceError::NotFound`]。
+//! 错误分层：配置拉取 / 解析失败统一收敛为
+//! [`ServerCatalogServiceError::OperationFailed`]；指定的类型不存在
+//! 收敛为 [`ServerCatalogServiceError::NotFound`]。
 
 use async_trait::async_trait;
-use sealantern_extra::download_link::{LinkManager, TypeDownloadLinks};
+use sealantern_extra::download_link::{LinkError, LinkManager, TypeDownloadLinks};
 use sealantern_interface::{ServerCatalogService, ServerCatalogServiceError};
 
 /// 基于 `extra` 下载链接管理的服务器目录服务实现。
@@ -30,26 +29,38 @@ impl ServerCatalogService for CoreServerCatalogService {
     }
     /// 查询指定服务器类型支持的版本列表。
     ///
-    /// 查询失败（类型不存在或底层配置不可用）统一收敛为
-    /// [`ServerCatalogServiceError::NotFound`]。
+    /// 类型不存在时收敛为 [`ServerCatalogServiceError::NotFound`]；
+    /// 底层配置拉取 / 解析失败收敛为
+    /// [`ServerCatalogServiceError::OperationFailed`]。
     async fn versions(
         &self,
         server_type: String,
     ) -> Result<Vec<String>, ServerCatalogServiceError> {
         LinkManager::get_versions_by_type(&server_type)
             .await
-            .map_err(|_| ServerCatalogServiceError::NotFound)
+            .map_err(map_link_error)
     }
     /// 查询指定服务器类型的下载详情（版本 → 文件下载链接）。
     ///
-    /// 查询失败（类型不存在或底层配置不可用）统一收敛为
-    /// [`ServerCatalogServiceError::NotFound`]。
+    /// 类型不存在时收敛为 [`ServerCatalogServiceError::NotFound`]；
+    /// 底层配置拉取 / 解析失败收敛为
+    /// [`ServerCatalogServiceError::OperationFailed`]。
     async fn details(
         &self,
         server_type: String,
     ) -> Result<TypeDownloadLinks, ServerCatalogServiceError> {
         LinkManager::get_type_by_name(&server_type)
             .await
-            .map_err(|_| ServerCatalogServiceError::NotFound)
+            .map_err(map_link_error)
+    }
+}
+
+/// 将下载链接查询错误按语义收敛为目录契约错误。
+///
+/// 配置 / 基础设施失败归为操作失败，指定条目缺失归为不存在。
+fn map_link_error(error: LinkError) -> ServerCatalogServiceError {
+    match error {
+        LinkError::Config(_) => ServerCatalogServiceError::OperationFailed,
+        LinkError::NotFound(_) => ServerCatalogServiceError::NotFound,
     }
 }
