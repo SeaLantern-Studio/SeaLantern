@@ -236,7 +236,7 @@ impl std::error::Error for UpdateCheckServiceError {}
 pub enum ProvisioningServiceError {
     /// 客户端提供的输入不合法（如路径为空、请求字段冲突）。
     InvalidInput,
-    /// 服务器目录检查失败。
+    /// 服务器目录检查或启动脚本读取失败。
     InspectionFailed,
     /// 未分类的内部供给计划操作失败。
     OperationFailed,

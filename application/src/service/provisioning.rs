@@ -9,9 +9,9 @@
 //! 所有暴露操作只做"检查 / 规划"，不产生副作用（不复制文件、不写盘）。
 //!
 //! 错误分层：`spawn_blocking` 任务调度失败收敛为
-//! [`ProvisioningServiceError::OperationFailed`]；服务器检查失败收敛为
-//! [`ProvisioningServiceError::InspectionFailed`]；启动脚本解析失败与
-//! 各规划请求非法收敛为 [`ProvisioningServiceError::InvalidInput`]。
+//! [`ProvisioningServiceError::OperationFailed`]；服务器检查失败与启动脚本
+//! 不可读收敛为 [`ProvisioningServiceError::InspectionFailed`]；脚本格式
+//! 不支持与各规划请求非法收敛为 [`ProvisioningServiceError::InvalidInput`]。
 
 use std::path::Path;
 
@@ -20,7 +20,7 @@ use sealantern_core::instance::{InstanceImportPlan, InstanceImportRequest};
 use sealantern_core::provisioning::{
     inspect_server_artifact, parse_startup_script_file, plan_copy, plan_existing_instance,
     plan_modpack, CopyInstancePlan, CopyInstanceRequest, InspectionOptions, ModpackProvisionPlan,
-    ModpackProvisionRequest, ServerInspectionReport, StartupScriptInfo,
+    ModpackProvisionRequest, ServerInspectionReport, StartupParseError, StartupScriptInfo,
 };
 use sealantern_interface::{ProvisioningService, ProvisioningServiceError};
 
@@ -54,7 +54,8 @@ impl ProvisioningService for CoreProvisioningService {
     /// 解析启动脚本并提取可移植的启动信息。
     ///
     /// 同步的文件解析经 `spawn_blocking` 调度，避免阻塞异步 runtime；
-    /// 解析失败（脚本缺失 / 格式不支持）统一收敛为非法输入。
+    /// 脚本无法读取（缺失 / 不可访问）视为检查失败，脚本格式不支持
+    /// 视为输入非法。
     async fn parse_startup_script(
         &self,
         path: &Path,
@@ -64,8 +65,13 @@ impl ProvisioningService for CoreProvisioningService {
             .await
             // 任务调度失败视为操作失败。
             .map_err(|_| ProvisioningServiceError::OperationFailed)?
-            // 解析失败视为输入非法。
-            .map_err(|_| ProvisioningServiceError::InvalidInput)
+            // 读取失败视为检查失败，扩展名不支持视为输入非法。
+            .map_err(|error| match error {
+                StartupParseError::Read { .. } => ProvisioningServiceError::InspectionFailed,
+                StartupParseError::UnsupportedScript { .. } => {
+                    ProvisioningServiceError::InvalidInput
+                }
+            })
     }
 
     /// 为导入既有实例生成供给计划。
