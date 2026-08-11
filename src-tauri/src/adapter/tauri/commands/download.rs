@@ -1,13 +1,7 @@
-//! 下载任务管理（后端语义 API，保留参考）。
-//!
-//! 前端命令名已由 `compat` 兼容层接管（`download_file`/`poll_task`/...），
-//! 本文件保留领域语义命名的服务调用函数作为后端语义 API，不注册为 Tauri
-//! 命令，供未来前端重构时直接使用。
+//! 下载任务管理 Tauri 命令。
 //!
 //! 参数/响应遵循「前端驼峰、后端蛇拼」：结构体 DTO 用 `rename_all = "camelCase"`
 //! 输出 camelCase（匹配前端规范），Rust 字段保持 snake_case。
-#![allow(dead_code)]
-
 use std::sync::Arc;
 
 use serde::Deserialize;
@@ -40,6 +34,7 @@ pub struct CreateDownloadRequest {
 }
 
 /// 创建下载任务，返回任务信息。
+#[tauri::command]
 pub async fn download_create(
     request: CreateDownloadRequest,
 ) -> Result<DownloadTaskInfo, DownloadServiceError> {
@@ -58,6 +53,7 @@ pub async fn download_create(
 }
 
 /// 查询下载任务进度。
+#[tauri::command]
 pub async fn download_query(id: String) -> Result<DownloadTaskInfo, DownloadServiceError> {
     let service = download_service().await?;
     service
@@ -67,6 +63,7 @@ pub async fn download_query(id: String) -> Result<DownloadTaskInfo, DownloadServ
 }
 
 /// 取消下载任务。
+#[tauri::command]
 pub async fn download_cancel(id: String) -> Result<(), DownloadServiceError> {
     let service = download_service().await?;
     service.cancel(&id).await

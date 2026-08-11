@@ -1,8 +1,4 @@
-//! 设置管理后端语义 API，保留供未来前端重构使用。
-//!
-//! 当前前端命令名由 `compat` 兼容层接管。本文件提供不受旧前端契约限制的
-//! 原生服务调用函数，暂不注册为 Tauri 命令。
-#![allow(dead_code)]
+//! 设置管理 Tauri 命令。
 
 use std::sync::Arc;
 
@@ -20,21 +16,25 @@ async fn settings_service() -> Result<Arc<CoreSettingsService>, SettingsServiceE
 }
 
 /// 获取设置概览（所有分组及其设置项列表）。
+#[tauri::command]
 pub async fn settings_overview() -> Result<SettingsOverview, SettingsServiceError> {
     settings_service().await?.settings_overview().await
 }
 
 /// 获取当前完整设置。
+#[tauri::command]
 pub async fn get_settings() -> Result<AppSettings, SettingsServiceError> {
     settings_service().await?.get().await
 }
 
 /// 全量替换当前设置。
+#[tauri::command]
 pub async fn update_settings(settings: AppSettings) -> Result<UpdateResult, SettingsServiceError> {
     settings_service().await?.update(settings).await
 }
 
 /// 部分更新当前设置。
+#[tauri::command]
 pub async fn update_settings_partial(
     partial: PartialAppSettings,
 ) -> Result<UpdateResult, SettingsServiceError> {
@@ -42,16 +42,19 @@ pub async fn update_settings_partial(
 }
 
 /// 恢复默认设置。
+#[tauri::command]
 pub async fn reset_settings() -> Result<AppSettings, SettingsServiceError> {
     settings_service().await?.reset().await
 }
 
 /// 导出当前设置为 JSON 字符串。
+#[tauri::command]
 pub async fn export_settings() -> Result<String, SettingsServiceError> {
     settings_service().await?.export_json().await
 }
 
 /// 从 JSON 字符串导入设置。
+#[tauri::command]
 pub async fn import_settings(json: String) -> Result<UpdateResult, SettingsServiceError> {
     settings_service().await?.import_json(&json).await
 }

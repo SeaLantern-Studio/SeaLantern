@@ -7,31 +7,26 @@ pub mod observability;
 use sealantern_application::services::AppServices;
 use tauri::Manager;
 
-use adapter::tauri::commands::compat::download_compat::{
-    cancel_download_task, download_file, poll_task,
-};
-use adapter::tauri::commands::compat::instance_compat::{
-    add_existing_server, collect_copy_conflicts, copy_directory_contents, create_server,
-    delete_server, force_stop_server, get_server_list, get_server_logs, get_server_status,
-    import_modpack, import_server, parse_server_core_type, prepare_force_stop_server,
-    restart_server, scan_startup_candidates, send_command, start_server, stop_server,
-    update_server_name, update_server_path, validate_server_path,
-};
-use adapter::tauri::commands::compat::settings_compat::{
-    export_settings, get_settings, import_settings, reset_settings, save_settings,
-    save_settings_with_diff, update_settings_partial,
-};
-use adapter::tauri::commands::compat::system_compat::{
-    get_default_run_path, get_safe_mode_status, get_server_resource_usage, get_system_info,
-    open_file, open_folder, remove_file, test_ipv6_connectivity,
-};
 use adapter::tauri::commands::cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
     update_cron_task,
 };
+use adapter::tauri::commands::download::{download_cancel, download_create, download_query};
+use adapter::tauri::commands::instance::{
+    create_instance, delete_instance, get_instance, list_instances, rename_instance,
+    update_instance_path,
+};
 use adapter::tauri::commands::plugin::{
     plugin_v2_audit, plugin_v2_disable, plugin_v2_discover, plugin_v2_enable, plugin_v2_load,
     plugin_v2_plugins, plugin_v2_unload,
+};
+use adapter::tauri::commands::server::{
+    force_stop_server, restart_server, send_server_command, server_status, start_server,
+    stop_server,
+};
+use adapter::tauri::commands::settings::{
+    export_settings, get_settings, import_settings, reset_settings, settings_overview,
+    update_settings, update_settings_partial,
 };
 use adapter::tauri::commands::system::{
     get_directory_usage, get_process_usage, get_system_snapshot,
@@ -77,48 +72,32 @@ pub fn run() {
             get_directory_usage,
             get_process_usage,
             get_system_snapshot,
-            //应用更新检查契约命令
-            check_update,
-            //兼容层（前端旧命令名 → 新服务，由adapter/tauri/commands/compat提供）
-            add_existing_server,
-            cancel_download_task,
-            collect_copy_conflicts,
-            copy_directory_contents,
-            create_server,
-            delete_server,
-            download_file,
-            export_settings,
+            //实例与服务器进程服务
+            create_instance,
+            delete_instance,
+            get_instance,
+            list_instances,
+            rename_instance,
+            update_instance_path,
             force_stop_server,
-            get_default_run_path,
-            get_safe_mode_status,
-            get_server_list,
-            get_server_logs,
-            get_server_resource_usage,
-            get_server_status,
-            get_settings,
-            get_system_info,
-            import_modpack,
-            import_server,
-            import_settings,
-            open_file,
-            open_folder,
-            parse_server_core_type,
-            poll_task,
-            prepare_force_stop_server,
-            remove_file,
-            reset_settings,
             restart_server,
-            save_settings,
-            save_settings_with_diff,
-            scan_startup_candidates,
-            send_command,
+            send_server_command,
+            server_status,
             start_server,
             stop_server,
-            test_ipv6_connectivity,
-            update_server_name,
-            update_server_path,
+            //下载与设置服务
+            download_cancel,
+            download_create,
+            download_query,
+            export_settings,
+            get_settings,
+            import_settings,
+            reset_settings,
+            settings_overview,
+            update_settings,
             update_settings_partial,
-            validate_server_path,
+            //应用更新检查契约命令
+            check_update,
             //插件 v2 宿主能力与策略管理
             plugin_v2_audit,
             plugin_v2_disable,
