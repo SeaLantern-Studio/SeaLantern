@@ -1,7 +1,8 @@
 use std::fmt;
 
 /// Java 自动检测中单个来源或候选产生的非致命错误。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct JavaDiscoveryError {
     pub source: String,
     pub message: String,

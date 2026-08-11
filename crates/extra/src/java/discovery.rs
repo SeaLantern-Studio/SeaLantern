@@ -32,7 +32,8 @@ impl JavaSearchSource {
 }
 
 /// Java 自动检测结果；成功安装和非致命错误同时保留。
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct JavaDetectionReport {
     pub installations: Vec<JavaInfo>,
     pub errors: Vec<JavaDiscoveryError>,

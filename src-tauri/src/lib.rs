@@ -16,6 +16,7 @@ use adapter::tauri::commands::instance::{
     create_instance, delete_instance, get_instance, list_instances, rename_instance,
     update_instance_path,
 };
+use adapter::tauri::commands::java::{java_detect, java_validate};
 use adapter::tauri::commands::plugin::{
     plugin_v2_audit, plugin_v2_disable, plugin_v2_discover, plugin_v2_enable, plugin_v2_load,
     plugin_v2_plugins, plugin_v2_unload,
@@ -83,6 +84,8 @@ pub fn run() {
             list_instances,
             rename_instance,
             update_instance_path,
+            java_detect,
+            java_validate,
             force_stop_server,
             restart_server,
             send_server_command,

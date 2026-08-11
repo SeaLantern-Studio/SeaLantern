@@ -251,6 +251,22 @@ impl std::fmt::Display for ProvisioningServiceError {
 
 impl std::error::Error for ProvisioningServiceError {}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum JavaServiceError {
+    InvalidInput,
+    OperationFailed,
+}
+impl std::fmt::Display for JavaServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::InvalidInput => "invalid Java installation",
+            Self::OperationFailed => "Java operation failed",
+        })
+    }
+}
+impl std::error::Error for JavaServiceError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -275,6 +291,7 @@ mod tests {
                 serde_json::to_string(&ProvisioningServiceError::InspectionFailed),
                 "\"inspection_failed\"",
             ),
+            (serde_json::to_string(&JavaServiceError::InvalidInput), "\"invalid_input\""),
         ];
 
         for (serialized, expected) in cases {

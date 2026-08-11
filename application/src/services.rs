@@ -17,9 +17,9 @@ use std::sync::Arc;
 use crate::error::InstanceError;
 use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceError};
 use crate::service::{
-    CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreProvisioningService,
-    CoreServerService, CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
-    ProxyMonitoringService,
+    CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreJavaService,
+    CoreProvisioningService, CoreServerService, CoreSettingsService, CoreSystemService,
+    CoreUpdateCheckService, ProxyMonitoringService,
 };
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
@@ -39,6 +39,7 @@ pub struct AppServicesInner {
     pub download: Arc<CoreDownloadService>,
     /// 服务器实例记录管理服务。
     pub instance: Arc<CoreInstanceService>,
+    pub java: Arc<CoreJavaService>,
     /// 服务端检查与供给计划服务。
     pub provisioning: Arc<CoreProvisioningService>,
     /// 服务器进程管理服务。
@@ -75,6 +76,7 @@ impl AppServices {
                 cron: Arc::new(CoreCronTaskService::new(server.clone())),
                 server,
                 instance,
+                java: Arc::new(CoreJavaService),
                 provisioning: Arc::new(CoreProvisioningService),
                 settings: Arc::new(CoreSettingsService::new()),
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
@@ -151,6 +153,9 @@ impl AppServices {
     /// 访问实例管理服务（`Arc` 共享句柄，clone 廉价）。
     pub fn instance(&self) -> &Arc<CoreInstanceService> {
         &self.inner.instance
+    }
+    pub fn java(&self) -> &Arc<CoreJavaService> {
+        &self.inner.java
     }
 
     /// 访问服务端检查与供给计划服务。

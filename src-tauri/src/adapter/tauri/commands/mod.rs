@@ -1,6 +1,7 @@
 pub mod cron;
 pub mod download;
 pub mod instance;
+pub mod java;
 pub mod plugin;
 pub mod provisioning;
 pub mod server;

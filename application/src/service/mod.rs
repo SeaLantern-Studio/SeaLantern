@@ -7,6 +7,7 @@
 mod cron;
 mod download;
 mod instance;
+mod java;
 mod network_settings;
 mod provisioning;
 mod proxy_monitoring;
@@ -18,6 +19,7 @@ mod update;
 pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
 pub use instance::CoreInstanceService;
+pub use java::CoreJavaService;
 pub use provisioning::CoreProvisioningService;
 pub use proxy_monitoring::ProxyMonitoringService;
 pub use server::CoreServerService;
