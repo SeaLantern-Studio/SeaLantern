@@ -35,7 +35,11 @@ use sealantern_infra::net::global_client;
 async fn fetch_text(url: &str) -> Result<String, NetError> {
     let client = global_client()?; // fetch the current global client before each request
     let response = client.get(url)?.send().await?;
-    Ok(response.text().await.unwrap_or_default())
+    let body = response
+        .text()
+        .await
+        .map_err(|error| NetError::Request(format!("failed to read response body: {error}")))?;
+    Ok(body)
 }
 ```
 

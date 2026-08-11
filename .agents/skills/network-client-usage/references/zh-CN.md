@@ -29,7 +29,11 @@ use sealantern_infra::net::global_client;
 async fn fetch_text(url: &str) -> Result<String, NetError> {
     let client = global_client()?; // 每次请求前获取当前全局客户端
     let response = client.get(url)?.send().await?;
-    Ok(response.text().await.unwrap_or_default())
+    let body = response
+        .text()
+        .await
+        .map_err(|error| NetError::Request(format!("读取响应正文失败: {error}")))?;
+    Ok(body)
 }
 ```
 
