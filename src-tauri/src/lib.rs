@@ -7,6 +7,7 @@ pub mod observability;
 use sealantern_application::services::AppServices;
 use tauri::Manager;
 
+use adapter::tauri::commands::catalog::{catalog_details, catalog_server_types, catalog_versions};
 use adapter::tauri::commands::cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
     update_cron_task,
@@ -73,6 +74,9 @@ pub fn run() {
             run_cron_task,
             set_cron_task_enabled,
             update_cron_task,
+            catalog_details,
+            catalog_server_types,
+            catalog_versions,
             //系统资源能力（由adapter/tauri/commands接入application）
             get_directory_usage,
             get_process_usage,

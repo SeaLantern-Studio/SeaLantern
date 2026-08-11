@@ -267,6 +267,22 @@ impl std::fmt::Display for JavaServiceError {
 }
 impl std::error::Error for JavaServiceError {}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerCatalogServiceError {
+    NotFound,
+    OperationFailed,
+}
+impl std::fmt::Display for ServerCatalogServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::NotFound => "server catalog entry not found",
+            Self::OperationFailed => "server catalog operation failed",
+        })
+    }
+}
+impl std::error::Error for ServerCatalogServiceError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,6 +308,10 @@ mod tests {
                 "\"inspection_failed\"",
             ),
             (serde_json::to_string(&JavaServiceError::InvalidInput), "\"invalid_input\""),
+            (
+                serde_json::to_string(&ServerCatalogServiceError::OperationFailed),
+                "\"operation_failed\"",
+            ),
         ];
 
         for (serialized, expected) in cases {

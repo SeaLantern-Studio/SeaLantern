@@ -5,6 +5,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod catalog;
 /// 服务器定时任务相关模型与服务端口。
 pub mod cron;
 /// 下载任务管理相关模型与服务端口。
@@ -25,6 +26,7 @@ pub mod system;
 /// 应用更新检查相关模型与服务端口。
 pub mod update;
 
+pub use catalog::ServerCatalogService;
 /// 服务器定时任务服务端口。
 pub use cron::CronTaskService;
 /// 下载任务管理服务端口。
@@ -38,6 +40,7 @@ pub use error::InstanceServiceError;
 pub use error::JavaServiceError;
 /// 服务端检查与实例供给计划失败类别。
 pub use error::ProvisioningServiceError;
+pub use error::ServerCatalogServiceError;
 /// 服务器进程管理错误枚举。
 pub use error::ServerServiceError;
 /// 设置信息服务错误枚举。

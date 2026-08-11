@@ -18,8 +18,8 @@ use crate::error::InstanceError;
 use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceError};
 use crate::service::{
     CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreJavaService,
-    CoreProvisioningService, CoreServerService, CoreSettingsService, CoreSystemService,
-    CoreUpdateCheckService, ProxyMonitoringService,
+    CoreProvisioningService, CoreServerCatalogService, CoreServerService, CoreSettingsService,
+    CoreSystemService, CoreUpdateCheckService, ProxyMonitoringService,
 };
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
@@ -40,6 +40,7 @@ pub struct AppServicesInner {
     /// 服务器实例记录管理服务。
     pub instance: Arc<CoreInstanceService>,
     pub java: Arc<CoreJavaService>,
+    pub catalog: Arc<CoreServerCatalogService>,
     /// 服务端检查与供给计划服务。
     pub provisioning: Arc<CoreProvisioningService>,
     /// 服务器进程管理服务。
@@ -77,6 +78,7 @@ impl AppServices {
                 server,
                 instance,
                 java: Arc::new(CoreJavaService),
+                catalog: Arc::new(CoreServerCatalogService),
                 provisioning: Arc::new(CoreProvisioningService),
                 settings: Arc::new(CoreSettingsService::new()),
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
@@ -156,6 +158,9 @@ impl AppServices {
     }
     pub fn java(&self) -> &Arc<CoreJavaService> {
         &self.inner.java
+    }
+    pub fn catalog(&self) -> &Arc<CoreServerCatalogService> {
+        &self.inner.catalog
     }
 
     /// 访问服务端检查与供给计划服务。

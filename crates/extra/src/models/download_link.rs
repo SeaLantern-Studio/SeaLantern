@@ -4,10 +4,9 @@ use serde::{Deserialize, Serialize};
 
 /// 单个下载链接。
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct DownloadLink {
     pub version: String,
-    #[serde(alias = "file_name")]
     pub file_name: String,
     pub url: String,
 }
@@ -66,7 +65,7 @@ mod tests {
     use super::DownloadLink;
 
     #[test]
-    fn download_link_uses_frontend_field_names() {
+    fn download_link_uses_snake_case_field_names() {
         let value = serde_json::to_value(DownloadLink::new(
             "1.21.1".to_string(),
             "server.jar".to_string(),
@@ -74,21 +73,7 @@ mod tests {
         ))
         .expect("download link should serialize");
 
-        assert_eq!(value["fileName"], "server.jar");
-        assert!(value.get("file_name").is_none());
-    }
-
-    #[test]
-    fn download_link_accepts_legacy_snake_case_field() {
-        let link: DownloadLink = serde_json::from_str(
-            r#"{
-                "version":"1.21.1",
-                "file_name":"server.jar",
-                "url":"https://example.invalid/server.jar"
-            }"#,
-        )
-        .expect("legacy download link should deserialize");
-
-        assert_eq!(link.file_name, "server.jar");
+        assert_eq!(value["file_name"], "server.jar");
+        assert!(value.get("fileName").is_none());
     }
 }

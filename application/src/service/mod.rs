@@ -4,6 +4,7 @@
 //! [`CoreServerService`]、[`CoreDownloadService`]、[`CoreCronTaskService`]），实现
 //! `interface` 的能力端口，由 `services` 装配层组装进全局容器。
 
+mod catalog;
 mod cron;
 mod download;
 mod instance;
@@ -16,6 +17,7 @@ mod settings;
 mod system;
 mod update;
 
+pub use catalog::CoreServerCatalogService;
 pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
 pub use instance::CoreInstanceService;
