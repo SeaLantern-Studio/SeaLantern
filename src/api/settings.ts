@@ -110,10 +110,11 @@ export const settingsApi = {
     return tauriInvoke("get_settings");
   },
   async save(settings: AppSettings): Promise<void> {
-    return tauriInvoke("save_settings", { settings });
+    // 后端 update_settings 返回 UpdateResult，这里只关心副作用，丢弃结果
+    await tauriInvoke("update_settings", { settings });
   },
   async saveWithDiff(settings: AppSettings): Promise<UpdateSettingsResult> {
-    return tauriInvoke("save_settings_with_diff", { settings });
+    return tauriInvoke("update_settings", { settings });
   },
   async updatePartial(partial: PartialSettings): Promise<UpdateSettingsResult> {
     return tauriInvoke("update_settings_partial", { partial });

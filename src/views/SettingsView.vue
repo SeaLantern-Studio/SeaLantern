@@ -262,7 +262,7 @@ async function handleBrowseRunPath() {
         @browseRunPath="handleBrowseRunPath"
       />
 
-      <NetworkSettingsCard />
+      <NetworkSettingsCard :proxy="settings.proxy" />
 
       <DeveloperModeCard v-model:developerMode="settings.developer_mode" @change="markChanged" />
 
