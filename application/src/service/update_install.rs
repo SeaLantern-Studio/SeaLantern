@@ -26,25 +26,28 @@ pub struct CoreUpdateInstallService;
 impl UpdateInstallService for CoreUpdateInstallService {
     /// 下载更新文件并登记为待安装。
     ///
-    /// 参数校验：`url` 必须非空且为 http / https 协议，`version` 不能为空，
-    /// `expected_hash` 若存在必须是偶数长度的十六进制字符串，不满足时视为
-    /// 非法输入；下载成功后把文件路径与版本写入待安装记录，供应用重启后的
-    /// 安装流程读取。
+    /// 参数校验：`url` 必须非空且为 http / https 协议（协议名大小写不敏感），
+    /// `version` 不能为空，`expected_hash` 若存在必须是偶数长度的十六进制
+    /// 字符串，不满足时视为非法输入；下载成功后把文件路径与版本写入待安装
+    /// 记录，供应用重启后的安装流程读取。校验与持久化统一使用去除首尾空白
+    /// 后的值。
     async fn download(
         &self,
         url: String,
         expected_hash: Option<String>,
         version: String,
     ) -> Result<String, UpdateInstallServiceError> {
-        // URL 基本校验：非空 + 基础协议检查。
+        // URL 基本校验：非空 + 基础协议检查（协议名大小写不敏感）。
         let trimmed_url = url.trim();
-        if trimmed_url.is_empty()
-            || !(trimmed_url.starts_with("http://") || trimmed_url.starts_with("https://"))
-        {
+        let scheme_matches = trimmed_url.split_once("://").is_some_and(|(scheme, _)| {
+            matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https")
+        });
+        if trimmed_url.is_empty() || !scheme_matches {
             return Err(UpdateInstallServiceError::InvalidInput);
         }
-        // 版本号校验（原有语义保留）。
-        if version.trim().is_empty() {
+        // 版本号校验：去除首尾空白后不能为空。
+        let trimmed_version = version.trim();
+        if trimmed_version.is_empty() {
             return Err(UpdateInstallServiceError::InvalidInput);
         }
         // 期望哈希格式校验：必须是偶数长度的十六进制字符串。
@@ -61,7 +64,8 @@ impl UpdateInstallService for CoreUpdateInstallService {
         )
         .await
         .map_err(|_| UpdateInstallServiceError::OperationFailed)?;
-        write_pending_update(&get_pending_update_file(), &path, version)
+        // 持久化使用去除首尾空白后的版本号，与 URL / 哈希的处理保持一致。
+        write_pending_update(&get_pending_update_file(), &path, trimmed_version.to_string())
             .map_err(|_| UpdateInstallServiceError::OperationFailed)?;
         Ok(path)
     }
