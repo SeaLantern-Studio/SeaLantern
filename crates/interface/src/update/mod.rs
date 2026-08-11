@@ -4,4 +4,4 @@ mod models;
 mod service;
 
 pub use models::{UpdateInfo, UpdateSource};
-pub use service::UpdateCheckService;
+pub use service::{UpdateCheckService, UpdateInstallService};

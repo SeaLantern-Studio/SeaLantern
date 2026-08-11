@@ -16,6 +16,7 @@ mod server;
 mod settings;
 mod system;
 mod update;
+mod update_install;
 
 pub use catalog::CoreServerCatalogService;
 pub use cron::CoreCronTaskService;
@@ -28,3 +29,4 @@ pub use server::CoreServerService;
 pub use settings::CoreSettingsService;
 pub use system::CoreSystemService;
 pub use update::CoreUpdateCheckService;
+pub use update_install::CoreUpdateInstallService;

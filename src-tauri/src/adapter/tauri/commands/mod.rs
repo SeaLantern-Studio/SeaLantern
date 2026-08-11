@@ -9,3 +9,4 @@ pub mod server;
 pub mod settings;
 pub mod system;
 pub mod update;
+pub mod update_install;

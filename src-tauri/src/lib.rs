@@ -38,6 +38,9 @@ use adapter::tauri::commands::system::{
     get_directory_usage, get_process_usage, get_system_snapshot,
 };
 use adapter::tauri::commands::update::check_update;
+use adapter::tauri::commands::update_install::{
+    update_clear_pending, update_download, update_install, update_pending,
+};
 use desktop::{
     desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
     desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
@@ -115,6 +118,10 @@ pub fn run() {
             plan_modpack_provision,
             //应用更新检查契约命令
             check_update,
+            update_clear_pending,
+            update_download,
+            update_install,
+            update_pending,
             //插件 v2 宿主能力与策略管理
             plugin_v2_audit,
             plugin_v2_disable,

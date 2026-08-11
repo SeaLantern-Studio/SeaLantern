@@ -49,6 +49,7 @@ pub use error::SettingsServiceError;
 pub use error::SystemServiceError;
 /// 应用更新检查错误枚举。
 pub use error::UpdateCheckServiceError;
+pub use error::UpdateInstallServiceError;
 /// 服务器实例记录管理服务端口。
 pub use instance::InstanceService;
 pub use java::JavaService;
@@ -62,3 +63,4 @@ pub use settings::SettingsService;
 pub use system::SystemService;
 /// 应用更新检查服务端口。
 pub use update::UpdateCheckService;
+pub use update::UpdateInstallService;

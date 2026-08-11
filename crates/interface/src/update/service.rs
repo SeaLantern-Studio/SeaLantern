@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 
 use crate::error::UpdateCheckServiceError;
+use crate::error::UpdateInstallServiceError;
+use sealantern_extra::update::PendingUpdate;
 
 use super::models::UpdateInfo;
 
@@ -12,4 +14,21 @@ use super::models::UpdateInfo;
 pub trait UpdateCheckService: Send + Sync {
     /// 检查当前平台是否存在新版本。
     async fn check(&self) -> Result<UpdateInfo, UpdateCheckServiceError>;
+}
+
+#[async_trait]
+pub trait UpdateInstallService: Send + Sync {
+    async fn download(
+        &self,
+        url: String,
+        expected_hash: Option<String>,
+        version: String,
+    ) -> Result<String, UpdateInstallServiceError>;
+    async fn pending(&self) -> Result<Option<PendingUpdate>, UpdateInstallServiceError>;
+    async fn clear_pending(&self) -> Result<(), UpdateInstallServiceError>;
+    async fn install(
+        &self,
+        file_path: String,
+        arguments: Vec<String>,
+    ) -> Result<(), UpdateInstallServiceError>;
 }

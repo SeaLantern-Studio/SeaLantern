@@ -283,6 +283,24 @@ impl std::fmt::Display for ServerCatalogServiceError {
 }
 impl std::error::Error for ServerCatalogServiceError {}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UpdateInstallServiceError {
+    InvalidInput,
+    OperationFailed,
+    Unsupported,
+}
+impl std::fmt::Display for UpdateInstallServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::InvalidInput => "invalid update installation input",
+            Self::OperationFailed => "update installation operation failed",
+            Self::Unsupported => "update installation is unsupported",
+        })
+    }
+}
+impl std::error::Error for UpdateInstallServiceError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -310,6 +328,10 @@ mod tests {
             (serde_json::to_string(&JavaServiceError::InvalidInput), "\"invalid_input\""),
             (
                 serde_json::to_string(&ServerCatalogServiceError::OperationFailed),
+                "\"operation_failed\"",
+            ),
+            (
+                serde_json::to_string(&UpdateInstallServiceError::OperationFailed),
                 "\"operation_failed\"",
             ),
         ];

@@ -3,7 +3,7 @@ use serde::Serialize;
 /// 提供更新信息的发布源。
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "snake_case")]
 pub enum UpdateSource {
     /// GitHub Releases。
     Github,
@@ -58,7 +58,7 @@ mod tests {
 
         assert_eq!(value["has_update"], true);
         assert_eq!(value["latest_version"], "2.0.0");
-        assert_eq!(value["source"], "arch-aur");
+        assert_eq!(value["source"], "arch_aur");
         assert!(value.get("hasUpdate").is_none());
         assert!(value.get("latestVersion").is_none());
     }

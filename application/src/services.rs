@@ -19,7 +19,7 @@ use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceE
 use crate::service::{
     CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreJavaService,
     CoreProvisioningService, CoreServerCatalogService, CoreServerService, CoreSettingsService,
-    CoreSystemService, CoreUpdateCheckService, ProxyMonitoringService,
+    CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService, ProxyMonitoringService,
 };
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
@@ -55,6 +55,7 @@ pub struct AppServicesInner {
     pub system: Arc<CoreSystemService>,
     /// 应用更新检查服务。
     pub update: Arc<CoreUpdateCheckService>,
+    pub update_install: Arc<CoreUpdateInstallService>,
     /// 惰性初始化的应用插件服务。
     plugin: tokio::sync::OnceCell<Arc<CorePluginService>>,
 }
@@ -84,6 +85,7 @@ impl AppServices {
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 system: Arc::new(CoreSystemService),
                 update: Arc::new(CoreUpdateCheckService::new()),
+                update_install: Arc::new(CoreUpdateInstallService),
                 plugin: tokio::sync::OnceCell::new(),
             }),
         }
@@ -248,6 +250,9 @@ impl AppServices {
     /// 访问应用更新检查服务（`Arc` 共享句柄，clone 廉价）。
     pub fn update(&self) -> &Arc<CoreUpdateCheckService> {
         &self.inner.update
+    }
+    pub fn update_install(&self) -> &Arc<CoreUpdateInstallService> {
+        &self.inner.update_install
     }
 
     /// 便捷访问入口：一步拿到更新检查服务的共享句柄（惰性初始化 + 可替换）。
