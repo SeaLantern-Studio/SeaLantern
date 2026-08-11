@@ -21,6 +21,7 @@ use adapter::tauri::commands::instance::{
 use adapter::tauri::commands::java::{java_detect, java_validate};
 use adapter::tauri::commands::online_tunnel::{
     online_tunnel_host, online_tunnel_join, online_tunnel_status, online_tunnel_stop,
+    OnlineTunnelEventForwarder,
 };
 use adapter::tauri::commands::plugin::{
     plugin_v2_audit, plugin_v2_disable, plugin_v2_discover, plugin_v2_enable, plugin_v2_load,
@@ -64,6 +65,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
+        .manage(OnlineTunnelEventForwarder::default())
         .invoke_handler(tauri::generate_handler![
             //桌面端能力（由desktop/dialog提供）
             desktop_pick_archive_file,
@@ -167,11 +169,24 @@ pub fn run() {
         })
         .run(tauri::generate_context!());
 
-    if let Some(services) = AppServices::try_get() {
-        let _ = tauri::async_runtime::block_on(services.online_tunnel().shutdown());
-    }
+    shutdown_async_services();
 
     result.expect("error while running Sea Lantern");
+}
+
+fn shutdown_async_services() {
+    let Some(services) = AppServices::try_get() else {
+        return;
+    };
+    tauri::async_runtime::block_on(async move {
+        if let Err(error) = services.online_tunnel().shutdown().await {
+            tracing::error!(
+                target: "sealantern.tauri.online_tunnel",
+                error = %error,
+                "failed to shut down online tunnel"
+            );
+        }
+    });
 }
 
 #[cfg(test)]
@@ -192,6 +207,10 @@ mod tests {
         "list_instances",
         "rename_instance",
         "update_instance_path",
+        "online_tunnel_host",
+        "online_tunnel_join",
+        "online_tunnel_status",
+        "online_tunnel_stop",
         "force_stop_server",
         "restart_server",
         "send_server_command",
