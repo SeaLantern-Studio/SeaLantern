@@ -57,10 +57,25 @@ impl ServerCatalogService for CoreServerCatalogService {
 
 /// 将下载链接查询错误按语义收敛为目录契约错误。
 ///
-/// 配置 / 基础设施失败归为操作失败，指定条目缺失归为不存在。
+/// 配置 / 基础设施失败归为操作失败，指定条目缺失归为不存在；
+/// 底层诊断消息在收敛前记录到日志，便于排查目录数据问题。
 fn map_link_error(error: LinkError) -> ServerCatalogServiceError {
-    match error {
-        LinkError::Config(_) => ServerCatalogServiceError::OperationFailed,
-        LinkError::NotFound(_) => ServerCatalogServiceError::NotFound,
+    match &error {
+        LinkError::Config(message) => {
+            tracing::warn!(
+                target: "sealantern.application.catalog",
+                error = %message,
+                "catalog configuration is unavailable"
+            );
+            ServerCatalogServiceError::OperationFailed
+        }
+        LinkError::NotFound(message) => {
+            tracing::debug!(
+                target: "sealantern.application.catalog",
+                error = %message,
+                "catalog entry not found"
+            );
+            ServerCatalogServiceError::NotFound
+        }
     }
 }
