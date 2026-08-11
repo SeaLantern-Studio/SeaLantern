@@ -160,7 +160,7 @@ fn storage_limit(subject: &str, limit: usize) -> mlua::Error {
     mlua::Error::runtime(format!("plugin storage {subject} exceeds the {limit}-byte limit"))
 }
 
-fn lua_to_json(value: &Value, depth: usize) -> mlua::Result<JsonValue> {
+pub(super) fn lua_to_json(value: &Value, depth: usize) -> mlua::Result<JsonValue> {
     if depth >= MAX_DEPTH {
         return Err(mlua::Error::runtime("storage value exceeds the 64-level nesting limit"));
     }
@@ -247,7 +247,7 @@ fn lua_to_json(value: &Value, depth: usize) -> mlua::Result<JsonValue> {
     }
 }
 
-fn json_to_lua(lua: &Lua, value: &JsonValue, depth: usize) -> mlua::Result<Value> {
+pub(super) fn json_to_lua(lua: &Lua, value: &JsonValue, depth: usize) -> mlua::Result<Value> {
     if depth >= MAX_DEPTH {
         return Err(mlua::Error::runtime("stored value exceeds the 64-level nesting limit"));
     }

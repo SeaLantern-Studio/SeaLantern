@@ -4,6 +4,7 @@ pub mod adapter;
 pub mod desktop;
 pub mod observability;
 
+use sealantern_application::services::AppServices;
 use tauri::Manager;
 
 use adapter::tauri::commands::compat::download_compat::{
@@ -27,6 +28,10 @@ use adapter::tauri::commands::compat::system_compat::{
 use adapter::tauri::commands::cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
     update_cron_task,
+};
+use adapter::tauri::commands::plugin::{
+    plugin_v2_audit, plugin_v2_disable, plugin_v2_discover, plugin_v2_enable, plugin_v2_load,
+    plugin_v2_plugins, plugin_v2_unload,
 };
 use adapter::tauri::commands::system::{
     get_directory_usage, get_process_usage, get_system_snapshot,
@@ -113,9 +118,34 @@ pub fn run() {
             update_server_name,
             update_server_path,
             update_settings_partial,
-            validate_server_path
+            validate_server_path,
+            //插件 v2 宿主能力与策略管理
+            plugin_v2_audit,
+            plugin_v2_disable,
+            plugin_v2_discover,
+            plugin_v2_enable,
+            plugin_v2_load,
+            plugin_v2_plugins,
+            plugin_v2_unload
         ])
         .setup(|app| {
+            tauri::async_runtime::block_on(async {
+                let services = AppServices::get().await.map_err(|error| {
+                    std::io::Error::other(format!(
+                        "failed to assemble application services: {error}"
+                    ))
+                })?;
+                services
+                    .initialize_network_settings()
+                    .await
+                    .map_err(|error| {
+                        std::io::Error::other(format!(
+                            "failed to initialize persisted network settings: {error}"
+                        ))
+                    })?;
+                Ok::<(), std::io::Error>(())
+            })?;
+
             // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
             #[cfg(not(target_os = "macos"))]
             if let Some(window) = app.get_webview_window("main") {

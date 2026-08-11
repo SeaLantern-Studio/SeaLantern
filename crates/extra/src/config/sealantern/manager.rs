@@ -449,6 +449,7 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
     while version < CURRENT_CONFIG_VERSION {
         // v0 → v1：扁平结构首次引入，此前旧版数据由 legacy 迁移处理。
         // v1 → v2：Java 缓存新增置信度字段，缺失值由 serde 默认补齐。
+        // v2 → v3：新增全局代理设置，缺失值由 serde 默认补为 Adaptive。
         version += 1;
     }
     settings.config_version = CURRENT_CONFIG_VERSION;
@@ -458,7 +459,9 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
 mod tests {
     use super::{default_settings_path, SettingsManager, SETTINGS_FILE_NAME};
     use crate::config::{AppSettings, JavaInfo, PartialAppSettings};
+    use crate::models::CURRENT_CONFIG_VERSION;
     use sealantern_infra::fs::{FileLock, FsError};
+    use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
 
     use super::SettingsError;
 
@@ -709,5 +712,39 @@ mod tests {
                 .expect("settings should remain readable"),
             before
         );
+    }
+
+    #[tokio::test]
+    async fn version_two_settings_upgrade_with_adaptive_proxy() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut version_two = serde_json::to_value(AppSettings::default())
+            .expect("settings fixture should serialize");
+        version_two["config_version"] = 2.into();
+        version_two
+            .as_object_mut()
+            .expect("settings fixture should be an object")
+            .remove("proxy");
+        tokio::fs::write(
+            &path,
+            serde_json::to_vec_pretty(&version_two).expect("settings fixture should encode"),
+        )
+        .await
+        .expect("version two fixture should be written");
+
+        let manager = SettingsManager::load(&path)
+            .await
+            .expect("version two settings should upgrade");
+
+        assert_eq!(manager.get().config_version, CURRENT_CONFIG_VERSION);
+        assert_eq!(manager.get().proxy, ProxySettings::default());
+        let persisted: AppSettings = serde_json::from_slice(
+            &tokio::fs::read(&path)
+                .await
+                .expect("upgraded settings should be readable"),
+        )
+        .expect("upgraded settings should decode");
+        assert_eq!(persisted.config_version, CURRENT_CONFIG_VERSION);
+        assert_eq!(persisted.proxy.mode, ProxyMode::Adaptive);
     }
 }

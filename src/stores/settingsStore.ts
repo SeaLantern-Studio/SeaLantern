@@ -71,6 +71,7 @@ const defaultSettings: AppSettings = {
   language: "zh-CN",
   developer_mode: false,
   close_action: "ask",
+  proxy: { mode: "adaptive" },
   last_run_path: "",
   minimal_mode: false,
   agreed_to_terms: false,

@@ -34,6 +34,13 @@ const HTTP_RPC_PREFIX: &str = "/api/rpc";
 pub trait HttpRpcAccessResolver: Send + Sync + 'static {
     /// 解析当前 HTTP 请求所获授的 RPC 权限。
     fn resolve(&self, headers: &HeaderMap) -> RpcResult<RpcAccess>;
+
+    /// 认证材料缺失或无效时应返回的 HTTP 状态。
+    ///
+    /// 默认保持现有 RPC 授权拒绝语义（403）；bearer 等身份认证边界可覆盖为 401。
+    fn rejection_status(&self) -> StatusCode {
+        StatusCode::FORBIDDEN
+    }
 }
 
 /// Axum RPC 状态。
@@ -175,7 +182,14 @@ where
 
     let access = match state.access_resolver.resolve(headers) {
         Ok(access) => access,
-        Err(error) => return reject(request_id, "authorization_rejected", error),
+        Err(error) => {
+            return reject_with_status(
+                request_id,
+                "authorization_rejected",
+                error,
+                state.access_resolver.rejection_status(),
+            )
+        }
     };
 
     let value = match payload {
@@ -232,6 +246,16 @@ fn generated_request_id() -> RpcRequestId {
 }
 
 fn reject(request_id: RpcRequestId, reason: &'static str, error: RpcError) -> Response {
+    let status = status_for(error.code());
+    reject_with_status(request_id, reason, error, status)
+}
+
+fn reject_with_status(
+    request_id: RpcRequestId,
+    reason: &'static str,
+    error: RpcError,
+    status: StatusCode,
+) -> Response {
     let error = error.with_request_id(request_id);
     observability::rpc_http_request_rejected(
         error
@@ -241,7 +265,11 @@ fn reject(request_id: RpcRequestId, reason: &'static str, error: RpcError) -> Re
         reason,
         error.code().as_str(),
     );
-    rpc_error_response(error)
+    let request_id = error
+        .request_id()
+        .expect("rejection must have a request ID")
+        .clone();
+    respond(status, &request_id, error)
 }
 
 fn rpc_error_response(error: RpcError) -> Response {

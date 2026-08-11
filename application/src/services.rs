@@ -15,9 +15,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use crate::error::InstanceError;
+use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceError};
 use crate::service::{
     CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreServerService,
-    CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
+    CoreSettingsService, CoreSystemService, CoreUpdateCheckService, ProxyMonitoringService,
 };
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
@@ -43,10 +44,14 @@ pub struct AppServicesInner {
     pub cron: Arc<CoreCronTaskService>,
     /// 设置信息服务。
     pub settings: Arc<CoreSettingsService>,
+    /// 系统代理轮询服务。
+    pub proxy_monitoring: Arc<ProxyMonitoringService>,
     /// 系统资源信息服务。
     pub system: Arc<CoreSystemService>,
     /// 应用更新检查服务。
     pub update: Arc<CoreUpdateCheckService>,
+    /// 惰性初始化的应用插件服务。
+    plugin: tokio::sync::OnceCell<Arc<CorePluginService>>,
 }
 
 /// 进程级全局容器。惰性初始化，可替换。
@@ -70,8 +75,10 @@ impl AppServices {
                 server,
                 instance,
                 settings: Arc::new(CoreSettingsService::new()),
+                proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 system: Arc::new(CoreSystemService),
                 update: Arc::new(CoreUpdateCheckService::new()),
+                plugin: tokio::sync::OnceCell::new(),
             }),
         }
     }
@@ -114,6 +121,7 @@ impl AppServices {
         let previous = SERVICES.write().await.replace(inner.clone());
         if let Some(previous) = previous {
             previous.cron.deactivate_scheduler().await;
+            previous.proxy_monitoring.stop().await;
         }
         let services = Self { inner };
         services.start_background_services().await;
@@ -161,6 +169,21 @@ impl AppServices {
     /// 访问设置信息服务（`Arc` 共享句柄，clone 廉价）。
     pub fn settings(&self) -> &Arc<CoreSettingsService> {
         &self.inner.settings
+    }
+
+    /// 加载持久化设置并同步全局网络运行时。
+    pub async fn initialize_network_settings(
+        &self,
+    ) -> Result<(), sealantern_interface::SettingsServiceError> {
+        self.inner.settings.initialize().await?;
+        if self.inner.proxy_monitoring.start().await {
+            tracing::info!(
+                target: "sealantern.application.proxy_monitoring",
+                poll_interval_seconds = 3,
+                "system proxy monitoring started"
+            );
+        }
+        Ok(())
     }
 
     /// 便捷访问入口：一步拿到设置信息服务的共享句柄（惰性初始化 + 可替换）。
@@ -213,5 +236,36 @@ impl AppServices {
     /// 便捷访问入口：一步拿到更新检查服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn update_service() -> Result<Arc<CoreUpdateCheckService>, InstanceError> {
         Ok(Self::get().await?.update().clone())
+    }
+
+    /// 获取应用插件服务；首次调用才打开策略数据库，避免阻塞常规启动路径。
+    pub async fn plugin(&self) -> Result<&Arc<CorePluginService>, PluginServiceError> {
+        let system = self.inner.system.clone();
+        let instance = self.inner.instance.clone();
+        let server = self.inner.server.clone();
+        self.inner
+            .plugin
+            .get_or_try_init(move || async move {
+                let root = sealantern_infra::platform::get_app_data_dir().join("plugins");
+                CorePluginService::open_with_read_host(
+                    &root,
+                    root.join("data"),
+                    root.join("plugin-state.sqlite"),
+                    Some(Arc::new(ApplicationPluginReadHost::new(system, instance, server, &root))),
+                )
+                .await
+                .map(Arc::new)
+            })
+            .await
+    }
+
+    /// 便捷访问入口：一步拿到应用插件服务的共享句柄。
+    pub async fn plugin_service() -> Result<Arc<CorePluginService>, PluginServiceError> {
+        Ok(Self::get()
+            .await
+            .map_err(|error| PluginServiceError::Initialization(error.to_string()))?
+            .plugin()
+            .await?
+            .clone())
     }
 }

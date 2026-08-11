@@ -1,5 +1,6 @@
 //! 应用设置模型与变更分组。
 
+use sealantern_infra::net::proxy::ProxySettings;
 use serde::{Deserialize, Serialize};
 
 use super::JavaInfo;
@@ -7,7 +8,7 @@ use super::JavaInfo;
 /// 当前配置版本号。
 ///
 /// 每次配置结构变更时递增，由配置管理器据此执行数据迁移。
-pub const CURRENT_CONFIG_VERSION: u32 = 2;
+pub const CURRENT_CONFIG_VERSION: u32 = 3;
 
 /// 亚克力模糊级别的默认值，旧配置缺字段时回落到这里。
 pub const DEFAULT_ACRYLIC_BLUR_LEVEL: &str = "medium";
@@ -47,6 +48,7 @@ impl std::error::Error for SettingsValidationError {}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SettingsGroup {
     General,
+    Network,
     ServerDefaults,
     Console,
     Appearance,
@@ -65,6 +67,9 @@ pub struct AppSettings {
     pub close_servers_on_update: bool,
     pub auto_accept_eula: bool,
     pub close_action: String,
+
+    /// 全局出站网络代理策略。
+    pub proxy: ProxySettings,
 
     pub default_max_memory: u32,
     pub default_min_memory: u32,
@@ -115,6 +120,7 @@ impl Default for AppSettings {
             close_servers_on_update: true,
             auto_accept_eula: true,
             close_action: "ask".into(),
+            proxy: ProxySettings::default(),
             default_max_memory: 2048,
             default_min_memory: 512,
             default_port: 25565,
@@ -177,6 +183,16 @@ impl AppSettings {
         if self.default_port == 0 {
             return Err(SettingsValidationError::new("default_port", "must be greater than zero"));
         }
+        self.proxy.validate().map_err(|error| {
+            SettingsValidationError::new(
+                "proxy",
+                match error {
+                    sealantern_infra::net::proxy::ProxyConfigError::EmptyManualProxy => {
+                        "manual proxy URL must not be empty"
+                    }
+                },
+            )
+        })?;
         validate_unit_interval("background_opacity", self.background_opacity)?;
         validate_unit_interval("background_brightness", self.background_brightness)?;
         if self.window_width == Some(0) {
@@ -204,6 +220,10 @@ impl AppSettings {
             || self.close_action != other.close_action
         {
             groups.push(SettingsGroup::General);
+        }
+
+        if self.proxy != other.proxy {
+            groups.push(SettingsGroup::Network);
         }
 
         if self.default_max_memory != other.default_max_memory
@@ -281,6 +301,8 @@ fn validate_unit_interval(field: &'static str, value: f32) -> Result<(), Setting
 
 #[cfg(test)]
 mod tests {
+    use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
+
     use super::{AppSettings, SettingsGroup, DEFAULT_ACRYLIC_BLUR_LEVEL};
 
     #[test]
@@ -298,6 +320,60 @@ mod tests {
         changed.acrylic_blur_level = "high".into();
 
         assert_eq!(current.changed_groups(&changed), vec![SettingsGroup::Appearance]);
+    }
+
+    #[test]
+    fn legacy_settings_default_to_adaptive_proxy() {
+        let settings: AppSettings =
+            serde_json::from_str("{}").expect("legacy settings should load with defaults");
+
+        assert_eq!(settings.proxy, ProxySettings::default());
+    }
+
+    #[test]
+    fn proxy_settings_use_stable_app_json_shape() {
+        let settings = AppSettings {
+            proxy: ProxySettings {
+                mode: ProxyMode::Manual {
+                    proxy_url: "http://127.0.0.1:7890".into(),
+                },
+            },
+            ..AppSettings::default()
+        };
+
+        let value = serde_json::to_value(&settings).expect("app settings should serialize");
+
+        assert_eq!(value["proxy"]["mode"], "manual");
+        assert_eq!(value["proxy"]["proxy_url"], "http://127.0.0.1:7890");
+    }
+
+    #[test]
+    fn proxy_change_marks_network_group() {
+        let current = AppSettings::default();
+        let changed = AppSettings {
+            proxy: ProxySettings { mode: ProxyMode::Disabled },
+            ..current.clone()
+        };
+
+        assert_eq!(current.changed_groups(&changed), vec![SettingsGroup::Network]);
+    }
+
+    #[test]
+    fn validation_rejects_empty_manual_proxy() {
+        let settings = AppSettings {
+            proxy: ProxySettings {
+                mode: ProxyMode::Manual { proxy_url: "  ".into() },
+            },
+            ..AppSettings::default()
+        };
+
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("empty manual proxy should fail")
+                .field(),
+            "proxy"
+        );
     }
 
     #[test]

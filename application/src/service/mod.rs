@@ -7,6 +7,8 @@
 mod cron;
 mod download;
 mod instance;
+mod network_settings;
+mod proxy_monitoring;
 mod server;
 mod settings;
 mod system;
@@ -15,6 +17,7 @@ mod update;
 pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
 pub use instance::CoreInstanceService;
+pub use proxy_monitoring::ProxyMonitoringService;
 pub use server::CoreServerService;
 pub use settings::CoreSettingsService;
 pub use system::CoreSystemService;
