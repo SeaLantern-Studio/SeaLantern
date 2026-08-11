@@ -301,6 +301,28 @@ impl std::fmt::Display for UpdateInstallServiceError {
 }
 impl std::error::Error for UpdateInstallServiceError {}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OnlineTunnelServiceError {
+    InvalidInput,
+    Busy,
+    NotRunning,
+    OperationFailed,
+}
+
+impl std::fmt::Display for OnlineTunnelServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidInput => "invalid online tunnel input",
+            Self::Busy => "online tunnel is busy",
+            Self::NotRunning => "online tunnel is not running",
+            Self::OperationFailed => "online tunnel operation failed",
+        })
+    }
+}
+
+impl std::error::Error for OnlineTunnelServiceError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -333,6 +355,10 @@ mod tests {
             (
                 serde_json::to_string(&UpdateInstallServiceError::OperationFailed),
                 "\"operation_failed\"",
+            ),
+            (
+                serde_json::to_string(&OnlineTunnelServiceError::NotRunning),
+                "\"not_running\"",
             ),
         ];
 

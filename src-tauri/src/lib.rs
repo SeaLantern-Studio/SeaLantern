@@ -5,6 +5,7 @@ pub mod desktop;
 pub mod observability;
 
 use sealantern_application::services::AppServices;
+use sealantern_interface::OnlineTunnelService;
 use tauri::Manager;
 
 use adapter::tauri::commands::catalog::{catalog_details, catalog_server_types, catalog_versions};
@@ -18,6 +19,9 @@ use adapter::tauri::commands::instance::{
     update_instance_path,
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
+use adapter::tauri::commands::online_tunnel::{
+    online_tunnel_host, online_tunnel_join, online_tunnel_status, online_tunnel_stop,
+};
 use adapter::tauri::commands::plugin::{
     plugin_v2_audit, plugin_v2_disable, plugin_v2_discover, plugin_v2_enable, plugin_v2_load,
     plugin_v2_plugins, plugin_v2_unload,
@@ -53,7 +57,7 @@ pub fn run() {
     // 初始化 tracing 日志（在 Tauri 构建之前）
     observability::init();
 
-    tauri::Builder::default()
+    let result = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -93,6 +97,10 @@ pub fn run() {
             update_instance_path,
             java_detect,
             java_validate,
+            online_tunnel_host,
+            online_tunnel_join,
+            online_tunnel_status,
+            online_tunnel_stop,
             force_stop_server,
             restart_server,
             send_server_command,
@@ -157,8 +165,13 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Sea Lantern");
+        .run(tauri::generate_context!());
+
+    if let Some(services) = AppServices::try_get() {
+        let _ = tauri::async_runtime::block_on(services.online_tunnel().shutdown());
+    }
+
+    result.expect("error while running Sea Lantern");
 }
 
 #[cfg(test)]

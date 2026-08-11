@@ -15,6 +15,8 @@ pub mod error;
 /// 服务器实例记录相关模型与服务端口。
 pub mod instance;
 pub mod java;
+/// Online tunnel related service contracts.
+pub mod online;
 /// 服务端检查与实例供给计划相关服务端口。
 pub mod provisioning;
 /// 服务器进程管理相关模型与服务端口。
@@ -38,6 +40,7 @@ pub use error::DownloadServiceError;
 /// 服务器实例管理错误枚举。
 pub use error::InstanceServiceError;
 pub use error::JavaServiceError;
+pub use error::OnlineTunnelServiceError;
 /// 服务端检查与实例供给计划失败类别。
 pub use error::ProvisioningServiceError;
 pub use error::ServerCatalogServiceError;
@@ -53,6 +56,10 @@ pub use error::UpdateInstallServiceError;
 /// 服务器实例记录管理服务端口。
 pub use instance::InstanceService;
 pub use java::JavaService;
+pub use online::{
+    OnlineTunnelConnection, OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest,
+    OnlineTunnelMode, OnlineTunnelService, OnlineTunnelStatus,
+};
 /// 服务端检查与实例供给计划服务端口。
 pub use provisioning::ProvisioningService;
 /// 服务器进程管理服务端口。
