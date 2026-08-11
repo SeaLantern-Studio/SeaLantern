@@ -1,11 +1,21 @@
+//! 服务器核心下载目录宿主能力端口。
+
 use crate::error::ServerCatalogServiceError;
 use async_trait::async_trait;
 use sealantern_extra::download_link::TypeDownloadLinks;
+
+/// 服务器核心下载目录宿主能力端口。
+///
+/// 方法均为异步：下载目录数据可能来自远程配置。实现方组合 `infra` 或 `extra` 的
+/// 下载链接能力，不依赖任何具体宿主。
 #[async_trait]
 pub trait ServerCatalogService: Send + Sync {
+    /// 返回全部可用的服务器核心类型。
     async fn server_types(&self) -> Result<Vec<String>, ServerCatalogServiceError>;
+    /// 返回指定服务器核心类型的可用版本列表。
     async fn versions(&self, server_type: String)
         -> Result<Vec<String>, ServerCatalogServiceError>;
+    /// 返回指定服务器核心类型的版本与下载链接明细。
     async fn details(
         &self,
         server_type: String,

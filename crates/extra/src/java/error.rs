@@ -1,6 +1,8 @@
 use std::fmt;
 
 /// Java 自动检测中单个来源或候选产生的非致命错误。
+///
+/// 可随检测报告一起序列化导出，字段使用 snake_case 命名。
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct JavaDiscoveryError {

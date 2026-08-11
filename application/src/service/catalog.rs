@@ -1,15 +1,37 @@
+//! 服务器目录服务实现。
+//!
+//! 实现 [`sealantern_interface::ServerCatalogService`] 能力端口，组合
+//! `extra` 的下载链接管理能力（[`LinkManager`]），向宿主提供可用的
+//! 服务器类型、版本与下载详情查询。
+//!
+//! 错误分层：底层配置拉取失败统一收敛为
+//! [`ServerCatalogServiceError::OperationFailed`]；指定类型不存在
+//! （版本 / 详情查询依赖类型存在性）收敛为
+//! [`ServerCatalogServiceError::NotFound`]。
+
 use async_trait::async_trait;
 use sealantern_extra::download_link::{LinkManager, TypeDownloadLinks};
 use sealantern_interface::{ServerCatalogService, ServerCatalogServiceError};
+
+/// 基于 `extra` 下载链接管理的服务器目录服务实现。
 #[derive(Debug, Default)]
 pub struct CoreServerCatalogService;
+
 #[async_trait]
 impl ServerCatalogService for CoreServerCatalogService {
+    /// 查询可用的服务器类型列表。
+    ///
+    /// 类型列表来自远程下载链接配置，配置拉取 / 解析失败时收敛为
+    /// [`ServerCatalogServiceError::OperationFailed`]。
     async fn server_types(&self) -> Result<Vec<String>, ServerCatalogServiceError> {
         LinkManager::get_server_types()
             .await
             .map_err(|_| ServerCatalogServiceError::OperationFailed)
     }
+    /// 查询指定服务器类型支持的版本列表。
+    ///
+    /// 依赖类型存在性：类型不存在时收敛为
+    /// [`ServerCatalogServiceError::NotFound`]。
     async fn versions(
         &self,
         server_type: String,
@@ -18,6 +40,10 @@ impl ServerCatalogService for CoreServerCatalogService {
             .await
             .map_err(|_| ServerCatalogServiceError::NotFound)
     }
+    /// 查询指定服务器类型的下载详情（版本 → 文件下载链接）。
+    ///
+    /// 依赖类型存在性：类型不存在时收敛为
+    /// [`ServerCatalogServiceError::NotFound`]。
     async fn details(
         &self,
         server_type: String,

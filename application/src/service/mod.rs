@@ -1,7 +1,9 @@
 //! 应用层服务实现模块。
 //!
 //! 存放各类宿主能力的默认实现（如 [`CoreInstanceService`]、[`CoreSystemService`]、
-//! [`CoreServerService`]、[`CoreDownloadService`]、[`CoreCronTaskService`]），实现
+//! [`CoreServerService`]、[`CoreDownloadService`]、[`CoreCronTaskService`]、
+//! [`CoreJavaService`]、[`CoreServerCatalogService`]、[`CoreProvisioningService`]、
+//! [`CoreOnlineTunnelService`]、[`CoreUpdateInstallService`]），实现
 //! `interface` 的能力端口，由 `services` 装配层组装进全局容器。
 
 mod catalog;

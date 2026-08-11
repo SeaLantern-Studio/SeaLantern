@@ -5,6 +5,7 @@
 
 #![forbid(unsafe_code)]
 
+/// 服务器核心下载目录相关模型与服务端口。
 pub mod catalog;
 /// 服务器定时任务相关模型与服务端口。
 pub mod cron;
@@ -14,8 +15,9 @@ pub mod download;
 pub mod error;
 /// 服务器实例记录相关模型与服务端口。
 pub mod instance;
+/// Java 检测与校验相关模型与服务端口。
 pub mod java;
-/// Online tunnel related service contracts.
+/// 在线隧道相关模型与服务端口。
 pub mod online;
 /// 服务端检查与实例供给计划相关服务端口。
 pub mod provisioning;
@@ -28,6 +30,7 @@ pub mod system;
 /// 应用更新检查相关模型与服务端口。
 pub mod update;
 
+/// 服务器核心下载目录服务端口。
 pub use catalog::ServerCatalogService;
 /// 服务器定时任务服务端口。
 pub use cron::CronTaskService;
@@ -39,10 +42,13 @@ pub use error::CronTaskServiceError;
 pub use error::DownloadServiceError;
 /// 服务器实例管理错误枚举。
 pub use error::InstanceServiceError;
+/// Java 检测与校验错误枚举。
 pub use error::JavaServiceError;
+/// 在线隧道服务错误枚举。
 pub use error::OnlineTunnelServiceError;
 /// 服务端检查与实例供给计划失败类别。
 pub use error::ProvisioningServiceError;
+/// 服务器核心下载目录错误枚举。
 pub use error::ServerCatalogServiceError;
 /// 服务器进程管理错误枚举。
 pub use error::ServerServiceError;
@@ -52,10 +58,13 @@ pub use error::SettingsServiceError;
 pub use error::SystemServiceError;
 /// 应用更新检查错误枚举。
 pub use error::UpdateCheckServiceError;
+/// 应用更新安装错误枚举。
 pub use error::UpdateInstallServiceError;
 /// 服务器实例记录管理服务端口。
 pub use instance::InstanceService;
+/// Java 检测与校验服务端口。
 pub use java::JavaService;
+/// 在线隧道模型与服务端口。
 pub use online::{
     OnlineTunnelConnection, OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest,
     OnlineTunnelMode, OnlineTunnelService, OnlineTunnelStatus,
@@ -70,4 +79,5 @@ pub use settings::SettingsService;
 pub use system::SystemService;
 /// 应用更新检查服务端口。
 pub use update::UpdateCheckService;
+/// 应用更新安装服务端口。
 pub use update::UpdateInstallService;

@@ -234,8 +234,11 @@ impl std::error::Error for UpdateCheckServiceError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProvisioningServiceError {
+    /// 客户端提供的输入不合法（如路径为空、请求字段冲突）。
     InvalidInput,
+    /// 服务器目录检查或启动脚本解析失败。
     InspectionFailed,
+    /// 未分类的内部供给计划操作失败。
     OperationFailed,
 }
 
@@ -251,10 +254,13 @@ impl std::fmt::Display for ProvisioningServiceError {
 
 impl std::error::Error for ProvisioningServiceError {}
 
+/// Java 检测与校验失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum JavaServiceError {
+    /// 客户端提供的 Java 路径不合法或不可访问。
     InvalidInput,
+    /// 底层 Java 检测或校验操作失败。
     OperationFailed,
 }
 impl std::fmt::Display for JavaServiceError {
@@ -267,10 +273,13 @@ impl std::fmt::Display for JavaServiceError {
 }
 impl std::error::Error for JavaServiceError {}
 
+/// 服务器核心下载目录失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerCatalogServiceError {
+    /// 指定的服务器核心类型或版本不存在。
     NotFound,
+    /// 底层下载目录查询操作失败。
     OperationFailed,
 }
 impl std::fmt::Display for ServerCatalogServiceError {
@@ -283,11 +292,15 @@ impl std::fmt::Display for ServerCatalogServiceError {
 }
 impl std::error::Error for ServerCatalogServiceError {}
 
+/// 应用更新下载与安装失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UpdateInstallServiceError {
+    /// 客户端提供的安装输入不合法（如 URL 为空、哈希格式错误）。
     InvalidInput,
+    /// 底层下载、校验或安装过程失败。
     OperationFailed,
+    /// 当前宿主不支持更新安装。
     Unsupported,
 }
 impl std::fmt::Display for UpdateInstallServiceError {
@@ -304,9 +317,13 @@ impl std::error::Error for UpdateInstallServiceError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OnlineTunnelServiceError {
+    /// 客户端提供的隧道请求不合法（如票据为空）。
     InvalidInput,
+    /// 已有隧道正在启动、运行或停止，无法响应新操作。
     Busy,
+    /// 当前没有运行中的隧道。
     NotRunning,
+    /// 底层隧道操作失败。
     OperationFailed,
 }
 

@@ -41,8 +41,11 @@ pub struct AppServicesInner {
     pub download: Arc<CoreDownloadService>,
     /// 服务器实例记录管理服务。
     pub instance: Arc<CoreInstanceService>,
+    /// Java 环境检测与校验服务。
     pub java: Arc<CoreJavaService>,
+    /// 在线隧道服务。
     pub online_tunnel: Arc<CoreOnlineTunnelService>,
+    /// 服务器目录（类型 / 版本 / 下载详情）服务。
     pub catalog: Arc<CoreServerCatalogService>,
     /// 服务端检查与供给计划服务。
     pub provisioning: Arc<CoreProvisioningService>,
@@ -58,6 +61,7 @@ pub struct AppServicesInner {
     pub system: Arc<CoreSystemService>,
     /// 应用更新检查服务。
     pub update: Arc<CoreUpdateCheckService>,
+    /// 应用更新安装服务。
     pub update_install: Arc<CoreUpdateInstallService>,
     /// 惰性初始化的应用插件服务。
     plugin: tokio::sync::OnceCell<Arc<CorePluginService>>,
@@ -163,12 +167,18 @@ impl AppServices {
     pub fn instance(&self) -> &Arc<CoreInstanceService> {
         &self.inner.instance
     }
+
+    /// 访问 Java 环境检测与校验服务（`Arc` 共享句柄，clone 廉价）。
     pub fn java(&self) -> &Arc<CoreJavaService> {
         &self.inner.java
     }
+
+    /// 访问在线隧道服务（`Arc` 共享句柄，clone 廉价）。
     pub fn online_tunnel(&self) -> &Arc<CoreOnlineTunnelService> {
         &self.inner.online_tunnel
     }
+
+    /// 访问服务器目录服务（`Arc` 共享句柄，clone 廉价）。
     pub fn catalog(&self) -> &Arc<CoreServerCatalogService> {
         &self.inner.catalog
     }
@@ -259,6 +269,8 @@ impl AppServices {
     pub fn update(&self) -> &Arc<CoreUpdateCheckService> {
         &self.inner.update
     }
+
+    /// 访问应用更新安装服务（`Arc` 共享句柄，clone 廉价）。
     pub fn update_install(&self) -> &Arc<CoreUpdateInstallService> {
         &self.inner.update_install
     }

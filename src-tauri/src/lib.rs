@@ -85,6 +85,7 @@ pub fn run() {
             run_cron_task,
             set_cron_task_enabled,
             update_cron_task,
+            //服务器类型目录契约命令
             catalog_details,
             catalog_server_types,
             catalog_versions,
@@ -99,8 +100,10 @@ pub fn run() {
             list_instances,
             rename_instance,
             update_instance_path,
+            //Java 运行时检测与校验
             java_detect,
             java_validate,
+            //在线隧道（联机）契约命令
             online_tunnel_host,
             online_tunnel_join,
             online_tunnel_status,
@@ -130,6 +133,7 @@ pub fn run() {
             plan_modpack_provision,
             //应用更新检查契约命令
             check_update,
+            //应用更新下载与安装契约命令
             update_clear_pending,
             update_download,
             update_install,
@@ -184,6 +188,7 @@ pub fn run() {
     result.expect("error while running Sea Lantern");
 }
 
+/// 应用退出时关闭后台异步服务（当前为在线隧道）。
 fn shutdown_async_services() {
     let Some(services) = AppServices::try_get() else {
         return;

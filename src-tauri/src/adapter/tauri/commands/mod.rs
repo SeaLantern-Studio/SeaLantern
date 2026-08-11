@@ -1,3 +1,8 @@
+//! Tauri 命令适配模块。
+//!
+//! 每个子模块承载一类宿主能力，命令以 snake_case 命名直接暴露给前端
+//! `invoke` 调用，内部统一经应用装配层组合对应的应用服务。
+
 pub mod catalog;
 pub mod cron;
 pub mod download;

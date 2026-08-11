@@ -1,4 +1,4 @@
-//! 应用更新检查契约。
+//! 应用更新检查与安装契约。
 
 mod models;
 mod service;
