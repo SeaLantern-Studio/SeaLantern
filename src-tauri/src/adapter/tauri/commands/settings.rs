@@ -16,25 +16,25 @@ async fn settings_service() -> Result<Arc<CoreSettingsService>, SettingsServiceE
 }
 
 /// 获取设置概览（所有分组及其设置项列表）。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn settings_overview() -> Result<SettingsOverview, SettingsServiceError> {
     settings_service().await?.settings_overview().await
 }
 
 /// 获取当前完整设置。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn get_settings() -> Result<AppSettings, SettingsServiceError> {
     settings_service().await?.get().await
 }
 
 /// 全量替换当前设置。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn update_settings(settings: AppSettings) -> Result<UpdateResult, SettingsServiceError> {
     settings_service().await?.update(settings).await
 }
 
 /// 部分更新当前设置。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn update_settings_partial(
     partial: PartialAppSettings,
 ) -> Result<UpdateResult, SettingsServiceError> {
@@ -42,19 +42,19 @@ pub async fn update_settings_partial(
 }
 
 /// 恢复默认设置。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn reset_settings() -> Result<AppSettings, SettingsServiceError> {
     settings_service().await?.reset().await
 }
 
 /// 导出当前设置为 JSON 字符串。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn export_settings() -> Result<String, SettingsServiceError> {
     settings_service().await?.export_json().await
 }
 
 /// 从 JSON 字符串导入设置。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn import_settings(json: String) -> Result<UpdateResult, SettingsServiceError> {
     settings_service().await?.import_json(&json).await
 }

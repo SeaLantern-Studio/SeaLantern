@@ -34,14 +34,14 @@ fn parse_id_for_tauri(id: String) -> Result<InstanceId, InstanceServiceError> {
 }
 
 /// 列出全部实例。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn list_instances() -> Result<Vec<Instance>, InstanceServiceError> {
     let service = instance_service().await?;
     service.list().await
 }
 
 /// 按 ID 查找实例，不存在时返回 `None`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn get_instance(id: String) -> Result<Option<Instance>, InstanceServiceError> {
     let service = instance_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -49,14 +49,14 @@ pub async fn get_instance(id: String) -> Result<Option<Instance>, InstanceServic
 }
 
 /// 创建新实例并持久化。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn create_instance(spec: InstanceSpec) -> Result<Instance, InstanceServiceError> {
     let service = instance_service().await?;
     service.create(spec).await
 }
 
 /// 删除实例；实例不存在时返回 [`InstanceServiceError::InstanceNotFound`]。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn delete_instance(id: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -64,7 +64,7 @@ pub async fn delete_instance(id: String) -> Result<(), InstanceServiceError> {
 }
 
 /// 重命名实例。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn rename_instance(id: String, name: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -72,7 +72,7 @@ pub async fn rename_instance(id: String, name: String) -> Result<(), InstanceSer
 }
 
 /// 更新实例目录路径。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn update_instance_path(id: String, path: String) -> Result<(), InstanceServiceError> {
     let service = instance_service().await?;
     let id = parse_id_for_tauri(id)?;

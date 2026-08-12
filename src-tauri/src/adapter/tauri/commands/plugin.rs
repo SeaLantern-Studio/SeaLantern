@@ -19,12 +19,12 @@ fn map_error(error: PluginServiceError) -> String {
     error.to_string()
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_discover() -> Result<Vec<PathBuf>, String> {
     plugin_service().await?.discover().await.map_err(map_error)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_load(plugin_dir: PathBuf) -> Result<PluginInfo, String> {
     plugin_service()
         .await?
@@ -33,7 +33,7 @@ pub async fn plugin_v2_load(plugin_dir: PathBuf) -> Result<PluginInfo, String> {
         .map_err(map_error)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_enable(plugin_id: String) -> Result<(), String> {
     plugin_service()
         .await?
@@ -42,7 +42,7 @@ pub async fn plugin_v2_enable(plugin_id: String) -> Result<(), String> {
         .map_err(map_error)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_disable(plugin_id: String) -> Result<(), String> {
     plugin_service()
         .await?
@@ -51,7 +51,7 @@ pub async fn plugin_v2_disable(plugin_id: String) -> Result<(), String> {
         .map_err(map_error)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_unload(plugin_id: String) -> Result<(), String> {
     plugin_service()
         .await?
@@ -60,12 +60,12 @@ pub async fn plugin_v2_unload(plugin_id: String) -> Result<(), String> {
         .map_err(map_error)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_plugins() -> Result<Vec<PluginInfo>, String> {
     plugin_service().await?.plugins().await.map_err(map_error)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_grant_persistent(
     plugin_id: String,
     capability_id: String,
@@ -79,7 +79,7 @@ pub async fn plugin_v2_grant_persistent(
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_revoke_persistent(
     plugin_id: String,
     capability_id: String,
@@ -93,7 +93,7 @@ pub async fn plugin_v2_revoke_persistent(
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_set_trust(
     plugin_id: String,
     trust_source: TrustSource,
@@ -106,7 +106,7 @@ pub async fn plugin_v2_set_trust(
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_grant_session(grant: SessionGrant) -> Result<(), String> {
     plugin_service()
         .await?
@@ -116,7 +116,7 @@ pub async fn plugin_v2_grant_session(grant: SessionGrant) -> Result<(), String> 
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_approve_session(approval: SessionApproval) -> Result<(), String> {
     plugin_service()
         .await?
@@ -126,7 +126,7 @@ pub async fn plugin_v2_approve_session(approval: SessionApproval) -> Result<(), 
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_issue_approval_token(
     session_id: String,
     plugin_id: String,
@@ -141,7 +141,7 @@ pub async fn plugin_v2_issue_approval_token(
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_end_session(session_id: String) -> Result<(), String> {
     plugin_service()
         .await?
@@ -151,7 +151,7 @@ pub async fn plugin_v2_end_session(session_id: String) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_audit(limit: u32) -> Result<Vec<AuditEntry>, String> {
     plugin_service()
         .await?
@@ -161,7 +161,7 @@ pub async fn plugin_v2_audit(limit: u32) -> Result<Vec<AuditEntry>, String> {
         .map_err(|error| error.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_invoke(
     invocation: CapabilityInvocation,
 ) -> Result<serde_json::Value, String> {
