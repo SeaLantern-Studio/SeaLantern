@@ -72,28 +72,64 @@ pub fn current_system_proxy() -> Result<SystemProxySnapshot, SystemProxyReadErro
 
 #[cfg(target_os = "windows")]
 fn platform_system_proxy() -> Result<SystemProxySnapshot, SystemProxyReadError> {
-    let proxy = sysproxy::Sysproxy::get_system_proxy()
-        .map_err(|source| SystemProxyReadError::Read { source })?;
+    let proxy = sysproxy::Sysproxy::get_system_proxy().map_err(|source| {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            error = %source,
+            "failed to read system proxy via sysproxy"
+        );
+        SystemProxyReadError::Read { source }
+    })?;
     snapshot_from_sysproxy(&proxy)
 }
 
 #[cfg(target_os = "linux")]
 fn platform_system_proxy() -> Result<SystemProxySnapshot, SystemProxyReadError> {
-    let enabled =
-        sysproxy::Sysproxy::get_enable().map_err(|source| SystemProxyReadError::Read { source })?;
+    let enabled = sysproxy::Sysproxy::get_enable().map_err(|source| {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            error = %source,
+            "failed to read system proxy enable state"
+        );
+        SystemProxyReadError::Read { source }
+    })?;
     if !enabled {
         return Ok(SystemProxySnapshot::direct());
     }
 
-    let http =
-        sysproxy::Sysproxy::get_http().map_err(|source| SystemProxyReadError::Read { source })?;
-    let https =
-        sysproxy::Sysproxy::get_https().map_err(|source| SystemProxyReadError::Read { source })?;
-    let bypass =
-        sysproxy::Sysproxy::get_bypass().map_err(|source| SystemProxyReadError::Read { source })?;
+    let http = sysproxy::Sysproxy::get_http().map_err(|source| {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            error = %source,
+            "failed to read system HTTP proxy"
+        );
+        SystemProxyReadError::Read { source }
+    })?;
+    let https = sysproxy::Sysproxy::get_https().map_err(|source| {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            error = %source,
+            "failed to read system HTTPS proxy"
+        );
+        SystemProxyReadError::Read { source }
+    })?;
+    let bypass = sysproxy::Sysproxy::get_bypass().map_err(|source| {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            error = %source,
+            "failed to read system proxy bypass rules"
+        );
+        SystemProxyReadError::Read { source }
+    })?;
     let http_proxy = optional_proxy_url(&http.host, http.port)?;
     let https_proxy = optional_proxy_url(&https.host, https.port)?;
     if http_proxy.is_none() && https_proxy.is_none() {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            http_host_empty = http.host.trim().is_empty(),
+            https_host_empty = https.host.trim().is_empty(),
+            "system proxy is enabled but neither HTTP nor HTTPS endpoint is usable"
+        );
         return Err(SystemProxyReadError::UnsupportedProxyKind);
     }
 
@@ -134,7 +170,7 @@ fn snapshot_from_sysproxy(
     ))
 }
 
-#[cfg(any(target_os = "windows", test))]
+/// 记录诊断时对代理主机做脱敏：包含 `@`（可能的用户信息）时整体替换。
 fn diagnostic_proxy_host(host: &str) -> &str {
     if host.contains('@') {
         "<redacted>"
@@ -154,6 +190,12 @@ fn optional_proxy_url(host: &str, port: u16) -> Result<Option<String>, SystemPro
 fn proxy_url(host: &str, port: u16) -> Result<String, SystemProxyReadError> {
     let host = host.trim();
     if host.is_empty() || port == 0 {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            host_empty = host.is_empty(),
+            port = port,
+            "system proxy endpoint is invalid: empty host or zero port"
+        );
         return Err(SystemProxyReadError::InvalidProxy);
     }
 
@@ -163,7 +205,16 @@ fn proxy_url(host: &str, port: u16) -> Result<String, SystemProxyReadError> {
         format!("{host}:{port}")
     };
     let proxy_url = format!("http://{authority}");
-    let parsed = url::Url::parse(&proxy_url).map_err(|_| SystemProxyReadError::InvalidProxy)?;
+    let parsed = url::Url::parse(&proxy_url).map_err(|error| {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            host = diagnostic_proxy_host(host),
+            port = port,
+            error = %error,
+            "system proxy endpoint failed URL parsing"
+        );
+        SystemProxyReadError::InvalidProxy
+    })?;
     let valid = parsed.scheme() == "http"
         && parsed.host().is_some()
         && parsed.port_or_known_default() == Some(port)
@@ -173,6 +224,15 @@ fn proxy_url(host: &str, port: u16) -> Result<String, SystemProxyReadError> {
         && parsed.query().is_none()
         && parsed.fragment().is_none();
     if !valid {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            host = diagnostic_proxy_host(host),
+            port = port,
+            scheme = %parsed.scheme(),
+            has_host = parsed.host().is_some(),
+            has_userinfo = !parsed.username().is_empty() || parsed.password().is_some(),
+            "system proxy endpoint failed validation"
+        );
         return Err(SystemProxyReadError::InvalidProxy);
     }
     Ok(proxy_url)
