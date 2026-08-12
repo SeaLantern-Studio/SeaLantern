@@ -9,7 +9,7 @@
 //! 收敛为 [`ServerCatalogServiceError::NotFound`]。
 
 use async_trait::async_trait;
-use sealantern_extra::download_link::{LinkError, LinkManager, TypeDownloadLinks};
+use sealantern_extra::download_link::{DownloadLink, LinkError, LinkManager};
 use sealantern_interface::{ServerCatalogService, ServerCatalogServiceError};
 
 /// 基于 `extra` 下载链接管理的服务器目录服务实现。
@@ -40,16 +40,17 @@ impl ServerCatalogService for CoreServerCatalogService {
             .await
             .map_err(map_link_error)
     }
-    /// 查询指定服务器类型的下载详情（版本 → 文件下载链接）。
+    /// 查询指定服务器类型、指定版本的下载链接。
     ///
-    /// 类型不存在时收敛为 [`ServerCatalogServiceError::NotFound`]；
+    /// 类型或版本不存在时收敛为 [`ServerCatalogServiceError::NotFound`]；
     /// 底层配置拉取 / 解析失败收敛为
     /// [`ServerCatalogServiceError::OperationFailed`]。
     async fn details(
         &self,
         server_type: String,
-    ) -> Result<TypeDownloadLinks, ServerCatalogServiceError> {
-        LinkManager::get_type_by_name(&server_type)
+        server_version: String,
+    ) -> Result<DownloadLink, ServerCatalogServiceError> {
+        LinkManager::get_link_by_type_and_version(&server_type, &server_version)
             .await
             .map_err(map_link_error)
     }

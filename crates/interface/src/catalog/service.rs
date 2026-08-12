@@ -2,7 +2,7 @@
 
 use crate::error::ServerCatalogServiceError;
 use async_trait::async_trait;
-use sealantern_extra::download_link::TypeDownloadLinks;
+use sealantern_extra::download_link::DownloadLink;
 
 /// 服务器核心下载目录宿主能力端口。
 ///
@@ -15,9 +15,10 @@ pub trait ServerCatalogService: Send + Sync {
     /// 返回指定服务器核心类型的可用版本列表。
     async fn versions(&self, server_type: String)
         -> Result<Vec<String>, ServerCatalogServiceError>;
-    /// 返回指定服务器核心类型的版本与下载链接明细。
+    /// 返回指定服务器核心类型、指定版本的下载链接。
     async fn details(
         &self,
         server_type: String,
-    ) -> Result<TypeDownloadLinks, ServerCatalogServiceError>;
+        server_version: String,
+    ) -> Result<DownloadLink, ServerCatalogServiceError>;
 }

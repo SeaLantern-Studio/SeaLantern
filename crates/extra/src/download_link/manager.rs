@@ -135,4 +135,20 @@ impl LinkManager {
     pub async fn get_versions_by_type(type_name: &str) -> Result<Vec<String>, LinkError> {
         Ok(Self::get_type_by_name(type_name).await?.get_versions())
     }
+
+    /// 根据类型与版本获取单个下载链接。
+    ///
+    /// 类型或版本不存在时返回 [`LinkError::NotFound`]。
+    pub async fn get_link_by_type_and_version(
+        type_name: &str,
+        version: &str,
+    ) -> Result<DownloadLink, LinkError> {
+        let type_links = Self::get_type_by_name(type_name).await?;
+        type_links
+            .get_link_by_version(version)
+            .cloned()
+            .ok_or_else(|| {
+                LinkError::NotFound(format!("Version {} not found for type {}", version, type_name))
+            })
+    }
 }

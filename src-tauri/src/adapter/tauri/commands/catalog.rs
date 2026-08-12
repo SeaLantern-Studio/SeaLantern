@@ -7,7 +7,7 @@
 //! 不携带底层敏感细节。
 
 use sealantern_application::services::AppServices;
-use sealantern_extra::download_link::TypeDownloadLinks;
+use sealantern_extra::download_link::DownloadLink;
 use sealantern_interface::{ServerCatalogService, ServerCatalogServiceError};
 
 /// 查询全部可用的服务器核心类型。
@@ -34,15 +34,16 @@ pub async fn catalog_versions(
         .await
 }
 
-/// 查询指定服务器核心类型的版本列表与各版本下载链接。
+/// 查询指定服务器核心类型、指定版本的下载链接。
 #[tauri::command]
 pub async fn catalog_details(
     server_type: String,
-) -> Result<TypeDownloadLinks, ServerCatalogServiceError> {
+    server_version: String,
+) -> Result<DownloadLink, ServerCatalogServiceError> {
     AppServices::get()
         .await
         .map_err(|_| ServerCatalogServiceError::OperationFailed)?
         .catalog()
-        .details(server_type)
+        .details(server_type, server_version)
         .await
 }
