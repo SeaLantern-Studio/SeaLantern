@@ -189,6 +189,23 @@ fn optional_proxy_url(host: &str, port: u16) -> Result<Option<String>, SystemPro
 
 fn proxy_url(host: &str, port: u16) -> Result<String, SystemProxyReadError> {
     let host = host.trim();
+    // 兼容 Windows 上 ProxyServer 携带 scheme 的合法写法（如
+    // "http://127.0.0.1"），仅剥离 http / https 前缀，其余原样保留；
+    // 剥离后的 userinfo / 非法字符仍由下方白名单校验拦截。
+    let host = if host
+        .get(..7)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("http://"))
+    {
+        &host[7..]
+    } else if host
+        .get(..8)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("https://"))
+    {
+        &host[8..]
+    } else {
+        host
+    }
+    .trim();
     if host.is_empty() || port == 0 {
         tracing::warn!(
             target: "sealantern.infra.platform.proxy",
@@ -331,12 +348,36 @@ mod tests {
     fn invalid_enabled_proxy_is_rejected() {
         let empty_host = snapshot_from_sysproxy(&enabled_proxy("", 7890, "")).unwrap_err();
         let zero_port = snapshot_from_sysproxy(&enabled_proxy("127.0.0.1", 0, "")).unwrap_err();
-        let injected_scheme =
-            snapshot_from_sysproxy(&enabled_proxy("http://example.com", 7890, "")).unwrap_err();
+        let unsupported_scheme =
+            snapshot_from_sysproxy(&enabled_proxy("ftp://example.com", 7890, "")).unwrap_err();
 
         assert!(matches!(empty_host, SystemProxyReadError::InvalidProxy));
         assert!(matches!(zero_port, SystemProxyReadError::InvalidProxy));
-        assert!(matches!(injected_scheme, SystemProxyReadError::InvalidProxy));
+        assert!(matches!(unsupported_scheme, SystemProxyReadError::InvalidProxy));
+    }
+
+    #[test]
+    fn scheme_prefixed_proxy_host_is_normalized() {
+        let snapshot =
+            snapshot_from_sysproxy(&enabled_proxy("http://127.0.0.1", 7890, "")).unwrap();
+
+        assert_eq!(snapshot.routes().http_proxy(), Some("http://127.0.0.1:7890"));
+    }
+
+    #[test]
+    fn uppercase_scheme_prefix_is_normalized() {
+        let snapshot =
+            snapshot_from_sysproxy(&enabled_proxy("HTTP://127.0.0.1", 7890, "")).unwrap();
+
+        assert_eq!(snapshot.routes().http_proxy(), Some("http://127.0.0.1:7890"));
+    }
+
+    #[test]
+    fn scheme_prefixed_host_with_userinfo_is_still_rejected() {
+        let result =
+            snapshot_from_sysproxy(&enabled_proxy("http://user:pass@proxy.example.com", 7890, ""));
+
+        assert!(matches!(result, Err(SystemProxyReadError::InvalidProxy)));
     }
 
     #[test]
