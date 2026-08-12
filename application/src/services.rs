@@ -209,10 +209,15 @@ impl AppServices {
     }
 
     /// 加载持久化设置并同步全局网络运行时。
+    ///
+    /// 代理同步失败会在返回的错误中体现（宿主决定是否降级启动），
+    /// 但系统代理轮询始终启动：设置初始化失败仅表示网络运行时尚未
+    /// 按持久化设置同步，此时使用默认直连；系统代理恢复后由轮询或
+    /// 后续设置操作的重试自动跟上。
     pub async fn initialize_network_settings(
         &self,
     ) -> Result<(), sealantern_interface::SettingsServiceError> {
-        self.inner.settings.initialize().await?;
+        let settings_result = self.inner.settings.initialize().await;
         if self.inner.proxy_monitoring.start().await {
             tracing::info!(
                 target: "sealantern.application.proxy_monitoring",
@@ -220,7 +225,7 @@ impl AppServices {
                 "system proxy monitoring started"
             );
         }
-        Ok(())
+        settings_result
     }
 
     /// 便捷访问入口：一步拿到设置信息服务的共享句柄（惰性初始化 + 可替换）。

@@ -65,8 +65,12 @@ pub async fn main() {
         }
     };
     if let Err(error) = services.initialize_network_settings().await {
-        tracing::error!(error = %error, "failed to initialize persisted network settings");
-        std::process::exit(1);
+        // 网络设置同步失败不阻止启动：网络运行时保持默认直连，
+        // 系统代理恢复后由轮询与后续设置操作的重试自动跟上。
+        tracing::error!(
+            error = %error,
+            "failed to initialize persisted network settings; continuing with direct network"
+        );
     }
 
     // 构建 Vite 配置并（在 dev 模式下）拉起 dev server。

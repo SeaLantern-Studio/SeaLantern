@@ -162,14 +162,14 @@ pub fn run() {
                         "failed to assemble application services: {error}"
                     ))
                 })?;
-                services
-                    .initialize_network_settings()
-                    .await
-                    .map_err(|error| {
-                        std::io::Error::other(format!(
-                            "failed to initialize persisted network settings: {error}"
-                        ))
-                    })?;
+                if let Err(error) = services.initialize_network_settings().await {
+                    // 网络设置同步失败不阻止启动：网络运行时保持默认直连，
+                    // 系统代理恢复后由轮询与后续设置操作的重试自动跟上。
+                    tracing::error!(
+                        error = %error,
+                        "failed to initialize persisted network settings; continuing with direct network"
+                    );
+                }
                 Ok::<(), std::io::Error>(())
             })?;
 
