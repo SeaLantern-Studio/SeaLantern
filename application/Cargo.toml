@@ -19,6 +19,7 @@ sealantern-core = { path = "../crates/core" }
 sealantern-interface = { path = "../crates/interface" }
 sealantern-extra = { path = "../crates/extra", features = ["online-tunnel"] }
 sealantern-infra = { path = "../crates/infra" }
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 [dev-dependencies]
 tempfile = "3"
