@@ -20,7 +20,7 @@ async fn update_service() -> Result<Arc<CoreUpdateCheckService>, UpdateCheckServ
 }
 
 /// 检查当前平台是否存在应用更新。
-#[tauri::command(rename_all="snake_case")]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn check_update() -> Result<UpdateInfo, UpdateCheckServiceError> {
     update_service().await?.check().await
 }
