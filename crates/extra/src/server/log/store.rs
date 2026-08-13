@@ -9,8 +9,6 @@ use std::path::Path;
 
 use sealantern_infra::persistence::{PersistenceError, SqlValue, SqliteDatabase};
 
-use super::LogSource;
-
 /// 服务器日志数据库文件名（存放在服务器目录下）。
 pub const LOG_DATABASE_FILE: &str = "sea_lantern_logs.sqlite";
 
@@ -96,6 +94,8 @@ fn map_log_line(row: &rusqlite::Row<'_>) -> rusqlite::Result<LogLine> {
 
 #[cfg(test)]
 mod tests {
+    use crate::server::log::LogSource;
+
     use super::*;
 
     async fn open_test_database() -> (tempfile::TempDir, SqliteDatabase) {
