@@ -10,8 +10,8 @@ use axum::Json;
 use serde::Serialize;
 
 use sealantern_interface::{
-    CronTaskServiceError, InstanceServiceError, ServerServiceError, SettingsServiceError,
-    SystemServiceError, UpdateCheckServiceError,
+    ConsoleServiceError, CronTaskServiceError, InstanceServiceError, ServerServiceError,
+    SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -211,6 +211,32 @@ impl HttpError {
         }
     }
 
+    /// 由服务器控制台日志契约错误构建 HTTP 错误。
+    pub fn from_console_error(error: ConsoleServiceError) -> Self {
+        match error {
+            ConsoleServiceError::InstanceNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "instance_not_found",
+                message: error.to_string(),
+            },
+            ConsoleServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_input",
+                message: error.to_string(),
+            },
+            ConsoleServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "console_operation_failed",
+                message: error.to_string(),
+            },
+            ConsoleServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 构建一个客户端输入错误（400），带具体错误码。
     pub fn bad_request(code: &'static str, message: impl Into<String>) -> Self {
         Self {
@@ -245,6 +271,12 @@ impl From<CronTaskServiceError> for HttpError {
 impl From<ServerServiceError> for HttpError {
     fn from(error: ServerServiceError) -> Self {
         Self::from_server_error(error)
+    }
+}
+
+impl From<ConsoleServiceError> for HttpError {
+    fn from(error: ConsoleServiceError) -> Self {
+        Self::from_console_error(error)
     }
 }
 

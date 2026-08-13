@@ -7,6 +7,8 @@
 
 /// 服务器核心下载目录相关模型与服务端口。
 pub mod catalog;
+/// 服务器控制台日志相关模型与服务端口。
+pub mod console;
 /// 服务器定时任务相关模型与服务端口。
 pub mod cron;
 /// 下载任务管理相关模型与服务端口。
@@ -32,10 +34,14 @@ pub mod update;
 
 /// 服务器核心下载目录服务端口。
 pub use catalog::ServerCatalogService;
+/// 服务器控制台日志服务端口。
+pub use console::ConsoleService;
 /// 服务器定时任务服务端口。
 pub use cron::CronTaskService;
 /// 下载任务管理服务端口。
 pub use download::DownloadService;
+/// 服务器控制台日志错误枚举。
+pub use error::ConsoleServiceError;
 /// 服务器定时任务错误枚举。
 pub use error::CronTaskServiceError;
 /// 下载任务管理错误枚举。

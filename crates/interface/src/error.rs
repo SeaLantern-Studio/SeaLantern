@@ -208,6 +208,37 @@ impl std::fmt::Display for SystemServiceError {
 
 impl std::error::Error for SystemServiceError {}
 
+/// 服务器控制台日志服务失败的契约错误类别。
+///
+/// 分类风格与 [`ServerServiceError`] 一致：不携带主机路径、日志内容等
+/// 敏感细节，底层失败详情由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConsoleServiceError {
+    /// 指定的实例不存在（无法定位日志目录）。
+    InstanceNotFound,
+    /// 客户端提供的输入不合法（如游标为负、窗口大小非法）。
+    InvalidInput,
+    /// 底层日志数据库操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
+impl std::fmt::Display for ConsoleServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InstanceNotFound => "server instance not found",
+            Self::InvalidInput => "invalid console log input",
+            Self::OperationFailed => "console log operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for ConsoleServiceError {}
+
 /// 应用更新检查失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]

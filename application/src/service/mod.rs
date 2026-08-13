@@ -7,6 +7,7 @@
 //! `interface` 的能力端口，由 `services` 装配层组装进全局容器。
 
 mod catalog;
+mod console;
 mod cron;
 mod download;
 mod instance;
@@ -23,6 +24,7 @@ mod update;
 mod update_install;
 
 pub use catalog::CoreServerCatalogService;
+pub use console::CoreConsoleService;
 pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
 pub use instance::CoreInstanceService;

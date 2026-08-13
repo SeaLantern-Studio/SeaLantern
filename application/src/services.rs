@@ -17,10 +17,10 @@ use std::sync::Arc;
 use crate::error::InstanceError;
 use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceError};
 use crate::service::{
-    CoreCronTaskService, CoreDownloadService, CoreInstanceService, CoreJavaService,
-    CoreOnlineTunnelService, CoreProvisioningService, CoreServerCatalogService, CoreServerService,
-    CoreSettingsService, CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService,
-    ProxyMonitoringService,
+    CoreConsoleService, CoreCronTaskService, CoreDownloadService, CoreInstanceService,
+    CoreJavaService, CoreOnlineTunnelService, CoreProvisioningService, CoreServerCatalogService,
+    CoreServerService, CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
+    CoreUpdateInstallService, ProxyMonitoringService,
 };
 use sealantern_interface::OnlineTunnelService;
 
@@ -51,6 +51,8 @@ pub struct AppServicesInner {
     pub provisioning: Arc<CoreProvisioningService>,
     /// 服务器进程管理服务。
     pub server: Arc<CoreServerService>,
+    /// 服务器控制台日志服务。
+    pub console: Arc<CoreConsoleService>,
     /// 服务器定时任务服务。
     pub cron: Arc<CoreCronTaskService>,
     /// 设置信息服务。
@@ -82,6 +84,7 @@ impl AppServices {
             inner: Arc::new(AppServicesInner {
                 background_started: AtomicBool::new(false),
                 download: Arc::new(CoreDownloadService::new()),
+                console: Arc::new(CoreConsoleService::new(instance.clone())),
                 cron: Arc::new(CoreCronTaskService::new(server.clone())),
                 server,
                 instance,
@@ -201,6 +204,16 @@ impl AppServices {
     /// 便捷访问入口：一步拿到服务器进程管理服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn server_service() -> Result<Arc<CoreServerService>, InstanceError> {
         Ok(Self::get().await?.server().clone())
+    }
+
+    /// 访问服务器控制台日志服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn console(&self) -> &Arc<CoreConsoleService> {
+        &self.inner.console
+    }
+
+    /// 便捷访问入口：一步拿到服务器控制台日志服务的共享句柄（惰性初始化 + 可替换）。
+    pub async fn console_service() -> Result<Arc<CoreConsoleService>, InstanceError> {
+        Ok(Self::get().await?.console().clone())
     }
 
     /// 访问设置信息服务（`Arc` 共享句柄，clone 廉价）。

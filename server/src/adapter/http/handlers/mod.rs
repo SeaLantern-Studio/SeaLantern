@@ -2,6 +2,7 @@
 //!
 //! handler 只做传输层薄转发：解析请求 → 调用应用层服务 → 收敛错误。
 
+pub mod console;
 pub mod cron;
 pub mod instance;
 pub mod server;
@@ -9,6 +10,7 @@ pub mod settings;
 pub mod system;
 pub mod update;
 
+pub use console::console_logs;
 pub use cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
     update_cron_task,

@@ -6,6 +6,8 @@
 
 /// 配置管理领域错误。
 pub mod config;
+/// 服务器控制台日志领域错误。
+pub mod console;
 /// 服务器定时任务领域错误。
 pub mod cron;
 /// 下载任务管理领域错误。
@@ -24,6 +26,7 @@ pub mod system;
 pub mod update;
 
 pub use config::ConfigError;
+pub use console::ConsoleError;
 pub use cron::CronTaskError;
 pub use download::DownloadError;
 pub use instance::InstanceError;
