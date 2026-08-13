@@ -5219,7 +5219,6 @@ version = "1.2.0"
 dependencies = [
  "async-trait",
  "chrono",
- "rusqlite",
  "sealantern-core",
  "sealantern-extra",
  "sealantern-infra",
@@ -5237,6 +5236,7 @@ name = "sealantern-core"
 version = "1.2.0"
 dependencies = [
  "async-trait",
+ "encoding_rs",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -5258,6 +5258,7 @@ dependencies = [
  "mlua",
  "regex",
  "reqwest 0.12.28",
+ "rusqlite",
  "sculk",
  "sealantern-core",
  "sealantern-infra",

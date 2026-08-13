@@ -2,8 +2,7 @@
 //!
 //! 实现 [`sealantern_interface::ConsoleService`] 能力端口，组合
 //! [`CoreInstanceService`]（按实例定位日志目录）与日志存储能力
-//! （[`open_log_database`]、[`read_logs`]），向宿主提供服务器控制台
-//! 日志的增量读取。
+//! （`extra::server::log`），向宿主提供服务器控制台日志的增量读取。
 //!
 //! 错误分层：内部以应用层主错误 [`ConsoleError`] 为源头，暴露
 //! [`ConsoleService`] 时统一转为接口契约错误 [`ConsoleServiceError`]。
@@ -12,10 +11,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use sealantern_core::instance::InstanceId;
+use sealantern_extra::server::log::{open_log_database, read_logs};
 use sealantern_interface::console::ConsoleLogLine;
 use sealantern_interface::{ConsoleService, ConsoleServiceError, InstanceService};
 
-use super::server_log::{open_log_database, read_logs};
 use super::CoreInstanceService;
 use crate::error::ConsoleError;
 
@@ -76,10 +75,10 @@ mod tests {
     use std::path::PathBuf;
 
     use sealantern_core::instance::{InstanceSpec, LocalLaunch, StartupMode};
+    use sealantern_extra::server::log::{open_log_database, LogSource};
     use sealantern_infra::persistence::SqlValue;
 
     use super::*;
-    use crate::service::server_log::{open_log_database, LogSource};
 
     fn sample_spec(id: &str, directory: PathBuf) -> InstanceSpec {
         InstanceSpec {

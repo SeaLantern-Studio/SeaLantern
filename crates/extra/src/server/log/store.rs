@@ -1,35 +1,18 @@
-//! 服务器日志数据库的初始化与读取。
+//! 服务器日志数据库的存储与读取。
 //!
 //! 提供服务器控制台日志的持久化存储访问：按服务器目录初始化 SQLite
 //! 日志库（`log_lines` 表），并按行号游标增量读取。数据访问复用
 //! `infra` 的调用方无关 [`SqliteDatabase`]，本模块只承载日志表结构与
-//! 读写语义，供服务器进程服务（输出管线）与宿主命令消费。
+//! 读写语义，不绑定任何宿主。
 
 use std::path::Path;
 
 use sealantern_infra::persistence::{PersistenceError, SqlValue, SqliteDatabase};
 
+use super::LogSource;
+
 /// 服务器日志数据库文件名（存放在服务器目录下）。
 pub const LOG_DATABASE_FILE: &str = "sea_lantern_logs.sqlite";
-
-/// 日志来源。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LogSource {
-    /// Sea Lantern 自身写入的说明性日志。
-    SeaLantern,
-    /// 服务器进程输出（stdout / stderr）。
-    Server,
-}
-
-impl LogSource {
-    /// 数据库中的来源标识。
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::SeaLantern => "sealantern",
-            Self::Server => "server",
-        }
-    }
-}
 
 /// 日志库建表语句（幂等）。
 const LOG_SCHEMA: &str = "CREATE TABLE IF NOT EXISTS log_lines (\
