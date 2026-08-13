@@ -1,4 +1,5 @@
 import { isBrowserEnv, tauriInvoke } from "@api/tauri";
+import { rpcInvoke } from "@api/rpc";
 import type { JavaInfo } from "@api/java";
 
 export type SettingsGroup =
@@ -107,26 +108,26 @@ export interface UpdateSettingsResult {
 
 export const settingsApi = {
   async get(): Promise<AppSettings> {
-    return tauriInvoke("get_settings");
+    return rpcInvoke("settings.get");
   },
   async save(settings: AppSettings): Promise<void> {
     // 后端 update_settings 返回 UpdateResult，这里只关心副作用，丢弃结果
-    await tauriInvoke("update_settings", { settings });
+    await rpcInvoke("settings.update", { settings });
   },
   async saveWithDiff(settings: AppSettings): Promise<UpdateSettingsResult> {
-    return tauriInvoke("update_settings", { settings });
+    return rpcInvoke("settings.update", { settings });
   },
   async updatePartial(partial: PartialSettings): Promise<UpdateSettingsResult> {
-    return tauriInvoke("update_settings_partial", { partial });
+    return rpcInvoke("settings.updatePartial", { partial });
   },
   async reset(): Promise<AppSettings> {
-    return tauriInvoke("reset_settings");
+    return rpcInvoke("settings.reset");
   },
   async exportJson(): Promise<string> {
-    return tauriInvoke("export_settings");
+    return rpcInvoke("settings.export");
   },
   async importJson(json: string): Promise<AppSettings> {
-    return tauriInvoke("import_settings", { json });
+    return rpcInvoke("settings.import", { json });
   },
   async applyAcrylic(enabled: boolean): Promise<void> {
     if (isBrowserEnv()) return;

@@ -1,4 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
+import { rpcInvoke } from "@api/rpc";
 import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 
 export interface CpuInfo {
@@ -93,6 +94,40 @@ export interface IPv6TestResult {
   targets?: IPv6TestTarget[];
 }
 
+/** 后端 SystemSnapshot 原始结构，和前端 SystemInfo 字段有差异需转换 */
+interface SystemSnapshotRaw {
+  os: string;
+  arch: string;
+  os_name: string;
+  os_version: string;
+  kernel_version: string;
+  host_name: string;
+  cpu: CpuInfo;
+  memory: MemoryInfo;
+  swap: SwapInfo;
+  disk: {
+    total: number;
+    used: number;
+    available: number;
+    usage: number;
+    disks: DiskDetailRaw[];
+  };
+  networks: { interface: string; received: number; transmitted: number }[];
+  uptime: number;
+  process_count: number;
+}
+
+/** 后端单个磁盘信息，比前端 DiskDetail 少 usage 字段需计算补齐 */
+interface DiskDetailRaw {
+  name: string;
+  mount_point: string;
+  file_system: string;
+  total: number;
+  used: number;
+  available: number;
+  is_removable: boolean;
+}
+
 export const systemApi = {
   async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
     if (!isUploadSupported()) {
@@ -125,7 +160,41 @@ export const systemApi = {
   },
 
   async getSystemInfo(): Promise<SystemInfo> {
-    return tauriInvoke("get_system_info");
+    const raw = await rpcInvoke<SystemSnapshotRaw>("system.snapshot");
+    // 后端 networks 是数组，前端 NetworkInfo 要汇总总量并映射字段名
+    return {
+      os: raw.os,
+      arch: raw.arch,
+      os_name: raw.os_name,
+      os_version: raw.os_version,
+      kernel_version: raw.kernel_version,
+      host_name: raw.host_name,
+      cpu: raw.cpu,
+      memory: raw.memory,
+      swap: raw.swap,
+      disk: {
+        total: raw.disk.total,
+        used: raw.disk.used,
+        available: raw.disk.available,
+        usage: raw.disk.usage,
+        disks: raw.disk.disks.map((d) => ({
+          ...d,
+          // 后端 DiskInfo 没有 usage，按容量占比计算
+          usage: d.total > 0 ? (d.used / d.total) * 100 : 0,
+        })),
+      },
+      network: {
+        total_received: raw.networks.reduce((s, n) => s + n.received, 0),
+        total_transmitted: raw.networks.reduce((s, n) => s + n.transmitted, 0),
+        interfaces: raw.networks.map((n) => ({
+          name: n.interface,
+          received: n.received,
+          transmitted: n.transmitted,
+        })),
+      },
+      uptime: raw.uptime,
+      process_count: raw.process_count,
+    };
   },
 
   async getServerResourceUsage(serverId: string): Promise<ServerResourceUsage> {
