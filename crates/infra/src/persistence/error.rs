@@ -4,6 +4,9 @@ use std::path::PathBuf;
 /// 持久化基础设施操作返回的错误。
 #[derive(Debug)]
 pub enum PersistenceError {
+    InvalidInput {
+        reason: String,
+    },
     /// 数据库文件的父目录无法创建。
     CreateParent {
         path: PathBuf,
@@ -21,16 +24,28 @@ pub enum PersistenceError {
         source: tokio::task::JoinError,
     },
     /// 进程内协调器状态异常。
-    Coordination { resource: PathBuf, message: String },
+    Coordination {
+        resource: PathBuf,
+        message: String,
+    },
     /// 迁移清单不满足版本顺序约束。
-    InvalidMigration { version: i64, reason: &'static str },
+    InvalidMigration {
+        version: i64,
+        reason: &'static str,
+    },
     /// 已应用的迁移与当前迁移清单不一致。
-    MigrationIntegrity { version: i64, message: String },
+    MigrationIntegrity {
+        version: i64,
+        message: String,
+    },
 }
 
 impl fmt::Display for PersistenceError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidInput { reason } => {
+                write!(formatter, "{}", reason)
+            }
             Self::CreateParent { path, source } => {
                 write!(
                     formatter,

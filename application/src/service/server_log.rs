@@ -63,7 +63,7 @@ pub async fn open_log_database(server_path: &Path) -> Result<SqliteDatabase, Per
 /// 读取 `id` 大于 `since` 的日志行，按行号升序返回。
 ///
 /// `recent_limit` 提供时，仅返回最近 `recent_limit` 行窗口内的匹配行
-/// （用于前端"最近 N 行"滚动视图）；`Some(0)` 与负值视为空窗口返回空，
+/// （用于前端"最近 N 行"滚动视图）；`Some(0)` 显式报错 [`PersistenceError::InvalidInput`]（注：由于上层已经存在限制，此处为兜底），
 /// `None` 返回全部匹配行。
 pub async fn read_logs(
     database: &SqliteDatabase,
@@ -83,7 +83,11 @@ pub async fn read_logs(
                 )
                 .await?
         }
-        Some(_) => Vec::new(),
+        Some(_) => {
+            return Err(PersistenceError::InvalidInput {
+                reason: format!("recent_limit must be positive, got {:?}", recent_limit),
+            })
+        }
         None => {
             database
                 .query(
@@ -136,6 +140,36 @@ mod tests {
             )
             .await
             .expect("日志行应写入成功")
+    }
+
+    #[tokio::test]
+    async fn recent_limit_is_invalid() {
+        let (_directory, database) = open_test_database().await;
+        insert_line(&database, 1000, LogSource::SeaLantern, "sea line").await;
+
+        let invalid_values = vec![0, -1, -100];
+
+        for invalid_limit in invalid_values {
+            let result = read_logs(&database, 0, Some(invalid_limit)).await;
+
+            match result {
+                Err(PersistenceError::InvalidInput { reason }) => {
+                    assert!(
+                        reason.contains("recent_limit must be positive"),
+                        "不正确的报错语句: {}",
+                        reason
+                    );
+                    assert!(
+                        reason.contains(&invalid_limit.to_string()),
+                        "错误信息未包含错误的recent_limit: {}",
+                        reason
+                    );
+                }
+                _ => {
+                    panic!("输入为非正值时理应报错")
+                }
+            }
+        }
     }
 
     #[tokio::test]
