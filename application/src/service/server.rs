@@ -151,6 +151,44 @@ impl CoreServerService {
             .ok_or(ServerError::InstanceNotFound)
     }
 
+    /// 从进程表中移除指定实例的受管进程并取出日志管线（不检查状态）。
+    ///
+    /// 供强制终止等"无论进程状态都移除"的路径使用；锁只取一次。
+    fn take_recorder_unconditional(
+        &self,
+        id: &str,
+    ) -> Result<Option<LogRecorder>, ServerServiceError> {
+        let mut processes = self.processes_lock()?;
+        Ok(processes
+            .remove(id)
+            .and_then(|mut managed| managed.recorder.take()))
+    }
+
+    /// 若实例进程已退出，移除受管进程并取出日志管线；否则返回 `None`。
+    ///
+    /// 供轮询确认退出后的清理路径使用；进程仍在运行时不移除，锁只取一次。
+    fn take_recorder_after_exit(
+        &self,
+        id: &str,
+    ) -> Result<Option<LogRecorder>, ServerServiceError> {
+        let mut processes = self.processes_lock()?;
+        let Some(managed) = processes.get_mut(id) else {
+            return Ok(None);
+        };
+        if managed
+            .daemon
+            .poll()
+            .map(|status| status.is_some())
+            .unwrap_or(true)
+        {
+            Ok(processes
+                .remove(id)
+                .and_then(|mut managed| managed.recorder.take()))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// 由实例启动配置构建进程命令。
     fn build_process_command(
         &self,
@@ -255,26 +293,18 @@ impl CoreServerService {
     ) -> Result<ServerSnapshot, ServerServiceError> {
         let id_str = instance.id.as_str().to_owned();
         let started_at = instance.last_started_at_unix_secs;
+        if let Some(recorder) = self.take_recorder_after_exit(&id_str)? {
+            spawn_recorder_shutdown(Some(recorder));
+            return Ok(ServerSnapshot {
+                instance_id: id_str,
+                state: ServerState::Stopped,
+                pid: None,
+                uptime_secs: None,
+                error_message: None,
+            });
+        }
         let mut processes = self.processes_lock()?;
         if let Some(managed) = processes.get_mut(&id_str) {
-            let is_running = managed
-                .daemon
-                .poll()
-                .map(|status| status.is_none())
-                .unwrap_or(false);
-            if !is_running {
-                let recorder = processes
-                    .remove(&id_str)
-                    .and_then(|mut m| m.recorder.take());
-                spawn_recorder_shutdown(recorder);
-                return Ok(ServerSnapshot {
-                    instance_id: id_str,
-                    state: ServerState::Stopped,
-                    pid: None,
-                    uptime_secs: None,
-                    error_message: None,
-                });
-            }
             let state = if self.is_stopping(&id_str) {
                 ServerState::Stopping
             } else if self.is_starting(&id_str) {
@@ -359,21 +389,17 @@ impl CoreServerService {
     ) -> Result<(), ServerServiceError> {
         let id_str = id.as_str().to_string();
 
+        // 清理残留进程：若旧进程仍在运行则拒绝启动，否则收敛旧日志管线。
         {
             let mut processes = self.processes_lock()?;
-            let mut stale = false;
             if let Some(managed) = processes.get_mut(&id_str) {
                 if managed.daemon.poll().map(|s| s.is_none()).unwrap_or(false) {
                     return Err(ServerError::InvalidState.into());
                 }
-                stale = true;
             }
-            if stale {
-                let recorder = processes
-                    .remove(&id_str)
-                    .and_then(|mut m| m.recorder.take());
-                spawn_recorder_shutdown(recorder);
-            }
+        }
+        if let Some(recorder) = self.take_recorder_after_exit(&id_str)? {
+            spawn_recorder_shutdown(Some(recorder));
         }
 
         let mut command = match self.build_process_command(instance) {
@@ -465,29 +491,27 @@ impl CoreServerService {
 
         let deadline = Instant::now() + STOP_GRACEFUL_TIMEOUT;
         loop {
-            let exited = {
+            // 单次锁内完成"判断退出 → 移除 → 取出日志管线"，避免重复取锁。
+            let recorder = {
                 let mut processes = self.processes_lock()?;
-                match processes.get_mut(&id_str) {
+                let exited = match processes.get_mut(&id_str) {
                     Some(managed) => managed.daemon.poll().map(|s| s.is_some()).unwrap_or(true),
                     None => {
                         self.clear_stopping(&id_str);
                         return Ok(());
                     }
+                };
+                if exited {
+                    processes
+                        .remove(&id_str)
+                        .and_then(|mut managed| managed.recorder.take())
+                } else {
+                    None // 进程仍在运行。
                 }
             };
-            if exited {
-                // 进程已退出：移出受管进程，锁块结束后收敛日志管线。
-                let recorder = {
-                    let mut processes = self.processes_lock()?;
-                    let recorder = processes
-                        .remove(&id_str)
-                        .and_then(|mut m| m.recorder.take());
-                    self.clear_stopping(&id_str);
-                    recorder
-                };
-                if let Some(recorder) = recorder {
-                    recorder.shutdown().await;
-                }
+            if let Some(recorder) = recorder {
+                self.clear_stopping(&id_str);
+                recorder.shutdown().await;
                 return Ok(());
             }
             if Instant::now() >= deadline {
@@ -496,19 +520,17 @@ impl CoreServerService {
             tokio::time::sleep(POLL_INTERVAL).await;
         }
 
-        // 超时：强制终止进程树。
-        let recorder = {
+        // 超时：强制终止进程树；失败时保留受管进程原状并返回错误。
+        {
             let mut processes = self.processes_lock()?;
-            let Some(mut managed) = processes.remove(&id_str) else {
-                self.clear_stopping(&id_str);
-                return Ok(());
-            };
-            if let Err(error) = managed.daemon.terminate_tree() {
-                processes.insert(id_str.clone(), managed);
-                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+            if let Some(managed) = processes.get_mut(&id_str) {
+                if let Err(error) = managed.daemon.terminate_tree() {
+                    return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+                }
             }
-            managed.recorder.take()
-        };
+        }
+        // 终止成功后统一移除受管进程并收敛日志管线。
+        let recorder = self.take_recorder_unconditional(&id_str)?;
         self.clear_stopping(&id_str);
         if let Some(recorder) = recorder {
             recorder.shutdown().await;

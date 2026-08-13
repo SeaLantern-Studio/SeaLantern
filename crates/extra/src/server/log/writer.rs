@@ -9,6 +9,7 @@
 //! 供上层构造带游标的实时事件；回调在写入任务的同步上下文中执行，
 //! 应只做轻量转发（如发送到无界通道 / 广播）。
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -40,11 +41,12 @@ enum WriteCommand {
 ///
 /// 提交为同步调用（无界通道，不会阻塞调用方）；收敛为异步等待，
 /// 保证退出前剩余批次全部落库。句柄可克隆共享给多个读取任务，
-/// 收敛操作消耗句柄所有权，只执行一次。
+/// 收敛操作消耗句柄所有权，且只发出一次停止指令（多克隆防御）。
 #[derive(Clone)]
 pub struct LogWriter {
     sender: tokio::sync::mpsc::UnboundedSender<WriteCommand>,
     handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    shutdown_requested: Arc<AtomicBool>,
 }
 
 impl LogWriter {
@@ -77,6 +79,7 @@ impl LogWriter {
         Self {
             sender,
             handle: Arc::new(Mutex::new(Some(handle))),
+            shutdown_requested: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -96,7 +99,17 @@ impl LogWriter {
     }
 
     /// 收敛写入器：发送停止指令并等待剩余批次落库。
+    ///
+    /// 仅第一个调用者会发出停止指令并等待任务结束；其余克隆的收敛
+    /// 调用直接返回，避免向已关闭的通道重复发送。
     pub async fn shutdown(self) {
+        if self
+            .shutdown_requested
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return;
+        }
         let _ = self.sender.send(WriteCommand::Shutdown);
         let handle = self.handle.lock().expect("写入器句柄锁不应污染").take();
         if let Some(handle) = handle {

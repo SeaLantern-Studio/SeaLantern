@@ -56,6 +56,7 @@ fn publish_log_event(event: LogEvent) {
 /// 持有写入器与读取任务；`shutdown` 收敛写入器（flush 剩余批次），
 /// 读取任务在进程退出（EOF）后自行结束。
 pub struct LogRecorder {
+    instance_id: String,
     writer: Option<LogWriter>,
     readers: Vec<tokio::task::JoinHandle<()>>,
 }
@@ -118,19 +119,56 @@ impl LogRecorder {
             }));
         }
 
-        // 启动说明日志（Sea Lantern 来源）。
+        // 启动说明日志（Sea Lantern 来源）：落库后同样广播实时事件，
+        // 与进程输出行的"持久化 + 推送"行为保持一致。
         if let Some(writer) = &writer {
-            writer.submit(LogSource::SeaLantern, "服务器启动中...", None);
+            let instance_id = instance_id.clone();
+            let timestamp = current_timestamp_secs();
+            let line = "服务器启动中...".to_owned();
+            writer.submit(
+                LogSource::SeaLantern,
+                line.clone(),
+                Some(Box::new(move |sequence| {
+                    publish_log_event(LogEvent {
+                        instance_id,
+                        line: ConsoleLogLine {
+                            sequence,
+                            timestamp,
+                            source: "sealantern".to_owned(),
+                            line,
+                        },
+                    });
+                })),
+            );
         }
 
-        Self { writer, readers }
+        Self { instance_id, writer, readers }
     }
 
-    /// 追加一条 Sea Lantern 来源日志（如停止 / 错误说明）。
+    /// 追加一条 Sea Lantern 来源日志（如停止 / 错误说明），
+    /// 落库后同步广播实时事件。
     pub fn append_system_log(&self, line: impl Into<String>) {
-        if let Some(writer) = &self.writer {
-            writer.submit(LogSource::SeaLantern, line, None);
-        }
+        let Some(writer) = &self.writer else {
+            return;
+        };
+        let instance_id = self.instance_id.clone();
+        let timestamp = current_timestamp_secs();
+        let line = line.into();
+        writer.submit(
+            LogSource::SeaLantern,
+            line.clone(),
+            Some(Box::new(move |sequence| {
+                publish_log_event(LogEvent {
+                    instance_id,
+                    line: ConsoleLogLine {
+                        sequence,
+                        timestamp,
+                        source: "sealantern".to_owned(),
+                        line,
+                    },
+                });
+            })),
+        );
     }
 
     /// 收敛管线：flush 剩余日志批次并结束写入任务。
@@ -201,19 +239,23 @@ mod tests {
         assert!(texts.iter().any(|text| text.contains("服务器启动中")), "db: {texts:?}");
         assert!(texts.iter().any(|text| text.contains("line one")), "db: {texts:?}");
 
-        // 事件流应包含三行进程输出（阻塞等待，容忍写入窗口）。
+        // 事件流应包含启动说明日志与三行进程输出（阻塞等待，容忍写入窗口）。
         let mut event_texts = Vec::new();
-        for _ in 0..3 {
+        let mut saw_startup = false;
+        for _ in 0..6 {
             match tokio::time::timeout(std::time::Duration::from_secs(2), receiver.recv()).await {
-                Ok(Ok(event))
-                    if event.instance_id == "server-a" && event.line.source == "server" =>
-                {
-                    event_texts.push(event.line.line.clone());
+                Ok(Ok(event)) if event.instance_id == "server-a" => {
+                    if event.line.source == "server" {
+                        event_texts.push(event.line.line.clone());
+                    } else if event.line.source == "sealantern" {
+                        saw_startup = true;
+                    }
                 }
                 Ok(Ok(_)) => continue,
                 Ok(Err(_)) | Err(_) => break,
             }
         }
+        assert!(saw_startup, "启动说明日志应广播为实时事件");
         assert!(
             event_texts.iter().any(|text| text.contains("line one")),
             "events: {event_texts:?}"
