@@ -411,19 +411,12 @@ impl SqliteDatabase {
     }
 
     /// 检查指定表是否包含指定列（通过 `pragma_table_info` 表值函数）。
-    pub async fn column_exists(
-        &self,
-        table: &str,
-        column: &str,
-    ) -> Result<bool, PersistenceError> {
+    pub async fn column_exists(&self, table: &str, column: &str) -> Result<bool, PersistenceError> {
         let result = self
             .query_one_with_operation(
                 "check column existence",
                 "SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2",
-                [
-                    SqlValue::Text(table.to_owned()),
-                    SqlValue::Text(column.to_owned()),
-                ],
+                [SqlValue::Text(table.to_owned()), SqlValue::Text(column.to_owned())],
                 |row| row.get::<_, i64>(0),
             )
             .await
@@ -618,17 +611,11 @@ mod tests {
             .unwrap();
 
         let first = database
-            .insert(
-                "INSERT INTO records (name) VALUES (?1)",
-                [SqlValue::Text("first".to_owned())],
-            )
+            .insert("INSERT INTO records (name) VALUES (?1)", [SqlValue::Text("first".to_owned())])
             .await
             .unwrap();
         let second = database
-            .insert(
-                "INSERT INTO records (name) VALUES (?1)",
-                [SqlValue::Text("second".to_owned())],
-            )
+            .insert("INSERT INTO records (name) VALUES (?1)", [SqlValue::Text("second".to_owned())])
             .await
             .unwrap();
 
@@ -655,19 +642,15 @@ mod tests {
             .unwrap();
 
         let found = database
-            .query_one(
-                "SELECT name FROM records WHERE id = ?1",
-                [SqlValue::Integer(1)],
-                |row| row.get::<_, String>(0),
-            )
+            .query_one("SELECT name FROM records WHERE id = ?1", [SqlValue::Integer(1)], |row| {
+                row.get::<_, String>(0)
+            })
             .await
             .unwrap();
         let missing = database
-            .query_one(
-                "SELECT name FROM records WHERE id = ?1",
-                [SqlValue::Integer(999)],
-                |row| row.get::<_, String>(0),
-            )
+            .query_one("SELECT name FROM records WHERE id = ?1", [SqlValue::Integer(999)], |row| {
+                row.get::<_, String>(0)
+            })
             .await
             .unwrap();
 
@@ -702,14 +685,13 @@ mod tests {
              id INTEGER PRIMARY KEY AUTOINCREMENT,\
              name TEXT NOT NULL\
          )";
-        let database = SqliteDatabase::open_with_schema(&path, schema).await.unwrap();
+        let database = SqliteDatabase::open_with_schema(&path, schema)
+            .await
+            .unwrap();
         assert!(path.exists(), "数据库文件应在目标路径创建");
 
         let inserted = database
-            .insert(
-                "INSERT INTO records (name) VALUES (?1)",
-                [SqlValue::Text("first".to_owned())],
-            )
+            .insert("INSERT INTO records (name) VALUES (?1)", [SqlValue::Text("first".to_owned())])
             .await
             .unwrap();
         assert!(inserted > 0);
@@ -721,7 +703,9 @@ mod tests {
     async fn open_with_schema_is_idempotent_across_reopens() {
         let path = database_path("sqlite-open-with-schema-idempotent");
         let schema = "CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY)";
-        let first = SqliteDatabase::open_with_schema(&path, schema).await.unwrap();
+        let first = SqliteDatabase::open_with_schema(&path, schema)
+            .await
+            .unwrap();
         first
             .execute("INSERT INTO records (id) VALUES (?1)", [SqlValue::Integer(1)])
             .await
@@ -729,13 +713,13 @@ mod tests {
         drop(first);
 
         // 幂等 schema 允许重复打开且不丢数据。
-        let second = SqliteDatabase::open_with_schema(&path, schema).await.unwrap();
+        let second = SqliteDatabase::open_with_schema(&path, schema)
+            .await
+            .unwrap();
         let count = second
-            .query_one(
-                "SELECT COUNT(*) FROM records",
-                std::iter::empty(),
-                |row| row.get::<_, i64>(0),
-            )
+            .query_one("SELECT COUNT(*) FROM records", std::iter::empty(), |row| {
+                row.get::<_, i64>(0)
+            })
             .await
             .unwrap();
         assert_eq!(count, Some(1));
