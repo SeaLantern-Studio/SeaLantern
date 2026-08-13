@@ -193,10 +193,10 @@ mod tests {
         recorder.shutdown().await;
 
         // 日志库应持久化进程输出（含启动说明日志）。
-        let database = open_log_database(directory.path()).await.expect("日志库应存在");
-        let lines = read_logs(&database, 0, None)
+        let database = open_log_database(directory.path())
             .await
-            .expect("读取应成功");
+            .expect("日志库应存在");
+        let lines = read_logs(&database, 0, None).await.expect("读取应成功");
         let texts: Vec<&str> = lines.iter().map(|line| line.line.as_str()).collect();
         assert!(texts.iter().any(|text| text.contains("服务器启动中")), "db: {texts:?}");
         assert!(texts.iter().any(|text| text.contains("line one")), "db: {texts:?}");
@@ -205,16 +205,27 @@ mod tests {
         let mut event_texts = Vec::new();
         for _ in 0..3 {
             match tokio::time::timeout(std::time::Duration::from_secs(2), receiver.recv()).await {
-                Ok(Ok(event)) if event.instance_id == "server-a" && event.line.source == "server" => {
+                Ok(Ok(event))
+                    if event.instance_id == "server-a" && event.line.source == "server" =>
+                {
                     event_texts.push(event.line.line.clone());
                 }
                 Ok(Ok(_)) => continue,
                 Ok(Err(_)) | Err(_) => break,
             }
         }
-        assert!(event_texts.iter().any(|text| text.contains("line one")), "events: {event_texts:?}");
-        assert!(event_texts.iter().any(|text| text.contains("line two")), "events: {event_texts:?}");
-        assert!(event_texts.iter().any(|text| text.contains("line three")), "events: {event_texts:?}");
+        assert!(
+            event_texts.iter().any(|text| text.contains("line one")),
+            "events: {event_texts:?}"
+        );
+        assert!(
+            event_texts.iter().any(|text| text.contains("line two")),
+            "events: {event_texts:?}"
+        );
+        assert!(
+            event_texts.iter().any(|text| text.contains("line three")),
+            "events: {event_texts:?}"
+        );
     }
 
     #[test]

@@ -263,7 +263,9 @@ impl CoreServerService {
                 .map(|status| status.is_none())
                 .unwrap_or(false);
             if !is_running {
-                let recorder = processes.remove(&id_str).and_then(|mut m| m.recorder.take());
+                let recorder = processes
+                    .remove(&id_str)
+                    .and_then(|mut m| m.recorder.take());
                 spawn_recorder_shutdown(recorder);
                 return Ok(ServerSnapshot {
                     instance_id: id_str,
@@ -367,7 +369,9 @@ impl CoreServerService {
                 stale = true;
             }
             if stale {
-                let recorder = processes.remove(&id_str).and_then(|mut m| m.recorder.take());
+                let recorder = processes
+                    .remove(&id_str)
+                    .and_then(|mut m| m.recorder.take());
                 spawn_recorder_shutdown(recorder);
             }
         }
@@ -404,10 +408,7 @@ impl CoreServerService {
 
         self.mark_starting(&id_str);
         self.processes_lock()?
-            .insert(
-                id_str.clone(),
-                ManagedProcess { daemon, terminal, recorder: None },
-            );
+            .insert(id_str.clone(), ManagedProcess { daemon, terminal, recorder: None });
 
         // 启动元数据持久化失败时回滚进程，保证返回失败即没有运行中的新进程。
         if let Err(error) = self.instance_service.update_last_started(id).await {
@@ -478,8 +479,9 @@ impl CoreServerService {
                 // 进程已退出：移出受管进程，锁块结束后收敛日志管线。
                 let recorder = {
                     let mut processes = self.processes_lock()?;
-                    let recorder =
-                        processes.remove(&id_str).and_then(|mut m| m.recorder.take());
+                    let recorder = processes
+                        .remove(&id_str)
+                        .and_then(|mut m| m.recorder.take());
                     self.clear_stopping(&id_str);
                     recorder
                 };

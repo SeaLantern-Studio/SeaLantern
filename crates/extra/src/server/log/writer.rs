@@ -74,7 +74,10 @@ impl LogWriter {
             // 收尾：flush 剩余批次。
             flush_batch(&database, &mut batch).await;
         });
-        Self { sender, handle: Arc::new(Mutex::new(Some(handle))) }
+        Self {
+            sender,
+            handle: Arc::new(Mutex::new(Some(handle))),
+        }
     }
 
     /// 提交一条日志行（无界通道，立即返回）。
@@ -87,11 +90,9 @@ impl LogWriter {
         line: impl Into<String>,
         on_written: Option<LogWrittenCallback>,
     ) {
-        let _ = self.sender.send(WriteCommand::Line {
-            source,
-            line: line.into(),
-            on_written,
-        });
+        let _ = self
+            .sender
+            .send(WriteCommand::Line { source, line: line.into(), on_written });
     }
 
     /// 收敛写入器：发送停止指令并等待剩余批次落库。
@@ -170,9 +171,13 @@ mod tests {
         let writer = LogWriter::start(database.clone());
 
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-        writer.submit(LogSource::Server, "first", Some(Box::new(move |id| {
-            let _ = tx.send(id);
-        })));
+        writer.submit(
+            LogSource::Server,
+            "first",
+            Some(Box::new(move |id| {
+                let _ = tx.send(id);
+            })),
+        );
         writer.shutdown().await;
 
         let reported = rx.recv().await.expect("应上报行号");
