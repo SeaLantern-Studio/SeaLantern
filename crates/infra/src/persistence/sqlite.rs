@@ -371,7 +371,7 @@ impl SqliteDatabase {
         operation: &'static str,
         sql: impl Into<String>,
         params: P,
-        mut map_row: F,
+        map_row: F,
     ) -> Result<Option<T>, PersistenceError>
     where
         T: Send + 'static,
@@ -382,13 +382,10 @@ impl SqliteDatabase {
         let result = self
             .with_connection(operation, move |connection| {
                 let mut statement = connection.prepare(&sql)?;
-                let mut rows =
-                    statement.query_map(rusqlite::params_from_iter(params), |row| map_row(row))?;
-                match rows.next() {
-                    Some(Ok(value)) => Ok(Some(value)),
-                    Some(Err(error)) => Err(error),
-                    None => Ok(None),
-                }
+                let mapped = statement
+                    .query_row(rusqlite::params_from_iter(params), map_row)
+                    .optional()?;
+                Ok(mapped)
             })
             .await;
         report_operation_error(operation, &self.path, &result);
@@ -397,32 +394,26 @@ impl SqliteDatabase {
 
     /// 检查指定表是否存在（不区分普通表与视图）。
     pub async fn table_exists(&self, table: &str) -> Result<bool, PersistenceError> {
-        let result = self
-            .query_one_with_operation(
-                "check table existence",
-                "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?1",
-                std::iter::once(SqlValue::Text(table.to_owned())),
-                |row| row.get::<_, i64>(0),
-            )
-            .await
-            .map(|found| found.is_some());
-        report_operation_error("check table existence", &self.path, &result);
-        result
+        self.query_one_with_operation(
+            "check table existence",
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?1",
+            std::iter::once(SqlValue::Text(table.to_owned())),
+            |row| row.get::<_, i64>(0),
+        )
+        .await
+        .map(|found| found.is_some())
     }
 
     /// 检查指定表是否包含指定列（通过 `pragma_table_info` 表值函数）。
     pub async fn column_exists(&self, table: &str, column: &str) -> Result<bool, PersistenceError> {
-        let result = self
-            .query_one_with_operation(
-                "check column existence",
-                "SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2",
-                [SqlValue::Text(table.to_owned()), SqlValue::Text(column.to_owned())],
-                |row| row.get::<_, i64>(0),
-            )
-            .await
-            .map(|found| found.is_some());
-        report_operation_error("check column existence", &self.path, &result);
-        result
+        self.query_one_with_operation(
+            "check column existence",
+            "SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2",
+            [SqlValue::Text(table.to_owned()), SqlValue::Text(column.to_owned())],
+            |row| row.get::<_, i64>(0),
+        )
+        .await
+        .map(|found| found.is_some())
     }
 
     async fn with_connection<T, F>(
