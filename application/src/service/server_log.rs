@@ -63,32 +63,37 @@ pub async fn open_log_database(server_path: &Path) -> Result<SqliteDatabase, Per
 /// 读取 `id` 大于 `since` 的日志行，按行号升序返回。
 ///
 /// `recent_limit` 提供时，仅返回最近 `recent_limit` 行窗口内的匹配行
-/// （用于前端"最近 N 行"滚动视图）；否则返回全部匹配行。
+/// （用于前端"最近 N 行"滚动视图）；`Some(0)` 与负值视为空窗口返回空，
+/// `None` 返回全部匹配行。
 pub async fn read_logs(
     database: &SqliteDatabase,
     since: i64,
     recent_limit: Option<i64>,
 ) -> Result<Vec<LogLine>, PersistenceError> {
-    let rows = if let Some(limit) = recent_limit.filter(|limit| *limit > 0) {
-        database
-            .query(
-                "SELECT id, timestamp, source, line FROM (\
-                     SELECT id, timestamp, source, line FROM log_lines \
-                     WHERE id > ?1 ORDER BY id DESC LIMIT ?2\
-                 ) recent ORDER BY id ASC",
-                [SqlValue::Integer(since), SqlValue::Integer(limit)],
-                map_log_line,
-            )
-            .await?
-    } else {
-        database
-            .query(
-                "SELECT id, timestamp, source, line FROM log_lines \
-                 WHERE id > ?1 ORDER BY id ASC",
-                std::iter::once(SqlValue::Integer(since)),
-                map_log_line,
-            )
-            .await?
+    let rows = match recent_limit {
+        Some(limit) if limit > 0 => {
+            database
+                .query(
+                    "SELECT id, timestamp, source, line FROM (\
+                         SELECT id, timestamp, source, line FROM log_lines \
+                         WHERE id > ?1 ORDER BY id DESC LIMIT ?2\
+                     ) recent ORDER BY id ASC",
+                    [SqlValue::Integer(since), SqlValue::Integer(limit)],
+                    map_log_line,
+                )
+                .await?
+        }
+        Some(_) => Vec::new(),
+        None => {
+            database
+                .query(
+                    "SELECT id, timestamp, source, line FROM log_lines \
+                     WHERE id > ?1 ORDER BY id ASC",
+                    std::iter::once(SqlValue::Integer(since)),
+                    map_log_line,
+                )
+                .await?
+        }
     };
     Ok(rows)
 }
@@ -106,7 +111,7 @@ fn map_log_line(row: &rusqlite::Row<'_>) -> rusqlite::Result<LogLine> {
 mod tests {
     use super::*;
 
-    async fn open_test_database(label: &str) -> (tempfile::TempDir, SqliteDatabase) {
+    async fn open_test_database() -> (tempfile::TempDir, SqliteDatabase) {
         let directory = tempfile::tempdir().expect("临时目录应创建成功");
         let database = open_log_database(directory.path())
             .await
@@ -135,7 +140,7 @@ mod tests {
 
     #[tokio::test]
     async fn open_log_database_is_idempotent_and_preserves_data() {
-        let (directory, first) = open_test_database("log-open-idempotent").await;
+        let (directory, first) = open_test_database().await;
         let id = insert_line(&first, 1000, LogSource::Server, "first line").await;
 
         // 重复打开不报错，数据不丢失。
@@ -153,7 +158,7 @@ mod tests {
 
     #[tokio::test]
     async fn read_logs_returns_only_lines_after_since() {
-        let (_directory, database) = open_test_database("log-read-since").await;
+        let (_directory, database) = open_test_database().await;
         insert_line(&database, 1000, LogSource::SeaLantern, "sea line").await;
         let second = insert_line(&database, 2000, LogSource::Server, "server line").await;
 
@@ -167,7 +172,7 @@ mod tests {
 
     #[tokio::test]
     async fn read_logs_with_recent_limit_returns_latest_window() {
-        let (_directory, database) = open_test_database("log-read-limit").await;
+        let (_directory, database) = open_test_database().await;
         for index in 1..=5 {
             insert_line(&database, index * 1000, LogSource::Server, &format!("line {index}")).await;
         }

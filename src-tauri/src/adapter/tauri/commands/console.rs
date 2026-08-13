@@ -6,21 +6,10 @@
 //! 错误统一为接口契约错误 [`ConsoleServiceError`]，可序列化回前端，
 //! 不携带底层敏感细节。
 
-use std::sync::Arc;
-
-use sealantern_application::service::CoreConsoleService;
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::InstanceId;
 use sealantern_interface::console::ConsoleLogLine;
 use sealantern_interface::{ConsoleService, ConsoleServiceError};
-
-/// 获取全局服务器控制台日志服务句柄（惰性初始化容器）。
-async fn console_service() -> Result<Arc<CoreConsoleService>, ConsoleServiceError> {
-    let services = AppServices::get()
-        .await
-        .map_err(|_| ConsoleServiceError::OperationFailed)?;
-    Ok(services.console().clone())
-}
 
 /// 解析 Tauri 命令传入的实例 ID 字符串。
 ///
@@ -36,7 +25,9 @@ pub async fn get_server_logs(
     since: i64,
     recent_limit: Option<i64>,
 ) -> Result<Vec<ConsoleLogLine>, ConsoleServiceError> {
-    let service = console_service().await?;
+    let service = AppServices::console_service()
+        .await
+        .map_err(|_| ConsoleServiceError::OperationFailed)?;
     let id = parse_id_for_tauri(id)?;
     service.logs(&id, since, recent_limit).await
 }

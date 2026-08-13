@@ -39,7 +39,9 @@ impl ConsoleService for CoreConsoleService {
         since: i64,
         recent_limit: Option<i64>,
     ) -> Result<Vec<ConsoleLogLine>, ConsoleServiceError> {
-        if since < 0 {
+        // 游标与窗口大小均须非负（窗口至少为 1 行），避免非正窗口被
+        // 底层静默解释为"无限制"。
+        if since < 0 || recent_limit.is_some_and(|limit| limit <= 0) {
             return Err(ConsoleError::InvalidInput.into());
         }
 
@@ -165,6 +167,25 @@ mod tests {
             .logs(&InstanceId::new("a".to_owned()).expect("valid id"), -1, None)
             .await;
         assert!(matches!(result, Err(ConsoleServiceError::InvalidInput)));
+    }
+
+    #[tokio::test]
+    async fn logs_rejects_non_positive_recent_limit() {
+        let instance_service = Arc::new(
+            CoreInstanceService::with_path(
+                std::env::temp_dir().join("sealantern-console-neg-limit.json"),
+            )
+            .await
+            .expect("实例服务应创建成功"),
+        );
+        let console = CoreConsoleService::new(instance_service);
+
+        for invalid in [Some(0), Some(-3)] {
+            let result = console
+                .logs(&InstanceId::new("a".to_owned()).expect("valid id"), 0, invalid)
+                .await;
+            assert!(matches!(result, Err(ConsoleServiceError::InvalidInput)));
+        }
     }
 
     #[tokio::test]
