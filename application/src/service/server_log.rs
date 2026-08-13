@@ -7,7 +7,7 @@
 
 use std::path::Path;
 
-use sealantern_infra::persistence::{PersistenceError, SqliteDatabase, SqlValue};
+use sealantern_infra::persistence::{PersistenceError, SqlValue, SqliteDatabase};
 
 /// 服务器日志数据库文件名（存放在服务器目录下）。
 pub const LOG_DATABASE_FILE: &str = "sea_lantern_logs.sqlite";
@@ -169,8 +169,7 @@ mod tests {
     async fn read_logs_with_recent_limit_returns_latest_window() {
         let (_directory, database) = open_test_database("log-read-limit").await;
         for index in 1..=5 {
-            insert_line(&database, index * 1000, LogSource::Server, &format!("line {index}"))
-                .await;
+            insert_line(&database, index * 1000, LogSource::Server, &format!("line {index}")).await;
         }
 
         // 最近 3 行窗口内、id > 0 的行。
