@@ -24,7 +24,7 @@ async fn system_service() -> Result<Arc<CoreSystemService>, SystemServiceError> 
 }
 
 /// 采集整机系统资源快照。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn get_system_snapshot() -> Result<SystemSnapshot, SystemServiceError> {
     let service = system_service().await?;
     service.system_snapshot().await
@@ -33,14 +33,14 @@ pub async fn get_system_snapshot() -> Result<SystemSnapshot, SystemServiceError>
 /// 采集指定进程的资源使用。
 ///
 /// 进程不存在或无权访问时返回 `pid = null` 的空结果。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn get_process_usage(pid: u32) -> Result<ProcessResourceUsage, SystemServiceError> {
     let service = system_service().await?;
     service.process_usage(pid).await
 }
 
 /// 计算指定目录的磁盘占用。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn get_directory_usage(path: String) -> Result<DirectoryUsage, SystemServiceError> {
     let service = system_service().await?;
     service.directory_usage(Path::new(&path)).await

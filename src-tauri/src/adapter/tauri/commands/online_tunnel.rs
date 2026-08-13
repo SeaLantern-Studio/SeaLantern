@@ -90,7 +90,7 @@ async fn services() -> Result<AppServices, OnlineTunnelServiceError> {
 }
 
 /// 以主机模式开启在线隧道，把本地 Minecraft 端口转发到公网。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn online_tunnel_host(
     app: AppHandle,
     forwarder: State<'_, OnlineTunnelEventForwarder>,
@@ -103,7 +103,7 @@ pub async fn online_tunnel_host(
 }
 
 /// 以加入模式通过票据连接主机，把隧道流量导向本地端口。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn online_tunnel_join(
     app: AppHandle,
     forwarder: State<'_, OnlineTunnelEventForwarder>,
@@ -116,7 +116,7 @@ pub async fn online_tunnel_join(
 }
 
 /// 停止当前在线隧道。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn online_tunnel_stop(
     forwarder: State<'_, OnlineTunnelEventForwarder>,
 ) -> Result<OnlineTunnelStatus, OnlineTunnelServiceError> {
@@ -126,7 +126,7 @@ pub async fn online_tunnel_stop(
 }
 
 /// 查询当前在线隧道的运行状态。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn online_tunnel_status() -> Result<OnlineTunnelStatus, OnlineTunnelServiceError> {
     services().await?.online_tunnel().status().await
 }

@@ -1,7 +1,7 @@
 //! 下载任务管理 Tauri 命令。
 //!
-//! 参数/响应遵循「前端驼峰、后端蛇拼」：结构体 DTO 用 `rename_all = "camelCase"`
-//! 输出 camelCase（匹配前端规范），Rust 字段保持 snake_case。
+//! 参数/响应统一遵循 snake_case：命令参数与结构体 DTO 均显式声明
+//! `rename_all = "snake_case"`，与后端契约模型保持一致。
 use std::sync::Arc;
 
 use serde::Deserialize;
@@ -21,9 +21,9 @@ async fn download_service() -> Result<Arc<CoreDownloadService>, DownloadServiceE
 
 /// 创建下载任务请求。
 ///
-/// 前端传 camelCase（`savePath`/`threadCount`），内部映射为 snake_case。
+/// 前端以 snake_case 传参（`save_path`/`thread_count`），与命令层契约直接匹配。
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct CreateDownloadRequest {
     /// 下载 URL。
     pub url: String,
@@ -34,7 +34,7 @@ pub struct CreateDownloadRequest {
 }
 
 /// 创建下载任务，返回任务信息。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn download_create(
     request: CreateDownloadRequest,
 ) -> Result<DownloadTaskInfo, DownloadServiceError> {
@@ -53,7 +53,7 @@ pub async fn download_create(
 }
 
 /// 查询下载任务进度。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn download_query(id: String) -> Result<DownloadTaskInfo, DownloadServiceError> {
     let service = download_service().await?;
     service
@@ -63,7 +63,7 @@ pub async fn download_query(id: String) -> Result<DownloadTaskInfo, DownloadServ
 }
 
 /// 取消下载任务。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn download_cancel(id: String) -> Result<(), DownloadServiceError> {
     let service = download_service().await?;
     service.cancel(&id).await

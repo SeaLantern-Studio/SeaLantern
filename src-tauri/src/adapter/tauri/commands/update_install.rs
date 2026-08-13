@@ -23,7 +23,7 @@ async fn service() -> Result<AppServices, UpdateInstallServiceError> {
 }
 
 /// 下载更新文件并登记为待安装，返回本地文件路径。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn update_download(
     url: String,
     expected_hash: Option<String>,
@@ -37,19 +37,19 @@ pub async fn update_download(
 }
 
 /// 查询待安装的更新（下载完成但尚未安装），无则为 `None`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn update_pending() -> Result<Option<PendingUpdate>, UpdateInstallServiceError> {
     service().await?.update_install().pending().await
 }
 
 /// 清除待安装的更新记录。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn update_clear_pending() -> Result<(), UpdateInstallServiceError> {
     service().await?.update_install().clear_pending().await
 }
 
 /// 拉起更新安装流程；Windows 下提权启动安装器，其他平台暂不支持。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn update_install(
     file_path: String,
     arguments: Vec<String>,

@@ -4,16 +4,17 @@ use sealantern_infra::download::DownloadSnapshot;
 use serde::{Deserialize, Serialize};
 
 /// 下载任务进度响应。
+///
+/// 契约字段统一使用 snake_case（`total_size` / `is_finished`），
+/// 与其余后端契约保持一致。
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct TaskProgressResponse {
     pub id: String,
-    #[serde(alias = "total_size")]
     pub total_size: u64,
     pub downloaded: u64,
     pub progress: f64,
     pub status: TaskStatus,
-    #[serde(alias = "is_finished")]
     pub is_finished: bool,
 }
 
@@ -68,7 +69,7 @@ mod tests {
     use super::{TaskProgressResponse, TaskStatus};
 
     #[test]
-    fn task_progress_preserves_id_and_uses_frontend_field_names() {
+    fn task_progress_serializes_snake_case_fields() {
         let response = TaskProgressResponse::from_snapshot(
             "task-42",
             DownloadSnapshot {
@@ -84,10 +85,10 @@ mod tests {
         assert_eq!(response.status, TaskStatus::Simple("Downloading".to_string()));
 
         let value = serde_json::to_value(response).expect("task progress should serialize");
-        assert_eq!(value["totalSize"], 1024);
-        assert_eq!(value["isFinished"], false);
-        assert!(value.get("total_size").is_none());
-        assert!(value.get("is_finished").is_none());
+        assert_eq!(value["total_size"], 1024);
+        assert_eq!(value["is_finished"], false);
+        assert!(value.get("totalSize").is_none());
+        assert!(value.get("isFinished").is_none());
     }
 
     #[test]
@@ -109,10 +110,10 @@ mod tests {
     }
 
     #[test]
-    fn task_progress_accepts_legacy_snake_case_fields() {
+    fn task_progress_accepts_snake_case_fields() {
         let response: TaskProgressResponse = serde_json::from_str(
             r#"{
-                "id":"task-legacy",
+                "id":"task-42",
                 "total_size":1024,
                 "downloaded":0,
                 "progress":0.0,
@@ -120,9 +121,9 @@ mod tests {
                 "is_finished":true
             }"#,
         )
-        .expect("legacy task progress should deserialize");
+        .expect("task progress should deserialize");
 
-        assert_eq!(response.id, "task-legacy");
+        assert_eq!(response.id, "task-42");
         assert_eq!(response.total_size, 1024);
         assert!(response.is_finished);
         assert_eq!(response.status, TaskStatus::Error { error: "connection reset".to_string() });

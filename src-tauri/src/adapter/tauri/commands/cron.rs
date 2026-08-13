@@ -15,19 +15,19 @@ async fn cron_service() -> Result<Arc<CoreCronTaskService>, CronTaskServiceError
 }
 
 /// 列出全部定时任务。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn list_cron_tasks() -> Result<Vec<CronTask>, CronTaskServiceError> {
     cron_service().await?.list().await
 }
 
 /// 创建定时任务。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn create_cron_task(draft: CronTaskDraft) -> Result<CronTask, CronTaskServiceError> {
     cron_service().await?.create(draft).await
 }
 
 /// 更新定时任务。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn update_cron_task(
     id: String,
     draft: CronTaskDraft,
@@ -36,13 +36,13 @@ pub async fn update_cron_task(
 }
 
 /// 删除定时任务。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn delete_cron_task(id: String) -> Result<(), CronTaskServiceError> {
     cron_service().await?.delete(&id).await
 }
 
 /// 启用或禁用定时任务。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn set_cron_task_enabled(
     id: String,
     enabled: bool,
@@ -51,7 +51,7 @@ pub async fn set_cron_task_enabled(
 }
 
 /// 立即执行一次定时任务。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn run_cron_task(id: String) -> Result<CronTaskRun, CronTaskServiceError> {
     cron_service().await?.run_now(&id).await
 }
