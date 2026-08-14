@@ -63,7 +63,7 @@ pub fn run() {
     // 初始化 tracing 日志（在 Tauri 构建之前）
     observability::init();
 
-    let result = tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -164,9 +164,16 @@ pub fn run() {
             plugin_v2_unload
         ])
         .setup(setup)
-        .run(tauri::generate_context!());
+        .build(tauri::generate_context!())
+        .expect("error while building Sea Lantern");
 
-    result.expect("error while running Sea Lantern");
+    // 全局退出钩子：覆盖窗口销毁、`app.exit`、操作系统关闭等所有退出路径，
+    // 保证异步服务（日志转发、在线隧道）在进程退出前统一清理。
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            on_shutdown(app_handle.clone());
+        }
+    });
 }
 
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -197,14 +204,6 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle_for_server_log = app_handle.clone();
     let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
     tauri::async_runtime::block_on(async { log_sender.start(handle_for_server_log).await });
-
-    if let Some(window) = app.get_webview_window("main") {
-        window.on_window_event(move |event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                on_shutdown(app_handle.clone())
-            }
-        });
-    }
 
     Ok(())
 }
