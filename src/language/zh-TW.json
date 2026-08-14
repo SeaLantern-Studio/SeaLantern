@@ -504,6 +504,8 @@
     "console_font_size_desc": "控制台日誌文字的大小，預設 13",
     "max_log_lines": "最大日誌行數",
     "max_log_lines_desc": "單個伺服器最多保留的日誌行數，超出後自動清除舊日誌。預設 5000",
+    "console_drop_empty_line": "丟棄空行",
+    "console_drop_empty_line_desc": "從伺服器日誌源頭處丟棄空行，預設開啟；此設定在伺服器啟動時被讀取",
     "appearance": "外觀",
     "appearance_desc": "自訂軟體背景和視覺效果",
     "theme": "主題模式",

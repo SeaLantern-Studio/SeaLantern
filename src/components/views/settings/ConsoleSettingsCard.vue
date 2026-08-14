@@ -8,6 +8,7 @@ defineProps<{
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
   maxLogLines: string;
+  consoleDropEmptyLine: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   (e: "update:consoleFontFamily", value: string): void;
   (e: "update:consoleLetterSpacing", value: string): void;
   (e: "update:maxLogLines", value: string): void;
+  (e: "update:consoleDropEmptyLine", value: boolean): void;
   (e: "change"): void;
 }>();
 </script>
@@ -102,6 +104,24 @@ const emit = defineEmits<{
             "
           />
         </div>
+      </div>
+
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.console_drop_empty_line") }}</span>
+          <span class="settings-entry-desc">{{
+            i18n.t("settings.console_drop_empty_line_desc")
+          }}</span>
+        </div>
+        <cmz-switch
+          :model-value="consoleDropEmptyLine"
+          @update:model-value="
+            (v) => {
+              emit('update:consoleDropEmptyLine', v);
+              emit('change');
+            }
+          "
+        />
       </div>
     </div>
   </cmz-card>
