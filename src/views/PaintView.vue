@@ -117,7 +117,7 @@ async function loadSettings() {
     consoleFontFamily.value = s.console_font_family || "";
     consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
     maxLogLines.value = String(s.max_log_lines);
-    consoleDropEmptyLine.value = s.console_drop_empty_line;
+    consoleDropEmptyLine.value = s.console_drop_empty_line ?? true;
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -256,7 +256,7 @@ async function resetSettings() {
     consoleFontFamily.value = s.console_font_family || "";
     consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
     maxLogLines.value = String(s.max_log_lines);
-    consoleDropEmptyLine.value = s.console_drop_empty_line;
+    consoleDropEmptyLine.value = s.console_drop_empty_line ?? true;
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -293,7 +293,7 @@ async function handleImport(json: string) {
     consoleFontFamily.value = s.console_font_family || "";
     consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
     maxLogLines.value = String(s.max_log_lines);
-    consoleDropEmptyLine.value = s.console_drop_empty_line;
+    consoleDropEmptyLine.value = s.console_drop_empty_line ?? true;
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
