@@ -19,6 +19,7 @@ use adapter::tauri::commands::instance::{
     update_instance_path,
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
+use adapter::tauri::commands::logging::share_logs;
 use adapter::tauri::commands::online_tunnel::{
     online_tunnel_host, online_tunnel_join, online_tunnel_status, online_tunnel_stop,
     OnlineTunnelEventForwarder,
@@ -93,6 +94,8 @@ pub fn run() {
             get_directory_usage,
             get_process_usage,
             get_system_snapshot,
+            //日志分享能力（上传到 mclo.gs）
+            share_logs,
             //实例与服务器进程服务
             create_instance,
             delete_instance,

@@ -16,6 +16,7 @@ import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
+import { shareLogs } from "@api/logging";
 import {
   serverSystemInfo,
   serverCpuUsage,
@@ -59,6 +60,7 @@ const {
   start: startForceStopLoading,
   stop: stopForceStopLoading,
 } = useLoading();
+const { loading: shareLoading, start: startShareLoading, stop: stopShareLoading } = useLoading();
 let unlistenLogLine: UnlistenFn | null = null;
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 const SERVER_STATS_POLL_INTERVAL_MS = 15000;
@@ -1033,6 +1035,35 @@ function handleClearLogs() {
   consoleOutputRef.value?.clear();
 }
 
+async function handleShareLogs() {
+  const text = consoleOutputRef.value?.getAllPlainText() || "";
+  if (!text.trim()) {
+    consoleOutputRef.value?.appendLines(["[Sea Lantern] " + i18n.t("console.share_log_empty")]);
+    return;
+  }
+  startShareLoading();
+  try {
+    const url = await shareLogs(text);
+    try {
+      await navigator.clipboard.writeText(url);
+      consoleOutputRef.value?.appendLines([
+        "[Sea Lantern] " + i18n.t("console.share_log_success") + " " + url,
+      ]);
+    } catch (_e) {
+      // 剪贴板不可用时仍输出链接，并提示用户手动复制
+      consoleOutputRef.value?.appendLines([
+        "[Sea Lantern] " + i18n.t("console.share_log_success_manual_copy") + " " + url,
+      ]);
+    }
+  } catch (e) {
+    consoleOutputRef.value?.appendLines([
+      "[Sea Lantern] " + i18n.t("console.share_log_failed") + ": " + String(e),
+    ]);
+  } finally {
+    stopShareLoading();
+  }
+}
+
 function getStatusText() {
   if (isRunning.value) return i18n.t("home.running");
   if (isStarting.value) return i18n.t("home.starting");
@@ -1096,6 +1127,14 @@ function deleteCommand() {}
           <cmz-button variant="ghost" size="sm" @click="handleClearLogs">{{
             i18n.t("console.clear_log")
           }}</cmz-button>
+          <cmz-button
+            variant="ghost"
+            size="sm"
+            :loading="shareLoading"
+            :disabled="shareLoading"
+            @click="handleShareLogs"
+            >{{ i18n.t("console.share_log") }}</cmz-button
+          >
         </div>
       </div>
     </div>
