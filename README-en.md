@@ -40,15 +40,15 @@ A lightweight Minecraft server management tool
 ## Tech Stack
 
 - **Frontend**: Vue 3 + TypeScript + Vite
-- **Backend**: Rust + Tauri 2
-- **Communication**: Tauri commands via `invoke`
+- **Backend**: Rust + Tauri 2 (Desktop host) + Axum (Web host)
+- **Communication**: Tauri IPC/Event on Desktop, HTTP/WebSocket/SSE on Web, and host bridges for plugins
 - **Docker**: `itzg/minecraft-server`
 
 No Electron. No Node.js backend. No Webpack.
 
 Sea Lantern starts quickly, has a small footprint, and keeps memory usage low.
 
-The backend uses a layered architecture: `interface` (trait contracts) -> `application` (service wiring) -> `core`/`extra`/`infra` (building blocks). The Tauri adapter (`src-tauri/src/adapter/tauri/commands/`) includes a `compat` sublayer that registers the frontend's legacy command names, adapting parameters/responses internally before calling the new services, so the frontend works without changes. See [Tauri Compat Layer docs](docs/tauri-compat-layer.md).
+The host-neutral `application` crate provides shared business orchestration. `src-tauri` and `server` are the Desktop and Web hosts, while `interface` contains only contracts genuinely shared by both. Reusable frontend business code goes through `src/api`; host-specific pages and features may evolve independently. See [Project Architecture and Code Organization](docs/architecture.md).
 
 > The interface is rendered using the operating system's native WebView.
 
