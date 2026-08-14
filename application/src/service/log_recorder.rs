@@ -10,20 +10,20 @@
 //! 自己的传输（前端事件 / SSE）。订阅方消费慢导致的事件丢失可由
 //! `ConsoleService::logs(since)` 拉取补漏。
 
-use std::path::Path;
-use std::sync::OnceLock;
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use sealantern_core::process::read_output_lines;
 use sealantern_core::process::TerminalOutput;
 use sealantern_extra::server::log::{open_log_database, LogSource, LogWriter};
 use sealantern_interface::console::ConsoleLogLine;
+use serde::Serialize;
+use std::path::Path;
+use std::sync::OnceLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// 广播通道容量；消费慢时丢弃旧事件，调用方可拉取补漏。
 const LOG_EVENT_CHANNEL_CAPACITY: usize = 1024;
 
 /// 实时日志事件（落库后产生，携带行号游标）。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LogEvent {
     /// 所属实例 ID。
     pub instance_id: String,

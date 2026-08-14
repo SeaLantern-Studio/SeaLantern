@@ -6,7 +6,7 @@ pub mod observability;
 
 use sealantern_application::services::AppServices;
 use sealantern_interface::OnlineTunnelService;
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 
 use adapter::tauri::commands::catalog::{catalog_details, catalog_server_types, catalog_versions};
 use adapter::tauri::commands::console::get_server_logs;
@@ -50,6 +50,7 @@ use adapter::tauri::commands::update::check_update;
 use adapter::tauri::commands::update_install::{
     update_clear_pending, update_download, update_install, update_pending,
 };
+use adapter::tauri::events::LogSenderState;
 use desktop::{
     desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
     desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
@@ -70,6 +71,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .manage(OnlineTunnelEventForwarder::default())
+        .manage(LogSenderState::new())
         .invoke_handler(tauri::generate_handler![
             //桌面端能力（由desktop/dialog提供）
             desktop_pick_archive_file,
@@ -161,44 +163,61 @@ pub fn run() {
             plugin_v2_set_trust,
             plugin_v2_unload
         ])
-        .setup(|app| {
-            tauri::async_runtime::block_on(async {
-                let services = AppServices::get().await.map_err(|error| {
-                    std::io::Error::other(format!(
-                        "failed to assemble application services: {error}"
-                    ))
-                })?;
-                if let Err(error) = services.initialize_network_settings().await {
-                    // 网络设置同步失败不阻止启动：网络运行时保持默认直连，
-                    // 系统代理恢复后由轮询与后续设置操作的重试自动跟上。
-                    tracing::error!(
-                        error = %error,
-                        "failed to initialize persisted network settings; continuing with direct network"
-                    );
-                }
-                Ok::<(), std::io::Error>(())
-            })?;
-
-            // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
-            #[cfg(not(target_os = "macos"))]
-            if let Some(window) = app.get_webview_window("main") {
-                window.set_decorations(false)?;
-            }
-
-            Ok(())
-        })
+        .setup(setup)
         .run(tauri::generate_context!());
-
-    shutdown_async_services();
 
     result.expect("error while running Sea Lantern");
 }
 
-/// 应用退出时关闭后台异步服务（当前为在线隧道）。
-fn shutdown_async_services() {
+fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    //这里提供app_handle，便于使用时直接clone
+    let app_handle = app.handle().clone();
+
+    tauri::async_runtime::block_on(async {
+        let services = AppServices::get().await.map_err(|error| {
+            std::io::Error::other(format!("failed to assemble application services: {error}"))
+        })?;
+        if let Err(error) = services.initialize_network_settings().await {
+            // 网络设置同步失败不阻止启动：网络运行时保持默认直连，
+            // 系统代理恢复后由轮询与后续设置操作的重试自动跟上。
+            tracing::error!(
+                error = %error,
+                "failed to initialize persisted network settings; continuing with direct network"
+            );
+        }
+        Ok::<(), std::io::Error>(())
+    })?;
+
+    // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
+    #[cfg(not(target_os = "macos"))]
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_decorations(false)?;
+    }
+
+    let handle_for_server_log = app_handle.clone();
+    let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
+    tauri::async_runtime::block_on(async { log_sender.start(handle_for_server_log).await });
+
+    if let Some(window) = app.get_webview_window("main") {
+        window.on_window_event(move |event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                on_shutdown(app_handle.clone())
+            }
+        });
+    }
+
+    Ok(())
+}
+
+/// 应用退出时关闭后台异步服务（当前为在线隧道和日志提交器）。
+fn on_shutdown(app_handle: AppHandle) {
+    let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
+    tauri::async_runtime::block_on(async { log_sender.stop().await });
+
     let Some(services) = AppServices::try_get() else {
         return;
     };
+
     tauri::async_runtime::block_on(async move {
         if let Err(error) = services.online_tunnel().shutdown().await {
             tracing::error!(
