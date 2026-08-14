@@ -813,10 +813,14 @@ onMounted(async () => {
     // 仅在服务器运行时启动资源轮询
     if (isRunning.value) startStatsPolling();
   }
-  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
+  unlistenLogLine = await serverApi.onLogLine(({ instance_id, line }) => {
+    console.log(instance_id);
+    console.log(serverId.value);
+    console.log(line);
+    console.log("==========");
     const sid = serverId.value;
-    if (!sid || server_id !== sid) return;
-    consoleOutputRef.value?.appendLines([line]);
+    if (!sid || instance_id !== sid) return;
+    consoleOutputRef.value?.appendLines([line.line]);
   });
   nextTick(() => doScroll());
 });

@@ -18,7 +18,14 @@ export interface ParsedServerCoreInfo {
 }
 
 export interface ServerLogLineEvent {
-  server_id: string;
+  instance_id: string;
+  line: ServerLogLine;
+}
+
+export interface ServerLogLine {
+  sequence: bigint;
+  timestamp: bigint;
+  source: string;
   line: string;
 }
 
