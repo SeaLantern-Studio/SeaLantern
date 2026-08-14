@@ -28,8 +28,8 @@ pub fn decode_output_bytes(bytes: &[u8]) -> String {
 
 /// 从读取器逐行读取并解码，对每一行调用 `on_line`。
 ///
-/// 以 `\n` 分割行，去除行尾 `\r`，跳过空白行。返回读取器到达 EOF 或
-/// 读取失败时的错误；调用方持有多行时无需处理行缓冲。
+/// 以 `\n` 分割行，去除行尾 `\r`。是否跳过空白行由调用方决定
+/// （本原语不做内容过滤），调用方持有多行时无需处理行缓冲。
 pub fn read_output_lines<R: Read>(reader: R, mut on_line: impl FnMut(&str)) -> io::Result<()> {
     let mut reader = io::BufReader::new(reader);
     let mut buffer = Vec::new();
@@ -38,11 +38,8 @@ pub fn read_output_lines<R: Read>(reader: R, mut on_line: impl FnMut(&str)) -> i
         match reader.read_until(b'\n', &mut buffer) {
             Ok(0) => return Ok(()),
             Ok(_) => {
-                let mut line = decode_output_bytes(&buffer);
-                line = line.trim_end_matches(['\r', '\n']).to_string();
-                if line.trim().is_empty() {
-                    continue;
-                }
+                let line = decode_output_bytes(&buffer);
+                let line = line.trim_end_matches(['\r', '\n']).to_string();
                 on_line(&line);
             }
             Err(error) => return Err(error),
@@ -75,6 +72,7 @@ mod tests {
         read_output_lines(Cursor::new(input), |line| lines.push(line.to_string()))
             .expect("read lines");
 
-        assert_eq!(lines, ["line one", "line two", "line three"]);
+        // 原语不过滤空白行：是否丢弃由上层按策略决定。
+        assert_eq!(lines, ["line one", "line two", "", "  ", "line three"]);
     }
 }

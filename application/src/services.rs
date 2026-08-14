@@ -79,7 +79,8 @@ impl AppServices {
     /// 服务器进程服务共享同一实例服务句柄；下载/定时任务/系统资源服务自动构造。
     pub fn from_inner(instance: CoreInstanceService) -> Self {
         let instance = Arc::new(instance);
-        let server = Arc::new(CoreServerService::new(instance.clone()));
+        let settings = Arc::new(CoreSettingsService::new());
+        let server = Arc::new(CoreServerService::new(instance.clone(), settings.clone()));
         Self {
             inner: Arc::new(AppServicesInner {
                 background_started: AtomicBool::new(false),
@@ -92,7 +93,7 @@ impl AppServices {
                 online_tunnel: Arc::new(CoreOnlineTunnelService::default()),
                 catalog: Arc::new(CoreServerCatalogService),
                 provisioning: Arc::new(CoreProvisioningService),
-                settings: Arc::new(CoreSettingsService::new()),
+                settings,
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 system: Arc::new(CoreSystemService),
                 update: Arc::new(CoreUpdateCheckService::new()),

@@ -25,12 +25,12 @@ use sealantern_core::process::{
     TerminalStream, WindowsConsoleEncoding,
 };
 use sealantern_interface::server::{ServerSnapshot, ServerState};
-use sealantern_interface::{InstanceService, ServerService, ServerServiceError};
+use sealantern_interface::{InstanceService, ServerService, ServerServiceError, SettingsService};
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
 
 use crate::error::ServerError;
 
-use super::{CoreInstanceService, LogRecorder};
+use super::{CoreInstanceService, CoreSettingsService, LogRecorder};
 
 /// 优雅停止时等待进程退出的最长时长。
 const STOP_GRACEFUL_TIMEOUT: Duration = Duration::from_secs(10);
@@ -98,6 +98,8 @@ impl InstanceRestartDriver for ServerRestartDriver<'_> {
 pub struct CoreServerService {
     /// 实例记录服务（读取启动配置与更新状态）。
     instance_service: Arc<CoreInstanceService>,
+    /// 设置信息服务（读取控制台等全局配置）。
+    settings_service: Arc<CoreSettingsService>,
     /// 进程注册表：实例 ID → 受管进程。
     processes: Mutex<HashMap<String, ManagedProcess>>,
     /// 启动中的实例集合。
@@ -110,9 +112,13 @@ pub struct CoreServerService {
 
 impl CoreServerService {
     /// 构造服务器进程管理服务。
-    pub fn new(instance_service: Arc<CoreInstanceService>) -> Self {
+    pub fn new(
+        instance_service: Arc<CoreInstanceService>,
+        settings_service: Arc<CoreSettingsService>,
+    ) -> Self {
         Self {
             instance_service,
+            settings_service,
             processes: Mutex::new(HashMap::new()),
             starting: Mutex::new(HashSet::new()),
             stopping: Mutex::new(HashSet::new()),
@@ -470,8 +476,21 @@ impl CoreServerService {
                 managed.terminal.take_output(TerminalStream::Stderr),
             )
         };
-        let recorder =
-            LogRecorder::start(id_str.clone(), &instance.directory, stdout, stderr).await;
+        // 控制台空行策略来自全局设置（读取失败时回落到默认丢弃）。
+        let drop_empty_line = self
+            .settings_service
+            .get()
+            .await
+            .map(|settings| settings.console_drop_empty_line)
+            .unwrap_or(true);
+        let recorder = LogRecorder::start(
+            id_str.clone(),
+            &instance.directory,
+            stdout,
+            stderr,
+            drop_empty_line,
+        )
+        .await;
         if let Some(managed) = self.processes_lock()?.get_mut(&id_str) {
             managed.recorder = Some(recorder);
         }
@@ -638,7 +657,7 @@ mod tests {
 
     use sealantern_core::instance::InstanceId;
 
-    use super::{CoreInstanceService, CoreServerService};
+    use super::{CoreInstanceService, CoreServerService, CoreSettingsService};
 
     fn registry_path() -> PathBuf {
         let nonce = SystemTime::now()
@@ -656,7 +675,8 @@ mod tests {
         let instances = CoreInstanceService::with_path(&path)
             .await
             .expect("instance service");
-        let service = CoreServerService::new(Arc::new(instances));
+        let service =
+            CoreServerService::new(Arc::new(instances), Arc::new(CoreSettingsService::new()));
         let first = InstanceId::new("first").expect("first id");
         let second = InstanceId::new("second").expect("second id");
 

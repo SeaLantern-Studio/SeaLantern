@@ -66,11 +66,15 @@ impl LogRecorder {
     ///
     /// 日志库打开失败时降级：读取任务仍会消费输出（防止管道阻塞进程），
     /// 但不落库不推送事件，并记录错误日志。
+    ///
+    /// `drop_empty_line` 为 `true` 时丢弃空白行（进程输出的空行通常无信息量）；
+    /// 为 `false` 时原样保留（部分服务器可能输出有意义的空行）。
     pub async fn start(
         instance_id: impl Into<String>,
         directory: &Path,
         stdout: Option<TerminalOutput>,
         stderr: Option<TerminalOutput>,
+        drop_empty_line: bool,
     ) -> Self {
         let instance_id = instance_id.into();
         let database = match open_log_database(directory).await {
@@ -95,6 +99,9 @@ impl LogRecorder {
             readers.push(tokio::task::spawn_blocking(move || {
                 let _ = read_output_lines(output, |line| {
                     let line = line.to_string();
+                    if drop_empty_line && line.trim().is_empty() {
+                        return;
+                    }
                     let Some(writer) = &writer else {
                         return;
                     };
@@ -224,7 +231,7 @@ mod tests {
         let stdout = terminal.take_output(TerminalStream::Stdout);
 
         let mut receiver = subscribe_log_events();
-        let recorder = LogRecorder::start("server-a", directory.path(), stdout, None).await;
+        let recorder = LogRecorder::start("server-a", directory.path(), stdout, None, true).await;
         // 给读取任务调度窗口，确保进程输出被读取后再收敛。
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         let _ = daemon.wait().expect("子进程应正常退出");
