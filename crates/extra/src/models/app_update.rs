@@ -67,6 +67,7 @@ pub struct PartialAppSettings {
     pub console_font_family: Option<String>,
     pub console_letter_spacing: Option<i32>,
     pub max_log_lines: Option<u32>,
+    pub console_drop_empty_line: Option<bool>,
 
     pub background_image: Option<String>,
     pub background_opacity: Option<f32>,
@@ -150,6 +151,9 @@ impl PartialAppSettings {
         }
         if let Some(value) = self.max_log_lines {
             target.max_log_lines = value;
+        }
+        if let Some(value) = self.console_drop_empty_line {
+            target.console_drop_empty_line = value;
         }
         if let Some(value) = &self.background_image {
             target.background_image.clone_from(value);

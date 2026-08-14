@@ -519,6 +519,16 @@ fn build_console_group() -> SettingsGroupInfo {
                 default_value: Some("5000".to_string()),
                 options: vec![],
             },
+            SettingsEntry {
+                id: "console_drop_empty_line".to_string(),
+                display_name: "settings.console_drop_empty_line".to_string(),
+                description: "settings.console_drop_empty_line_desc".to_string(),
+                entry_type: SettingsEntryType::Boolean,
+                required: false,
+                has_value: true,
+                default_value: Some("true".to_string()),
+                options: vec![],
+            },
         ],
     }
 }

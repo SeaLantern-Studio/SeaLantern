@@ -8,7 +8,7 @@ use super::JavaInfo;
 /// 当前配置版本号。
 ///
 /// 每次配置结构变更时递增，由配置管理器据此执行数据迁移。
-pub const CURRENT_CONFIG_VERSION: u32 = 3;
+pub const CURRENT_CONFIG_VERSION: u32 = 4;
 
 /// 亚克力模糊级别的默认值，旧配置缺字段时回落到这里。
 pub const DEFAULT_ACRYLIC_BLUR_LEVEL: &str = "medium";
@@ -82,6 +82,7 @@ pub struct AppSettings {
     pub console_font_family: String,
     pub console_letter_spacing: i32,
     pub max_log_lines: u32,
+    pub console_drop_empty_line: bool,
 
     pub background_image: String,
     pub background_opacity: f32,
@@ -131,6 +132,7 @@ impl Default for AppSettings {
             console_font_family: String::new(),
             console_letter_spacing: 0,
             max_log_lines: 5000,
+            console_drop_empty_line: true,
             background_image: String::new(),
             background_opacity: 0.3,
             background_blur: 0,
@@ -240,6 +242,7 @@ impl AppSettings {
             || self.console_font_family != other.console_font_family
             || self.console_letter_spacing != other.console_letter_spacing
             || self.max_log_lines != other.max_log_lines
+            || self.console_drop_empty_line != other.console_drop_empty_line
         {
             groups.push(SettingsGroup::Console);
         }

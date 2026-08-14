@@ -35,6 +35,7 @@ export interface AppSettings {
   console_font_family: string;
   console_letter_spacing: number;
   max_log_lines: number;
+  console_drop_empty_line: boolean;
   cached_java_list: JavaInfo[];
   background_image: string;
   background_opacity: number;

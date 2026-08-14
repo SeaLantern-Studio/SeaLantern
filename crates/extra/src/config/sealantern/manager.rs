@@ -450,6 +450,7 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
         // v0 → v1：扁平结构首次引入，此前旧版数据由 legacy 迁移处理。
         // v1 → v2：Java 缓存新增置信度字段，缺失值由 serde 默认补齐。
         // v2 → v3：新增全局代理设置，缺失值由 serde 默认补为 Adaptive。
+        // v3 → v4：服务器日志是否丢弃空行的配置。
         version += 1;
     }
     settings.config_version = CURRENT_CONFIG_VERSION;
