@@ -31,24 +31,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker-build:
-    name: Docker 镜像构建测试
-    runs-on: ubuntu-24.04
+  stand-by:
+    runs-on: ubuntu-latest
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - name: "等待重构"
+        run: echo "等待docker重构完成"
 
-      - name: 设置 Docker Buildx
-        uses: docker/setup-buildx-action@v3
+  # jobs:
+  # docker-build:
+  #   name: Docker 镜像构建测试
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - name: 检出代码
+  #       uses: actions/checkout@v4
 
-      - name: 构建 Docker 镜像（测试构建）
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./docker/Dockerfile
-          push: false
-          load: false
-          build-args: |
-            CARGO_FEATURES=docker
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  #     - name: 设置 Docker Buildx
+  #       uses: docker/setup-buildx-action@v3
+
+  #     - name: 构建 Docker 镜像（测试构建）
+  #       uses: docker/build-push-action@v5
+  #       with:
+  #         context: .
+  #         file: ./docker/Dockerfile
+  #         push: false
+  #         load: false
+  #         build-args: |
+  #           CARGO_FEATURES=docker
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
