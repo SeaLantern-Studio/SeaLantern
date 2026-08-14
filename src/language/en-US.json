@@ -153,6 +153,7 @@
       "starting": "Starting",
       "stopping": "Stopping",
       "error": "Error",
+      "unknown": "Unknown",
       "system_resources": "System Resources",
       "detail_view": "Switch to detail view",
       "gauge_view": "Switch to gauge view",

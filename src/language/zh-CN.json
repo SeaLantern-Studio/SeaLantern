@@ -153,6 +153,7 @@
       "starting": "启动中",
       "stopping": "停止中",
       "error": "异常",
+      "unknown": "未知",
       "system_resources": "系统资源",
       "detail_view": "切换到详细视图",
       "gauge_view": "切换到仪表盘",

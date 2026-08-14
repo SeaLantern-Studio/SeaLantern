@@ -89,6 +89,8 @@ function getStatusVariant(status: string | undefined) {
       return "warning" as const;
     case "Error":
       return "error" as const;
+    case "Unknown":
+      return "neutral" as const;
     default:
       return "neutral" as const;
   }
@@ -109,6 +111,8 @@ function getStatusText(status: string | undefined): string {
       return i18n.t("home.stopping");
     case "Error":
       return i18n.t("home.error");
+    case "Unknown":
+      return i18n.t("home.unknown");
     default:
       return i18n.t("home.stopped");
   }

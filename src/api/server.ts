@@ -5,7 +5,8 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface ServerStatusInfo {
   id: string;
-  status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
+  // Unknown 用于后端返回了未识别的状态，避免误判为已停止
+  status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error" | "Unknown";
   pid: number | null;
   uptime: number | null;
 }
@@ -137,10 +138,23 @@ function toServerStatusInfo(s: ServerSnapshotRaw): ServerStatusInfo {
     running: "Running",
     stopping: "Stopping",
     stopped: "Stopped",
+    error: "Error",
+    crashed: "Error",
   };
+
+  const mappedStatus = stateMap[s.state];
+
+  if (!mappedStatus) {
+    // 未知的后端状态，避免默认为 Stopped 造成误导
+    console.warn("Unknown server state from backend:", {
+      state: s.state,
+      snapshot: s,
+    });
+  }
+
   return {
     id: s.instance_id,
-    status: stateMap[s.state] ?? "Stopped",
+    status: mappedStatus ?? "Unknown",
     pid: s.pid,
     uptime: s.uptime_secs,
   };
@@ -310,9 +324,9 @@ export const serverApi = {
   },
 
   async forceStop(id: string, confirmationToken: string): Promise<void> {
-    // 后端 force_stop_server 只收 id，token 在后端不校验
-    void confirmationToken;
-    await rpcInvoke("server.forceStop", { id });
+    // 当前后端 force_stop_server 仅接收 id，token 未校验
+    // 透传 confirmationToken 以备后端未来启用校验，前端无需再改
+    await rpcInvoke("server.forceStop", { id, confirmationToken });
   },
 
   async sendCommand(id: string, command: string): Promise<void> {

@@ -112,7 +112,7 @@ async function getRunningServerNames(): Promise<string[]> {
         item,
       ): item is {
         name: string;
-        status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
+        status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error" | "Unknown";
       } => item !== null,
     )
     .filter((item) => item.status === "Running")

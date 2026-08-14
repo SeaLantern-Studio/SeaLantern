@@ -16,6 +16,13 @@ export interface RpcInvokeOptions {
   defaultValue?: unknown;
 }
 
+/** 静默模式专用选项，强制要求 defaultValue，类型上保证返回 T */
+export interface RpcSilentWithOptions<T> {
+  silent: true;
+  context?: string;
+  defaultValue: T;
+}
+
 /** 后端未实现该方法，调用方可据此禁用 UI 或提示 */
 export class NotImplementedError extends Error {
   readonly method: string;
@@ -159,6 +166,7 @@ const axumRouteMap: Record<string, AxumRoute> = {
   "server.forceStop": {
     method: "POST",
     path: (a) => `/instances/${encodeURIComponent(String(a.id))}/force-stop`,
+    body: (a) => ({ confirmationToken: a.confirmationToken }),
   },
   "server.console.send": {
     method: "POST",
@@ -205,6 +213,27 @@ async function tauriNativeInvoke<T>(command: string, args?: Record<string, unkno
   return invoke<T>(command, args);
 }
 
+/** 从错误响应里尽量提取有意义的消息，兼容 JSON/纯文本/HTML */
+async function extractErrorMessage(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    // REST 错误是 {code, message}，RPC 错误是 {requestId, code, message, retryable}
+    try {
+      const errorBody = await response.json();
+      return errorBody?.message || errorBody?.code || response.statusText;
+    } catch {
+      // JSON 解析失败时回退到文本
+      const text = await response.text().catch(() => "");
+      return text || response.statusText;
+    }
+  }
+
+  // 非 JSON 响应，直接读文本保留服务端错误详情
+  const text = await response.text().catch(() => "");
+  return text || response.statusText;
+}
+
 /** 通过 Axum HTTP 调用，处理 REST 和 RPC 两种响应信封 */
 async function axumFetch<T>(route: AxumRoute, args: Record<string, unknown>): Promise<T> {
   const url = `${HTTP_API_BASE}/api${route.path(args)}`;
@@ -218,12 +247,8 @@ async function axumFetch<T>(route: AxumRoute, args: Record<string, unknown>): Pr
   const response = await fetch(url, init);
 
   if (!response.ok) {
-    // REST 错误是 {code, message}，RPC 错误是 {requestId, code, message, retryable}
-    const errorBody = await response.json().catch(() => ({
-      code: "unknown",
-      message: response.statusText,
-    }));
-    throw new Error(errorBody.message || errorBody.code || `HTTP ${response.status}`);
+    const message = await extractErrorMessage(response);
+    throw new Error(message || `HTTP ${response.status}`);
   }
 
   // 204 无内容
@@ -241,12 +266,27 @@ async function axumFetch<T>(route: AxumRoute, args: Record<string, unknown>): Pr
  *
  * 根据运行环境自动选择 Tauri 命令或 Axum HTTP 路由。
  * 方法名不在映射表里时抛 NotImplementedError，表示该后端尚未实现。
+ *
+ * 重载规则：
+ * - 传 silent + defaultValue：失败时返回 defaultValue，类型保证为 T
+ * - 传 silent 无 defaultValue：失败时返回 undefined，类型为 T | undefined
+ * - 不传 silent 或 silent=false：失败时抛异常，类型为 T
  */
+export async function rpcInvoke<T>(
+  method: string,
+  args: Record<string, unknown>,
+  options: RpcSilentWithOptions<T>,
+): Promise<T>;
+export async function rpcInvoke<T>(
+  method: string,
+  args?: Record<string, unknown>,
+  options?: RpcInvokeOptions,
+): Promise<T>;
 export async function rpcInvoke<T>(
   method: string,
   args: Record<string, unknown> = {},
   options: RpcInvokeOptions = {},
-): Promise<T> {
+): Promise<T | undefined> {
   const isHttp = isBrowserEnv();
 
   try {
@@ -290,6 +330,7 @@ export async function rpcInvoke<T>(
       throw new AppError(errorMessage, ErrorType.SERVER, options.context);
     }
 
-    return options.defaultValue as T;
+    // 静默模式无 defaultValue 时返回 undefined，类型已通过重载表达
+    return options.defaultValue as T | undefined;
   }
 }
