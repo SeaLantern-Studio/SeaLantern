@@ -1,5 +1,5 @@
 import { reactive, onUnmounted, computed } from "vue";
-import { tauriInvoke } from "./tauri";
+import { rpcInvoke } from "./rpc";
 import { i18n } from "@language";
 
 export type TaskStatus = "Pending" | "Downloading" | "Completed" | { Error: string };
@@ -43,27 +43,29 @@ export const downloadApi = {
    * 基础 API：创建下载任务
    */
   async downloadFile(options: DownloadOptions): Promise<string> {
-    return tauriInvoke<string>("download_file", {
-      url: options.url,
-      savePath: options.savePath,
-      threadCount: options.threadCount || 32,
+    // 后端 download_create 接收 request 对象，DTO 用 camelCase 序列化
+    const task = await rpcInvoke<DownloadTaskInfo>("download.create", {
+      request: {
+        url: options.url,
+        savePath: options.savePath,
+        threadCount: options.threadCount || 32,
+      },
     });
+    return task.id;
   },
 
   /**
    * 基础 API：单次查询
    */
   async pollTask(id: string): Promise<DownloadTaskInfo> {
-    return tauriInvoke<DownloadTaskInfo>("poll_task", { idStr: id });
+    return rpcInvoke<DownloadTaskInfo>("download.query", { id });
   },
 
   /**
    * 删除/取消下载任务
    */
   async cancelDownloadTask(id: string): Promise<void> {
-    return tauriInvoke<void>("cancel_download_task", {
-      idStr: id,
-    });
+    return rpcInvoke<void>("download.cancel", { id });
   },
 
   /**
@@ -177,17 +179,17 @@ export const downloadApi = {
 
 export const downloadServerApi = {
   async getServerTypes(): Promise<string[]> {
-    return tauriInvoke<string[]>("get_server_types");
+    return rpcInvoke<string[]>("catalog.serverTypes");
   },
 
   async getVersionsByType(serverType: string): Promise<string[]> {
-    return tauriInvoke<string[]>("get_versions_by_type", { serverType });
+    return rpcInvoke<string[]>("catalog.versions", { server_type: serverType });
   },
 
   async getDownloadInfo(serverType: string, version: string): Promise<DownloadLink> {
-    return tauriInvoke<DownloadLink>("get_download_info", {
-      serverType,
-      version,
+    return rpcInvoke<DownloadLink>("catalog.details", {
+      server_type: serverType,
+      server_version: version,
     });
   },
 };
