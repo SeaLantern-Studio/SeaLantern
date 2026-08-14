@@ -223,6 +223,14 @@ export const contributors: Contributor[] = [
     role: "必火推荐！",
     avatar: "https://api.rms.net.cn/head/NIUNIU3303",
   },
+  {
+    name: "hjcba",
+    role: "添加了 mclo.gs 日志分享功能(也许后面会写更多功能)",
+    avatar: "https://api.rms.net.cn/head/hjcboar",
+    url: {
+      github: "https://github.com/hjcba",
+    },
+  },
 
   // ============================================
   // 在这里添加更多贡献者！
