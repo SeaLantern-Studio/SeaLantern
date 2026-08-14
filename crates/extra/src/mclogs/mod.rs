@@ -15,6 +15,8 @@ const MAX_LOG_LINE_COUNT: usize = 25_000;
 const MAX_LOG_SIZE_BYTES: usize = 10 * 1024 * 1024;
 /// 标识日志来源，会展示在 mclo.gs 页面上。
 const SOURCE_NAME: &str = "SeaLantern";
+/// tracing 目标字段，便于按模块过滤日志。
+const TRACING_TARGET: &str = "sealantern.extra.mclogs";
 
 #[derive(Debug, Deserialize)]
 struct MclogsUploadResponse {
@@ -38,6 +40,13 @@ struct MclogsUploadRequest<'a> {
 fn truncate_to_last_lines(text: &str) -> String {
     let total_lines = text.lines().count();
     if total_lines > MAX_LOG_LINE_COUNT {
+        let dropped_lines = total_lines - MAX_LOG_LINE_COUNT;
+        tracing::debug!(
+            target: TRACING_TARGET,
+            dropped_lines,
+            kept_lines = MAX_LOG_LINE_COUNT,
+            "log exceeds mclo.gs line limit, keeping only the last lines"
+        );
         text.lines()
             .skip(total_lines - MAX_LOG_LINE_COUNT)
             .collect::<Vec<&str>>()
@@ -57,6 +66,7 @@ fn truncate_to_last_lines(text: &str) -> String {
 pub async fn share_logs(content: String) -> Result<String, String> {
     let trimmed = content.trim();
     if trimmed.is_empty() {
+        tracing::debug!(target: TRACING_TARGET, "share_logs rejected: empty content");
         return Err("日志内容为空，无法分享".to_string());
     }
 
@@ -66,6 +76,12 @@ pub async fn share_logs(content: String) -> Result<String, String> {
     // 大小限制：mclo.gs 单条上限约 10 MiB，超出会被拒绝，
     // 先本地拦截以给出明确错误，而不是等到服务端返回失败。
     if payload_content.len() > MAX_LOG_SIZE_BYTES {
+        tracing::warn!(
+            target: TRACING_TARGET,
+            size_bytes = payload_content.len(),
+            max_bytes = MAX_LOG_SIZE_BYTES,
+            "share_logs rejected: content exceeds mclo.gs size limit"
+        );
         return Err(format!(
             "日志大小 {} 字节已超过 mclo.gs 上限 {} 字节，无法分享",
             payload_content.len(),
@@ -75,34 +91,67 @@ pub async fn share_logs(content: String) -> Result<String, String> {
 
     // 复用进程级全局客户端（已应用代理设置），避免每次新建连接池，
     // 并保证请求经由用户配置的代理。
-    let client = global_client().map_err(|e| format!("初始化网络客户端失败: {}", e))?;
+    let client = global_client().map_err(|e| {
+        tracing::error!(target: TRACING_TARGET, error = %e, "failed to initialize network client");
+        format!("初始化网络客户端失败: {}", e)
+    })?;
 
     let response = client
         .post(MCLOGS_API_URL)
-        .map_err(|e| format!("构建上传请求失败: {}", e))?
+        .map_err(|e| {
+            tracing::error!(target: TRACING_TARGET, error = %e, "failed to build upload request");
+            format!("构建上传请求失败: {}", e)
+        })?
         .header("User-Agent", "SeaLantern")
         .json(&MclogsUploadRequest {
             content: &payload_content,
             source: SOURCE_NAME,
         })
-        .map_err(|e| format!("序列化上传内容失败: {}", e))?
+        .map_err(|e| {
+            tracing::error!(target: TRACING_TARGET, error = %e, "failed to serialize upload body");
+            format!("序列化上传内容失败: {}", e)
+        })?
         .send()
         .await
-        .map_err(|e| format!("上传日志到 mclo.gs 失败: {}", e))?;
+        .map_err(|e| {
+            tracing::error!(target: TRACING_TARGET, error = %e, "failed to upload logs to mclo.gs");
+            format!("上传日志到 mclo.gs 失败: {}", e)
+        })?;
 
     if !response.status().is_success() {
+        tracing::warn!(
+            target: TRACING_TARGET,
+            status = %response.status(),
+            "mclo.gs returned a non-success status code"
+        );
         return Err(format!("mclo.gs 返回错误状态码: {}", response.status()));
     }
 
-    let body: MclogsUploadResponse = response
-        .json()
-        .await
-        .map_err(|e| format!("解析 mclo.gs 响应失败: {}", e))?;
+    let body: MclogsUploadResponse = response.json().await.map_err(|e| {
+        tracing::error!(target: TRACING_TARGET, error = %e, "failed to parse mclo.gs response");
+        format!("解析 mclo.gs 响应失败: {}", e)
+    })?;
 
     if !body.success {
-        return Err(body.error.unwrap_or_else(|| "mclo.gs 拒绝上传，未知原因".to_string()));
+        let reason = body.error.clone().unwrap_or_else(|| "unknown".to_string());
+        tracing::warn!(
+            target: TRACING_TARGET,
+            error = %reason,
+            "mclo.gs rejected the upload"
+        );
+        return Err(body
+            .error
+            .unwrap_or_else(|| "mclo.gs 拒绝上传，未知原因".to_string()));
     }
 
-    body.url
-        .ok_or_else(|| "mclo.gs 响应缺少 url 字段".to_string())
+    let url = body.url.ok_or_else(|| {
+        tracing::warn!(
+            target: TRACING_TARGET,
+            "mclo.gs response succeeded but the url field is missing"
+        );
+        "mclo.gs 响应缺少 url 字段".to_string()
+    })?;
+
+    tracing::info!(target: TRACING_TARGET, url = %url, "logs shared to mclo.gs successfully");
+    Ok(url)
 }
