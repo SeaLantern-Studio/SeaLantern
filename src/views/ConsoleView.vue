@@ -814,10 +814,6 @@ onMounted(async () => {
     if (isRunning.value) startStatsPolling();
   }
   unlistenLogLine = await serverApi.onLogLine(({ instance_id, line }) => {
-    console.log(instance_id);
-    console.log(serverId.value);
-    console.log(line);
-    console.log("==========");
     const sid = serverId.value;
     if (!sid || instance_id !== sid) return;
     consoleOutputRef.value?.appendLines([line.line]);
