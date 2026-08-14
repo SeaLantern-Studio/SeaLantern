@@ -5219,6 +5219,7 @@ version = "1.2.0"
 dependencies = [
  "async-trait",
  "chrono",
+ "rusqlite",
  "sealantern-core",
  "sealantern-extra",
  "sealantern-infra",

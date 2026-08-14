@@ -39,13 +39,13 @@
 ## 技术栈
 
 - **前端**: Vue 3 + TypeScript + Vite
-- **后端**: Rust + Tauri 2
-- **通信**: Tauri invoke
+- **后端**: Rust + Tauri 2（Desktop 宿主）+ Axum（Web 宿主）
+- **通信**: Desktop 使用 Tauri IPC/Event，Web 使用 HTTP/WebSocket/SSE，插件使用宿主 Bridge
 - **Docker**: itzg/minecraft-server
 
 没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
 
-后端采用分层架构：`interface`（契约 trait）→ `application`（服务装配）→ `core`/`extra`/`infra`（积木）。Tauri 适配层（`src-tauri/src/adapter/tauri/commands/`）下设 `compat` 兼容子层，注册前端旧命令名，内部做参数/响应适配后调用新 service，前端零改动即可对接新后端。详见 [Tauri 兼容层文档](docs/tauri-compat-layer.md)。
+`application` 提供宿主无关的公共业务编排，`src-tauri` 与 `server` 分别作为 Desktop、Web 宿主，`interface` 只定义两端真正共用的契约。可复用的前端业务通过 `src/api` 接入，宿主专用页面和功能可以独立演进。详见[项目架构与代码组织](docs/architecture.md)。
 
 > 使用系统 Webview 渲染。
 

@@ -57,6 +57,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
             "/instances/{id}/command",
             post(handlers::send_server_command),
         )
+        .route("/instances/{id}/logs", get(handlers::console_logs))
         // ── 嵌套子资源（后续扩展） ──
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));

@@ -9,6 +9,7 @@ use sealantern_interface::OnlineTunnelService;
 use tauri::Manager;
 
 use adapter::tauri::commands::catalog::{catalog_details, catalog_server_types, catalog_versions};
+use adapter::tauri::commands::console::get_server_logs;
 use adapter::tauri::commands::cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
     update_cron_task,
@@ -19,6 +20,7 @@ use adapter::tauri::commands::instance::{
     update_instance_path,
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
+use adapter::tauri::commands::logging::share_logs;
 use adapter::tauri::commands::online_tunnel::{
     online_tunnel_host, online_tunnel_join, online_tunnel_status, online_tunnel_stop,
     OnlineTunnelEventForwarder,
@@ -89,10 +91,14 @@ pub fn run() {
             catalog_details,
             catalog_server_types,
             catalog_versions,
+            //服务器控制台日志契约命令
+            get_server_logs,
             //系统资源能力（由adapter/tauri/commands接入application）
             get_directory_usage,
             get_process_usage,
             get_system_snapshot,
+            //日志分享能力（上传到 mclo.gs）
+            share_logs,
             //实例与服务器进程服务
             create_instance,
             delete_instance,
