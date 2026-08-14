@@ -47,6 +47,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for NullablePatch<T> {
 
 /// 部分更新请求，只合并请求中明确包含的字段。
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct PartialAppSettings {
     pub close_servers_on_exit: Option<bool>,
     pub close_servers_on_update: Option<bool>,

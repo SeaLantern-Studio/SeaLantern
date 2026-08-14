@@ -16,7 +16,7 @@ use tauri_plugin_dialog::DialogExt;
 /// 打开系统文件选择器选择 JAR 文件。
 ///
 /// 返回选中文件的路径，取消则返回 `null`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn desktop_pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = mpsc::channel();
 
@@ -35,7 +35,7 @@ pub fn desktop_pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, St
 /// 打开系统文件选择器选择压缩包文件（.zip/.tar/.tar.gz/.tgz/.jar）。
 ///
 /// 返回选中文件的路径，取消则返回 `null`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn desktop_pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = mpsc::channel();
 
@@ -59,7 +59,7 @@ pub fn desktop_pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>
 ///
 /// `mode` 决定过滤器：`"jar"` / `"bat"` / `"sh"`，未知模式按 JAR 处理。
 /// 返回选中文件的路径，取消则返回 `null`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn desktop_pick_startup_file(
     app: tauri::AppHandle,
     mode: String,
@@ -98,7 +98,7 @@ pub fn desktop_pick_startup_file(
 /// 打开系统文件选择器选择服务端可执行文件，同时返回启动模式。
 ///
 /// 返回 `[路径, 启动模式]`，模式为 `"jar" | "bat" | "sh"`；取消则返回 `null`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn desktop_pick_server_executable(
     app: tauri::AppHandle,
 ) -> Result<Option<(String, String)>, String> {
@@ -137,7 +137,7 @@ pub fn desktop_pick_server_executable(
 ///
 /// Windows 上按 `.exe` 过滤，其他平台不设扩展名过滤器（Java 二进制无扩展名）。
 /// 返回选中文件的路径，取消则返回 `null`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn desktop_pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = mpsc::channel();
 
@@ -158,7 +158,7 @@ pub fn desktop_pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, S
 /// 打开系统文件保存对话框。
 ///
 /// 返回保存路径，取消则返回 `null`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn desktop_pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = mpsc::channel();
 
@@ -175,7 +175,7 @@ pub fn desktop_pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, S
 /// 打开系统文件夹选择器。
 ///
 /// 返回选中的文件夹路径，取消则返回 `null`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn desktop_pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = mpsc::channel();
 
@@ -192,7 +192,7 @@ pub fn desktop_pick_folder(app: tauri::AppHandle) -> Result<Option<String>, Stri
 /// 打开系统文件选择器选择图片文件。
 ///
 /// 返回选中文件的路径，取消则返回 `null`。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn desktop_pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let (tx, rx) = mpsc::channel();
 

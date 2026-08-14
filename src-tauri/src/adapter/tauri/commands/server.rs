@@ -24,7 +24,7 @@ fn parse_id_for_tauri(id: String) -> Result<InstanceId, ServerServiceError> {
 }
 
 /// 查询服务器进程状态。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn server_status(id: String) -> Result<ServerSnapshot, ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -32,7 +32,7 @@ pub async fn server_status(id: String) -> Result<ServerSnapshot, ServerServiceEr
 }
 
 /// 启动服务器进程。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn start_server(id: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -40,7 +40,7 @@ pub async fn start_server(id: String) -> Result<(), ServerServiceError> {
 }
 
 /// 重启服务器进程。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn restart_server(id: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -48,7 +48,7 @@ pub async fn restart_server(id: String) -> Result<(), ServerServiceError> {
 }
 
 /// 优雅停止服务器进程。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -56,7 +56,7 @@ pub async fn stop_server(id: String) -> Result<(), ServerServiceError> {
 }
 
 /// 强制停止服务器进程（终止进程树）。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn force_stop_server(id: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;
@@ -64,7 +64,7 @@ pub async fn force_stop_server(id: String) -> Result<(), ServerServiceError> {
 }
 
 /// 向服务器控制台发送单行命令。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn send_server_command(id: String, command: String) -> Result<(), ServerServiceError> {
     let service = server_service().await?;
     let id = parse_id_for_tauri(id)?;

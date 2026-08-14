@@ -97,7 +97,7 @@ export const contributors: Contributor[] = [
   {
     name: "清初Lucky",
     role: "喵喵喵~",
-    avatar: "https://api.rms.net.cn/head/qingchu2010",
+    avatar: "https://api.rms.net.cn/head/QINGCHU_MC",
   },
   {
     name: "ieshishinjin",

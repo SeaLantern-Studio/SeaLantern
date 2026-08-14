@@ -25,7 +25,7 @@ async fn services() -> Result<AppServices, ProvisioningServiceError> {
 }
 
 /// 检查指定服务器目录，返回服务器类型与版本等概况。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn inspect_server(
     path: String,
 ) -> Result<ServerInspectionReport, ProvisioningServiceError> {
@@ -37,7 +37,7 @@ pub async fn inspect_server(
 }
 
 /// 解析指定服务器目录下的启动脚本，返回内存与参数等配置信息。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn parse_startup_script(
     path: String,
 ) -> Result<StartupScriptInfo, ProvisioningServiceError> {
@@ -49,7 +49,7 @@ pub async fn parse_startup_script(
 }
 
 /// 为导入现有实例生成供给计划。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plan_existing_instance(
     request: InstanceImportRequest,
 ) -> Result<InstanceImportPlan, ProvisioningServiceError> {
@@ -61,7 +61,7 @@ pub async fn plan_existing_instance(
 }
 
 /// 为复制实例生成供给计划。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plan_instance_copy(
     request: CopyInstanceRequest,
 ) -> Result<CopyInstancePlan, ProvisioningServiceError> {
@@ -69,7 +69,7 @@ pub async fn plan_instance_copy(
 }
 
 /// 为安装整合包生成供给计划。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn plan_modpack_provision(
     request: ModpackProvisionRequest,
 ) -> Result<ModpackProvisionPlan, ProvisioningServiceError> {

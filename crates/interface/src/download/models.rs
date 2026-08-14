@@ -40,10 +40,11 @@ impl serde::Serialize for DownloadTaskStatus {
 
 /// 下载任务信息（宿主消费的契约模型，对齐前端 `DownloadTaskInfo`）。
 ///
-/// `rename_all = "camelCase"` 使字段名匹配前端 `src/api/downloader.ts`
-/// 的 `DownloadTaskInfo` 形状（`totalSize`/`isFinished` 等）。
+/// `rename_all = "snake_case"` 显式声明契约字段命名：序列化输出
+/// `total_size` / `is_finished` 等 snake_case 字段名，与其余契约模型
+/// 保持一致（前端 `src/api/downloader.ts` 同步消费 snake_case 形状）。
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct DownloadTaskInfo {
     /// 任务标识。
     pub id: String,
@@ -91,9 +92,8 @@ mod tests {
     }
 
     #[test]
-    fn task_info_serializes_camel_case_fields() {
-        // 前端 DownloadTaskInfo 期望 totalSize/isFinished（camelCase），
-        // 而非后端 snake_case 的 total_size/is_finished。
+    fn task_info_serializes_snake_case_fields() {
+        // 契约统一使用 snake_case（total_size/is_finished），与其余模型一致。
         let info = DownloadTaskInfo {
             id: "abc".into(),
             total_size: 100,
@@ -103,8 +103,9 @@ mod tests {
             is_finished: false,
         };
         let json = serde_json::to_string(&info).unwrap();
-        assert!(json.contains("\"totalSize\":100"), "missing totalSize: {json}");
-        assert!(json.contains("\"isFinished\":false"), "missing isFinished: {json}");
-        assert!(!json.contains("total_size"), "snake_case leaked: {json}");
+        assert!(json.contains("\"total_size\":100"), "missing total_size: {json}");
+        assert!(json.contains("\"is_finished\":false"), "missing is_finished: {json}");
+        assert!(!json.contains("totalSize"), "camelCase leaked: {json}");
+        assert!(!json.contains("isFinished"), "camelCase leaked: {json}");
     }
 }
