@@ -17,14 +17,18 @@ function getThemeCache(): { theme: string; fontSize: number } | null {
     if (cached) {
       return JSON.parse(cached);
     }
-  } catch (e) {}
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to read theme cache:", e);
+  }
   return null;
 }
 
 function saveThemeCache(theme: string, fontSize: number): void {
   try {
     localStorage.setItem(THEME_CACHE_KEY, JSON.stringify({ theme, fontSize }));
-  } catch (e) {}
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to save theme cache:", e);
+  }
 }
 
 export function getInitialTheme(): string {
@@ -56,7 +60,6 @@ const defaultSettings: AppSettings = {
   console_font_family: "",
   console_letter_spacing: 0,
   max_log_lines: 1000,
-  console_drop_empty_line: true,
   cached_java_list: [],
   background_image: "",
   background_opacity: 0.3,

@@ -763,8 +763,9 @@ export function useCreateServerPage() {
       if (tempDownloadPath) {
         try {
           await systemApi.removeFile(tempDownloadPath);
-        } catch {
-          // 清理失败不影响主流程
+        } catch (e) {
+          // 清理失败不影响主流程,仅 DEV 环境记录
+          if (import.meta.env.DEV) console.warn("Failed to clean temp download:", e);
         }
       }
 

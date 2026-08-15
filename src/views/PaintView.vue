@@ -45,7 +45,6 @@ const consoleFontSize = ref("13");
 const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref("0");
 const maxLogLines = ref("5000");
-const consoleDropEmptyLine = ref(true);
 const bgOpacity = ref("0.3");
 const bgBlur = ref("0");
 const bgBrightness = ref("1.0");
@@ -85,7 +84,6 @@ function syncLocalValues(s: AppSettings) {
   consoleFontFamily.value = s.console_font_family || "";
   consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
   maxLogLines.value = String(s.max_log_lines);
-  consoleDropEmptyLine.value = s.console_drop_empty_line;
   bgOpacity.value = String(s.background_opacity);
   bgBlur.value = String(s.background_blur);
   bgBrightness.value = String(s.background_brightness);
@@ -117,7 +115,6 @@ async function loadSettings() {
     consoleFontFamily.value = s.console_font_family || "";
     consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
     maxLogLines.value = String(s.max_log_lines);
-    consoleDropEmptyLine.value = s.console_drop_empty_line ?? true;
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -217,7 +214,6 @@ async function saveSettings() {
   settings.value.console_font_family = consoleFontFamily.value;
   settings.value.console_letter_spacing = parseInt(consoleLetterSpacing.value) || 0;
   settings.value.max_log_lines = parseInt(maxLogLines.value) || 5000;
-  settings.value.console_drop_empty_line = consoleDropEmptyLine.value;
   settings.value.background_opacity = parseFloat(bgOpacity.value) || 0.3;
   settings.value.background_blur = parseInt(bgBlur.value) || 0;
   settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
@@ -256,7 +252,6 @@ async function resetSettings() {
     consoleFontFamily.value = s.console_font_family || "";
     consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
     maxLogLines.value = String(s.max_log_lines);
-    consoleDropEmptyLine.value = s.console_drop_empty_line ?? true;
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -293,7 +288,6 @@ async function handleImport(json: string) {
     consoleFontFamily.value = s.console_font_family || "";
     consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
     maxLogLines.value = String(s.max_log_lines);
-    consoleDropEmptyLine.value = s.console_drop_empty_line ?? true;
     bgOpacity.value = String(s.background_opacity);
     bgBlur.value = String(s.background_blur);
     bgBrightness.value = String(s.background_brightness);
@@ -310,7 +304,6 @@ async function handleImport(json: string) {
 async function pickBackgroundImage() {
   try {
     const result = await systemApi.pickImageFile();
-    console.log("Selected image:", result);
     if (result && settings.value) {
       settings.value.background_image = result;
       markChanged();
@@ -391,7 +384,6 @@ function clearBackgroundImage() {
         v-model:consoleFontFamily="consoleFontFamily"
         v-model:consoleLetterSpacing="consoleLetterSpacing"
         v-model:maxLogLines="maxLogLines"
-        v-model:consoleDropEmptyLine="consoleDropEmptyLine"
         :fontFamilyOptions="fontFamilyOptions"
         :fontsLoading="fontsLoading"
         @change="markChanged"

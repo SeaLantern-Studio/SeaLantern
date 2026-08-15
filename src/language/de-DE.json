@@ -503,8 +503,6 @@
     "console_font_size_desc": "Größe des Konsolen-Logtexts, Standard 13",
     "max_log_lines": "Max. Log-Zeilen",
     "max_log_lines_desc": "Maximale Anzahl der pro Server aufzubewahrenden Log-Zeilen. Ältere Logs werden automatisch gelöscht. Standard 5000",
-    "console_drop_empty_line": "Leere Zeilen verwerfen",
-    "console_drop_empty_line_desc": "Leere Zeilen an der Log-Quelle des Servers verwerfen, standardmäßig aktiviert; diese Einstellung wird beim Serverstart gelesen",
     "appearance": "Erscheinungsbild",
     "appearance_desc": "Hintergrund und visuelle Effekte anpassen",
     "theme": "Theme-Modus",

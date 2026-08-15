@@ -4,7 +4,11 @@ import { useRoute } from "vue-router";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import type { PluginInfo, PluginSettingField } from "@type/plugin";
-import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
+import {
+  getLocalizedPluginName,
+  getLocalizedPluginDescription,
+  getPluginSettingDefaultValue,
+} from "@type/plugin";
 import { Palette, Puzzle } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -50,7 +54,7 @@ async function loadPluginData() {
     if (found.manifest.settings) {
       for (const field of found.manifest.settings) {
         if (settingsForm[field.key] === undefined) {
-          settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
+          settingsForm[field.key] = field.default ?? getPluginSettingDefaultValue(field.type);
         }
       }
     }
@@ -83,7 +87,7 @@ async function loadDependentPlugins() {
       const form: Record<string, any> = { ...depSettings };
       for (const field of p.manifest.settings!) {
         if (form[field.key] === undefined) {
-          form[field.key] = field.default ?? getDefaultValue(field.type);
+          form[field.key] = field.default ?? getPluginSettingDefaultValue(field.type);
         }
       }
       return { plugin: p, form };
@@ -93,25 +97,6 @@ async function loadDependentPlugins() {
   dependentPlugins.value = results.map((r) => r.plugin);
   for (const { plugin: depPlugin, form } of results) {
     dependentSettingsForms[depPlugin.manifest.id] = form;
-  }
-}
-
-function getDefaultValue(type: string): any {
-  switch (type) {
-    case "string":
-      return "";
-    case "textarea":
-      return "";
-    case "number":
-      return 0;
-    case "boolean":
-      return false;
-    case "checkbox":
-      return false;
-    case "select":
-      return "";
-    default:
-      return "";
   }
 }
 
@@ -172,7 +157,7 @@ async function saveSettings() {
 async function resetToDefault() {
   if (!plugin.value?.manifest.settings) return;
   for (const field of plugin.value.manifest.settings) {
-    settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
+    settingsForm[field.key] = field.default ?? getPluginSettingDefaultValue(field.type);
   }
 }
 

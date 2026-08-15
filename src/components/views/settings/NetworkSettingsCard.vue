@@ -4,6 +4,7 @@ import { systemApi, type IPv6TestResult } from "@api/system";
 import { settingsApi, type ProxySettings } from "@api/settings";
 import { dispatchSettingsUpdate } from "@stores/settingsStore";
 import { i18n } from "@language";
+import { handleError } from "@utils/errorHandler";
 import { useToast } from "cmzya-modern-ui";
 
 // 代理模式枚举，与后端 ProxySettings 联合类型对应
@@ -68,7 +69,7 @@ async function applyProxy() {
     dispatchSettingsUpdate(res.changed_groups, res.settings);
     toast.success(i18n.t("settings.proxy_applied"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     applying.value = false;
   }

@@ -703,8 +703,6 @@
       "console_font_size_desc": "Size of console log text, default 13",
       "max_log_lines": "Max Log Lines",
       "max_log_lines_desc": "Maximum number of log lines to keep per server, older logs are automatically cleared beyond this limit. Default 5000",
-      "console_drop_empty_line": "Drop Empty Lines",
-      "console_drop_empty_line_desc": "Drop empty lines at the server log source, enabled by default; this setting is read when the server starts",
       "appearance": "Appearance",
       "appearance_desc": "Customize software background and visual effects",
       "theme": "Theme Mode",

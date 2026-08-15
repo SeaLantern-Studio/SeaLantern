@@ -380,3 +380,20 @@ export function getLocalizedPluginName(manifest: PluginManifest, locale: string)
 export function getLocalizedPluginDescription(manifest: PluginManifest, locale: string): string {
   return manifest.locales?.[locale]?.description ?? manifest.description;
 }
+
+/**
+ * 根据插件配置字段类型返回默认值
+ * 用于 manifest 未声明 default 时的兜底
+ */
+export function getPluginSettingDefaultValue(type: PluginSettingField["type"]): unknown {
+  switch (type) {
+    case "number":
+      return 0;
+    case "boolean":
+    case "checkbox":
+      return false;
+    default:
+      // string/textarea/select/color 统一兜底空字符串
+      return "";
+  }
+}

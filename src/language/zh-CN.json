@@ -703,8 +703,6 @@
       "console_font_size_desc": "控制台日志文字的大小，默认 13",
       "max_log_lines": "最大日志行数",
       "max_log_lines_desc": "单个服务器最多保留的日志行数，超出后自动清除旧日志。默认 5000",
-      "console_drop_empty_line": "丢弃空行",
-      "console_drop_empty_line_desc": "从服务器日志源头处丢弃空行，默认开启；此设置在服务器启动时被读取",
       "appearance": "外观",
       "appearance_desc": "自定义软件背景和视觉效果",
       "theme": "主题模式",

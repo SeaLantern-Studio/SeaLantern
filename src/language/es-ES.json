@@ -488,8 +488,6 @@
     "console_font_size_desc": "Tamaño del texto de la consola, por defecto 13",
     "max_log_lines": "Máx. líneas de registro",
     "max_log_lines_desc": "Número máximo de líneas por servidor. Las más antiguas se eliminan automáticamente. Por defecto 5000",
-    "console_drop_empty_line": "Descartar líneas vacías",
-    "console_drop_empty_line_desc": "Descarta líneas vacías en el origen del registro del servidor, activado por defecto; esta configuración se lee al iniciar el servidor",
     "appearance": "Apariencia",
     "appearance_desc": "Personalizar fondo y efectos visuales",
     "theme": "Tema",

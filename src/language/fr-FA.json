@@ -505,8 +505,6 @@
     "console_font_size_desc": "Taille du texte dans la console. Défaut 13",
     "max_log_lines": "Nombre max de lignes de log",
     "max_log_lines_desc": "Nombre max de lignes conservées par serveur. Les anciennes lignes sont supprimées automatiquement. Défaut 5000",
-    "console_drop_empty_line": "Ignorer les lignes vides",
-    "console_drop_empty_line_desc": "Ignore les lignes vides à la source des journaux du serveur, activé par défaut ; ce réglage est lu au démarrage du serveur",
     "appearance": "Apparence",
     "appearance_desc": "Personnaliser l'arrière-plan et les effets visuels",
     "theme": "Thème",

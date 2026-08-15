@@ -1,5 +1,5 @@
 import { tauriInvoke, isBrowserEnv, HTTP_API_BASE } from "@api/tauri";
-import { rpcInvoke } from "@api/rpc";
+import { invoke } from "@api/invoke";
 import type { ServerInstance } from "@type/server";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -18,14 +18,7 @@ export interface ParsedServerCoreInfo {
 }
 
 export interface ServerLogLineEvent {
-  instance_id: string;
-  line: ServerLogLine;
-}
-
-export interface ServerLogLine {
-  sequence: bigint;
-  timestamp: bigint;
-  source: string;
+  server_id: string;
   line: string;
 }
 
@@ -319,11 +312,11 @@ export const serverApi = {
   },
 
   async start(id: string): Promise<void> {
-    await rpcInvoke("server.start", { id });
+    await invoke("start_server", { id });
   },
 
   async stop(id: string): Promise<void> {
-    await rpcInvoke("server.stop", { id });
+    await invoke("stop_server", { id });
   },
 
   async prepareForceStop(id: string): Promise<ForceStopPreparation> {
@@ -331,27 +324,27 @@ export const serverApi = {
   },
 
   async forceStop(id: string, confirmationToken: string): Promise<void> {
-    // 当前后端 force_stop_server 仅接收 id，token 未校验
-    // 透传 confirmationToken 以备后端未来启用校验，前端无需再改
-    await rpcInvoke("server.forceStop", { id, confirmationToken });
+    // Tauri 模式透传 confirmationToken，后端当前未校验，但保留以备未来启用
+    // Axum 模式后端 force_stop 只收 id，不发送 token
+    await invoke("force_stop_server", { id, confirmationToken });
   },
 
   async sendCommand(id: string, command: string): Promise<void> {
-    await rpcInvoke("server.console.send", { id, command });
+    await invoke("send_server_command", { id, command });
   },
 
   async getList(): Promise<ServerInstance[]> {
-    const raw = await rpcInvoke<InstanceRaw[]>("instance.list");
+    const raw = await invoke<InstanceRaw[]>("list_instances");
     return raw.map(toServerInstance);
   },
 
   async getStatus(id: string): Promise<ServerStatusInfo> {
-    const raw = await rpcInvoke<ServerSnapshotRaw>("server.status", { id });
+    const raw = await invoke<ServerSnapshotRaw>("server_status", { id });
     return toServerStatusInfo(raw);
   },
 
   async deleteServer(id: string): Promise<void> {
-    await rpcInvoke("instance.delete", { id });
+    await invoke("delete_instance", { id });
   },
 
   async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
@@ -404,7 +397,7 @@ export const serverApi = {
   },
 
   async updateServerName(id: string, name: string): Promise<void> {
-    await rpcInvoke("instance.rename", { id, name });
+    await invoke("rename_instance", { id, name });
   },
 
   async validateServerPath(newPath: string): Promise<{
