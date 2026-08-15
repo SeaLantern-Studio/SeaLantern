@@ -13,8 +13,8 @@ use std::time::Duration;
 use async_trait::async_trait;
 use sealantern_infra::platform::{
     collect_disks, collect_networks, collect_process_usage, collect_resource_snapshot,
-    collect_system_info, cpu_brand_name, directory_size, get_default_run_path,
-    path_disk_capacity, process_count,
+    collect_system_info, cpu_brand_name, directory_size, get_default_run_path, path_disk_capacity,
+    process_count,
 };
 use sealantern_interface::system::{
     CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
