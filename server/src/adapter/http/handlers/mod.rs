@@ -24,5 +24,5 @@ pub use server::{
     stop_server,
 };
 pub use settings::settings_overview;
-pub use system::{directory_usage, process_usage, system_snapshot};
+pub use system::{default_run_path, directory_usage, process_usage, system_snapshot};
 pub use update::check_update;

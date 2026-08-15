@@ -45,3 +45,10 @@ pub async fn get_directory_usage(path: String) -> Result<DirectoryUsage, SystemS
     let service = system_service().await?;
     service.directory_usage(Path::new(&path)).await
 }
+
+/// 获取默认运行路径。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn get_default_run_path() -> Result<std::path::PathBuf, SystemServiceError> {
+    let service = system_service().await?;
+    service.default_run_path().await
+}
