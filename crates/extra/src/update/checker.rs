@@ -69,9 +69,10 @@ impl UpdateChecker for ReleaseUpdateChecker {
                     });
             }
 
+            let github_config = super::get_github_config();
             let (cnb, github) = tokio::join!(
                 super::fetch_cnb_release(client, current_version),
-                super::fetch_github_release(client, &super::get_github_config(), current_version)
+                super::fetch_github_release(client, &github_config, current_version)
             );
             return select_linux_result(cnb, github);
         }
