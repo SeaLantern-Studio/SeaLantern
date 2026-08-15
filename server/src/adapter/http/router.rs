@@ -67,7 +67,8 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
     let system_routes = Router::new()
         .route("/system", get(handlers::system_snapshot))
         .route("/system/process/{pid}", get(handlers::process_usage))
-        .route("/system/directory/{*path}", get(handlers::directory_usage));
+        .route("/system/directory/{*path}", get(handlers::directory_usage))
+        .route("/system/default-run-path", get(handlers::default_run_path));
 
     let cron_routes = Router::new()
         .route("/cron-tasks", get(handlers::list_cron_tasks))
