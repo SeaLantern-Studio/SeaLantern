@@ -56,9 +56,7 @@ pub async fn directory_usage(
 }
 
 /// `GET /api/system/default-run-path` — 获取默认运行路径。
-pub async fn default_run_path(
-    State(state): State<AppState>,
-) -> Result<Json<String>, HttpError> {
+pub async fn default_run_path(State(state): State<AppState>) -> Result<Json<String>, HttpError> {
     state
         .system()
         .default_run_path()
