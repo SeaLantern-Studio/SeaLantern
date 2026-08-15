@@ -25,19 +25,19 @@ interface Props {
   /** 已过滤后的日志行（筛选在 ConsoleOutput 中完成） */
   lines: ConsoleLineObj[];
   /** 搜索关键词（空 = 不高亮） */
-  keyword: string;
+  keyword?: string;
   /** 是否大小写敏感 */
-  caseSensitive: boolean;
+  caseSensitive?: boolean;
   /** 当前导航目标行索引（lines 中的索引，-1 表示不导航） */
-  matchCursor: number;
+  matchCursor?: number;
   /** 字体大小（px） */
-  fontSize: number;
+  fontSize?: number;
   /** 字体族 */
-  fontFamily: string;
+  fontFamily?: string;
   /** 字间距（px） */
-  letterSpacing: number;
+  letterSpacing?: number;
   /** 空状态占位文本 */
-  placeholder: string;
+  placeholder?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
