@@ -101,6 +101,20 @@ const axumRouteMap: Record<string, AxumRoute> = {
   },
   settings_overview: { method: "GET", path: () => "/settings" },
   check_update: { method: "GET", path: () => "/update" },
+  download_create: {
+    method: "POST",
+    path: () => "/downloads",
+    // 前端按 Tauri 命令形状传 { request: {...} }，HTTP 侧解包 request 作为请求体
+    body: (a) => a.request,
+  },
+  download_query: {
+    method: "GET",
+    path: (a) => `/downloads/${encodeURIComponent(String(a.id))}`,
+  },
+  download_cancel: {
+    method: "DELETE",
+    path: (a) => `/downloads/${encodeURIComponent(String(a.id))}`,
+  },
 };
 
 /** Tauri 原生 invoke，动态导入避免浏览器环境加载失败 */

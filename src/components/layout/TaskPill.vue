@@ -131,7 +131,7 @@ const speedText = computed(() => (store.speed > 0 ? `${formatBytes(store.speed)}
 const sizeText = computed(() => {
   const t = store.currentTask;
   if (!t) return "--";
-  return `${formatBytes(t.downloaded)} / ${formatBytes(t.totalSize)}`;
+  return `${formatBytes(t.downloaded)} / ${formatBytes(t.total_size)}`;
 });
 
 /** 点一下开/关面板，完成了就标记已查看，把自动消失计时撅掉 */

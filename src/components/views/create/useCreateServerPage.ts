@@ -675,14 +675,14 @@ export function useCreateServerPage() {
           const { taskInfo: dlTask, start: dlStart } = downloadApi.useDownload();
           await dlStart({
             url: info.url,
-            savePath: tempDownloadPath,
-            threadCount: 32,
+            save_path: tempDownloadPath,
+            thread_count: 32,
           });
 
           // 等待下载完成
           await new Promise<void>((resolve, reject) => {
             const checkInterval = setInterval(() => {
-              if (dlTask.isFinished) {
+              if (dlTask.is_finished) {
                 clearInterval(checkInterval);
                 if (dlTask.status === "Completed") {
                   resolve();

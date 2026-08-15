@@ -10,8 +10,8 @@ use axum::Json;
 use serde::Serialize;
 
 use sealantern_interface::{
-    ConsoleServiceError, CronTaskServiceError, InstanceServiceError, ServerServiceError,
-    SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
+    ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
+    ServerServiceError, SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -242,6 +242,32 @@ impl HttpError {
         }
     }
 
+    /// 由下载任务管理契约错误构建 HTTP 错误。
+    pub fn from_download_error(error: DownloadServiceError) -> Self {
+        match error {
+            DownloadServiceError::TaskNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "download_task_not_found",
+                message: error.to_string(),
+            },
+            DownloadServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_input",
+                message: error.to_string(),
+            },
+            DownloadServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "download_operation_failed",
+                message: error.to_string(),
+            },
+            DownloadServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 构建一个客户端输入错误（400），带具体错误码。
     pub fn bad_request(code: &'static str, message: impl Into<String>) -> Self {
         Self {
@@ -294,6 +320,12 @@ impl From<SettingsServiceError> for HttpError {
 impl From<SystemServiceError> for HttpError {
     fn from(error: SystemServiceError) -> Self {
         Self::from_system_error(error)
+    }
+}
+
+impl From<DownloadServiceError> for HttpError {
+    fn from(error: DownloadServiceError) -> Self {
+        Self::from_download_error(error)
     }
 }
 

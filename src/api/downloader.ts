@@ -6,17 +6,17 @@ export type TaskStatus = "Pending" | "Downloading" | "Completed" | { Error: stri
 
 export interface DownloadTaskInfo {
   id: string;
-  totalSize: number;
+  total_size: number;
   downloaded: number;
   progress: number;
   status: TaskStatus;
-  isFinished: boolean;
+  is_finished: boolean;
 }
 
 export interface DownloadOptions {
   url: string;
-  savePath: string;
-  threadCount?: number;
+  save_path: string;
+  thread_count?: number;
 }
 
 export interface DownloadLink {
@@ -43,12 +43,12 @@ export const downloadApi = {
    * 基础 API：创建下载任务
    */
   async downloadFile(options: DownloadOptions): Promise<string> {
-    // 后端 download_create 接收 request 对象，DTO 用 camelCase 序列化
+    // 后端 download_create 接收 request 结构体参数（snake_case 字段）
     const task = await invoke<DownloadTaskInfo>("download_create", {
       request: {
         url: options.url,
-        savePath: options.savePath,
-        threadCount: options.threadCount || 32,
+        save_path: options.save_path,
+        thread_count: options.thread_count || 32,
       },
     });
     return task.id;
@@ -74,11 +74,11 @@ export const downloadApi = {
   useDownload() {
     const taskInfo = reactive<DownloadTaskInfo>({
       id: "",
-      totalSize: 0,
+      total_size: 0,
       downloaded: 0,
       progress: 0,
       status: "Pending",
-      isFinished: false,
+      is_finished: false,
     });
 
     const errorMessage = computed(() => {
@@ -97,7 +97,7 @@ export const downloadApi = {
       stop();
 
       const session = ++activeSession;
-      taskInfo.isFinished = false;
+      taskInfo.is_finished = false;
       taskInfo.progress = 0;
       taskInfo.status = "Pending";
 
@@ -115,8 +115,8 @@ export const downloadApi = {
             return;
           }
 
-          if (pollingInFlight || taskInfo.id !== id || taskInfo.isFinished) {
-            if (taskInfo.id !== id || taskInfo.isFinished) {
+          if (pollingInFlight || taskInfo.id !== id || taskInfo.is_finished) {
+            if (taskInfo.id !== id || taskInfo.is_finished) {
               clearInterval(intervalId);
               if (timer === intervalId) timer = null;
             }
@@ -131,13 +131,13 @@ export const downloadApi = {
             }
 
             Object.assign(taskInfo, data);
-            if (data.isFinished) {
+            if (data.is_finished) {
               taskInfo.progress = 100;
               clearInterval(intervalId);
               if (timer === intervalId) timer = null;
             }
           } catch (err) {
-            if (session === activeSession && taskInfo.id === id && !taskInfo.isFinished) {
+            if (session === activeSession && taskInfo.id === id && !taskInfo.is_finished) {
               taskInfo.status = { Error: i18n.t("downloader.connection_lost") };
             }
             clearInterval(intervalId);
@@ -149,7 +149,7 @@ export const downloadApi = {
         timer = intervalId;
       } catch (err: any) {
         taskInfo.status = { Error: err.toString() };
-        taskInfo.isFinished = true;
+        taskInfo.is_finished = true;
       }
     };
 
@@ -164,11 +164,11 @@ export const downloadApi = {
     const reset = () => {
       stop();
       taskInfo.id = "";
-      taskInfo.totalSize = 0;
+      taskInfo.total_size = 0;
       taskInfo.downloaded = 0;
       taskInfo.progress = 0;
       taskInfo.status = "Pending";
-      taskInfo.isFinished = false;
+      taskInfo.is_finished = false;
     };
 
     onUnmounted(stop);

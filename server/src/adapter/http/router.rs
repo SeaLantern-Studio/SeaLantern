@@ -80,12 +80,18 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
 
     let update_routes = Router::new().route("/update", get(handlers::check_update));
 
+    let download_routes = Router::new()
+        .route("/downloads", post(handlers::create_download))
+        .route("/downloads/{id}", get(handlers::query_download))
+        .route("/downloads/{id}", axum::routing::delete(handlers::cancel_download));
+
     Router::new()
         .nest(API_PREFIX, instance_routes)
         .nest(API_PREFIX, settings_routes)
         .nest(API_PREFIX, system_routes)
         .nest(API_PREFIX, cron_routes)
         .nest(API_PREFIX, update_routes)
+        .nest(API_PREFIX, download_routes)
         .merge(plugin_rpc_routes)
         .merge(spa_router(config))
         .with_state(state)

@@ -309,7 +309,7 @@ async function handleFileDownload() {
 
   try {
     await downloadStore.startTask(
-      { url: url.value, savePath: fullSavePath, threadCount: threadCountInt },
+      { url: url.value, save_path: fullSavePath, thread_count: threadCountInt },
       { filename: filename.value, savePath: fullSavePath, origin: "file" },
     );
 
@@ -333,8 +333,8 @@ async function handleServerDownload() {
     await downloadStore.startTask(
       {
         url: info.value.url,
-        savePath: targetPath,
-        threadCount: parseInt(serverThreadCount.value, 10),
+        save_path: targetPath,
+        thread_count: parseInt(serverThreadCount.value, 10),
       },
       { filename: serverFilename.value, savePath: targetPath, origin: "server" },
     );

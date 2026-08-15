@@ -4,6 +4,7 @@
 
 pub mod console;
 pub mod cron;
+pub mod download;
 pub mod instance;
 pub mod server;
 pub mod settings;
@@ -15,6 +16,7 @@ pub use cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
     update_cron_task,
 };
+pub use download::{cancel_download, create_download, query_download};
 pub use instance::{
     create_instance, delete_instance, get_instance, list_instances, rename_instance,
     update_instance_path,

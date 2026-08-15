@@ -52,11 +52,11 @@ export const useDownloadStore = defineStore("download", () => {
   // ========== Getters ==========
   /** 正在下载中，有任务 ID 且没完成 */
   const isDownloading = computed(
-    () => !!currentTask.value && currentTask.value.id !== "" && !currentTask.value.isFinished,
+    () => !!currentTask.value && currentTask.value.id !== "" && !currentTask.value.is_finished,
   );
 
   /** 任务结束了没，完成或出错都算 */
-  const isFinished = computed(() => !!currentTask.value?.isFinished);
+  const isFinished = computed(() => !!currentTask.value?.is_finished);
 
   /** 错误信息字符串，没错误返回 null */
   const taskError = computed(() => {
@@ -168,11 +168,11 @@ export const useDownloadStore = defineStore("download", () => {
     // 重置为新任务状态
     currentTask.value = {
       id: "",
-      totalSize: 0,
+      total_size: 0,
       downloaded: 0,
       progress: 0,
       status: "Pending",
-      isFinished: false,
+      is_finished: false,
     };
     taskOriginTab.value = meta.origin;
     filename.value = meta.filename;
@@ -197,8 +197,8 @@ export const useDownloadStore = defineStore("download", () => {
           return;
         }
         const task = currentTask.value;
-        if (!task || pollingInFlight || task.id !== id || task.isFinished) {
-          if (!task || task.id !== id || task.isFinished) stopPolling();
+        if (!task || pollingInFlight || task.id !== id || task.is_finished) {
+          if (!task || task.id !== id || task.is_finished) stopPolling();
           return;
         }
 
@@ -219,7 +219,7 @@ export const useDownloadStore = defineStore("download", () => {
           lastTimestamp = now;
 
           Object.assign(currentTask.value, data);
-          if (data.isFinished) {
+          if (data.is_finished) {
             currentTask.value.progress = 100;
             speed.value = 0;
             stopPolling();
@@ -230,10 +230,10 @@ export const useDownloadStore = defineStore("download", () => {
             session === activeSession &&
             currentTask.value &&
             currentTask.value.id === id &&
-            !currentTask.value.isFinished
+            !currentTask.value.is_finished
           ) {
             currentTask.value.status = { Error: i18n.t("downloader.connection_lost") };
-            currentTask.value.isFinished = true;
+            currentTask.value.is_finished = true;
             speed.value = 0;
             startAutoDismissTimer();
           }
@@ -245,7 +245,7 @@ export const useDownloadStore = defineStore("download", () => {
     } catch (err: any) {
       if (currentTask.value) {
         currentTask.value.status = { Error: err.toString() };
-        currentTask.value.isFinished = true;
+        currentTask.value.is_finished = true;
         startAutoDismissTimer();
       }
     }
