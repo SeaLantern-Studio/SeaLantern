@@ -1010,3 +1010,155 @@ pub fn config_registry_operation_failed(
         "registry operation failed"
     );
 }
+
+// ---------------------------------------------------------------------------
+// 服务器日志分享（mclo.gs）
+// ---------------------------------------------------------------------------
+
+/// mclo.gs 日志分享模块的 tracing 目标。
+pub const MCLOGS_TARGET: &str = "sealantern.extra.mclogs";
+
+/// Event: 网络客户端加载失败。
+pub const EVENT_MCLOGS_NETCLIENT_INIT_FAILED: &str = "net_client_init_failed";
+/// Event: 构建上传请求失败。
+pub const EVENT_MCLOGS_REQUEST_BUILD_FAILED: &str = "request_build_failed";
+/// Event: 序列化上传内容失败。
+pub const EVENT_MCLOGS_SERIALIZE_FAILED: &str = "serialize_failed";
+/// Event: 上传请求发送失败。
+pub const EVENT_MCLOGS_UPLOAD_FAILED: &str = "upload_failed";
+/// Event: mclo.gs 返回非成功状态码。
+pub const EVENT_MCLOGS_STATUS_ERROR: &str = "status_error";
+/// Event: 解析 mclo.gs 响应失败。
+pub const EVENT_MCLOGS_PARSE_FAILED: &str = "parse_failed";
+/// Event: mclo.gs 拒绝上传。
+pub const EVENT_MCLOGS_REJECTED: &str = "rejected";
+/// Event: 响应成功但缺少 url 字段。
+pub const EVENT_MCLOGS_URL_MISSING: &str = "url_missing";
+/// Event: 日志分享成功。
+pub const EVENT_MCLOGS_SHARED: &str = "shared";
+/// Event: 日志超行数截断。
+pub const EVENT_MCLOGS_PAYLOAD_TRUNCATED: &str = "payload_truncated";
+/// Event: 日志内容为空。
+pub const EVENT_MCLOGS_PAYLOAD_EMPTY: &str = "payload_empty";
+/// Event: 日志超过大小限制。
+pub const EVENT_MCLOGS_PAYLOAD_TOO_LARGE: &str = "payload_too_large";
+
+/// 记录网络客户端加载失败。
+pub fn mclogs_netclient_init_failed(e: &dyn Display) {
+    tracing::error!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_NETCLIENT_INIT_FAILED,
+        error = %e,
+        "failed to initialize network client"
+    );
+}
+
+/// 记录构建上传请求失败。
+pub fn mclogs_request_build_failed(e: &dyn Display) {
+    tracing::error!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_REQUEST_BUILD_FAILED,
+        error = %e,
+        "failed to build upload request"
+    );
+}
+
+/// 记录序列化上传内容失败。
+pub fn mclogs_serialize_failed(e: &dyn Display) {
+    tracing::error!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_SERIALIZE_FAILED,
+        error = %e,
+        "failed to serialize upload body"
+    );
+}
+
+/// 记录上传请求发送失败。
+pub fn mclogs_upload_failed(e: &dyn Display) {
+    tracing::error!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_UPLOAD_FAILED,
+        error = %e,
+        "failed to upload logs to mclo.gs"
+    );
+}
+
+/// 记录 mclo.gs 返回非成功状态码。
+pub fn mclogs_status_error(status: u16) {
+    tracing::warn!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_STATUS_ERROR,
+        status,
+        "mclo.gs returned a non-success status code"
+    );
+}
+
+/// 记录解析 mclo.gs 响应失败。
+pub fn mclogs_parse_failed(e: &dyn Display) {
+    tracing::error!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_PARSE_FAILED,
+        error = %e,
+        "failed to parse mclo.gs response"
+    );
+}
+
+/// 记录 mclo.gs 拒绝上传。
+pub fn mclogs_rejected(error: &str) {
+    tracing::warn!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_REJECTED,
+        error,
+        "mclo.gs rejected the upload"
+    );
+}
+
+/// 记录响应成功但缺少 url 字段。
+pub fn mclogs_url_missing() {
+    tracing::warn!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_URL_MISSING,
+        "mclo.gs response succeeded but the url field is missing"
+    );
+}
+
+/// 记录日志分享成功。
+pub fn mclogs_shared(url: &str) {
+    tracing::info!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_SHARED,
+        url,
+        "logs shared to mclo.gs successfully"
+    );
+}
+
+/// 记录日志超过大小限制被本地拦截。
+pub fn mclogs_payload_too_large(size_bytes: usize, max_bytes: usize) {
+    tracing::warn!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_PAYLOAD_TOO_LARGE,
+        size_bytes,
+        max_bytes,
+        "prepare_payload rejected: content exceeds mclo.gs size limit"
+    );
+}
+
+/// 记录日志超行数截断，仅保留末尾若干行。
+pub fn mclogs_payload_truncated(dropped_lines: usize, kept_lines: usize) {
+    tracing::warn!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_PAYLOAD_TRUNCATED,
+        dropped_lines,
+        kept_lines,
+        "log exceeds mclo.gs line limit, keeping only the last lines"
+    );
+}
+
+/// 记录日志内容为空、分享被拒绝。
+pub fn mclogs_payload_empty() {
+    tracing::warn!(
+        target: MCLOGS_TARGET,
+        event_name = EVENT_MCLOGS_PAYLOAD_EMPTY,
+        "prepare_payload rejected: empty content"
+    );
+}
