@@ -13,6 +13,7 @@ import { Cpu, HardDrive, MemoryStick } from "lucide-vue-next";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
+import type { LogFilterLevel } from "@type/console";
 import { useServerStore } from "@stores/serverStore";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
@@ -54,6 +55,57 @@ const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
 const consoleDropEmptyLine = ref(true);
+// 搜索/筛选状态（组件被 keep-alive 缓存，切回时自动保留）
+const searchKeyword = ref("");
+const caseSensitive = ref(false);
+const filterLevel = ref<LogFilterLevel>("all");
+const matchCursor = ref(-1);
+const matchCount = ref(0);
+
+const levelOptions: { label: string; value: LogFilterLevel }[] = [
+  { label: i18n.t("console.level_all"), value: "all" },
+  { label: "INFO", value: "info" },
+  { label: "WARN", value: "warn" },
+  { label: "ERROR", value: "error" },
+  { label: "DEBUG", value: "debug" },
+];
+
+const matchDisplay = computed(() => {
+  if (matchCount.value === 0) return "0/0";
+  const cur = matchCursor.value < 0 ? 0 : Math.min(matchCursor.value, matchCount.value - 1);
+  return `${cur + 1}/${matchCount.value}`;
+});
+
+function onMatchCount(count: number) {
+  matchCount.value = count;
+  if (matchCursor.value >= count) matchCursor.value = count > 0 ? 0 : -1;
+}
+
+function navigateMatch(dir: "prev" | "next") {
+  if (matchCount.value === 0) {
+    matchCursor.value = -1;
+    return;
+  }
+  if (matchCursor.value < 0) matchCursor.value = 0;
+  if (dir === "next") {
+    matchCursor.value = (matchCursor.value + 1) % matchCount.value;
+  } else {
+    matchCursor.value = (matchCursor.value - 1 + matchCount.value) % matchCount.value;
+  }
+}
+
+function resetSearchState() {
+  searchKeyword.value = "";
+  caseSensitive.value = false;
+  filterLevel.value = "all";
+  matchCursor.value = -1;
+}
+
+// 搜索关键词或筛选级别变化时，导航游标归位（重新从首个匹配开始）
+watch([searchKeyword, filterLevel], () => {
+  matchCursor.value = -1;
+});
+
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
 const {
@@ -1038,6 +1090,7 @@ function exportLogs() {
 
 function handleClearLogs() {
   consoleOutputRef.value?.clear();
+  resetSearchState();
 }
 
 async function handleShareLogs() {
@@ -1164,6 +1217,81 @@ function deleteCommand() {}
         </div>
       </div>
 
+      <div class="console-search-bar">
+        <div class="search-input-wrap">
+          <svg
+            class="search-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            v-model="searchKeyword"
+            class="search-input"
+            :placeholder="i18n.t('console.search_placeholder')"
+            spellcheck="false"
+            @keydown.esc="searchKeyword = ''"
+          />
+          <button
+            v-if="searchKeyword"
+            class="search-icon-btn"
+            :title="i18n.t('console.search_clear')"
+            @click="searchKeyword = ''"
+          >
+            ×
+          </button>
+          <button
+            class="search-icon-btn search-case"
+            :class="{ active: caseSensitive }"
+            title="Aa"
+            @click="caseSensitive = !caseSensitive"
+          >
+            Aa
+          </button>
+        </div>
+
+        <div class="level-filter">
+          <button
+            v-for="opt in levelOptions"
+            :key="opt.value"
+            class="level-btn"
+            :class="[`level-btn--${opt.value}`, { 'level-btn--active': filterLevel === opt.value }]"
+            @click="filterLevel = opt.value"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+
+        <div class="search-nav">
+          <span class="match-count">{{ matchDisplay }}</span>
+          <button
+            class="nav-btn"
+            :disabled="matchCount === 0"
+            :title="i18n.t('console.prev_match')"
+            @click="navigateMatch('prev')"
+          >
+            ▲
+          </button>
+          <button
+            class="nav-btn"
+            :disabled="matchCount === 0"
+            :title="i18n.t('console.next_match')"
+            @click="navigateMatch('next')"
+          >
+            ▼
+          </button>
+        </div>
+      </div>
+
       <div class="console-terminal-shell">
         <ConsoleOutput
           ref="consoleOutputRef"
@@ -1173,7 +1301,12 @@ function deleteCommand() {}
           :maxLogLines="maxLogLines"
           :history="commandHistory"
           :completionMd="commandCompletionsMd"
+          :search-keyword="searchKeyword"
+          :case-sensitive="caseSensitive"
+          :filter-level="filterLevel"
+          :match-cursor="matchCursor"
           @command="sendCommand"
+          @update:match-count="onMatchCount"
         />
 
         <div class="console-stats-summary">
@@ -1223,3 +1356,166 @@ function deleteCommand() {}
     </template>
   </div>
 </template>
+
+<style scoped>
+.console-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sl-border, #374151);
+  background: var(--sl-surface, #161b22);
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+  padding: 4px 8px;
+  border: 1px solid var(--sl-border, #374151);
+  border-radius: 8px;
+  background: var(--sl-bg, #0d1117);
+}
+
+.search-icon {
+  color: var(--sl-text-muted, #6b7280);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--sl-text, #e5e7eb);
+  font-size: 13px;
+  font-family: var(--sl-font-mono, monospace);
+}
+
+.search-input::placeholder {
+  color: var(--sl-text-muted, #6b7280);
+  opacity: 0.7;
+}
+
+.search-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sl-text-muted, #9ca3af);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.search-icon-btn:hover {
+  background: var(--sl-surface-hover, #374151);
+  color: var(--sl-text, #e5e7eb);
+}
+
+.search-case.active {
+  background: var(--sl-primary-bg, rgba(59, 130, 246, 0.18));
+  color: var(--sl-primary, #3b82f6);
+  font-weight: 600;
+}
+
+.level-filter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.level-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--sl-border, #374151);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sl-text-muted, #9ca3af);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.level-btn:hover {
+  border-color: var(--sl-text-muted, #6b7280);
+  color: var(--sl-text, #e5e7eb);
+}
+
+.level-btn--active {
+  color: #fff;
+  font-weight: 600;
+}
+
+.level-btn--all.level-btn--active {
+  background: var(--sl-surface-hover, #374151);
+  color: var(--sl-text, #e5e7eb);
+}
+
+.level-btn--info.level-btn--active {
+  background: var(--sl-info, #3b82f6);
+  border-color: var(--sl-info, #3b82f6);
+}
+
+.level-btn--warn.level-btn--active {
+  background: var(--sl-warning, #f59e0b);
+  border-color: var(--sl-warning, #f59e0b);
+  color: #1f2937;
+}
+
+.level-btn--error.level-btn--active {
+  background: var(--sl-error, #ef4444);
+  border-color: var(--sl-error, #ef4444);
+}
+
+.level-btn--debug.level-btn--active {
+  background: #c084fc;
+  border-color: #c084fc;
+  color: #1f2937;
+}
+
+.search-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.match-count {
+  font-size: 12px;
+  color: var(--sl-text-muted, #9ca3af);
+  font-family: var(--sl-font-mono, monospace);
+  min-width: 44px;
+  text-align: center;
+}
+
+.nav-btn {
+  width: 28px;
+  height: 26px;
+  border: 1px solid var(--sl-border, #374151);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sl-text, #e5e7eb);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: var(--sl-surface-hover, #374151);
+}
+
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+</style>

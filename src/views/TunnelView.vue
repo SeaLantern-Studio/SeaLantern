@@ -597,9 +597,8 @@ onUnmounted(() => {
           :consoleLetterSpacing="consoleLetterSpacing"
           :maxLogLines="maxLogLines"
           :readonly="true"
-          :userScrolledUp="userScrolledUp"
-          @scroll="(value) => (userScrolledUp = value)"
-          @scrollToBottom="
+          @scroll="(value: boolean) => (userScrolledUp = value)"
+          @scroll-to-bottom="
             userScrolledUp = false;
             tunnelOutputRef?.doScroll();
           "
