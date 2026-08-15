@@ -9,6 +9,7 @@
 
 use std::path::PathBuf;
 
+use super::error::PlatformError;
 use crate::observability;
 
 const APP_DATA_DIR_ENV: &str = "SEALANTERN_DATA_DIR";
@@ -131,6 +132,23 @@ pub fn get_or_create_app_data_dir() -> String {
     data_dir.to_string_lossy().to_string()
 }
 
+/// 获取默认运行路径。
+///
+/// 路径优先级：标准数据目录 → 文档目录 → 当前工作目录，
+/// 统一使用 `SeaLantern` 目录名（与旧版本路径保持一致，避免升级后找不到旧数据）。
+///
+/// 返回原始 `PathBuf` 而非字符串，避免路径在 `to_string_lossy` 过程中丢失非 UTF-8 信息；
+/// 目录全部不可用时以 [`PlatformError::ResolveDefaultRunPath`] 返回原始错误。
+pub fn get_default_run_path() -> Result<PathBuf, PlatformError> {
+    if let Some(base) = dirs_next::data_dir().or_else(dirs_next::document_dir) {
+        return Ok(base.join("SeaLantern"));
+    }
+
+    std::env::current_dir()
+        .map(|cwd| cwd.join("SeaLantern"))
+        .map_err(|source| PlatformError::ResolveDefaultRunPath { source })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,5 +179,22 @@ mod tests {
     fn test_get_or_create_app_data_dir_returns_non_empty() {
         let dir_str = get_or_create_app_data_dir();
         assert!(!dir_str.is_empty());
+    }
+
+    #[test]
+    fn test_get_default_run_path_returns_non_empty() {
+        let path = get_default_run_path().expect("default run path should resolve");
+        assert!(!path.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_get_default_run_path_ends_with_app_name() {
+        let path = get_default_run_path().expect("default run path should resolve");
+        let name = path
+            .file_name()
+            .expect("path should have a file name")
+            .to_string_lossy();
+
+        assert_eq!(name, "SeaLantern", "expected SeaLantern directory name, got: {name}");
     }
 }
