@@ -87,10 +87,7 @@ impl AppServices {
                 download: Arc::new(CoreDownloadService::new()),
                 console: Arc::new(CoreConsoleService::new(instance.clone())),
                 cron: Arc::new(CoreCronTaskService::new(server.clone())),
-                system: Arc::new(CoreSystemService::new(
-                    instance.clone(),
-                    server.clone(),
-                )),
+                system: Arc::new(CoreSystemService::new(instance.clone(), server.clone())),
                 server,
                 instance,
                 java: Arc::new(CoreJavaService),

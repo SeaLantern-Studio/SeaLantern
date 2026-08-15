@@ -198,7 +198,8 @@ export const systemApi = {
   },
 
   async getServerResourceUsage(serverId: string): Promise<ServerResourceUsage> {
-    return tauriInvoke("get_server_resource_usage", { serverId });
+    // 后端命令参数为 instance_id，走统一 invoke 入口，Tauri 与 Axum 模式契约一致
+    return invoke<ServerResourceUsage>("get_server_resource_usage", { instance_id: serverId });
   },
 
   async pickJarFile(): Promise<string | null> {

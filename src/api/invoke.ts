@@ -74,7 +74,8 @@ const axumRouteMap: Record<string, AxumRoute> = {
   get_default_run_path: { method: "GET", path: () => "/system/default-run-path" },
   get_server_resource_usage: {
     method: "GET",
-    path: (a) => `/system/servers/${encodeURIComponent(String(a.instanceId))}/usage`,
+    // 参数名与 Tauri 命令契约保持一致（instance_id）
+    path: (a) => `/system/servers/${encodeURIComponent(String(a.instance_id))}/usage`,
   },
   list_cron_tasks: { method: "GET", path: () => "/cron-tasks" },
   create_cron_task: { method: "POST", path: () => "/cron-tasks", body: (a) => a.draft },

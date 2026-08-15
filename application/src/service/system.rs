@@ -1,4 +1,4 @@
-﻿//! 系统资源信息服务实现。
+//! 系统资源信息服务实现。
 //!
 //! 实现 [`sealantern_interface::SystemService`] 能力端口，组合 `infra` 的
 //! 平台系统采集能力（CPU / 内存 / 磁盘 / 网络 / 进程 / 目录占用），
@@ -40,10 +40,7 @@ impl CoreSystemService {
         instance_service: Arc<CoreInstanceService>,
         server_service: Arc<CoreServerService>,
     ) -> Self {
-        Self {
-            instance_service,
-            server_service,
-        }
+        Self { instance_service, server_service }
     }
     /// 采集整机资源快照，返回应用层主错误。
     ///
