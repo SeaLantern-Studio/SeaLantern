@@ -20,6 +20,8 @@ pub enum PlatformError {
     },
     /// 系统命令返回了无法解释的输出。
     InvalidCommandOutput { operation: &'static str },
+    /// 无法确定默认运行路径（标准数据目录、文档目录与当前目录均不可用）。
+    ResolveDefaultRunPath { source: std::io::Error },
 }
 
 impl fmt::Display for PlatformError {
@@ -40,6 +42,9 @@ impl fmt::Display for PlatformError {
             Self::InvalidCommandOutput { operation } => {
                 write!(formatter, "{operation} returned an unexpected result")
             }
+            Self::ResolveDefaultRunPath { source } => {
+                write!(formatter, "failed to resolve default run path: {source}")
+            }
         }
     }
 }
@@ -47,7 +52,9 @@ impl fmt::Display for PlatformError {
 impl std::error::Error for PlatformError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::ReadCertificate { source, .. } | Self::Command { source, .. } => Some(source),
+            Self::ReadCertificate { source, .. }
+            | Self::Command { source, .. }
+            | Self::ResolveDefaultRunPath { source } => Some(source),
             _ => None,
         }
     }

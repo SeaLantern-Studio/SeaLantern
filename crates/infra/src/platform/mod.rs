@@ -17,7 +17,7 @@ pub use certificate::{
 pub use elevation::{is_elevated, request_elevation, ElevationLaunch};
 pub use environment::{Environment, EnvironmentError};
 pub use error::PlatformError;
-pub use locations::{get_app_data_dir, get_or_create_app_data_dir};
+pub use locations::{get_app_data_dir, get_default_run_path, get_or_create_app_data_dir};
 pub use proxy::{current_system_proxy, PlatformSystemProxyProvider, SystemProxyReadError};
 pub use system::{
     collect_disks, collect_networks, collect_process_usage, collect_resource_snapshot,
