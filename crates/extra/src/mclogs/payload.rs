@@ -1,9 +1,9 @@
+use crate::observability;
+
 /// mclo.gs 限制单条日志最多 25,000 行，超出会上传失败。
 const MAX_LOG_LINE_COUNT: usize = 25_000;
 /// mclo.gs 限制单条日志最多约 10 MiB（UTF-8 字节长度），超出会上传失败。
 const MAX_LOG_SIZE_BYTES: usize = 10 * 1024 * 1024;
-/// tracing 目标字段，便于按模块过滤日志。
-const TRACING_TARGET: &str = "sealantern.extra.mclogs";
 
 /// 超出行数限制时仅保留最后 `MAX_LOG_LINE_COUNT` 行。
 ///
@@ -13,12 +13,7 @@ fn truncate_to_last_lines(text: &str) -> String {
     let total_lines = text.lines().count();
     if total_lines > MAX_LOG_LINE_COUNT {
         let dropped_lines = total_lines - MAX_LOG_LINE_COUNT;
-        tracing::debug!(
-            target: TRACING_TARGET,
-            dropped_lines,
-            kept_lines = MAX_LOG_LINE_COUNT,
-            "log exceeds mclo.gs line limit, keeping only the last lines"
-        );
+        observability::mclogs_payload_truncated(dropped_lines, MAX_LOG_LINE_COUNT);
         text.lines()
             .skip(total_lines - MAX_LOG_LINE_COUNT)
             .collect::<Vec<&str>>()
@@ -32,7 +27,7 @@ fn truncate_to_last_lines(text: &str) -> String {
 pub(super) fn prepare_payload(content: &str) -> Result<String, String> {
     let trimmed = content.trim();
     if trimmed.is_empty() {
-        tracing::debug!(target: TRACING_TARGET, "share_logs rejected: empty content");
+        observability::mclogs_payload_empty();
         return Err("日志内容为空，无法分享".to_string());
     }
 
@@ -42,12 +37,7 @@ pub(super) fn prepare_payload(content: &str) -> Result<String, String> {
     // 大小限制：mclo.gs 单条上限约 10 MiB，超出会被拒绝，
     // 先本地拦截以给出明确错误，而不是等到服务端返回失败。
     if payload_content.len() > MAX_LOG_SIZE_BYTES {
-        tracing::warn!(
-            target: TRACING_TARGET,
-            size_bytes = payload_content.len(),
-            max_bytes = MAX_LOG_SIZE_BYTES,
-            "share_logs rejected: content exceeds mclo.gs size limit"
-        );
+        observability::mclogs_payload_too_large(payload_content.len(), MAX_LOG_SIZE_BYTES);
         return Err(format!(
             "日志大小 {} 字节已超过 mclo.gs 上限 {} 字节，无法分享",
             payload_content.len(),
