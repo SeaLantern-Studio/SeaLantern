@@ -1,4 +1,4 @@
-//! 系统资源信息服务实现。
+﻿//! 系统资源信息服务实现。
 //!
 //! 实现 [`sealantern_interface::SystemService`] 能力端口，组合 `infra` 的
 //! 平台系统采集能力（CPU / 内存 / 磁盘 / 网络 / 进程 / 目录占用），
@@ -7,31 +7,44 @@
 //! 错误分层：内部以应用层主错误 [`SystemError`] 为源头，暴露
 //! [`SystemService`] 时统一转为接口契约错误 [`SystemServiceError`]。
 
-use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use sealantern_infra::platform::{
     collect_disks, collect_networks, collect_process_usage, collect_resource_snapshot,
-    collect_system_info, cpu_brand_name, directory_size, get_default_run_path, path_disk_capacity,
-    process_count,
+    collect_system_info, cpu_brand_name, get_default_run_path, process_count,
 };
+use sealantern_interface::server::ServerState;
 use sealantern_interface::system::{
-    CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
-    SystemSnapshot,
+    CpuInfo, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
+    ServerResourceUsage, SystemSnapshot,
 };
-use sealantern_interface::{SystemService, SystemServiceError};
+use sealantern_interface::{InstanceService, ServerService, SystemService, SystemServiceError};
 
 use crate::error::SystemError;
+use crate::service::{CoreInstanceService, CoreServerService};
 
 /// CPU 采样间隔：`sysinfo` 的 CPU 使用率是增量值，需间隔两次采样取后一次。
 const CPU_SAMPLE_INTERVAL: Duration = Duration::from_millis(200);
 
 /// 基于 `infra` 平台采集能力的系统资源信息服务实现。
-#[derive(Debug, Default)]
-pub struct CoreSystemService;
+pub struct CoreSystemService {
+    instance_service: Arc<CoreInstanceService>,
+    server_service: Arc<CoreServerService>,
+}
 
 impl CoreSystemService {
+    /// 构造系统资源信息服务。
+    pub fn new(
+        instance_service: Arc<CoreInstanceService>,
+        server_service: Arc<CoreServerService>,
+    ) -> Self {
+        Self {
+            instance_service,
+            server_service,
+        }
+    }
     /// 采集整机资源快照，返回应用层主错误。
     ///
     /// 同步的 sysinfo 采集经 `spawn_blocking` 调度到阻塞线程池，CPU 采样
@@ -164,34 +177,6 @@ impl CoreSystemService {
         })
     }
 
-    /// 计算目录磁盘占用，返回应用层主错误。
-    ///
-    /// 目录遍历与容量查询是同步且可能耗时的操作，经 `spawn_blocking` 调度到
-    /// 阻塞线程池，避免阻塞异步运行时的核心线程。
-    async fn directory_usage_inner(path: &Path) -> Result<DirectoryUsage, SystemError> {
-        let path_owned = path.to_path_buf();
-        let (path, used, total, available) =
-            tokio::task::spawn_blocking(move || -> Result<_, SystemError> {
-                if !path_owned.exists() {
-                    return Err(SystemError::PathNotFound);
-                }
-
-                let used = directory_size(&path_owned);
-                let (total, available) = path_disk_capacity(&path_owned);
-                Ok((path_owned, used, total, available))
-            })
-            .await??;
-
-        let total_effective = if total > 0 { total } else { used.max(1) };
-        Ok(DirectoryUsage {
-            path,
-            used,
-            total: total_effective,
-            available,
-            usage: percent(used, total_effective),
-        })
-    }
-
     /// 解析默认运行路径，返回应用层主错误。
     async fn default_run_path_inner() -> Result<String, SystemError> {
         get_default_run_path()
@@ -211,16 +196,73 @@ impl SystemService for CoreSystemService {
         Self::snapshot_inner().await.map_err(Into::into)
     }
 
-    async fn process_usage(&self, pid: u32) -> Result<ProcessResourceUsage, SystemServiceError> {
-        Self::process_usage_inner(pid).await.map_err(Into::into)
-    }
-
-    async fn directory_usage(&self, path: &Path) -> Result<DirectoryUsage, SystemServiceError> {
-        Self::directory_usage_inner(path).await.map_err(Into::into)
-    }
-
     async fn default_run_path(&self) -> Result<String, SystemServiceError> {
         Self::default_run_path_inner().await.map_err(Into::into)
+    }
+
+    async fn server_resource_usage(
+        &self,
+        instance_id: &str,
+    ) -> Result<ServerResourceUsage, SystemServiceError> {
+        let instance_id = sealantern_core::instance::InstanceId::new(instance_id)
+            .map_err(|_| SystemServiceError::PathNotFound)?;
+
+        let instance = self
+            .instance_service
+            .find(&instance_id)
+            .await
+            .map_err(|_| SystemServiceError::OperationFailed)?
+            .ok_or(SystemServiceError::PathNotFound)?;
+
+        let snapshot = self
+            .server_service
+            .status(&instance_id)
+            .await
+            .map_err(|_| SystemServiceError::OperationFailed)?;
+
+        let status = state_to_string(snapshot.state);
+
+        // 未运行或无进程时返回空资源，不报错。
+        let usage = match snapshot.pid {
+            Some(pid) => Self::process_usage_inner(pid).await?,
+            None => ProcessResourceUsage {
+                pid: None,
+                cpu_usage: 0.0,
+                memory_used: 0,
+                memory_total: 0,
+                memory_usage: 0.0,
+            },
+        };
+        let full = Self::snapshot_inner().await?;
+
+        Ok(ServerResourceUsage {
+            server_id: instance.id.as_str().to_string(),
+            server_name: instance.name,
+            status,
+            pid: snapshot.pid,
+            cpu: CpuInfo {
+                name: full.cpu.name,
+                count: full.cpu.count,
+                usage: usage.cpu_usage.clamp(0.0, 100.0),
+            },
+            memory: MemoryInfo {
+                total: usage.memory_total,
+                used: usage.memory_used,
+                available: usage.memory_total.saturating_sub(usage.memory_used),
+                usage: usage.memory_usage.clamp(0.0, 100.0),
+            },
+            disk: full.disk,
+        })
+    }
+}
+
+/// 将服务器运行状态转为小写字符串（对齐前端 `status` 字段）。
+fn state_to_string(state: ServerState) -> String {
+    match state {
+        ServerState::Starting => "starting".to_string(),
+        ServerState::Running => "running".to_string(),
+        ServerState::Stopping => "stopping".to_string(),
+        ServerState::Stopped => "stopped".to_string(),
     }
 }
 
@@ -235,11 +277,30 @@ fn percent(used: u64, total: u64) -> f32 {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use tempfile::tempdir;
+
     use super::*;
+
+    /// 构造测试用系统服务（临时实例目录 + 独立 server 服务）。
+    async fn test_service() -> CoreSystemService {
+        let dir = tempdir().expect("create temp dir");
+        let instance = Arc::new(
+            CoreInstanceService::with_path(dir.path().join("instances.json"))
+                .await
+                .expect("create instance service"),
+        );
+        let server = Arc::new(CoreServerService::new(
+            instance.clone(),
+            Arc::new(crate::service::CoreSettingsService::new()),
+        ));
+        CoreSystemService::new(instance, server)
+    }
 
     #[tokio::test]
     async fn snapshot_reports_realistic_values() {
-        let service = CoreSystemService;
+        let service = test_service().await;
         let snapshot = service.system_snapshot().await.expect("snapshot");
 
         assert!(!snapshot.os.is_empty());
@@ -250,38 +311,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn current_process_usage_is_reported() {
-        let service = CoreSystemService;
-        let usage = service
-            .process_usage(std::process::id())
-            .await
-            .expect("process usage");
-
-        assert!(usage.pid.is_some());
-        assert!(usage.cpu_usage >= 0.0 && usage.cpu_usage <= 100.0);
-    }
-
-    #[tokio::test]
-    async fn missing_process_returns_none_pid() {
-        let service = CoreSystemService;
-        let usage = service.process_usage(u32::MAX).await.expect("usage");
-
-        assert_eq!(usage.pid, None);
-    }
-
-    #[tokio::test]
-    async fn missing_directory_reports_path_not_found() {
-        let service = CoreSystemService;
-        let result = service
-            .directory_usage(Path::new("/nonexistent/sl-path"))
-            .await;
-
-        assert_eq!(result, Err(SystemServiceError::PathNotFound));
-    }
-
-    #[tokio::test]
     async fn default_run_path_resolves_to_sea_lantern_dir() {
-        let service = CoreSystemService;
+        let service = test_service().await;
         let path = service.default_run_path().await.expect("default run path");
 
         let name = std::path::Path::new(&path)

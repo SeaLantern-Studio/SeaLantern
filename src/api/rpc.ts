@@ -65,8 +65,6 @@ const tauriCommandMap: Record<string, string> = {
   "server.console.send": "send_server_command",
   // 系统资源
   "system.snapshot": "get_system_snapshot",
-  "system.processUsage": "get_process_usage",
-  "system.directoryUsage": "get_directory_usage",
   // 定时任务
   "cron.list": "list_cron_tasks",
   "cron.create": "create_cron_task",

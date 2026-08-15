@@ -44,7 +44,7 @@ use adapter::tauri::commands::settings::{
     update_settings, update_settings_partial,
 };
 use adapter::tauri::commands::system::{
-    get_default_run_path, get_directory_usage, get_process_usage, get_system_snapshot,
+    get_default_run_path, get_server_resource_usage, get_system_snapshot,
 };
 use adapter::tauri::commands::update::check_update;
 use adapter::tauri::commands::update_install::{
@@ -97,8 +97,7 @@ pub fn run() {
             get_server_logs,
             //系统资源能力（由adapter/tauri/commands接入application）
             get_default_run_path,
-            get_directory_usage,
-            get_process_usage,
+            get_server_resource_usage,
             get_system_snapshot,
             //日志分享能力（上传到 mclo.gs）
             share_logs,
@@ -239,8 +238,7 @@ mod tests {
         "set_cron_task_enabled",
         "update_cron_task",
         "get_default_run_path",
-        "get_directory_usage",
-        "get_process_usage",
+        "get_server_resource_usage",
         "get_system_snapshot",
         "create_instance",
         "delete_instance",

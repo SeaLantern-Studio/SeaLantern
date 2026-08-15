@@ -8,6 +8,6 @@ mod service;
 
 pub use models::{
     CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
-    SystemSnapshot,
+    ServerResourceUsage, SystemSnapshot,
 };
 pub use service::SystemService;

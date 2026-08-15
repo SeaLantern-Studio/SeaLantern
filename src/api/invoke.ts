@@ -71,13 +71,10 @@ const axumRouteMap: Record<string, AxumRoute> = {
     body: (a) => ({ command: a.command }),
   },
   get_system_snapshot: { method: "GET", path: () => "/system" },
-  get_process_usage: {
+  get_default_run_path: { method: "GET", path: () => "/system/default-run-path" },
+  get_server_resource_usage: {
     method: "GET",
-    path: (a) => `/system/process/${encodeURIComponent(String(a.pid))}`,
-  },
-  get_directory_usage: {
-    method: "GET",
-    path: (a) => `/system/directory/${encodeURIComponent(String(a.path))}`,
+    path: (a) => `/system/servers/${encodeURIComponent(String(a.instanceId))}/usage`,
   },
   list_cron_tasks: { method: "GET", path: () => "/cron-tasks" },
   create_cron_task: { method: "POST", path: () => "/cron-tasks", body: (a) => a.draft },

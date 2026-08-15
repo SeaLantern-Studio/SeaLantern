@@ -87,6 +87,10 @@ impl AppServices {
                 download: Arc::new(CoreDownloadService::new()),
                 console: Arc::new(CoreConsoleService::new(instance.clone())),
                 cron: Arc::new(CoreCronTaskService::new(server.clone())),
+                system: Arc::new(CoreSystemService::new(
+                    instance.clone(),
+                    server.clone(),
+                )),
                 server,
                 instance,
                 java: Arc::new(CoreJavaService),
@@ -95,7 +99,6 @@ impl AppServices {
                 provisioning: Arc::new(CoreProvisioningService),
                 settings,
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
-                system: Arc::new(CoreSystemService),
                 update: Arc::new(CoreUpdateCheckService::new()),
                 update_install: Arc::new(CoreUpdateInstallService),
                 plugin: tokio::sync::OnceCell::new(),

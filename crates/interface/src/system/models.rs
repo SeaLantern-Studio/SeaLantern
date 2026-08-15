@@ -136,3 +136,23 @@ pub struct DirectoryUsage {
     /// 使用率（0.0 - 100.0）。
     pub usage: f32,
 }
+
+/// 单服务器资源占用（宿主消费的契约模型，按实例标识查询）。
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ServerResourceUsage {
+    /// 实例标识。
+    pub server_id: String,
+    /// 实例名称。
+    pub server_name: String,
+    /// 运行状态（`ServerState` 的小写字符串，如 `running` / `stopped`）。
+    pub status: String,
+    /// 进程 ID；未运行时为 `None`。
+    pub pid: Option<u32>,
+    /// CPU 资源。
+    pub cpu: CpuInfo,
+    /// 内存资源。
+    pub memory: MemoryInfo,
+    /// 磁盘汇总（总量/已用/可用为全部分区求和）。
+    pub disk: DiskSummary,
+}
