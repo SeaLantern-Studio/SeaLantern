@@ -24,6 +24,11 @@ pub enum SystemError {
         /// 底层来源错误。
         source: Box<dyn std::error::Error + Send + Sync>,
     },
+    /// 无法确定默认运行路径（标准数据目录、文档目录与当前目录均不可用）。
+    DefaultRunPathUnresolved {
+        /// 底层来源错误。
+        source: std::io::Error,
+    },
     /// 该能力尚未实现（占位）。
     Unsupported,
 }
@@ -37,6 +42,9 @@ impl fmt::Display for SystemError {
                 write!(formatter, "system operation failed: {source}")
             }
             Self::Internal { source } => write!(formatter, "internal system task failed: {source}"),
+            Self::DefaultRunPathUnresolved { source } => {
+                write!(formatter, "default run path unresolved: {source}")
+            }
             Self::Unsupported => write!(formatter, "operation not supported"),
         }
     }
@@ -47,6 +55,7 @@ impl std::error::Error for SystemError {
         match self {
             Self::OperationFailed { source } => Some(source),
             Self::Internal { source } => Some(source.as_ref()),
+            Self::DefaultRunPathUnresolved { source } => Some(source),
             _ => None,
         }
     }
@@ -75,6 +84,7 @@ impl From<SystemError> for SystemServiceError {
             SystemError::OperationFailed { .. } | SystemError::Internal { .. } => {
                 Self::OperationFailed
             }
+            SystemError::DefaultRunPathUnresolved { .. } => Self::DefaultRunPathUnresolved,
             SystemError::Unsupported => Self::Unsupported,
         }
     }

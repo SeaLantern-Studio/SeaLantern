@@ -134,11 +134,10 @@ pub fn get_or_create_app_data_dir() -> String {
 
 /// 获取默认运行路径。
 ///
-/// 路径优先级：标准数据目录 → 文档目录 → 当前工作目录，
-/// 统一使用 `SeaLantern` 目录名（与旧版本路径保持一致，避免升级后找不到旧数据）。
+/// 路径优先级：标准数据目录 → 文档目录 → 当前工作目录。
 ///
-/// 返回原始 `PathBuf` 而非字符串，避免路径在 `to_string_lossy` 过程中丢失非 UTF-8 信息；
-/// 目录全部不可用时以 [`PlatformError::ResolveDefaultRunPath`] 返回原始错误。
+/// 返回原始 `PathBuf` 而非字符串；目录全部不可用时以
+/// [`PlatformError::ResolveDefaultRunPath`] 返回原始错误。
 pub fn get_default_run_path() -> Result<PathBuf, PlatformError> {
     if let Some(base) = dirs_next::data_dir().or_else(dirs_next::document_dir) {
         return Ok(base.join("SeaLantern"));

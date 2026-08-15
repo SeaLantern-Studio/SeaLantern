@@ -190,6 +190,8 @@ pub enum SystemServiceError {
     PathNotFound,
     /// 底层系统采集 / IO 操作失败。
     OperationFailed,
+    /// 无法确定默认运行路径（标准数据目录、文档目录与当前目录均不可用）。
+    DefaultRunPathUnresolved,
     /// 该能力尚未实现（占位）。
     Unsupported,
 }
@@ -200,6 +202,7 @@ impl std::fmt::Display for SystemServiceError {
             Self::ProcessNotFound => "process not found",
             Self::PathNotFound => "path not found",
             Self::OperationFailed => "system operation failed",
+            Self::DefaultRunPathUnresolved => "default run path unresolved",
             Self::Unsupported => "operation not supported",
         };
         formatter.write_str(message)
