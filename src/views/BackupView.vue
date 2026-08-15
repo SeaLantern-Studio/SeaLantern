@@ -91,8 +91,8 @@ async function loadSettings() {
     selectedFormat.value = s.defaultFormat;
     selectedCompression.value = s.compressionLevel;
     selectedContents.value = [...s.autoBackupContents];
-  } catch {
-    // 使用默认值
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to load backup settings:", e);
   }
 }
 
@@ -175,8 +175,8 @@ onMounted(async () => {
     serverStore.setCurrentServer(serverStore.servers[0].id);
   }
   if (serverStore.currentServerId) {
-    await loadBackups();
-    await loadSettings();
+    // 两个接口互不依赖,并行拉取
+    await Promise.all([loadBackups(), loadSettings()]);
   }
 });
 
@@ -184,8 +184,7 @@ watch(
   () => serverStore.currentServerId,
   async () => {
     if (serverStore.currentServerId) {
-      await loadBackups();
-      await loadSettings();
+      await Promise.all([loadBackups(), loadSettings()]);
     }
   },
 );

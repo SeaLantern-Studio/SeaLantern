@@ -1,5 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
-import { rpcInvoke } from "@api/rpc";
+import { invoke } from "@api/invoke";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface UpdateInfo {
@@ -25,7 +25,7 @@ export interface DownloadProgress {
 
 export async function checkUpdate(): Promise<UpdateInfo | null> {
   try {
-    return await rpcInvoke<UpdateInfo>("update.check");
+    return await invoke<UpdateInfo>("check_update");
   } catch (error) {
     console.error("检查更新失败:", error);
     throw error;
@@ -38,7 +38,7 @@ export async function downloadUpdate(
   version?: string,
 ): Promise<string> {
   // 后端参数名是 snake_case，version 非可选需给默认值
-  return rpcInvoke<string>("update.download", {
+  return invoke<string>("update_download", {
     url,
     expected_hash: expectedHash,
     version: version ?? "",
@@ -47,18 +47,18 @@ export async function downloadUpdate(
 
 export async function installUpdate(filePath: string, version: string): Promise<void> {
   // 后端 update_install 接收 file_path 和 arguments 数组
-  return rpcInvoke<void>("update.install", {
+  return invoke<void>("update_install", {
     file_path: filePath,
     arguments: [version],
   });
 }
 
 export async function checkPendingUpdate(): Promise<PendingUpdate | null> {
-  return rpcInvoke<PendingUpdate | null>("update.pending");
+  return invoke<PendingUpdate | null>("update_pending");
 }
 
 export async function clearPendingUpdate(): Promise<void> {
-  return rpcInvoke<void>("update.clearPending");
+  return invoke<void>("update_clear_pending");
 }
 
 export async function restartAndInstall(): Promise<void> {

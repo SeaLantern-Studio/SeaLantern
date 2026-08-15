@@ -1,5 +1,5 @@
-import { tauriInvoke } from "@api/tauri";
-import { rpcInvoke } from "@api/rpc";
+import { tauriInvoke, isBrowserEnv } from "@api/tauri";
+import { invoke } from "@api/invoke";
 import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 
 export interface CpuInfo {
@@ -160,7 +160,7 @@ export const systemApi = {
   },
 
   async getSystemInfo(): Promise<SystemInfo> {
-    const raw = await rpcInvoke<SystemSnapshotRaw>("system.snapshot");
+    const raw = await invoke<SystemSnapshotRaw>("get_system_snapshot");
     // 后端 networks 是数组，前端 NetworkInfo 要汇总总量并映射字段名
     return {
       os: raw.os,
@@ -303,7 +303,18 @@ export const systemApi = {
   },
 
   async getDefaultRunPath(): Promise<string> {
-    return tauriInvoke("get_default_run_path");
+    // Docker 环境：用相对路径,由后端解析到容器数据卷
+    if (isBrowserEnv()) {
+      return "./data";
+    }
+    // Tauri 环境：用官方 path API 取应用数据目录,servers 子目录存放实例
+    try {
+      const { appDataDir } = await import("@tauri-apps/api/path");
+      const base = await appDataDir();
+      return `${base}/servers`;
+    } catch {
+      return "./data";
+    }
   },
 
   async getSafeModeStatus(): Promise<boolean> {

@@ -4,7 +4,11 @@ import { useRouter } from "vue-router";
 import { usePluginStore } from "@stores/pluginStore";
 import { i18n } from "@language";
 import type { PluginInfo } from "@type/plugin";
-import { getLocalizedPluginName, getLocalizedPluginDescription } from "@type/plugin";
+import {
+  getLocalizedPluginName,
+  getLocalizedPluginDescription,
+  getPluginSettingDefaultValue,
+} from "@type/plugin";
 import { ArrowLeft, Puzzle, Link } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -44,7 +48,7 @@ async function loadPlugin() {
       if (plugin.value.manifest.settings) {
         for (const field of plugin.value.manifest.settings) {
           settingsForm[field.key] =
-            savedSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
+            savedSettings[field.key] ?? field.default ?? getPluginSettingDefaultValue(field.type);
         }
       }
 
@@ -76,7 +80,8 @@ async function loadDependentPlugins() {
       const depSettings = await pluginStore.getPluginSettings(p.manifest.id);
       const form: Record<string, any> = {};
       for (const field of p.manifest.settings!) {
-        form[field.key] = depSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
+        form[field.key] =
+          depSettings[field.key] ?? field.default ?? getPluginSettingDefaultValue(field.type);
       }
       return { plugin: p, form };
     });
@@ -85,19 +90,6 @@ async function loadDependentPlugins() {
   for (const { plugin: depPlugin, form } of results) {
     dependentPlugins.value.push(depPlugin);
     dependentSettingsForms[depPlugin.manifest.id] = form;
-  }
-}
-
-function getDefaultValue(type: string): any {
-  switch (type) {
-    case "boolean":
-      return false;
-    case "number":
-      return 0;
-    case "select":
-      return "";
-    default:
-      return "";
   }
 }
 
@@ -146,7 +138,7 @@ async function saveSettings() {
 async function resetToDefault() {
   if (!plugin.value?.manifest.settings) return;
   for (const field of plugin.value.manifest.settings) {
-    settingsForm[field.key] = field.default ?? getDefaultValue(field.type);
+    settingsForm[field.key] = field.default ?? getPluginSettingDefaultValue(field.type);
   }
 }
 

@@ -1,4 +1,5 @@
-import { handleError, AppError, ErrorType } from "@utils/errorHandler";
+// Tauri 命令调用层
+// 提供环境检测、NotImplementedError 和原生 invoke 包装
 
 // Tauri 全局类型声明
 declare global {
@@ -20,32 +21,17 @@ export const isBrowserEnv = (): boolean => {
 // 使用相对路径，这样在 Docker 环境下浏览器会自动使用当前页面的域名
 export const HTTP_API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
-/**
- * 通过 HTTP API 调用命令（Docker/浏览器模式）
- */
-async function httpInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  const url = `${HTTP_API_BASE}/api/${command}`;
+/** 后端未实现该方法，调用方可据此禁用 UI 或提示 */
+export class NotImplementedError extends Error {
+  readonly method: string;
+  readonly transport: "tauri" | "axum";
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ params: args || {} }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`HTTP ${response.status}: ${errorText}`);
+  constructor(method: string, transport: "tauri" | "axum") {
+    super(`[${transport}] 方法 ${method} 尚未实现`);
+    this.name = "NotImplementedError";
+    this.method = method;
+    this.transport = transport;
   }
-
-  const result = await response.json();
-
-  if (!result.success) {
-    throw new Error(result.error || "Unknown error");
-  }
-
-  return result.data as T;
 }
 
 /**
@@ -70,88 +56,44 @@ export interface InvokeOptions {
 }
 
 /**
- * 增强的 Tauri 命令调用函数
- * 提供统一的错误处理和日志记录
- * 自动检测环境，在浏览器模式下使用 HTTP API，在 Tauri 模式下使用 invoke
+ * Tauri 命令调用，自动检测环境
+ *
+ * 浏览器模式下这些老命令后端未实现，直接抛 NotImplementedError
+ * 后期后端补了路由，把对应命令迁移到 invoke.ts 的 axumRouteMap 即可
  */
 export async function tauriInvoke<T>(
   command: string,
   args?: Record<string, unknown>,
   options: InvokeOptions = {},
 ): Promise<T> {
-  const isHttp = isBrowserEnv();
+  // 浏览器模式：老命令后端未实现，按 silent 选项决定抛出或返回默认值
+  if (isBrowserEnv()) {
+    if (!options.silent) {
+      throw new NotImplementedError(command, "axum");
+    }
+    return options.defaultValue as T;
+  }
 
   try {
-    // 根据环境选择调用方式
-    const result = isHttp
-      ? await httpInvoke<T>(command, args)
-      : await tauriInvokeNative<T>(command, args);
+    const result = await tauriInvokeNative<T>(command, args);
 
     if (import.meta.env.DEV) {
-      console.debug(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" succeeded`);
+      console.debug(`[Tauri] Command "${command}" succeeded`);
     }
 
     return result;
   } catch (error) {
-    const errorMessage = handleError(error, options.context || command);
-
     if (import.meta.env.DEV) {
-      console.warn(`[${isHttp ? "HTTP" : "Tauri"}] Command "${command}" failed:`, errorMessage);
+      console.warn(`[Tauri] Command "${command}" failed:`, error);
     }
 
     if (!options.silent) {
-      throw new AppError(errorMessage, ErrorType.SERVER, options.context);
+      throw error;
     }
 
     return options.defaultValue as T;
   }
 }
 
-/**
- * 批量 Tauri 命令调用
- */
-export async function tauriInvokeAll(
-  commands: Array<{
-    command: string;
-    args?: Record<string, unknown>;
-    key?: string;
-  }>,
-  options: InvokeOptions = {},
-): Promise<Record<string, unknown> | unknown[]> {
-  const promises = commands.map(({ command, args, key }) =>
-    tauriInvoke<unknown>(command, args, options).then((result) => ({ key, result })),
-  );
-
-  const results = await Promise.all(promises);
-
-  if (commands.every((c) => c.key !== undefined)) {
-    return results.reduce(
-      (acc, { key, result }) => {
-        acc[key as string] = result;
-        return acc;
-      },
-      {} as Record<string, unknown>,
-    );
-  }
-
-  return results.map((r) => r.result);
-}
-
-/**
- * 创建带缓存的 Tauri 调用包装器
- */
-export function createCachedInvoke<T>(command: string, cacheTime: number = 5000) {
-  let cache: { data: T; timestamp: number } | null = null;
-
-  return async (args?: Record<string, unknown>, options?: InvokeOptions): Promise<T> => {
-    const now = Date.now();
-
-    if (cache && now - cache.timestamp < cacheTime) {
-      return cache.data;
-    }
-
-    const data = await tauriInvoke<T>(command, args, options);
-    cache = { data, timestamp: now };
-    return data;
-  };
-}
+// 批量调用和缓存包装器已移除，没有任何调用方
+// 如后期需要可用 Promise.all + tauriInvoke 组合替代

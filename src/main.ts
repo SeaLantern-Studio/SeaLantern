@@ -1,6 +1,5 @@
 import { createApp } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import App from "@src/App.vue";
 import router from "@src/router";
 import pinia from "@src/stores";
@@ -68,7 +67,6 @@ if (import.meta.env.DEV) {
   // 例如触发崩溃报告测试：await window.__invoke("debug_panic")
   // 注意：此挂载仅在开发模式下存在，生产包中不会包含。
   (window as any).__invoke = invoke;
-  (window as any).__listen = listen;
 }
 
 app.use(pinia);

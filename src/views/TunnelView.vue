@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+// keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理轮询
+import { computed, onActivated, onDeactivated, ref } from "vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
+import { handleError } from "@utils/errorHandler";
 import { useToast } from "cmzya-modern-ui";
 import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -162,8 +164,8 @@ async function loadConsoleSettings() {
     consoleFontFamily.value = settings.console_font_family || "";
     consoleLetterSpacing.value = settings.console_letter_spacing || 0;
     maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-  } catch {
-    // keep defaults
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to load console settings:", e);
   }
 }
 
@@ -187,7 +189,7 @@ async function refreshStatus(options?: { silent?: boolean }) {
     const next = await tunnelApi.status();
     applyStatus(next);
   } catch (e) {
-    if (!silent) toast.error(String(e));
+    if (!silent) toast.error(handleError(e));
   }
 }
 
@@ -209,7 +211,7 @@ async function startHost() {
     );
     toast.success(i18n.t("tunnel.host_started"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("host");
   }
@@ -233,7 +235,7 @@ async function startJoin() {
     );
     toast.success(i18n.t("tunnel.join_started"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("join");
   }
@@ -245,7 +247,7 @@ async function stopTunnel() {
     applyStatus(await tunnelApi.stop());
     toast.success(i18n.t("tunnel.tunnel_stopped"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("stop");
   }
@@ -262,7 +264,7 @@ async function copyTicket() {
       toast.error(i18n.t("tunnel.ticket_copy_failed"));
     }
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   }
 }
 
@@ -272,7 +274,7 @@ async function generateTicket() {
     applyStatus(await tunnelApi.generateTicket());
     toast.success(i18n.t("tunnel.ticket_generated"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -284,7 +286,7 @@ async function regenerateTicket() {
     applyStatus(await tunnelApi.regenerateTicket());
     toast.success(i18n.t("tunnel.ticket_regenerated"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -325,13 +327,13 @@ function handleJoinTicketInput(value: string) {
   joinTicketAutoFillEnabled.value = false;
 }
 
-onMounted(async () => {
-  await loadConsoleSettings();
-  await refreshStatus();
+onActivated(async () => {
+  // 设置加载与状态拉取互不依赖,并行执行
+  await Promise.all([loadConsoleSettings(), refreshStatus()]);
   startStatusPolling();
 });
 
-onUnmounted(() => {
+onDeactivated(() => {
   stopStatusPolling();
   syncedLogs.value = [];
   logsDisplayClearedByUser.value = false;

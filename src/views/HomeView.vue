@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+// keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理定时器与监听
+import { onActivated, onDeactivated } from "vue";
 import { useRouter } from "vue-router";
 import ErrorBanner from "@components/views/home/ErrorBanner.vue";
 import QuickStartCard from "@components/views/home/QuickStartCard.vue";
@@ -65,7 +66,7 @@ const handleVisibilityChange = () => {
   }
 };
 
-onMounted(() => {
+onActivated(() => {
   initQuote();
 
   const loadServers = async () => {
@@ -85,7 +86,7 @@ onMounted(() => {
   document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 
-onUnmounted(() => {
+onDeactivated(() => {
   stopTimers();
   cleanupQuoteResources();
   cleanupStatsResources();

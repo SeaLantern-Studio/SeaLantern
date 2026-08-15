@@ -1,5 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
-import { rpcInvoke } from "@api/rpc";
+import { invoke } from "@api/invoke";
 
 /**
  * Java 环境信息
@@ -21,7 +21,7 @@ export const javaApi = {
    */
   async detect(): Promise<JavaInfo[]> {
     // 后端返回 JavaDetectionReport，含 installations 和 errors
-    const report = await rpcInvoke<{ installations: JavaInfo[]; errors: unknown[] }>("java.detect");
+    const report = await invoke<{ installations: JavaInfo[]; errors: unknown[] }>("java_detect");
     return report.installations;
   },
 
@@ -29,7 +29,7 @@ export const javaApi = {
    * 验证指定路径的 Java 是否可用
    */
   async validate(path: string): Promise<JavaInfo> {
-    return rpcInvoke<JavaInfo>("java.validate", { path });
+    return invoke<JavaInfo>("java_validate", { path });
   },
 
   /**

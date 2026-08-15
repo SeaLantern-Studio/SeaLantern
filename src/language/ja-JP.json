@@ -504,8 +504,6 @@
     "console_font_size_desc": "コンソールログの文字サイズ、デフォルト13",
     "max_log_lines": "最大ログ行数",
     "max_log_lines_desc": "サーバーごとの最大ログ行数。超過分は自動削除。デフォルト5000",
-    "console_drop_empty_line": "空行を破棄",
-    "console_drop_empty_line_desc": "サーバーログの生成元で空行を破棄します（デフォルトで有効）。この設定はサーバー起動時に読み込まれます",
     "appearance": "外観",
     "appearance_desc": "背景や視覚効果のカスタマイズ",
     "theme": "テーマモード",

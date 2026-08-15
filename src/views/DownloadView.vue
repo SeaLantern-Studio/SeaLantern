@@ -10,6 +10,7 @@ import { systemApi } from "@api/system";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { useDownloadStore } from "@stores/downloadStore";
 import { i18n } from "@language";
+import { handleError } from "@utils/errorHandler";
 
 const router = useRouter();
 const createServerDraftStore = useCreateServerDraftStore();
@@ -217,7 +218,7 @@ async function loadServerTypes() {
     serverTypes.value = types;
     if (types.length > 0) selectedType.value = types[0];
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     loadingTypes.value = false;
   }
@@ -237,7 +238,7 @@ async function loadVersionsByType(serverType: string) {
     // 核心修复：后端返回数组升序，最后一个 = 最新版本
     if (list.length > 0) selectedVersion.value = list[list.length - 1];
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     loadingVersions.value = false;
   }
@@ -254,7 +255,7 @@ async function loadDownloadInfo(serverType: string, version: string) {
     info.value = result;
     serverFilename.value = result.fileName;
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     loadingInfo.value = false;
   }
@@ -265,7 +266,7 @@ async function pickServerFolder() {
     const result = await systemApi.pickFolder();
     if (result) serverSaveDir.value = result;
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   }
 }
 
@@ -288,7 +289,7 @@ async function cancelDownload() {
   try {
     await downloadStore.cancelTask();
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     stopLoading();
   }
@@ -314,7 +315,7 @@ async function handleFileDownload() {
 
     if (taskError.value) toast.error(taskError.value);
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     stopLoading();
   }
@@ -342,7 +343,7 @@ async function handleServerDownload() {
       toast.error(taskError.value);
     }
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     stopLoading();
   }

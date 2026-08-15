@@ -10,6 +10,7 @@ import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue"
 import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
+import { handleError } from "@utils/errorHandler";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
 import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "@stores/settingsStore";
@@ -70,7 +71,7 @@ async function loadSettings() {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     stopLoading();
   }
@@ -148,7 +149,7 @@ async function saveSettings() {
 
     dispatchSettingsUpdate(result.changed_groups, result.settings);
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   }
 }
 
@@ -175,7 +176,7 @@ async function resetSettings() {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   }
 }
 
@@ -185,7 +186,7 @@ async function exportSettings() {
     await navigator.clipboard.writeText(json);
     toast.success(i18n.t("settings.export_success"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   }
 }
 
@@ -205,7 +206,7 @@ async function handleImport(json: string) {
     applyFontSize(s.font_size);
     applyFontFamily(s.font_family);
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   }
 }
 

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import {
   settingsApi,
   DEFAULT_ACRYLIC_BLUR_LEVEL,
@@ -8,6 +8,8 @@ import {
   type SettingsGroup,
 } from "@api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { setMockMode } from "@utils/mockData";
+import { useServerStore } from "@stores/serverStore";
 
 const THEME_CACHE_KEY = "sl_theme_cache";
 
@@ -17,14 +19,18 @@ function getThemeCache(): { theme: string; fontSize: number } | null {
     if (cached) {
       return JSON.parse(cached);
     }
-  } catch (e) {}
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to read theme cache:", e);
+  }
   return null;
 }
 
 function saveThemeCache(theme: string, fontSize: number): void {
   try {
     localStorage.setItem(THEME_CACHE_KEY, JSON.stringify({ theme, fontSize }));
-  } catch (e) {}
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to save theme cache:", e);
+  }
 }
 
 export function getInitialTheme(): string {
@@ -56,7 +62,6 @@ const defaultSettings: AppSettings = {
   console_font_family: "",
   console_letter_spacing: 0,
   max_log_lines: 1000,
-  console_drop_empty_line: true,
   cached_java_list: [],
   background_image: "",
   background_opacity: 0.3,
@@ -117,6 +122,21 @@ export const useSettingsStore = defineStore("settings", () => {
   const backgroundBlur = computed(() => settings.value.background_blur);
   const backgroundBrightness = computed(() => settings.value.background_brightness);
   const backgroundSize = computed(() => settings.value.background_size);
+
+  // developer_mode 变化时同步 mock 开关并重拉服务器列表,切换即时生效无需重启
+  watch(
+    () => settings.value.developer_mode,
+    async (enabled) => {
+      setMockMode(Boolean(enabled));
+      const serverStore = useServerStore();
+      try {
+        await serverStore.refreshList();
+        serverStore.refreshAllStatuses();
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn("Failed to refresh servers after mock toggle:", e);
+      }
+    },
+  );
 
   async function loadSettings(): Promise<void> {
     if (isLoading.value) return;

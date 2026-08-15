@@ -1,5 +1,5 @@
 import { isBrowserEnv, tauriInvoke } from "@api/tauri";
-import { rpcInvoke } from "@api/rpc";
+import { invoke } from "@api/invoke";
 import type { JavaInfo } from "@api/java";
 
 export type SettingsGroup =
@@ -35,7 +35,6 @@ export interface AppSettings {
   console_font_family: string;
   console_letter_spacing: number;
   max_log_lines: number;
-  console_drop_empty_line: boolean;
   cached_java_list: JavaInfo[];
   background_image: string;
   background_opacity: number;
@@ -109,26 +108,26 @@ export interface UpdateSettingsResult {
 
 export const settingsApi = {
   async get(): Promise<AppSettings> {
-    return rpcInvoke("settings.get");
+    return invoke("get_settings");
   },
   async save(settings: AppSettings): Promise<void> {
     // 后端 update_settings 返回 UpdateResult，这里只关心副作用，丢弃结果
-    await rpcInvoke("settings.update", { settings });
+    await invoke("update_settings", { settings });
   },
   async saveWithDiff(settings: AppSettings): Promise<UpdateSettingsResult> {
-    return rpcInvoke("settings.update", { settings });
+    return invoke("update_settings", { settings });
   },
   async updatePartial(partial: PartialSettings): Promise<UpdateSettingsResult> {
-    return rpcInvoke("settings.updatePartial", { partial });
+    return invoke("update_settings_partial", { partial });
   },
   async reset(): Promise<AppSettings> {
-    return rpcInvoke("settings.reset");
+    return invoke("reset_settings");
   },
   async exportJson(): Promise<string> {
-    return rpcInvoke("settings.export");
+    return invoke("export_settings");
   },
   async importJson(json: string): Promise<AppSettings> {
-    return rpcInvoke("settings.import", { json });
+    return invoke("import_settings", { json });
   },
   async applyAcrylic(enabled: boolean): Promise<void> {
     if (isBrowserEnv()) return;

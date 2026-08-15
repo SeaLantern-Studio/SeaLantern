@@ -3,8 +3,12 @@
  * 所有 API 模块统一从此处导入
  */
 
-export { tauriInvoke, tauriInvokeAll, createCachedInvoke } from "@api/tauri";
+export { tauriInvoke } from "@api/tauri";
 export type { InvokeOptions } from "@api/tauri";
+
+// 统一后端调用入口,Tauri/Axum 双模式自动分发
+export { invoke } from "@api/invoke";
+export type { SilentWithOptions } from "@api/invoke";
 
 export { serverApi } from "@api/server";
 export type { ServerStatusInfo } from "@api/server";

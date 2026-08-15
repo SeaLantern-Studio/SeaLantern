@@ -503,8 +503,6 @@
     "console_font_size_desc": "Kích thước chữ nhật ký, mặc định 13",
     "max_log_lines": "Số dòng nhật ký tối đa",
     "max_log_lines_desc": "Số dòng nhật ký tối đa giữ lại mỗi máy chủ, quá sẽ tự động xóa cũ. Mặc định 5000",
-    "console_drop_empty_line": "Bỏ qua dòng trống",
-    "console_drop_empty_line_desc": "Bỏ qua các dòng trống tại nguồn nhật ký máy chủ, bật theo mặc định; cài đặt này được đọc khi máy chủ khởi động",
     "appearance": "Giao diện",
     "appearance_desc": "Tùy chỉnh nền và hiệu ứng",
     "theme": "Chế độ giao diện",

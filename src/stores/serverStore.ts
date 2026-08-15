@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { serverApi } from "@api/server";
 import { configApi } from "@api/config";
+import { isMockMode } from "@utils/mockData";
 import { useAsyncByKey, useLoading } from "@composables/useAsync";
 import type { ServerInstance } from "@type/server";
 import type { ServerStatusInfo } from "@api/server";
@@ -65,6 +66,8 @@ export const useServerStore = defineStore("server", () => {
    * 扫描单个服务器的端口信息
    */
   async function scanServerPort(server: ServerInstance) {
+    // mock 服务器的路径是假的,跳过扫描,直接用自带的 port 字段
+    if (isMockMode()) return;
     try {
       // 使用 configApi 读取 server.properties 文件
       const serverPath = server.path;
@@ -83,15 +86,32 @@ export const useServerStore = defineStore("server", () => {
     }
   }
 
+  // 进行中的状态请求,同 id 并发调用复用同一 Promise 避免重复请求
+  const pendingStatusRequests = new Map<string, Promise<ServerStatusInfo | undefined>>();
+
   /**
    * 刷新指定服务器的状态
+   * 同一服务器并发的请求会去重,复用同一个 in-flight Promise
    */
-  async function refreshStatus(id: string) {
-    try {
-      statuses.value[id] = await serverApi.getStatus(id);
-    } catch (e) {
-      console.error(`Failed to get status for server ${id}:`, e);
-    }
+  async function refreshStatus(id: string): Promise<ServerStatusInfo | undefined> {
+    const existing = pendingStatusRequests.get(id);
+    if (existing) return existing;
+
+    const promise = (async () => {
+      try {
+        const status = await serverApi.getStatus(id);
+        statuses.value[id] = status;
+        return status;
+      } catch (e) {
+        console.error(`Failed to get status for server ${id}:`, e);
+        return undefined;
+      } finally {
+        pendingStatusRequests.delete(id);
+      }
+    })();
+
+    pendingStatusRequests.set(id, promise);
+    return promise;
   }
 
   /**

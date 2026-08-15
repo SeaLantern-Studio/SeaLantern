@@ -505,8 +505,6 @@
     "console_font_size_desc": "콘솔 로그 텍스트 크기입니다. 기본값 13",
     "max_log_lines": "최대 로그 줄 수",
     "max_log_lines_desc": "서버당 최대 로그 보관 줄 수입니다. 초과 시 오래된 로그부터 자동 삭제됩니다. 기본값 5000",
-    "console_drop_empty_line": "빈 줄 삭제",
-    "console_drop_empty_line_desc": "서버 로그 원본에서 빈 줄을 삭제하며 기본으로 활성화되어 있습니다. 이 설정은 서버 시작 시 읽힙니다",
     "appearance": "외관",
     "appearance_desc": "소프트웨어 배경 및 시각 효과 사용자 정의",
     "theme": "테마 모드",

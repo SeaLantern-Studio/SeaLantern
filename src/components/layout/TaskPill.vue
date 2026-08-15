@@ -16,6 +16,7 @@ import { useDownloadStore } from "@stores/downloadStore";
 import { useToast } from "cmzya-modern-ui";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
+import { handleError } from "@utils/errorHandler";
 
 /** 字节数转人话，内联写是因为 serverUtils 有模块加载副作用，import 一下能把整个应用撅白屏 */
 function formatBytes(bytes: number): string {
@@ -151,7 +152,7 @@ async function openFolder() {
     const dir = store.savePath.replace(/[\\/][^\\/]+$/, "");
     if (dir) await systemApi.openFolder(dir);
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   }
 }
 
