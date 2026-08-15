@@ -53,7 +53,6 @@ const consoleFontSize = ref(13);
 const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
-const consoleDropEmptyLine = ref(true);
 const { loading: startLoading, start: startStartLoading, stop: stopStartLoading } = useLoading();
 const { loading: stopLoading, start: startStopLoading, stop: stopStopLoading } = useLoading();
 const {
@@ -814,12 +813,10 @@ onMounted(async () => {
     // 仅在服务器运行时启动资源轮询
     if (isRunning.value) startStatsPolling();
   }
-  unlistenLogLine = await serverApi.onLogLine(({ instance_id, line }) => {
+  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
     const sid = serverId.value;
-    if (!sid || instance_id !== sid) return;
-    // 开关开启时丢弃空行（与后端源头过滤保持一致，兜底历史日志与未重启场景）。
-    if (consoleDropEmptyLine.value && !line.line.trim()) return;
-    consoleOutputRef.value?.appendLines([line.line]);
+    if (!sid || server_id !== sid) return;
+    consoleOutputRef.value?.appendLines([line]);
   });
   nextTick(() => doScroll());
 });
@@ -907,13 +904,11 @@ function applyConsoleSettings(settings: {
   console_font_family: string;
   console_letter_spacing: number;
   max_log_lines: number;
-  console_drop_empty_line?: boolean;
 }) {
   consoleFontSize.value = settings.console_font_size;
   consoleFontFamily.value = settings.console_font_family || "";
   consoleLetterSpacing.value = settings.console_letter_spacing || 0;
   maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-  consoleDropEmptyLine.value = settings.console_drop_empty_line ?? true;
 }
 
 function handleSettingsUpdate(event: CustomEvent<SettingsUpdateEvent>) {

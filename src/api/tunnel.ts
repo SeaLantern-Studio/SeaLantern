@@ -1,5 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
-import { rpcInvoke } from "@api/rpc";
+import { invoke } from "@api/invoke";
 
 export interface TunnelConnection {
   remote_id: string;
@@ -82,7 +82,7 @@ function toTunnelStatus(raw: TunnelStatusRaw): TunnelStatus {
 export const tunnelApi = {
   async host(params: TunnelHostParams): Promise<TunnelStatus> {
     // 后端 OnlineTunnelHostRequest 用 snake_case，port 映射为 minecraft_port
-    const raw = await rpcInvoke<TunnelStatusRaw>("tunnel.host", {
+    const raw = await invoke<TunnelStatusRaw>("online_tunnel_host", {
       request: {
         minecraft_port: params.port,
         password: params.password,
@@ -94,7 +94,7 @@ export const tunnelApi = {
   },
 
   async join(params: TunnelJoinParams): Promise<TunnelStatus> {
-    const raw = await rpcInvoke<TunnelStatusRaw>("tunnel.join", {
+    const raw = await invoke<TunnelStatusRaw>("online_tunnel_join", {
       request: {
         ticket: params.ticket,
         local_port: params.localPort,
@@ -105,12 +105,12 @@ export const tunnelApi = {
   },
 
   async stop(): Promise<TunnelStatus> {
-    const raw = await rpcInvoke<TunnelStatusRaw>("tunnel.stop");
+    const raw = await invoke<TunnelStatusRaw>("online_tunnel_stop");
     return toTunnelStatus(raw);
   },
 
   async status(): Promise<TunnelStatus> {
-    const raw = await rpcInvoke<TunnelStatusRaw>("tunnel.status");
+    const raw = await invoke<TunnelStatusRaw>("online_tunnel_status");
     return toTunnelStatus(raw);
   },
 

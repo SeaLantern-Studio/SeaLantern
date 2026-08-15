@@ -17,6 +17,7 @@ import {
   hasDangerousPermissions,
   getLocalizedPluginName,
   getLocalizedPluginDescription,
+  getPluginSettingDefaultValue,
 } from "@type/plugin";
 import {
   Upload,
@@ -592,23 +593,10 @@ async function openSettings(plugin: PluginInfo) {
   if (plugin.manifest.settings) {
     for (const field of plugin.manifest.settings) {
       settingsForm[field.key] =
-        savedSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
+        savedSettings[field.key] ?? field.default ?? getPluginSettingDefaultValue(field.type);
     }
   }
   showSettingsModal.value = true;
-}
-
-function getDefaultValue(type: string): any {
-  switch (type) {
-    case "boolean":
-      return false;
-    case "number":
-      return 0;
-    case "select":
-      return "";
-    default:
-      return "";
-  }
 }
 
 function closeSettings() {

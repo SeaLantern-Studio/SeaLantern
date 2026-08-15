@@ -1,5 +1,5 @@
 import { reactive, onUnmounted, computed } from "vue";
-import { rpcInvoke } from "./rpc";
+import { invoke } from "./invoke";
 import { i18n } from "@language";
 
 export type TaskStatus = "Pending" | "Downloading" | "Completed" | { Error: string };
@@ -44,7 +44,7 @@ export const downloadApi = {
    */
   async downloadFile(options: DownloadOptions): Promise<string> {
     // 后端 download_create 接收 request 对象，DTO 用 camelCase 序列化
-    const task = await rpcInvoke<DownloadTaskInfo>("download.create", {
+    const task = await invoke<DownloadTaskInfo>("download_create", {
       request: {
         url: options.url,
         savePath: options.savePath,
@@ -58,14 +58,14 @@ export const downloadApi = {
    * 基础 API：单次查询
    */
   async pollTask(id: string): Promise<DownloadTaskInfo> {
-    return rpcInvoke<DownloadTaskInfo>("download.query", { id });
+    return invoke<DownloadTaskInfo>("download_query", { id });
   },
 
   /**
    * 删除/取消下载任务
    */
   async cancelDownloadTask(id: string): Promise<void> {
-    return rpcInvoke<void>("download.cancel", { id });
+    return invoke<void>("download_cancel", { id });
   },
 
   /**
@@ -179,15 +179,15 @@ export const downloadApi = {
 
 export const downloadServerApi = {
   async getServerTypes(): Promise<string[]> {
-    return rpcInvoke<string[]>("catalog.serverTypes");
+    return invoke<string[]>("catalog_server_types");
   },
 
   async getVersionsByType(serverType: string): Promise<string[]> {
-    return rpcInvoke<string[]>("catalog.versions", { server_type: serverType });
+    return invoke<string[]>("catalog_versions", { server_type: serverType });
   },
 
   async getDownloadInfo(serverType: string, version: string): Promise<DownloadLink> {
-    return rpcInvoke<DownloadLink>("catalog.details", {
+    return invoke<DownloadLink>("catalog_details", {
       server_type: serverType,
       server_version: version,
     });
