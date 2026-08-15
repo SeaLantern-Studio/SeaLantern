@@ -97,6 +97,13 @@ const routes = [
     component: () => import("@views/HelpView.vue"),
     meta: { titleKey: "common.help", icon: "book" },
   },
+  // 开发者测试工具:仅在开发者模式开启时侧栏展示,路由本身始终注册
+  {
+    path: "/dev-test",
+    name: "dev-test",
+    component: () => import("@views/DevTestView.vue"),
+    meta: { titleKey: "common.dev_test", icon: "beaker" },
+  },
   // 404 兜底:无效路径统一回到首页
   {
     path: "/:pathMatch(.*)*",

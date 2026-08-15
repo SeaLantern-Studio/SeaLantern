@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { serverApi } from "@api/server";
 import { configApi } from "@api/config";
+import { isMockMode } from "@utils/mockData";
 import { useAsyncByKey, useLoading } from "@composables/useAsync";
 import type { ServerInstance } from "@type/server";
 import type { ServerStatusInfo } from "@api/server";
@@ -65,6 +66,8 @@ export const useServerStore = defineStore("server", () => {
    * 扫描单个服务器的端口信息
    */
   async function scanServerPort(server: ServerInstance) {
+    // mock 服务器的路径是假的,跳过扫描,直接用自带的 port 字段
+    if (isMockMode()) return;
     try {
       // 使用 configApi 读取 server.properties 文件
       const serverPath = server.path;

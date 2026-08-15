@@ -26,6 +26,7 @@
       "settings": "设置",
       "personalize": "个性化",
       "about": "关于",
+      "dev_test": "测试工具",
       "download": "下载",
       "download-file": "文件下载",
       "download-server": "服务端下载",
@@ -1318,6 +1319,14 @@
       "load_failed": "加载备份列表失败",
       "settings_saved": "设置已保存",
       "settings_save_failed": "设置保存失败"
+    },
+    "dev_test": {
+      "title": "开发者测试工具",
+      "desc": "仅开发者模式开启时可用,用于验证前端基础能力与 UI 组件。后端测试待补充。",
+      "tab_frontend": "前端基础",
+      "tab_components": "UI 组件",
+      "tab_backend": "后端接口",
+      "backend_placeholder": "后端接口测试待后续补充"
     },
     "help": {
       "title": "帮助文档",
