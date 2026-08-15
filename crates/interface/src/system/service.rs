@@ -1,6 +1,6 @@
 //! 系统资源信息服务端口。
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use async_trait::async_trait;
 
@@ -30,5 +30,5 @@ pub trait SystemService: Send + Sync {
     /// 获取默认运行路径。
     ///
     /// 路径优先级：标准数据目录 → 文档目录 → 当前工作目录。
-    async fn default_run_path(&self) -> Result<PathBuf, SystemServiceError>;
+    async fn default_run_path(&self) -> Result<String, SystemServiceError>;
 }
