@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed, watch } from "vue";
+import { ref, computed } from "vue";
 import {
   settingsApi,
   DEFAULT_ACRYLIC_BLUR_LEVEL,
@@ -8,8 +8,6 @@ import {
   type SettingsGroup,
 } from "@api/settings";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { setMockMode } from "@utils/mockData";
-import { useServerStore } from "@stores/serverStore";
 
 const THEME_CACHE_KEY = "sl_theme_cache";
 
@@ -122,21 +120,6 @@ export const useSettingsStore = defineStore("settings", () => {
   const backgroundBlur = computed(() => settings.value.background_blur);
   const backgroundBrightness = computed(() => settings.value.background_brightness);
   const backgroundSize = computed(() => settings.value.background_size);
-
-  // developer_mode 变化时同步 mock 开关并重拉服务器列表,切换即时生效无需重启
-  watch(
-    () => settings.value.developer_mode,
-    async (enabled) => {
-      setMockMode(Boolean(enabled));
-      const serverStore = useServerStore();
-      try {
-        await serverStore.refreshList();
-        serverStore.refreshAllStatuses();
-      } catch (e) {
-        if (import.meta.env.DEV) console.warn("Failed to refresh servers after mock toggle:", e);
-      }
-    },
-  );
 
   async function loadSettings(): Promise<void> {
     if (isLoading.value) return;

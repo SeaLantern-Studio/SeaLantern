@@ -2,14 +2,6 @@ import { tauriInvoke, isBrowserEnv, HTTP_API_BASE } from "@api/tauri";
 import { invoke } from "@api/invoke";
 import type { ServerInstance } from "@type/server";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import {
-  isMockMode,
-  getMockServers,
-  getMockStatus,
-  getMockLogs,
-  mockStart,
-  mockStop,
-} from "@utils/mockData";
 
 export interface ServerStatusInfo {
   id: string;
@@ -320,18 +312,10 @@ export const serverApi = {
   },
 
   async start(id: string): Promise<void> {
-    if (isMockMode()) {
-      mockStart(id);
-      return;
-    }
     await invoke("start_server", { id });
   },
 
   async stop(id: string): Promise<void> {
-    if (isMockMode()) {
-      mockStop(id);
-      return;
-    }
     await invoke("stop_server", { id });
   },
 
@@ -350,18 +334,11 @@ export const serverApi = {
   },
 
   async getList(): Promise<ServerInstance[]> {
-    if (isMockMode()) {
-      return getMockServers();
-    }
     const raw = await invoke<InstanceRaw[]>("list_instances");
     return raw.map(toServerInstance);
   },
 
   async getStatus(id: string): Promise<ServerStatusInfo> {
-    if (isMockMode()) {
-      const mock = getMockStatus(id);
-      if (mock) return mock;
-    }
     const raw = await invoke<ServerSnapshotRaw>("server_status", { id });
     return toServerStatusInfo(raw);
   },
@@ -371,9 +348,6 @@ export const serverApi = {
   },
 
   async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
-    if (isMockMode()) {
-      return getMockLogs(id, since, maxLines);
-    }
     return tauriInvoke("get_server_logs", { id, since, maxLines });
   },
 
