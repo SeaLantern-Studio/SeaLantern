@@ -142,9 +142,17 @@ function getKeywordRegex(kw: string, caseSensitive: boolean): RegExp | null {
   return regex;
 }
 
-function buildTokens(line: ConsoleLineObj): RenderToken[] {
+// 逐行 token 缓存：key = 行对象引用 + 关键词 + 大小写敏感
+// 滚动时可见行的 token 直接命中缓存（O(1)），仅在关键词/大小写变化或新行出现时才重新解析。
+// 行对象由 ConsoleOutput.parseLine 创建且稳定（除非被 maxLogLines 裁剪后 GC），适合用 WeakMap。
+const tokenCache = new WeakMap<
+  ConsoleLineObj,
+  { kw: string; cs: boolean; tokens: RenderToken[] }
+>();
+
+function computeTokens(line: ConsoleLineObj, kw: string, cs: boolean): RenderToken[] {
   const segments = parseSegments(line);
-  const regex = getKeywordRegex(props.keyword, props.caseSensitive);
+  const regex = getKeywordRegex(kw, cs);
   if (!regex) {
     return segments.map((s) => ({ ...s, highlight: false }));
   }
@@ -162,6 +170,19 @@ function buildTokens(line: ConsoleLineObj): RenderToken[] {
       });
     });
   }
+  return tokens;
+}
+
+function buildTokens(line: ConsoleLineObj | undefined): RenderToken[] {
+  if (!line) return [];
+  const kw = props.keyword.trim();
+  const cs = props.caseSensitive;
+  const cached = tokenCache.get(line);
+  if (cached && cached.kw === kw && cached.cs === cs) {
+    return cached.tokens;
+  }
+  const tokens = computeTokens(line, kw, cs);
+  tokenCache.set(line, { kw, cs, tokens });
   return tokens;
 }
 
