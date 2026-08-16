@@ -1212,6 +1212,13 @@
 
 .cmz-tab-bar--vertical .cmz-tab-bar__tabs {
   flex-direction: column;
+  width: 100%;
+}
+
+/* 垂直 tab 条目占满整行,避免左对齐小块,活动指示器覆盖整条 */
+.cmz-tab-bar--vertical .cmz-tab-bar__btn {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .cmz-tab-bar__indicator {
