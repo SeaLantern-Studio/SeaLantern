@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onActivated, onDeactivated } from "vue";
 import { i18n } from "@language";
 import { ExternalLink, Menu, X, Download, ChevronRight } from "lucide-vue-next";
 import { Cmz_Accordion, Cmz_AccordionPanel } from "cmzya-modern-ui";
@@ -95,9 +95,14 @@ function checkMobile() {
   if (!isMobile.value) sidebarOpen.value = true;
 }
 
-onMounted(() => {
+// keep-alive 缓存时用 onActivated/onDeactivated 管理 resize 监听,切走即移除避免泄漏
+onActivated(() => {
   checkMobile();
   window.addEventListener("resize", checkMobile);
+});
+
+onDeactivated(() => {
+  window.removeEventListener("resize", checkMobile);
 });
 </script>
 

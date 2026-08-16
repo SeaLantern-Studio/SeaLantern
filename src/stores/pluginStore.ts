@@ -219,6 +219,11 @@ export const usePluginStore = defineStore("plugin", () => {
     return deletes;
   }
 
+  // 供渲染器探测是否有待处理组件,无待处理时跳过全量遍历,避免空转
+  function hasPendingComponents(): boolean {
+    return pendingComponentCreates.size > 0 || pendingComponentDeletes.size > 0;
+  }
+
   function removePluginComponents(pluginId: string) {
     const creates = pendingComponentCreates.get(pluginId) || [];
     const componentIds = creates.map((c) => c.component_id);
@@ -1943,6 +1948,7 @@ export const usePluginStore = defineStore("plugin", () => {
     removePluginComponents,
     consumePendingComponentCreates,
     consumePendingComponentDeletes,
+    hasPendingComponents,
 
     initI18nEventListener,
     cleanupI18nEventListener,

@@ -62,6 +62,8 @@ const { loading: shareLoading, start: startShareLoading, stop: stopShareLoading 
 let unlistenLogLine: UnlistenFn | null = null;
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 const SERVER_STATS_POLL_INTERVAL_MS = 3000;
+// 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
+let isPageVisible = true;
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
@@ -772,6 +774,7 @@ function startStatsPolling() {
   stopStatsPolling();
   void refreshServerStats();
   statsTimer = setInterval(() => {
+    if (!isPageVisible) return;
     void refreshServerStats();
   }, SERVER_STATS_POLL_INTERVAL_MS);
 }
@@ -780,6 +783,17 @@ function stopStatsPolling() {
   if (statsTimer) {
     clearInterval(statsTimer);
     statsTimer = null;
+  }
+}
+
+function handleVisibilityChange() {
+  const visible = document.visibilityState === "visible";
+  if (visible === isPageVisible) return;
+  isPageVisible = visible;
+  if (visible) {
+    if (isRunning.value) startStatsPolling();
+  } else {
+    stopStatsPolling();
   }
 }
 
@@ -821,6 +835,7 @@ onActivated(async () => {
   startThemeObserver();
   // 仅在服务器运行时启动资源轮询
   if (isRunning.value) startStatsPolling();
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   // 重新激活时重新加载当前服务器日志（可能在其它页面已启动服务器）
   const sid = serverId.value;
   if (sid) {
@@ -834,6 +849,7 @@ onActivated(async () => {
 onDeactivated(() => {
   stopThemeObserver();
   stopStatsPolling();
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 
 watch(

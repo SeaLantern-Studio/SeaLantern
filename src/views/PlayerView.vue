@@ -35,6 +35,8 @@ const addBanReason = ref("");
 const addLoading = ref(false);
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+// 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
+let isPageVisible = true;
 
 const selectedServerId = computed(() => store.currentServerId || "");
 
@@ -61,6 +63,7 @@ function getAddLabel(): string {
 }
 
 onActivated(async () => {
+  isPageVisible = true;
   await store.refreshList();
   if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
@@ -71,21 +74,51 @@ onActivated(async () => {
     parseOnlinePlayers();
   }
   startRefresh();
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 
 onDeactivated(() => {
-  if (refreshTimer) clearInterval(refreshTimer);
+  stopRefresh();
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 
 function startRefresh() {
-  if (refreshTimer) clearInterval(refreshTimer);
+  stopRefresh();
   refreshTimer = setInterval(async () => {
+    if (!isPageVisible) return;
     if (selectedServerId.value) {
       await store.refreshStatus(selectedServerId.value);
       await loadAll();
       parseOnlinePlayers();
     }
-  }, 3000);
+  }, 5000);
+}
+
+function stopRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
+async function refreshNow() {
+  if (selectedServerId.value) {
+    await store.refreshStatus(selectedServerId.value);
+    await loadAll();
+    parseOnlinePlayers();
+  }
+}
+
+function handleVisibilityChange() {
+  const visible = document.visibilityState === "visible";
+  if (visible === isPageVisible) return;
+  isPageVisible = visible;
+  if (visible) {
+    void refreshNow();
+    startRefresh();
+  } else {
+    stopRefresh();
+  }
 }
 
 watch(

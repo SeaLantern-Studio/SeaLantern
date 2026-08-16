@@ -100,6 +100,9 @@ let intervalId: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
   processAllPendingComponents();
   intervalId = setInterval(() => {
+    // 无待处理组件时直接跳过,不再遍历所有插件空转
+    const hasPending = (pluginStore as any).hasPendingComponents as () => boolean;
+    if (typeof hasPending === "function" && !hasPending()) return;
     processAllPendingComponents();
   }, 300);
 });
