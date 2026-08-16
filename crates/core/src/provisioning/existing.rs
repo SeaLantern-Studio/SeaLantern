@@ -172,6 +172,15 @@ pub fn build_import_spec(
         }
     }
 
+    // 调用方显式提供的 JVM 参数与 Java 可执行文件优先于识别结果，避免被静默丢弃。
+    // 字段文档约定二者为“覆盖”，因此一旦提供即以用户值覆盖识别所得。
+    if let Some(jvm_arguments) = &request.jvm_arguments {
+        spec.launch.jvm_arguments = jvm_arguments.clone();
+    }
+    if let Some(java_executable) = &request.java_executable {
+        spec.launch.java_executable = Some(java_executable.clone());
+    }
+
     if spec.launch.startup_target.is_none()
         && spec.launch.custom_command.is_none()
         && spec.launch.custom_executable.is_none()
@@ -191,7 +200,7 @@ pub fn build_import_spec(
     })
 }
 
-/// 由目录名生成稳定、合法的实例 ID（小写，仅保留字母数字与 `-`/`_`，追加时间戳防重）。
+/// 由目录名生成稳定、合法的实例 ID（小写，仅保留字母数字与 `-`/`_`，追加纳秒时间戳防重）。
 fn make_instance_id(folder_name: &str) -> InstanceId {
     let base: String = folder_name
         .chars()
@@ -209,7 +218,8 @@ fn make_instance_id(folder_name: &str) -> InstanceId {
     } else {
         base
     };
-    let stamp = current_unix_secs();
+    // 使用纳秒级时间戳作为后缀，避免同一秒内导入产生相同实例 ID。
+    let stamp = current_unix_nanos();
     InstanceId::new(format!("{base}-{stamp}")).expect("generated instance id must be non-empty")
 }
 
@@ -217,5 +227,12 @@ fn current_unix_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
+        .unwrap_or(0)
+}
+
+fn current_unix_nanos() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
         .unwrap_or(0)
 }

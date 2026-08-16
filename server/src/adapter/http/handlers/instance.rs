@@ -140,7 +140,15 @@ pub async fn import_existing_instance(
             "the selected directory is already imported as a server instance",
         ));
     }
-    let import_request = build_import_spec(&request)?;
+    // `build_import_spec` 内部执行同步目录扫描（inspect_server_artifact），
+    // 放到 blocking 线程，避免阻塞 async 运行时。
+    let import_request = tokio::task::spawn_blocking({
+        let request = request.clone();
+        move || build_import_spec(&request)
+    })
+    .await
+    .map_err(|join_error| HttpError::internal(format!("import spec build failed: {join_error}")))?;
+    let import_request = import_request.map_err(HttpError::from)?;
     let instance = state.instance().create(import_request.instance).await?;
     Ok((StatusCode::CREATED, Json(instance)))
 }

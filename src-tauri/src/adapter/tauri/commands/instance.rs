@@ -136,7 +136,20 @@ pub async fn import_existing_server(
         ));
     }
 
-    let import_request = build_import_spec(&request).map_err(|error| match error {
+    // `build_import_spec` 内部执行同步目录扫描（inspect_server_artifact），
+    // 放到 blocking 线程，避免阻塞 async 运行时。
+    let import_request = tokio::task::spawn_blocking({
+        let request = request.clone();
+        move || build_import_spec(&request)
+    })
+    .await
+    .map_err(|join_error| {
+        import_error(
+            "import_panic",
+            format!("import spec build failed: {join_error}"),
+        )
+    })?;
+    let import_request = import_request.map_err(|error| match error {
         CoreImportError::Inspection(_) => import_error("inspection_failed", error.to_string()),
         CoreImportError::NoLaunchCandidate => {
             import_error("no_launch_candidate", error.to_string())
