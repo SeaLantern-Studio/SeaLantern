@@ -14,7 +14,7 @@ use sealantern_core::provisioning::{
     ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
     SourceDirectoryError,
 };
-use sealantern_interface::InstanceService;
+use sealantern_interface::{InstanceService, ProvisioningService};
 
 use super::super::error::HttpError;
 use super::super::state::AppState;
@@ -149,7 +149,14 @@ pub async fn import_existing_instance(
     .await
     .map_err(|join_error| HttpError::internal(format!("import spec build failed: {join_error}")))?;
     let import_request = import_request.map_err(HttpError::from)?;
-    let instance = state.instance().create(import_request.instance).await?;
+    // 流经既有后端原语 plan_existing_instance 完成启动目标校验与归一化，
+    // 复用已有的导入规划能力，而非直接以裸规格创建实例。
+    let plan = state
+        .provisioning()
+        .plan_existing_instance(import_request)
+        .await
+        .map_err(|error| HttpError::bad_request("invalid_instance", error.to_string()))?;
+    let instance = state.instance().create(plan.instance.spec()).await?;
     Ok((StatusCode::CREATED, Json(instance)))
 }
 

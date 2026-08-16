@@ -14,7 +14,7 @@ use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
-    build_import_spec, source_directories_equal, validate_source_directory,
+    build_import_spec, plan_existing_instance, source_directories_equal, validate_source_directory,
     ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
     SourceDirectoryError,
 };
@@ -154,8 +154,12 @@ pub async fn import_existing_server(
         CoreImportError::InvalidInstance(_) => import_error("invalid_instance", error.to_string()),
     })?;
 
+    // 流经既有后端原语 plan_existing_instance 完成启动目标校验与归一化，
+    // 复用已有的导入规划能力，而非直接以裸规格创建实例。
+    let plan = plan_existing_instance(import_request)
+        .map_err(|error| import_error("invalid_instance", error.to_string()))?;
     service
-        .create(import_request.instance)
+        .create(plan.instance.spec())
         .await
         .map_err(|error| import_error("create_failed", error.to_string()))
 }

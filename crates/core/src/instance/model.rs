@@ -214,6 +214,29 @@ impl Instance {
             self.min_memory_mib,
         )
     }
+
+    /// 由已验证实例复制出等价的 [`InstanceSpec`]。
+    ///
+    /// 供需要规格而非实例的接口复用（如实例创建服务 [`InstanceService::create`]），
+    /// 避免调用方反向手工拼装字段。
+    pub fn spec(&self) -> InstanceSpec {
+        InstanceSpec {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            aliases: self.aliases.clone(),
+            core_type: self.core_type.clone(),
+            core_version: self.core_version.clone(),
+            game_version: self.game_version.clone(),
+            directory: self.directory.clone(),
+            port: self.port,
+            max_memory_mib: self.max_memory_mib,
+            min_memory_mib: self.min_memory_mib,
+            created_at_unix_secs: self.created_at_unix_secs,
+            last_started_at_unix_secs: self.last_started_at_unix_secs,
+            server_metadata: self.server_metadata.clone(),
+            launch: self.launch.clone(),
+        }
+    }
 }
 
 /// 实例字段级校验（名称、目录、端口、内存范围）。
