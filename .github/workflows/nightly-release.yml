@@ -154,7 +154,7 @@ jobs:
           cargo test -p sealantern-infra --all-features
           cargo test -p sealantern-interface
           cargo test -p sealantern-server
-          cargo test --lib -p sealantern
+          cargo test --bin sealantern -p sealantern
 
   build-tauri-nightly:
     name: 构建 Nightly (${{ matrix.name }})
