@@ -1,10 +1,13 @@
 //! 平台原生窗口材质。
 
 use super::theme::SystemTheme;
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use super::window_state::MAIN_WINDOW_LABEL;
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+use tauri::Manager;
 
 #[cfg(target_os = "macos")]
 unsafe extern "C" {

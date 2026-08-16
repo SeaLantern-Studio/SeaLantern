@@ -130,7 +130,7 @@ fn current(app: &AppHandle) -> SystemTheme {
     #[cfg(target_os = "windows")]
     {
         let _ = app;
-        return windows_theme();
+        windows_theme()
     }
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
