@@ -17,12 +17,12 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use sealantern_core::instance::{
-    restart_instance, Instance, InstanceId, InstanceLifecycleState, InstanceRestartDriver,
-    RestartPolicy, StartupMode,
+    Instance, InstanceId, InstanceLifecycleState, InstanceRestartDriver, RestartPolicy,
+    StartupMode, restart_instance,
 };
 use sealantern_core::process::{
-    build_command, CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal,
-    TerminalStream, WindowsConsoleEncoding,
+    CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal, TerminalStream,
+    WindowsConsoleEncoding, build_command,
 };
 use sealantern_interface::server::{ServerSnapshot, ServerState};
 use sealantern_interface::{InstanceService, ServerService, ServerServiceError, SettingsService};
@@ -681,9 +681,11 @@ mod tests {
         let second = InstanceId::new("second").expect("second id");
 
         let first_guard = service.lock_lifecycle(&first).await.expect("first lock");
-        assert!(tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&first))
-            .await
-            .is_err());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&first))
+                .await
+                .is_err()
+        );
         let second_guard =
             tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&second))
                 .await
@@ -700,11 +702,13 @@ mod tests {
 
         let locks = service.lifecycle_locks.lock().expect("lifecycle locks");
         assert_eq!(locks.len(), 2);
-        assert!(locks
-            .get(second.as_str())
-            .expect("second lock slot")
-            .upgrade()
-            .is_none());
+        assert!(
+            locks
+                .get(second.as_str())
+                .expect("second lock slot")
+                .upgrade()
+                .is_none()
+        );
         drop(locks);
         drop(reacquired);
 

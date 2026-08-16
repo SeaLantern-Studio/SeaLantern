@@ -7,8 +7,8 @@ use super::super::model::{
     ServerComponentKind,
 };
 use super::{
-    ecosystems_for_key, list_location, manifest_location, product_from_key, release_channel,
-    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal,
+    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal, ecosystems_for_key,
+    list_location, manifest_location, product_from_key, release_channel,
 };
 
 const CRAFTBUKKIT_MAIN: &str = "org.bukkit.craftbukkit.bootstrap.Main";

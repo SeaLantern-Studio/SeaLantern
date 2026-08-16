@@ -4,11 +4,11 @@
 //! [`CoreDownloadService`](sealantern_application::service::CoreDownloadService)
 //! 并收敛错误为 [`HttpError`](super::super::error::HttpError)。
 
-use axum::extract::{Path, State};
 use axum::Json;
+use axum::extract::{Path, State};
 
-use sealantern_interface::download::{DownloadRequest, DownloadTaskInfo};
 use sealantern_interface::DownloadService;
+use sealantern_interface::download::{DownloadRequest, DownloadTaskInfo};
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

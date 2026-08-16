@@ -4,9 +4,9 @@
 //! [`AppState`] 与 [`ViteConfig`] 后传入 [`build_router`]，返回的 [`Router`]
 //! 可直接嵌套进更大应用或启动监听。
 
-use axum::routing::{delete, get, patch, post, put};
 use axum::Router;
-use axum_vite::{spa_router, ViteConfig};
+use axum::routing::{delete, get, patch, post, put};
+use axum_vite::{ViteConfig, spa_router};
 
 use sealantern_application::services::AppServices;
 
@@ -101,7 +101,7 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use sealantern_application::service::CoreInstanceService;
-    use tempfile::{tempdir, TempDir};
+    use tempfile::{TempDir, tempdir};
     use tower::ServiceExt;
 
     use super::*;

@@ -22,8 +22,8 @@ pub use model::*;
 use evidence::{EvidenceCollector, NewEvidence};
 use formats::manifest::ParsedManifest;
 use formats::mojang_version::MojangVersionDocument;
-pub(crate) use resolver::{detection_outcome, server_implementation_outcome, DetectionOutcome};
-use resolver::{resolve, DetectionClaim};
+use resolver::{DetectionClaim, resolve};
+pub(crate) use resolver::{DetectionOutcome, detection_outcome, server_implementation_outcome};
 
 const MANIFEST_ENTRY: &str = "META-INF/MANIFEST.MF";
 const MOJANG_VERSION_ENTRY: &str = "version.json";
@@ -802,9 +802,9 @@ mod tests {
     use zip::write::FileOptions;
 
     use super::{
-        inspect_server_artifact, ArtifactFormat, ArtifactRole, DetectionTarget, InspectionOptions,
-        InspectionSubjectKind, LaunchPlatform, LaunchTarget, ReleaseChannel, ServerCategory,
-        ServerComponentKind, ServerEcosystem, ServerInspectionError,
+        ArtifactFormat, ArtifactRole, DetectionTarget, InspectionOptions, InspectionSubjectKind,
+        LaunchPlatform, LaunchTarget, ReleaseChannel, ServerCategory, ServerComponentKind,
+        ServerEcosystem, ServerInspectionError, inspect_server_artifact,
     };
 
     fn temporary_path(suffix: &str) -> PathBuf {
@@ -903,11 +903,13 @@ mod tests {
             assert_eq!(report.identity.category.value, Some(ServerCategory::Proxy));
             assert_eq!(report.identity.version.value.as_deref(), Some(version));
             assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::Snapshot));
-            assert!(report
-                .identity
-                .ecosystems
-                .iter()
-                .any(|candidate| candidate.value == ecosystem));
+            assert!(
+                report
+                    .identity
+                    .ecosystems
+                    .iter()
+                    .any(|candidate| candidate.value == ecosystem)
+            );
             assert_eq!(report.java.required_major.value, Some(11));
             assert!(report.evidence.iter().any(|evidence| {
                 evidence.detector == "proxy-manifest-product"
@@ -968,11 +970,13 @@ mod tests {
                 .and_then(|minecraft| minecraft.version.value.as_deref()),
             Some("1.21.1")
         );
-        assert!(report
-            .identity
-            .ecosystems
-            .iter()
-            .any(|candidate| candidate.value == ServerEcosystem::Forge));
+        assert!(
+            report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ServerEcosystem::Forge)
+        );
         let forge_component = report
             .components
             .iter()
@@ -985,11 +989,13 @@ mod tests {
                 .find(|evidence| evidence.id == *evidence_id)
                 .is_some_and(|evidence| evidence.detector == "arclight-launch-properties")
         }));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Launcher));
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Launcher)
+        );
     }
 
     #[test]
@@ -1016,16 +1022,20 @@ mod tests {
                 .and_then(|minecraft| minecraft.version.value.as_deref()),
             Some("1.20.2")
         );
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "forge"
-                && component.value.version.as_deref() == Some("48.1.0")));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "mcp"
-                && component.value.version.as_deref() == Some("20230921.100330")));
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "forge"
+                    && component.value.version.as_deref() == Some("48.1.0"))
+        );
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "mcp"
+                    && component.value.version.as_deref() == Some("20230921.100330"))
+        );
     }
 
     #[test]
@@ -1042,11 +1052,13 @@ mod tests {
             .expect("inspect Youer fixture");
         fs::remove_file(&youer_path).expect("remove Youer fixture");
         assert_eq!(product_key(&youer), Some("youer"));
-        assert!(youer
-            .identity
-            .ecosystems
-            .iter()
-            .any(|candidate| candidate.value == ServerEcosystem::NeoForge));
+        assert!(
+            youer
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ServerEcosystem::NeoForge)
+        );
 
         let magma_path = temporary_path("server.jar");
         write_test_jar_entries(
@@ -1062,11 +1074,13 @@ mod tests {
         assert_eq!(product_key(&magma), Some("magma"));
         assert_eq!(magma.identity.version.value.as_deref(), Some("21.1.70-beta"));
         assert_eq!(magma.identity.release_channel.value, Some(ReleaseChannel::Beta));
-        assert!(magma
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Wrapper));
+        assert!(
+            magma
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Wrapper)
+        );
     }
 
     #[test]
@@ -1096,16 +1110,20 @@ mod tests {
             .launches
             .iter()
             .any(|launch| matches!(launch.value.target, LaunchTarget::Jar { ref path } if path.ends_with("server.jar"))));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::InstallationDirectory));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Wrapper));
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::InstallationDirectory)
+        );
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Wrapper)
+        );
     }
 
     #[test]
@@ -1126,16 +1144,20 @@ mod tests {
         assert_eq!(product_key(&report), Some("spongevanilla"));
         assert_eq!(report.identity.category.value, Some(ServerCategory::JavaGameServer));
         assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::ReleaseCandidate));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Installer));
-        assert!(report
-            .identity
-            .ecosystems
-            .iter()
-            .any(|candidate| candidate.value == ServerEcosystem::Sponge));
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Installer)
+        );
+        assert!(
+            report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ServerEcosystem::Sponge)
+        );
     }
 
     #[test]
@@ -1191,11 +1213,13 @@ mod tests {
                 .and_then(|minecraft| minecraft.version.value.as_deref()),
             Some("26.2")
         );
-        assert!(report
-            .identity
-            .ecosystems
-            .iter()
-            .any(|candidate| candidate.value == ServerEcosystem::Bukkit));
+        assert!(
+            report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ServerEcosystem::Bukkit)
+        );
         let implementation_detectors = report
             .identity
             .implementation
@@ -1255,16 +1279,20 @@ mod tests {
                     .and_then(|minecraft| minecraft.version.value.as_deref()),
                 Some(minecraft_version)
             );
-            assert!(report
-                .artifact
-                .roles
-                .iter()
-                .any(|role| role.value == ArtifactRole::Installer));
-            assert!(report
-                .artifact
-                .roles
-                .iter()
-                .any(|role| role.value == ArtifactRole::Launcher));
+            assert!(
+                report
+                    .artifact
+                    .roles
+                    .iter()
+                    .any(|role| role.value == ArtifactRole::Installer)
+            );
+            assert!(
+                report
+                    .artifact
+                    .roles
+                    .iter()
+                    .any(|role| role.value == ArtifactRole::Launcher)
+            );
             assert!(report.components.iter().any(|component| {
                 component.value.kind == ServerComponentKind::ModLoader
                     && component.value.version.as_deref() == Some("0.19.3")
@@ -1287,10 +1315,7 @@ mod tests {
                     "META-INF/MANIFEST.MF",
                     "Implementation-Title: FabricInstaller\r\nImplementation-Version: 1.1.1\r\nMain-Class: net.fabricmc.installer.ServerLauncher\r\n\r\n",
                 ),
-                (
-                    "install.properties",
-                    "fabric-loader-version=0.19.3\ngame-version=26.2\n",
-                ),
+                ("install.properties", "fabric-loader-version=0.19.3\ngame-version=26.2\n"),
             ],
         );
 
@@ -1388,30 +1413,42 @@ mod tests {
             Some("26.2")
         );
         assert_eq!(report.java.required_major.value, Some(25));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "forge"));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "mcp"));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "forge-bootstrap-shim"));
-        assert!(report
-            .launches
-            .iter()
-            .any(|launch| launch.value.platform == LaunchPlatform::Windows));
-        assert!(report
-            .launches
-            .iter()
-            .any(|launch| launch.value.platform == LaunchPlatform::Unix));
-        assert!(report
-            .launches
-            .iter()
-            .any(|launch| matches!(launch.value.target, LaunchTarget::Script { .. })));
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "forge")
+        );
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "mcp")
+        );
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "forge-bootstrap-shim")
+        );
+        assert!(
+            report
+                .launches
+                .iter()
+                .any(|launch| launch.value.platform == LaunchPlatform::Windows)
+        );
+        assert!(
+            report
+                .launches
+                .iter()
+                .any(|launch| launch.value.platform == LaunchPlatform::Unix)
+        );
+        assert!(
+            report
+                .launches
+                .iter()
+                .any(|launch| matches!(launch.value.target, LaunchTarget::Script { .. }))
+        );
     }
 
     #[test]
@@ -1449,10 +1486,12 @@ mod tests {
                 .count(),
             2
         );
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "conflicting_server_versions"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "conflicting_server_versions")
+        );
     }
 
     #[test]
@@ -1466,10 +1505,7 @@ mod tests {
                     "META-INF/MANIFEST.MF",
                     "Manifest-Version: 1.0\r\nMain-Class: app.mcjars.serverstarter.ServerStarter\r\n\r\n",
                 ),
-                (
-                    "metadata.json",
-                    r#"{"version":"26.2","neoforge":"26.2.0.41-beta"}"#,
-                ),
+                ("metadata.json", r#"{"version":"26.2","neoforge":"26.2.0.41-beta"}"#),
             ],
         );
         let version_directory = root.join("libraries/net/neoforged/neoforge/26.2.0.41-beta");
@@ -1515,19 +1551,25 @@ mod tests {
                 .and_then(|minecraft| minecraft.version.value.as_deref()),
             Some("26.2")
         );
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "neoforge"));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "neoform"));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Wrapper));
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "neoforge")
+        );
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "neoform")
+        );
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Wrapper)
+        );
         assert!(report.launches.iter().any(|launch| {
             matches!(launch.value.target, LaunchTarget::Jar { .. })
                 && launch.value.id == "neoforge-wrapper-jar"
@@ -1686,21 +1728,27 @@ mod tests {
             assert_eq!(report.identity.version.value.as_deref(), Some(case.version));
             assert_eq!(report.identity.release_channel.value, Some(case.channel));
             assert_eq!(report.identity.category.value, Some(ServerCategory::JavaGameServer));
-            assert!(report
-                .identity
-                .ecosystems
-                .iter()
-                .any(|ecosystem| ecosystem.value == ServerEcosystem::Paper));
-            assert!(report
-                .identity
-                .ecosystems
-                .iter()
-                .any(|ecosystem| ecosystem.value == ServerEcosystem::Bukkit));
-            assert!(report
-                .artifact
-                .roles
-                .iter()
-                .any(|role| role.value == ArtifactRole::Bootstrapper));
+            assert!(
+                report
+                    .identity
+                    .ecosystems
+                    .iter()
+                    .any(|ecosystem| ecosystem.value == ServerEcosystem::Paper)
+            );
+            assert!(
+                report
+                    .identity
+                    .ecosystems
+                    .iter()
+                    .any(|ecosystem| ecosystem.value == ServerEcosystem::Bukkit)
+            );
+            assert!(
+                report
+                    .artifact
+                    .roles
+                    .iter()
+                    .any(|role| role.value == ArtifactRole::Bootstrapper)
+            );
             assert_eq!(report.components.len(), 1);
             assert_eq!(
                 report.components[0]
@@ -1718,11 +1766,13 @@ mod tests {
                 Some(case.minecraft)
             );
             let minecraft = report.minecraft.as_ref().expect("Minecraft metadata");
-            assert!(minecraft
-                .version
-                .evidence
-                .iter()
-                .all(|evidence_id| minecraft.evidence.contains(evidence_id)));
+            assert!(
+                minecraft
+                    .version
+                    .evidence
+                    .iter()
+                    .all(|evidence_id| minecraft.evidence.contains(evidence_id))
+            );
         }
     }
 
@@ -1772,10 +1822,7 @@ mod tests {
                     "META-INF/patches.list",
                     "versions\tinput\tpatch\toutput\t26.2/server-26.2.jar\t26.2/server.patch\t26.2/spigot-26.2.jar\n",
                 ),
-                (
-                    "META-INF/libraries.list",
-                    "hash\t*\tspigot-api-26.2-R0.1-SNAPSHOT.jar\n",
-                ),
+                ("META-INF/libraries.list", "hash\t*\tspigot-api-26.2-R0.1-SNAPSHOT.jar\n"),
             ],
         );
 
@@ -1805,14 +1852,8 @@ mod tests {
         write_test_jar_entries(
             &path,
             &[
-                (
-                    "META-INF/MANIFEST.MF",
-                    "Main-Class: io.papermc.paperclip.Main\r\n\r\n",
-                ),
-                (
-                    "META-INF/versions.list",
-                    "hash\t26.2\t26.2/custom-fork-26.2.jar\n",
-                ),
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/custom-fork-26.2.jar\n"),
                 (
                     "META-INF/libraries.list",
                     "hash\texample.server:custom-fork-api:26.2.build.1-stable\tcustom-fork-api.jar\n",
@@ -1857,10 +1898,12 @@ mod tests {
         assert!(report.identity.implementation.value.is_none());
         assert_eq!(report.identity.implementation.alternatives.len(), 2);
         assert!(report.identity.ecosystems.is_empty());
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "conflicting_server_implementations"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "conflicting_server_implementations")
+        );
     }
 
     #[test]
@@ -1879,11 +1922,13 @@ mod tests {
         assert_eq!(report.artifact.format.value, Some(ArtifactFormat::Jar));
         assert_eq!(report.artifact.format.confidence, 100);
         assert_eq!(report.artifact.main_class.value.as_deref(), Some("net.minecraft.bundler.Main"));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Runnable));
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Runnable)
+        );
         assert_eq!(
             report
                 .artifact
@@ -1937,10 +1982,12 @@ mod tests {
 
         assert_eq!(report.artifact.main_class.value.as_deref(), Some("example.Main"));
         assert!(report.minecraft.is_none());
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "metadata_entry_too_large"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "metadata_entry_too_large")
+        );
     }
 
     #[test]
@@ -1959,10 +2006,12 @@ mod tests {
         assert!(report.diagnostics.iter().any(|diagnostic| {
             diagnostic.code == "insufficient_server_implementation_evidence"
         }));
-        assert!(!report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| { diagnostic.code == "conflicting_server_implementations" }));
+        assert!(
+            !report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.code == "conflicting_server_implementations" })
+        );
     }
 
     #[test]
@@ -2082,12 +2131,10 @@ mod tests {
         fs::create_dir(&root).expect("create root directory");
         write_test_jar_entries(
             &root.join("velocity.jar"),
-            &[
-                (
-                    "META-INF/MANIFEST.MF",
-                    "Main-Class: com.velocitypowered.proxy.Velocity\r\nImplementation-Title: Velocity\r\nImplementation-Version: 4.1.0\r\n\r\n",
-                ),
-            ],
+            &[(
+                "META-INF/MANIFEST.MF",
+                "Main-Class: com.velocitypowered.proxy.Velocity\r\nImplementation-Title: Velocity\r\nImplementation-Version: 4.1.0\r\n\r\n",
+            )],
         );
 
         let report = inspect_server_artifact(&root, &InspectionOptions::default())
@@ -2145,10 +2192,12 @@ mod tests {
         fs::remove_dir_all(&root).expect("remove root directory");
 
         assert_eq!(product_key(&report), Some("vanilla"));
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "root_archive_unreadable"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "root_archive_unreadable")
+        );
     }
 
     #[test]
@@ -2174,10 +2223,12 @@ mod tests {
         fs::remove_dir_all(&root).expect("remove root directory");
 
         assert_eq!(product_key(&report), Some("vanilla"));
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "root_archive_limit_reached"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "root_archive_limit_reached")
+        );
     }
 
     #[test]
@@ -2227,9 +2278,11 @@ mod tests {
                 .map(|product| product.key.as_str()),
             Some("forge")
         );
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "optional_metadata_unreadable"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "optional_metadata_unreadable")
+        );
     }
 }

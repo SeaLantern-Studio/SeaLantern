@@ -472,11 +472,10 @@ mod tests {
             .with_no_proxy(vec!["localhost".into()]),
         );
 
-        assert!(NetClient::from_config_with_effective_proxy(
-            &ClientConfig::default(),
-            &effective_proxy
-        )
-        .is_ok());
+        assert!(
+            NetClient::from_config_with_effective_proxy(&ClientConfig::default(), &effective_proxy)
+                .is_ok()
+        );
     }
 
     #[test]

@@ -7,9 +7,9 @@
 use reqwest::{IntoUrl, Method, Response};
 use serde::Serialize;
 
+use crate::net::RetryPolicy;
 use crate::net::client::NetClient;
 use crate::net::error::NetError;
-use crate::net::RetryPolicy;
 use crate::observability;
 
 /// HTTP 请求构建器。

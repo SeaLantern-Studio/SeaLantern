@@ -21,8 +21,8 @@ use super::model::{
     MinecraftVersionInfo, ReleaseChannel, ServerCategory, ServerComponent, ServerComponentKind,
     ServerEcosystem, ServerIdentityInfo, ServerProduct,
 };
-use super::resolver::{resolve, resolve_attributed, resolve_server_implementation, DetectionClaim};
-use super::{detection_outcome, server_implementation_outcome, DetectionOutcome};
+use super::resolver::{DetectionClaim, resolve, resolve_attributed, resolve_server_implementation};
+use super::{DetectionOutcome, detection_outcome, server_implementation_outcome};
 
 const PAPER_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Paper, ServerEcosystem::Bukkit];
 const VANILLA_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Vanilla];

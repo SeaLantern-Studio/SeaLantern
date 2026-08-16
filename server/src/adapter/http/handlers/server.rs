@@ -4,12 +4,12 @@
 //! 薄转发到 [`CoreServerService`](sealantern_application::service::CoreServerService)
 //! 并收敛错误为 [`HttpError`](super::super::error::HttpError)。
 
-use axum::extract::{Path, State};
 use axum::Json;
+use axum::extract::{Path, State};
 
 use sealantern_core::instance::InstanceId;
-use sealantern_interface::server::ServerSnapshot;
 use sealantern_interface::ServerService;
+use sealantern_interface::server::ServerSnapshot;
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

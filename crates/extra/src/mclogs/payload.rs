@@ -50,7 +50,7 @@ pub(super) fn prepare_payload(content: &str) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{prepare_payload, truncate_to_last_lines, MAX_LOG_LINE_COUNT};
+    use super::{MAX_LOG_LINE_COUNT, prepare_payload, truncate_to_last_lines};
 
     #[test]
     fn prepare_payload_trims_surrounding_whitespace() {

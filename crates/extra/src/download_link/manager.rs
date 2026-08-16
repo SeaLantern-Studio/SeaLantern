@@ -6,8 +6,7 @@ use serde_json::Value;
 use tokio::sync::{Mutex, OnceCell};
 
 /// 下载链接配置 URL
-const DOWNLOAD_LINK_LIST_URL: &str =
-    "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/releases/download/26.02.27/jar_lfs_links.json";
+const DOWNLOAD_LINK_LIST_URL: &str = "https://cnb.cool/SeaLantern-studio/ServerCore-Mirror/-/releases/download/26.02.27/jar_lfs_links.json";
 
 /// 下载链接查询错误。
 ///

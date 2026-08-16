@@ -7,7 +7,7 @@ use tauri::{App, AppHandle, Manager, Wry};
 use super::auto_lightweight::AutoLightweightState;
 use super::lightweight;
 use super::window_state::{
-    self as window_lifecycle, MainWindowMode, MainWindowState, MAIN_WINDOW_LABEL,
+    self as window_lifecycle, MAIN_WINDOW_LABEL, MainWindowMode, MainWindowState,
 };
 
 const SHOW_MENU_ID: &str = "tray-show";

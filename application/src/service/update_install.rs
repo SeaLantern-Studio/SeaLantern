@@ -13,8 +13,8 @@
 
 use async_trait::async_trait;
 use sealantern_extra::update::{
-    check_pending_update, clear_pending_update, download_update_file_without_events,
-    get_pending_update_file, get_update_cache_dir, write_pending_update, PendingUpdate,
+    PendingUpdate, check_pending_update, clear_pending_update, download_update_file_without_events,
+    get_pending_update_file, get_update_cache_dir, write_pending_update,
 };
 use sealantern_interface::{UpdateInstallService, UpdateInstallServiceError};
 

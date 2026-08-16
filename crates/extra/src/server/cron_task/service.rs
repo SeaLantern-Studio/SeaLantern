@@ -473,9 +473,11 @@ mod tests {
         assert_eq!(runs.len(), 1);
         assert!(runs[0].succeeded);
         assert_eq!(*calls.lock().unwrap(), ["restart:server-a"]);
-        assert!(service.tasks()[0]
-            .next_run_at
-            .is_some_and(|next| next > now));
+        assert!(
+            service.tasks()[0]
+                .next_run_at
+                .is_some_and(|next| next > now)
+        );
         assert_eq!(service.tasks()[0].id, task.id);
     }
 
