@@ -76,12 +76,7 @@ watch(
   min-height: 0;
 }
 
-/* 竖向选项卡宽度与设置页/帮助文档对齐,保持三处一致 */
-.plugins-page-layout .cmz-tab-bar--vertical {
-  width: 220px;
-  min-width: 220px;
-  flex-shrink: 0;
-}
+/* 竖向选项卡宽度由 app.css 全局统一 */
 
 .tab-content {
   flex: 1;
