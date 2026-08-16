@@ -509,6 +509,8 @@ async function handleImport(json: string) {
 
 <style scoped>
 .settings-view {
+  max-width: 960px;
+  margin: 0 auto;
   padding-bottom: var(--sl-space-2xl);
 }
 
@@ -536,8 +538,7 @@ async function handleImport(json: string) {
 }
 
 .settings-tabbar-sticky .cmz-tab-bar--vertical {
-  width: 220px;
-  min-width: 220px;
+  min-width: 140px;
 }
 
 .settings-main {
