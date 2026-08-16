@@ -54,8 +54,16 @@ use adapter::tauri::events::LogSenderState;
 use desktop::{
     apply_acrylic, desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file,
     desktop_pick_jar_file, desktop_pick_java_file, desktop_pick_save_file,
-    desktop_pick_server_executable, desktop_pick_startup_file,
+    desktop_pick_server_executable, desktop_pick_startup_file, hide_main_window,
+    restore_main_window, set_window_material, supports_liquid_glass, toggle_light_weight,
+    DesktopAppearanceState, MainWindowState,
 };
+
+fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
+    use tauri_plugin_window_state::StateFlags;
+
+    StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// 启动桌面应用。
@@ -64,12 +72,18 @@ pub fn run() {
     observability::init();
 
     let app = tauri::Builder::default()
+        .manage(MainWindowState::new())
+        .manage(DesktopAppearanceState::new())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(window_state_flags())
+                .build(),
+        )
         .manage(OnlineTunnelEventForwarder::default())
         .manage(LogSenderState::new())
         .invoke_handler(tauri::generate_handler![
@@ -82,8 +96,14 @@ pub fn run() {
             desktop_pick_save_file,
             desktop_pick_server_executable,
             desktop_pick_startup_file,
-            //窗口亚克力透明效果（由desktop/window_effect提供）
+            //窗口原生材质效果（由desktop/effects提供）
             apply_acrylic,
+            set_window_material,
+            supports_liquid_glass,
+            //主窗口状态机与轻量模式（仅桌面宿主）
+            hide_main_window,
+            restore_main_window,
+            toggle_light_weight,
             //服务器定时任务契约命令
             create_cron_task,
             delete_cron_task,
@@ -171,10 +191,11 @@ pub fn run() {
 
     // 全局退出钩子：覆盖窗口销毁、`app.exit`、操作系统关闭等所有退出路径，
     // 保证异步服务（日志转发、在线隧道）在进程退出前统一清理。
-    app.run(|app_handle, event| {
-        if let tauri::RunEvent::Exit = event {
-            on_shutdown(app_handle.clone());
-        }
+    app.run(|app_handle, event| match event {
+        // 销毁最后一个 WebView 是轻量模式的正常路径，不能退出后台进程。
+        tauri::RunEvent::ExitRequested { api, code: None, .. } => api.prevent_exit(),
+        tauri::RunEvent::Exit => on_shutdown(app_handle.clone()),
+        _ => {}
     });
 }
 
@@ -202,6 +223,8 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(window) = app.get_webview_window("main") {
         window.set_decorations(false)?;
     }
+
+    desktop::tray::setup(app)?;
 
     let handle_for_server_log = app_handle.clone();
     let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
