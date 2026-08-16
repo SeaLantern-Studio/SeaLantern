@@ -1,6 +1,6 @@
 [package]
 name = "docker-entry"
-version = "1.2.0"
+version.workspace = true
 description = "Docker 容器入口程序"
 edition.workspace = true
 

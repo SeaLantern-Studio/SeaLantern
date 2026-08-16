@@ -1,6 +1,6 @@
 [package]
 name = "sealantern"
-version = "1.2.0"
+version.workspace = true
 description = "Minecraft Server Manager"
 authors = ["FPS_Z"]
 edition.workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "sealantern-extra"
-version = "1.2.0"
+version.workspace = true
 edition.workspace = true
 license = "GPL-3.0-only"
 
