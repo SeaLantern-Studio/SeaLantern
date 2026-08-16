@@ -60,11 +60,12 @@
 
 开发前需要准备：
 
-| 依赖    | 版本   |
-| ------- | ------ |
-| Node.js | 24 LTS |
-| Rust    | stable |
-| pnpm    | 9.15.9 |
+| 依赖         | 版本   |
+| ------------ | ------ |
+| Node.js      | 24 LTS |
+| Rust         | stable |
+| pnpm         | 9.15.9 |
+| Only（可选） | 0.0.7+ |
 
 如果你还没有配置开发环境，可以先查看 [环境配置](https://docs.ideaflash.cn/zh/dev/environment)。
 
@@ -96,9 +97,29 @@ pnpm docker:dev
 
 如果你在 Linux 上开发，可能需要先安装 Tauri 相关系统依赖。具体请看 [Tauri Linux 前置要求](https://tauri.app/zh-cn/start/prerequisites/#linux)。
 
+仓库根目录提供了 [`Onlyfile`](Onlyfile)，用于统一常用的开发、构建和检查命令。可以按需安装 [Only](https://github.com/KercyDing/only)：
+
+```bash
+cargo install only
+```
+
+安装后，在项目根目录运行以下命令查看所有可用任务：
+
+```bash
+only
+```
+
+常用命令包括 `only dev`、`only build`、`only check`、`only test` 和 `only ci`。
+
 ### 代码检查
 
-提交代码前，我们**建议**运行以下命令来检查代码质量：
+提交代码前，我们**建议**运行完整的本地 CI：
+
+```bash
+only ci
+```
+
+该命令会执行前后端静态检查和全部测试；如果没有安装 Only，也可以分别运行以下命令：
 
 <details><summary>前端检查</summary>
 
