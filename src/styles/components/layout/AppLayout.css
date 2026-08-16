@@ -19,10 +19,10 @@
   background-color: transparent;
 }
 
-/* 暗色下盖一层淡黑膜纠偏 acrylic 偏白的底,保持通透 */
+/* 暗色下用深灰膜纠偏 acrylic 偏白的底,浅灰容器浮在上面形成灰阶层次 */
 [data-theme="dark"][data-acrylic="on"] .app-layout,
 [data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .app-layout {
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: var(--sl-bg);
 }
 
 .app-background {

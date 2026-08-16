@@ -174,12 +174,13 @@
   --sl-surface-hover: rgba(255, 255, 255, 0.62);
 }
 
+/* 暗色材质:深灰环境 + 浅灰容器,灰阶分层代替纯黑压膜 */
 [data-theme="dark"][data-acrylic="on"] {
-  --sl-bg: rgba(0, 0, 0, 0.5);
-  --sl-bg-secondary: rgba(0, 0, 0, 0.55);
-  --sl-bg-tertiary: rgba(0, 0, 0, 0.62);
-  --sl-surface: rgba(0, 0, 0, 0.55);
-  --sl-surface-hover: rgba(0, 0, 0, 0.62);
+  --sl-bg: rgba(13, 16, 24, 0.35);
+  --sl-bg-secondary: rgba(13, 16, 24, 0.4);
+  --sl-bg-tertiary: rgba(13, 16, 24, 0.45);
+  --sl-surface: rgba(42, 46, 62, 0.5);
+  --sl-surface-hover: rgba(50, 55, 74, 0.55);
 }
 
 [data-minimal="true"] {
