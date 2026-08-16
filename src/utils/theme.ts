@@ -78,7 +78,8 @@ function ensureRainbowLoop(): void {
   const tick = (now: number): void => {
     const elapsed = now - last;
     last = now;
-    rainbowHue = (rainbowHue + (RAINBOW_SPEED * elapsed) / 1000) % 360;
+    // 保留两位小数,避免 hsl 字符串里出现超长浮点
+    rainbowHue = Math.round((rainbowHue + (RAINBOW_SPEED * elapsed) / 1000) * 100) / 100;
     applyRainbowHue(rainbowHue);
     rainbowTimer = requestAnimationFrame(tick);
   };
@@ -313,12 +314,16 @@ export function applyColors(settings: AppSettings): void {
     border: getColorValue(settings, "border", actualPlan),
   };
 
-  // 彩虹主题:主色/强调色走动态色相,覆盖静态定义,亮度跟随明暗模式并按色相补偿
-  if (settings.color === "rainbow") {
-    const l = Math.round(rainbowLightness(rainbowHue, isDark ? 64 : 48));
-    const lAccent = Math.round(rainbowLightness((rainbowHue + 45) % 360, isDark ? 72 : 56));
-    colors.primary = `hsl(${rainbowHue}, 82%, ${l}%)`;
-    colors.secondary = `hsl(${(rainbowHue + 45) % 360}, 82%, ${lAccent}%)`;
+  // 彩虹主题:主色/强调色走动态色相,亮度按色相补偿后供派生色复用
+  const isRainbow = settings.color === "rainbow";
+  const rainbowL = isRainbow ? Math.round(rainbowLightness(rainbowHue, isDark ? 64 : 48)) : 0;
+  const rainbowAccentHue = isRainbow ? (rainbowHue + 45) % 360 : 0;
+  const rainbowLAccent = isRainbow
+    ? Math.round(rainbowLightness(rainbowAccentHue, isDark ? 72 : 56))
+    : 0;
+  if (isRainbow) {
+    colors.primary = `hsl(${rainbowHue}, 82%, ${rainbowL}%)`;
+    colors.secondary = `hsl(${rainbowAccentHue}, 82%, ${rainbowLAccent}%)`;
   }
 
   document.documentElement.style.setProperty("--sl-bg", colors.bg);
@@ -406,16 +411,14 @@ export function applyColors(settings: AppSettings): void {
   document.documentElement.style.setProperty("--sl-bg-elevated", bgElevatedColor);
   document.documentElement.style.setProperty("--sl-bg-hover", bgHoverColor);
 
-  const isRainbow = settings.color === "rainbow";
   let primaryLight: string;
   let primaryDark: string;
   let primaryBg: string;
   if (isRainbow) {
-    // 彩虹主色是 hsl 字符串,不能走 hex 亮度调整,直接按当前色相派生
-    const l = Math.round(rainbowLightness(rainbowHue, isDark ? 64 : 48));
-    primaryLight = `hsl(${rainbowHue}, 82%, ${Math.min(90, l + 10)}%)`;
-    primaryDark = `hsl(${rainbowHue}, 82%, ${Math.max(8, l - 10)}%)`;
-    primaryBg = `hsla(${rainbowHue}, 82%, ${l}%, 0.12)`;
+    // 彩虹主色是 hsl 字符串,不能走 hex 亮度调整,直接用补偿后的亮度派生
+    primaryLight = `hsl(${rainbowHue}, 82%, ${Math.min(90, rainbowL + 10)}%)`;
+    primaryDark = `hsl(${rainbowHue}, 82%, ${Math.max(8, rainbowL - 10)}%)`;
+    primaryBg = `hsla(${rainbowHue}, 82%, ${rainbowL}%, 0.12)`;
   } else {
     primaryLight = isDark
       ? adjustBrightness(colors.primary, 30)
@@ -430,8 +433,8 @@ export function applyColors(settings: AppSettings): void {
   document.documentElement.style.setProperty("--sl-primary-bg", primaryBg);
 
   const accentLight = isRainbow
-    ? `hsl(${(rainbowHue + 45) % 360}, 82%, ${Math.round(
-        rainbowLightness((rainbowHue + 45) % 360, isDark ? 80 : 64),
+    ? `hsl(${rainbowAccentHue}, 82%, ${Math.round(
+        rainbowLightness(rainbowAccentHue, isDark ? 80 : 64),
       )}%)`
     : adjustBrightness(colors.secondary, 20);
   document.documentElement.style.setProperty("--sl-accent-light", accentLight);
@@ -487,9 +490,7 @@ export function applyColors(settings: AppSettings): void {
     "--sl-shadow-input-focus",
     `0 0 0 3px ${
       isRainbow
-        ? `hsla(${rainbowHue}, 82%, ${Math.round(
-            rainbowLightness(rainbowHue, isDark ? 64 : 48),
-          )}%, 0.2)`
+        ? `hsla(${rainbowHue}, 82%, ${rainbowL}%, 0.2)`
         : isDark
           ? rgbaFromHex(colors.primary, 0.2)
           : rgbaFromHex(colors.primary, 0.15)
