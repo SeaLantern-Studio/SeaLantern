@@ -5436,6 +5436,7 @@ name = "sealantern-application"
 version = "1.2.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "sealantern-core",
  "sealantern-extra",
  "sealantern-infra",
@@ -5445,6 +5446,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
