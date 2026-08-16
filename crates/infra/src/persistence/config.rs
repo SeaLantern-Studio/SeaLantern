@@ -1,10 +1,10 @@
 use std::convert::Infallible;
 use std::path::{Path, PathBuf};
 
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
-use crate::fs::{ensure_parent, read_limited, write_atomic, DataLimit, FileLock, FsError};
+use crate::fs::{DataLimit, FileLock, FsError, ensure_parent, read_limited, write_atomic};
 use crate::observability;
 
 use super::process_lock_registry;

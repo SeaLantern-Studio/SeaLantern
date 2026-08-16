@@ -48,10 +48,10 @@ where
         return fail(&context, M::NAME, error);
     }
 
-    if let Some(permission) = M::REQUIRED_PERMISSION {
-        if !context.access().allows(permission) {
-            return fail(&context, M::NAME, RpcError::permission_denied());
-        }
+    if let Some(permission) = M::REQUIRED_PERMISSION
+        && !context.access().allows(permission)
+    {
+        return fail(&context, M::NAME, RpcError::permission_denied());
     }
 
     match method.call(&context, params).await {

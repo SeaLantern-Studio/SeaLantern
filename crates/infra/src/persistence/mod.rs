@@ -5,7 +5,7 @@ mod instance_registry;
 mod sqlite;
 
 pub use config::{ConfigError, ConfigFile, ConfigFormat};
-pub use coordination::{process_lock_registry, ProcessLockRegistry, ProcessResourceLock};
+pub use coordination::{ProcessLockRegistry, ProcessResourceLock, process_lock_registry};
 pub use error::PersistenceError;
 pub use instance_registry::{InstanceRegistry, InstanceRegistryError, InstanceRegistryRecord};
 pub use sqlite::{

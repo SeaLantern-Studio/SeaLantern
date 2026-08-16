@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::download::multi::Downloader;
 use crate::download::status::{DownloadError, DownloadSnapshot, DownloadStatus};
 use crate::net::client::NetClient;
-use crate::net::{global_client_provider, ClientProvider};
+use crate::net::{ClientProvider, global_client_provider};
 use crate::observability;
 
 /// 下载任务管理器。

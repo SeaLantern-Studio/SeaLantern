@@ -67,7 +67,7 @@ pub async fn read_logs(
         Some(_) => {
             return Err(PersistenceError::InvalidInput {
                 reason: format!("recent_limit must be positive, got {:?}", recent_limit),
-            })
+            });
         }
         None => {
             database

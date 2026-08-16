@@ -12,7 +12,7 @@
 
 use std::path::{Path, PathBuf};
 
-use sealantern_infra::fs::{read_string_limited, write_atomic, DataLimit, FileLock, FsError};
+use sealantern_infra::fs::{DataLimit, FileLock, FsError, read_string_limited, write_atomic};
 use sealantern_infra::persistence::config::ConfigFile;
 use sealantern_infra::persistence::config::UpdatePersistedError;
 use sealantern_infra::persistence::process_lock_registry;
@@ -20,10 +20,10 @@ use sealantern_infra::platform::get_app_data_dir;
 use serde::Deserialize;
 use tokio::sync::OwnedRwLockWriteGuard;
 
-use super::types::{
-    AppSettings, JavaInfo, PartialAppSettings, UpdateResult, CURRENT_CONFIG_VERSION,
-};
 use super::SettingsError;
+use super::types::{
+    AppSettings, CURRENT_CONFIG_VERSION, JavaInfo, PartialAppSettings, UpdateResult,
+};
 use crate::models::SettingsValidationError;
 use crate::observability;
 
@@ -459,7 +459,7 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::{default_settings_path, SettingsManager, SETTINGS_FILE_NAME};
+    use super::{SETTINGS_FILE_NAME, SettingsManager, default_settings_path};
     use crate::config::{AppSettings, JavaInfo, PartialAppSettings};
     use crate::models::CURRENT_CONFIG_VERSION;
     use sealantern_infra::fs::{FileLock, FsError};

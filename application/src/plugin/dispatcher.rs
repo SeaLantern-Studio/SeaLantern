@@ -5,8 +5,8 @@ use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use sealantern_core::app_plugin::{
-    capability, CapabilityDispatchError, CapabilityDispatcher, CapabilityInvocation,
-    ExecutionPrincipal, PolicyDecision, ScopeKind,
+    CapabilityDispatchError, CapabilityDispatcher, CapabilityInvocation, ExecutionPrincipal,
+    PolicyDecision, ScopeKind, capability,
 };
 use sealantern_extra::market::{
     Fetcher, MarketError, MarketSource, ResourceInfo, SearchResult, Version,
@@ -502,7 +502,7 @@ impl PluginReadHost for ApplicationPluginReadHost {
             "server.lifecycle.stop" => self.server.stop(&id).await,
             "server.lifecycle.restart" => self.server.restart(&id).await,
             _ => {
-                return Err(CapabilityDispatchError::InvalidRequest("server lifecycle capability"))
+                return Err(CapabilityDispatchError::InvalidRequest("server lifecycle capability"));
             }
         }
         .map(|_| Value::Null)

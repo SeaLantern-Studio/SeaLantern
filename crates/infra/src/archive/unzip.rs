@@ -8,7 +8,7 @@ use zip::ZipArchive;
 
 use crate::fs::SafeRelativePath;
 
-use super::{create_new_directory, is_symbolic_link, parse_symbolic_link_target, ArchiveError};
+use super::{ArchiveError, create_new_directory, is_symbolic_link, parse_symbolic_link_target};
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: u64 = 4 * 1024;
 
@@ -382,8 +382,8 @@ fn check_limit(
 mod tests {
     use std::io::Write;
 
-    use zip::write::SimpleFileOptions;
     use zip::ZipWriter;
+    use zip::write::SimpleFileOptions;
 
     use super::*;
 

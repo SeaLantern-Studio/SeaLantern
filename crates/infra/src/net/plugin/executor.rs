@@ -4,16 +4,16 @@ use std::time::Instant;
 
 use bytes::Bytes;
 use futures::StreamExt;
-use reqwest::header::{HeaderMap, CONTENT_LENGTH, CONTENT_TYPE, LOCATION};
+use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE, HeaderMap, LOCATION};
 use reqwest::{Method, StatusCode};
 use tokio::sync::Semaphore;
 use url::{Host, Url};
 
 use super::{
-    canonical_ip, AllowedNetworkTarget, PluginHttpMethod, PluginNetworkAddressPolicy,
-    PluginNetworkError, PluginNetworkExecution, PluginNetworkLimits, PluginNetworkRequest,
-    PluginNetworkResponse, PluginNetworkScope, PluginNetworkTrace, PluginTransportErrorKind,
-    PluginTransportStage, ResolvedNetworkTarget, MAX_HEADER_BYTES, MAX_REQUEST_HEADERS,
+    AllowedNetworkTarget, MAX_HEADER_BYTES, MAX_REQUEST_HEADERS, PluginHttpMethod,
+    PluginNetworkAddressPolicy, PluginNetworkError, PluginNetworkExecution, PluginNetworkLimits,
+    PluginNetworkRequest, PluginNetworkResponse, PluginNetworkScope, PluginNetworkTrace,
+    PluginTransportErrorKind, PluginTransportStage, ResolvedNetworkTarget, canonical_ip,
 };
 
 pub(super) const MAX_DNS_ADDRESSES: usize = 32;

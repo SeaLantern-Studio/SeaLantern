@@ -17,8 +17,8 @@ use cap_std::fs::Dir;
 
 pub use error::ArchiveError;
 pub use symbol_link::{is_symbolic_link, parse_symbolic_link_target};
-pub use unzip::{extract_zip, extract_zip_with_limits, ExtractionLimits, ExtractionSummary};
-pub use zipper::{create_zip, ArchiveSummary};
+pub use unzip::{ExtractionLimits, ExtractionSummary, extract_zip, extract_zip_with_limits};
+pub use zipper::{ArchiveSummary, create_zip};
 
 fn open_existing_directory(path: &Path, role: &'static str) -> Result<Dir, ArchiveError> {
     let parent_path = parent_path(path);

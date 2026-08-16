@@ -24,8 +24,8 @@ use adapter::tauri::commands::instance::{
 use adapter::tauri::commands::java::{java_detect, java_validate};
 use adapter::tauri::commands::logging::share_logs;
 use adapter::tauri::commands::online_tunnel::{
-    online_tunnel_host, online_tunnel_join, online_tunnel_status, online_tunnel_stop,
-    OnlineTunnelEventForwarder,
+    OnlineTunnelEventForwarder, online_tunnel_host, online_tunnel_join, online_tunnel_status,
+    online_tunnel_stop,
 };
 use adapter::tauri::commands::plugin::{
     plugin_v2_approve_session, plugin_v2_audit, plugin_v2_disable, plugin_v2_discover,
@@ -54,11 +54,11 @@ use adapter::tauri::commands::update_install::{
 };
 use adapter::tauri::events::LogSenderState;
 use desktop::{
-    apply_acrylic, desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file,
-    desktop_pick_jar_file, desktop_pick_java_file, desktop_pick_save_file,
-    desktop_pick_server_executable, desktop_pick_startup_file, hide_main_window,
-    restore_main_window, set_window_material, supports_liquid_glass, toggle_light_weight,
-    AutoLightweightState, DesktopAppearanceState, MainWindowState,
+    AutoLightweightState, DesktopAppearanceState, MainWindowState, apply_acrylic,
+    desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
+    desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
+    desktop_pick_startup_file, hide_main_window, restore_main_window, set_window_material,
+    supports_liquid_glass, toggle_light_weight,
 };
 
 fn window_state_flags() -> tauri_plugin_window_state::StateFlags {

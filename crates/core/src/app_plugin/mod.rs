@@ -7,8 +7,8 @@ mod catalog;
 mod policy;
 mod types;
 
-pub use catalog::{capabilities, capability, CapabilityDescriptor};
-pub use policy::{evaluate, PolicyFacts};
+pub use catalog::{CapabilityDescriptor, capabilities, capability};
+pub use policy::{PolicyFacts, evaluate};
 pub use types::{
     ApprovalMode, AuditMode, CapabilityDispatchError, CapabilityDispatcher, CapabilityId,
     CapabilityIdError, CapabilityInvocation, ExecutionPrincipal, GrantKind, PolicyDecision,

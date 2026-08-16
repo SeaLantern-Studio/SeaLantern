@@ -4,9 +4,9 @@ use std::path::Path;
 
 use zip::ZipArchive;
 
+use super::InspectionOptions;
 use super::error::ServerInspectionError;
 use super::model::{DiagnosticSeverity, InspectionDiagnostic};
-use super::InspectionOptions;
 
 const MANIFEST_ENTRY: &str = "META-INF/MANIFEST.MF";
 const MOJANG_VERSION_ENTRY: &str = "version.json";

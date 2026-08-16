@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::instance::{Instance, InstanceError, InstanceSpec};
 
-use super::{resolve_run_directory, RunDirectoryError, RunDirectoryState};
+use super::{RunDirectoryError, RunDirectoryState, resolve_run_directory};
 
 /// 整合包导入的无副作用输入。
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -107,7 +107,7 @@ mod tests {
     use std::error::Error;
     use std::path::PathBuf;
 
-    use super::{plan_modpack, ModpackProvisionError, ModpackProvisionRequest};
+    use super::{ModpackProvisionError, ModpackProvisionRequest, plan_modpack};
     use crate::instance::{InstanceId, InstanceSpec, LocalLaunch, StartupMode};
     use crate::provisioning::{RunDirectoryError, RunDirectoryState};
 

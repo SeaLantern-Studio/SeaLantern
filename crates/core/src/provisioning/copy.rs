@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::instance::{
-    plan_import, InstanceImportError, InstanceImportPlan, InstanceImportRequest,
+    InstanceImportError, InstanceImportPlan, InstanceImportRequest, plan_import,
 };
 
 /// 复制已有目录到受管实例目录的无副作用计划。
@@ -97,7 +97,7 @@ mod tests {
     use std::error::Error;
     use std::path::PathBuf;
 
-    use super::{plan_copy, CopyInstanceError, CopyInstanceRequest};
+    use super::{CopyInstanceError, CopyInstanceRequest, plan_copy};
     use crate::instance::{
         InstanceId, InstanceImportError, InstanceImportRequest, InstanceSpec, LocalLaunch,
         StartupMode,

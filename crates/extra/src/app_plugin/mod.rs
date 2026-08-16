@@ -17,4 +17,4 @@ pub use loader::PluginLoader;
 pub use manager::{
     AsyncPluginManager, PluginInfo, PluginManager, PluginManagerConfig, PluginState,
 };
-pub use manifest::{PluginCapability, PluginManifest, PLUGIN_API_VERSION};
+pub use manifest::{PLUGIN_API_VERSION, PluginCapability, PluginManifest};
