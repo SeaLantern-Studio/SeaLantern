@@ -407,6 +407,22 @@ fn build_general_group() -> SettingsGroupInfo {
                     },
                 ],
             },
+            SettingsEntry {
+                id: "auto_lightweight_minutes".to_string(),
+                display_name: "settings.auto_lightweight".to_string(),
+                description: "settings.auto_lightweight_desc".to_string(),
+                entry_type: SettingsEntryType::Integer,
+                required: false,
+                has_value: false,
+                default_value: None,
+                options: [1, 3, 5, 10]
+                    .into_iter()
+                    .map(|minutes| SettingsOption {
+                        value: minutes.to_string(),
+                        display_name: format!("{minutes} minutes"),
+                    })
+                    .collect(),
+            },
         ],
     }
 }

@@ -5,6 +5,8 @@
 
 export { tauriInvoke } from "@api/tauri";
 export type { InvokeOptions } from "@api/tauri";
+export { desktopApi } from "@api/desktop";
+export type { WindowMaterial, WindowTheme } from "@api/desktop";
 
 // 统一后端调用入口,Tauri/Axum 双模式自动分发
 export { invoke } from "@api/invoke";
