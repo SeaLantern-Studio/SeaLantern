@@ -1,0 +1,62 @@
+// Onlyfile (Version: 0.0.7)
+//
+// 详情请见：https://github.com/KercyDing/only
+// 安装：`cargo install only`，详见 Repo README
+// vscode 插件：kercyding.onlyfile
+//
+// 项目终端执行 `only` 来查看所有命令
+
+# 启动开发模式
+dev():
+    pnpm tauri dev
+
+# 构建应用
+build():
+    pnpm tauri build
+
+# 格式化并检查前端
+front_check():
+    pnpm fmt:check
+    pnpm lint
+    pnpm build:check
+
+# 格式化并检查后端
+back_check():
+    cargo fmt --all -- --check
+    cargo check --workspace --all-targets
+    cargo clippy --workspace --all-targets -- -D warnings
+
+# 执行全部检查
+check() & front_check & back_check:
+    echo "格式化和检查完成"
+
+# 运行测试
+test() ? @has("cargo-nextest"):
+    cargo nextest run --no-fail-fast
+
+test():
+    cargo test --all-targets --workspace
+
+# 运行本地 CI
+ci() & check & test:
+    echo "本地 CI 成功"
+
+# 清理构建产物
+clean():
+    rm -rf node_modules dist
+    echo "前端已清除"
+    cargo clean
+    echo "后端已清除"
+
+# 查看项目版本号
+show():
+    pnpm sv
+
+# 发版(仅Admin可用)
+publish(version):
+    pnpm cv {{ version }}
+    pnpm notice
+    only ci
+    git commit -am "chore: 升级到 {{ version }}"
+    git tag {{ version }}
+    git push --atomic origin HEAD {{ version }}

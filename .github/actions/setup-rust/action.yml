@@ -1,0 +1,55 @@
+name: 设置 Rust 环境
+description: 安装 Rust 工具链，并按需恢复或保存编译缓存
+
+inputs:
+  toolchain:
+    description: 要安装的 Rust 工具链
+    required: false
+    default: stable
+  components:
+    description: 逗号分隔的 Rust 组件
+    required: false
+    default: ""
+  targets:
+    description: 逗号分隔的 Rust 编译目标
+    required: false
+    default: ""
+  cache:
+    description: 是否启用 Rust 编译缓存
+    required: false
+    default: "false"
+  cache-save:
+    description: 是否在任务完成时保存 Rust 编译缓存
+    required: false
+    default: "true"
+  retry:
+    description: 工具链首次安装失败后是否重试
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: 安装 Rust 工具链
+      id: rust-setup
+      uses: dtolnay/rust-toolchain@stable
+      continue-on-error: ${{ inputs.retry == 'true' }}
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+
+    - name: 重试安装 Rust 工具链
+      if: ${{ inputs.retry == 'true' && steps.rust-setup.outcome == 'failure' }}
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+
+    - name: 缓存 Rust 编译产物
+      if: ${{ inputs.cache == 'true' }}
+      uses: swatinem/rust-cache@v2
+      with:
+        workspaces: ". -> target"
+        save-if: ${{ inputs.cache-save == 'true' }}

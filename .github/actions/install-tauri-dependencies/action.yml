@@ -1,0 +1,34 @@
+name: 安装 Linux Tauri 依赖
+description: 在 Ubuntu runner 上安装 Tauri 构建与测试所需的系统包
+
+inputs:
+  install-xdg-utils:
+    description: 是否额外安装发布构建所需的 xdg-utils
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: 安装系统依赖
+      shell: bash
+      env:
+        INSTALL_XDG_UTILS: ${{ inputs.install-xdg-utils }}
+      run: |
+        set -euo pipefail
+        packages=(
+          libwebkit2gtk-4.1-dev
+          libappindicator3-dev
+          librsvg2-dev
+          patchelf
+          nasm
+        )
+        if [[ "$INSTALL_XDG_UTILS" == "true" ]]; then
+          packages+=(xdg-utils)
+        elif [[ "$INSTALL_XDG_UTILS" != "false" ]]; then
+          echo "install-xdg-utils must be true or false" >&2
+          exit 2
+        fi
+
+        sudo apt-get update
+        sudo apt-get install -y "${packages[@]}"
