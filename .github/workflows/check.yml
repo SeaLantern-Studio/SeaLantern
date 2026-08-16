@@ -298,5 +298,5 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
 
-      - name: 运行格式化并检查前端 Lint
-        run: pnpm run fmt:check && pnpm run lint
+      - name: 运行前端全量检查
+        run: pnpm run fmt:check && pnpm run lint && pnpm run build:check
