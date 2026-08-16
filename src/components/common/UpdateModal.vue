@@ -177,17 +177,19 @@ async function handleForceAutoUpdate() {
   await performInstall();
 }
 
-// 后端没有 forceStopAll,逐个找出 Running 的服务器强制停止
+// 后端没有 forceStopAll,并行查出 Running 的服务器再各自强制停止
 async function forceStopAllServers(): Promise<void> {
   const servers = await serverApi.getList();
-  for (const server of servers) {
-    const statusInfo = await serverApi.getStatus(server.id);
-    if (statusInfo.status !== "Running") {
-      continue;
-    }
-    const prep = await serverApi.prepareForceStop(server.id);
-    await serverApi.forceStop(server.id, prep.token);
-  }
+  const statuses = await Promise.all(servers.map((server) => serverApi.getStatus(server.id)));
+  await Promise.all(
+    servers.map(async (server, i) => {
+      if (statuses[i].status !== "Running") {
+        return;
+      }
+      const prep = await serverApi.prepareForceStop(server.id);
+      await serverApi.forceStop(server.id, prep.token);
+    }),
+  );
 }
 
 function closeInstallRiskConfirm() {

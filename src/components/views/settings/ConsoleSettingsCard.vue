@@ -27,17 +27,22 @@ const emit = defineEmits<{
           <span class="settings-entry-title">{{ i18n.t("settings.console_font_size") }}</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.console_font_size_desc") }}</span>
         </div>
-        <div class="sl-input-sm">
-          <cmz-input
-            :model-value="consoleFontSize"
-            type="number"
-            @update:model-value="
-              (v: string) => {
-                emit('update:consoleFontSize', v);
+        <div class="sl-slider-control">
+          <input
+            type="range"
+            min="12"
+            max="24"
+            step="1"
+            :value="consoleFontSize"
+            @input="
+              (e: Event) => {
+                emit('update:consoleFontSize', (e.target as HTMLInputElement).value);
                 emit('change');
               }
             "
+            class="sl-slider"
           />
+          <span class="sl-slider-value">{{ consoleFontSize }}px</span>
         </div>
       </div>
 
