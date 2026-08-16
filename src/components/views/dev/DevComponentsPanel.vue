@@ -61,7 +61,7 @@ const showModal = ref(false);
 <template>
   <div class="dev-panel">
     <!-- Toast -->
-    <cmz-card title="Toast 通知" padding="md">
+    <cmz-card title="Toast 通知" padding="md" data-dev-section="toast">
       <div class="test-row">
         <span class="test-label">消息内容</span>
         <cmz-input v-model="toastMessage" />
@@ -79,7 +79,7 @@ const showModal = ref(false);
     </cmz-card>
 
     <!-- Confirm 弹窗 -->
-    <cmz-card title="SLConfirmDialog 确认弹窗" padding="md">
+    <cmz-card title="SLConfirmDialog 确认弹窗" padding="md" data-dev-section="confirm">
       <div class="test-row">
         <label class="test-checkbox">
           <cmz-switch v-model="confirmRequireInput" />
@@ -100,7 +100,7 @@ const showModal = ref(false);
     </cmz-card>
 
     <!-- Switch -->
-    <cmz-card title="Switch 开关" padding="md">
+    <cmz-card title="Switch 开关" padding="md" data-dev-section="switch">
       <div class="test-row">
         <span class="test-label">当前值</span>
         <code class="test-result">{{ switchValue }}</code>
@@ -109,7 +109,7 @@ const showModal = ref(false);
     </cmz-card>
 
     <!-- Input -->
-    <cmz-card title="Input 输入框" padding="md">
+    <cmz-card title="Input 输入框" padding="md" data-dev-section="input">
       <div class="test-row">
         <span class="test-label">单行</span>
         <cmz-input v-model="inputValue" placeholder="请输入" />
@@ -125,7 +125,7 @@ const showModal = ref(false);
     </cmz-card>
 
     <!-- Button -->
-    <cmz-card title="Button 按钮" padding="md">
+    <cmz-card title="Button 按钮" padding="md" data-dev-section="button">
       <div class="test-actions">
         <cmz-button variant="primary" size="sm">primary</cmz-button>
         <cmz-button variant="solid" size="sm">solid</cmz-button>
@@ -138,7 +138,7 @@ const showModal = ref(false);
     </cmz-card>
 
     <!-- Modal -->
-    <cmz-card title="Modal 弹层" padding="md">
+    <cmz-card title="Modal 弹层" padding="md" data-dev-section="modal">
       <div class="test-actions">
         <cmz-button size="sm" @click="showModal = true">打开 Modal</cmz-button>
       </div>

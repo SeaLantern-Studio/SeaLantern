@@ -14,6 +14,8 @@
   --cmz-bg: var(--sl-bg);
   --cmz-bg-secondary: var(--sl-bg-secondary);
   --cmz-bg-tertiary: var(--sl-bg-tertiary);
+  --cmz-surface: var(--sl-surface);
+  --cmz-surface-hover: var(--sl-surface-hover);
   --cmz-border: var(--sl-border);
   --cmz-border-light: var(--sl-border-light);
   --cmz-text-primary: var(--sl-text-primary);
@@ -70,6 +72,9 @@
   --cmz-shadow-button-hover: var(--sl-shadow-button-hover);
   --cmz-shadow-input: var(--sl-shadow-input);
   --cmz-shadow-input-focus: var(--sl-shadow-input-focus);
+  --cmz-shadow-elevated: var(--sl-shadow-elevated);
+  --cmz-shadow-focus: var(--sl-shadow-input-focus);
+  --cmz-progress-color: var(--sl-primary);
   --cmz-blur-sm: var(--sl-blur-sm);
   --cmz-blur-md: var(--sl-blur-md);
   --cmz-blur-lg: var(--sl-blur-lg);
@@ -103,6 +108,16 @@
   --cmz-console-text-bright: var(--sl-text-primary);
   --cmz-console-border: var(--sl-border-light);
   --cmz-console-timestamp: var(--sl-text-tertiary);
+  --cmz-console-line-number: var(--sl-text-tertiary);
+  --cmz-console-line-number-active: var(--sl-primary);
+  --cmz-console-bracket-line-height: 1.5;
+  --cmz-console-selection-bg: var(--sl-primary-bg);
+  --cmz-console-selection-text: var(--sl-text-primary);
+  --cmz-console-overlay-hover: rgba(0, 0, 0, 0.04);
+  --cmz-console-overlay-active: rgba(0, 0, 0, 0.08);
+  /* Markdown 网格默认值 */
+  --cmz-md-grid-cols: auto-fill;
+  --cmz-md-grid-min: 240px;
 }
 
 /* Glass / Acrylic 变量 — 避开 data-acrylic="off"，让 CmzYa 原生关闭指令生效 */

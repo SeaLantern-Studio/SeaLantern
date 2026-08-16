@@ -13,12 +13,15 @@
   --sl-bg: #f8fafc;
   --sl-bg-secondary: #f1f5f9;
   --sl-bg-tertiary: #e2e8f0;
+  --sl-bg-hover: #f1f5f9;
+  --sl-bg-elevated: #ffffff;
   --sl-surface: #ffffff;
   --sl-surface-hover: #f8fafc;
   --sl-border: #e2e8f0;
   --sl-border-light: #f1f5f9;
 
   /* -- Text -- */
+  --sl-text: #0f172a;
   --sl-text-primary: #0f172a;
   --sl-text-secondary: #475569;
   --sl-text-tertiary: #94a3b8;
@@ -141,11 +144,14 @@
   --sl-bg: #0f1117;
   --sl-bg-secondary: #1a1d28;
   --sl-bg-tertiary: #242836;
+  --sl-bg-hover: #242836;
+  --sl-bg-elevated: #1e2130;
   --sl-surface: #1e2130;
   --sl-surface-hover: #282c3e;
   --sl-border: rgba(255, 255, 255, 0.1);
   --sl-border-light: rgba(255, 255, 255, 0.05);
 
+  --sl-text: #e2e8f0;
   --sl-text-primary: #e2e8f0;
   --sl-text-secondary: #94a3b8;
   --sl-text-tertiary: #64748b;
@@ -193,20 +199,36 @@
 }
 
 [data-acrylic="on"] {
-  --sl-bg: rgba(255, 255, 255, 0.5);
-  --sl-bg-secondary: rgba(255, 255, 255, 0.55);
-  --sl-bg-tertiary: rgba(255, 255, 255, 0.62);
-  --sl-surface: rgba(255, 255, 255, 0.55);
-  --sl-surface-hover: rgba(255, 255, 255, 0.62);
+  --sl-bg: rgba(255, 255, 255, 0.35);
+  --sl-bg-secondary: rgba(255, 255, 255, 0.4);
+  --sl-bg-tertiary: rgba(255, 255, 255, 0.48);
+  --sl-bg-hover: rgba(255, 255, 255, 0.48);
+  --sl-bg-elevated: transparent;
+  --sl-surface: rgba(255, 255, 255, 0.45);
+  --sl-surface-hover: rgba(255, 255, 255, 0.52);
+  /* 内容区卡片在玻璃表面上，背景更淡以保留通透感 */
+  --sl-glass-bg: rgba(255, 255, 255, 0.3);
+  --sl-glass-border: rgba(15, 23, 42, 0.06);
+  /* 浮层（下拉菜单、弹出层）- 更高的不透明度以确保可读性 */
+  --sl-acrylic-bg: rgba(255, 255, 255, 0.7);
+  --sl-acrylic-bg-strong: rgba(255, 255, 255, 0.82);
+  --sl-acrylic-border: rgba(15, 23, 42, 0.1);
 }
 
 /* 暗色材质:深灰环境 + 浅灰容器,灰阶分层代替纯黑压膜 */
 [data-theme="dark"][data-acrylic="on"] {
-  --sl-bg: rgba(13, 16, 24, 0.35);
-  --sl-bg-secondary: rgba(13, 16, 24, 0.4);
-  --sl-bg-tertiary: rgba(13, 16, 24, 0.45);
-  --sl-surface: rgba(42, 46, 62, 0.5);
-  --sl-surface-hover: rgba(50, 55, 74, 0.55);
+  --sl-bg: rgba(13, 16, 24, 0.25);
+  --sl-bg-secondary: rgba(13, 16, 24, 0.3);
+  --sl-bg-tertiary: rgba(13, 16, 24, 0.35);
+  --sl-bg-hover: rgba(13, 16, 24, 0.35);
+  --sl-bg-elevated: transparent;
+  --sl-surface: rgba(42, 46, 62, 0.4);
+  --sl-surface-hover: rgba(50, 55, 74, 0.48);
+  --sl-glass-bg: rgba(0, 0, 0, 0.3);
+  --sl-glass-border: rgba(255, 255, 255, 0.06);
+  --sl-acrylic-bg: rgba(30, 33, 48, 0.72);
+  --sl-acrylic-bg-strong: rgba(30, 33, 48, 0.85);
+  --sl-acrylic-border: rgba(255, 255, 255, 0.08);
 }
 
 [data-minimal="true"] {

@@ -110,7 +110,7 @@ const storeSnapshot = computed(() => ({
 <template>
   <div class="dev-panel">
     <!-- i18n -->
-    <cmz-card title="i18n 国际化" padding="md">
+    <cmz-card title="i18n 国际化" padding="md" data-dev-section="i18n">
       <div class="test-row">
         <span class="test-label">当前语言</span>
         <code>{{ currentLocale }}</code>
@@ -126,7 +126,7 @@ const storeSnapshot = computed(() => ({
     </cmz-card>
 
     <!-- 错误处理 -->
-    <cmz-card title="错误处理" padding="md">
+    <cmz-card title="错误处理" padding="md" data-dev-section="error">
       <div class="test-row">
         <span class="test-label">错误消息</span>
         <cmz-input v-model="errorInput" />
@@ -143,7 +143,7 @@ const storeSnapshot = computed(() => ({
     </cmz-card>
 
     <!-- 玩家名校验 -->
-    <cmz-card title="玩家名校验" padding="md">
+    <cmz-card title="玩家名校验" padding="md" data-dev-section="player_name">
       <div class="test-row">
         <span class="test-label">玩家名</span>
         <cmz-input v-model="playerName" />
@@ -157,7 +157,7 @@ const storeSnapshot = computed(() => ({
     </cmz-card>
 
     <!-- JSON 解析 -->
-    <cmz-card title="JSON 解析" padding="md">
+    <cmz-card title="JSON 解析" padding="md" data-dev-section="json">
       <div class="test-row">
         <span class="test-label">输入</span>
         <cmz-input v-model="jsonInput" />
@@ -169,7 +169,7 @@ const storeSnapshot = computed(() => ({
     </cmz-card>
 
     <!-- retry -->
-    <cmz-card title="retry 重试" padding="md">
+    <cmz-card title="retry 重试" padding="md" data-dev-section="retry">
       <div class="test-row">
         <span class="test-label">重试次数</span>
         <cmz-input v-model.number="retryCount" type="number" />
@@ -184,7 +184,7 @@ const storeSnapshot = computed(() => ({
     </cmz-card>
 
     <!-- store 快照 -->
-    <cmz-card title="Store 状态快照" padding="md">
+    <cmz-card title="Store 状态快照" padding="md" data-dev-section="store">
       <pre class="test-snapshot">{{ JSON.stringify(storeSnapshot, null, 2) }}</pre>
     </cmz-card>
   </div>
