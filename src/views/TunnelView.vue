@@ -173,7 +173,7 @@ function startStatusPolling() {
   stopStatusPolling();
   statusPollTimer = setInterval(() => {
     void refreshStatus({ silent: true });
-  }, 2000);
+  }, 3000);
 }
 
 function stopStatusPolling() {

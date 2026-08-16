@@ -36,9 +36,9 @@ const refreshAllStatuses = async () => {
 
 const startTimers = () => {
   stopTimers();
-  // 资源看板 2 秒刷新,数值更新更跟手;服务器状态 5 秒足矣
-  statsTimer = setInterval(fetchSystemInfo, 2000);
-  refreshTimer = setInterval(refreshAllStatuses, 5000);
+  // 资源看板与服务器状态统一 3 秒刷新
+  statsTimer = setInterval(fetchSystemInfo, 3000);
+  refreshTimer = setInterval(refreshAllStatuses, 3000);
 };
 
 const stopTimers = () => {

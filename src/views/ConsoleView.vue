@@ -61,7 +61,7 @@ const {
 const { loading: shareLoading, start: startShareLoading, stop: stopShareLoading } = useLoading();
 let unlistenLogLine: UnlistenFn | null = null;
 let statsTimer: ReturnType<typeof setInterval> | null = null;
-const SERVER_STATS_POLL_INTERVAL_MS = 15000;
+const SERVER_STATS_POLL_INTERVAL_MS = 3000;
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
