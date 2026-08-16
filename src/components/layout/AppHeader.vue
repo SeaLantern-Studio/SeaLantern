@@ -20,6 +20,7 @@ import { i18n } from "@language";
 import TaskPill from "@components/layout/TaskPill.vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { settingsApi, type AppSettings } from "@api/settings";
+import { desktopApi } from "@api/desktop";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 import { isMacOSPlatform } from "@utils/platform";
 import {
@@ -184,8 +185,13 @@ async function closeWindow() {
   } else if (closeAction.value === "minimize") {
     await minimizeToTray();
   } else {
-    await appWindow.close();
+    await exitApplication();
   }
+}
+
+async function exitApplication() {
+  const { exit } = await import("@tauri-apps/plugin-process");
+  await exit(0);
 }
 
 async function handleCloseOption(option: string) {
@@ -203,8 +209,7 @@ async function handleCloseOption(option: string) {
   if (option === "minimize") {
     await minimizeToTray();
   } else {
-    const { exit } = await import("@tauri-apps/plugin-process");
-    await exit(0);
+    await exitApplication();
   }
   showCloseModal.value = false;
   rememberChoice.value = false;
@@ -212,13 +217,7 @@ async function handleCloseOption(option: string) {
 
 async function minimizeToTray() {
   try {
-    const w = getCurrentWindow();
-    await w.hide();
-    try {
-      await w.setSkipTaskbar(true);
-    } catch (e) {
-      console.warn("Failed to set skip taskbar:", e);
-    }
+    await desktopApi.hideMainWindow();
   } catch (e) {
     console.warn("Failed to hide window for tray minimize:", e);
     await appWindow.minimize();
