@@ -1221,7 +1221,8 @@
       "downloading": "Downloading resource...",
       "status-finished": "Download Finished",
       "failed": "Download Failed",
-      "completed": "Completed"
+      "completed": "Completed",
+      "filename_placeholder": "请输入文件名（如 server.jar）"
     },
     "dropzone": {
       "placeholder": "Drop file here or click to select",
@@ -1349,6 +1350,12 @@
         "faq": "FAQ",
         "contributor": "Contributors"
       }
+    },
+    "terms": {
+      "title": "隐私与服务协议",
+      "message": "使用 SeaLantern 前，请您阅读并同意我们的",
+      "link": "《隐私与服务协议》",
+      "agree": "同意"
     }
   }
 }

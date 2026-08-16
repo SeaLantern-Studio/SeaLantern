@@ -4,6 +4,11 @@ html {
 html[data-theme="dark"] {
   background-color: #0f1117;
 }
+/* 亚克力开启时窗口背景交给原生效果，html 层必须透明才能透出桌面 */
+html[data-acrylic="on"],
+html[data-acrylic]:not([data-acrylic="off"]) {
+  background-color: transparent;
+}
 body {
   margin: 0;
   padding: 0;

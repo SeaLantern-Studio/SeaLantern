@@ -65,8 +65,8 @@
 [data-acrylic="on"] .app-content,
 [data-acrylic]:not([data-acrylic="off"]) .app-content {
   background: var(--sl-surface);
-  backdrop-filter: blur(var(--sl-acrylic-blur, 16px)) saturate(var(--sl-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(var(--sl-acrylic-blur, 16px))
+  backdrop-filter: blur(var(--sl-acrylic-blur, 10px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-acrylic-blur, 10px))
     saturate(var(--sl-saturate-normal, 180%));
   border: 1px solid var(--sl-border-light);
   box-shadow: none;

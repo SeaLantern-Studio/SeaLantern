@@ -54,7 +54,7 @@ use adapter::tauri::events::LogSenderState;
 use desktop::{
     desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
     desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
-    desktop_pick_startup_file,
+    desktop_pick_startup_file, apply_acrylic,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -82,6 +82,8 @@ pub fn run() {
             desktop_pick_save_file,
             desktop_pick_server_executable,
             desktop_pick_startup_file,
+            //窗口亚克力透明效果（由desktop/window_effect提供）
+            apply_acrylic,
             //服务器定时任务契约命令
             create_cron_task,
             delete_cron_task,
