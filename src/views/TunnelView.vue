@@ -173,7 +173,7 @@ function startStatusPolling() {
   stopStatusPolling();
   statusPollTimer = setInterval(() => {
     void refreshStatus({ silent: true });
-  }, 2000);
+  }, 3000);
 }
 
 function stopStatusPolling() {
@@ -600,7 +600,7 @@ onDeactivated(() => {
           :maxLogLines="maxLogLines"
           :readonly="true"
           :userScrolledUp="userScrolledUp"
-          @scroll="(value) => (userScrolledUp = value)"
+          @scroll="(value: boolean) => (userScrolledUp = value)"
           @scrollToBottom="
             userScrolledUp = false;
             tunnelOutputRef?.doScroll();

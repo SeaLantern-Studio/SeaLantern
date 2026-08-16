@@ -1,6 +1,10 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from "vue";
 import ConfigCategories from "@components/config/ConfigCategories.vue";
-import ConfigSourceEditor from "@components/config/ConfigSourceEditor.vue";
+// CodeMirror 大包编辑器改为异步加载,进入配置页源文件编辑时才拉取,避免首屏同步阻塞
+const ConfigSourceEditor = defineAsyncComponent(
+  () => import("@components/config/ConfigSourceEditor.vue"),
+);
 import ConfigPropertyEditorControl from "@components/config/ConfigPropertyEditorControl.vue";
 import ConfigComparePanel from "@components/config/ConfigComparePanel.vue";
 import type { ComparePanelRow } from "@views/config/useConfigCompare";

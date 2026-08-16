@@ -34,7 +34,6 @@ const {
   sourceType,
   serverDownloadType,
   serverDownloadVersion,
-  isDownloadMode,
   runPath,
   runPathOverwriteRisk,
   coreDetecting,

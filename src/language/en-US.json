@@ -729,6 +729,8 @@
       "max_log_lines_desc": "Maximum number of log lines to keep per server, older logs are automatically cleared beyond this limit. Default 5000",
       "appearance": "Appearance",
       "appearance_desc": "Customize software background and visual effects",
+      "group_theme": "Theme",
+      "group_effect": "Display",
       "theme": "Theme Mode",
       "theme_desc": "Select the theme appearance of the application, \"Follow System\" will automatically match the system's dark/light mode",
       "font_size": "Text Size",
@@ -742,14 +744,6 @@
       "acrylic_desc": "Enable soft Gaussian blur glass effect, supports all platforms, compatible with background images",
       "advanced_material": "Advanced Material",
       "advanced_material_desc": "Enable translucent materials and window blending while keeping compatibility with existing acrylic settings",
-      "acrylic_blur": "Acrylic Blur Strength",
-      "acrylic_blur_desc": "Adjust material background blur without changing the background image blur",
-      "acrylic_blur_options": {
-        "off": "Off",
-        "low": "Low",
-        "medium": "Medium",
-        "high": "High"
-      },
       "background": "Background Image",
       "background_desc": "Upload an image as software background, supports PNG, JPG, WEBP and other formats",
       "opacity": "Opacity",
@@ -838,7 +832,7 @@
       "remove": "Remove",
       "pick_image": "Pick Image",
       "replace_image": "Replace Image",
-      "personalize_page_import_export": "Please go to the \"Settings\" page for import/export operations.",
+      "actions": "Import / Export",
       "font_family_default": "System Default",
       "color_picker": "Color Picker",
       "input_color_placeholder": "Input Color Value",
@@ -1244,7 +1238,8 @@
       "downloading": "Downloading resource...",
       "status-finished": "Download Finished",
       "failed": "Download Failed",
-      "completed": "Completed"
+      "completed": "Completed",
+      "filename_placeholder": "请输入文件名（如 server.jar）"
     },
     "dropzone": {
       "placeholder": "Drop file here or click to select",
@@ -1372,6 +1367,12 @@
         "faq": "FAQ",
         "contributor": "Contributors"
       }
+    },
+    "terms": {
+      "title": "隐私与服务协议",
+      "message": "使用 SeaLantern 前，请您阅读并同意我们的",
+      "link": "《隐私与服务协议》",
+      "agree": "同意"
     }
   }
 }

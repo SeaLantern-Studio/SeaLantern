@@ -26,13 +26,26 @@
 
   /* -- Status -- */
   --sl-success: #22c55e;
+  --sl-success-light: #86efac;
   --sl-success-bg: rgba(34, 197, 94, 0.1);
   --sl-warning: #f59e0b;
+  --sl-warning-light: #fcd34d;
   --sl-warning-bg: rgba(245, 158, 11, 0.1);
   --sl-error: #ef4444;
+  --sl-error-light: #fca5a5;
   --sl-error-bg: rgba(239, 68, 68, 0.1);
   --sl-info: #3b82f6;
+  --sl-info-light: #93c5fd;
   --sl-info-bg: rgba(59, 130, 246, 0.1);
+  /* 控制台/组件库扩展状态色 */
+  --sl-debug: #c084fc;
+  --sl-debug-bg: rgba(192, 132, 252, 0.12);
+  --sl-notice: #22d3ee;
+  --sl-notice-bg: rgba(34, 211, 238, 0.1);
+  /* 控制台输入提示符 */
+  --sl-console-prompt: #a78bfa;
+  /* 模态/遮罩底色 */
+  --sl-overlay: rgba(0, 0, 0, 0.4);
 
   /* -- Shadows -- */
   --sl-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -109,11 +122,11 @@
   --sl-saturate-strong: 200%;
   /* 毛玻璃背景色（半透明 + blur 配合使用） */
   --sl-glass-bg: rgba(255, 255, 255, 0.72);
-  --sl-glass-border: rgba(255, 255, 255, 0.5);
+  --sl-glass-border: rgba(15, 23, 42, 0.08);
   /* 丙烯酸（高透明 + 强模糊，适合弹出层/浮层） */
   --sl-acrylic-bg: rgba(255, 255, 255, 0.65);
   --sl-acrylic-bg-strong: rgba(255, 255, 255, 0.78);
-  --sl-acrylic-border: rgba(255, 255, 255, 0.35);
+  --sl-acrylic-border: rgba(15, 23, 42, 0.08);
 }
 
 [data-theme="dark"] {
@@ -139,13 +152,26 @@
   --sl-text-inverse: #0f172a;
 
   --sl-success: #34d399;
+  --sl-success-light: #6ee7b7;
   --sl-success-bg: rgba(52, 211, 153, 0.12);
   --sl-warning: #fbbf24;
+  --sl-warning-light: #fde68a;
   --sl-warning-bg: rgba(251, 191, 36, 0.12);
   --sl-error: #f87171;
+  --sl-error-light: #fca5a5;
   --sl-error-bg: rgba(248, 113, 113, 0.12);
   --sl-info: #60a5fa;
+  --sl-info-light: #93c5fd;
   --sl-info-bg: rgba(96, 165, 250, 0.12);
+  /* 控制台/组件库扩展状态色 */
+  --sl-debug: #c084fc;
+  --sl-debug-bg: rgba(192, 132, 252, 0.14);
+  --sl-notice: #22d3ee;
+  --sl-notice-bg: rgba(34, 211, 238, 0.12);
+  /* 控制台输入提示符 */
+  --sl-console-prompt: #a78bfa;
+  /* 模态/遮罩底色 */
+  --sl-overlay: rgba(0, 0, 0, 0.5);
 
   --sl-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --sl-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -167,19 +193,20 @@
 }
 
 [data-acrylic="on"] {
-  --sl-bg: rgba(255, 255, 255, 0.65);
-  --sl-bg-secondary: rgba(255, 255, 255, 0.72);
-  --sl-bg-tertiary: rgba(255, 255, 255, 0.78);
-  --sl-surface: rgba(255, 255, 255, 0.72);
-  --sl-surface-hover: rgba(255, 255, 255, 0.78);
+  --sl-bg: rgba(255, 255, 255, 0.5);
+  --sl-bg-secondary: rgba(255, 255, 255, 0.55);
+  --sl-bg-tertiary: rgba(255, 255, 255, 0.62);
+  --sl-surface: rgba(255, 255, 255, 0.55);
+  --sl-surface-hover: rgba(255, 255, 255, 0.62);
 }
 
+/* 暗色材质:深灰环境 + 浅灰容器,灰阶分层代替纯黑压膜 */
 [data-theme="dark"][data-acrylic="on"] {
-  --sl-bg: rgba(0, 0, 0, 0.65);
-  --sl-bg-secondary: rgba(0, 0, 0, 0.72);
-  --sl-bg-tertiary: rgba(0, 0, 0, 0.78);
-  --sl-surface: rgba(0, 0, 0, 0.72);
-  --sl-surface-hover: rgba(0, 0, 0, 0.78);
+  --sl-bg: rgba(13, 16, 24, 0.35);
+  --sl-bg-secondary: rgba(13, 16, 24, 0.4);
+  --sl-bg-tertiary: rgba(13, 16, 24, 0.45);
+  --sl-surface: rgba(42, 46, 62, 0.5);
+  --sl-surface-hover: rgba(50, 55, 74, 0.55);
 }
 
 [data-minimal="true"] {

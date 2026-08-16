@@ -118,7 +118,7 @@ export function useCreateServerPage() {
 
   const hasSource = computed(() => {
     if (sourceType.value === "download")
-      return serverDownloadType.value && serverDownloadVersion.value;
+      return !!(serverDownloadType.value && serverDownloadVersion.value);
     return sourcePath.value.trim().length > 0 && sourceType.value !== "";
   });
 
@@ -653,7 +653,7 @@ export function useCreateServerPage() {
     // 临时下载文件路径（下载模式下使用）
     let tempDownloadPath: string | null = null;
     let scannedStartup = selectedStartup.value;
-    let scannedStartupMode = mapStartupModeForModpack(selectedStartup?.mode ?? "jar");
+    let scannedStartupMode = mapStartupModeForModpack(selectedStartup.value?.mode ?? "jar");
     let scannedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
     let scannedMcVersion =
       scannedStartupMode === "starter"

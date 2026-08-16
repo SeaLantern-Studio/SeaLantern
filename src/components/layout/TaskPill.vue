@@ -379,11 +379,11 @@ watch(
 
         <div class="panel-actions">
           <button class="pill-btn" @click="openFolder">
-            <FolderOpen v-if="FolderOpen" :size="14" class="btn-icon" />
+            <FolderOpen :size="14" class="btn-icon" />
             <span>{{ i18n.t("taskPill.openFolder") }}</span>
           </button>
           <button class="pill-btn" @click="gotoDownloadPage">
-            <ExternalLink v-if="ExternalLink" :size="14" class="btn-icon" />
+            <ExternalLink :size="14" class="btn-icon" />
             <span>{{ i18n.t("taskPill.gotoDownload") }}</span>
           </button>
           <button v-if="store.isDownloading" class="pill-btn pill-btn-warn" @click="cancelDownload">

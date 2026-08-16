@@ -42,7 +42,7 @@ const closeActionOptions = computed(() => [
         <cmz-switch
           :model-value="closeServersOnExit"
           @update:model-value="
-            (v) => {
+            (v: boolean) => {
               emit('update:closeServersOnExit', v);
               emit('change');
             }
@@ -58,7 +58,7 @@ const closeActionOptions = computed(() => [
         <cmz-switch
           :model-value="closeServersOnUpdate"
           @update:model-value="
-            (v) => {
+            (v: boolean) => {
               emit('update:closeServersOnUpdate', v);
               emit('change');
             }
@@ -74,7 +74,7 @@ const closeActionOptions = computed(() => [
         <cmz-switch
           :model-value="autoAcceptEula"
           @update:model-value="
-            (v) => {
+            (v: boolean) => {
               emit('update:autoAcceptEula', v);
               emit('change');
             }

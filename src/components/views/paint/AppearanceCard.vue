@@ -2,16 +2,16 @@
 import BackgroundSettings from "./BackgroundSettings.vue";
 import { i18n } from "@language";
 import { computed } from "vue";
-import type { AcrylicBlurLevel } from "@api/settings";
+import { getThemeOptions } from "@themes";
 
 defineProps<{
+  color: string;
   theme: string;
   fontSize: string;
   fontFamily: string;
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
   acrylicEnabled: boolean;
-  acrylicBlurLevel: AcrylicBlurLevel;
   isThemeProxied: boolean;
   themeProxyPluginName: string;
   backgroundImage: string;
@@ -24,11 +24,11 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: "update:color", value: string): void;
   (e: "update:theme", value: string): void;
   (e: "update:fontSize", value: string): void;
   (e: "update:fontFamily", value: string): void;
   (e: "update:acrylicEnabled", value: boolean): void;
-  (e: "update:acrylicBlurLevel", value: AcrylicBlurLevel): void;
   (e: "update:bgSettingsExpanded", value: boolean): void;
   (e: "update:bgOpacity", value: string): void;
   (e: "update:bgBlur", value: string): void;
@@ -39,24 +39,24 @@ const emit = defineEmits<{
   (e: "fontSizeChange"): void;
   (e: "fontFamilyChange"): void;
   (e: "acrylicChange", value: boolean): void;
-  (e: "acrylicBlurChange", value: AcrylicBlurLevel): void;
   (e: "minimalModeChange", value: boolean): void;
   (e: "pickImage"): void;
   (e: "clearImage"): void;
   (e: "change"): void;
 }>();
 
+// 颜色主题预设选项，与旧 ColorThemeCard 一致
+const colorOptions = computed(() => getThemeOptions());
+
+function handleColorChange(value: string) {
+  emit("update:color", value);
+  emit("change");
+}
+
 const themeOptions = computed(() => [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
   { label: i18n.t("settings.theme_options.light"), value: "light" },
   { label: i18n.t("settings.theme_options.dark"), value: "dark" },
-]);
-
-const acrylicBlurOptions = computed(() => [
-  { label: i18n.t("settings.acrylic_blur_options.off"), value: "off" },
-  { label: i18n.t("settings.acrylic_blur_options.low"), value: "low" },
-  { label: i18n.t("settings.acrylic_blur_options.medium"), value: "medium" },
-  { label: i18n.t("settings.acrylic_blur_options.high"), value: "high" },
 ]);
 
 function handleThemeChange(value: string) {
@@ -79,11 +79,6 @@ function handleAcrylicChange(value: boolean) {
   emit("acrylicChange", value);
 }
 
-function handleAcrylicBlurChange(value: AcrylicBlurLevel) {
-  emit("update:acrylicBlurLevel", value);
-  emit("acrylicBlurChange", value);
-}
-
 function handleMinimalModeChange(value: boolean) {
   emit("update:minimalMode", value);
   emit("minimalModeChange", value);
@@ -93,6 +88,28 @@ function handleMinimalModeChange(value: boolean) {
 <template>
   <cmz-card :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
     <div class="sl-settings-group">
+      <div class="settings-group-title">{{ i18n.t("settings.group_theme") }}</div>
+
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.color_theme") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.color_theme_desc") }}</span>
+        </div>
+        <div class="sl-input-md">
+          <div v-if="isThemeProxied" class="theme-proxied-notice">
+            <span class="proxied-text">{{
+              i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
+            }}</span>
+          </div>
+          <cmz-select
+            v-else
+            :model-value="color"
+            :options="colorOptions"
+            @update:model-value="handleColorChange"
+          />
+        </div>
+      </div>
+
       <div class="settings-entry">
         <div class="settings-entry-info">
           <span class="settings-entry-title">{{ i18n.t("settings.theme") }}</span>
@@ -150,26 +167,14 @@ function handleMinimalModeChange(value: boolean) {
         </div>
       </div>
 
+      <div class="settings-group-title">{{ i18n.t("settings.group_effect") }}</div>
+
       <div class="settings-entry">
         <div class="settings-entry-info">
           <span class="settings-entry-title">{{ i18n.t("settings.advanced_material") }}</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.advanced_material_desc") }}</span>
         </div>
         <cmz-switch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
-      </div>
-
-      <div v-if="acrylicEnabled" class="settings-entry">
-        <div class="settings-entry-info">
-          <span class="settings-entry-title">{{ i18n.t("settings.acrylic_blur") }}</span>
-          <span class="settings-entry-desc">{{ i18n.t("settings.acrylic_blur_desc") }}</span>
-        </div>
-        <div class="sl-input-md">
-          <cmz-select
-            :model-value="acrylicBlurLevel"
-            :options="acrylicBlurOptions"
-            @update:model-value="handleAcrylicBlurChange"
-          />
-        </div>
       </div>
 
       <div class="settings-entry">
@@ -201,6 +206,15 @@ function handleMinimalModeChange(value: boolean) {
 </template>
 
 <style scoped>
+.settings-group-title {
+  margin: var(--sl-space-md) 0 var(--sl-space-xs);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--sl-text-tertiary);
+}
+
 .theme-proxied-notice {
   display: flex;
   align-items: center;

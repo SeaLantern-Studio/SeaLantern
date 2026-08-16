@@ -273,7 +273,7 @@ watch(
             size="sm"
             class="backup-select"
             @update:modelValue="
-              (v) => {
+              (v: string) => {
                 selectedFormat = v as BackupFormat;
                 updateSettings();
               }
@@ -291,7 +291,7 @@ watch(
             size="sm"
             class="backup-select"
             @update:modelValue="
-              (v) => {
+              (v: string) => {
                 selectedCompression = v as CompressionLevel;
                 updateSettings();
               }

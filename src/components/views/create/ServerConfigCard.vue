@@ -21,7 +21,10 @@ function handleNumberInput(e: Event, type: "maxMemory" | "minMemory" | "port") {
   const target = e.target as HTMLInputElement;
   const value = target.value;
   if (value === "" || /^\d+$/.test(value)) {
-    emit(`update:${type}`, value);
+    // emit 是具名重载,按类型显式分发,避免模板字符串联合类型不匹配
+    if (type === "maxMemory") emit("update:maxMemory", value);
+    else if (type === "minMemory") emit("update:minMemory", value);
+    else emit("update:port", value);
   }
 }
 </script>

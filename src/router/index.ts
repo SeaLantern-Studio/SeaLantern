@@ -53,11 +53,10 @@ const routes = [
     component: () => import("@views/SettingsView.vue"),
     meta: { titleKey: "common.settings", icon: "sliders" },
   },
+  // 个性化已并入设置页,旧地址跳转保留
   {
     path: "/paint",
-    name: "paint",
-    component: () => import("@views/PaintView.vue"),
-    meta: { titleKey: "common.personalize", icon: "palette" },
+    redirect: "/settings",
   },
   {
     path: "/about",

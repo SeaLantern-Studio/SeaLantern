@@ -85,7 +85,7 @@ function startRefresh() {
       await loadAll();
       parseOnlinePlayers();
     }
-  }, 5000);
+  }, 3000);
 }
 
 watch(

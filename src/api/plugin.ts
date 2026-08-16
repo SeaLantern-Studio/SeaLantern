@@ -27,6 +27,7 @@ export interface MarketPluginInfo {
   tags?: string[];
   dependencies?: string[];
   optional_dependencies?: string[];
+  changelog?: string;
   _path?: string;
 }
 

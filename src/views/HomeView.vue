@@ -36,9 +36,9 @@ const refreshAllStatuses = async () => {
 
 const startTimers = () => {
   stopTimers();
-  // 拉长到 5 秒,降低无谓刷新带来的 UI 卡顿
-  statsTimer = setInterval(fetchSystemInfo, 5000);
-  refreshTimer = setInterval(refreshAllStatuses, 5000);
+  // 资源看板与服务器状态统一 3 秒刷新
+  statsTimer = setInterval(fetchSystemInfo, 3000);
+  refreshTimer = setInterval(refreshAllStatuses, 3000);
 };
 
 const stopTimers = () => {

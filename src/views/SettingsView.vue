@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+// 设置中心:个性化(外观/控制台)与系统设置(通用/服务器/网络/开发者)合并为单页
+// 左侧竖向 tabbar 使用 cmzya 0.6.2 的 scrollSpy 联动:点击滚动到区块,滚动更新指示
+import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated } from "vue";
+import AppearanceCard from "@components/views/paint/AppearanceCard.vue";
+import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
 import ServerDefaultsCard from "@components/views/settings/ServerDefaultsCard.vue";
 import NetworkSettingsCard from "@components/views/settings/NetworkSettingsCard.vue";
@@ -7,34 +11,98 @@ import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue"
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue";
-import { settingsApi, type AppSettings, type SettingsGroup } from "@api/settings";
+import { settingsApi, getSystemFonts, type AppSettings, type SettingsGroup } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
+import { applyAcrylicEffect } from "@utils/acrylic";
+import { usePluginStore } from "@stores/pluginStore";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
-import { dispatchSettingsUpdate, SETTINGS_UPDATE_EVENT } from "@stores/settingsStore";
+import {
+  dispatchSettingsUpdate,
+  SETTINGS_UPDATE_EVENT,
+  type SettingsUpdateEvent,
+} from "@stores/settingsStore";
 
 const toast = useToast();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
 
 const settings = ref<AppSettings | null>(null);
 
+// 外观/控制台本地值(字符串输入框)
+const fontSize = ref("14");
+const consoleFontSize = ref("13");
+const consoleFontFamily = ref("");
+const consoleLetterSpacing = ref("0");
+const maxLogLines = ref("5000");
+const bgOpacity = ref("0.3");
+const bgBlur = ref("0");
+const bgBrightness = ref("1.0");
+const bgSettingsExpanded = ref(false);
+
+// 服务器默认值本地值
 const maxMem = ref("2048");
 const minMem = ref("512");
 const port = ref("25565");
 const defaultRunPath = ref("");
 
+const fontFamilyOptions = ref<{ label: string; value: string }[]>([
+  { label: i18n.t("settings.font_family_default"), value: "" },
+]);
+const fontsLoading = ref(false);
+
 const showImportModal = ref(false);
 const showResetConfirm = ref(false);
 
+const pluginStore = usePluginStore();
+
+// 主题被 theme-provider 插件接管时,颜色/主题选择项需要降级提示
+const themeProxyPlugin = computed(() => {
+  return pluginStore.plugins.find(
+    (p) => p.state === "enabled" && pluginStore.hasCapability(p.manifest.id, "theme-provider"),
+  );
+});
+const isThemeProxied = computed(() => !!themeProxyPlugin.value);
+const themeProxyPluginName = computed(() => themeProxyPlugin.value?.manifest.name || "");
+
+// 竖向 tabbar 区块定义,key 对应模板里的 data-settings-section
+const activeSection = ref("general");
+
+// close_action 在 AppSettings 里是 string,卡片组件要联合类型,这里收口转换
+const closeActionModel = computed<"ask" | "minimize" | "close">({
+  get: () => (settings.value?.close_action as "ask" | "minimize" | "close") ?? "ask",
+  set: (v) => {
+    if (settings.value) settings.value.close_action = v;
+  },
+});
+
+const sectionTabs = computed(() => [
+  { key: "general", label: i18n.t("settings.general") },
+  { key: "appearance", label: i18n.t("settings.appearance") },
+  { key: "console", label: i18n.t("settings.console") },
+  { key: "server", label: i18n.t("settings.server_defaults") },
+  { key: "network", label: i18n.t("settings.network") },
+  { key: "developer", label: i18n.t("settings.developer_mode") },
+  { key: "actions", label: i18n.t("settings.actions") },
+]);
+
 onMounted(async () => {
   await loadSettings();
+  await loadSystemFonts();
+});
 
+// 监听器集中到 activated/deactivated 成对注册,避免 keep-alive 下重复监听
+onActivated(() => {
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
+onDeactivated(() => {
+  window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
+});
+
 onUnmounted(() => {
+  // 未被 deactivated 直接销毁时的兜底清理
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
@@ -42,19 +110,39 @@ onUnmounted(() => {
   }
 });
 
-function handleSettingsUpdateEvent(
-  e: CustomEvent<{ changedGroups: SettingsGroup[]; settings: AppSettings }>,
-) {
-  const newSettings = e.detail.settings;
-  settings.value = newSettings;
-  syncLocalValues(newSettings);
+function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>) {
+  settings.value = e.detail.settings;
+  syncLocalValues(e.detail.settings);
 }
 
 function syncLocalValues(s: AppSettings) {
+  fontSize.value = String(s.font_size);
+  consoleFontSize.value = String(s.console_font_size);
+  consoleFontFamily.value = s.console_font_family || "";
+  consoleLetterSpacing.value = String(s.console_letter_spacing ?? 0);
+  maxLogLines.value = String(s.max_log_lines);
+  bgOpacity.value = String(s.background_opacity);
+  bgBlur.value = String(s.background_blur);
+  bgBrightness.value = String(s.background_brightness);
   maxMem.value = String(s.default_max_memory);
   minMem.value = String(s.default_min_memory);
   port.value = String(s.default_port);
   defaultRunPath.value = s.last_run_path || "";
+}
+
+async function loadSystemFonts() {
+  fontsLoading.value = true;
+  try {
+    const fonts = await getSystemFonts();
+    fontFamilyOptions.value = [
+      { label: i18n.t("settings.font_family_default"), value: "" },
+      ...fonts.map((font) => ({ label: font, value: `'${font}'` })),
+    ];
+  } catch (e) {
+    console.error("Failed to load system fonts:", e);
+  } finally {
+    fontsLoading.value = false;
+  }
 }
 
 async function loadSettings() {
@@ -62,10 +150,7 @@ async function loadSettings() {
   try {
     const s = await settingsApi.get();
     settings.value = s;
-    maxMem.value = String(s.default_max_memory);
-    minMem.value = String(s.default_min_memory);
-    port.value = String(s.default_port);
-    defaultRunPath.value = s.last_run_path || "";
+    syncLocalValues(s);
     settings.value.color = s.color || "default";
     applyTheme(s.theme);
     applyFontSize(s.font_size);
@@ -110,6 +195,12 @@ function applyFontSize(size: number) {
   document.documentElement.style.fontSize = `${size}px`;
 }
 
+function handleFontSizeChange() {
+  markChanged();
+  const size = parseInt(fontSize.value) || 14;
+  applyFontSize(size);
+}
+
 function applyFontFamily(fontFamily: string) {
   if (fontFamily) {
     document.documentElement.style.setProperty("--sl-font-sans", fontFamily);
@@ -120,9 +211,85 @@ function applyFontFamily(fontFamily: string) {
   }
 }
 
+function handleFontFamilyChange() {
+  markChanged();
+  if (settings.value) {
+    applyFontFamily(settings.value.font_family);
+  }
+}
+
+function handleAcrylicChange(enabled: boolean) {
+  markChanged();
+  applyAcrylicEffect(enabled);
+}
+
+function handleMinimalModeChange(enabled: boolean) {
+  markChanged();
+  document.documentElement.setAttribute("data-minimal", enabled ? "true" : "false");
+}
+
+function handleThemeChange() {
+  markChanged();
+  if (!settings.value) return;
+
+  applyTheme(settings.value.theme);
+}
+
+function handleJavaInstalled(path: string) {
+  if (settings.value) {
+    settings.value.default_java_path = path;
+    markChanged();
+  }
+}
+
+async function handleBrowseJavaPath() {
+  const selected = await systemApi.pickJavaFile();
+  if (selected && settings.value) {
+    settings.value.default_java_path = selected;
+    markChanged();
+  }
+}
+
+async function handleBrowseRunPath() {
+  const selected = await systemApi.pickFolder();
+  if (selected) {
+    defaultRunPath.value = selected;
+    markChanged();
+  }
+}
+
+async function pickBackgroundImage() {
+  try {
+    const result = await systemApi.pickImageFile();
+    if (result && settings.value) {
+      settings.value.background_image = result;
+      markChanged();
+    }
+  } catch (e) {
+    console.error("Pick image error:", e);
+    toast.error(handleError(e));
+  }
+}
+
+function clearBackgroundImage() {
+  if (settings.value) {
+    settings.value.background_image = "";
+    markChanged();
+  }
+}
+
 async function saveSettings() {
   if (!settings.value) return;
 
+  // 字符串输入框回写数字字段
+  settings.value.console_font_size = parseInt(consoleFontSize.value) || 13;
+  settings.value.console_font_family = consoleFontFamily.value;
+  settings.value.console_letter_spacing = parseInt(consoleLetterSpacing.value) || 0;
+  settings.value.max_log_lines = parseInt(maxLogLines.value) || 5000;
+  settings.value.background_opacity = parseFloat(bgOpacity.value) || 0.3;
+  settings.value.background_blur = parseInt(bgBlur.value) || 0;
+  settings.value.background_brightness = parseFloat(bgBrightness.value) || 1.0;
+  settings.value.font_size = parseInt(fontSize.value) || 14;
   settings.value.default_max_memory = parseInt(maxMem.value) || 2048;
   settings.value.default_min_memory = parseInt(minMem.value) || 512;
   settings.value.default_port = parseInt(port.value) || 25565;
@@ -153,28 +320,33 @@ async function saveSettings() {
   }
 }
 
+function applyAllAppearance(s: AppSettings) {
+  applyTheme(s.theme);
+  applyFontSize(s.font_size);
+  applyFontFamily(s.font_family);
+}
+
+function cacheTheme(s: AppSettings) {
+  localStorage.setItem(
+    "sl_theme_cache",
+    JSON.stringify({
+      theme: s.theme || "auto",
+      fontSize: s.font_size || 14,
+    }),
+  );
+}
+
 async function resetSettings() {
   try {
     const s = await settingsApi.reset();
     settings.value = s;
-    maxMem.value = String(s.default_max_memory);
-    minMem.value = String(s.default_min_memory);
-    port.value = String(s.default_port);
-    defaultRunPath.value = s.last_run_path || "";
+    syncLocalValues(s);
     showResetConfirm.value = false;
     settings.value.color = "default";
 
-    localStorage.setItem(
-      "sl_theme_cache",
-      JSON.stringify({
-        theme: s.theme || "auto",
-        fontSize: s.font_size || 14,
-      }),
-    );
-
-    applyTheme(s.theme);
-    applyFontSize(s.font_size);
-    applyFontFamily(s.font_family);
+    cacheTheme(s);
+    applyAllAppearance(s);
+    dispatchSettingsUpdate(["Appearance"] as SettingsGroup[], s);
   } catch (e) {
     toast.error(handleError(e));
   }
@@ -198,38 +370,12 @@ async function handleImport(json: string) {
   try {
     const s = await settingsApi.importJson(json);
     settings.value = s;
-    maxMem.value = String(s.default_max_memory);
-    minMem.value = String(s.default_min_memory);
-    port.value = String(s.default_port);
+    syncLocalValues(s);
     showImportModal.value = false;
-    applyTheme(s.theme);
-    applyFontSize(s.font_size);
-    applyFontFamily(s.font_family);
+    applyAllAppearance(s);
+    dispatchSettingsUpdate(["Appearance"] as SettingsGroup[], s);
   } catch (e) {
     toast.error(handleError(e));
-  }
-}
-
-function handleJavaInstalled(path: string) {
-  if (settings.value) {
-    settings.value.default_java_path = path;
-    markChanged();
-  }
-}
-
-async function handleBrowseJavaPath() {
-  const selected = await systemApi.pickJavaFile();
-  if (selected) {
-    settings.value.default_java_path = selected;
-    markChanged();
-  }
-}
-
-async function handleBrowseRunPath() {
-  const selected = await systemApi.pickFolder();
-  if (selected) {
-    defaultRunPath.value = selected;
-    markChanged();
   }
 }
 </script>
@@ -241,38 +387,119 @@ async function handleBrowseRunPath() {
       <span>{{ i18n.t("settings.loading") }}</span>
     </div>
 
-    <template v-else-if="settings">
-      <GeneralSettingsCard
-        v-model:closeServersOnExit="settings.close_servers_on_exit"
-        v-model:closeServersOnUpdate="settings.close_servers_on_update"
-        v-model:autoAcceptEula="settings.auto_accept_eula"
-        v-model:closeAction="settings.close_action"
-        @change="markChanged"
-      />
+    <div v-else-if="settings" class="settings-layout">
+      <!-- 竖向 tabbar:scrollSpy 指示随 .app-content 滚动联动,点击滚到对应区块 -->
+      <div class="settings-tabbar-sticky">
+        <cmz-tab-bar
+          v-model="activeSection"
+          :tabs="sectionTabs"
+          :level="1"
+          vertical
+          scroll-spy
+          scroll-container=".app-content"
+          :scroll-offset="24"
+          section-selector="[data-settings-section='{key}']"
+        />
+      </div>
 
-      <ServerDefaultsCard
-        v-model:maxMemory="maxMem"
-        v-model:minMemory="minMem"
-        v-model:port="port"
-        v-model:defaultJavaPath="settings.default_java_path"
-        v-model:defaultJvmArgs="settings.default_jvm_args"
-        v-model:defaultRunPath="defaultRunPath"
-        @change="markChanged"
-        @javaInstalled="handleJavaInstalled"
-        @browseJavaPath="handleBrowseJavaPath"
-        @browseRunPath="handleBrowseRunPath"
-      />
+      <div class="settings-main">
+        <section data-settings-section="general" class="settings-section">
+          <GeneralSettingsCard
+            v-model:closeServersOnExit="settings.close_servers_on_exit"
+            v-model:closeServersOnUpdate="settings.close_servers_on_update"
+            v-model:autoAcceptEula="settings.auto_accept_eula"
+            v-model:closeAction="closeActionModel"
+            @change="markChanged"
+          />
+        </section>
 
-      <NetworkSettingsCard :proxy="settings.proxy" />
+        <section data-settings-section="appearance" class="settings-section">
+          <AppearanceCard
+            :color="settings.color"
+            :theme="settings.theme"
+            :font-size="fontSize"
+            :font-family="settings.font_family"
+            :font-family-options="fontFamilyOptions"
+            :fonts-loading="fontsLoading"
+            :acrylic-enabled="settings.acrylic_enabled"
+            :is-theme-proxied="isThemeProxied"
+            :theme-proxy-plugin-name="themeProxyPluginName"
+            :background-image="settings.background_image"
+            :bg-opacity="bgOpacity"
+            :bg-blur="bgBlur"
+            :bg-brightness="bgBrightness"
+            :background-size="settings.background_size"
+            :bg-settings-expanded="bgSettingsExpanded"
+            :minimal-mode="settings.minimal_mode"
+            @update:color="settings.color = $event"
+            @update:theme="settings.theme = $event"
+            @update:font-size="fontSize = $event"
+            @update:font-family="settings.font_family = $event"
+            @update:acrylic-enabled="settings.acrylic_enabled = $event"
+            @update:bg-settings-expanded="bgSettingsExpanded = $event"
+            @update:bg-opacity="bgOpacity = $event"
+            @update:bg-blur="bgBlur = $event"
+            @update:bg-brightness="bgBrightness = $event"
+            @update:background-size="settings.background_size = $event"
+            @update:minimal-mode="settings.minimal_mode = $event"
+            @theme-change="handleThemeChange"
+            @font-size-change="handleFontSizeChange"
+            @font-family-change="handleFontFamilyChange"
+            @acrylic-change="handleAcrylicChange"
+            @minimal-mode-change="handleMinimalModeChange"
+            @pick-image="pickBackgroundImage"
+            @clear-image="clearBackgroundImage"
+            @change="markChanged"
+          />
+        </section>
 
-      <DeveloperModeCard v-model:developerMode="settings.developer_mode" @change="markChanged" />
+        <section data-settings-section="console" class="settings-section">
+          <ConsoleSettingsCard
+            v-model:consoleFontSize="consoleFontSize"
+            v-model:consoleFontFamily="consoleFontFamily"
+            v-model:consoleLetterSpacing="consoleLetterSpacing"
+            v-model:maxLogLines="maxLogLines"
+            :fontFamilyOptions="fontFamilyOptions"
+            :fontsLoading="fontsLoading"
+            @change="markChanged"
+          />
+        </section>
 
-      <SettingsActions
-        @export="exportSettings"
-        @import="showImportModal = true"
-        @reset="showResetConfirm = true"
-      />
-    </template>
+        <section data-settings-section="server" class="settings-section">
+          <ServerDefaultsCard
+            v-model:maxMemory="maxMem"
+            v-model:minMemory="minMem"
+            v-model:port="port"
+            v-model:defaultJavaPath="settings.default_java_path"
+            v-model:defaultJvmArgs="settings.default_jvm_args"
+            v-model:defaultRunPath="defaultRunPath"
+            @change="markChanged"
+            @javaInstalled="handleJavaInstalled"
+            @browseJavaPath="handleBrowseJavaPath"
+            @browseRunPath="handleBrowseRunPath"
+          />
+        </section>
+
+        <section data-settings-section="network" class="settings-section">
+          <NetworkSettingsCard :proxy="settings.proxy" />
+        </section>
+
+        <section data-settings-section="developer" class="settings-section">
+          <DeveloperModeCard
+            v-model:developerMode="settings.developer_mode"
+            @change="markChanged"
+          />
+        </section>
+
+        <section data-settings-section="actions" class="settings-section">
+          <SettingsActions
+            @export="exportSettings"
+            @import="showImportModal = true"
+            @reset="showResetConfirm = true"
+          />
+        </section>
+      </div>
+    </div>
 
     <ImportSettingsModal v-model:visible="showImportModal" @import="handleImport" />
 
@@ -282,10 +509,7 @@ async function handleBrowseRunPath() {
 
 <style scoped>
 .settings-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sl-space-lg);
-  max-width: 860px;
+  max-width: 960px;
   margin: 0 auto;
   padding-bottom: var(--sl-space-2xl);
 }
@@ -297,5 +521,39 @@ async function handleBrowseRunPath() {
   gap: var(--sl-space-sm);
   padding: var(--sl-space-2xl);
   color: var(--sl-text-tertiary);
+}
+
+.settings-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+/* 竖 tabbar 吸顶,跟随内容滚动 */
+.settings-tabbar-sticky {
+  position: sticky;
+  top: var(--sl-space-md);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.settings-tabbar-sticky .cmz-tab-bar--vertical {
+  min-width: 140px;
+}
+
+.settings-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-lg);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-lg);
+  /* 点击 tab 滚动定位时与容器顶部留出呼吸空间 */
+  scroll-margin-top: var(--sl-space-md);
 }
 </style>

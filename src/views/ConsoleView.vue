@@ -20,8 +20,6 @@ import { shareLogs } from "@api/logging";
 import {
   serverSystemInfo,
   serverCpuUsage,
-  serverMemUsage,
-  serverDiskUsage,
   serverStatsLoading,
   serverStatsError,
   fetchServerResourceUsage,
@@ -63,7 +61,7 @@ const {
 const { loading: shareLoading, start: startShareLoading, stop: stopShareLoading } = useLoading();
 let unlistenLogLine: UnlistenFn | null = null;
 let statsTimer: ReturnType<typeof setInterval> | null = null;
-const SERVER_STATS_POLL_INTERVAL_MS = 15000;
+const SERVER_STATS_POLL_INTERVAL_MS = 3000;
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
@@ -718,19 +716,6 @@ const currentServer = computed(
 );
 const serverProcessInfo = computed(() => serverSystemInfo.value);
 const serverStatsUnavailable = computed(() => serverStatsError.value && !serverProcessInfo.value);
-const noDataText = computed(() => {
-  const text = i18n.t("home.no_data");
-  return text === "home.no_data" ? i18n.t("common.unknown") : text;
-});
-const serverPidText = computed(() =>
-  serverProcessInfo.value?.pid ? `PID ${serverProcessInfo.value.pid}` : noDataText.value,
-);
-const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "stopped">(() => {
-  if (isRunning.value) return "running";
-  if (isStarting.value) return "starting";
-  if (isStopping.value) return "stopping";
-  return "stopped";
-});
 
 const statusColor = computed(() => {
   if (isRunning.value) return "#22c55e";
