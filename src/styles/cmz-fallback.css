@@ -244,10 +244,13 @@
   -webkit-backdrop-filter: none;
 }
 
-.cmz-modal {
+/* 模态框外壳用卡片同款 surface 实底 + 磨砂模糊:透明窗口下浮层磨不到窗外,用实底材质保证玻璃质感 */
+:root .cmz-modal.cmz-modal {
   position: relative;
   z-index: 900;
-  background: var(--sl-bg, #fff);
+  background: var(--sl-surface, #fff);
+  backdrop-filter: blur(24px) saturate(var(--cmz-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--cmz-saturate-normal, 180%));
   border-radius: var(--sl-radius-lg, 12px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   max-height: 90vh;
@@ -962,12 +965,10 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px 16px;
-  /* 半透明色膜 + CSS 模糊,toast 浮在主界面上方,磨的是窗口内内容 */
-  /* 模糊强度跟随 --cmz-acrylic-blur(CSS 侧固定 medium),不依赖系统原生模糊 */
-  background: var(--cmz-glass-bg, rgba(255, 255, 255, 0.72));
-  backdrop-filter: blur(var(--cmz-acrylic-blur, 16px)) saturate(var(--cmz-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(var(--cmz-acrylic-blur, 16px))
-    saturate(var(--cmz-saturate-normal, 180%));
+  /* 实底材质 + 磨砂模糊:透明窗口下浮层磨不到窗外,用 surface 实底保证磨砂玻璃质感,避免深色半透明黑 */
+  background: var(--sl-surface, #fff);
+  backdrop-filter: blur(24px) saturate(var(--cmz-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--cmz-saturate-normal, 180%));
   border: 1px solid var(--sl-border, #d8dee8);
   border-radius: var(--sl-radius-md, 10px);
   box-shadow: var(--sl-shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.08));
