@@ -46,8 +46,8 @@ pub struct MainWindowState {
 impl MainWindowState {
     pub fn new() -> Self {
         Self {
-            // SeaLantern 根据 tauri.conf.json 创建并显示主窗口。
-            mode: AtomicU8::new(MainWindowMode::Visible as u8),
+            // tauri.conf.json 隐藏创建主窗口，前端完成首屏准备后再显示。
+            mode: AtomicU8::new(MainWindowMode::Hidden as u8),
             transition: Mutex::new(()),
             tray_item: Mutex::new(None),
         }
@@ -160,6 +160,7 @@ mod tests {
 
     #[test]
     fn decodes_window_modes() {
+        assert_eq!(MainWindowState::new().mode(), MainWindowMode::Hidden);
         assert_eq!(MainWindowMode::from_u8(0), MainWindowMode::Visible);
         assert_eq!(MainWindowMode::from_u8(1), MainWindowMode::Hidden);
         assert_eq!(MainWindowMode::from_u8(2), MainWindowMode::Background);

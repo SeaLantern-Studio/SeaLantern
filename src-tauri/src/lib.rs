@@ -65,6 +65,11 @@ fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
     StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED
 }
 
+#[tauri::command]
+fn frontend_ready(app: AppHandle) {
+    desktop::tray::show_when_ready(&app);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// 启动桌面应用。
 pub fn run() {
@@ -104,6 +109,7 @@ pub fn run() {
             hide_main_window,
             restore_main_window,
             toggle_light_weight,
+            frontend_ready,
             //服务器定时任务契约命令
             create_cron_task,
             delete_cron_task,

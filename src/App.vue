@@ -13,6 +13,7 @@ import { useContextMenuStore } from "@stores/contextMenuStore";
 import { useServerStore } from "@stores/serverStore";
 import { useToast } from "cmzya-modern-ui";
 import { isBrowserEnv } from "@api/tauri";
+import { desktopApi } from "@api/desktop";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { enqueueAppearanceApply } from "@utils/appearance";
 
@@ -180,7 +181,14 @@ onMounted(async () => {
   } catch (e) {
     console.error("Failed to load settings during startup:", e);
   } finally {
-    // 主界面先行:关闭启动屏,让用户尽快进入可交互界面
+    // 窗口在 Tauri 配置中隐藏创建；外观与启动屏就绪后再显示，避免 Windows
+    // 先绘制系统标题栏或默认背景。先显示启动屏，再允许其结束动画。
+    await nextTick();
+    try {
+      await desktopApi.markFrontendReady();
+    } catch (error) {
+      console.error("Failed to reveal the main window after frontend initialization:", error);
+    }
     isInitializing.value = false;
   }
 
