@@ -20,7 +20,6 @@ chrono = { version = "0.4", features = ["serde"] }
 cron = "0.12"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "sync", "time"] }
 urlencoding = "2"
-chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 thiserror = "1"
 tempfile = "3"
@@ -34,7 +33,6 @@ dirs = "5"
 dom_query = "0.27"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
 sculk = { version = "=0.3.1", default-features = false, optional = true }
-uuid = { version = "1", features = ["v4"] }
 java-manager = { path = "../vendor/java-manager" }
 
 [dev-dependencies]
