@@ -14,6 +14,7 @@ import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
+import { useConsoleStore } from "@stores/consoleStore";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
 import { shareLogs } from "@api/logging";
@@ -34,6 +35,7 @@ import { formatBytes } from "@utils/serverUtils";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();
+const consoleStore = useConsoleStore();
 
 interface ConsoleOutputExpose {
   doScroll: () => void;
@@ -64,6 +66,41 @@ let statsTimer: ReturnType<typeof setInterval> | null = null;
 const SERVER_STATS_POLL_INTERVAL_MS = 3000;
 // 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
 let isPageVisible = true;
+
+// 日志批量缓冲:低输出逐行实时,高输出积压批量,避免每行触发全量重算
+let pendingLogLines: string[] = [];
+let logFlushTimer: ReturnType<typeof setTimeout> | null = null;
+let lastLogAppendAt = 0;
+const LOG_FLUSH_DELAY_MS = 50;
+const LOG_FLUSH_MAX_LINES = 50;
+
+// 逐行追加日志到控制台,高输出时自动聚合为批量
+function appendLogLine(line: string) {
+  const now = performance.now();
+  // 距上次追加超过窗口视为低输出,直接逐行追加保持零延迟
+  if (pendingLogLines.length === 0 && now - lastLogAppendAt >= LOG_FLUSH_DELAY_MS) {
+    flushLogLines([line]);
+    return;
+  }
+  pendingLogLines.push(line);
+  if (pendingLogLines.length >= LOG_FLUSH_MAX_LINES) {
+    flushLogLines();
+  } else if (logFlushTimer == null) {
+    logFlushTimer = setTimeout(() => flushLogLines(), LOG_FLUSH_DELAY_MS);
+  }
+}
+
+function flushLogLines(immediate?: string[]) {
+  if (logFlushTimer != null) {
+    clearTimeout(logFlushTimer);
+    logFlushTimer = null;
+  }
+  const batch = immediate ?? pendingLogLines;
+  pendingLogLines = [];
+  if (batch.length === 0) return;
+  lastLogAppendAt = performance.now();
+  consoleOutputRef.value?.appendLines(batch);
+}
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
@@ -813,9 +850,11 @@ onMounted(async () => {
     if (isRunning.value) startStatsPolling();
   }
   unlistenLogLine = await serverApi.onLogLine(({ instance_id, line }) => {
+    // 无论当前选中哪个服务器,都写入跨页面缓存,供玩家页在线解析/首页警报使用
+    consoleStore.appendLocal(instance_id, line.line);
     const sid = serverId.value;
     if (!sid || instance_id !== sid) return;
-    consoleOutputRef.value?.appendLines([line.line]);
+    appendLogLine(line.line);
   });
   nextTick(() => doScroll());
 });
@@ -824,6 +863,11 @@ onUnmounted(() => {
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
   stopThemeObserver();
   stopStatsPolling();
+  if (logFlushTimer != null) {
+    clearTimeout(logFlushTimer);
+    logFlushTimer = null;
+  }
+  pendingLogLines = [];
   if (unlistenLogLine) {
     unlistenLogLine();
     unlistenLogLine = null;
@@ -850,6 +894,8 @@ onDeactivated(() => {
   stopThemeObserver();
   stopStatsPolling();
   document.removeEventListener("visibilitychange", handleVisibilityChange);
+  // 切走前 flush 积压日志,避免缓冲区残留
+  flushLogLines();
 });
 
 watch(
@@ -883,7 +929,12 @@ async function syncLogsOnce(sid: string) {
     if (lines.length === 0) {
       consoleOutputRef.value?.appendLines([i18n.t("console.no_logs_yet")]);
     } else {
-      consoleOutputRef.value?.appendLines(lines.map((line) => line.line));
+      const texts = lines.map((line) => line.line);
+      consoleOutputRef.value?.appendLines(texts);
+      // 首次同步历史日志到跨页面缓存,后续由实时订阅增量写入避免重复
+      if (!consoleStore.logs[sid] || consoleStore.logs[sid].length === 0) {
+        consoleStore.appendLogs(sid, texts);
+      }
     }
   } catch (e) {
     console.warn("加载服务器日志失败:", e);
