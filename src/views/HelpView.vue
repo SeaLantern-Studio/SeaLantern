@@ -17,15 +17,6 @@ import {
   configItems,
   faqCategories,
   getTutorialSegments,
-  type DownloadPlatform,
-  type ServerType,
-  type StepItem,
-  type FeatureItem,
-  type PluginRecommendation,
-  type MemorySuggestion,
-  type ConfigItem,
-  type FaqCategory,
-  type FaqItem,
   type TutorialSegment,
 } from "@data/helpDocs";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -76,12 +67,6 @@ const contentMd = computed(() =>
 
 // 使用教程的分段内容（MD + 卡片穿插）
 const tutorialSegments = computed<TutorialSegment[]>(() => getTutorialSegments());
-
-// 切换页面
-function switchSection(key: string) {
-  currentSection.value = key;
-  if (isMobile.value) sidebarOpen.value = false;
-}
 
 // FAQ 手风琴展开状态：FAQ 分类标题 → 打开的 panel ID 数组
 const faqOpenState = ref<Record<string, string[]>>({});

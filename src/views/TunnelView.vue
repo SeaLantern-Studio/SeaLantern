@@ -600,7 +600,7 @@ onDeactivated(() => {
           :maxLogLines="maxLogLines"
           :readonly="true"
           :userScrolledUp="userScrolledUp"
-          @scroll="(value) => (userScrolledUp = value)"
+          @scroll="(value: boolean) => (userScrolledUp = value)"
           @scrollToBottom="
             userScrolledUp = false;
             tunnelOutputRef?.doScroll();

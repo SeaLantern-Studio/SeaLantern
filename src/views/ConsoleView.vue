@@ -20,8 +20,6 @@ import { shareLogs } from "@api/logging";
 import {
   serverSystemInfo,
   serverCpuUsage,
-  serverMemUsage,
-  serverDiskUsage,
   serverStatsLoading,
   serverStatsError,
   fetchServerResourceUsage,
@@ -718,19 +716,6 @@ const currentServer = computed(
 );
 const serverProcessInfo = computed(() => serverSystemInfo.value);
 const serverStatsUnavailable = computed(() => serverStatsError.value && !serverProcessInfo.value);
-const noDataText = computed(() => {
-  const text = i18n.t("home.no_data");
-  return text === "home.no_data" ? i18n.t("common.unknown") : text;
-});
-const serverPidText = computed(() =>
-  serverProcessInfo.value?.pid ? `PID ${serverProcessInfo.value.pid}` : noDataText.value,
-);
-const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "stopped">(() => {
-  if (isRunning.value) return "running";
-  if (isStarting.value) return "starting";
-  if (isStopping.value) return "stopping";
-  return "stopped";
-});
 
 const statusColor = computed(() => {
   if (isRunning.value) return "#22c55e";

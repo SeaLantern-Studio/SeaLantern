@@ -22,7 +22,7 @@ function handleSwitchChange(checked: boolean) {
 }
 
 function isBooleanType(entry: ConfigEntry): boolean {
-  return entry.type === "boolean" || ["true", "false"].includes(entry.default);
+  return entry.value_type === "boolean" || ["true", "false"].includes(entry.default_value);
 }
 </script>
 
@@ -36,7 +36,7 @@ function isBooleanType(entry: ConfigEntry): boolean {
         }}</cmz-badge>
       </div>
       <div class="entry-description">{{ entry.description }}</div>
-      <div class="entry-default">{{ i18n.t("config.default") }}: {{ entry.default }}</div>
+      <div class="entry-default">{{ i18n.t("config.default") }}: {{ entry.default_value }}</div>
     </div>
     <div class="entry-value">
       <template v-if="isBooleanType(entry)">
@@ -46,7 +46,7 @@ function isBooleanType(entry: ConfigEntry): boolean {
         <cmz-input
           :modelValue="value"
           @update:modelValue="handleValueChange"
-          :placeholder="entry.default"
+          :placeholder="entry.default_value"
           style="width: 280px"
         />
       </template>

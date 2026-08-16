@@ -32,7 +32,7 @@ const emit = defineEmits<{
             :model-value="consoleFontSize"
             type="number"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:consoleFontSize', v);
                 emit('change');
               }
@@ -55,7 +55,7 @@ const emit = defineEmits<{
             :previewFont="true"
             :placeholder="i18n.t('settings.search_font')"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:consoleFontFamily', v);
                 emit('change');
               }
@@ -76,7 +76,7 @@ const emit = defineEmits<{
             :model-value="consoleLetterSpacing"
             type="number"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:consoleLetterSpacing', v);
                 emit('change');
               }
@@ -95,7 +95,7 @@ const emit = defineEmits<{
             :model-value="maxLogLines"
             type="number"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:maxLogLines', v);
                 emit('change');
               }

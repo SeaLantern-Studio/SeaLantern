@@ -27,7 +27,7 @@ const emit = defineEmits<{
         <cmz-switch
           :model-value="developerMode"
           @update:model-value="
-            (v) => {
+            (v: boolean) => {
               emit('update:developerMode', v);
               emit('change');
             }
