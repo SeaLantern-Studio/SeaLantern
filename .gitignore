@@ -35,3 +35,9 @@ target-goal-smoke/
 tmp/
 
 .tmp*
+
+#常用编辑器的储存配置路径
+.vscode/
+.vsc/
+idea/
+.zed

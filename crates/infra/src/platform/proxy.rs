@@ -140,7 +140,54 @@ fn platform_system_proxy() -> Result<SystemProxySnapshot, SystemProxyReadError> 
     ))
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+#[cfg(target_os = "macos")]
+fn platform_system_proxy() -> Result<SystemProxySnapshot, SystemProxyReadError> {
+    let settings = sysproxy::Sysproxy::get_proxy_settings().map_err(|source| {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            error = %source,
+            "failed to read macOS system proxy settings"
+        );
+        SystemProxyReadError::Read { source }
+    })?;
+    snapshot_from_macos_settings(&settings)
+}
+
+#[cfg(target_os = "macos")]
+fn snapshot_from_macos_settings(
+    settings: &sysproxy::MacosProxySettings,
+) -> Result<SystemProxySnapshot, SystemProxyReadError> {
+    if settings.auto_config.enable || settings.auto_discovery {
+        tracing::warn!(
+            target: "sealantern.infra.platform.proxy",
+            pac_enabled = settings.auto_config.enable,
+            auto_discovery_enabled = settings.auto_discovery,
+            "automatic system proxy configuration cannot be represented safely"
+        );
+        return Err(SystemProxyReadError::UnsupportedProxyKind);
+    }
+
+    let http_proxy = enabled_proxy_url(&settings.http)?;
+    let https_proxy = enabled_proxy_url(&settings.https)?;
+    if http_proxy.is_none() && https_proxy.is_none() {
+        if settings.socks.enable {
+            tracing::warn!(
+                target: "sealantern.infra.platform.proxy",
+                "SOCKS-only system proxy configuration is unsupported"
+            );
+            return Err(SystemProxyReadError::UnsupportedProxyKind);
+        }
+        return Ok(SystemProxySnapshot::direct());
+    }
+
+    let (no_proxy, skipped) = convert_bypass_rules(&settings.bypass);
+    report_skipped_bypass_rules(skipped);
+    Ok(SystemProxySnapshot::from_routes(
+        ProxyRoutes::split(http_proxy, https_proxy).with_no_proxy(no_proxy),
+    ))
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
 fn platform_system_proxy() -> Result<SystemProxySnapshot, SystemProxyReadError> {
     Err(SystemProxyReadError::UnsupportedPlatform)
 }
@@ -179,12 +226,20 @@ fn diagnostic_proxy_host(host: &str) -> &str {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn optional_proxy_url(host: &str, port: u16) -> Result<Option<String>, SystemProxyReadError> {
     if host.trim().is_empty() {
         return Ok(None);
     }
     proxy_url(host, port).map(Some)
+}
+
+#[cfg(target_os = "macos")]
+fn enabled_proxy_url(proxy: &sysproxy::Sysproxy) -> Result<Option<String>, SystemProxyReadError> {
+    if !proxy.enable {
+        return Ok(None);
+    }
+    optional_proxy_url(&proxy.host, proxy.port)
 }
 
 fn proxy_url(host: &str, port: u16) -> Result<String, SystemProxyReadError> {
@@ -305,6 +360,11 @@ mod tests {
         }
     }
 
+    #[cfg(target_os = "macos")]
+    fn macos_settings() -> sysproxy::MacosProxySettings {
+        sysproxy::MacosProxySettings::default()
+    }
+
     #[test]
     fn disabled_system_proxy_is_direct() {
         let snapshot = snapshot_from_sysproxy(&sysproxy::Sysproxy::default()).unwrap();
@@ -321,6 +381,54 @@ mod tests {
         assert_eq!(snapshot.routes().http_proxy(), Some("http://127.0.0.1:7890"));
         assert_eq!(snapshot.routes().https_proxy(), Some("http://127.0.0.1:7890"));
         assert_eq!(snapshot.routes().no_proxy(), &["localhost", ".example.com"]);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_static_proxies_preserve_routes_and_bypass_rules() {
+        let mut settings = macos_settings();
+        settings.http = enabled_proxy("127.0.0.1", 7890, "");
+        settings.https = enabled_proxy("127.0.0.1", 7891, "");
+        settings.bypass = "localhost,*.example.com".into();
+
+        let snapshot = snapshot_from_macos_settings(&settings).unwrap();
+
+        assert_eq!(snapshot.routes().http_proxy(), Some("http://127.0.0.1:7890"));
+        assert_eq!(snapshot.routes().https_proxy(), Some("http://127.0.0.1:7891"));
+        assert_eq!(snapshot.routes().no_proxy(), &["localhost", ".example.com"]);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_direct_settings_produce_direct_snapshot() {
+        let snapshot = snapshot_from_macos_settings(&macos_settings()).unwrap();
+
+        assert_eq!(snapshot, SystemProxySnapshot::direct());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_socks_only_settings_are_rejected() {
+        let mut settings = macos_settings();
+        settings.socks = enabled_proxy("127.0.0.1", 7892, "");
+
+        let result = snapshot_from_macos_settings(&settings);
+
+        assert!(matches!(result, Err(SystemProxyReadError::UnsupportedProxyKind)));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_automatic_proxy_settings_are_rejected() {
+        let mut settings = macos_settings();
+        settings.auto_config = sysproxy::Autoproxy {
+            enable: true,
+            url: "https://example.com/proxy.pac".into(),
+        };
+
+        let result = snapshot_from_macos_settings(&settings);
+
+        assert!(matches!(result, Err(SystemProxyReadError::UnsupportedProxyKind)));
     }
 
     #[test]
