@@ -135,13 +135,13 @@ fn current(app: &AppHandle) -> SystemTheme {
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
-        if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
-            if let Ok(theme) = window.theme() {
-                return match theme {
-                    tauri::Theme::Dark => SystemTheme::Dark,
-                    _ => SystemTheme::Light,
-                };
-            }
+        if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL)
+            && let Ok(theme) = window.theme()
+        {
+            return match theme {
+                tauri::Theme::Dark => SystemTheme::Dark,
+                _ => SystemTheme::Light,
+            };
         }
         SystemTheme::Light
     }
