@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from "vue";
-import { File, Folder, Plus, Upload } from "lucide-vue-next";
+import { ChevronRight, File, Folder, FolderSymlink, Plus, Upload } from "lucide-vue-next";
 import { systemApi } from "@api/system";
 import { downloadServerApi } from "@api/downloader";
 import { i18n } from "@language";
@@ -24,6 +24,7 @@ const emit = defineEmits<{
   (e: "update:serverDownloadType", value: string): void;
   (e: "update:serverDownloadVersion", value: string): void;
   (e: "error", value: string): void;
+  (e: "start-import"): void;
 }>();
 
 /* ── 本地文件选择 ── */
@@ -206,6 +207,18 @@ onMounted(async () => {
 
     <!-- 未选择本地文件时：显示服务端选择器 -->
     <template v-else>
+      <!-- 导入已有服务器：快捷入口，切换到独立的导入流程 -->
+      <button class="import-entry-card" type="button" @click="$emit('start-import')">
+        <div class="import-entry-icon">
+          <FolderSymlink :size="22" stroke-width="2" />
+        </div>
+        <div class="import-entry-text">
+          <div class="import-entry-title">{{ i18n.t("create.import_entry_title") }}</div>
+          <div class="import-entry-desc">{{ i18n.t("create.import_entry_desc") }}</div>
+        </div>
+        <ChevronRight :size="18" class="import-entry-arrow" />
+      </button>
+
       <div class="server-download-panel">
         <div class="server-download-row">
           <div class="server-download-field">

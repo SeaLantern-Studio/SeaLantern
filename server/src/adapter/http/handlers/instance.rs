@@ -4,11 +4,16 @@
 //! [`CoreInstanceService`](sealantern_application::service::CoreInstanceService)
 //! 并收敛错误为 [`HttpError`](super::super::error::HttpError)。
 
+use std::path::Path as StdPath;
+
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
 
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
+use sealantern_core::provisioning::{
+    build_import_spec, ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
+};
 use sealantern_interface::InstanceService;
 
 use super::super::error::HttpError;
@@ -109,4 +114,62 @@ pub async fn update_instance_path(
 fn parse_id(raw: &str) -> Result<InstanceId, HttpError> {
     InstanceId::new(raw.to_owned())
         .map_err(|_| HttpError::bad_request("invalid_instance_id", "invalid instance id"))
+}
+
+/// `POST /api/instances/import-existing` — 导入已有服务器目录。
+///
+/// 导入的实例直接引用原始目录（FR-5：不复制文件），启动目标由检查结果采纳最优候选。
+pub async fn import_existing_instance(
+    State(state): State<AppState>,
+    Json(request): Json<ImportExistingServerRequest>,
+) -> Result<(StatusCode, Json<Instance>), HttpError> {
+    validate_source_directory(&request.source_directory)?;
+    let instances = state.instance().list().await?;
+    if instances.iter().any(|instance| {
+        path_equals(instance.directory.as_path(), request.source_directory.as_path())
+    }) {
+        return Err(HttpError::bad_request(
+            "source_already_imported",
+            "the selected directory is already imported as a server instance",
+        ));
+    }
+    let spec = build_import_spec(&request)?;
+    let instance = state.instance().create(spec).await?;
+    Ok((StatusCode::CREATED, Json(instance)))
+}
+
+/// 校验源目录可读：存在且为目录。
+fn validate_source_directory(path: &StdPath) -> Result<(), HttpError> {
+    if !path.exists() {
+        return Err(HttpError::bad_request(
+            "source_unavailable",
+            format!("the selected directory does not exist: {}", path.display()),
+        ));
+    }
+    if !path.is_dir() {
+        return Err(HttpError::bad_request(
+            "source_not_directory",
+            format!("the selected path is not a directory: {}", path.display()),
+        ));
+    }
+    Ok(())
+}
+
+/// 忽略大小写比较两个路径是否指向同一目录。
+fn path_equals(first: &StdPath, second: &StdPath) -> bool {
+    first == second
+        || first
+            .to_string_lossy()
+            .eq_ignore_ascii_case(&second.to_string_lossy())
+}
+
+impl From<CoreImportError> for HttpError {
+    fn from(error: CoreImportError) -> Self {
+        let code = match error {
+            CoreImportError::Inspection(_) => "inspection_failed",
+            CoreImportError::NoLaunchCandidate => "no_launch_candidate",
+            CoreImportError::InvalidInstance(_) => "invalid_instance",
+        };
+        HttpError::bad_request(code, error.to_string())
+    }
 }

@@ -11,7 +11,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -24,6 +24,7 @@ use sealantern_core::process::{
     build_command, CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal,
     TerminalStream, WindowsConsoleEncoding,
 };
+use sealantern_extra::java::detect_java_installations;
 use sealantern_interface::server::{ServerSnapshot, ServerState};
 use sealantern_interface::{InstanceService, ServerService, ServerServiceError, SettingsService};
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
@@ -196,7 +197,12 @@ impl CoreServerService {
     }
 
     /// 由实例启动配置构建进程命令。
-    fn build_process_command(
+    ///
+    /// 若实例未显式配置 Java 可执行文件（如导入已有服务器时未指定），则探测
+    /// 本机已安装的 Java 并取版本最高者作为回退，避免「a Java executable is
+    /// required」启动失败。探测为阻塞的文件系统扫描，经 `spawn_blocking`
+    /// 调度到阻塞线程池，避免阻塞异步运行时核心线程。
+    async fn build_process_command(
         &self,
         instance: &Instance,
     ) -> Result<std::process::Command, ServerError> {
@@ -217,9 +223,24 @@ impl CoreServerService {
             .iter()
             .map(OsString::from)
             .collect::<Vec<_>>();
+
+        // 解析实际使用的 Java 可执行文件：优先使用实例已配置的，缺失时回退到
+        // 本机探测到的最高版本 Java（探测结果已按主版本降序排列）。
+        let effective_java = match &launch.java_executable {
+            Some(configured) => Some(configured.clone()),
+            None => tokio::task::spawn_blocking(detect_java_installations)
+                .await
+                .ok()
+                .and_then(|installations| {
+                    installations
+                        .into_iter()
+                        .next()
+                        .map(|info| PathBuf::from(info.path))
+                }),
+        };
+
         // 从 Java 可执行文件推导 JAVA_HOME / bin（供脚本与自定义模式注入环境）。
-        let java_environment = launch
-            .java_executable
+        let java_environment = effective_java
             .as_deref()
             .map(JavaEnvironment::from_java_executable)
             .transpose()
@@ -228,7 +249,7 @@ impl CoreServerService {
         let request = CommandBuildRequest {
             mode,
             working_directory: Path::new(&instance.directory),
-            java_executable: launch.java_executable.as_deref(),
+            java_executable: effective_java.as_deref(),
             java_environment: java_environment.as_ref(),
             jvm_arguments: &jvm_arguments,
             entry_path: launch.startup_target.as_deref(),
@@ -408,7 +429,7 @@ impl CoreServerService {
             spawn_recorder_shutdown(Some(recorder));
         }
 
-        let mut command = match self.build_process_command(instance) {
+        let mut command = match self.build_process_command(instance).await {
             Ok(command) => command,
             Err(error) => {
                 tracing::error!(

@@ -99,6 +99,7 @@ const tauriCommandMap: Record<string, string> = {
   "provisioning.planExisting": "plan_existing_instance",
   "provisioning.planCopy": "plan_instance_copy",
   "provisioning.planModpack": "plan_modpack_provision",
+  "provisioning.importExisting": "import_existing_server",
   // Java 运行时
   "java.detect": "java_detect",
   "java.validate": "java_validate",
@@ -203,6 +204,16 @@ const axumRouteMap: Record<string, AxumRoute> = {
   },
   "settings.overview": { method: "GET", path: () => "/settings" },
   "update.check": { method: "GET", path: () => "/update" },
+  "provisioning.importExisting": {
+    method: "POST",
+    path: () => "/instances/import-existing",
+    body: (a) => a.request,
+  },
+  "provisioning.inspect": {
+    method: "POST",
+    path: () => "/provisioning/inspect",
+    body: (a) => ({ path: a.path }),
+  },
 };
 
 /** Tauri 原生 invoke，动态导入避免浏览器环境加载失败 */

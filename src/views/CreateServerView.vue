@@ -20,6 +20,7 @@ import RunPathStep from "@components/views/create/RunPathStep.vue";
 import ServerStartupConfigStep from "@components/views/create/ServerStartupConfigStep.vue";
 import SourceIntakeField from "@components/views/create/SourceIntakeField.vue";
 import StartupSelectionStep from "@components/views/create/StartupSelectionStep.vue";
+import ImportExistingServer from "@components/views/create/ImportExistingServer.vue";
 import { i18n } from "@language";
 import {
   CREATE_SERVER_SOURCE_DROP_EVENT,
@@ -70,6 +71,13 @@ const {
 const toast = useToast();
 const router = useRouter();
 let unlistenCreateViewDragDrop: UnlistenFn | null = null;
+
+/** 创建流程视图模式：标准 5 步创建，或导入已有服务器独立流程。 */
+const mode = ref<"create" | "import">("create");
+
+function onImported() {
+  void router.push("/");
+}
 const isDragging = ref(false);
 const CREATE_SERVER_DEBUG = import.meta.env.DEV;
 
@@ -125,130 +133,138 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="create-view animate-stagger-in">
-    <!-- 拖放提示遮罩 -->
-    <div v-if="isDragging" class="create-drop-overlay">
-      <div class="drop-hint">
-        <FileUp :size="48" />
-        <p>{{ i18n.t("create.drop_hint") }}</p>
+    <template v-if="mode === 'create'">
+      <!-- 拖放提示遮罩 -->
+      <div v-if="isDragging" class="create-drop-overlay">
+        <div class="drop-hint">
+          <FileUp :size="48" />
+          <p>{{ i18n.t("create.drop_hint") }}</p>
+        </div>
       </div>
-    </div>
 
-    <cmz-card class="create-stepper-card" :title="i18n.t('create.title')">
-      <StepperRoot
-        orientation="vertical"
-        :model-value="activeStep"
-        :linear="false"
-        class="create-stepper"
-      >
-        <StepperItem
-          v-for="item in stepItems"
-          :key="item.step"
-          :step="item.step"
-          :completed="item.completed"
-          class="create-stepper-item"
+      <cmz-card class="create-stepper-card" :title="i18n.t('create.title')">
+        <StepperRoot
+          orientation="vertical"
+          :model-value="activeStep"
+          :linear="false"
+          class="create-stepper"
         >
-          <StepperTrigger class="create-stepper-trigger">
-            <StepperIndicator class="create-stepper-indicator">{{ item.step }}</StepperIndicator>
-            <div class="create-stepper-copy">
-              <StepperTitle class="create-stepper-title">{{ item.title }}</StepperTitle>
-              <StepperDescription class="create-stepper-description">{{
-                item.description
-              }}</StepperDescription>
-            </div>
-          </StepperTrigger>
+          <StepperItem
+            v-for="item in stepItems"
+            :key="item.step"
+            :step="item.step"
+            :completed="item.completed"
+            class="create-stepper-item"
+          >
+            <StepperTrigger class="create-stepper-trigger">
+              <StepperIndicator class="create-stepper-indicator">{{ item.step }}</StepperIndicator>
+              <div class="create-stepper-copy">
+                <StepperTitle class="create-stepper-title">{{ item.title }}</StepperTitle>
+                <StepperDescription class="create-stepper-description">{{
+                  item.description
+                }}</StepperDescription>
+              </div>
+            </StepperTrigger>
 
-          <div class="create-step-panel">
-            <template v-if="item.step === 1">
-              <SourceIntakeField
-                v-model:source-path="sourcePath"
-                v-model:source-type="sourceType"
-                v-model:server-download-type="serverDownloadType"
-                v-model:server-download-version="serverDownloadVersion"
-                @error="(err) => toast.error(err)"
+            <div class="create-step-panel">
+              <template v-if="item.step === 1">
+                <SourceIntakeField
+                  v-model:source-path="sourcePath"
+                  v-model:source-type="sourceType"
+                  v-model:server-download-type="serverDownloadType"
+                  v-model:server-download-version="serverDownloadVersion"
+                  @error="(err) => toast.error(err)"
+                  @start-import="mode = 'import'"
+                />
+              </template>
+
+              <RunPathStep
+                v-else-if="item.step === 2"
+                :source-type="sourceType"
+                :source-path="sourcePath"
+                :run-path="runPath"
+                :show-overwrite-warning="runPathOverwriteRisk"
+                :disabled="creating"
+                @pick-path="pickRunPath"
+                @update:run-path="updateRunPath"
               />
-            </template>
 
-            <RunPathStep
-              v-else-if="item.step === 2"
-              :source-type="sourceType"
-              :source-path="sourcePath"
-              :run-path="runPath"
-              :show-overwrite-warning="runPathOverwriteRisk"
-              :disabled="creating"
-              @pick-path="pickRunPath"
-              @update:run-path="updateRunPath"
+              <StartupSelectionStep
+                v-else-if="item.step === 3"
+                :loading="startupDetecting"
+                :candidates="startupCandidates"
+                :selected-startup-id="selectedStartupId"
+                :custom-startup-command="customStartupCommand"
+                :custom-command-has-redirect="customCommandHasRedirect"
+                :starter-selected="starterSelected"
+                :core-detecting="coreDetecting"
+                :detected-core-type-key="detectedCoreTypeKey"
+                :core-type-options="coreTypeOptions"
+                :selected-core-type="selectedCoreType"
+                :detected-mc-version="detectedMcVersion"
+                :mc-version-options="mcVersionOptions"
+                :selected-mc-version="selectedMcVersion"
+                :mc-version-detection-failed="mcVersionDetectionFailed"
+                :disabled="creating"
+                @rescan="rescanStartupCandidates"
+                @update:selected-startup-id="selectedStartupId = $event"
+                @update:custom-startup-command="customStartupCommand = $event"
+                @update:selected-core-type="selectedCoreType = $event"
+                @update:selected-mc-version="selectedMcVersion = $event"
+              />
+
+              <template v-else-if="item.step === 4">
+                <div class="create-config-step">
+                  <JavaEnvironmentStep
+                    :java-list="javaList"
+                    :loading="javaLoading"
+                    :selected-java="selectedJava"
+                    @detect="detectJava"
+                    @update:selected-java="selectedJava = $event"
+                  />
+
+                  <ServerStartupConfigStep
+                    :server-name="serverName"
+                    :max-memory="maxMemory"
+                    :min-memory="minMemory"
+                    :port="port"
+                    :online-mode="onlineMode"
+                    @update:server-name="serverName = $event"
+                    @update:max-memory="maxMemory = $event"
+                    @update:min-memory="minMemory = $event"
+                    @update:port="port = $event"
+                    @update:online-mode="onlineMode = $event"
+                  />
+                </div>
+              </template>
+
+              <template v-else>
+                <div class="create-submit-actions">
+                  <cmz-button variant="outline" size="lg" @click="router.push('/')">
+                    {{ i18n.t("create.cancel") }}
+                  </cmz-button>
+                  <cmz-button
+                    size="lg"
+                    :loading="creating"
+                    :disabled="!canSubmit || creating"
+                    @click="handleSubmit"
+                  >
+                    {{ i18n.t("create.create") }}
+                  </cmz-button>
+                </div>
+              </template>
+            </div>
+
+            <StepperSeparator
+              v-if="item.step < stepItems.length"
+              class="create-stepper-separator"
             />
+          </StepperItem>
+        </StepperRoot>
+      </cmz-card>
+    </template>
 
-            <StartupSelectionStep
-              v-else-if="item.step === 3"
-              :loading="startupDetecting"
-              :candidates="startupCandidates"
-              :selected-startup-id="selectedStartupId"
-              :custom-startup-command="customStartupCommand"
-              :custom-command-has-redirect="customCommandHasRedirect"
-              :starter-selected="starterSelected"
-              :core-detecting="coreDetecting"
-              :detected-core-type-key="detectedCoreTypeKey"
-              :core-type-options="coreTypeOptions"
-              :selected-core-type="selectedCoreType"
-              :detected-mc-version="detectedMcVersion"
-              :mc-version-options="mcVersionOptions"
-              :selected-mc-version="selectedMcVersion"
-              :mc-version-detection-failed="mcVersionDetectionFailed"
-              :disabled="creating"
-              @rescan="rescanStartupCandidates"
-              @update:selected-startup-id="selectedStartupId = $event"
-              @update:custom-startup-command="customStartupCommand = $event"
-              @update:selected-core-type="selectedCoreType = $event"
-              @update:selected-mc-version="selectedMcVersion = $event"
-            />
-
-            <template v-else-if="item.step === 4">
-              <div class="create-config-step">
-                <JavaEnvironmentStep
-                  :java-list="javaList"
-                  :loading="javaLoading"
-                  :selected-java="selectedJava"
-                  @detect="detectJava"
-                  @update:selected-java="selectedJava = $event"
-                />
-
-                <ServerStartupConfigStep
-                  :server-name="serverName"
-                  :max-memory="maxMemory"
-                  :min-memory="minMemory"
-                  :port="port"
-                  :online-mode="onlineMode"
-                  @update:server-name="serverName = $event"
-                  @update:max-memory="maxMemory = $event"
-                  @update:min-memory="minMemory = $event"
-                  @update:port="port = $event"
-                  @update:online-mode="onlineMode = $event"
-                />
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="create-submit-actions">
-                <cmz-button variant="outline" size="lg" @click="router.push('/')">
-                  {{ i18n.t("create.cancel") }}
-                </cmz-button>
-                <cmz-button
-                  size="lg"
-                  :loading="creating"
-                  :disabled="!canSubmit || creating"
-                  @click="handleSubmit"
-                >
-                  {{ i18n.t("create.create") }}
-                </cmz-button>
-              </div>
-            </template>
-          </div>
-
-          <StepperSeparator v-if="item.step < stepItems.length" class="create-stepper-separator" />
-        </StepperItem>
-      </StepperRoot>
-    </cmz-card>
+    <ImportExistingServer v-else @back="mode = 'create'" @imported="onImported" />
   </div>
 </template>
 

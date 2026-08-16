@@ -6,6 +6,7 @@ pub mod console;
 pub mod cron;
 pub mod download;
 pub mod instance;
+pub mod provisioning;
 pub mod server;
 pub mod settings;
 pub mod system;
@@ -18,9 +19,10 @@ pub use cron::{
 };
 pub use download::{cancel_download, create_download, query_download};
 pub use instance::{
-    create_instance, delete_instance, get_instance, list_instances, rename_instance,
-    update_instance_path,
+    create_instance, delete_instance, get_instance, import_existing_instance, list_instances,
+    rename_instance, update_instance_path,
 };
+pub use provisioning::inspect_server;
 pub use server::{
     force_stop_server, restart_server, send_server_command, server_status, start_server,
     stop_server,

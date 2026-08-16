@@ -15,7 +15,10 @@ pub use core_parsing::{
     inspect_core_file, inspect_core_filename, CoreFileInfo, CoreKind, CoreParseError,
 };
 pub use create::{plan_create, CreateInstanceError, CreateInstancePlan};
-pub use existing::{plan_existing_instance, ExistingInstanceError};
+pub use existing::{
+    build_import_spec, plan_existing_instance, ExistingInstanceError, ImportExistingServerError,
+    ImportExistingServerRequest,
+};
 pub use import_metadata::{
     apply_server_inspection, apply_server_inspection_with_options,
     inspect_and_apply_import_metadata, ImportLaunchCandidate, LaunchProfilePolicy,
