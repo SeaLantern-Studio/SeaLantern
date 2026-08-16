@@ -1400,10 +1400,10 @@
 }
 
 /* === Accordion 毛玻璃适配 === */
-/* 容器自身不加 blur：父级 backdrop-filter 会截断子元素的模糊采样，
-   内部 glass 卡片会模糊不到窗口内容；模糊交给卡片自身即可 */
+/* 容器透明不叠背景:内部 glass 卡片才能透出 app-content 与窗口磨砂,
+   获得和输入框一致的毛玻璃观感;容器自身加 blur 会截断卡片采样 */
 [data-acrylic="on"] .cmz-accordion {
-  background: var(--sl-surface);
+  background: transparent;
   border-color: var(--sl-glass-border);
 }
 
