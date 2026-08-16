@@ -21,6 +21,24 @@ pub struct Autoproxy {
     pub enable: bool,
 }
 
+/// Static and automatic proxy settings for the active macOS network service.
+#[cfg(target_os = "macos")]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct MacosProxySettings {
+    /// HTTP proxy endpoint and enabled state.
+    pub http: Sysproxy,
+    /// HTTPS proxy endpoint and enabled state.
+    pub https: Sysproxy,
+    /// SOCKS proxy endpoint and enabled state.
+    pub socks: Sysproxy,
+    /// Proxy bypass rules joined with commas.
+    pub bypass: String,
+    /// PAC URL and enabled state.
+    pub auto_config: Autoproxy,
+    /// Whether Web Proxy Auto-Discovery is enabled.
+    pub auto_discovery: bool,
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("failed to parse string `{0}`")]
