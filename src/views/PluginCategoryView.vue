@@ -583,7 +583,13 @@ watch(
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--sl-radius-md, 10px);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s,
+    opacity 0.2s;
   color: var(--sl-text-primary);
   min-width: 80px;
 }
@@ -688,7 +694,13 @@ watch(
   border-radius: var(--sl-radius-md, 8px);
   color: var(--sl-text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 .btn-group-item:hover {

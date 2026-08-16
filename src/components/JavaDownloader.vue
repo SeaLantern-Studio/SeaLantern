@@ -291,7 +291,13 @@ onUnmounted(() => {
 .progress-bar {
   height: 100%;
   background-color: var(--sl-primary);
-  transition: all 0.3s ease-out;
+  transition:
+    color 0.3s ease-out,
+    background-color 0.3s ease-out,
+    border-color 0.3s ease-out,
+    box-shadow 0.3s ease-out,
+    transform 0.3s ease-out,
+    opacity 0.3s ease-out;
 }
 
 @keyframes indeterminate {
