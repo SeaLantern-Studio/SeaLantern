@@ -31,7 +31,7 @@
   --cmz-error-bg: var(--sl-error-bg);
   --cmz-info: var(--sl-info);
   --cmz-info-bg: var(--sl-info-bg);
-  --cmz-overlay: rgba(0, 0, 0, 0.4);
+  --cmz-overlay: var(--sl-overlay);
   --cmz-radius-xs: var(--sl-radius-xs);
   --cmz-radius-sm: var(--sl-radius-sm);
   --cmz-radius-md: var(--sl-radius-md);
@@ -88,11 +88,11 @@
   --cmz-opacity-disabled: 0.4;
   --cmz-opacity-hover: 0.8;
   --cmz-opacity-muted: 0.6;
-  /* CmzYa 特有状态色（项目无对应 --sl-* 变量，使用默认值） */
-  --cmz-debug: #c084fc;
-  --cmz-debug-bg: rgba(192, 132, 252, 0.12);
-  --cmz-notice: #22d3ee;
-  --cmz-notice-bg: rgba(34, 211, 238, 0.1);
+  /* CmzYa 特有状态色（映射到项目 --sl-* 变量） */
+  --cmz-debug: var(--sl-debug);
+  --cmz-debug-bg: var(--sl-debug-bg);
+  --cmz-notice: var(--sl-notice);
+  --cmz-notice-bg: var(--sl-notice-bg);
   --cmz-radius-scrollbar: 4px;
   --cmz-border-width: 1px;
   --cmz-border-width-bold: 2px;

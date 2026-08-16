@@ -167,26 +167,26 @@ onMounted(async () => {
     pluginStore.initI18nEventListener(),
   ]);
 
+  // 关键路径:只需等待设置加载完成,用于应用主题/字体后即可关闭启动屏
+  // 插件加载与服务器扫描属于非关键数据,延后到主界面显示后再异步补全
   try {
     await settingsStore.loadSettings();
     // 设置加载完成后派发更新事件,由 AppLayout 统一应用主题/字体/开发者模式
     // (AppLayout 在父组件 onMounted 之前已 mount,可能用了默认 settings,这里通知其重新应用)
     dispatchSettingsUpdate(["Appearance", "Developer"], settingsStore.settings);
-
-    // 托盘图标已在 Rust 后端创建，前端不需要再创建
-    // 相关代码在 src-tauri/src/lib.rs 的 .setup() 中
-
-    // 插件加载与服务器列表扫描相互独立,并行执行缩短启动时间
-    // 任一失败不影响另一个
-    await Promise.allSettled([
-      pluginStore.loadPlugins().catch((e) => console.warn("Failed to load plugins:", e)),
-      serverStore.refreshList().catch((e) => console.warn("Failed to load servers:", e)),
-    ]);
   } catch (e) {
     console.error("Failed to load settings during startup:", e);
   } finally {
+    // 主界面先行:关闭启动屏,让用户尽快进入可交互界面
     isInitializing.value = false;
   }
+
+  // 非关键路径:主界面已显示,后台异步补全插件与服务器数据
+  // 任一失败不影响另一个,也不阻塞首屏渲染
+  Promise.allSettled([
+    pluginStore.loadPlugins().catch((e) => console.warn("Failed to load plugins:", e)),
+    serverStore.refreshList().catch((e) => console.warn("Failed to load servers:", e)),
+  ]);
 });
 
 onUnmounted(() => {

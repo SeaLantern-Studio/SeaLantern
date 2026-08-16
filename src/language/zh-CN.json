@@ -719,14 +719,6 @@
       "acrylic_desc": "启用软高斯模糊毛玻璃效果，支持所有平台，与背景图片兼容",
       "advanced_material": "高级材质",
       "advanced_material_desc": "开启半透明材质和窗口融合效果，兼容原来的亚克力设置",
-      "acrylic_blur": "亚克力模糊强度",
-      "acrylic_blur_desc": "调整高级材质的背景模糊，只影响材质层，不影响背景图片",
-      "acrylic_blur_options": {
-        "off": "关",
-        "low": "低",
-        "medium": "中",
-        "high": "高"
-      },
       "background": "背景图片",
       "background_desc": "上传一张图片作为软件背景，支持 PNG、JPG、WEBP 等格式",
       "opacity": "不透明度",

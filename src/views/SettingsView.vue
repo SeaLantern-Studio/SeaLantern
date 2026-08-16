@@ -12,14 +12,7 @@ import DeveloperModeCard from "@components/views/settings/DeveloperModeCard.vue"
 import SettingsActions from "@components/views/settings/SettingsActions.vue";
 import ImportSettingsModal from "@components/views/settings/ImportSettingsModal.vue";
 import ResetConfirmModal from "@components/views/settings/ResetConfirmModal.vue";
-import {
-  settingsApi,
-  DEFAULT_ACRYLIC_BLUR_LEVEL,
-  getSystemFonts,
-  type AcrylicBlurLevel,
-  type AppSettings,
-  type SettingsGroup,
-} from "@api/settings";
+import { settingsApi, getSystemFonts, type AppSettings, type SettingsGroup } from "@api/settings";
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
@@ -229,12 +222,7 @@ function handleFontFamilyChange() {
 
 function handleAcrylicChange(enabled: boolean) {
   markChanged();
-  applyAcrylicEffect(enabled, settings.value?.acrylic_blur_level);
-}
-
-function handleAcrylicBlurChange(level: AcrylicBlurLevel) {
-  markChanged();
-  applyAcrylicEffect(settings.value?.acrylic_enabled ?? false, level);
+  applyAcrylicEffect(enabled);
 }
 
 function handleMinimalModeChange(enabled: boolean) {
@@ -433,7 +421,6 @@ async function handleImport(json: string) {
             :font-family-options="fontFamilyOptions"
             :fonts-loading="fontsLoading"
             :acrylic-enabled="settings.acrylic_enabled"
-            :acrylic-blur-level="settings.acrylic_blur_level || DEFAULT_ACRYLIC_BLUR_LEVEL"
             :is-theme-proxied="isThemeProxied"
             :theme-proxy-plugin-name="themeProxyPluginName"
             :background-image="settings.background_image"
@@ -447,7 +434,6 @@ async function handleImport(json: string) {
             @update:font-size="fontSize = $event"
             @update:font-family="settings.font_family = $event"
             @update:acrylic-enabled="settings.acrylic_enabled = $event"
-            @update:acrylic-blur-level="settings.acrylic_blur_level = $event"
             @update:bg-settings-expanded="bgSettingsExpanded = $event"
             @update:bg-opacity="bgOpacity = $event"
             @update:bg-blur="bgBlur = $event"
@@ -458,7 +444,6 @@ async function handleImport(json: string) {
             @font-size-change="handleFontSizeChange"
             @font-family-change="handleFontFamilyChange"
             @acrylic-change="handleAcrylicChange"
-            @acrylic-blur-change="handleAcrylicBlurChange"
             @minimal-mode-change="handleMinimalModeChange"
             @pick-image="pickBackgroundImage"
             @clear-image="clearBackgroundImage"

@@ -49,7 +49,7 @@ async function applyAppearanceSettings(): Promise<void> {
   applyFontSize(settings.font_size || 14);
   applyFontFamily(settings.font_family || "");
 
-  applyAcrylicEffect(settings.acrylic_enabled, settings.acrylic_blur_level);
+  applyAcrylicEffect(settings.acrylic_enabled);
   // 桌面磨砂只能靠系统原生效果,状态变化时同步
   if (lastNativeAcrylic !== settings.acrylic_enabled) {
     lastNativeAcrylic = settings.acrylic_enabled;

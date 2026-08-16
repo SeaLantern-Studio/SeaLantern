@@ -214,7 +214,7 @@
 }
 
 .cmz-console__prompt {
-  color: #a78bfa;
+  color: var(--sl-console-prompt, #a78bfa);
   font-weight: 700;
   margin-right: 4px;
 }
@@ -231,14 +231,17 @@
 }
 
 /* === Modal === */
-.cmz-modal-overlay {
+/* 用 :root + 双类压过库自带的 [data-v-] 选择器,把遮罩的全局模糊关掉,只留纯色加深 */
+:root .cmz-modal-overlay.cmz-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--sl-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .cmz-modal {
@@ -959,7 +962,12 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--sl-surface, #ffffff);
+  /* 半透明色膜 + CSS 模糊,toast 浮在主界面上方,磨的是窗口内内容 */
+  /* 模糊强度跟随 --cmz-acrylic-blur(CSS 侧固定 medium),不依赖系统原生模糊 */
+  background: var(--cmz-glass-bg, rgba(255, 255, 255, 0.72));
+  backdrop-filter: blur(var(--cmz-acrylic-blur, 16px)) saturate(var(--cmz-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--cmz-acrylic-blur, 16px))
+    saturate(var(--cmz-saturate-normal, 180%));
   border: 1px solid var(--sl-border, #d8dee8);
   border-radius: var(--sl-radius-md, 10px);
   box-shadow: var(--sl-shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.08));

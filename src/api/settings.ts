@@ -11,11 +11,6 @@ export type SettingsGroup =
   | "Window"
   | "Developer";
 
-export type AcrylicBlurLevel = "off" | "low" | "medium" | "high";
-
-/** 亚克力模糊级别的默认值，旧配置缺字段或值非法时回落到这里 */
-export const DEFAULT_ACRYLIC_BLUR_LEVEL: AcrylicBlurLevel = "medium";
-
 export type ProxySettings =
   | { mode: "adaptive" }
   | { mode: "preserve" }
@@ -47,7 +42,6 @@ export interface AppSettings {
   window_y?: number | null;
   window_maximized?: boolean;
   acrylic_enabled: boolean;
-  acrylic_blur_level: AcrylicBlurLevel;
   theme: string;
   font_size: number;
   font_family: string;
@@ -87,7 +81,6 @@ export interface PartialSettings {
   window_y?: number | null;
   window_maximized?: boolean;
   acrylic_enabled?: boolean;
-  acrylic_blur_level?: AcrylicBlurLevel;
   theme?: string;
   font_size?: number;
   font_family?: string;
