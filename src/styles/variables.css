@@ -167,7 +167,7 @@
 }
 
 [data-acrylic="on"] {
-  --sl-bg: rgba(255, 255, 255, 0.48);
+  --sl-bg: rgba(255, 255, 255, 0.5);
   --sl-bg-secondary: rgba(255, 255, 255, 0.55);
   --sl-bg-tertiary: rgba(255, 255, 255, 0.62);
   --sl-surface: rgba(255, 255, 255, 0.55);
@@ -175,7 +175,7 @@
 }
 
 [data-theme="dark"][data-acrylic="on"] {
-  --sl-bg: rgba(0, 0, 0, 0.48);
+  --sl-bg: rgba(0, 0, 0, 0.5);
   --sl-bg-secondary: rgba(0, 0, 0, 0.55);
   --sl-bg-tertiary: rgba(0, 0, 0, 0.62);
   --sl-surface: rgba(0, 0, 0, 0.55);

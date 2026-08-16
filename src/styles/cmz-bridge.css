@@ -113,6 +113,6 @@
   --cmz-acrylic-bg: var(--sl-acrylic-bg, rgba(255, 255, 255, 0.55));
   --cmz-acrylic-bg-strong: var(--sl-acrylic-bg-strong, rgba(255, 255, 255, 0.72));
   --cmz-acrylic-border: var(--sl-acrylic-border, rgba(255, 255, 255, 0.35));
-  --cmz-acrylic-blur: var(--sl-acrylic-blur, 10px);
+  --cmz-acrylic-blur: var(--sl-acrylic-blur, 16px);
   --cmz-acrylic-saturate: var(--sl-saturate-normal);
 }

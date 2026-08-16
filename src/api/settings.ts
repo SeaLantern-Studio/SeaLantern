@@ -1,4 +1,4 @@
-import { isBrowserEnv, tauriInvoke } from "@api/tauri";
+import { tauriInvoke } from "@api/tauri";
 import { invoke } from "@api/invoke";
 import type { JavaInfo } from "@api/java";
 
@@ -128,10 +128,6 @@ export const settingsApi = {
   },
   async importJson(json: string): Promise<AppSettings> {
     return invoke("import_settings", { json });
-  },
-  async applyAcrylic(enabled: boolean): Promise<void> {
-    if (isBrowserEnv()) return;
-    await tauriInvoke("apply_acrylic", { enabled }, { silent: true });
   },
 };
 

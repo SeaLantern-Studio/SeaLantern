@@ -2,9 +2,9 @@ import { DEFAULT_ACRYLIC_BLUR_LEVEL, type AcrylicBlurLevel } from "@api/settings
 
 export const ACRYLIC_BLUR_VALUES: Record<AcrylicBlurLevel, string> = {
   off: "0px",
-  low: "4px",
-  medium: "10px",
-  high: "18px",
+  low: "8px",
+  medium: "16px",
+  high: "28px",
 };
 
 export function normalizeAcrylicBlurLevel(level?: string): AcrylicBlurLevel {

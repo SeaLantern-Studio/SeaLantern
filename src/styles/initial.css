@@ -4,7 +4,7 @@ html {
 html[data-theme="dark"] {
   background-color: #0f1117;
 }
-/* 亚克力开启时窗口背景交给原生效果，html 层必须透明才能透出桌面 */
+/* 透明模式:html 层透出桌面,内容由 .app-content 的半透明 surface 承担 */
 html[data-acrylic="on"],
 html[data-acrylic]:not([data-acrylic="off"]) {
   background-color: transparent;
