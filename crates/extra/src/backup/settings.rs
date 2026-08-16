@@ -86,9 +86,9 @@ impl BackupSettingsManager {
     /// 验证备份设置
     fn validate_settings(&self, settings: &BackupSettings) -> BackupResult<()> {
         // 验证最大备份数量
-        if settings.max_backups < 1 || settings.max_backups > 50 {
+        if settings.max_backups < 1 {
             return Err(BackupError::Validation(
-                "最大备份数量必须在1-50之间".to_string(),
+                "最大备份数量必须至少为1".to_string(),
             ));
         }
         
