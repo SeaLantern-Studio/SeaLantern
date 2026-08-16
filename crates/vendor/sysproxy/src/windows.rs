@@ -271,17 +271,18 @@ fn find_http_proxy(proxy_server: &str) -> Option<&str> {
 fn parse_proxy_address(address: &str, host: &mut String, port: &mut u16) {
     // 快速路径：host:port 或 [ipv6]:port，无需堆分配
     if let Some((h, p)) = address.rsplit_once(':')
-        && let Ok(port_num) = p.parse::<u16>() {
-            // 去除 IPv6 方括号: "[::1]" → "::1"
-            let clean = if h.starts_with('[') && h.ends_with(']') {
-                &h[1..h.len() - 1]
-            } else {
-                h
-            };
-            *host = clean.to_string();
-            *port = port_num;
-            return;
-        }
+        && let Ok(port_num) = p.parse::<u16>()
+    {
+        // 去除 IPv6 方括号: "[::1]" → "::1"
+        let clean = if h.starts_with('[') && h.ends_with(']') {
+            &h[1..h.len() - 1]
+        } else {
+            h
+        };
+        *host = clean.to_string();
+        *port = port_num;
+        return;
+    }
 
     // 回退：URL 解析器处理无端口的主机名等边缘情况
     if let Ok(url) = Url::parse(&format!("http://{}", address)) {

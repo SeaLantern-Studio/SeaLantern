@@ -109,32 +109,34 @@ pub(super) fn detect(
     }
 
     if let Some((root, relative_jar)) = directory_launch
-        && main_class.is_some() && main_class != Some(FABRIC_SERVER_LAUNCHER) {
-            findings.roles.push(Signal {
-                value: ArtifactRole::Runnable,
-                detector: "directory-root-jar-manifest",
-                source: EvidenceSource::ManifestMain,
-                location: manifest_location(path, "Main-Class"),
-                weight: 95,
-                correlation_group: "directory-root-jar-manifest",
-            });
-            findings.launches.push(Signal {
-                value: LaunchProfile {
-                    id: format!("root-jar-{}", launch_id(relative_jar)),
-                    platform: LaunchPlatform::Any,
-                    working_directory: Some(root.to_path_buf()),
-                    target: LaunchTarget::Jar { path: root.join(relative_jar) },
-                    jvm_arguments: Vec::new(),
-                    program_arguments: Vec::new(),
-                    required_java_major: None,
-                },
-                detector: "directory-root-jar-manifest",
-                source: EvidenceSource::ManifestMain,
-                location: manifest_location(path, "Main-Class"),
-                weight: 95,
-                correlation_group: "directory-root-jar-manifest",
-            });
-        }
+        && main_class.is_some()
+        && main_class != Some(FABRIC_SERVER_LAUNCHER)
+    {
+        findings.roles.push(Signal {
+            value: ArtifactRole::Runnable,
+            detector: "directory-root-jar-manifest",
+            source: EvidenceSource::ManifestMain,
+            location: manifest_location(path, "Main-Class"),
+            weight: 95,
+            correlation_group: "directory-root-jar-manifest",
+        });
+        findings.launches.push(Signal {
+            value: LaunchProfile {
+                id: format!("root-jar-{}", launch_id(relative_jar)),
+                platform: LaunchPlatform::Any,
+                working_directory: Some(root.to_path_buf()),
+                target: LaunchTarget::Jar { path: root.join(relative_jar) },
+                jvm_arguments: Vec::new(),
+                program_arguments: Vec::new(),
+                required_java_major: None,
+            },
+            detector: "directory-root-jar-manifest",
+            source: EvidenceSource::ManifestMain,
+            location: manifest_location(path, "Main-Class"),
+            weight: 95,
+            correlation_group: "directory-root-jar-manifest",
+        });
+    }
 }
 
 fn add_craftbukkit_product(
