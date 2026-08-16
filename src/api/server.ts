@@ -18,7 +18,14 @@ export interface ParsedServerCoreInfo {
 }
 
 export interface ServerLogLineEvent {
-  server_id: string;
+  instance_id: string;
+  line: ConsoleLogLine;
+}
+
+export interface ConsoleLogLine {
+  sequence: bigint;
+  timestamp: bigint;
+  source: string;
   line: string;
 }
 
@@ -347,7 +354,7 @@ export const serverApi = {
     await invoke("delete_instance", { id });
   },
 
-  async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
+  async getLogs(id: string, since: number, maxLines?: number): Promise<ConsoleLogLine[]> {
     return tauriInvoke("get_server_logs", { id, since, maxLines });
   },
 
