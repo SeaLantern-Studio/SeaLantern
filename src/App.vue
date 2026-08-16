@@ -14,6 +14,7 @@ import { useServerStore } from "@stores/serverStore";
 import { useToast } from "cmzya-modern-ui";
 import { isBrowserEnv } from "@api/tauri";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { enqueueAppearanceApply } from "@utils/appearance";
 
 // 主题/字体/开发者模式的应用统一由 AppLayout 负责,App.vue 仅加载设置并派发更新事件
 
@@ -171,6 +172,8 @@ onMounted(async () => {
   // 插件加载与服务器扫描属于非关键数据,延后到主界面显示后再异步补全
   try {
     await settingsStore.loadSettings();
+    // 在启动屏消失前应用持久化外观，避免主页挂载时才突然切换透明度。
+    await enqueueAppearanceApply(settingsStore.settings);
     // 设置加载完成后派发更新事件,由 AppLayout 统一应用主题/字体/开发者模式
     // (AppLayout 在父组件 onMounted 之前已 mount,可能用了默认 settings,这里通知其重新应用)
     dispatchSettingsUpdate(["Appearance", "Developer"], settingsStore.settings);

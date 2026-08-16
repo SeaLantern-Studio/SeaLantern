@@ -15,7 +15,6 @@ import { settingsApi, getSystemFonts, type AppSettings, type SettingsGroup } fro
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
-import { applyAcrylicEffect } from "@utils/acrylic";
 import { usePluginStore } from "@stores/pluginStore";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
@@ -218,9 +217,12 @@ function handleFontFamilyChange() {
   }
 }
 
-function handleAcrylicChange(enabled: boolean) {
-  markChanged();
-  applyAcrylicEffect(enabled);
+function handleAcrylicChange() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
+  void saveSettings();
 }
 
 function handleMinimalModeChange(enabled: boolean) {
