@@ -144,10 +144,7 @@ pub async fn import_existing_server(
     })
     .await
     .map_err(|join_error| {
-        import_error(
-            "import_panic",
-            format!("import spec build failed: {join_error}"),
-        )
+        import_error("import_panic", format!("import spec build failed: {join_error}"))
     })?;
     let import_request = import_request.map_err(|error| match error {
         CoreImportError::Inspection(_) => import_error("inspection_failed", error.to_string()),
