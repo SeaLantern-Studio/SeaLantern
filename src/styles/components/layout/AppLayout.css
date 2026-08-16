@@ -1,10 +1,11 @@
 /* AppLayout 组件样式 */
+/* 布局底色用 --sl-bg 拉开与主容器 surface 的对比,侧栏顶栏透明与之融合 */
 .app-layout {
   position: relative;
   display: flex;
   width: 100vw;
   height: 100vh;
-  background-color: var(--sl-bg-secondary);
+  background-color: var(--sl-bg);
   overflow: hidden;
 }
 
@@ -12,9 +13,16 @@
   background-color: transparent;
 }
 
+/* 开材质时:亮色原生 acrylic 本身偏浅,layout 直接透明 */
 [data-acrylic="on"] .app-layout,
 [data-acrylic]:not([data-acrylic="off"]) .app-layout {
   background-color: transparent;
+}
+
+/* 暗色下用深灰膜纠偏 acrylic 偏白的底,浅灰容器浮在上面形成灰阶层次 */
+[data-theme="dark"][data-acrylic="on"] .app-layout,
+[data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .app-layout {
+  background-color: var(--sl-bg);
 }
 
 .app-background {
@@ -65,8 +73,7 @@
 [data-acrylic="on"] .app-content,
 [data-acrylic]:not([data-acrylic="off"]) .app-content {
   background: var(--sl-surface);
-  backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-normal));
+  /* 桌面磨砂交给原生效果,壁纸有自己的 blur 设置,这里只留半透明膜 */
   border: 1px solid var(--sl-border-light);
   box-shadow: none;
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from "vue";
+// keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理刷新定时器
+import { ref, onActivated, onDeactivated, computed, watch } from "vue";
 import { useServerStore } from "@stores/serverStore";
 import { useConsoleStore } from "@stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
@@ -59,7 +60,7 @@ function getAddLabel(): string {
   }
 }
 
-onMounted(async () => {
+onActivated(async () => {
   await store.refreshList();
   if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
@@ -72,7 +73,7 @@ onMounted(async () => {
   startRefresh();
 });
 
-onUnmounted(() => {
+onDeactivated(() => {
   if (refreshTimer) clearInterval(refreshTimer);
 });
 
@@ -84,7 +85,7 @@ function startRefresh() {
       await loadAll();
       parseOnlinePlayers();
     }
-  }, 5000);
+  }, 3000);
 }
 
 watch(
@@ -101,9 +102,15 @@ watch(
 async function loadAll() {
   if (!serverPath.value) return;
   await withLoading(async () => {
-    whitelist.value = await playerApi.getWhitelist(serverPath.value);
-    bannedPlayers.value = await playerApi.getBannedPlayers(serverPath.value);
-    ops.value = await playerApi.getOps(serverPath.value);
+    // 三个接口互不依赖,并行拉取降低总延迟
+    const [whitelistRes, bannedRes, opsRes] = await Promise.all([
+      playerApi.getWhitelist(serverPath.value),
+      playerApi.getBannedPlayers(serverPath.value),
+      playerApi.getOps(serverPath.value),
+    ]);
+    whitelist.value = whitelistRes;
+    bannedPlayers.value = bannedRes;
+    ops.value = opsRes;
   });
 }
 

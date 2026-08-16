@@ -15,6 +15,7 @@ mod response;
 pub mod router;
 
 pub mod methods;
+pub mod plugin_auth;
 pub mod service;
 
 pub use access::{RpcAccess, RpcPermission};

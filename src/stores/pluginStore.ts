@@ -7,7 +7,6 @@ import { useComponentRegistry } from "@composables/useComponentRegistry";
 import { useToast } from "cmzya-modern-ui";
 import DOMPurify from "dompurify";
 import * as pluginApi from "@api/plugin";
-import type { BufferedComponentEvent } from "@api/plugin";
 import { setThemeProviderOverrides } from "@utils/theme";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import type {
@@ -18,7 +17,6 @@ import type {
   MissingDependency,
   BatchInstallResult,
   SidebarItem,
-  PluginDependency,
   SidebarMode,
   PluginUiAction,
   PluginPermissionLog,
@@ -308,8 +306,6 @@ export const usePluginStore = defineStore("plugin", () => {
         );
         await loadNavItems();
 
-        const currentPath = window.location.hash.replace(/^#/, "") || "/";
-        await pluginApi.onPageChanged(currentPath);
         await replayUiSnapshot();
         setTimeout(() => replayUiSnapshot(), 300);
 

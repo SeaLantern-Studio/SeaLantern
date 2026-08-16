@@ -1,10 +1,12 @@
 import { tauriInvoke, isBrowserEnv, HTTP_API_BASE } from "@api/tauri";
+import { invoke } from "@api/invoke";
 import type { ServerInstance } from "@type/server";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface ServerStatusInfo {
   id: string;
-  status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
+  // Unknown 用于后端返回了未识别的状态，避免误判为已停止
+  status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error" | "Unknown";
   pid: number | null;
   uptime: number | null;
 }
@@ -67,6 +69,95 @@ interface StartupScanResultRaw {
   mc_version_options: string[];
   detected_mc_version: string | null;
   mc_version_detection_failed: boolean;
+}
+
+/** 后端 Instance 原始结构，字段和前端 ServerInstance 差异较大需转换 */
+interface InstanceRaw {
+  id: string;
+  name: string;
+  aliases: string[];
+  core_type: string;
+  core_version: string;
+  game_version: string;
+  directory: string;
+  port: number;
+  max_memory_mib: number;
+  min_memory_mib: number;
+  created_at_unix_secs: number;
+  last_started_at_unix_secs: number | null;
+  server_metadata: unknown;
+  launch: LocalLaunchRaw;
+}
+
+/** 后端启动配置，前端把部分字段平铺到 ServerInstance */
+interface LocalLaunchRaw {
+  startup_mode: string;
+  startup_target: string | null;
+  custom_command: string | null;
+  custom_executable: string | null;
+  custom_arguments: string[];
+  java_executable: string | null;
+  jvm_arguments: string[];
+}
+
+/** 后端 ServerSnapshot 原始结构 */
+interface ServerSnapshotRaw {
+  instance_id: string;
+  state: string;
+  pid: number | null;
+  uptime_secs: number | null;
+  error_message: string | null;
+}
+
+/** Instance 原始结构转前端 ServerInstance */
+function toServerInstance(i: InstanceRaw): ServerInstance {
+  return {
+    id: i.id,
+    name: i.name,
+    core_type: i.core_type,
+    core_version: i.core_version,
+    mc_version: i.game_version,
+    path: i.directory,
+    jar_path: i.launch.startup_target ?? "",
+    startup_mode: i.launch.startup_mode as ServerInstance["startup_mode"],
+    custom_command: i.launch.custom_command,
+    java_path: i.launch.java_executable ?? "",
+    max_memory: i.max_memory_mib,
+    min_memory: i.min_memory_mib,
+    jvm_args: i.launch.jvm_arguments,
+    port: i.port,
+    created_at: i.created_at_unix_secs,
+    last_started_at: i.last_started_at_unix_secs,
+  };
+}
+
+/** 后端 state 小写枚举转前端 PascalCase 状态 */
+function toServerStatusInfo(s: ServerSnapshotRaw): ServerStatusInfo {
+  const stateMap: Record<string, ServerStatusInfo["status"]> = {
+    starting: "Starting",
+    running: "Running",
+    stopping: "Stopping",
+    stopped: "Stopped",
+    error: "Error",
+    crashed: "Error",
+  };
+
+  const mappedStatus = stateMap[s.state];
+
+  if (!mappedStatus) {
+    // 未知的后端状态，避免默认为 Stopped 造成误导
+    console.warn("Unknown server state from backend:", {
+      state: s.state,
+      snapshot: s,
+    });
+  }
+
+  return {
+    id: s.instance_id,
+    status: mappedStatus ?? "Unknown",
+    pid: s.pid,
+    uptime: s.uptime_secs,
+  };
 }
 
 export const serverApi = {
@@ -221,11 +312,11 @@ export const serverApi = {
   },
 
   async start(id: string): Promise<void> {
-    return tauriInvoke("start_server", { id });
+    await invoke("start_server", { id });
   },
 
   async stop(id: string): Promise<void> {
-    return tauriInvoke("stop_server", { id });
+    await invoke("stop_server", { id });
   },
 
   async prepareForceStop(id: string): Promise<ForceStopPreparation> {
@@ -233,23 +324,27 @@ export const serverApi = {
   },
 
   async forceStop(id: string, confirmationToken: string): Promise<void> {
-    return tauriInvoke("force_stop_server", { id, confirmationToken });
+    // Tauri 模式透传 confirmationToken，后端当前未校验，但保留以备未来启用
+    // Axum 模式后端 force_stop 只收 id，不发送 token
+    await invoke("force_stop_server", { id, confirmationToken });
   },
 
   async sendCommand(id: string, command: string): Promise<void> {
-    return tauriInvoke("send_command", { id, command });
+    await invoke("send_server_command", { id, command });
   },
 
   async getList(): Promise<ServerInstance[]> {
-    return tauriInvoke("get_server_list");
+    const raw = await invoke<InstanceRaw[]>("list_instances");
+    return raw.map(toServerInstance);
   },
 
   async getStatus(id: string): Promise<ServerStatusInfo> {
-    return tauriInvoke("get_server_status", { id });
+    const raw = await invoke<ServerSnapshotRaw>("server_status", { id });
+    return toServerStatusInfo(raw);
   },
 
   async deleteServer(id: string): Promise<void> {
-    return tauriInvoke("delete_server", { id });
+    await invoke("delete_instance", { id });
   },
 
   async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
@@ -302,7 +397,7 @@ export const serverApi = {
   },
 
   async updateServerName(id: string, name: string): Promise<void> {
-    return tauriInvoke("update_server_name", { id, name });
+    await invoke("rename_instance", { id, name });
   },
 
   async validateServerPath(newPath: string): Promise<{

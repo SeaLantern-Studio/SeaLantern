@@ -1,13 +1,21 @@
 import { isBrowserEnv, tauriInvoke } from "@api/tauri";
+import { invoke } from "@api/invoke";
 import type { JavaInfo } from "@api/java";
 
 export type SettingsGroup =
   | "General"
+  | "Network"
   | "ServerDefaults"
   | "Console"
   | "Appearance"
   | "Window"
   | "Developer";
+
+export type ProxySettings =
+  | { mode: "adaptive" }
+  | { mode: "preserve" }
+  | { mode: "manual"; proxy_url: string }
+  | { mode: "disabled" };
 
 export interface AppSettings {
   close_servers_on_exit: boolean;
@@ -42,6 +50,7 @@ export interface AppSettings {
   locales_base_url?: string;
   developer_mode: boolean;
   close_action: string;
+  proxy: ProxySettings;
   last_run_path: string;
   minimal_mode: boolean;
   agreed_to_terms: boolean;
@@ -79,6 +88,7 @@ export interface PartialSettings {
   language?: string;
   developer_mode?: boolean;
   close_action?: string;
+  proxy?: ProxySettings;
   last_run_path?: string;
   minimal_mode?: boolean;
   agreed_to_terms?: boolean;
@@ -91,26 +101,28 @@ export interface UpdateSettingsResult {
 
 export const settingsApi = {
   async get(): Promise<AppSettings> {
-    return tauriInvoke("get_settings");
+    return invoke("get_settings");
   },
   async save(settings: AppSettings): Promise<void> {
-    return tauriInvoke("save_settings", { settings });
+    // 后端 update_settings 返回 UpdateResult，这里只关心副作用，丢弃结果
+    await invoke("update_settings", { settings });
   },
   async saveWithDiff(settings: AppSettings): Promise<UpdateSettingsResult> {
-    return tauriInvoke("save_settings_with_diff", { settings });
+    return invoke("update_settings", { settings });
   },
   async updatePartial(partial: PartialSettings): Promise<UpdateSettingsResult> {
-    return tauriInvoke("update_settings_partial", { partial });
+    return invoke("update_settings_partial", { partial });
   },
   async reset(): Promise<AppSettings> {
-    return tauriInvoke("reset_settings");
+    return invoke("reset_settings");
   },
   async exportJson(): Promise<string> {
-    return tauriInvoke("export_settings");
+    return invoke("export_settings");
   },
   async importJson(json: string): Promise<AppSettings> {
-    return tauriInvoke("import_settings", { json });
+    return invoke("import_settings", { json });
   },
+  // 原生亚克力由系统合成器模糊桌面,CSS backdrop-filter 够不到窗外内容
   async applyAcrylic(enabled: boolean): Promise<void> {
     if (isBrowserEnv()) return;
     await tauriInvoke("apply_acrylic", { enabled }, { silent: true });

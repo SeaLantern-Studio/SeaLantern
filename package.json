@@ -9,6 +9,7 @@
     "build:check": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "axum": "node ./scripts/axum.mjs",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
@@ -41,7 +42,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-serialize": "^0.14.0",
     "@xterm/xterm": "^6.0.0",
-    "cmzya-modern-ui": "^0.5.5",
+    "cmzya-modern-ui": "^0.6.2",
     "dompurify": "^3.3.3",
     "echarts": "^6.0.0",
     "lucide-vue-next": "^0.574.0",
@@ -72,7 +73,7 @@
     "vue-tsc": "^3.2.5"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md}": [
+    "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md,toml}": [
       "pnpm exec oxfmt"
     ]
   },

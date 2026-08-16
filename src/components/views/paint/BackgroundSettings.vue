@@ -334,7 +334,7 @@ function handleImageLoad() {
 }
 
 .input-lg {
-  width: 320px;
+  width: 200px;
   flex-shrink: 0;
 }
 

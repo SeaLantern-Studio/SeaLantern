@@ -1,11 +1,46 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed, watch } from "vue";
 import { systemApi, type IPv6TestResult } from "@api/system";
+import { settingsApi, type ProxySettings } from "@api/settings";
+import { dispatchSettingsUpdate } from "@stores/settingsStore";
 import { i18n } from "@language";
+import { handleError } from "@utils/errorHandler";
+import { useToast } from "cmzya-modern-ui";
+
+// 代理模式枚举，与后端 ProxySettings 联合类型对应
+type ProxyMode = "adaptive" | "preserve" | "manual" | "disabled";
+
+const props = defineProps<{
+  proxy: ProxySettings;
+}>();
+
+const toast = useToast();
 
 const testing = ref(false);
 const showDetail = ref(false);
 const result = ref<IPv6TestResult | null>(null);
+
+// 本地编辑态，与 prop 同步
+const proxyMode = ref<ProxyMode>(props.proxy.mode);
+const proxyUrl = ref(props.proxy.mode === "manual" ? props.proxy.proxy_url : "");
+const applying = ref(false);
+
+// prop 更新时同步本地，避免外部重置后 UI 残留旧值
+watch(
+  () => props.proxy,
+  (p) => {
+    proxyMode.value = p.mode;
+    proxyUrl.value = p.mode === "manual" ? p.proxy_url : "";
+  },
+  { deep: true },
+);
+
+const proxyModeOptions = computed(() => [
+  { label: i18n.t("settings.proxy_mode_adaptive"), value: "adaptive" },
+  { label: i18n.t("settings.proxy_mode_preserve"), value: "preserve" },
+  { label: i18n.t("settings.proxy_mode_manual"), value: "manual" },
+  { label: i18n.t("settings.proxy_mode_disabled"), value: "disabled" },
+]);
 
 async function testIPv6() {
   testing.value = true;
@@ -17,6 +52,26 @@ async function testIPv6() {
     result.value = { supported: false, message: String(e) };
   } finally {
     testing.value = false;
+  }
+}
+
+// 走局部更新接口应用代理，同时广播事件让其它视图同步
+async function applyProxy() {
+  if (applying.value) return;
+  applying.value = true;
+  try {
+    const next: ProxySettings =
+      proxyMode.value === "manual"
+        ? { mode: "manual", proxy_url: proxyUrl.value.trim() }
+        : { mode: proxyMode.value };
+    const res = await settingsApi.updatePartial({ proxy: next });
+    // 广播变更，SettingsView 监听后会刷新本地 settings
+    dispatchSettingsUpdate(res.changed_groups, res.settings);
+    toast.success(i18n.t("settings.proxy_applied"));
+  } catch (e) {
+    toast.error(handleError(e));
+  } finally {
+    applying.value = false;
   }
 }
 </script>
@@ -73,6 +128,44 @@ async function testIPv6() {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- 代理设置：模式选择 + 自定义地址输入 + 应用按钮 -->
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.proxy") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.proxy_desc") }}</span>
+        </div>
+        <cmz-select
+          :model-value="proxyMode"
+          :options="proxyModeOptions"
+          @update:model-value="(v: string | number) => (proxyMode = v as ProxyMode)"
+        />
+      </div>
+
+      <div v-if="proxyMode === 'manual'" class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.proxy_url") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.proxy_url_desc") }}</span>
+        </div>
+        <cmz-input
+          :model-value="proxyUrl"
+          :placeholder="i18n.t('settings.proxy_url_placeholder')"
+          class="proxy-url-input"
+          @update:model-value="(v: string) => (proxyUrl = v)"
+        />
+      </div>
+
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.proxy_mode_" + proxyMode) }}</span>
+          <span class="settings-entry-desc">{{
+            i18n.t("settings.proxy_mode_" + proxyMode + "_desc")
+          }}</span>
+        </div>
+        <cmz-button size="sm" :disabled="applying" @click="applyProxy">
+          {{ applying ? i18n.t("settings.proxy_applying") : i18n.t("settings.proxy_apply") }}
+        </cmz-button>
       </div>
     </div>
   </cmz-card>
@@ -196,5 +289,14 @@ async function testIPv6() {
 .target-error {
   color: inherit;
   opacity: 0.85;
+}
+
+/* 自定义代理地址输入框宽度约束，和 settings-entry 内的 select 保持一致 */
+.proxy-url-input {
+  width: 100%;
+  min-width: 200px;
+  max-width: 320px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 </style>

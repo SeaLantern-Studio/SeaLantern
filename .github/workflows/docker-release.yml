@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   packages: write
 
 concurrency:
@@ -21,10 +22,50 @@ env:
   IMAGE_NAME: sealantern
 
 jobs:
+  check-upstream-build:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+    steps:
+      - name: 检查上游是否执行了实际构建
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.payload.workflow_run.event === 'push') {
+              core.setOutput('should_publish', 'true');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const runId = context.payload.workflow_run.id;
+            const response = await github.rest.actions.listJobsForWorkflowRun({
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100,
+            });
+
+            const buildJobs = response.data.jobs.filter((job) =>
+              job.name.startsWith('构建并发布 Nightly 桌面端')
+            );
+            const allSucceeded =
+              buildJobs.length > 0 &&
+              buildJobs.every((job) => job.conclusion === 'success');
+
+            core.setOutput('should_publish', allSucceeded ? 'true' : 'false');
+            core.info(
+              allSucceeded
+                ? `Nightly 的 ${buildJobs.length} 个构建任务均成功，允许发布 Docker 镜像`
+                : 'Nightly 未执行构建或存在失败，跳过 Docker 镜像发布'
+            );
+
   build-and-push:
+    needs: check-upstream-build
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      contains(fromJson('["push","schedule","workflow_dispatch"]'), github.event.workflow_run.event)
+      contains(fromJson('["push","schedule","workflow_dispatch"]'), github.event.workflow_run.event) &&
+      needs.check-upstream-build.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -77,15 +118,15 @@ jobs:
               echo 'EOF'
             } >> "$GITHUB_OUTPUT"
           else
-            TAG="$(pick_tag 'nightly-v*')"
+            TAG="$(pick_tag 'nightly-*')"
             if [ -z "$TAG" ]; then
               echo "❌ 未找到指向当前提交的 nightly tag" >&2
               exit 1
             fi
 
-            VERSION="$(printf '%s' "$TAG" | sed -E 's/^nightly-v([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
-            if [ -z "$VERSION" ] || [ "$VERSION" = "$TAG" ]; then
-              echo "❌ 无法从 nightly tag 提取版本号: $TAG" >&2
+            VERSION="$(grep -m 1 -oP '"version"\s*:\s*"\K[^"]+' package.json)"
+            if [ -z "$VERSION" ]; then
+              echo "❌ 无法从 package.json 提取 Nightly 版本号" >&2
               exit 1
             fi
 

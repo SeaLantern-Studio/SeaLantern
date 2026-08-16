@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { uploadFile, isUploadSupported } from "@api/upload";
+import { i18n } from "@language";
 
 const props = defineProps<{
   /** 是否显示拖拽区域 */
@@ -37,7 +38,7 @@ const fileExtensions = computed(() => {
 // 点击上传按钮
 const handleClick = () => {
   if (!canUpload.value) {
-    emit("error", "当前环境不支持文件上传");
+    emit("error", i18n.t("common.upload_not_supported"));
     return;
   }
   fileInput.value?.click();
@@ -56,7 +57,7 @@ const handleFileChange = async (event: Event) => {
 // 上传选中的文件
 const uploadSelectedFiles = async (files: File[]) => {
   if (!canUpload.value) {
-    emit("error", "当前环境不支持文件上传");
+    emit("error", i18n.t("common.upload_not_supported"));
     return;
   }
 
@@ -66,7 +67,7 @@ const uploadSelectedFiles = async (files: File[]) => {
   const acceptedTypes = props.accept?.split(",").map((type) => type.trim()) ?? [];
   const validFiles = files.filter((file) => {
     if (props.maxSize && file.size > props.maxSize) {
-      emit("error", `文件 ${file.name} 超过大小限制 (${props.maxSize} 字节)`);
+      emit("error", i18n.t("common.file_too_large", { name: file.name, size: props.maxSize }));
       return false;
     }
 
@@ -76,7 +77,7 @@ const uploadSelectedFiles = async (files: File[]) => {
         (type) => file.name.includes(type) || fileExtension === type,
       );
       if (!isAccepted) {
-        emit("error", `文件类型不支持: ${file.name}`);
+        emit("error", i18n.t("common.file_type_not_supported", { name: file.name }));
         return false;
       }
     }
@@ -91,7 +92,7 @@ const uploadSelectedFiles = async (files: File[]) => {
     });
     uploadProgress.value = validFiles.length > 0 ? 100 : 0;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "上传失败";
+    const message = error instanceof Error ? error.message : i18n.t("common.upload_failed");
     emit("error", message);
   } finally {
     isUploading.value = false;
@@ -125,7 +126,7 @@ defineExpose({
     <!-- 拖拽上传区域 -->
     <cmz-dropzone
       v-if="showDropZone && canUpload"
-      :placeholder="'拖拽文件到此处，或点击选择文件'"
+      :placeholder="i18n.t('common.upload_drop_hint')"
       :multiple="multiple ?? false"
       :file-extensions="fileExtensions"
       :loading="isUploading"
@@ -138,7 +139,7 @@ defineExpose({
     <!-- 上传进度 -->
     <div v-if="isUploading" class="mt-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-sm text-gray-600">上传中...</span>
+        <span class="text-sm text-gray-600">{{ i18n.t("common.uploading") }}</span>
         <span class="text-sm text-gray-600">{{ uploadProgress }}%</span>
       </div>
       <div class="w-full bg-gray-200 rounded-full h-2">
@@ -152,7 +153,7 @@ defineExpose({
     <!-- 不支持上传的提示 -->
     <div v-if="!canUpload" class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
       <p class="text-yellow-700 text-sm">
-        当前环境不支持文件上传。请使用桌面版应用或确保在浏览器/Docker模式下运行。
+        {{ i18n.t("common.upload_not_supported_detail") }}
       </p>
     </div>
   </div>

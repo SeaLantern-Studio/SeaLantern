@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 /// 应用程序配置层负责该值的存储位置和迁移方式。此类型故意不包含文件系统行为。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProxySettings {
+    /// 将代理模式的内部 tag 与相关字段直接展开到设置对象，保持持久化 JSON 简洁。
+    #[serde(flatten)]
     pub mode: ProxyMode,
 }
 
@@ -84,5 +86,24 @@ mod tests {
         };
 
         assert_eq!(settings.validate(), Err(ProxyConfigError::EmptyManualProxy));
+    }
+
+    #[test]
+    fn settings_use_a_flat_persisted_shape() {
+        let settings = ProxySettings {
+            mode: ProxyMode::Manual {
+                proxy_url: "http://127.0.0.1:7890".into(),
+            },
+        };
+
+        let value = serde_json::to_value(&settings).expect("proxy settings should serialize");
+
+        assert_eq!(value["mode"], "manual");
+        assert_eq!(value["proxy_url"], "http://127.0.0.1:7890");
+        assert_eq!(
+            serde_json::from_value::<ProxySettings>(value)
+                .expect("proxy settings should round trip"),
+            settings
+        );
     }
 }

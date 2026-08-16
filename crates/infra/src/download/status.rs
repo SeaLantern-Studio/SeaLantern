@@ -3,7 +3,7 @@
 //! 提供下载任务的共享状态 `DownloadStatus`、进度快照 `DownloadSnapshot`
 //! 和统一的错误类型 `DownloadError`。
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
@@ -87,6 +87,8 @@ pub struct DownloadStatus {
     pub(super) total_size: u64,
     /// 已下载的字节数（原子计数器，线程安全）
     pub(super) downloaded: AtomicU64,
+    /// 是否已下载完成（下载主体结束后置位，与 total_size 无关）
+    pub(super) completed: AtomicBool,
     /// 错误信息
     pub(super) error_message: RwLock<Option<String>>,
     /// 取消令牌
@@ -103,9 +105,15 @@ impl DownloadStatus {
         Self {
             total_size,
             downloaded: AtomicU64::new(0),
+            completed: AtomicBool::new(false),
             error_message: RwLock::new(None),
             cancel_token: CancellationToken::new(),
         }
+    }
+
+    /// 标记下载已完成（下载主体结束后调用，供进度查询判定）。
+    pub fn mark_completed(&self) {
+        self.completed.store(true, Ordering::Relaxed);
     }
 
     /// 取消下载。
@@ -146,9 +154,14 @@ impl DownloadStatus {
             progress_percentage: if self.total_size > 0 {
                 (downloaded as f64 / self.total_size as f64) * 100.0
             } else {
-                0.0
+                // 未知总大小时：已完成显示 100，否则显示 0（避免瞬时误判完成）。
+                if self.completed.load(Ordering::Relaxed) {
+                    100.0
+                } else {
+                    0.0
+                }
             },
-            is_finished: downloaded >= self.total_size || error.is_some() || is_cancelled,
+            is_finished: self.completed.load(Ordering::Relaxed) || error.is_some() || is_cancelled,
             error: if is_cancelled {
                 Some("下载已取消".to_string())
             } else {
@@ -174,7 +187,7 @@ mod tests {
     #[tokio::test]
     async fn snapshot_completed() {
         let status = DownloadStatus::new(100);
-        status.downloaded.store(100, Ordering::Relaxed);
+        status.mark_completed();
         let snap = status.snapshot().await;
         assert!(snap.is_finished);
         assert!(snap.error.is_none());

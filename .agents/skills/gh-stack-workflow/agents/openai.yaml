@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Stacked PRs"
+  short_description: "Inspect, synchronize, diagnose, and safely merge stacked GitHub PRs"
+  default_prompt: "Use $gh-stack-workflow to inspect and safely operate on this GitHub stacked PR chain."

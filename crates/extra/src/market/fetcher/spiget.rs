@@ -9,7 +9,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde::Deserialize;
 
-use sealantern_infra::net::NetClient;
+use sealantern_infra::net::{ClientProvider, NetClient};
 
 use crate::market::error::MarketError;
 use crate::market::fetcher;
@@ -74,14 +74,30 @@ const SPIGET_BASE: &str = "https://api.spiget.org/v2";
 
 /// 基于 Spiget API 的资源获取器。
 ///
-/// 通过 `NetClient` 向 Spiget API 发送 HTTP 请求，解析返回的 JSON 数据，
-/// 并将其映射为内部统一的 `MarketResource`、`ResourceInfo`、`Version` 等模型。
+/// 持有客户端获取器（provider），每次请求前获取当前全局客户端，
+/// 避免缓存固定客户端导致代理更新不生效。
 pub struct SpigetFetcher {
-    client: NetClient,
+    client_provider: ClientProvider,
 }
 
 impl SpigetFetcher {
-    /// 创建一个新的 `SpigetFetcher`。
+    /// 使用全局客户端获取器构造获取器（生产装配推荐）。
+    pub fn global() -> Self {
+        Self::with_provider(sealantern_infra::net::global_client_provider())
+    }
+
+    /// 使用客户端获取器构造获取器，每次请求前调用以获取当前全局客户端。
+    ///
+    /// # Parameters
+    /// - `client_provider`: 返回当前 `NetClient` 的获取器。
+    ///
+    /// # Returns
+    /// 返回初始化完成的 `SpigetFetcher`。
+    pub fn with_provider(client_provider: ClientProvider) -> Self {
+        Self { client_provider }
+    }
+
+    /// 创建一个新的 `SpigetFetcher`（兼容旧调用与测试注入）。
     ///
     /// # Parameters
     /// - `client`: 用于发送 HTTP 请求的 `NetClient` 实例。
@@ -89,7 +105,7 @@ impl SpigetFetcher {
     /// # Returns
     /// 返回初始化完成的 `SpigetFetcher`。
     pub fn new(client: NetClient) -> Self {
-        Self { client }
+        Self::with_provider(Box::new(move || Ok(client.clone())))
     }
 }
 
@@ -124,8 +140,8 @@ impl Fetcher for SpigetFetcher {
             page_size,
             page
         );
-        let resp = self
-            .client
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
             .send()
@@ -174,8 +190,8 @@ impl Fetcher for SpigetFetcher {
     /// 包含资源详细元数据的 `ResourceInfo`。
     async fn get_resource(&self, id: &str) -> Result<ResourceInfo, MarketError> {
         let url = format!("{}/resources/{}", SPIGET_BASE, id);
-        let resp = self
-            .client
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
             .send()
@@ -220,8 +236,8 @@ impl Fetcher for SpigetFetcher {
     /// 版本对象列表，每个版本包含名称、下载量等信息。
     async fn get_resource_versions(&self, id: &str) -> Result<Vec<Version>, MarketError> {
         let url = format!("{}/resources/{}/versions?size=100", SPIGET_BASE, id);
-        let resp = self
-            .client
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
             .send()
@@ -290,8 +306,8 @@ impl Fetcher for SpigetFetcher {
         let page = (seed % 100) as u32 + 1;
         let limit = count.min(8);
         let url = format!("{}/resources?size={}&page={}&sort=-downloads", SPIGET_BASE, limit, page);
-        let resp = self
-            .client
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
             .send()
@@ -390,5 +406,15 @@ mod tests {
             assert_eq!(r.source, MarketSource::Spiget);
             assert!(!r.name.is_empty());
         }
+    }
+
+    #[tokio::test]
+    async fn provider_failure_propagates_without_network() {
+        // 假 provider：每次请求前被调用并返回失败，验证请求不会发出网络调用。
+        let fetcher = SpigetFetcher::with_provider(Box::new(|| {
+            Err(sealantern_infra::net::NetError::Config("模拟获取客户端失败".into()))
+        }));
+        let error = fetcher.search("luckperms", 1, 5).await.unwrap_err();
+        assert!(matches!(error, MarketError::Config(_)));
     }
 }

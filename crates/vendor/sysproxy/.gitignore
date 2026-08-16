@@ -1,0 +1,12 @@
+debug/
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+.vscode
+.DS_Store
+.idea
+
+node_modules/
+*.node

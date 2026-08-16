@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 use super::core_parsing::{extract_minecraft_version, CoreKind};
 
 /// 根据启动文件扩展名选择的脚本格式。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StartupScriptKind {
     Batch,
     Shell,
@@ -30,7 +31,8 @@ impl StartupScriptKind {
 }
 
 /// 在启动脚本中发现的一个 Java 进程调用。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct JavaLaunch {
     pub java_command: String,
     pub jvm_arguments: Vec<String>,
@@ -41,7 +43,8 @@ pub struct JavaLaunch {
 }
 
 /// 解析的启动脚本元数据，不执行 shell 内容或展开变量。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct StartupScriptInfo {
     pub kind: StartupScriptKind,
     pub launches: Vec<JavaLaunch>,
@@ -51,11 +54,30 @@ pub struct StartupScriptInfo {
 
 /// 从文件解析启动脚本，不执行它。
 pub fn parse_startup_script_file(path: &Path) -> Result<StartupScriptInfo, StartupParseError> {
+    tracing::debug!(
+        target: "sealantern.core.provisioning.startup",
+        path = %path.display(),
+        "reading startup script for static parsing"
+    );
     let kind = StartupScriptKind::from_path(path)
         .ok_or_else(|| StartupParseError::UnsupportedScript { path: path.to_path_buf() })?;
-    let content = fs::read_to_string(path)
-        .map_err(|source| StartupParseError::Read { path: path.to_path_buf(), source })?;
-    Ok(parse_startup_script_content(kind, &content))
+    let content = fs::read_to_string(path).map_err(|source| {
+        tracing::warn!(
+            target: "sealantern.core.provisioning.startup",
+            path = %path.display(),
+            error = %source,
+            "could not read startup script"
+        );
+        StartupParseError::Read { path: path.to_path_buf(), source }
+    })?;
+    let result = parse_startup_script_content(kind, &content);
+    tracing::debug!(
+        target: "sealantern.core.provisioning.startup",
+        path = %path.display(),
+        launches = result.launches.len(),
+        "startup script parsing completed"
+    );
+    Ok(result)
 }
 
 /// 解析启动脚本内容，不执行命令或展开变量。

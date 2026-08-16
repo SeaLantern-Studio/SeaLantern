@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+// keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理定时器与监听
+import { onActivated, onDeactivated } from "vue";
 import { useRouter } from "vue-router";
 import ErrorBanner from "@components/views/home/ErrorBanner.vue";
 import QuickStartCard from "@components/views/home/QuickStartCard.vue";
@@ -35,9 +36,9 @@ const refreshAllStatuses = async () => {
 
 const startTimers = () => {
   stopTimers();
-  // 拉长到 5 秒,降低无谓刷新带来的 UI 卡顿
-  statsTimer = setInterval(fetchSystemInfo, 5000);
-  refreshTimer = setInterval(refreshAllStatuses, 5000);
+  // 资源看板与服务器状态统一 3 秒刷新
+  statsTimer = setInterval(fetchSystemInfo, 3000);
+  refreshTimer = setInterval(refreshAllStatuses, 3000);
 };
 
 const stopTimers = () => {
@@ -65,7 +66,7 @@ const handleVisibilityChange = () => {
   }
 };
 
-onMounted(() => {
+onActivated(() => {
   initQuote();
 
   const loadServers = async () => {
@@ -85,7 +86,7 @@ onMounted(() => {
   document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 
-onUnmounted(() => {
+onDeactivated(() => {
   stopTimers();
   cleanupQuoteResources();
   cleanupStatsResources();

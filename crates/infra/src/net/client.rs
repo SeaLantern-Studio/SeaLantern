@@ -387,6 +387,10 @@ fn apply_async_proxy_routes(
     mut builder: reqwest::ClientBuilder,
     effective_proxy: &EffectiveProxy,
 ) -> Result<reqwest::ClientBuilder, NetError> {
+    if matches!(effective_proxy, EffectiveProxy::Direct) {
+        return Ok(builder.no_proxy());
+    }
+
     for proxy in configured_proxy_routes(effective_proxy)?
         .into_iter()
         .flatten()
@@ -401,6 +405,10 @@ fn apply_blocking_proxy_routes(
     mut builder: reqwest::blocking::ClientBuilder,
     effective_proxy: &EffectiveProxy,
 ) -> Result<reqwest::blocking::ClientBuilder, NetError> {
+    if matches!(effective_proxy, EffectiveProxy::Direct) {
+        return Ok(builder.no_proxy());
+    }
+
     for proxy in configured_proxy_routes(effective_proxy)?
         .into_iter()
         .flatten()

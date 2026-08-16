@@ -16,11 +16,10 @@ import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
+import { shareLogs } from "@api/logging";
 import {
   serverSystemInfo,
   serverCpuUsage,
-  serverMemUsage,
-  serverDiskUsage,
   serverStatsLoading,
   serverStatsError,
   fetchServerResourceUsage,
@@ -59,9 +58,10 @@ const {
   start: startForceStopLoading,
   stop: stopForceStopLoading,
 } = useLoading();
+const { loading: shareLoading, start: startShareLoading, stop: stopShareLoading } = useLoading();
 let unlistenLogLine: UnlistenFn | null = null;
 let statsTimer: ReturnType<typeof setInterval> | null = null;
-const SERVER_STATS_POLL_INTERVAL_MS = 15000;
+const SERVER_STATS_POLL_INTERVAL_MS = 3000;
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
@@ -716,19 +716,6 @@ const currentServer = computed(
 );
 const serverProcessInfo = computed(() => serverSystemInfo.value);
 const serverStatsUnavailable = computed(() => serverStatsError.value && !serverProcessInfo.value);
-const noDataText = computed(() => {
-  const text = i18n.t("home.no_data");
-  return text === "home.no_data" ? i18n.t("common.unknown") : text;
-});
-const serverPidText = computed(() =>
-  serverProcessInfo.value?.pid ? `PID ${serverProcessInfo.value.pid}` : noDataText.value,
-);
-const serverStatusIndicator = computed<"running" | "starting" | "stopping" | "stopped">(() => {
-  if (isRunning.value) return "running";
-  if (isStarting.value) return "starting";
-  if (isStopping.value) return "stopping";
-  return "stopped";
-});
 
 const statusColor = computed(() => {
   if (isRunning.value) return "#22c55e";
@@ -878,15 +865,13 @@ async function syncLogsOnce(sid: string) {
   try {
     const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
     if (lines.length === 0) {
-      consoleOutputRef.value?.appendLines(["[Sea Lantern] 该服务器尚无日志输出，请先启动服务器。"]);
+      consoleOutputRef.value?.appendLines([i18n.t("console.no_logs_yet")]);
     } else {
       consoleOutputRef.value?.appendLines(lines);
     }
   } catch (e) {
     console.warn("加载服务器日志失败:", e);
-    consoleOutputRef.value?.appendLines([
-      "[Sea Lantern] 无法加载此服务器的日志，该服务器可能尚未启动。",
-    ]);
+    consoleOutputRef.value?.appendLines([i18n.t("console.logs_load_failed")]);
   }
 }
 
@@ -1035,6 +1020,35 @@ function handleClearLogs() {
   consoleOutputRef.value?.clear();
 }
 
+async function handleShareLogs() {
+  const text = consoleOutputRef.value?.getAllPlainText() || "";
+  if (!text.trim()) {
+    consoleOutputRef.value?.appendLines(["[Sea Lantern] " + i18n.t("console.share_log_empty")]);
+    return;
+  }
+  startShareLoading();
+  try {
+    const url = await shareLogs(text);
+    try {
+      await navigator.clipboard.writeText(url);
+      consoleOutputRef.value?.appendLines([
+        "[Sea Lantern] " + i18n.t("console.share_log_success") + " " + url,
+      ]);
+    } catch (_e) {
+      // 剪贴板不可用时仍输出链接，并提示用户手动复制
+      consoleOutputRef.value?.appendLines([
+        "[Sea Lantern] " + i18n.t("console.share_log_success_manual_copy") + " " + url,
+      ]);
+    }
+  } catch (e) {
+    consoleOutputRef.value?.appendLines([
+      "[Sea Lantern] " + i18n.t("console.share_log_failed") + ": " + String(e),
+    ]);
+  } finally {
+    stopShareLoading();
+  }
+}
+
 function getStatusText() {
   if (isRunning.value) return i18n.t("home.running");
   if (isStarting.value) return i18n.t("home.starting");
@@ -1098,6 +1112,14 @@ function deleteCommand() {}
           <cmz-button variant="ghost" size="sm" @click="handleClearLogs">{{
             i18n.t("console.clear_log")
           }}</cmz-button>
+          <cmz-button
+            variant="ghost"
+            size="sm"
+            :loading="shareLoading"
+            :disabled="shareLoading"
+            @click="handleShareLogs"
+            >{{ i18n.t("console.share_log") }}</cmz-button
+          >
         </div>
       </div>
     </div>

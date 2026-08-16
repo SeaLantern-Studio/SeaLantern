@@ -1,6 +1,5 @@
 import { createApp } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { tauriInvoke } from "@api/tauri";
 import App from "@src/App.vue";
 import router from "@src/router";
 import pinia from "@src/stores";
@@ -30,17 +29,6 @@ import {
 } from "cmzya-modern-ui";
 
 // ECharts 已改为按需懒加载,见 src/components/views/home/SystemStatsCard.vue
-
-const HEARTBEAT_INTERVAL = 5000;
-
-function startHeartbeat() {
-  // 在普通浏览器环境下，Tauri 后端不存在，调用会直接失败，这里静默忽略错误
-  setInterval(() => {
-    tauriInvoke("frontend_heartbeat", undefined, { silent: true }).catch(() => {
-      // 后端可能已退出或当前不在 Tauri 环境中
-    });
-  }, HEARTBEAT_INTERVAL);
-}
 
 const app = createApp(App);
 
@@ -84,5 +72,3 @@ if (import.meta.env.DEV) {
 app.use(pinia);
 app.use(router);
 app.mount("#app");
-
-startHeartbeat();

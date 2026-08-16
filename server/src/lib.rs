@@ -5,5 +5,6 @@
 //! 此 crate 负责定义上层服务器操作的稳定入口和观测边界；底层进程、实例和解析
 //! 能力仍由 `sealantern-core` 等基础 crate 提供。
 
+pub mod adapter;
 pub mod observability;
 pub mod rpc;

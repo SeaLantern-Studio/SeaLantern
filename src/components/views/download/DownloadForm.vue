@@ -7,6 +7,7 @@ interface Props {
   savePath: string;
   filename: string;
   threadCount: string;
+  threadCountInvalid: boolean;
   isDownloading: boolean;
 }
 
@@ -17,7 +18,6 @@ const emit = defineEmits<{
   (e: "update:savePath", value: string): void;
   (e: "update:filename", value: string): void;
   (e: "update:threadCount", value: string): void;
-  (e: "checkUrl"): void;
   (e: "pickFolder"): void;
   (e: "checkThreadCount"): void;
 }>();
@@ -38,7 +38,6 @@ function handlePickFolder() {
         :placeholder="i18n.t('download-file.url_placeholder')"
         :disabled="isDownloading"
         @update:modelValue="emit('update:url', $event)"
-        @blur="emit('checkUrl')"
       >
         <template #prefix>
           <Link :size="16" class="input-icon" />
@@ -92,12 +91,15 @@ function handlePickFolder() {
     <div class="field">
       <label>{{ i18n.t("download-file.thread_count") }}</label>
       <cmz-input
+        class="thread-count-input"
+        :class="{ 'thread-count-input--invalid': threadCountInvalid }"
         :model-value="threadCount"
         type="text"
         placeholder="32"
         :disabled="isDownloading"
+        :aria-invalid="threadCountInvalid"
         @update:modelValue="emit('update:threadCount', $event)"
-        @blur="emit('checkThreadCount')"
+        @focusout="emit('checkThreadCount')"
       >
         <template #prefix>
           <Cpu :size="16" class="input-icon" />
@@ -128,6 +130,15 @@ function handlePickFolder() {
 .input-icon {
   color: var(--sl-text-tertiary);
   pointer-events: none;
+}
+
+.thread-count-input--invalid :deep(.cmz-input-container) {
+  border-color: var(--sl-error);
+}
+
+.thread-count-input--invalid :deep(.cmz-input-container:focus-within) {
+  border-color: var(--sl-error);
+  box-shadow: 0 0 0 3px var(--sl-error-bg);
 }
 
 .path-picker {

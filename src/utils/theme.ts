@@ -163,22 +163,68 @@ export function applyColors(settings: AppSettings): void {
   document.documentElement.style.setProperty("--sl-border", colors.border);
   document.documentElement.style.setProperty("--sl-border-light", colors.border);
 
+  // Surface and elevated backgrounds
   let surfaceColor: string;
   let surfaceHoverColor: string;
+  let bgElevatedColor: string;
+  let bgHoverColor: string;
+
+  // Glass / Acrylic effect variables
+  let glassBgColor: string;
+  let glassStrongBgColor: string;
+  let glassBorderColor: string;
+  let acrylicBgColor: string;
+  let acrylicBgStrongColor: string;
+  let acrylicBorderColor: string;
+
   if (isAcrylic) {
     if (isDark) {
-      surfaceColor = "rgba(30, 33, 48, 0.65)";
-      surfaceHoverColor = "rgba(40, 44, 62, 0.75)";
+      // 暗色亚克力：深灰半透明层次
+      surfaceColor = "rgba(42, 46, 62, 0.4)";
+      surfaceHoverColor = "rgba(50, 55, 74, 0.48)";
+      bgElevatedColor = "transparent";
+      bgHoverColor = "rgba(255, 255, 255, 0.06)";
+      // 卡片玻璃：较低透明度，保留通透感
+      glassBgColor = "rgba(0, 0, 0, 0.3)";
+      glassStrongBgColor = "rgba(0, 0, 0, 0.42)";
+      glassBorderColor = "rgba(255, 255, 255, 0.06)";
+      // 浮层（下拉菜单/弹出层）：较高透明度确保可读性
+      acrylicBgColor = "rgba(30, 33, 48, 0.72)";
+      acrylicBgStrongColor = "rgba(30, 33, 48, 0.85)";
+      acrylicBorderColor = "rgba(255, 255, 255, 0.08)";
     } else {
-      surfaceColor = "rgba(255, 255, 255, 0.65)";
-      surfaceHoverColor = "rgba(248, 250, 252, 0.75)";
+      // 亮色亚克力：白色半透明层次
+      surfaceColor = "rgba(255, 255, 255, 0.45)";
+      surfaceHoverColor = "rgba(255, 255, 255, 0.52)";
+      bgElevatedColor = "transparent";
+      bgHoverColor = "rgba(255, 255, 255, 0.48)";
+      // 卡片玻璃：较低透明度，叠加在 surface 上仍能透出壁纸
+      glassBgColor = "rgba(255, 255, 255, 0.3)";
+      glassStrongBgColor = "rgba(255, 255, 255, 0.42)";
+      glassBorderColor = "rgba(15, 23, 42, 0.06)";
+      // 浮层：较高透明度确保可读性
+      acrylicBgColor = "rgba(255, 255, 255, 0.7)";
+      acrylicBgStrongColor = "rgba(255, 255, 255, 0.82)";
+      acrylicBorderColor = "rgba(15, 23, 42, 0.1)";
     }
   } else {
+    // 非亚克力模式：实色背景
     surfaceColor = isDark ? colors.bgSecondary : "#ffffff";
     surfaceHoverColor = isDark ? colors.bgTertiary : colors.bg;
+    bgElevatedColor = isDark ? colors.bgSecondary : "#ffffff";
+    bgHoverColor = isDark ? colors.bgTertiary : colors.bgSecondary;
+    glassBgColor = isDark ? "rgba(0, 0, 0, 0.72)" : "rgba(255, 255, 255, 0.72)";
+    glassStrongBgColor = isDark ? "rgba(0, 0, 0, 0.82)" : "rgba(255, 255, 255, 0.82)";
+    glassBorderColor = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(15, 23, 42, 0.08)";
+    acrylicBgColor = isDark ? "rgba(0, 0, 0, 0.85)" : "rgba(255, 255, 255, 0.92)";
+    acrylicBgStrongColor = isDark ? "rgba(0, 0, 0, 0.92)" : "rgba(255, 255, 255, 0.96)";
+    acrylicBorderColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(15, 23, 42, 0.1)";
   }
+
   document.documentElement.style.setProperty("--sl-surface", surfaceColor);
   document.documentElement.style.setProperty("--sl-surface-hover", surfaceHoverColor);
+  document.documentElement.style.setProperty("--sl-bg-elevated", bgElevatedColor);
+  document.documentElement.style.setProperty("--sl-bg-hover", bgHoverColor);
 
   const primaryLight = isDark
     ? adjustBrightness(colors.primary, 30)
@@ -201,7 +247,8 @@ export function applyColors(settings: AppSettings): void {
   document.documentElement.style.setProperty("--sl-text-tertiary", textTertiary);
   document.documentElement.style.setProperty("--sl-text-inverse", textInverse);
 
-  const shadowOpacity = isDark ? 0.4 : 0.06;
+  // 阴影：亚克力模式下更淡
+  const shadowOpacity = isAcrylic ? (isDark ? 0.2 : 0.04) : isDark ? 0.4 : 0.06;
   document.documentElement.style.setProperty(
     "--sl-shadow-sm",
     `0 1px 2px rgba(0, 0, 0, ${shadowOpacity * 0.6})`,
@@ -218,14 +265,40 @@ export function applyColors(settings: AppSettings): void {
     "--sl-shadow-xl",
     `0 16px 48px rgba(0, 0, 0, ${shadowOpacity * 1.6})`,
   );
+  // 立体感阴影：亚克力下更柔和
+  const elevatedShadowOpacity = isAcrylic ? (isDark ? 0.25 : 0.06) : isDark ? 0.4 : 0.08;
+  document.documentElement.style.setProperty(
+    "--sl-shadow-elevated",
+    `0 2px 8px rgba(0, 0, 0, ${elevatedShadowOpacity}), 0 4px 16px rgba(0, 0, 0, ${elevatedShadowOpacity * 0.75})`,
+  );
+  document.documentElement.style.setProperty(
+    "--sl-shadow-card",
+    `0 1px 4px rgba(0, 0, 0, ${shadowOpacity * 0.7}), 0 4px 12px rgba(0, 0, 0, ${shadowOpacity})`,
+  );
+  document.documentElement.style.setProperty(
+    "--sl-shadow-button",
+    `0 1px 3px rgba(0, 0, 0, ${shadowOpacity * 0.5}), 0 2px 6px rgba(0, 0, 0, ${shadowOpacity * 0.4})`,
+  );
+  document.documentElement.style.setProperty(
+    "--sl-shadow-button-hover",
+    `0 2px 6px rgba(0, 0, 0, ${shadowOpacity}), 0 4px 12px rgba(0, 0, 0, ${shadowOpacity * 0.7})`,
+  );
+  document.documentElement.style.setProperty(
+    "--sl-shadow-input",
+    `inset 0 1px 2px rgba(0, 0, 0, ${shadowOpacity * 0.5})`,
+  );
+  document.documentElement.style.setProperty(
+    "--sl-shadow-input-focus",
+    `0 0 0 3px ${isDark ? rgbaFromHex(colors.primary, 0.2) : rgbaFromHex(colors.primary, 0.15)}`,
+  );
 
-  // Glass 效果变量
-  const glassBg = isDark ? "rgba(15, 17, 23, 0.65)" : "rgba(255, 255, 255, 0.65)";
-  const glassStrongBg = isDark ? "rgba(15, 17, 23, 0.75)" : "rgba(255, 255, 255, 0.75)";
-  const glassBorder = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.5)";
-  document.documentElement.style.setProperty("--sl-glass-bg", glassBg);
-  document.documentElement.style.setProperty("--sl-glass-strong-bg", glassStrongBg);
-  document.documentElement.style.setProperty("--sl-glass-border", glassBorder);
+  // Glass / Acrylic 效果变量
+  document.documentElement.style.setProperty("--sl-glass-bg", glassBgColor);
+  document.documentElement.style.setProperty("--sl-glass-strong-bg", glassStrongBgColor);
+  document.documentElement.style.setProperty("--sl-glass-border", glassBorderColor);
+  document.documentElement.style.setProperty("--sl-acrylic-bg", acrylicBgColor);
+  document.documentElement.style.setProperty("--sl-acrylic-bg-strong", acrylicBgStrongColor);
+  document.documentElement.style.setProperty("--sl-acrylic-border", acrylicBorderColor);
 }
 
 /**
@@ -251,18 +324,28 @@ export function applyDeveloperMode(enabled: boolean): void {
 
 /**
  * 阻止右键菜单
+ *
+ * TODO: 请在后端重构完成后恢复（临时置空，开发调试用）
+ * 拦截逻辑依赖后端 developer_mode 设置，但后端正在重构、
+ * 暂时无法提供设置，为避免开发者模式下右键仍被拦截，
+ * 暂时屏蔽此逻辑。恢复 `e.preventDefault()` 即可。
  */
-function blockContextMenu(e: Event): void {
-  e.preventDefault();
+function blockContextMenu(_e: Event): void {
+  // TODO: 请在后端重构完成后恢复
+  // e.preventDefault();
 }
 
 /**
  * 阻止开发者工具快捷键
+ *
+ * TODO: 请在后端重构完成后恢复（临时置空，开发调试用）
+ * 原因同上，恢复 `e.preventDefault()` 即可。
  */
-function blockDevTools(e: KeyboardEvent): void {
-  if (e.key === "F12") {
-    e.preventDefault();
-  }
+function blockDevTools(_e: KeyboardEvent): void {
+  // TODO: 请在后端重构完成后恢复
+  // if (e.key === "F12") {
+  //   e.preventDefault();
+  // }
 }
 
 /**

@@ -1,6 +1,17 @@
 [workspace]
-members = ["crates/core", "crates/infra", "crates/extra", "server", "desktop", "docker-entry"]
+members = [
+    "application",
+    "crates/core",
+    "crates/infra",
+    "crates/extra",
+    "crates/interface",
+    "server",
+    "src-tauri",
+    "docker-entry",
+    "crates/vendor/java-manager",
+]
 resolver = "2"
+exclude = ["crates/vendor/sysproxy"]
 
 # 优化配置（从 src-tauri/Cargo.toml 移到这里统一管理）
 [profile.release]

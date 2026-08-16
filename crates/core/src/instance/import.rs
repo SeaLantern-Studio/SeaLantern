@@ -6,14 +6,16 @@ use super::model::{Instance, InstanceError, InstanceSpec};
 /// 用于规划主机管理的本地实例导入的输入。
 ///
 /// 此处不读取源目录和启动目标。在此计划确定了相对于目标目录的启动目标后，主机将验证并复制它们。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct InstanceImportRequest {
     pub source_directory: PathBuf,
     pub instance: InstanceSpec,
 }
 
 /// 一个已验证的导入计划，包含供主机适配器持久化的已复制实例模型。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct InstanceImportPlan {
     pub source_directory: PathBuf,
     pub destination_directory: PathBuf,
@@ -26,6 +28,13 @@ pub fn plan_import(
     request: InstanceImportRequest,
 ) -> Result<InstanceImportPlan, InstanceImportError> {
     let InstanceImportRequest { source_directory, mut instance } = request;
+
+    tracing::debug!(
+        target: "sealantern.core.provisioning.import",
+        source_directory = %source_directory.display(),
+        destination_directory = %instance.directory.display(),
+        "planning instance import"
+    );
 
     if source_directory.as_os_str().is_empty() {
         return Err(InstanceImportError::EmptySourceDirectory);
@@ -61,12 +70,20 @@ pub fn plan_import(
 
     let instance = Instance::new(instance).map_err(InstanceImportError::Instance)?;
 
-    Ok(InstanceImportPlan {
+    let plan = InstanceImportPlan {
         source_directory,
         destination_directory: instance.directory.clone(),
         startup_target_relative,
         instance,
-    })
+    };
+    tracing::debug!(
+        target: "sealantern.core.provisioning.import",
+        source_directory = %plan.source_directory.display(),
+        destination_directory = %plan.destination_directory.display(),
+        has_startup_target = plan.startup_target_relative.is_some(),
+        "instance import plan ready"
+    );
+    Ok(plan)
 }
 
 /// 描述无法创建实例导入计划的原因。
@@ -139,6 +156,7 @@ mod tests {
             min_memory_mib: 1024,
             created_at_unix_secs: 100,
             last_started_at_unix_secs: None,
+            server_metadata: None,
             launch: LocalLaunch {
                 startup_mode,
                 startup_target,

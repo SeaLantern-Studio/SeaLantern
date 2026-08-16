@@ -45,8 +45,6 @@ const iconMap: Record<string, SimpleIcon> = {
   tiktok: siTiktok,
 };
 
-const darkIcons = new Set(["github", "gitee"]);
-
 const icon = computed(() => {
   const lowerName = props.name.toLowerCase();
   return iconMap[lowerName] ?? null;

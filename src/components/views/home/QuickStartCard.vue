@@ -53,6 +53,7 @@ const emit = defineEmits<{
   display: flex;
   flex-direction: column;
   align-items: center;
+  font-family: var(--sl-font-sans);
   gap: 4px;
   padding: var(--sl-space-xs) var(--sl-space-sm);
   margin-top: var(--sl-space-md);
@@ -73,7 +74,8 @@ const emit = defineEmits<{
 
 .quote-text {
   font-size: 0.875rem;
-  color: var(--sl-text-secondary);
+  color: var(--sl-text-primary);
+  font-family: var(--sl-font-sans);
   font-style: italic;
   text-align: center;
   transition: all 0.3s ease;
@@ -87,7 +89,8 @@ const emit = defineEmits<{
 
 .quote-author {
   font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
+  color: var(--sl-text-secondary);
+  font-family: var(--sl-font-sans);
   transition: all 0.3s ease;
   opacity: 1;
 }
@@ -103,7 +106,8 @@ const emit = defineEmits<{
 
 .quote-loading {
   font-size: 0.875rem;
-  color: var(--sl-text-tertiary);
+  color: var(--sl-text-secondary);
+  font-family: var(--sl-font-sans);
   font-style: italic;
   animation: quoteLoading 1.5s ease-in-out infinite;
 }

@@ -1,6 +1,6 @@
 [package]
 name = "sealantern-extra"
-version = "0.1.0"
+version = "1.2.0"
 edition = "2021"
 license = "GPL-3.0-only"
 
@@ -16,16 +16,26 @@ tracing = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 async-trait = "0.1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "sync"] }
+chrono = { version = "0.4", features = ["serde"] }
+cron = "0.12"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "fs", "sync", "time"] }
 urlencoding = "2"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 thiserror = "1"
 tempfile = "3"
+sealantern-core = { path = "../core" }
 sealantern-infra = { path = "../infra" }
+rusqlite = { version = "0.32", features = ["bundled"] }
 regex = "1"
-reqwest = { version = "0.12", features = ["json", "stream"] }
 sha2 = "0.10"
+reqwest = { version = "0.12", features = ["json", "stream"] }
 dirs = "5"
+dom_query = "0.27"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
 sculk = { version = "=0.3.1", default-features = false, optional = true }
+uuid = { version = "1", features = ["v4"] }
+java-manager = { path = "../vendor/java-manager" }
+
+[dev-dependencies]
+tempfile = "3"

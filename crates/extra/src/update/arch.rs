@@ -10,9 +10,7 @@
 
 #[cfg(target_os = "linux")]
 mod imp {
-    use super::super::constants::{
-        AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL, PLUGIN_MARKET_HTTP_USER_AGENT,
-    };
+    use super::super::constants::{AUR_PACKAGE_INFO_URL, AUR_PACKAGE_PAGE_URL};
     use super::super::types::UpdateInfo;
     use super::super::version::compare_versions;
     use crate::observability;
@@ -48,21 +46,26 @@ mod imp {
 
     /// 检查 AUR 更新
     pub async fn check_aur_update(current_version: &str) -> Result<UpdateInfo, String> {
+        // 获取当前全局客户端，与全局代理设置保持一致。
+        let client = sealantern_infra::net::global_client()
+            .map_err(|error| format!("创建 AUR 更新客户端失败: {error}"))?;
+        check_aur_update_with_client(client.get_reqwest_client(), current_version).await
+    }
+
+    /// 使用调用方提供的网络策略检查 AUR 更新。
+    pub(crate) async fn check_aur_update_with_client(
+        client: &reqwest::Client,
+        current_version: &str,
+    ) -> Result<UpdateInfo, String> {
         observability::update_check_started("arch-aur", current_version);
 
-        let client = reqwest::Client::new();
         let url = AUR_PACKAGE_INFO_URL;
 
-        let response = client
-            .get(url)
-            .header("User-Agent", PLUGIN_MARKET_HTTP_USER_AGENT)
-            .send()
-            .await
-            .map_err(|e| {
-                let msg = format!("AUR查询失败: {}", e);
-                observability::update_api_request_failed("arch-aur", "info_request", None, &msg);
-                msg
-            })?;
+        let response = client.get(url).send().await.map_err(|e| {
+            let msg = format!("AUR查询失败: {}", e);
+            observability::update_api_request_failed("arch-aur", "info_request", None, &msg);
+            msg
+        })?;
 
         if !response.status().is_success() {
             let msg = format!("AUR API返回错误: {}", response.status());
@@ -148,3 +151,5 @@ pub use imp::{get_aur_helper, is_arch_linux};
 
 #[cfg(target_os = "linux")]
 pub use imp::check_aur_update;
+#[cfg(all(target_os = "linux", not(debug_assertions)))]
+pub(crate) use imp::check_aur_update_with_client;

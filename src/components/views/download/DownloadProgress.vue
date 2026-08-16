@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { i18n } from "@language";
 import { formatBytes } from "@utils/serverUtils";
 
 const props = defineProps<{
   taskInfo: {
     progress: number;
     downloaded: number;
-    totalSize: number;
-    isFinished: boolean;
+    total_size: number;
+    is_finished: boolean;
   };
   taskError: string | null;
   statusLabel: string;
@@ -18,12 +17,12 @@ const props = defineProps<{
   <div class="progress-wrapper">
     <cmz-progress
       :value="taskInfo.progress"
-      :color="taskError ? '#ef4444' : taskInfo.isFinished ? '#22c55e' : undefined"
+      :color="taskError ? '#ef4444' : taskInfo.is_finished ? '#22c55e' : undefined"
       :label="statusLabel"
     />
     <div class="progress-footer">
       <span class="size-text"
-        >{{ formatBytes(taskInfo.downloaded) }} / {{ formatBytes(taskInfo.totalSize) }}</span
+        >{{ formatBytes(taskInfo.downloaded) }} / {{ formatBytes(taskInfo.total_size) }}</span
       >
       <span class="percent-text">{{ taskInfo.progress.toFixed(1) }}%</span>
     </div>

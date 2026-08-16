@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::path::{Path, PathBuf};
 
 use serde::de::DeserializeOwned;
@@ -26,6 +27,45 @@ pub enum ConfigError {
     },
     /// 文件扩展名不匹配任何支持的格式。
     UnsupportedFormat { path: PathBuf },
+}
+
+/// 锁内配置更新失败。
+#[derive(Debug)]
+pub enum UpdatePersistedError<E> {
+    /// 配置读取、锁定、序列化或写入失败。
+    Storage(FsError),
+    /// 更新回调拒绝了本次修改。
+    Update(E),
+}
+
+impl<E: std::fmt::Display> std::fmt::Display for UpdatePersistedError<E> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Storage(error) => write!(formatter, "persisted config storage failed: {error}"),
+            Self::Update(error) => write!(formatter, "persisted config update rejected: {error}"),
+        }
+    }
+}
+
+impl<E: std::error::Error + 'static> std::error::Error for UpdatePersistedError<E> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Storage(error) => Some(error),
+            Self::Update(error) => Some(error),
+        }
+    }
+}
+
+impl<E> From<FsError> for UpdatePersistedError<E> {
+    fn from(error: FsError) -> Self {
+        Self::Storage(error)
+    }
+}
+
+impl<E> From<ConfigError> for UpdatePersistedError<E> {
+    fn from(error: ConfigError) -> Self {
+        Self::Storage(error.into())
+    }
 }
 
 impl std::fmt::Display for ConfigError {
@@ -210,19 +250,70 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
         auto_backup: bool,
         update: impl FnOnce(&mut T),
     ) -> Result<T, FsError> {
+        Self::update_persisted_if_changed(path, default, auto_backup, |data| {
+            update(data);
+            true
+        })
+        .await
+    }
+
+    /// 在单个文件锁内加载并按需持久化配置。
+    ///
+    /// `update` 在磁盘最新值上执行，并通过返回值声明是否需要写回。即使无需
+    /// 写回，本方法仍返回锁内加载的最新配置，供调用方同步内存快照。
+    ///
+    /// # 使用约定
+    ///
+    /// `update` 会在进程内写锁和跨进程文件锁均被持有时执行，因此只应完成
+    /// 配置值的内存内变更及是否写回的判断。不得在回调中执行文件或网络 IO、
+    /// 长时间计算等耗时操作；与持久化无关的处理应放在本方法返回后执行。
+    /// 推荐使用体积较小的内联闭包，并避免捕获不必要的大量外部状态。
+    pub async fn update_persisted_if_changed(
+        path: impl Into<PathBuf>,
+        default: T,
+        auto_backup: bool,
+        update: impl FnOnce(&mut T) -> bool,
+    ) -> Result<T, FsError> {
+        match Self::try_update_persisted_if_changed(path, default, auto_backup, |data| {
+            Ok::<bool, Infallible>(update(data))
+        })
+        .await
+        {
+            Ok(data) => Ok(data),
+            Err(UpdatePersistedError::Storage(error)) => Err(error),
+            Err(UpdatePersistedError::Update(never)) => match never {},
+        }
+    }
+
+    /// 在单个文件锁内加载、校验并按需持久化配置。
+    ///
+    /// 与 [`Self::update_persisted_if_changed`] 的锁内执行约定相同，但允许更新
+    /// 回调以业务错误拒绝修改。回调失败时不会执行备份或写盘。
+    pub async fn try_update_persisted_if_changed<E>(
+        path: impl Into<PathBuf>,
+        default: T,
+        auto_backup: bool,
+        update: impl FnOnce(&mut T) -> Result<bool, E>,
+    ) -> Result<T, UpdatePersistedError<E>> {
         let path = path.into();
         let format = ConfigFormat::from_extension(&path)?;
         let _guard = lock_config(&path).await?;
         let mut data = load_data_or_default(&path, format, default).await?;
 
-        update(&mut data);
-        if auto_backup && path.exists() {
-            backup_path(&path).await?;
+        if update(&mut data).map_err(UpdatePersistedError::Update)? {
+            if auto_backup && path.exists() {
+                backup_path(&path).await?;
+            }
+            let content = format.serialize(&data).map_err(|error| {
+                UpdatePersistedError::Storage(FsError::serialization(
+                    "config",
+                    "encode",
+                    &path,
+                    error.to_string(),
+                ))
+            })?;
+            write_atomic(&path, content.as_bytes()).await?;
         }
-        let content = format.serialize(&data).map_err(|error| {
-            FsError::serialization("config", "encode", &path, error.to_string())
-        })?;
-        write_atomic(&path, content.as_bytes()).await?;
         Ok(data)
     }
 
@@ -536,5 +627,69 @@ mod tests {
         assert_eq!(saved.get().port, 30000);
         assert!(!saved.get().enabled);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn conditional_update_returns_latest_data_without_rewriting() {
+        let dir = test_dir("conditional_update");
+        let path = dir.join("settings.json");
+        let original = r#"{"name":"latest","port":30000,"enabled":false}"#;
+        tokio::fs::write(&path, original).await.unwrap();
+
+        let loaded = ConfigFile::<TestConfig>::update_persisted_if_changed(
+            &path,
+            TestConfig::default(),
+            false,
+            |_| false,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(loaded.port, 30000);
+        assert!(!loaded.enabled);
+        assert_eq!(tokio::fs::read_to_string(&path).await.unwrap(), original);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn fallible_update_rejection_does_not_rewrite_the_file() {
+        #[derive(Debug, PartialEq, Eq)]
+        struct Rejected;
+
+        let dir = test_dir("fallible_update_rejected");
+        let path = dir.join("settings.json");
+        let original = r#"{"name":"latest","port":30000,"enabled":false}"#;
+        tokio::fs::write(&path, original).await.unwrap();
+
+        let result = ConfigFile::<TestConfig>::try_update_persisted_if_changed(
+            &path,
+            TestConfig::default(),
+            false,
+            |config| {
+                config.port = 25565;
+                Err(Rejected)
+            },
+        )
+        .await;
+
+        assert!(matches!(result, Err(UpdatePersistedError::Update(Rejected))));
+        assert_eq!(tokio::fs::read_to_string(&path).await.unwrap(), original);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn fallible_update_preserves_config_format_error_classification() {
+        let result = ConfigFile::<TestConfig>::try_update_persisted_if_changed(
+            "settings.invalid",
+            TestConfig::default(),
+            false,
+            |_| Ok::<bool, Infallible>(false),
+        )
+        .await;
+
+        assert!(matches!(
+            result,
+            Err(UpdatePersistedError::Storage(FsError::InvalidPath { .. }))
+        ));
     }
 }

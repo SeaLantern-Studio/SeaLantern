@@ -60,7 +60,22 @@ interface ServerStartFallbackEventPayload {
   reason: string;
 }
 
+// ============================================================
+// TODO: 请在后端重构完成后恢复
+// 临时开关：禁用右键捕获（开发调试用）
+// 原因：右键行为依赖后端 developer_mode 设置，但后端正在重构、
+//       暂时无法提供设置，导致开发者模式下右键仍被错误拦截。
+// 恢复方式：后端重构完成后，将 TEMP_DISABLE_CONTEXT_MENU_CAPTURE
+//          改为 false（或直接删除此开关及相关 return 分支）即可。
+// ============================================================
+const TEMP_DISABLE_CONTEXT_MENU_CAPTURE = true;
+
 async function handleGlobalContextMenu(event: MouseEvent) {
+  // TODO: 请在后端重构完成后恢复（临时禁用右键捕获，见上方开关说明）
+  if (TEMP_DISABLE_CONTEXT_MENU_CAPTURE) {
+    return;
+  }
+
   // 在浏览器环境（Docker 模式）下，不阻止右键菜单，允许开发者工具
   if (isBrowserEnv()) {
     return;
@@ -139,7 +154,7 @@ onMounted(async () => {
     );
   }
 
-  contextMenuStore.initContextMenuListener();
+  await contextMenuStore.initContextMenuListener();
   document.addEventListener("contextmenu", handleGlobalContextMenu);
 
   // 插件事件监听相互独立,并行初始化以缩短启动时间;任一失败不影响其他
@@ -152,26 +167,26 @@ onMounted(async () => {
     pluginStore.initI18nEventListener(),
   ]);
 
+  // 关键路径:只需等待设置加载完成,用于应用主题/字体后即可关闭启动屏
+  // 插件加载与服务器扫描属于非关键数据,延后到主界面显示后再异步补全
   try {
     await settingsStore.loadSettings();
     // 设置加载完成后派发更新事件,由 AppLayout 统一应用主题/字体/开发者模式
     // (AppLayout 在父组件 onMounted 之前已 mount,可能用了默认 settings,这里通知其重新应用)
     dispatchSettingsUpdate(["Appearance", "Developer"], settingsStore.settings);
-
-    // 托盘图标已在 Rust 后端创建，前端不需要再创建
-    // 相关代码在 src-tauri/src/lib.rs 的 .setup() 中
-
-    // 插件加载与服务器列表扫描相互独立,并行执行缩短启动时间
-    // 任一失败不影响另一个
-    await Promise.allSettled([
-      pluginStore.loadPlugins().catch((e) => console.warn("Failed to load plugins:", e)),
-      serverStore.refreshList().catch((e) => console.warn("Failed to load servers:", e)),
-    ]);
   } catch (e) {
     console.error("Failed to load settings during startup:", e);
   } finally {
+    // 主界面先行:关闭启动屏,让用户尽快进入可交互界面
     isInitializing.value = false;
   }
+
+  // 非关键路径:主界面已显示,后台异步补全插件与服务器数据
+  // 任一失败不影响另一个,也不阻塞首屏渲染
+  Promise.allSettled([
+    pluginStore.loadPlugins().catch((e) => console.warn("Failed to load plugins:", e)),
+    serverStore.refreshList().catch((e) => console.warn("Failed to load servers:", e)),
+  ]);
 });
 
 onUnmounted(() => {

@@ -163,19 +163,84 @@
   gap: var(--sl-space-sm);
   flex: 1;
   min-height: 0;
-  /* 极淡渐变作为 blur 素材,让库原生 backdrop-filter 有内容可模糊 */
-  background:
-    radial-gradient(ellipse at 50% 95%, rgba(59, 130, 246, 0.04) 0%, transparent 70%),
-    var(--sl-surface);
+  position: relative;
 }
 
+/* 控制台容器:独立圆角卡片 */
+.console-terminal-shell > .cmz-console-wrap,
 .console-terminal-shell .cmz-console {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+}
+.console-terminal-shell .cmz-console {
+  /* 控制台独立外框:项目自己管圆角/边框/溢出裁剪 */
+  --cmz-radius-full: var(--sl-radius-full);
+  --cmz-radius-scrollbar: var(--sl-radius-sm);
+  --cmz-console-bg: var(--sl-surface);
+  --cmz-console-border: transparent;
+  --cmz-console-text: var(--sl-text-primary);
+  --cmz-console-text-dim: var(--sl-text-tertiary);
+  --cmz-console-overlay-hover: color-mix(in srgb, var(--sl-text-primary) 6%, transparent);
+  --cmz-console-overlay-active: color-mix(in srgb, var(--sl-text-primary) 3%, transparent);
+  /* 从变量层彻底关闭 cmzya 体系的黑色基调阴影,避免输入框/下拉等控件带黑雾 */
+  --cmz-shadow-lg: none;
+  --cmz-shadow-md: none;
+  --cmz-shadow-sm: none;
+  --cmz-shadow-button: none;
+  --cmz-shadow-button-hover: none;
+  --cmz-shadow-input: none;
+  --cmz-shadow-input-focus: none;
+  --cmz-shadow-focus: 0 0 0 2px color-mix(in srgb, var(--sl-primary) 35%, transparent);
+  /* 输入框毛玻璃用最大档,配合日志穿透才有可见磨砂效果 */
+  --cmz-acrylic-blur: var(--sl-blur-xxl, 40px);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
   overflow: hidden;
-  /* 控制台背景透明,库原生输入框的 backdrop-filter 才能穿透到后面的渐变 */
-  --console-bg: transparent;
-  background: transparent;
+  background:
+    radial-gradient(
+      ellipse at 50% 95%,
+      color-mix(in srgb, var(--sl-info) 4%, transparent) 0%,
+      transparent 70%
+    ),
+    var(--sl-surface);
+}
+
+/* 输入框外框:圆角+强毛玻璃+去除所有可能的黑色阴影/暗边 */
+.console-terminal-shell .cmz-console .cmz-console__input-line,
+.console-terminal-shell .cmz-console .cmz-console__input-line:focus-within {
+  border-radius: var(--cmz-radius-md, var(--sl-radius-md));
+  border-color: var(--sl-glass-border, var(--sl-border-light));
+  /* 玻璃底色从 surface 调配,不用 --sl-glass-bg,避免暗色主题的纯黑底透出来 */
+  background: color-mix(in srgb, var(--sl-surface) 82%, transparent);
+  backdrop-filter: blur(var(--sl-blur-xxl, 40px)) saturate(var(--sl-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--sl-blur-xxl, 40px)) saturate(var(--sl-saturate-normal, 180%));
+  box-shadow: none !important;
+  outline: none !important;
+  filter: none !important;
+}
+
+/* 兼容老版本组件库的输入框容器选择器,同步去除异常黑色阴影并替换为柔和分隔线 */
+.console-terminal-shell .cmz-console [class*="shell-input"],
+.console-terminal-shell .cmz-console [class*="input-box"],
+.console-terminal-shell .cmz-console [class*="console__shell"] {
+  box-shadow: none !important;
+  background: var(--sl-surface);
+  border-top: 1px solid var(--sl-border-light);
+}
+
+/* 资源看板:独立圆角卡片,不再与控制台连体 */
+.console-stats-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sl-space-sm);
+  flex-shrink: 0;
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-md);
+  padding: var(--sl-space-sm);
+  background: var(--sl-surface);
+}
+
+/* 日志滚入输入框下方,让 backdrop blur 有内容可磨,毛玻璃效果可见 */
+.console-terminal-shell .cmz-console__body {
+  padding-bottom: 12px;
 }

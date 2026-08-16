@@ -2,6 +2,7 @@ name: "代码质量检查"
 
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
 
@@ -14,9 +15,11 @@ jobs:
     runs-on: ubuntu-22.04
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      backend-application: ${{ steps.filter.outputs['backend-application'] }}
       backend-core: ${{ steps.filter.outputs['backend-core'] }}
       backend-infra: ${{ steps.filter.outputs['backend-infra'] }}
       backend-extra: ${{ steps.filter.outputs['backend-extra'] }}
+      backend-interface: ${{ steps.filter.outputs['backend-interface'] }}
       backend-server: ${{ steps.filter.outputs['backend-server'] }}
       backend-tauri: ${{ steps.filter.outputs['backend-tauri'] }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -28,13 +31,23 @@ jobs:
         with:
           filters: |
             backend:
+              - 'application/**'
               - 'crates/**'
               - 'server/**'
-              - 'desktop/**'
+              - 'src-tauri/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
+              - '.github/actions/**'
+              - '.github/workflows/check.yml'
+            backend-application:
+              - 'application/**'
+              - '.cargo/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rustfmt.toml'
+              - '.github/actions/**'
               - '.github/workflows/check.yml'
             backend-core:
               - 'crates/core/**'
@@ -42,6 +55,7 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
+              - '.github/actions/**'
               - '.github/workflows/check.yml'
             backend-infra:
               - 'crates/infra/**'
@@ -49,6 +63,7 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
+              - '.github/actions/**'
               - '.github/workflows/check.yml'
             backend-extra:
               - 'crates/extra/**'
@@ -56,6 +71,15 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
+              - '.github/actions/**'
+              - '.github/workflows/check.yml'
+            backend-interface:
+              - 'crates/interface/**'
+              - '.cargo/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rustfmt.toml'
+              - '.github/actions/**'
               - '.github/workflows/check.yml'
             backend-server:
               - 'server/**'
@@ -63,13 +87,15 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
+              - '.github/actions/**'
               - '.github/workflows/check.yml'
             backend-tauri:
-              - 'desktop/**'
+              - 'src-tauri/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
+              - '.github/actions/**'
               - '.github/workflows/check.yml'
             frontend:
               - 'src/**'
@@ -81,6 +107,7 @@ jobs:
               - 'index.html'
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
+              - '.github/actions/**'
               - '.github/workflows/check.yml'
 
   backend-lint:
@@ -94,35 +121,36 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 安装系统依赖
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
+        uses: ./.github/actions/install-tauri-dependencies
 
-      - name: 安装 Rust 工具链
-        id: rust_setup
-        uses: dtolnay/rust-toolchain@stable
+      - name: 设置 Rust 环境
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           components: rustfmt, clippy
-        continue-on-error: true
-
-      - name: 重试安装 Rust 工具链
-        if: ${{ steps.rust_setup.outcome == 'failure' }}
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-
-      - name: 缓存 Rust 编译产物
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
+          cache: "true"
+          retry: "true"
 
       - name: 检查代码格式 (Rust)
         run: cargo fmt --all -- --check
 
       - name: 运行 Clippy 检查
         run: cargo clippy --workspace -- -D warnings
+
+  backend-test-application:
+    name: 后端测试 (application)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-application'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 4
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Rust 环境
+        uses: ./.github/actions/setup-rust
+
+      - name: 运行测试
+        run: cargo test -p sealantern-application
 
   backend-test-core:
     name: 后端测试 (core)
@@ -134,51 +162,13 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 安装 Rust 工具链
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
+      - name: 设置 Rust 环境
+        uses: ./.github/actions/setup-rust
 
       - name: 运行测试
         run: cargo test -p sealantern-core --lib
         env:
           RUSTFLAGS: "--cfg ci_skip_validation"
-
-  backend-test-infra:
-    name: 后端测试 (infra)
-    needs: [changes, backend-lint]
-    if: ${{ needs.changes.outputs['backend-infra'] == 'true' }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 安装 Rust 工具链
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: 运行测试
-        run: cargo test -p sealantern-infra --all-features
-
-  backend-test-server:
-    name: 后端测试 (server)
-    needs: [changes, backend-lint]
-    if: ${{ needs.changes.outputs['backend-server'] == 'true' }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 安装 Rust 工具链
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: 运行测试
-        run: cargo test -p sealantern-server
 
   backend-test-extra:
     name: 后端测试 (extra)
@@ -190,13 +180,59 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 安装 Rust 工具链
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
+      - name: 设置 Rust 环境
+        uses: ./.github/actions/setup-rust
 
       - name: 运行测试
         run: cargo test -p sealantern-extra
+
+  backend-test-infra:
+    name: 后端测试 (infra)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-infra'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Rust 环境
+        uses: ./.github/actions/setup-rust
+
+      - name: 运行测试
+        run: cargo test -p sealantern-infra --all-features
+
+  backend-test-interface:
+    name: 后端测试 (interface)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-interface'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Rust 环境
+        uses: ./.github/actions/setup-rust
+
+      - name: 运行测试
+        run: cargo test -p sealantern-interface
+
+  backend-test-server:
+    name: 后端测试 (server)
+    needs: [changes, backend-lint]
+    if: ${{ needs.changes.outputs['backend-server'] == 'true' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Rust 环境
+        uses: ./.github/actions/setup-rust
+
+      - name: 运行测试
+        run: cargo test -p sealantern-server
 
   backend-test-tauri:
     name: 后端测试 (tauri)
@@ -209,31 +245,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 安装系统依赖
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
+        uses: ./.github/actions/install-tauri-dependencies
 
-      - name: 安装 Rust 工具链
-        uses: dtolnay/rust-toolchain@stable
+      - name: 设置 Rust 环境（缓存只恢复）
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
-
-      - name: 缓存 Rust 编译产物（只恢复）
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: ". -> target"
-          save-if: false
+          cache: "true"
+          cache-save: "false"
 
       - name: 运行测试
-        run: cargo test --lib -p sealantern-tauri
+        run: cargo test --lib -p sealantern
 
   backend:
     name: 后端检查 (Rust)
     needs:
       [
         backend-lint,
+        backend-test-application,
         backend-test-core,
         backend-test-infra,
+        backend-test-interface,
         backend-test-server,
         backend-test-extra,
         backend-test-tauri,
@@ -243,13 +274,7 @@ jobs:
     steps:
       - name: 汇总后端检查状态
         run: |
-          failed=""
-          if [[ "${{ needs.backend-lint.result }}" != "success" && "${{ needs.backend-lint.result }}" != "skipped" ]]; then failed="$failed lint"; fi
-          if [[ "${{ needs.backend-test-core.result }}" != "success" && "${{ needs.backend-test-core.result }}" != "skipped" ]]; then failed="$failed core"; fi
-          if [[ "${{ needs.backend-test-infra.result }}" != "success" && "${{ needs.backend-test-infra.result }}" != "skipped" ]]; then failed="$failed infra"; fi
-          if [[ "${{ needs.backend-test-server.result }}" != "success" && "${{ needs.backend-test-server.result }}" != "skipped" ]]; then failed="$failed server"; fi
-          if [[ "${{ needs.backend-test-extra.result }}" != "success" && "${{ needs.backend-test-extra.result }}" != "skipped" ]]; then failed="$failed extra"; fi
-          if [[ "${{ needs.backend-test-tauri.result }}" != "success" && "${{ needs.backend-test-tauri.result }}" != "skipped" ]]; then failed="$failed tauri"; fi
+          failed=$(echo '${{ toJSON(needs) }}' | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key] | join(" ")')
           if [[ -n "$failed" ]]; then
             echo "::error ::后端检查失败，以下模块未通过：$failed"
             exit 1
@@ -266,27 +291,12 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 安装 Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
-
-      - name: Prepare PNPM (固定版本)
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.15.9 --activate
-
-      - name: 缓存 pnpm 依赖
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
+      - name: 设置 pnpm 环境
+        uses: ./.github/actions/setup-pnpm
 
       - name: 安装前端依赖
         run: |
           pnpm install --frozen-lockfile
 
-      - name: 运行格式化并检查前端 Lint
-        run: pnpm run fmt:check && pnpm run lint
+      - name: 运行前端全量检查
+        run: pnpm run fmt:check && pnpm run lint && pnpm run build:check

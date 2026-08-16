@@ -1,4 +1,5 @@
 /* AppSidebar 组件样式 */
+/* 侧栏透明,与窗口背景融合,主容器卡片浮在上面承担层次 */
 .sidebar {
   position: fixed;
   top: 0;
@@ -68,7 +69,11 @@
   position: absolute;
   inset: -6px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.35) 0%, rgba(14, 165, 233, 0) 70%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--sl-primary) 35%, transparent) 0%,
+    color-mix(in srgb, var(--sl-primary) 0%, transparent) 70%
+  );
   pointer-events: none;
   animation: logo-glow-pulse 1.2s ease-in-out infinite;
 }

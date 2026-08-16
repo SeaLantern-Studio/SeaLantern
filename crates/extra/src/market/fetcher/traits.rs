@@ -14,7 +14,7 @@ use crate::market::models::{MarketResource, ResourceInfo, SearchResult, Version}
 /// 每个平台（如 Spigot、Modrinth）需要实现该 trait，以提供标准化的
 /// 搜索、项目信息查询、版本列表获取以及资源下载能力。
 #[async_trait]
-pub trait Fetcher {
+pub trait Fetcher: Send + Sync {
     /// 根据关键词搜索资源，支持分页。
     ///
     /// # Parameters

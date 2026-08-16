@@ -3,7 +3,6 @@ import { onMounted, onUnmounted, computed } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
 import { settingsApi } from "@api/settings";
-import { useUiStore } from "@stores/uiStore";
 import {
   useSettingsStore,
   SETTINGS_UPDATE_EVENT,
@@ -18,8 +17,8 @@ import {
   isThemeProviderActive,
 } from "@utils/theme";
 import { isMacOSPlatform } from "@utils/platform";
+import { applyAcrylicEffect } from "@utils/acrylic";
 
-const ui = useUiStore();
 const settingsStore = useSettingsStore();
 
 const backgroundImage = computed(() => settingsStore.backgroundImage);
@@ -32,10 +31,6 @@ const isMacOS = isMacOSPlatform();
 let systemThemeQuery: MediaQueryList | null = null;
 let lastNativeAcrylic: boolean | null = null;
 let appearanceApplyQueue: Promise<void> = Promise.resolve();
-
-function applyAcrylicEffect(enabled: boolean): void {
-  document.documentElement.setAttribute("data-acrylic", enabled ? "on" : "off");
-}
 
 function handleSystemThemeChange(): void {
   const settings = settingsStore.settings;
@@ -55,6 +50,7 @@ async function applyAppearanceSettings(): Promise<void> {
   applyFontFamily(settings.font_family || "");
 
   applyAcrylicEffect(settings.acrylic_enabled);
+  // 桌面磨砂只能靠系统原生效果,状态变化时同步
   if (lastNativeAcrylic !== settings.acrylic_enabled) {
     lastNativeAcrylic = settings.acrylic_enabled;
     await settingsApi.applyAcrylic(settings.acrylic_enabled);

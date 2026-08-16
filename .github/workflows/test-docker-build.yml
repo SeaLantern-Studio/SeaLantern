@@ -1,0 +1,45 @@
+name: Docker Build Test
+
+on:
+  # 1. 允许在 GitHub 网页界面手动触发，并手动选择分支/输入参数
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "选择或指定要编译的分支/Tag"
+        required: true
+        default: "main"
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 根据手动输入的参数或默认分支进行检出
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.target_branch || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 构建并直接导出为 Docker TAR 文件 (使用 type=docker)
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          tags: sealantern-server:test
+          outputs: type=docker,dest=/tmp/sealantern-server-test.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 上传生成的镜像包到 GitHub Artifacts 供下载
+      - name: Upload Docker Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-sealantern-server
+          path: /tmp/sealantern-server-test.tar
+          retention-days: 7 # 缓存保留天数（可按需修改）

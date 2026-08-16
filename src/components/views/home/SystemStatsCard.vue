@@ -163,6 +163,7 @@ function toggleViewMode() {
 .stats-card {
   display: flex;
   flex-direction: column;
+  font-family: var(--sl-font-sans);
 }
 
 .stats-card-header {
@@ -193,7 +194,7 @@ function toggleViewMode() {
 }
 
 .view-toggle:hover {
-  background: var(--sl-bg-hover);
+  background: var(--sl-surface-hover);
   color: var(--sl-text-primary);
   transform: scale(1.05);
 }
@@ -259,7 +260,7 @@ function toggleViewMode() {
 
 .detail-value {
   font-size: 0.6875rem;
-  font-family: var(--sl-font-mono);
+  font-family: var(--sl-font-sans);
   color: var(--sl-text-secondary);
 }
 
@@ -292,13 +293,14 @@ function toggleViewMode() {
 .stat-value {
   font-size: 0.875rem;
   font-weight: 600;
-  font-family: var(--sl-font-mono);
+  font-family: var(--sl-font-sans);
+  color: var(--sl-text-primary);
 }
 
 .stat-detail {
   font-size: 0.75rem;
   color: var(--sl-text-tertiary);
-  font-family: var(--sl-font-mono);
+  font-family: var(--sl-font-sans);
   font-weight: 400;
 }
 

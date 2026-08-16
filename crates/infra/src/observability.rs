@@ -58,6 +58,19 @@ pub fn app_data_dir_create_failed(path: &std::path::Path, error: &dyn Display) {
     );
 }
 
+/// Event: 环境变量覆盖无效（存在但为空或无法解析）。
+pub const EVENT_PLATFORM_ENV_OVERRIDE_INVALID: &str = "platform_env_override_invalid";
+
+/// 记录数据目录环境变量存在但为空或无效的警告，便于诊断配置错误。
+pub fn platform_env_override_invalid(var_name: &str) {
+    tracing::warn!(
+        target: PLATFORM_TARGET,
+        event_name = EVENT_PLATFORM_ENV_OVERRIDE_INVALID,
+        var_name,
+        "environment override is present but empty or invalid, falling back to default"
+    );
+}
+
 // -- 文件系统层 --
 
 /// 文件系统基础设施模块的 tracing 目标。

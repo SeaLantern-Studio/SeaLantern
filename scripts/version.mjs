@@ -5,21 +5,19 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
+const workspaceCargo = path.join(rootDir, "Cargo.toml");
+const EXCLUDED_VERSION_MEMBERS = new Set(["crates/vendor/java-manager", "crates/vendor/sysproxy"]);
 
-const files = {
-  packageJson: path.join(rootDir, "package.json"),
-  cargoToml: path.join(rootDir, "src-tauri", "Cargo.toml"),
-  tauriConf: path.join(rootDir, "src-tauri", "tauri.conf.json"),
-  pkgbuild: path.join(rootDir, "PKGBUILD"),
-  srcinfo: path.join(rootDir, ".SRCINFO"),
-};
+// ---------------------------------------------------------------------------
+// 工具函数
+// ---------------------------------------------------------------------------
 
-// 校验输入版本号是否符合语义化版本格式。
+/** 校验输入版本号是否符合语义化版本格式。 */
 function isValidVersion(version) {
   return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version);
 }
 
-// 判断指定路径的文件是否存在且可访问。
+/** 判断指定路径的文件是否存在且可访问。 */
 async function exists(filePath) {
   try {
     await access(filePath);
@@ -29,142 +27,191 @@ async function exists(filePath) {
   }
 }
 
-// 从 Cargo.toml 的 [package] 段中提取 version 值。
+/** 从 Cargo.toml 的 [package] 段中提取 version 值。 */
 function extractCargoPackageVersion(content) {
-  const packageSectionMatch = content.match(/\[package\][\s\S]*?(?=\n\[|$)/);
-  if (!packageSectionMatch) return null;
+  const section = content.match(/\[package\][\s\S]*?(?=\n\[|$)/)?.[0];
+  if (!section) return null;
 
-  const section = packageSectionMatch[0];
-  const versionMatch = section.match(/^version\s*=\s*"([^"]+)"/m);
-  return versionMatch?.[1] ?? null;
+  return section.match(/^version\s*=\s*"([^"]+)"/m)?.[1] ?? null;
 }
 
-// 将 Cargo.toml 的 [package] 段 version 字段替换为新版本。
+/** 将 Cargo.toml 的 [package] 段 version 字段替换为新版本。 */
 function replaceCargoPackageVersion(content, version) {
-  const packageSectionMatch = content.match(/\[package\][\s\S]*?(?=\n\[|$)/);
-  if (!packageSectionMatch) {
-    throw new Error("Cargo.toml 中未找到 [package] 段");
-  }
+  const section = content.match(/\[package\][\s\S]*?(?=\n\[|$)/)?.[0];
+  if (!section) throw new Error("Cargo.toml 中未找到 [package] 段");
 
-  const section = packageSectionMatch[0];
   if (!/^version\s*=\s*"[^"]+"/m.test(section)) {
     throw new Error("Cargo.toml 的 [package] 段中未找到 version 字段");
   }
 
   const newSection = section.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`);
-
   return content.replace(section, newSection);
 }
 
-// 读取并汇总核心及可选文件中的版本号信息。
-async function readVersions() {
-  const packageJsonRaw = await readFile(files.packageJson, "utf8");
-  const packageJson = JSON.parse(packageJsonRaw);
+// ---------------------------------------------------------------------------
+// 文件发现
+// ---------------------------------------------------------------------------
 
-  const cargoTomlRaw = await readFile(files.cargoToml, "utf8");
-  const cargoVersion = extractCargoPackageVersion(cargoTomlRaw);
+/** 从 workspace Cargo.toml 中解析 [workspace] members 列表。 */
+function parseWorkspaceMembers(content) {
+  const wsSection = content.match(/\[workspace\][\s\S]*?(?=\n\[|$)/)?.[0];
+  if (!wsSection) return [];
 
-  const tauriConfRaw = await readFile(files.tauriConf, "utf8");
-  const tauriConf = JSON.parse(tauriConfRaw);
+  const membersLine = wsSection.match(/^members\s*=\s*\[([^\]]+)\]/m)?.[1];
+  if (!membersLine) return [];
 
-  const versions = {
-    "package.json": packageJson.version ?? "(未找到)",
-    "src-tauri/Cargo.toml": cargoVersion ?? "(未找到)",
-    "src-tauri/tauri.conf.json": tauriConf.version ?? "(未找到)",
-  };
-
-  if (await exists(files.pkgbuild)) {
-    const pkgbuildRaw = await readFile(files.pkgbuild, "utf8");
-    const pkgver = pkgbuildRaw.match(/^pkgver\s*=\s*([^\s#]+)/m)?.[1] ?? "(未找到)";
-    versions.PKGBUILD = pkgver;
-  }
-
-  if (await exists(files.srcinfo)) {
-    const srcinfoRaw = await readFile(files.srcinfo, "utf8");
-    const pkgver = srcinfoRaw.match(/^\s*pkgver\s*=\s*(.+)$/m)?.[1]?.trim() ?? "(未找到)";
-    versions[".SRCINFO"] = pkgver;
-  }
-
-  return versions;
+  return membersLine
+    .split(",")
+    .map((m) => m.trim().replace(/["\s]/g, ""))
+    .filter(Boolean);
 }
 
-// 按统一格式输出版本信息并检查是否一致。
+/** 判断 workspace member 是否由外部 vendoring 管理，不参与项目版本同步。 */
+function isExcludedVersionMember(member) {
+  return EXCLUDED_VERSION_MEMBERS.has(member.replaceAll("\\", "/"));
+}
+
+/** 发现所有需要管理的文件路径。 */
+async function discoverFiles() {
+  const workspaceRaw = await readFile(workspaceCargo, "utf8");
+  const members = parseWorkspaceMembers(workspaceRaw);
+
+  // 先收集所有候选路径，再批量检查存在性
+  const candidates = [];
+
+  // workspace member 的 Cargo.toml
+  for (const member of members) {
+    if (isExcludedVersionMember(member)) {
+      continue;
+    }
+
+    candidates.push({
+      label: `${member}/Cargo.toml`,
+      path: path.join(rootDir, member, "Cargo.toml"),
+      type: "cargo",
+    });
+  }
+
+  // package.json
+  candidates.push({
+    label: "package.json",
+    path: path.join(rootDir, "package.json"),
+    type: "json",
+  });
+
+  // tauri.conf.json
+  candidates.push({
+    label: "src-tauri/tauri.conf.json",
+    path: path.join(rootDir, "src-tauri", "tauri.conf.json"),
+    type: "json",
+  });
+
+  // 批量检查存在性
+  const results = await Promise.all(candidates.map((c) => exists(c.path)));
+
+  return candidates.filter((_, i) => results[i]);
+}
+
+// ---------------------------------------------------------------------------
+// 读取与输出
+// ---------------------------------------------------------------------------
+
+/** 提取单个文件的版本号。 */
+async function readVersion(file) {
+  const raw = await readFile(file.path, "utf8");
+
+  if (file.type === "cargo") {
+    return extractCargoPackageVersion(raw) ?? "(未找到)";
+  }
+  if (file.type === "json") {
+    try {
+      return JSON.parse(raw).version ?? "(未找到)";
+    } catch {
+      return "(解析失败)";
+    }
+  }
+  return "(未知类型)";
+}
+
+/** 读取所有文件的版本号。 */
+async function readVersions(files) {
+  const entries = await Promise.all(
+    files.map(async (file) => [file.label, await readVersion(file)]),
+  );
+  return Object.fromEntries(entries);
+}
+
+/** 按统一格式输出版本信息并检查是否一致。 */
 function printVersions(versions) {
   console.log("当前版本信息：\n");
   Object.entries(versions).forEach(([file, version]) => {
-    console.log(`${file}: ${version}`);
+    console.log(`  ${file}: ${version}`);
   });
 
-  const validValues = Object.values(versions).filter((v) => v !== "(未找到)");
+  const validValues = Object.values(versions).filter((v) => v !== "(未找到)" && v !== "(解析失败)");
   const unique = new Set(validValues);
   console.log("");
   if (unique.size <= 1) {
-    console.log("版本状态：所有已检测文件版本一致");
+    console.log("✅ 版本状态：所有已检测文件版本一致");
   } else {
-    console.log("版本状态：检测到版本不一致，请检查上述文件");
+    console.log("❌ 版本状态：检测到版本不一致，请检查上述文件");
   }
 }
 
-// 将新版本写入核心文件，并在存在时同步更新 AUR 相关文件。
-async function updateVersion(version) {
-  const packageJsonRaw = await readFile(files.packageJson, "utf8");
-  const packageJson = JSON.parse(packageJsonRaw);
-  packageJson.version = version;
-  await writeFile(files.packageJson, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+// ---------------------------------------------------------------------------
+// 写入
+// ---------------------------------------------------------------------------
 
-  const cargoTomlRaw = await readFile(files.cargoToml, "utf8");
-  const cargoTomlUpdated = replaceCargoPackageVersion(cargoTomlRaw, version);
-  await writeFile(files.cargoToml, cargoTomlUpdated, "utf8");
-
-  const tauriConfRaw = await readFile(files.tauriConf, "utf8");
-  const tauriConf = JSON.parse(tauriConfRaw);
-  tauriConf.version = version;
-  await writeFile(files.tauriConf, `${JSON.stringify(tauriConf, null, 2)}\n`, "utf8");
-
-  const optionalUpdated = [];
-
-  if (await exists(files.pkgbuild)) {
-    const pkgbuildRaw = await readFile(files.pkgbuild, "utf8");
-    const pkgbuildUpdated = pkgbuildRaw.replace(/^pkgver\s*=\s*([^\s#]+)/m, `pkgver=${version}`);
-    await writeFile(files.pkgbuild, pkgbuildUpdated, "utf8");
-    optionalUpdated.push("PKGBUILD");
+/** 生成单个文件的新内容。 */
+function buildUpdatedContent(file, raw, version) {
+  if (file.type === "cargo") {
+    return replaceCargoPackageVersion(raw, version);
   }
-
-  if (await exists(files.srcinfo)) {
-    const srcinfoRaw = await readFile(files.srcinfo, "utf8");
-    let srcinfoUpdated = srcinfoRaw
-      .replace(/^\s*pkgver\s*=\s*.+$/m, `\tpkgver = ${version}`)
-      .replace(
-        /^\s*source\s*=\s*.*Sea\.Lantern_.*\.deb$/m,
-        `\tsource = sealantern-${version}-amd64.deb::https://github.com/SeaLantern-Studio/SeaLantern/releases/download/v${version}/Sea.Lantern_${version}_amd64.deb`,
-      );
-
-    await writeFile(files.srcinfo, srcinfoUpdated, "utf8");
-    optionalUpdated.push(".SRCINFO");
+  if (file.type === "json") {
+    const parsed = JSON.parse(raw);
+    parsed.version = version;
+    return `${JSON.stringify(parsed, null, 2)}\n`;
   }
+  throw new Error(`未知文件类型：${file.type}`);
+}
 
-  console.log(`已更新核心版本文件为 ${version}：`);
-  console.log("- package.json");
-  console.log("- src-tauri/Cargo.toml");
-  console.log("- src-tauri/tauri.conf.json");
-  if (optionalUpdated.length > 0) {
-    console.log(`另外已同步更新：${optionalUpdated.join(", ")}`);
+/** 将新版本写入所有核心文件。 */
+async function updateVersion(files, version) {
+  // 先并行读取所有文件
+  const contents = await Promise.all(files.map((f) => readFile(f.path, "utf8")));
+
+  // 并行生成新内容并写入
+  const writes = files.map(async (file, i) => {
+    const newContent = buildUpdatedContent(file, contents[i], version);
+    await writeFile(file.path, newContent, "utf8");
+    return file.label;
+  });
+
+  const updated = await Promise.all(writes);
+
+  console.log(`已更新 ${updated.length} 个文件为 ${version}：`);
+  for (const label of updated) {
+    console.log(`  - ${label}`);
   }
 }
 
-// 输出脚本命令帮助信息。
+// ---------------------------------------------------------------------------
+// CLI
+// ---------------------------------------------------------------------------
+
 function printUsage() {
   console.log("用法：");
-  console.log("  pnpm sv");
-  console.log("  pnpm cv <version>");
+  console.log("  pnpm sv                     查看当前所有版本号");
+  console.log("  pnpm cv <version>           统一修改所有版本号");
 }
 
-// 解析命令参数并分发到查看或修改版本流程。
 async function main() {
   const [command, value] = process.argv.slice(2);
 
+  const files = await discoverFiles();
+
   if (!command || command === "show") {
-    const versions = await readVersions();
+    const versions = await readVersions(files);
     printVersions(versions);
     return;
   }
@@ -173,14 +220,13 @@ async function main() {
     if (!value) {
       throw new Error("请提供新版本号，例如：pnpm cv 1.2.3");
     }
-
     if (!isValidVersion(value)) {
       throw new Error(`无效版本号：${value}，请使用语义化版本，例如 1.2.3`);
     }
 
-    await updateVersion(value);
-    const versions = await readVersions();
+    await updateVersion(files, value);
     console.log("");
+    const versions = await readVersions(files);
     printVersions(versions);
     return;
   }

@@ -1,4 +1,5 @@
 import { tauriInvoke } from "@api/tauri";
+import { invoke } from "@api/invoke";
 import { isUploadSupported, pickFileFromBrowser, uploadFile } from "@api/upload";
 
 export interface CpuInfo {
@@ -93,6 +94,40 @@ export interface IPv6TestResult {
   targets?: IPv6TestTarget[];
 }
 
+/** 后端 SystemSnapshot 原始结构，和前端 SystemInfo 字段有差异需转换 */
+interface SystemSnapshotRaw {
+  os: string;
+  arch: string;
+  os_name: string;
+  os_version: string;
+  kernel_version: string;
+  host_name: string;
+  cpu: CpuInfo;
+  memory: MemoryInfo;
+  swap: SwapInfo;
+  disk: {
+    total: number;
+    used: number;
+    available: number;
+    usage: number;
+    disks: DiskDetailRaw[];
+  };
+  networks: { interface: string; received: number; transmitted: number }[];
+  uptime: number;
+  process_count: number;
+}
+
+/** 后端单个磁盘信息，比前端 DiskDetail 少 usage 字段需计算补齐 */
+interface DiskDetailRaw {
+  name: string;
+  mount_point: string;
+  file_system: string;
+  total: number;
+  used: number;
+  available: number;
+  is_removable: boolean;
+}
+
 export const systemApi = {
   async pickAndUploadBrowserFile(accept?: string): Promise<string | null> {
     if (!isUploadSupported()) {
@@ -125,25 +160,60 @@ export const systemApi = {
   },
 
   async getSystemInfo(): Promise<SystemInfo> {
-    return tauriInvoke("get_system_info");
+    const raw = await invoke<SystemSnapshotRaw>("get_system_snapshot");
+    // 后端 networks 是数组，前端 NetworkInfo 要汇总总量并映射字段名
+    return {
+      os: raw.os,
+      arch: raw.arch,
+      os_name: raw.os_name,
+      os_version: raw.os_version,
+      kernel_version: raw.kernel_version,
+      host_name: raw.host_name,
+      cpu: raw.cpu,
+      memory: raw.memory,
+      swap: raw.swap,
+      disk: {
+        total: raw.disk.total,
+        used: raw.disk.used,
+        available: raw.disk.available,
+        usage: raw.disk.usage,
+        disks: raw.disk.disks.map((d) => ({
+          ...d,
+          // 后端 DiskInfo 没有 usage，按容量占比计算
+          usage: d.total > 0 ? (d.used / d.total) * 100 : 0,
+        })),
+      },
+      network: {
+        total_received: raw.networks.reduce((s, n) => s + n.received, 0),
+        total_transmitted: raw.networks.reduce((s, n) => s + n.transmitted, 0),
+        interfaces: raw.networks.map((n) => ({
+          name: n.interface,
+          received: n.received,
+          transmitted: n.transmitted,
+        })),
+      },
+      uptime: raw.uptime,
+      process_count: raw.process_count,
+    };
   },
 
   async getServerResourceUsage(serverId: string): Promise<ServerResourceUsage> {
-    return tauriInvoke("get_server_resource_usage", { serverId });
+    // 后端命令参数为 instance_id，走统一 invoke 入口，Tauri 与 Axum 模式契约一致
+    return invoke<ServerResourceUsage>("get_server_resource_usage", { instance_id: serverId });
   },
 
   async pickJarFile(): Promise<string | null> {
     if (isUploadSupported()) {
       return this.pickAndUploadBrowserFile(".jar");
     }
-    return tauriInvoke("pick_jar_file");
+    return tauriInvoke("desktop_pick_jar_file");
   },
 
   async pickArchiveFile(): Promise<string | null> {
     if (isUploadSupported()) {
       return this.pickAndUploadBrowserFile(".zip,.tar,.tar.gz,.tgz,.jar");
     }
-    return tauriInvoke("pick_archive_file");
+    return tauriInvoke("desktop_pick_archive_file");
   },
 
   async pickStartupFile(mode: "jar" | "bat" | "sh"): Promise<string | null> {
@@ -160,7 +230,7 @@ export const systemApi = {
       }
       return null;
     }
-    return tauriInvoke("pick_startup_file", { mode });
+    return tauriInvoke("desktop_pick_startup_file", { mode });
   },
 
   async pickServerExecutable(): Promise<{ path: string; mode: "jar" | "bat" | "sh" } | null> {
@@ -174,7 +244,7 @@ export const systemApi = {
       }
       return null;
     }
-    const result = await tauriInvoke<[string, string] | null>("pick_server_executable");
+    const result = await tauriInvoke<[string, string] | null>("desktop_pick_server_executable");
     if (result) {
       return { path: result[0], mode: result[1] as "jar" | "bat" | "sh" };
     }
@@ -190,21 +260,21 @@ export const systemApi = {
       }
       return null;
     }
-    return tauriInvoke("pick_java_file");
+    return tauriInvoke("desktop_pick_java_file");
   },
 
   async pickSaveFile(): Promise<string | null> {
     if (isUploadSupported()) {
       throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
     }
-    return tauriInvoke("pick_save_file");
+    return tauriInvoke("desktop_pick_save_file");
   },
 
   async pickFolder(): Promise<string | null> {
     if (isUploadSupported()) {
       throw new Error("Docker环境不支持原生文件选择器，请使用文件上传功能");
     }
-    return tauriInvoke("pick_folder");
+    return tauriInvoke("desktop_pick_folder");
   },
 
   async pickImageFile(): Promise<string | null> {
@@ -216,7 +286,7 @@ export const systemApi = {
       }
       return null;
     }
-    return tauriInvoke("pick_image_file");
+    return tauriInvoke("desktop_pick_image_file");
   },
 
   async openFile(path: string): Promise<void> {

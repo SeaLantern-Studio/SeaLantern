@@ -97,7 +97,7 @@ export const contributors: Contributor[] = [
   {
     name: "清初Lucky",
     role: "喵喵喵~",
-    avatar: "https://api.rms.net.cn/head/qingchu2010",
+    avatar: "https://api.rms.net.cn/head/QINGCHU_MC",
   },
   {
     name: "ieshishinjin",
@@ -222,6 +222,14 @@ export const contributors: Contributor[] = [
     name: "NIUNIU3303",
     role: "必火推荐！",
     avatar: "https://api.rms.net.cn/head/NIUNIU3303",
+  },
+  {
+    name: "hjcba",
+    role: "添加了 mclo.gs 日志分享功能(也许后面会写更多功能)",
+    avatar: "https://api.rms.net.cn/head/hjcboar",
+    url: {
+      github: "https://github.com/hjcba",
+    },
   },
 
   // ============================================

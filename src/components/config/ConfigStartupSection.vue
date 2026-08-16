@@ -38,7 +38,7 @@ async function loadConfig() {
     maxMemory.value = config.max_memory ?? props.defaultMaxMemory;
     minMemory.value = config.min_memory ?? props.defaultMinMemory;
   } catch (e: any) {
-    error.value = e?.toString() || "加载启动配置失败";
+    error.value = e?.toString() || i18n.t("config.startup_load_failed");
   } finally {
     loading.value = false;
   }
@@ -47,15 +47,15 @@ async function loadConfig() {
 async function saveConfig() {
   if (!props.serverPath || saving.value) return;
   if (maxMemory.value < 128) {
-    error.value = "最大内存不能小于 128MB";
+    error.value = i18n.t("config.max_memory_too_small");
     return;
   }
   if (minMemory.value < 128) {
-    error.value = "最小内存不能小于 128MB";
+    error.value = i18n.t("config.min_memory_too_small");
     return;
   }
   if (minMemory.value > maxMemory.value) {
-    error.value = "最小内存不能大于最大内存";
+    error.value = i18n.t("config.min_memory_exceeds_max");
     return;
   }
 
@@ -69,7 +69,7 @@ async function saveConfig() {
     await configApi.writeSLConfig(props.serverPath, config);
     emit("saved", maxMemory.value, minMemory.value);
   } catch (e: any) {
-    error.value = e?.toString() || "保存启动配置失败";
+    error.value = e?.toString() || i18n.t("config.startup_save_failed");
   } finally {
     saving.value = false;
   }

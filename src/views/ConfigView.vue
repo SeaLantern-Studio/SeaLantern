@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
+import { defineAsyncComponent } from "vue";
 import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import { useServerStore } from "@stores/serverStore";
 import { i18n } from "@language";
 import { FileDiff, RefreshCw, Save } from "lucide-vue-next";
 
-import ConfigSourceDiffView from "@components/config/ConfigSourceDiffView.vue";
+// CodeMirror 对比视图为大包,异步加载避免进入配置页时同步阻塞
+const ConfigSourceDiffView = defineAsyncComponent(
+  () => import("@components/config/ConfigSourceDiffView.vue"),
+);
 import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
 import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.vue";
 import ConfigStartupSection from "@components/config/ConfigStartupSection.vue";

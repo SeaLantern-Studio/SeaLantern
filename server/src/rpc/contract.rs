@@ -107,12 +107,12 @@ mod tests {
         type Request = ();
         type Response = ();
 
-        fn call(
+        async fn call(
             &self,
             _context: &RpcContext,
             _request: Self::Request,
-        ) -> impl Future<Output = RpcResult<Self::Response>> + Send {
-            async { Err(RpcError::unavailable("test dependency")) }
+        ) -> RpcResult<Self::Response> {
+            Err(RpcError::unavailable("test dependency"))
         }
     }
 

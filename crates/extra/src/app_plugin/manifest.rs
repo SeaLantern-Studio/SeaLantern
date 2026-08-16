@@ -1,24 +1,22 @@
 use serde::{Deserialize, Serialize};
 
+use sealantern_core::app_plugin::ScopeBinding;
+
 /// The only plugin API revision accepted by the first app-plugin engine.
 pub const PLUGIN_API_VERSION: u32 = 2;
 
-/// A capability exposed by the first app-plugin API revision.
+/// API v2 manifest 中声明的一项能力。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum PluginPermission {
-    Log,
-    Storage,
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PluginCapability {
+    pub id: String,
+    #[serde(default)]
+    pub scope: Option<ScopeBinding>,
 }
 
-impl PluginPermission {
-    /// Parses a capability name from the manifest's JSON representation.
-    pub fn parse(value: &str) -> Option<Self> {
-        match value {
-            "log" => Some(Self::Log),
-            "storage" => Some(Self::Storage),
-            _ => None,
-        }
+impl PluginCapability {
+    pub fn new(id: impl Into<String>) -> Self {
+        Self { id: id.into(), scope: None }
     }
 }
 
@@ -32,12 +30,12 @@ pub struct PluginManifest {
     pub version: String,
     pub main: String,
     #[serde(default)]
-    pub permissions: Vec<PluginPermission>,
+    pub capabilities: Vec<PluginCapability>,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{PluginManifest, PluginPermission, PLUGIN_API_VERSION};
+    use super::{PluginCapability, PluginManifest, PLUGIN_API_VERSION};
 
     #[test]
     fn v2_manifest_uses_camel_case_api_version() {
@@ -48,13 +46,19 @@ mod tests {
                 "name": "Example Plugin",
                 "version": "1.0.0",
                 "main": "main.lua",
-                "permissions": ["log", "storage"]
+                "capabilities": [{"id": "plugin.log.emit"}, {"id": "plugin.storage.read"}]
             }"#,
         )
         .expect("v2 manifest should deserialize");
 
         assert_eq!(manifest.api_version, PLUGIN_API_VERSION);
-        assert_eq!(manifest.permissions, vec![PluginPermission::Log, PluginPermission::Storage]);
+        assert_eq!(
+            manifest.capabilities,
+            vec![
+                PluginCapability::new("plugin.log.emit"),
+                PluginCapability::new("plugin.storage.read"),
+            ]
+        );
     }
 
     #[test]
@@ -75,7 +79,10 @@ mod tests {
     }
 
     #[test]
-    fn permission_enum_rejects_unknown_values() {
-        assert!(serde_json::from_str::<PluginPermission>(r#""network""#).is_err());
+    fn capability_rejects_unknown_fields() {
+        assert!(serde_json::from_str::<PluginCapability>(
+            r#"{"id":"plugin.log.emit","legacy":true}"#
+        )
+        .is_err());
     }
 }

@@ -17,6 +17,7 @@ import {
   hasDangerousPermissions,
   getLocalizedPluginName,
   getLocalizedPluginDescription,
+  getPluginSettingDefaultValue,
 } from "@type/plugin";
 import {
   Upload,
@@ -455,20 +456,6 @@ function getDepDisplayName(depId: string): string {
   return depPlugin ? depPlugin.manifest.name : depId;
 }
 
-function getDepStatus(depId: string): string {
-  const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-  if (!depPlugin) return "not-installed";
-  if (depPlugin.state !== "enabled") return "not-enabled";
-  return "ok";
-}
-
-function getDepStatusLabel(depId: string): string {
-  const depPlugin = pluginStore.plugins.find((p) => p.manifest.id === depId);
-  if (!depPlugin) return i18n.t("plugins.dep_status.not_installed");
-  if (depPlugin.state !== "enabled") return i18n.t("plugins.dep_status.disabled");
-  return i18n.t("plugins.dep_status.enabled");
-}
-
 interface DependencyDetail {
   id: string;
   name: string;
@@ -592,23 +579,10 @@ async function openSettings(plugin: PluginInfo) {
   if (plugin.manifest.settings) {
     for (const field of plugin.manifest.settings) {
       settingsForm[field.key] =
-        savedSettings[field.key] ?? field.default ?? getDefaultValue(field.type);
+        savedSettings[field.key] ?? field.default ?? getPluginSettingDefaultValue(field.type);
     }
   }
   showSettingsModal.value = true;
-}
-
-function getDefaultValue(type: string): any {
-  switch (type) {
-    case "boolean":
-      return false;
-    case "number":
-      return 0;
-    case "select":
-      return "";
-    default:
-      return "";
-  }
 }
 
 function closeSettings() {
@@ -741,12 +715,6 @@ function invertSelection() {
     }
   }
   selectedPlugins.value = newSet;
-}
-
-function isAllSelected(): boolean {
-  return (
-    pluginStore.plugins.length > 0 && selectedPlugins.value.size === pluginStore.plugins.length
-  );
 }
 
 function showBatchDeleteConfirm() {

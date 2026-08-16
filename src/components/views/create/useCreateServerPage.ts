@@ -14,11 +14,12 @@ import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
 import { systemApi } from "@api/system";
-import { downloadServerApi, downloadApi } from "@api/downloader";
+import { downloadServerApi } from "@api/downloader";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
+import { useDownloadStore } from "@stores/downloadStore";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { isBrowserEnv } from "@api/tauri";
 
@@ -67,6 +68,7 @@ function logCreateServerDnd(message: string, payload?: unknown) {
 export function useCreateServerPage() {
   const router = useRouter();
   const serverstore = useServerStore();
+  const downloadStore = useDownloadStore();
   const toast = useToast();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
@@ -116,7 +118,7 @@ export function useCreateServerPage() {
 
   const hasSource = computed(() => {
     if (sourceType.value === "download")
-      return serverDownloadType.value && serverDownloadVersion.value;
+      return !!(serverDownloadType.value && serverDownloadVersion.value);
     return sourcePath.value.trim().length > 0 && sourceType.value !== "";
   });
 
@@ -651,7 +653,7 @@ export function useCreateServerPage() {
     // 临时下载文件路径（下载模式下使用）
     let tempDownloadPath: string | null = null;
     let scannedStartup = selectedStartup.value;
-    let scannedStartupMode = mapStartupModeForModpack(selectedStartup?.mode ?? "jar");
+    let scannedStartupMode = mapStartupModeForModpack(selectedStartup.value?.mode ?? "jar");
     let scannedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
     let scannedMcVersion =
       scannedStartupMode === "starter"
@@ -671,29 +673,29 @@ export function useCreateServerPage() {
           const fileName = info.fileName || "server.jar";
           tempDownloadPath = `${tempDir}/${fileName}`;
 
-          // 使用 downloadApi 下载
-          const { taskInfo: dlTask, start: dlStart } = downloadApi.useDownload();
-          await dlStart({
-            url: info.url,
-            savePath: tempDownloadPath,
-            threadCount: 32,
-          });
+          // 走全局下载 store，顶栏任务球才能显示下载进度
+          await downloadStore.startTask(
+            {
+              url: info.url,
+              save_path: tempDownloadPath,
+              thread_count: 32,
+            },
+            { filename: fileName, savePath: tempDownloadPath, origin: "server" },
+          );
 
           // 等待下载完成
           await new Promise<void>((resolve, reject) => {
             const checkInterval = setInterval(() => {
-              if (dlTask.isFinished) {
+              if (downloadStore.isFinished) {
                 clearInterval(checkInterval);
-                if (dlTask.status === "Completed") {
-                  resolve();
-                } else {
+                if (downloadStore.isError) {
                   reject(
                     new Error(
-                      typeof dlTask.status === "object" && "Error" in dlTask.status
-                        ? dlTask.status.Error
-                        : i18n.t("downloadServerView.status.failed"),
+                      downloadStore.taskError || i18n.t("downloadServerView.status.failed"),
                     ),
                   );
+                } else {
+                  resolve();
                 }
               }
             }, 300);
@@ -763,8 +765,9 @@ export function useCreateServerPage() {
       if (tempDownloadPath) {
         try {
           await systemApi.removeFile(tempDownloadPath);
-        } catch {
-          // 清理失败不影响主流程
+        } catch (e) {
+          // 清理失败不影响主流程,仅 DEV 环境记录
+          if (import.meta.env.DEV) console.warn("Failed to clean temp download:", e);
         }
       }
 

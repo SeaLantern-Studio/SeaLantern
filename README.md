@@ -4,7 +4,7 @@
 
 # 海晶灯（Sea Lantern）
 
-一个轻量化的 Minecraft 服务器管理工具，基于 Tauri 2 + Rust + Vue 3
+一个轻量化的 Minecraft 服务器管理工具
 
 <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
   <a href="https://github.com/SeaLantern-Studio/SeaLantern/stargazers"><img src="https://img.shields.io/github/stars/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Stars" alt="GitHub Stars"></a>
@@ -12,14 +12,9 @@
   <a href="https://github.com/SeaLantern-Studio/SeaLantern/releases/latest"><img src="https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" alt="GitHub Latest"></a>
 </div>
 
-<div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
-  <a href="https://gitee.com/fps_z/SeaLantern/stargazers"><img src="https://gitee.com/fps_z/SeaLantern/badge/star.svg?theme=dark" alt="Gitee Stars"></a>
-  <a href="https://gitee.com/fps_z/SeaLantern/members"><img src="https://gitee.com/fps_z/SeaLantern/badge/fork.svg?theme=dark" alt="Gitee Forks"></a>
-</div>
-
 <kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
 
-## 有问题？尝试→[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
 </div>
 
@@ -27,74 +22,122 @@
 
 - [x] 下载服务器核心
 - [x] 客制化开服器体验
-- [ ] JVM 预设与分享社区
 - [x] 方便直观的更改配置(目前仅支持原版的`server.properties`)
 - [x] 快捷控制台命令
-- [ ] Cli 模式下让服务器在 Docker 容器化环境下运行
+- [ ] JVM 预设与分享社区
+- [ ] 在 Docker 容器化环境下运行
 
 ## 快速开始
 
-> Tips:实际上，我们拥有一个文档站!在那里你可以更直观和方便的观看各种文档!可以点击 [这里](https://docs.ideaflash.cn/zh/intro) 跳转
+| 我想要……               | 前往                                                |
+| ---------------------- | --------------------------------------------------- |
+| 下载并安装 Sea Lantern | [下载安装](https://docs.ideaflash.cn/zh/download)   |
+| 第一次创建或导入服务器 | [使用教程](https://docs.ideaflash.cn/zh/tutorial)   |
+| 不知道该选择哪种服务端 | [核心获取](https://docs.ideaflash.cn/zh/server-jar) |
+| 遇到使用问题或异常情况 | [常见问题](https://docs.ideaflash.cn/zh/faq)        |
 
-下载 [正式版](https://github.com/SeaLantern-Studio/SeaLantern/releases/latest)
+## 技术栈
 
-下载 [开发预览版](https://github.com/SeaLantern-Studio/SeaLantern-Preview/releases/latest)
+- **前端**: Vue 3 + TypeScript + Vite
+- **后端**: Rust + Tauri 2（Desktop 宿主）+ Axum（Web 宿主）
+- **通信**: Desktop 使用 Tauri IPC/Event，Web 使用 HTTP/WebSocket/SSE，插件使用宿主 Bridge
+- **Docker**: itzg/minecraft-server
 
-## 开发
+没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
 
-> 请注意! 我们正在讨论关于 branch 和 fork 变动相关的内容, 开发步骤部分可能随时会有所改变, 例如 GitHub 开发仓库的变动等内容!
+`application` 提供宿主无关的公共业务编排，`src-tauri` 与 `server` 分别作为 Desktop、Web 宿主，`interface` 只定义两端真正共用的契约。可复用的前端业务通过 `src/api` 接入，宿主专用页面和功能可以独立演进。详见[项目架构与代码组织](docs/architecture.md)。
 
-你需要 `Node.js 20+` 和 `Rust 1.70+`。
+> 使用系统 Webview 渲染。
 
-同时请安装`pnpm`和`cargo`。
+## 待开发功能
 
-**您需要先 Fork 源仓库，然后在你自己的仓库进行开发工作。**
+- 备份管理 - 世界存档的增量备份和还原
+- 定时任务 - 自动重启、定时备份、定时执行命令
+- 资源管理 - 从 Modrinth 和 CurseForge 搜索安装插件和模组
+- 内网穿透 - 集成 FRP，为现有联机功能提供更稳定可靠的连接方案
 
-如果你只是想要查看最新进度，可以直接拉取源仓库：
+## 给开发者
+
+开发前需要准备：
+
+| 依赖         | 版本   |
+| ------------ | ------ |
+| Node.js      | 24 LTS |
+| Rust         | stable |
+| pnpm         | 9.15.9 |
+| Only（可选） | 0.0.7+ |
+
+如果你还没有配置开发环境，可以先查看 [环境配置](https://docs.ideaflash.cn/zh/dev/environment)。
+
+拉取项目：
 
 ```bash
 git clone https://github.com/SeaLantern-Studio/SeaLantern.git
 cd SeaLantern
 ```
 
-项目的包管理器经过投票，从`npm`切换至`pnpm`。
-
-前端与后端：
+安装依赖并启动桌面开发环境：
 
 ```bash
 pnpm install
 pnpm tauri dev
 ```
 
-部分 Linux 发行版，例如 Arch，如果直接使用 `pnpm tauri dev` 可能不会编译成功，请检查你的依赖库是否完全，建议你在运行上述命令时使用包管理器提前安装 `Tauri` 的依赖以避免出现依赖不存在问题。[点击前往"Tauri | 前置要求"](https://tauri.app/zh-cn/start/prerequisites/#linux)
-
-仅前端：
+只预览前端页面：
 
 ```bash
-pnpm run dev
+pnpm dev
 ```
 
-### 代码质量检查
+只启动 HTTP / Docker 后端：
 
-提交代码前，我们**建议**运行以下命令来检查代码质量：
+```bash
+pnpm docker:dev
+```
+
+如果你在 Linux 上开发，可能需要先安装 Tauri 相关系统依赖。具体请看 [Tauri Linux 前置要求](https://tauri.app/zh-cn/start/prerequisites/#linux)。
+
+仓库根目录提供了 [`Onlyfile`](Onlyfile)，用于统一常用的开发、构建和检查命令。可以按需安装 [Only](https://github.com/KercyDing/only)：
+
+```bash
+cargo install only
+```
+
+安装后，在项目根目录运行以下命令查看所有可用任务：
+
+```bash
+only
+```
+
+常用命令包括 `only dev`、`only build`、`only check`、`only test` 和 `only ci`。
+
+### 代码检查
+
+提交代码前，我们**建议**运行完整的本地 CI：
+
+```bash
+only ci
+```
+
+该命令会执行前后端静态检查和全部测试；如果没有安装 Only，也可以分别运行以下命令：
 
 <details><summary>前端检查</summary>
 
 ```bash
 # 代码质量检查
-pnpm run lint
+pnpm lint
 
 # 类型检查并验证生产构建
-pnpm run build:check
+pnpm build:check
 
 # 自动修复可修复问题
-pnpm run lint:fix
+pnpm lint:fix
 
 # 格式化代码
-pnpm run fmt
+pnpm fmt
 
 # 检查代码格式
-pnpm run fmt:check
+pnpm fmt:check
 ```
 
 </details>
@@ -102,92 +145,38 @@ pnpm run fmt:check
 <details><summary>后端检查</summary>
 
 ```bash
-# 检查代码格式
-cargo fmt --all -- --check
+# 格式化
+cargo fmt --all
 
 # 编译检查
-cargo check --workspace
+cargo check --all-targets --workspace
 
 # 运行 Clippy 检查
-cargo clippy --workspace -- -D warnings
-
-# 格式化代码
-cargo fmt --all
+cargo clippy --all-targets --workspace -- -D warnings
 ```
 
 </details>
 
-项目已配置 CI 自动检查，确保所有提交的代码都符合规范。
-
-### 提交检查
-
-CI 会在 PR/推送时校验代码质量与相关规范。
-
-## 技术栈
-
-- **前端**: Vue 3 + TypeScript + Vite
-- **后端**: Rust + Tauri 2
-- **通信**: Tauri invoke
-- **Docker**: itzg/minecraft-server
-
-没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
-
-> 我们使用 Webview 作为前端渲染，Webview 是现代计算机系统中自带的应用，前后端内存占用基本不超过70MiB
-
-### 项目结构
-
-详见 [项目结构](docs/STRUCTURE.md)。
-
-## 待开发功能
-
-这些功能的位置都预留好了，代码骨架是现成的，等你来写：
-
-- 备份管理 - 世界存档的增量备份和还原
-- 内网穿透 - 集成 FRP
-- 定时任务 - 自动重启、定时备份、定时执行命令
-- 资源管理 - 从 Modrinth 和 CurseForge 搜索安装插件和模组
-
-## 交流群
-
-QQ 交流群：**293748695**，欢迎加入讨论！
+项目已配置 CI，会在推送和提交 Pull Request 时自动检查代码质量。
 
 ## 参与开发
 
-欢迎贡献代码！在开始之前，请阅读[贡献指南](docs/CONTRIBUTING.md)以了解代码规范和开发流程。
+我们欢迎任何形式的贡献：代码、文档、翻译、问题反馈、功能建议，或者 UI 草图都可以。
 
-界面也是。颜色在 CSS 变量里，组件是独立的，不喜欢就换。
-想做个主题皮肤？做。想把整个布局推翻重来？也行。
+1. Fork 仓库
+2. 新建自己的开发分支
+3. 完成修改并通过基本检查
+4. 提交 Pull Request
 
-当然，这一切的前提是你有足够的理由和能力，并且与群内的各位商讨后才能做，不然我们很有可能会**拒收 PR**
+涉及整体 UI、项目架构等较大改动时，请先在交流群或 GitHub Issues 中讨论；缺少充分理由的重大改动可能不会被合并。
 
-### 怎么贡献
+## 社区与反馈
 
-1. Fork 这个仓库的`beta`分支
-2. 建分支写代码
-3. 提 Pull Request
-4. 你的名字会出现在关于页面的贡献者墙上
+如果你在使用中遇到问题，或者想参与讨论，可以通过以下方式联系我们：
 
-不会写代码也行。说你想要什么功能，或者画个 UI 草图发出来，只要核实有用，都算贡献。
-
-### i18n 国际化支持指南
-
-Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英文等. [i18n 国际化指南](docs/language-system.md)
-
-除了当前已有的常见语言，想要加额外语言，请制作插件。
-
-## License
-
-[GNU General Public License v3.0](LICENSE)
-
-## Star History
-
-<a href="https://www.star-history.com/#SeaLantern-Studio/SeaLantern&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=SeaLantern-Studio/SeaLantern&type=date&legend=top-left" />
- </picture>
-</a>
+- QQ 一群：**293748695**
+- QQ 二群：**1085823754**
+- 问题反馈：[GitHub Issues](https://github.com/SeaLantern-Studio/SeaLantern/issues)
 
 ## 贡献者
 
@@ -195,11 +184,12 @@ Sea Lantern 支持多语言国际化，包括简体中文、繁体中文和英�
 
 [![Contributors](https://sealentern-contributors.sb4893.workers.dev/)](https://github.com/SeaLantern-Studio/SeaLantern/graphs/contributors)
 
+## 许可证
+
+[GNU Affero General Public License v3.0](LICENSE)
+
 ## 致谢
 
-Sea Lantern 是一个开源项目，遵循 GPLv3 协议。
+Minecraft 是 Mojang AB 的注册商标。本项目未经 Mojang 或 Microsoft 批准，也不与 Mojang 或 Microsoft 关联。
 
-Minecraft 是 Mojang AB 的注册商标。
-本项目未经 Mojang 或 Microsoft 批准，也不与 Mojang 或 Microsoft 关联。
-
-“我们搭建了骨架，而灵魂，交给你们。”
+> 我们搭建了骨架，而灵魂，交给你们。
