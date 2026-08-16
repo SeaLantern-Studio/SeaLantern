@@ -1,8 +1,0 @@
-[package]
-name = "docker-entry"
-version.workspace = true
-description = "Docker 容器入口程序"
-edition.workspace = true
-
-[dependencies]
-sealantern = { path = "../src-tauri", features = ["docker"] }
