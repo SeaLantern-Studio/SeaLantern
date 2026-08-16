@@ -52,9 +52,9 @@ use adapter::tauri::commands::update_install::{
 };
 use adapter::tauri::events::LogSenderState;
 use desktop::{
-    desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
-    desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
-    desktop_pick_startup_file, apply_acrylic,
+    apply_acrylic, desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file,
+    desktop_pick_jar_file, desktop_pick_java_file, desktop_pick_save_file,
+    desktop_pick_server_executable, desktop_pick_startup_file,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
