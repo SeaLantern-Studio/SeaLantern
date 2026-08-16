@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, computed } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
+import { settingsApi } from "@api/settings";
 import {
   useSettingsStore,
   SETTINGS_UPDATE_EVENT,
@@ -28,6 +29,7 @@ const backgroundSize = computed(() => settingsStore.backgroundSize);
 const isMacOS = isMacOSPlatform();
 
 let systemThemeQuery: MediaQueryList | null = null;
+let lastNativeAcrylic: boolean | null = null;
 let appearanceApplyQueue: Promise<void> = Promise.resolve();
 
 function handleSystemThemeChange(): void {
@@ -47,8 +49,12 @@ async function applyAppearanceSettings(): Promise<void> {
   applyFontSize(settings.font_size || 14);
   applyFontFamily(settings.font_family || "");
 
-  // 透明效果纯 CSS 实现,不再调用原生 acrylic,桌面清晰透出
   applyAcrylicEffect(settings.acrylic_enabled, settings.acrylic_blur_level);
+  // 桌面磨砂只能靠系统原生效果,状态变化时同步
+  if (lastNativeAcrylic !== settings.acrylic_enabled) {
+    lastNativeAcrylic = settings.acrylic_enabled;
+    await settingsApi.applyAcrylic(settings.acrylic_enabled);
+  }
 
   if (!isThemeProviderActive()) {
     applyColors(settings);
