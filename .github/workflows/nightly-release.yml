@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
   actions: read
 
 env:
@@ -22,7 +22,6 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
-      should_build: ${{ steps.hash-check.outputs.should_build }}
       tag: ${{ steps.meta.outputs.tag }}
       version: ${{ steps.meta.outputs.version }}
       release_name: ${{ steps.meta.outputs.release_name }}
@@ -39,28 +38,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: 检查 main 是否有新提交
-        id: hash-check
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          CURRENT_SHA="$(git rev-parse HEAD)"
-          LAST_SUCCESS_SHA="$(
-            gh api \
-              "repos/${GITHUB_REPOSITORY}/actions/workflows/nightly-release.yml/runs?branch=${RELEASE_BRANCH}&status=success&per_page=1" \
-              --jq '.workflow_runs[0].head_sha // ""'
-          )"
-
-          if [ -n "$LAST_SUCCESS_SHA" ] && [ "$CURRENT_SHA" = "$LAST_SUCCESS_SHA" ]; then
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
-            echo "main 提交未变化，跳过 Nightly 构建: $CURRENT_SHA"
-          else
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "检测到新的 main 提交，开始 Nightly 构建: ${LAST_SUCCESS_SHA:-无} -> $CURRENT_SHA"
-          fi
 
       - name: 生成 Nightly 标签与 Release 信息
         id: meta
@@ -103,35 +80,137 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-  publish-tauri-nightly:
-    name: 构建并发布 Nightly 桌面端
+  test-nightly:
+    name: 全量检查 (${{ matrix.name }})
     needs: validate-nightly
-    if: ${{ needs.validate-nightly.outputs.should_build == 'true' }}
     permissions:
-      contents: write
+      contents: read
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest"
+            name: "macOS ARM64"
+          - platform: "macos-15-intel"
+            name: "macOS x64"
+          - platform: "ubuntu-22.04"
+            name: "Linux x64"
+          - platform: "ubuntu-22.04-arm"
+            name: "Linux ARM64"
+          - platform: "windows-latest"
+            name: "Windows x64"
+          - platform: "windows-11-arm"
+            name: "Windows ARM64"
+
+    runs-on: ${{ matrix.platform }}
+    env:
+      RUSTFLAGS: "--cfg ci_skip_validation"
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-nightly.outputs.source_sha }}
+
+      - name: 安装系统依赖 (Ubuntu 专用)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf nasm
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: 准备 pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-pnpm-
+            ${{ runner.os }}-pnpm-
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: 缓存 Rust 编译产物
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 运行前端全量检查
+        run: pnpm run fmt:check && pnpm run lint && pnpm run build:check
+
+      - name: 检查 Rust 格式
+        run: cargo fmt --all -- --check
+
+      - name: 运行 Rust Check
+        run: cargo check --workspace --all-targets
+
+      - name: 运行 Rust 全量测试
+        run: |
+          cargo test -p sealantern-application
+          cargo test -p sealantern-core --lib
+          cargo test -p sealantern-extra
+          cargo test -p sealantern-infra --all-features
+          cargo test -p sealantern-interface
+          cargo test -p sealantern-server
+          cargo test --lib -p sealantern
+
+  build-tauri-nightly:
+    name: 构建 Nightly (${{ matrix.name }})
+    needs:
+      - validate-nightly
+      - test-nightly
+    permissions:
+      contents: read
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: "macos-latest"
+            name: "macOS ARM64"
             args: "--target aarch64-apple-darwin"
             asset_arch: "arm64"
-          - platform: "macos-latest"
+            asset_key: "macos-arm64"
+          - platform: "macos-15-intel"
+            name: "macOS x64"
             args: "--target x86_64-apple-darwin"
             asset_arch: "x64"
+            asset_key: "macos-x64"
           - platform: "ubuntu-22.04"
+            name: "Linux x64"
             args: ""
             asset_arch: "x64"
+            asset_key: "linux-x64"
           - platform: "ubuntu-22.04-arm"
+            name: "Linux ARM64"
             args: ""
             asset_arch: "arm64"
+            asset_key: "linux-arm64"
           - platform: "windows-latest"
+            name: "Windows x64"
             args: ""
             asset_arch: "x64"
+            asset_key: "windows-x64"
           - platform: "windows-11-arm"
+            name: "Windows ARM64"
             args: ""
             asset_arch: "arm64"
+            asset_key: "windows-arm64"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -141,7 +220,7 @@ jobs:
           ref: ${{ needs.validate-nightly.outputs.source_sha }}
 
       - name: 安装系统依赖 (Ubuntu 专用)
-        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils nasm
@@ -151,15 +230,18 @@ jobs:
         with:
           node-version: "lts/*"
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: 准备 pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
 
       - name: 缓存 pnpm 依赖
         uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-pnpm-
             ${{ runner.os }}-pnpm-
 
       - name: 安装 Rust 工具链 (默认目标)
@@ -177,68 +259,81 @@ jobs:
         with:
           workspaces: ". -> target"
 
-      - name: 安装前端依赖 (pnpm)
-        run: |
-          corepack prepare pnpm@9.15.9 --activate
-          pnpm install --frozen-lockfile
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
 
-      - name: 构建并上传 Nightly 产物
+      - name: 构建 Tauri 产物
         uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ needs.validate-nightly.outputs.tag }}
-          releaseName: ${{ needs.validate-nightly.outputs.release_name }}
-          releaseBody: ${{ needs.validate-nightly.outputs.release_body }}
-          releaseDraft: false
-          prerelease: true
           args: ${{ matrix.args }} -c src-tauri/tauri.conf.json
 
-      - name: 打包 Windows 免安装版
-        if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'
+      - name: 收集 Linux 发布产物
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ASSET_DIR="$RUNNER_TEMP/nightly-assets-${{ matrix.asset_key }}"
+          mkdir -p "$ASSET_DIR"
+
+          mapfile -t BUNDLE_FILES < <(
+            find target src-tauri/target -type f -path '*/bundle/*' \
+              \( -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' \) 2>/dev/null | sort -u
+          )
+          if [ ${#BUNDLE_FILES[@]} -eq 0 ]; then
+            echo "❌ 未找到 Linux 安装包"
+            exit 1
+          fi
+
+          for file in "${BUNDLE_FILES[@]}"; do
+            cp "$file" "$ASSET_DIR/"
+          done
+
+      - name: 收集并打包 Windows 发布产物
+        if: runner.os == 'Windows'
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.validate-nightly.outputs.tag }}
           VERSION: ${{ needs.validate-nightly.outputs.version }}
           ASSET_ARCH: ${{ matrix.asset_arch }}
+          ASSET_KEY: ${{ matrix.asset_key }}
         run: |
+          $assetDir = Join-Path $env:RUNNER_TEMP "nightly-assets-$env:ASSET_KEY"
+          New-Item -ItemType Directory -Path $assetDir | Out-Null
+
+          $bundleFiles = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.FullName -match '\\bundle\\(msi|nsis)\\' -and
+              ($_.Extension -eq ".msi" -or $_.Extension -eq ".exe")
+            }
+          if (@($bundleFiles).Count -eq 0) {
+            throw "未找到 Windows 安装包。"
+          }
+          $bundleFiles | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $assetDir }
+
           $releaseDir = Get-ChildItem -Path "target", "src-tauri/target" -Recurse -File -Filter "sealantern.exe" -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match '\\release\\sealantern\.exe$' -and $_.FullName -notmatch '\\bundle\\' } |
             Select-Object -First 1 -ExpandProperty DirectoryName
-
           if (-not $releaseDir) {
             throw "未找到 Windows 可执行文件，无法打包免安装版。"
           }
 
-          $stageDir = Join-Path $env:RUNNER_TEMP "portable-windows-$env:ASSET_ARCH"
-          Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path $stageDir | Out-Null
-
-          Copy-Item -LiteralPath (Join-Path $releaseDir "sealantern.exe") -Destination $stageDir
-
+          $portableDir = Join-Path $env:RUNNER_TEMP "portable-windows-$env:ASSET_ARCH"
+          New-Item -ItemType Directory -Path $portableDir | Out-Null
+          Copy-Item -LiteralPath (Join-Path $releaseDir "sealantern.exe") -Destination $portableDir
           Get-ChildItem -Path $releaseDir -File -Filter "*.dll" -ErrorAction SilentlyContinue |
-            ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $stageDir }
+            ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $portableDir }
+          Copy-Item -LiteralPath "LICENSE", "NOTICE" -Destination $portableDir
 
-          Copy-Item -LiteralPath "LICENSE", "NOTICE" -Destination $stageDir
+          $portablePath = Join-Path $assetDir "Sea.Lantern_${env:VERSION}_windows_${env:ASSET_ARCH}_portable.zip"
+          Compress-Archive -Path (Join-Path $portableDir '*') -DestinationPath $portablePath
 
-          $assetName = "Sea.Lantern_${env:VERSION}_windows_${env:ASSET_ARCH}_portable.zip"
-          $assetPath = Join-Path $env:RUNNER_TEMP $assetName
-          if (Test-Path $assetPath) {
-            Remove-Item -LiteralPath $assetPath -Force
-          }
-
-          Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $assetPath -Force
-          gh release upload $env:TAG $assetPath --clobber
-
-      - name: 打包 macOS 免安装版
-        if: matrix.platform == 'macos-latest'
+      - name: 收集并打包 macOS 发布产物
+        if: runner.os == 'macOS'
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.validate-nightly.outputs.tag }}
           VERSION: ${{ needs.validate-nightly.outputs.version }}
           ASSET_ARCH: ${{ matrix.asset_arch }}
+          ASSET_KEY: ${{ matrix.asset_key }}
         run: |
           set -euo pipefail
 
@@ -248,68 +343,142 @@ jobs:
               SEARCH_ROOTS+=("$dir")
             fi
           done
-
           if [ ${#SEARCH_ROOTS[@]} -eq 0 ]; then
-            echo "❌ 未找到 target 目录，无法打包 macOS 免安装版"
+            echo "❌ 未找到 target 目录"
             exit 1
           fi
+
+          ASSET_DIR="$RUNNER_TEMP/nightly-assets-$ASSET_KEY"
+          mkdir -p "$ASSET_DIR"
+
+          DMG_FILES=()
+          while IFS= read -r file; do
+            DMG_FILES+=("$file")
+          done < <(find "${SEARCH_ROOTS[@]}" -type f -name '*.dmg' -path '*/bundle/*' 2>/dev/null | sort -u)
+          if [ ${#DMG_FILES[@]} -eq 0 ]; then
+            echo "❌ 未找到 macOS DMG 安装包"
+            exit 1
+          fi
+          for file in "${DMG_FILES[@]}"; do
+            cp "$file" "$ASSET_DIR/"
+          done
 
           APP_PATH="$(find "${SEARCH_ROOTS[@]}" -type d -name '*.app' -path '*/bundle/*' 2>/dev/null | head -n 1 || true)"
           APP_ARCHIVE_PATH=""
           if [ -z "$APP_PATH" ]; then
             APP_ARCHIVE_PATH="$(find "${SEARCH_ROOTS[@]}" -type f -name '*.app.tar.gz' -path '*/bundle/*' 2>/dev/null | head -n 1 || true)"
           fi
-
           if [ -z "$APP_PATH" ] && [ -z "$APP_ARCHIVE_PATH" ]; then
-            echo "❌ 未找到 macOS .app 或 .app.tar.gz 产物，无法打包免安装版"
-            echo "已发现的 bundle 路径:"
-            find "${SEARCH_ROOTS[@]}" -path '*/bundle/*' 2>/dev/null | sort || true
+            echo "❌ 未找到 macOS .app 或 .app.tar.gz 产物"
             exit 1
           fi
 
-          STAGE_DIR="$RUNNER_TEMP/portable-macos-$ASSET_ARCH"
-          rm -rf "$STAGE_DIR"
-          mkdir -p "$STAGE_DIR"
-
+          PORTABLE_DIR="$RUNNER_TEMP/portable-macos-$ASSET_ARCH"
+          mkdir -p "$PORTABLE_DIR"
           if [ -n "$APP_PATH" ]; then
-            cp -R "$APP_PATH" "$STAGE_DIR/"
+            cp -R "$APP_PATH" "$PORTABLE_DIR/"
             APP_BASENAME="$(basename "$APP_PATH")"
           else
-            tar -C "$STAGE_DIR" -xzf "$APP_ARCHIVE_PATH"
-            EXTRACTED_APP_PATH="$(find "$STAGE_DIR" -maxdepth 2 -type d -name '*.app' 2>/dev/null | head -n 1 || true)"
+            tar -C "$PORTABLE_DIR" -xzf "$APP_ARCHIVE_PATH"
+            EXTRACTED_APP_PATH="$(find "$PORTABLE_DIR" -maxdepth 2 -type d -name '*.app' 2>/dev/null | head -n 1 || true)"
             if [ -z "$EXTRACTED_APP_PATH" ]; then
-              echo "❌ 已找到 $APP_ARCHIVE_PATH，但解压后未发现 .app 目录"
-              find "$STAGE_DIR" -maxdepth 2 2>/dev/null | sort || true
+              echo "❌ 解压后未发现 .app 目录"
               exit 1
             fi
             APP_BASENAME="$(basename "$EXTRACTED_APP_PATH")"
           fi
 
-          cp LICENSE NOTICE "$STAGE_DIR/"
+          cp LICENSE NOTICE "$PORTABLE_DIR/"
+          PORTABLE_PATH="$ASSET_DIR/Sea.Lantern_${VERSION}_macos_${ASSET_ARCH}_portable.tar.gz"
+          tar -C "$PORTABLE_DIR" -czf "$PORTABLE_PATH" "$APP_BASENAME" LICENSE NOTICE
 
-          ASSET_NAME="Sea.Lantern_${VERSION}_macos_${ASSET_ARCH}_portable.tar.gz"
-          ASSET_PATH="$RUNNER_TEMP/$ASSET_NAME"
-          tar -C "$STAGE_DIR" -czf "$ASSET_PATH" "$APP_BASENAME" LICENSE NOTICE
+      - name: 上传本平台构建产物到工作流
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-assets-${{ matrix.asset_key }}
+          path: ${{ runner.temp }}/nightly-assets-${{ matrix.asset_key }}/*
+          if-no-files-found: error
+          retention-days: 3
 
-          gh release upload "$TAG" "$ASSET_PATH" --clobber
+  publish-nightly:
+    name: 汇总并发布 Nightly
+    needs:
+      - validate-nightly
+      - build-tauri-nightly
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: 下载全部平台构建产物
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nightly-assets-*
+          path: release-assets
+
+      - name: 校验发布产物
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t ASSETS < <(find release-assets -type f | sort)
+          if [ ${#ASSETS[@]} -eq 0 ]; then
+            echo "❌ 没有可发布的构建产物"
+            exit 1
+          fi
+
+          DUPLICATES="$(printf '%s\n' "${ASSETS[@]##*/}" | sort | uniq -d)"
+          if [ -n "$DUPLICATES" ]; then
+            echo "❌ 不同平台产生了同名文件，无法安全汇总发布:"
+            echo "$DUPLICATES"
+            exit 1
+          fi
+
+          printf '待发布产物 (%s 个):\n' "${#ASSETS[@]}"
+          printf '  %s\n' "${ASSETS[@]}"
+
+      - name: 一次性创建或更新 Nightly Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.validate-nightly.outputs.tag }}
+          RELEASE_NAME: ${{ needs.validate-nightly.outputs.release_name }}
+          RELEASE_BODY: ${{ needs.validate-nightly.outputs.release_body }}
+          SOURCE_SHA: ${{ needs.validate-nightly.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t ASSETS < <(find release-assets -type f | sort)
+          NOTES_FILE="$RUNNER_TEMP/nightly-release-notes.md"
+          printf '%s\n' "$RELEASE_BODY" > "$NOTES_FILE"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "$RELEASE_NAME" \
+              --notes-file "$NOTES_FILE" \
+              --prerelease
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --target "$SOURCE_SHA" \
+              --title "$RELEASE_NAME" \
+              --notes-file "$NOTES_FILE" \
+              --prerelease
+          fi
 
   cleanup-old-nightly:
     name: 清理旧 Nightly 发布
     needs:
       - validate-nightly
-      - publish-tauri-nightly
-    if: >-
-      always() &&
-      needs.validate-nightly.outputs.should_build == 'true'
+      - publish-nightly
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
-      - name: 删除当前日期之外的旧 Nightly Release
+      - name: 删除当前 Nightly 之外的旧发布
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT_TAG: ${{ needs.validate-nightly.outputs.tag }}
-          PUBLISH_RESULT: ${{ needs.publish-tauri-nightly.result }}
         run: |
           set -euo pipefail
 
@@ -319,7 +488,7 @@ jobs:
 
           deleted=0
           for tag in "${NIGHTLY_TAGS[@]}"; do
-            if [ "$tag" = "$CURRENT_TAG" ] && [ "$PUBLISH_RESULT" = "success" ]; then
+            if [ "$tag" = "$CURRENT_TAG" ]; then
               continue
             fi
 
