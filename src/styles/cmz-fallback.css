@@ -1395,18 +1395,28 @@
 }
 
 /* === Accordion 毛玻璃适配 === */
+/* acrylic 下禁止嵌套 backdrop-filter（窗口本身已 blur，再叠会导致 WebKit 渲染异常、文字重影），
+   改用高不透明背景承载内容，展开面板与标题之间用分隔线区分 */
 [data-acrylic="on"] .cmz-accordion {
-  background: var(--sl-surface);
-  border-color: var(--sl-glass-border);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  background: var(--sl-acrylic-bg);
+  border-color: var(--sl-acrylic-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-acrylic="on"] .cmz-accordion-panel__header {
+  background: transparent;
 }
 
 [data-acrylic="on"] .cmz-accordion-panel__header:hover:not(:disabled) {
-  background: var(--sl-bg-tertiary);
+  background: var(--sl-surface-hover);
 }
 
-/* Accordion 内嵌套的 markdown glass 不再重复加背景，避免叠白 */
+[data-acrylic="on"] .cmz-accordion-panel--open > .cmz-accordion-panel__header {
+  border-bottom: 1px solid var(--sl-acrylic-border);
+}
+
+/* 展开内容区保持和 accordion 一体，不要透明卡片造成层次混乱 */
 [data-acrylic="on"] .cmz-accordion .cmz-md--glass {
   background: transparent;
   border: none;
@@ -1414,4 +1424,5 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   padding: 0;
+  border-radius: 0;
 }
