@@ -335,37 +335,30 @@
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
 }
 
-.cmz-select__options {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 100;
+/* 组件库下拉浮层 Teleport 到 body,定位由 JS 内联控制,这里只管视觉 */
+.cmz-select-dropdown {
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   background: var(--sl-surface);
   box-shadow: var(--sl-shadow-md);
-  max-height: 240px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-/* 浮层用丙烯酸玻璃材质 */
-[data-acrylic="on"] .cmz-select__options {
-  background: var(--sl-acrylic-bg);
-  backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-strong));
-  -webkit-backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-strong));
+/* 高级材质浮层:近实色底 + 阴影区分层级,避免半透明透出底下内容
+   (透明窗口 WebView2 下 blur 不渲染,玻璃配方只会留下半透明残留) */
+[data-acrylic="on"] .cmz-select-dropdown {
+  background: var(--sl-acrylic-bg-strong);
   border-color: var(--sl-acrylic-border);
   box-shadow: var(--sl-shadow-elevated);
 }
 
 /* 关闭丙烯酸时退回实底 */
-[data-acrylic="off"] .cmz-select__options {
+[data-acrylic="off"] .cmz-select-dropdown {
   background: var(--sl-surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
-.cmz-select__option {
+/* 选项:类名对齐组件库原生 .selected / .highlighted */
+.cmz-select-option {
   padding: 10px 12px;
   cursor: pointer;
   color: var(--sl-text-primary);
@@ -373,11 +366,12 @@
   line-height: 1.4;
 }
 
-.cmz-select__option:hover {
+.cmz-select-option:hover,
+.cmz-select-option.highlighted {
   background: var(--sl-bg-secondary);
 }
 
-.cmz-select__option--selected {
+.cmz-select-option.selected {
   background: var(--sl-primary-bg);
   color: var(--sl-primary);
 }
@@ -1343,8 +1337,19 @@
 
 /* 输入框背景在毛玻璃下保持不透明 */
 [data-acrylic="on"] .cmz-input-container,
-[data-acrylic="on"] .cmz-textarea,
+[data-acrylic="on"] .cmz-textarea {
+  background: var(--sl-surface);
+}
+
+/* 高级材质下触发器用纯色底,与输入框一致不依赖 backdrop-filter
+   (透明窗口 WebView2 下 blur 不渲染,玻璃配方只会留下半透明残留) */
 [data-acrylic="on"] .cmz-select-trigger {
+  background: var(--sl-surface);
+  border-color: var(--sl-border);
+}
+
+/* 关闭材质时触发器退回实底 */
+[data-acrylic="off"] .cmz-select-trigger {
   background: var(--sl-surface);
 }
 
@@ -1395,34 +1400,13 @@
 }
 
 /* === Accordion 毛玻璃适配 === */
-/* acrylic 下禁止嵌套 backdrop-filter（窗口本身已 blur，再叠会导致 WebKit 渲染异常、文字重影），
-   改用高不透明背景承载内容，展开面板与标题之间用分隔线区分 */
+/* 容器自身不加 blur：父级 backdrop-filter 会截断子元素的模糊采样，
+   内部 glass 卡片会模糊不到窗口内容；模糊交给卡片自身即可 */
 [data-acrylic="on"] .cmz-accordion {
-  background: var(--sl-acrylic-bg);
-  border-color: var(--sl-acrylic-border);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-[data-acrylic="on"] .cmz-accordion-panel__header {
-  background: transparent;
+  background: var(--sl-surface);
+  border-color: var(--sl-glass-border);
 }
 
 [data-acrylic="on"] .cmz-accordion-panel__header:hover:not(:disabled) {
-  background: var(--sl-surface-hover);
-}
-
-[data-acrylic="on"] .cmz-accordion-panel--open > .cmz-accordion-panel__header {
-  border-bottom: 1px solid var(--sl-acrylic-border);
-}
-
-/* 展开内容区保持和 accordion 一体，不要透明卡片造成层次混乱 */
-[data-acrylic="on"] .cmz-accordion .cmz-md--glass {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  padding: 0;
-  border-radius: 0;
+  background: var(--sl-bg-tertiary);
 }
