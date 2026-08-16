@@ -81,6 +81,8 @@ const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
 let statusPollTimer: ReturnType<typeof setInterval> | null = null;
+// 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
+let isPageVisible = true;
 const syncedLogs = ref<string[]>([]);
 const logsDisplayClearedByUser = ref(false);
 
@@ -172,14 +174,27 @@ async function loadConsoleSettings() {
 function startStatusPolling() {
   stopStatusPolling();
   statusPollTimer = setInterval(() => {
+    if (!isPageVisible) return;
     void refreshStatus({ silent: true });
-  }, 3000);
+  }, 5000);
 }
 
 function stopStatusPolling() {
   if (statusPollTimer) {
     clearInterval(statusPollTimer);
     statusPollTimer = null;
+  }
+}
+
+function handleVisibilityChange() {
+  const visible = document.visibilityState === "visible";
+  if (visible === isPageVisible) return;
+  isPageVisible = visible;
+  if (visible) {
+    void refreshStatus({ silent: true });
+    startStatusPolling();
+  } else {
+    stopStatusPolling();
   }
 }
 
@@ -329,12 +344,15 @@ function handleJoinTicketInput(value: string) {
 
 onActivated(async () => {
   // 设置加载与状态拉取互不依赖,并行执行
+  isPageVisible = true;
   await Promise.all([loadConsoleSettings(), refreshStatus()]);
   startStatusPolling();
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 
 onDeactivated(() => {
   stopStatusPolling();
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
   syncedLogs.value = [];
   logsDisplayClearedByUser.value = false;
 });
