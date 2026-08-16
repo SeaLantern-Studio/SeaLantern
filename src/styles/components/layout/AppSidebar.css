@@ -311,17 +311,3 @@
 .lower-side {
   margin-top: auto;
 }
-
-/* 高级材质下侧栏文字向 text-primary 加深一档:
-   侧栏透明叠在壁纸磨砂上,浅色壁纸偏黑/暗色壁纸偏浅时默认文字对比不足 */
-[data-acrylic="on"] .nav-item {
-  color: color-mix(in srgb, var(--sl-text-primary) 30%, var(--sl-text-secondary));
-}
-
-[data-acrylic="on"] .nav-item:hover {
-  color: var(--sl-text-primary);
-}
-
-[data-acrylic="on"] .nav-group-label {
-  color: color-mix(in srgb, var(--sl-text-secondary) 40%, var(--sl-text-tertiary));
-}
