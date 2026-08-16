@@ -165,35 +165,36 @@ export function themeRevealTransition(
   };
 
   // 切换状态落地保证:startViewTransition 在透明窗口下可能挂起或回调不执行,
-  // 超时后跳过动画强制执行切换,防止彩虹轮询这类状态卡死
+  // 超时后跳过动画强制执行切换,防止彩虹轮询这类状态卡死;
+  // origin 变量必须保留到动画结束后再清理,否则扩散起点会回退到中心
   let switched = false;
   const doSwitch = (): void => {
     if (switched) return;
     switched = true;
-    try {
-      switchTheme();
-    } finally {
-      cleanup();
-    }
+    switchTheme();
   };
 
   if (document.startViewTransition) {
     try {
       const vt = document.startViewTransition(() => doSwitch());
-      vt.finished.catch(() => doSwitch());
+      // 动画结束后才移除起点变量;失败时兜底强制切换
+      vt.finished.finally(cleanup).catch(() => doSwitch());
       // 动画引擎异常时的兜底:过渡未落地才跳过并强制切换,
       // 正常完成的过渡不做任何干预,避免掐断动画造成闪烁
       window.setTimeout(() => {
         if (!switched) {
           vt.skipTransition?.();
           doSwitch();
+          cleanup();
         }
       }, 800);
     } catch {
       doSwitch();
+      cleanup();
     }
   } else {
     doSwitch();
+    cleanup();
   }
 }
 
