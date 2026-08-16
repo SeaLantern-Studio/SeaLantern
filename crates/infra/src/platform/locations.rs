@@ -23,6 +23,7 @@ const APP_DIR_NAME: &str = "SeaLantern";
 const APP_DIR_NAME_LOWERCASE: &str = "sea-lantern";
 
 /// 回退方案使用的隐藏目录名（Linux `$HOME` 回退、Windows 非 MSI 最终回退）。
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 const APP_DIR_HIDDEN: &str = ".sea-lantern";
 
 /// Docker 容器内的数据目录。

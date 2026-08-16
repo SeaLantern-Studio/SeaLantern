@@ -29,9 +29,9 @@ pub fn apply_acrylic(app: tauri::AppHandle, enabled: bool) -> Result<(), String>
 
     #[cfg(target_os = "macos")]
     {
-        use window_vibrancy::{apply_vibrancy, clear_vibrancy, NSVisualEffectView};
+        use window_vibrancy::{apply_vibrancy, clear_vibrancy, NSVisualEffectMaterial};
         if enabled {
-            apply_vibrancy(&window, NSVisualEffectView::Sidebar, None, None)
+            apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None)
                 .map_err(|e| format!("apply vibrancy failed: {e}"))?;
         } else {
             clear_vibrancy(&window).map_err(|e| format!("clear vibrancy failed: {e}"))?;
