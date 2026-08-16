@@ -15,15 +15,11 @@
   gap: 0;
 }
 
+/* 配置页垂直 Tab 栏:宽度由 app.css 全局统一 */
 .config-tabbar-sticky {
   position: sticky;
   top: var(--sl-space-md);
   flex-shrink: 0;
-}
-
-/* 配置页垂直 Tab 栏宽度 */
-.config-tabbar-sticky .cmz-tab-bar--vertical {
-  min-width: 140px;
 }
 
 .config-main {
