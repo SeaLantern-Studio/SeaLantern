@@ -12,3 +12,16 @@
 .splash-fade-leave-to {
   opacity: 0;
 }
+
+/* ===== 竖向 Tab 栏统一规范 =====
+   各页面竖直 tab 栏(设置/配置/插件/玩家/帮助)统一规格:
+   固定 220px 宽、按钮占满整行左对齐、与右侧内容固定间距 */
+.cmz-tab-bar--vertical {
+  width: 220px;
+  min-width: 220px;
+}
+
+.cmz-tab-bar--vertical .cmz-tab-bar__tab {
+  width: 100%;
+  justify-content: flex-start;
+}
