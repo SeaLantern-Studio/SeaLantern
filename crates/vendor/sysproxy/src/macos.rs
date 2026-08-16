@@ -1,4 +1,4 @@
-use crate::{Autoproxy, Error, Result, Sysproxy};
+use crate::{Autoproxy, Error, MacosProxySettings, Result, Sysproxy};
 use log::debug;
 use std::{
     borrow::Cow,
@@ -81,6 +81,24 @@ impl ProxyType {
 }
 
 impl Sysproxy {
+    /// Read all proxy kinds for the active network service without collapsing
+    /// them into a single endpoint.
+    #[inline]
+    pub fn get_proxy_settings() -> Result<MacosProxySettings> {
+        let service_uuid = get_active_network_service_uuid()?;
+        let scp = SCPreferences::default(&CFString::new("sysproxy-rs"));
+        let proxies_dict = get_proxies_by_service_uuid(&scp, &service_uuid)?;
+
+        Ok(MacosProxySettings {
+            http: parse_proxies_from_dict(&proxies_dict, ProxyType::Http)?,
+            https: parse_proxies_from_dict(&proxies_dict, ProxyType::Https)?,
+            socks: parse_proxies_from_dict(&proxies_dict, ProxyType::Socks)?,
+            bypass: parse_bypass_from_dict(&proxies_dict)?.join(","),
+            auto_config: parse_proxyauto_from_dict(&proxies_dict)?,
+            auto_discovery: read_bool_flag(&proxies_dict, "ProxyAutoDiscoveryEnable"),
+        })
+    }
+
     #[inline]
     pub fn get_system_proxy() -> Result<Sysproxy> {
         let service_uuid = get_active_network_service_uuid()?;
