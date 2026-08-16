@@ -7,7 +7,6 @@ members = [
     "crates/interface",
     "server",
     "src-tauri",
-    "docker-entry",
     "crates/vendor/java-manager",
 ]
 resolver = "2"
