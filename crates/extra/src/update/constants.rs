@@ -10,8 +10,7 @@ pub const UPDATE_GITHUB_API_BASE: &str = "https://api.github.com/repos";
 pub const UPDATE_HTTP_USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-pub const PLUGIN_MARKET_HTTP_USER_AGENT: &str =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0";
+pub const PLUGIN_MARKET_HTTP_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0";
 
 pub const AUR_PACKAGE_INFO_URL: &str = "https://aur.archlinux.org/rpc/v5/info/sealantern";
 pub const AUR_PACKAGE_PAGE_URL: &str = "https://aur.archlinux.org/packages/sealantern";

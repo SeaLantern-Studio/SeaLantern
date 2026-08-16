@@ -20,7 +20,7 @@ use serde_json::Value as JsonValue;
 use crate::app_plugin::{AppPluginError, PluginManifest};
 use crate::observability;
 
-use self::storage::{json_to_lua, lua_to_json, PluginStorage};
+use self::storage::{PluginStorage, json_to_lua, lua_to_json};
 
 const EXECUTION_HOOK_INTERVAL: u32 = 1_000;
 const MAX_EXECUTION_INSTRUCTIONS: u64 = 1_000_000;

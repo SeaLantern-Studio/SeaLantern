@@ -7,9 +7,9 @@ use super::super::archive::{
 use super::super::formats::paperclip_list;
 use super::super::model::{ArtifactInfo, ArtifactRole, EvidenceSource, ServerCategory};
 use super::{
-    api_component, ecosystems_for_key, list_location, manifest_location, product_from_key,
+    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal, api_component,
+    ecosystems_for_key, list_location, manifest_location, product_from_key,
     product_key_from_coordinate, release_channel, strip_jar_suffix, target_product_key,
-    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal,
 };
 
 const SHARED_PAPERCLIP_MAIN_CLASSES: &[&str] =

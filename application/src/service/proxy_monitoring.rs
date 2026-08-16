@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
-use sealantern_infra::net::{apply_system_proxy_snapshot, NetworkUpdate, SystemProxySnapshot};
+use sealantern_infra::net::{NetworkUpdate, SystemProxySnapshot, apply_system_proxy_snapshot};
 use sealantern_infra::platform::current_system_proxy;
 
 const SYSTEM_PROXY_POLL_INTERVAL: Duration = Duration::from_secs(3);
@@ -197,8 +197,8 @@ fn refresh_proxy(
 #[cfg(test)]
 mod tests {
     use std::collections::VecDeque;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Mutex;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::*;
 

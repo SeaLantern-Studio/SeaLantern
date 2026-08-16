@@ -237,7 +237,7 @@ fn copy_dir_recursive(
             let metadata = match tokio::fs::symlink_metadata(&src_path).await {
                 Ok(m) => m,
                 Err(e) => {
-                    return Err(format!("读取条目元数据 '{}' 失败: {}", src_path.display(), e))
+                    return Err(format!("读取条目元数据 '{}' 失败: {}", src_path.display(), e));
                 }
             };
             if metadata.file_type().is_symlink() {

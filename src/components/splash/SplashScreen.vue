@@ -79,6 +79,12 @@ watch(
   z-index: 9999;
 }
 
+[data-acrylic="on"] .splash-screen,
+[data-acrylic]:not([data-acrylic="off"]) .splash-screen {
+  /* 与主页内容区共用同一层材质遮罩，避免启动屏显得更白或更透。 */
+  background-color: var(--sl-surface, var(--sl-bg, #f8fafc));
+}
+
 .splash-content {
   display: flex;
   flex-direction: column;

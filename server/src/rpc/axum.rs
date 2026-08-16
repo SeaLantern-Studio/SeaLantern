@@ -1,21 +1,21 @@
 //! Axum HTTP 到 RPC 契约的传输适配器。
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use axum::{
-    http::{header::HeaderName, HeaderMap, HeaderValue, StatusCode},
-    response::{IntoResponse, Response},
     Json,
+    http::{HeaderMap, HeaderValue, StatusCode, header::HeaderName},
+    response::{IntoResponse, Response},
 };
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::observability;
 
 use super::{
-    dispatch, RpcAccess, RpcContext, RpcError, RpcErrorCode, RpcMethod, RpcRequest, RpcRequestId,
-    RpcResult, RpcTransport,
+    RpcAccess, RpcContext, RpcError, RpcErrorCode, RpcMethod, RpcRequest, RpcRequestId, RpcResult,
+    RpcTransport, dispatch,
 };
 
 const REQUEST_ID_HEADER: HeaderName = HeaderName::from_static("x-request-id");
@@ -188,7 +188,7 @@ where
                 "authorization_rejected",
                 error,
                 state.access_resolver.rejection_status(),
-            )
+            );
         }
     };
 
@@ -309,19 +309,19 @@ mod tests {
     use std::sync::Mutex;
 
     use axum::{
-        body::{to_bytes, Body},
-        http::Request,
         Router,
+        body::{Body, to_bytes},
+        http::Request,
     };
     use serde_json::Value;
     use tower::ServiceExt;
 
     use super::*;
     use crate::rpc::{
-        methods::server::SendConsoleCommand,
-        methods::PERMISSION_SERVER_CONSOLE_SEND,
-        service::{ConsoleCommandService, ConsoleCommandServiceError},
         RpcMethodName, RpcPermission,
+        methods::PERMISSION_SERVER_CONSOLE_SEND,
+        methods::server::SendConsoleCommand,
+        service::{ConsoleCommandService, ConsoleCommandServiceError},
     };
 
     struct RecordingConsoleService {
@@ -416,11 +416,12 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "permission_denied");
         assert_eq!(body["requestId"], "http-test-42");
-        assert!(svc
-            .commands
-            .lock()
-            .expect("recording service lock")
-            .is_empty());
+        assert!(
+            svc.commands
+                .lock()
+                .expect("recording service lock")
+                .is_empty()
+        );
     }
 
     #[tokio::test]
@@ -444,11 +445,12 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "invalid_argument");
         assert_eq!(body["requestId"], "http-test-42");
-        assert!(svc
-            .commands
-            .lock()
-            .expect("recording service lock")
-            .is_empty());
+        assert!(
+            svc.commands
+                .lock()
+                .expect("recording service lock")
+                .is_empty()
+        );
     }
 
     #[test]
@@ -501,11 +503,12 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "permission_denied");
         assert_eq!(body["requestId"], "http-test-42");
-        assert!(svc
-            .commands
-            .lock()
-            .expect("recording service lock")
-            .is_empty());
+        assert!(
+            svc.commands
+                .lock()
+                .expect("recording service lock")
+                .is_empty()
+        );
     }
 
     #[tokio::test]

@@ -7,12 +7,12 @@
 //! [`SettingsService`] 时统一转为接口契约错误 [`SettingsServiceError`]。
 
 use async_trait::async_trait;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use sealantern_extra::config::SettingsManager;
 use sealantern_extra::models::{
-    AppSettings, PartialAppSettings, UpdateResult, DEFAULT_ACRYLIC_BLUR_LEVEL,
+    AppSettings, DEFAULT_ACRYLIC_BLUR_LEVEL, PartialAppSettings, UpdateResult,
 };
 use sealantern_interface::settings::{
     SettingsEntry, SettingsEntryType, SettingsGroupInfo, SettingsOption, SettingsOverview,
@@ -21,8 +21,8 @@ use sealantern_interface::{SettingsService, SettingsServiceError};
 
 use crate::error::SettingsError;
 use crate::service::network_settings::{
-    commit_persisted_proxy, GlobalNetworkSettingsRuntime, NetworkSettingsRuntime,
-    PreparedProxyUpdate,
+    GlobalNetworkSettingsRuntime, NetworkSettingsRuntime, PreparedProxyUpdate,
+    commit_persisted_proxy,
 };
 
 /// 基于 `extra` 配置管理的设置服务实现。
@@ -407,6 +407,22 @@ fn build_general_group() -> SettingsGroupInfo {
                     },
                 ],
             },
+            SettingsEntry {
+                id: "auto_lightweight_minutes".to_string(),
+                display_name: "settings.auto_lightweight".to_string(),
+                description: "settings.auto_lightweight_desc".to_string(),
+                entry_type: SettingsEntryType::Integer,
+                required: false,
+                has_value: false,
+                default_value: None,
+                options: [1, 3, 5, 10]
+                    .into_iter()
+                    .map(|minutes| SettingsOption {
+                        value: minutes.to_string(),
+                        display_name: format!("{minutes} minutes"),
+                    })
+                    .collect(),
+            },
         ],
     }
 }
@@ -775,8 +791,8 @@ mod tests {
 
     use super::*;
     use sealantern_extra::models::SettingsGroup;
-    use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
     use sealantern_infra::net::NetworkCommitError;
+    use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     enum NetworkEvent {
@@ -928,9 +944,11 @@ mod tests {
             .expect("partial settings update should succeed");
         assert_eq!(partially_updated.settings.default_port, 25566);
         assert_eq!(partially_updated.settings.theme, "dark");
-        assert!(partially_updated
-            .changed_groups
-            .contains(&SettingsGroup::ServerDefaults));
+        assert!(
+            partially_updated
+                .changed_groups
+                .contains(&SettingsGroup::ServerDefaults)
+        );
 
         let exported = service
             .export_json()

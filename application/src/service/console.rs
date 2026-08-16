@@ -75,7 +75,7 @@ mod tests {
     use std::path::PathBuf;
 
     use sealantern_core::instance::{InstanceSpec, LocalLaunch, StartupMode};
-    use sealantern_extra::server::log::{open_log_database, LogSource};
+    use sealantern_extra::server::log::{LogSource, open_log_database};
     use sealantern_infra::persistence::SqlValue;
 
     use super::*;

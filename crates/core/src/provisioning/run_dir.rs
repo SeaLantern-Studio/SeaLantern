@@ -64,7 +64,7 @@ impl std::error::Error for RunDirectoryError {}
 mod tests {
     use std::path::PathBuf;
 
-    use super::{resolve_run_directory, RunDirectoryError, RunDirectoryState};
+    use super::{RunDirectoryError, RunDirectoryState, resolve_run_directory};
 
     #[test]
     fn explicit_missing_directory_is_preserved_without_appending_a_name() {

@@ -15,10 +15,16 @@ import { settingsApi, getSystemFonts, type AppSettings, type SettingsGroup } fro
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
-import { applyAcrylicEffect } from "@utils/acrylic";
+import {
+  applyThemeWithReveal,
+  themeRevealTransition,
+  applyColors,
+  applyMinimalMode,
+} from "@utils/theme";
 import { usePluginStore } from "@stores/pluginStore";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
+import { supportsNativeWindowMaterial } from "@utils/platform";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -27,6 +33,7 @@ import {
 
 const toast = useToast();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
+const nativeMaterialSupported = supportsNativeWindowMaterial();
 
 const settings = ref<AppSettings | null>(null);
 
@@ -218,21 +225,42 @@ function handleFontFamilyChange() {
   }
 }
 
-function handleAcrylicChange(enabled: boolean) {
-  markChanged();
-  applyAcrylicEffect(enabled);
+function handleAcrylicChange() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
+  void saveSettings();
 }
 
 function handleMinimalModeChange(enabled: boolean) {
   markChanged();
-  document.documentElement.setAttribute("data-minimal", enabled ? "true" : "false");
+  applyMinimalMode(enabled);
 }
 
-function handleThemeChange() {
+function handleThemeChange(origin?: { x: number; y: number }) {
   markChanged();
   if (!settings.value) return;
 
-  applyTheme(settings.value.theme);
+  // 以下拉触发器为圆心做圆形扩散,主题没变时不播动画
+  const x = origin?.x ?? window.innerWidth / 2;
+  const y = origin?.y ?? window.innerHeight / 2;
+  applyThemeWithReveal(settings.value.theme, x, y, () => {
+    applyTheme(settings.value!.theme);
+    applyColors(settings.value!);
+  });
+}
+
+function handleColorChange(origin?: { x: number; y: number }) {
+  markChanged();
+  if (!settings.value) return;
+
+  // 主题色切换同样以下拉触发器为圆心做圆形扩散
+  const x = origin?.x ?? window.innerWidth / 2;
+  const y = origin?.y ?? window.innerHeight / 2;
+  themeRevealTransition(x, y, () => {
+    applyColors(settings.value!);
+  });
 }
 
 function handleJavaInstalled(path: string) {
@@ -408,6 +436,7 @@ async function handleImport(json: string) {
             v-model:closeServersOnExit="settings.close_servers_on_exit"
             v-model:closeServersOnUpdate="settings.close_servers_on_update"
             v-model:autoAcceptEula="settings.auto_accept_eula"
+            v-model:autoLightweightMinutes="settings.auto_lightweight_minutes"
             v-model:closeAction="closeActionModel"
             @change="markChanged"
           />
@@ -422,6 +451,7 @@ async function handleImport(json: string) {
             :font-family-options="fontFamilyOptions"
             :fonts-loading="fontsLoading"
             :acrylic-enabled="settings.acrylic_enabled"
+            :native-material-supported="nativeMaterialSupported"
             :is-theme-proxied="isThemeProxied"
             :theme-proxy-plugin-name="themeProxyPluginName"
             :background-image="settings.background_image"
@@ -443,6 +473,7 @@ async function handleImport(json: string) {
             @update:background-size="settings.background_size = $event"
             @update:minimal-mode="settings.minimal_mode = $event"
             @theme-change="handleThemeChange"
+            @color-change="handleColorChange"
             @font-size-change="handleFontSizeChange"
             @font-family-change="handleFontFamilyChange"
             @acrylic-change="handleAcrylicChange"

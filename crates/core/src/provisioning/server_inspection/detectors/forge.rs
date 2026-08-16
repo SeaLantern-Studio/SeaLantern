@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use super::super::super::{parse_startup_script_content, CoreKind, StartupScriptKind};
+use super::super::super::{CoreKind, StartupScriptKind, parse_startup_script_content};
 use super::super::archive::{
     ArchiveMetadata, BOOTSTRAP_LIST_ENTRY, BOOTSTRAP_PROPERTIES_ENTRY, FORGE_VERSION_ENTRY,
     NEOFORGE_VERSION_PROPERTIES_ENTRY, WRAPPER_METADATA_ENTRY,
@@ -17,8 +17,8 @@ use super::super::model::{
 };
 use super::manifest_attributes::attribute;
 use super::{
-    ecosystems_for_key, product_from_key, release_channel, ComponentFinding, Findings,
-    ProductFinding, ProductValueFinding, Signal,
+    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal, ecosystems_for_key,
+    product_from_key, release_channel,
 };
 
 pub(super) fn detect_archive(

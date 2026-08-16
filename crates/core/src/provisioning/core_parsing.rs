@@ -2,9 +2,9 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use super::server_inspection::{
-    inspect_server_artifact, server_implementation_outcome, Attributed, Detected, DetectionOutcome,
-    InspectionOptions, ReleaseChannel, ServerEcosystem, ServerInspectionError,
-    ServerInspectionReport,
+    Attributed, Detected, DetectionOutcome, InspectionOptions, ReleaseChannel, ServerEcosystem,
+    ServerInspectionError, ServerInspectionReport, inspect_server_artifact,
+    server_implementation_outcome,
 };
 
 /// 一个可识别的服务端核心系列。
@@ -398,8 +398,8 @@ mod tests {
     use zip::write::FileOptions;
 
     use super::{
-        arclight_legacy_kind, extract_minecraft_version, inspect_core_file, inspect_core_filename,
-        CoreKind, CoreParseError,
+        CoreKind, CoreParseError, arclight_legacy_kind, extract_minecraft_version,
+        inspect_core_file, inspect_core_filename,
     };
     use crate::provisioning::server_inspection::{Attributed, ServerEcosystem};
 
@@ -480,10 +480,7 @@ mod tests {
                     "META-INF/MANIFEST.MF",
                     "Manifest-Version: 1.0\r\nMain-Class: net.minecraftforge.installer.SimpleInstaller\r\nImplementation-Version: 20.6.119\r\n\r\n",
                 ),
-                (
-                    "metadata.json",
-                    r#"{"neoforge":"20.6.119"}"#,
-                ),
+                ("metadata.json", r#"{"neoforge":"20.6.119"}"#),
             ],
         );
 

@@ -2,8 +2,8 @@
 
 use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
 use sealantern_infra::net::{
-    commit_prepared_proxy_update, prepare_proxy_settings, NetworkCommitError,
-    PreparedNetworkUpdate, SystemProxySnapshot,
+    NetworkCommitError, PreparedNetworkUpdate, SystemProxySnapshot, commit_prepared_proxy_update,
+    prepare_proxy_settings,
 };
 use sealantern_infra::platform::current_system_proxy;
 

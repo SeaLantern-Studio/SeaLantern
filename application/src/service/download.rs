@@ -9,9 +9,9 @@
 
 use async_trait::async_trait;
 use sealantern_infra::download::DownloadManager;
-use sealantern_infra::net::{global_client_provider, ClientProvider};
-use sealantern_interface::download::{DownloadRequest, DownloadTaskInfo, DownloadTaskStatus};
+use sealantern_infra::net::{ClientProvider, global_client_provider};
 use sealantern_interface::DownloadServiceError;
+use sealantern_interface::download::{DownloadRequest, DownloadTaskInfo, DownloadTaskStatus};
 
 use crate::error::DownloadError;
 

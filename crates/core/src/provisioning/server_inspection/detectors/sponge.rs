@@ -5,8 +5,8 @@ use super::super::formats::manifest;
 use super::super::model::{ArtifactRole, EvidenceSource, ServerComponent, ServerComponentKind};
 use super::manifest_attributes::attribute;
 use super::{
-    ecosystems_for_key, manifest_location, product_from_key, release_channel, ComponentFinding,
-    Findings, ProductFinding, ProductValueFinding, Signal,
+    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal, ecosystems_for_key,
+    manifest_location, product_from_key, release_channel,
 };
 
 const SPONGE_VANILLA_INSTALLER_MAIN: &str = "org.spongepowered.vanilla.installer.InstallerMain";

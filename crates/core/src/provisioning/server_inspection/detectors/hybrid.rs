@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 
 use super::super::archive::{
-    ArchiveMetadata, ARCLIGHT_LAUNCH_PROPERTIES_ENTRY, WRAPPER_METADATA_ENTRY,
+    ARCLIGHT_LAUNCH_PROPERTIES_ENTRY, ArchiveMetadata, WRAPPER_METADATA_ENTRY,
 };
 use super::super::formats::{java_properties, manifest};
 use super::super::model::{
@@ -13,8 +13,8 @@ use super::super::model::{
 };
 use super::manifest_attributes::{attribute, section_by_title};
 use super::{
-    ecosystems_for_key, manifest_location, manifest_section_location, product_from_key,
-    release_channel, ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal,
+    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal, ecosystems_for_key,
+    manifest_location, manifest_section_location, product_from_key, release_channel,
 };
 
 pub(super) fn detect(path: &Path, archive: &ArchiveMetadata, findings: &mut Findings) {

@@ -7,7 +7,7 @@
 mod store;
 mod writer;
 
-pub use store::{open_log_database, read_logs, LogLine, LOG_DATABASE_FILE};
+pub use store::{LOG_DATABASE_FILE, LogLine, open_log_database, read_logs};
 pub use writer::LogWriter;
 
 /// 日志来源。

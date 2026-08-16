@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use sealantern_core::app_plugin::{
-    evaluate, GrantKind, PolicyDecision, PolicyDenialReason, PolicyFacts, ScopeBinding, TrustSource,
+    GrantKind, PolicyDecision, PolicyDenialReason, PolicyFacts, ScopeBinding, TrustSource, evaluate,
 };
 use sealantern_infra::persistence::{Migration, PersistenceError, SqlValue, SqliteDatabase};
 use tokio::sync::Mutex;
@@ -939,10 +939,12 @@ mod tests {
             TrustSource::UntrustedLocal
         );
         assert!(!store.is_enabled("example.plugin").await.unwrap());
-        assert!(!store
-            .has_persistent_grant("example.plugin", "server.status.read", Some(&scope()))
-            .await
-            .unwrap());
+        assert!(
+            !store
+                .has_persistent_grant("example.plugin", "server.status.read", Some(&scope()))
+                .await
+                .unwrap()
+        );
         assert!(matches!(
             store
                 .consume_single_use_token(

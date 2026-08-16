@@ -4,7 +4,7 @@ use java_manager::{SearchError, SearchReport};
 
 use super::error::JavaDiscoveryError;
 use super::index::{
-    from_vendor_search_index, to_vendor_search_index, JavaSearchIndex, JAVA_SEARCH_INDEX_VERSION,
+    JAVA_SEARCH_INDEX_VERSION, JavaSearchIndex, from_vendor_search_index, to_vendor_search_index,
 };
 use super::mapping::push_unique;
 use crate::models::JavaInfo;

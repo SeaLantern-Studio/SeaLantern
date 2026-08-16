@@ -1,10 +1,10 @@
 //! 应用更新检查 REST handler。
 
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 
-use sealantern_interface::update::UpdateInfo;
 use sealantern_interface::UpdateCheckService;
+use sealantern_interface::update::UpdateInfo;
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

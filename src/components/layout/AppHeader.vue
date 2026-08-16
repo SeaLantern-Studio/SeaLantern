@@ -20,8 +20,10 @@ import { i18n } from "@language";
 import TaskPill from "@components/layout/TaskPill.vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { settingsApi, type AppSettings } from "@api/settings";
+import { desktopApi } from "@api/desktop";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/vue";
 import { isMacOSPlatform } from "@utils/platform";
+import { applyThemeWithReveal, applyColors } from "@utils/theme";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -184,8 +186,13 @@ async function closeWindow() {
   } else if (closeAction.value === "minimize") {
     await minimizeToTray();
   } else {
-    await appWindow.close();
+    await exitApplication();
   }
+}
+
+async function exitApplication() {
+  const { exit } = await import("@tauri-apps/plugin-process");
+  await exit(0);
 }
 
 async function handleCloseOption(option: string) {
@@ -203,8 +210,7 @@ async function handleCloseOption(option: string) {
   if (option === "minimize") {
     await minimizeToTray();
   } else {
-    const { exit } = await import("@tauri-apps/plugin-process");
-    await exit(0);
+    await exitApplication();
   }
   showCloseModal.value = false;
   rememberChoice.value = false;
@@ -212,13 +218,7 @@ async function handleCloseOption(option: string) {
 
 async function minimizeToTray() {
   try {
-    const w = getCurrentWindow();
-    await w.hide();
-    try {
-      await w.setSkipTaskbar(true);
-    } catch (e) {
-      console.warn("Failed to set skip taskbar:", e);
-    }
+    await desktopApi.hideMainWindow();
   } catch (e) {
     console.warn("Failed to hide window for tray minimize:", e);
     await appWindow.minimize();
@@ -276,11 +276,19 @@ function applyTheme(theme: string) {
   return effectiveTheme;
 }
 
-function setTheme(theme: string) {
+function setTheme(theme: string, e?: MouseEvent) {
   if (!settings.value) return;
   settings.value.theme = theme;
-  applyTheme(theme);
-  saveThemeDebounced();
+  // 以点击按钮中心为圆心做圆形扩散,拿不到坐标时回退到视口中心
+  const el = e?.currentTarget as HTMLElement | undefined;
+  const rect = el?.getBoundingClientRect();
+  const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+  const y = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+  applyThemeWithReveal(theme, x, y, () => {
+    applyTheme(theme);
+    applyColors(settings.value as AppSettings);
+    saveThemeDebounced();
+  });
 }
 
 let themeSaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -373,7 +381,7 @@ function saveThemeDebounced() {
         <button
           class="theme-btn"
           :class="{ active: currentTheme === 'auto' }"
-          @click="setTheme('auto')"
+          @click="setTheme('auto', $event)"
           :title="i18n.t('settings.theme_options.auto')"
           data-theme-idx="0"
         >
@@ -382,7 +390,7 @@ function saveThemeDebounced() {
         <button
           class="theme-btn"
           :class="{ active: currentTheme === 'light' }"
-          @click="setTheme('light')"
+          @click="setTheme('light', $event)"
           :title="i18n.t('settings.theme_options.light')"
           data-theme-idx="1"
         >
@@ -391,7 +399,7 @@ function saveThemeDebounced() {
         <button
           class="theme-btn"
           :class="{ active: currentTheme === 'dark' }"
-          @click="setTheme('dark')"
+          @click="setTheme('dark', $event)"
           :title="i18n.t('settings.theme_options.dark')"
           data-theme-idx="2"
         >

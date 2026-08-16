@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
-use super::{read_limited, write_atomic, DataLimit, FsError};
+use super::{DataLimit, FsError, read_limited, write_atomic};
 
 /// 在最大字节大小限制内读取 JSON 文件。
 pub async fn read_json<T: DeserializeOwned>(

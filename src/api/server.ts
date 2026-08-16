@@ -18,7 +18,15 @@ export interface ParsedServerCoreInfo {
 }
 
 export interface ServerLogLineEvent {
-  server_id: string;
+  instance_id: string;
+  line: ConsoleLogLine;
+}
+
+export interface ConsoleLogLine {
+  // Rust i64 经 Tauri/JSON 序列化后到达前端是 number，不能用 bigint
+  sequence: number;
+  timestamp: number;
+  source: string;
   line: string;
 }
 
@@ -347,8 +355,9 @@ export const serverApi = {
     await invoke("delete_instance", { id });
   },
 
-  async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
-    return tauriInvoke("get_server_logs", { id, since, maxLines });
+  async getLogs(id: string, since: number, maxLines?: number): Promise<ConsoleLogLine[]> {
+    // 后端命令参数为 recent_limit，不传则可能一次性返回全部日志
+    return tauriInvoke("get_server_logs", { id, since, recent_limit: maxLines });
   },
 
   onLogLine(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {

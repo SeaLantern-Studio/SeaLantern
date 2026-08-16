@@ -8,7 +8,7 @@ use super::JavaInfo;
 /// 当前配置版本号。
 ///
 /// 每次配置结构变更时递增，由配置管理器据此执行数据迁移。
-pub const CURRENT_CONFIG_VERSION: u32 = 4;
+pub const CURRENT_CONFIG_VERSION: u32 = 5;
 
 /// 亚克力模糊级别的默认值，旧配置缺字段时回落到这里。
 pub const DEFAULT_ACRYLIC_BLUR_LEVEL: &str = "medium";
@@ -67,6 +67,7 @@ pub struct AppSettings {
     pub close_servers_on_update: bool,
     pub auto_accept_eula: bool,
     pub close_action: String,
+    pub auto_lightweight_minutes: Option<u32>,
 
     /// 全局出站网络代理策略。
     pub proxy: ProxySettings,
@@ -121,6 +122,7 @@ impl Default for AppSettings {
             close_servers_on_update: true,
             auto_accept_eula: true,
             close_action: "ask".into(),
+            auto_lightweight_minutes: None,
             proxy: ProxySettings::default(),
             default_max_memory: 2048,
             default_min_memory: 512,
@@ -185,6 +187,15 @@ impl AppSettings {
         if self.default_port == 0 {
             return Err(SettingsValidationError::new("default_port", "must be greater than zero"));
         }
+        if self
+            .auto_lightweight_minutes
+            .is_some_and(|minutes| !(1..=1440).contains(&minutes))
+        {
+            return Err(SettingsValidationError::new(
+                "auto_lightweight_minutes",
+                "must be between 1 and 1440 when set",
+            ));
+        }
         self.proxy.validate().map_err(|error| {
             SettingsValidationError::new(
                 "proxy",
@@ -220,6 +231,7 @@ impl AppSettings {
             || self.close_servers_on_update != other.close_servers_on_update
             || self.auto_accept_eula != other.auto_accept_eula
             || self.close_action != other.close_action
+            || self.auto_lightweight_minutes != other.auto_lightweight_minutes
         {
             groups.push(SettingsGroup::General);
         }
@@ -306,7 +318,7 @@ fn validate_unit_interval(field: &'static str, value: f32) -> Result<(), Setting
 mod tests {
     use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
 
-    use super::{AppSettings, SettingsGroup, DEFAULT_ACRYLIC_BLUR_LEVEL};
+    use super::{AppSettings, DEFAULT_ACRYLIC_BLUR_LEVEL, SettingsGroup};
 
     #[test]
     fn legacy_settings_default_to_medium_acrylic_blur() {
@@ -314,6 +326,25 @@ mod tests {
             serde_json::from_str("{}").expect("legacy settings should load");
 
         assert_eq!(settings.acrylic_blur_level, DEFAULT_ACRYLIC_BLUR_LEVEL);
+    }
+
+    #[test]
+    fn legacy_settings_disable_auto_lightweight_mode() {
+        let settings: AppSettings =
+            serde_json::from_str("{}").expect("legacy settings should load");
+
+        assert_eq!(settings.auto_lightweight_minutes, None);
+    }
+
+    #[test]
+    fn auto_lightweight_change_marks_general_group() {
+        let current = AppSettings::default();
+        let changed = AppSettings {
+            auto_lightweight_minutes: Some(3),
+            ..current.clone()
+        };
+
+        assert_eq!(current.changed_groups(&changed), vec![SettingsGroup::General]);
     }
 
     #[test]
@@ -435,6 +466,23 @@ mod tests {
                 .field(),
             "default_port"
         );
+    }
+
+    #[test]
+    fn validation_rejects_invalid_auto_lightweight_delay() {
+        for invalid in [0, 1441] {
+            let settings = AppSettings {
+                auto_lightweight_minutes: Some(invalid),
+                ..AppSettings::default()
+            };
+            assert_eq!(
+                settings
+                    .validate()
+                    .expect_err("invalid auto lightweight delay should fail")
+                    .field(),
+                "auto_lightweight_minutes"
+            );
+        }
     }
 
     #[test]

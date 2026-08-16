@@ -4,13 +4,13 @@
 //! [`CoreConsoleService`](sealantern_application::service::CoreConsoleService)
 //! 并收敛错误为 [`HttpError`](super::super::error::HttpError)。
 
-use axum::extract::{Path, Query, State};
 use axum::Json;
+use axum::extract::{Path, Query, State};
 use serde::Deserialize;
 
 use sealantern_core::instance::InstanceId;
-use sealantern_interface::console::ConsoleLogLine;
 use sealantern_interface::ConsoleService;
+use sealantern_interface::console::ConsoleLogLine;
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

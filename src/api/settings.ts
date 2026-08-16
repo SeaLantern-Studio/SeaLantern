@@ -21,6 +21,7 @@ export interface AppSettings {
   close_servers_on_exit: boolean;
   close_servers_on_update: boolean;
   auto_accept_eula: boolean;
+  auto_lightweight_minutes: number | null;
   default_max_memory: number;
   default_min_memory: number;
   default_port: number;
@@ -60,6 +61,7 @@ export interface PartialSettings {
   close_servers_on_exit?: boolean;
   close_servers_on_update?: boolean;
   auto_accept_eula?: boolean;
+  auto_lightweight_minutes?: number | null;
   default_max_memory?: number;
   default_min_memory?: number;
   default_port?: number;

@@ -128,8 +128,8 @@ pub enum ServerMetadataSnapshotValidity {
 #[cfg(test)]
 mod tests {
     use super::{
-        ServerMetadataFingerprint, ServerMetadataSnapshot, ServerMetadataSnapshotValidity,
-        ServerMetadataSubject, ServerMetadataSubjectKind, SERVER_METADATA_SNAPSHOT_SCHEMA_VERSION,
+        SERVER_METADATA_SNAPSHOT_SCHEMA_VERSION, ServerMetadataFingerprint, ServerMetadataSnapshot,
+        ServerMetadataSnapshotValidity, ServerMetadataSubject, ServerMetadataSubjectKind,
     };
 
     fn snapshot(value: &str) -> ServerMetadataSnapshot {

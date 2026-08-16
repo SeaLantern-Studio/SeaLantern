@@ -279,15 +279,15 @@ impl PluginManager {
         let plugin = self.remove_plugin(plugin_id)?;
         let mut first_error = None;
 
-        if plugin.info.state == PluginState::Enabled {
-            if let Err(error) = plugin.engine.call_lifecycle(Lifecycle::Disable) {
-                observability::app_plugin_lifecycle_failed(
-                    plugin_id,
-                    Lifecycle::Disable.as_str(),
-                    error.kind(),
-                );
-                first_error = Some(error);
-            }
+        if plugin.info.state == PluginState::Enabled
+            && let Err(error) = plugin.engine.call_lifecycle(Lifecycle::Disable)
+        {
+            observability::app_plugin_lifecycle_failed(
+                plugin_id,
+                Lifecycle::Disable.as_str(),
+                error.kind(),
+            );
+            first_error = Some(error);
         }
 
         if let Err(error) = plugin.engine.call_lifecycle(Lifecycle::Unload) {
@@ -369,14 +369,14 @@ impl PluginManager {
         plugin_id: &str,
         failed_lifecycle: Lifecycle,
     ) {
-        if failed_lifecycle == Lifecycle::Enable {
-            if let Err(cleanup_error) = engine.call_lifecycle(Lifecycle::Disable) {
-                observability::app_plugin_lifecycle_failed(
-                    plugin_id,
-                    Lifecycle::Disable.as_str(),
-                    cleanup_error.kind(),
-                );
-            }
+        if failed_lifecycle == Lifecycle::Enable
+            && let Err(cleanup_error) = engine.call_lifecycle(Lifecycle::Disable)
+        {
+            observability::app_plugin_lifecycle_failed(
+                plugin_id,
+                Lifecycle::Disable.as_str(),
+                cleanup_error.kind(),
+            );
         }
         if let Err(cleanup_error) = engine.call_lifecycle(Lifecycle::Unload) {
             observability::app_plugin_lifecycle_failed(
