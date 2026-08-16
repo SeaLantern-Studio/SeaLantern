@@ -92,12 +92,6 @@ To preview the frontend only:
 pnpm dev
 ```
 
-To start only the HTTP/Docker backend:
-
-```bash
-pnpm docker:dev
-```
-
 Linux developers may need to install additional system dependencies required by Tauri. See the [Tauri prerequisites for Linux](https://tauri.app/start/prerequisites/#linux) for details.
 
 The repository includes an [`Onlyfile`](Onlyfile) that provides consistent commands for common development, build, and check tasks. Install [Only](https://github.com/KercyDing/only) when needed:

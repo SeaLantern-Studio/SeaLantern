@@ -53,7 +53,6 @@ flowchart TD
 | `crates/extra`                | Java、市场、更新等可复用扩展能力                                                               |
 | `src-tauri`                   | Desktop 进程入口、Tauri command、桌面状态、对话框、事件和本地生命周期                          |
 | `server`                      | Web 进程入口、Axum REST、鉴权/RBAC、文件上传、数据库状态、工作节点/Docker 调度和 WebSocket/SSE |
-| `docker-entry`                | 容器化 Web/Server 启动入口                                                                     |
 
 ## 4. 后端契约与转换边界
 

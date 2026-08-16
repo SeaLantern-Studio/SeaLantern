@@ -89,12 +89,6 @@ pnpm tauri dev
 pnpm dev
 ```
 
-只启动 HTTP / Docker 后端：
-
-```bash
-pnpm docker:dev
-```
-
 如果你在 Linux 上开发，可能需要先安装 Tauri 相关系统依赖。具体请看 [Tauri Linux 前置要求](https://tauri.app/zh-cn/start/prerequisites/#linux)。
 
 仓库根目录提供了 [`Onlyfile`](Onlyfile)，用于统一常用的开发、构建和检查命令。可以按需安装 [Only](https://github.com/KercyDing/only)：
