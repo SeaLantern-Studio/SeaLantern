@@ -341,18 +341,24 @@
   left: 0;
   right: 0;
   z-index: 100;
-  /* 浮层用丙烯酸玻璃材质,与顶栏语言菜单一致 */
-  border: 1px solid var(--sl-acrylic-border);
+  border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
-  background: var(--sl-acrylic-bg);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  background: var(--sl-surface);
   box-shadow: var(--sl-shadow-md);
   max-height: 240px;
   overflow-y: auto;
 }
 
-/* 关闭丙烯酸时退回实底,避免半透明膜叠在不透明背景上发灰 */
+/* 浮层用丙烯酸玻璃材质 */
+[data-acrylic="on"] .cmz-select__options {
+  background: var(--sl-acrylic-bg);
+  backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-strong));
+  -webkit-backdrop-filter: blur(var(--sl-blur-lg)) saturate(var(--sl-saturate-strong));
+  border-color: var(--sl-acrylic-border);
+  box-shadow: var(--sl-shadow-elevated);
+}
+
+/* 关闭丙烯酸时退回实底 */
 [data-acrylic="off"] .cmz-select__options {
   background: var(--sl-surface);
   backdrop-filter: none;
@@ -1386,4 +1392,26 @@
 
 [data-acrylic="on"] .cmz-tab-bar__btn.active {
   color: var(--sl-primary);
+}
+
+/* === Accordion 毛玻璃适配 === */
+[data-acrylic="on"] .cmz-accordion {
+  background: var(--sl-surface);
+  border-color: var(--sl-glass-border);
+  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
+}
+
+[data-acrylic="on"] .cmz-accordion-panel__header:hover:not(:disabled) {
+  background: var(--sl-bg-tertiary);
+}
+
+/* Accordion 内嵌套的 markdown glass 不再重复加背景，避免叠白 */
+[data-acrylic="on"] .cmz-accordion .cmz-md--glass {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
 }
