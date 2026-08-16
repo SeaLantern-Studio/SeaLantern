@@ -15,11 +15,16 @@ import { settingsApi, getSystemFonts, type AppSettings, type SettingsGroup } fro
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
-import { applyAcrylicEffect } from "@utils/acrylic";
-import { applyThemeWithReveal, themeRevealTransition, applyColors } from "@utils/theme";
+import {
+  applyThemeWithReveal,
+  themeRevealTransition,
+  applyColors,
+  applyMinimalMode,
+} from "@utils/theme";
 import { usePluginStore } from "@stores/pluginStore";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
+import { supportsNativeWindowMaterial } from "@utils/platform";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -28,6 +33,7 @@ import {
 
 const toast = useToast();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
+const nativeMaterialSupported = supportsNativeWindowMaterial();
 
 const settings = ref<AppSettings | null>(null);
 
@@ -219,14 +225,17 @@ function handleFontFamilyChange() {
   }
 }
 
-function handleAcrylicChange(enabled: boolean) {
-  markChanged();
-  applyAcrylicEffect(enabled);
+function handleAcrylicChange() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
+  void saveSettings();
 }
 
 function handleMinimalModeChange(enabled: boolean) {
   markChanged();
-  document.documentElement.setAttribute("data-minimal", enabled ? "true" : "false");
+  applyMinimalMode(enabled);
 }
 
 function handleThemeChange(origin?: { x: number; y: number }) {
@@ -427,6 +436,7 @@ async function handleImport(json: string) {
             v-model:closeServersOnExit="settings.close_servers_on_exit"
             v-model:closeServersOnUpdate="settings.close_servers_on_update"
             v-model:autoAcceptEula="settings.auto_accept_eula"
+            v-model:autoLightweightMinutes="settings.auto_lightweight_minutes"
             v-model:closeAction="closeActionModel"
             @change="markChanged"
           />
@@ -441,6 +451,7 @@ async function handleImport(json: string) {
             :font-family-options="fontFamilyOptions"
             :fonts-loading="fontsLoading"
             :acrylic-enabled="settings.acrylic_enabled"
+            :native-material-supported="nativeMaterialSupported"
             :is-theme-proxied="isThemeProxied"
             :theme-proxy-plugin-name="themeProxyPluginName"
             :background-image="settings.background_image"

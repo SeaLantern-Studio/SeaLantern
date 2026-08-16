@@ -53,6 +53,8 @@ pub struct PartialAppSettings {
     pub close_servers_on_update: Option<bool>,
     pub auto_accept_eula: Option<bool>,
     pub close_action: Option<String>,
+    #[serde(default, skip_serializing_if = "NullablePatch::is_unchanged")]
+    pub auto_lightweight_minutes: NullablePatch<u32>,
 
     pub proxy: Option<ProxySettings>,
 
@@ -118,6 +120,9 @@ impl PartialAppSettings {
         }
         if let Some(value) = &self.close_action {
             target.close_action.clone_from(value);
+        }
+        if let NullablePatch::Set(value) = self.auto_lightweight_minutes {
+            target.auto_lightweight_minutes = value;
         }
         if let Some(value) = &self.proxy {
             target.proxy.clone_from(value);
@@ -249,15 +254,18 @@ mod tests {
             serde_json::from_str("{}").expect("empty partial settings should deserialize");
         assert_eq!(missing.window_x, NullablePatch::Unchanged);
         assert_eq!(missing.locales_base_url, NullablePatch::Unchanged);
+        assert_eq!(missing.auto_lightweight_minutes, NullablePatch::Unchanged);
 
-        let clear: PartialAppSettings =
-            serde_json::from_str(r#"{"window_x":null,"locales_base_url":null}"#)
-                .expect("nullable fields should accept null");
+        let clear: PartialAppSettings = serde_json::from_str(
+            r#"{"window_x":null,"locales_base_url":null,"auto_lightweight_minutes":null}"#,
+        )
+        .expect("nullable fields should accept null");
         assert_eq!(clear.window_x, NullablePatch::Set(None));
         assert_eq!(clear.locales_base_url, NullablePatch::Set(None));
+        assert_eq!(clear.auto_lightweight_minutes, NullablePatch::Set(None));
 
         let set: PartialAppSettings = serde_json::from_str(
-            r#"{"window_x":120,"locales_base_url":"https://example.invalid/locales"}"#,
+            r#"{"window_x":120,"locales_base_url":"https://example.invalid/locales","auto_lightweight_minutes":3}"#,
         )
         .expect("nullable fields should accept values");
         assert_eq!(set.window_x, NullablePatch::Set(Some(120)));
@@ -265,6 +273,7 @@ mod tests {
             set.locales_base_url,
             NullablePatch::Set(Some("https://example.invalid/locales".to_string()))
         );
+        assert_eq!(set.auto_lightweight_minutes, NullablePatch::Set(Some(3)));
     }
 
     #[test]
@@ -272,16 +281,19 @@ mod tests {
         let mut settings = AppSettings {
             window_x: Some(120),
             locales_base_url: Some("https://example.invalid/locales".to_string()),
+            auto_lightweight_minutes: Some(3),
             ..AppSettings::default()
         };
-        let partial: PartialAppSettings =
-            serde_json::from_str(r#"{"window_x":null,"locales_base_url":null}"#)
-                .expect("nullable fields should accept null");
+        let partial: PartialAppSettings = serde_json::from_str(
+            r#"{"window_x":null,"locales_base_url":null,"auto_lightweight_minutes":null}"#,
+        )
+        .expect("nullable fields should accept null");
 
         partial.merge_into(&mut settings);
 
         assert_eq!(settings.window_x, None);
         assert_eq!(settings.locales_base_url, None);
+        assert_eq!(settings.auto_lightweight_minutes, None);
     }
 
     #[test]
@@ -291,6 +303,7 @@ mod tests {
 
         assert!(value.get("window_x").is_none());
         assert!(value.get("locales_base_url").is_none());
+        assert!(value.get("auto_lightweight_minutes").is_none());
     }
 
     #[test]

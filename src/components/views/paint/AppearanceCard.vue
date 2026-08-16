@@ -12,6 +12,7 @@ const props = defineProps<{
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
   acrylicEnabled: boolean;
+  nativeMaterialSupported: boolean;
   isThemeProxied: boolean;
   themeProxyPluginName: string;
   backgroundImage: string;
@@ -206,7 +207,7 @@ function handleMinimalModeChange(value: boolean) {
 
       <div class="settings-group-title">{{ i18n.t("settings.group_effect") }}</div>
 
-      <div class="settings-entry">
+      <div v-if="nativeMaterialSupported" class="settings-entry">
         <div class="settings-entry-info">
           <span class="settings-entry-title">{{ i18n.t("settings.advanced_material") }}</span>
           <span class="settings-entry-desc">{{ i18n.t("settings.advanced_material_desc") }}</span>

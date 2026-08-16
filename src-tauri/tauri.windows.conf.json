@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Sea Lantern",
+        "width": 1200,
+        "height": 720,
+        "minWidth": 1000,
+        "minHeight": 625,
+        "center": true,
+        "decorations": false,
+        "resizable": true,
+        "transparent": true,
+        "backgroundColor": "#00000000",
+        "visible": false,
+        "dragDropEnabled": true
+      }
+    ]
+  }
+}

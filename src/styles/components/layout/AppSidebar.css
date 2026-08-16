@@ -11,6 +11,10 @@
   z-index: 100;
   background: transparent;
   border-right: none;
+  --sl-sidebar-text: color-mix(in srgb, var(--sl-text-secondary) 84%, var(--sl-text-primary));
+  --sl-sidebar-text-muted: color-mix(in srgb, var(--sl-text-tertiary) 88%, var(--sl-text-primary));
+  --cmz-text-secondary: var(--sl-sidebar-text);
+  --cmz-text-tertiary: var(--sl-sidebar-text-muted);
 }
 
 .sidebar-logo {
@@ -157,7 +161,7 @@
   padding: var(--sl-space-xs) var(--sl-space-sm);
   font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--sl-text-tertiary);
+  color: var(--sl-sidebar-text-muted, var(--sl-text-tertiary));
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
@@ -227,7 +231,7 @@
   padding: 10px 14px;
   border-radius: var(--sl-radius-md);
   cursor: pointer;
-  color: var(--sl-text-secondary);
+  color: var(--sl-sidebar-text, var(--sl-text-secondary));
   transition:
     background-color var(--sl-transition-fast),
     color var(--sl-transition-fast);
@@ -306,18 +310,4 @@
 
 .lower-side {
   margin-top: auto;
-}
-
-/* 高级材质下侧栏文字向 text-primary 加深一档:
-   侧栏透明叠在壁纸磨砂上,浅色壁纸偏黑/暗色壁纸偏浅时默认文字对比不足 */
-[data-acrylic="on"] .nav-item {
-  color: color-mix(in srgb, var(--sl-text-primary) 30%, var(--sl-text-secondary));
-}
-
-[data-acrylic="on"] .nav-item:hover {
-  color: var(--sl-text-primary);
-}
-
-[data-acrylic="on"] .nav-group-label {
-  color: color-mix(in srgb, var(--sl-text-secondary) 40%, var(--sl-text-tertiary));
 }
