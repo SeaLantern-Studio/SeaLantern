@@ -24,7 +24,7 @@ use sealantern_core::process::{
     build_command, CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal,
     TerminalStream, WindowsConsoleEncoding,
 };
-use sealantern_extra::java::detect_java_installations;
+use sealantern_extra::java::{detect_java_installations, JavaInfo};
 use sealantern_interface::server::{ServerSnapshot, ServerState};
 use sealantern_interface::{InstanceService, ServerService, ServerServiceError, SettingsService};
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
@@ -109,6 +109,10 @@ pub struct CoreServerService {
     stopping: Mutex<HashSet<String>>,
     /// 每个实例独立的生命周期操作锁。
     lifecycle_locks: Mutex<HashMap<String, Weak<AsyncMutex<()>>>>,
+    /// 探测到并已按主版本降序缓存的本机 Java 安装列表；首次缺失 Java 时填充，
+    /// 之后复用，避免每次启动都扫描文件系统。探测失败（任务取消 / 无可用 Java）
+    /// 不写入缓存，下次启动可重试。
+    java_installations: Mutex<Option<Vec<JavaInfo>>>,
 }
 
 impl CoreServerService {
@@ -124,6 +128,7 @@ impl CoreServerService {
             starting: Mutex::new(HashSet::new()),
             stopping: Mutex::new(HashSet::new()),
             lifecycle_locks: Mutex::new(HashMap::new()),
+            java_installations: Mutex::new(None),
         }
     }
 
@@ -196,6 +201,37 @@ impl CoreServerService {
         }
     }
 
+    /// 解析实例实际使用的 Java 可执行文件，缺失时探测本机 Java 并缓存结果。
+    ///
+    /// 优先使用实例已配置的可执行文件；为 `None` 时回退到本机探测到的最高版本
+    /// Java（`detect_java_installations` 结果已按主版本降序排列）。探测结果在
+    /// 进程内缓存，避免每次启动都扫描文件系统；探测失败（任务被取消 / 无可用
+    /// Java）不写入缓存，下次启动可重试。
+    async fn resolve_java_executable(&self, configured: &Option<PathBuf>) -> Option<PathBuf> {
+        if let Some(configured) = configured {
+            return Some(configured.clone());
+        }
+        // 命中缓存直接返回，跳过文件系统扫描。
+        if let Ok(cache) = self.java_installations.lock() {
+            if let Some(installations) = cache.as_ref() {
+                return installations.first().map(|info| PathBuf::from(&info.path));
+            }
+        }
+        // 缓存未命中：探测本机 Java 安装（阻塞扫描，调度到阻塞线程池）。
+        let detected = match tokio::task::spawn_blocking(detect_java_installations).await {
+            Ok(installations) => installations,
+            Err(error) => {
+                tracing::warn!("java detection task failed: {error}");
+                return None;
+            }
+        };
+        // 仅当探测成功且非空时才写入缓存，保证失败可重试。
+        if let Ok(mut cache) = self.java_installations.lock() {
+            *cache = Some(detected.clone());
+        }
+        detected.first().map(|info| PathBuf::from(&info.path))
+    }
+
     /// 由实例启动配置构建进程命令。
     ///
     /// 若实例未显式配置 Java 可执行文件（如导入已有服务器时未指定），则探测
@@ -225,19 +261,8 @@ impl CoreServerService {
             .collect::<Vec<_>>();
 
         // 解析实际使用的 Java 可执行文件：优先使用实例已配置的，缺失时回退到
-        // 本机探测到的最高版本 Java（探测结果已按主版本降序排列）。
-        let effective_java = match &launch.java_executable {
-            Some(configured) => Some(configured.clone()),
-            None => tokio::task::spawn_blocking(detect_java_installations)
-                .await
-                .ok()
-                .and_then(|installations| {
-                    installations
-                        .into_iter()
-                        .next()
-                        .map(|info| PathBuf::from(info.path))
-                }),
-        };
+        // 本机探测到的最高版本 Java（探测结果已按主版本降序排列，经缓存复用）。
+        let effective_java = self.resolve_java_executable(&launch.java_executable).await;
 
         // 从 Java 可执行文件推导 JAVA_HOME / bin（供脚本与自定义模式注入环境）。
         let java_environment = effective_java

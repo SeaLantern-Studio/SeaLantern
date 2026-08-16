@@ -8,6 +8,7 @@ pub mod modpack;
 pub mod run_dir;
 #[path = "server_inspection/lib.rs"]
 pub mod server_inspection;
+pub mod source;
 pub mod startup_parsing;
 
 pub use copy::{plan_copy, CopyInstanceError, CopyInstancePlan, CopyInstanceRequest};
@@ -31,6 +32,7 @@ pub use run_dir::{resolve_run_directory, RunDirectoryError, RunDirectoryState};
 pub use server_inspection::{
     inspect_server_artifact, InspectionOptions, ServerInspectionError, ServerInspectionReport,
 };
+pub use source::{source_directories_equal, validate_source_directory, SourceDirectoryError};
 pub use startup_parsing::{
     parse_startup_script_content, parse_startup_script_file, JavaLaunch, StartupParseError,
     StartupScriptInfo, StartupScriptKind,

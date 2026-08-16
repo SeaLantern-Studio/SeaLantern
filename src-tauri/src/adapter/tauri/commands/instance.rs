@@ -7,7 +7,6 @@
 //! 错误统一为接口契约错误 [`InstanceServiceError`]，可序列化回前端，
 //! 不携带底层敏感细节。
 
-use std::path::Path;
 use std::sync::Arc;
 
 use sealantern_application::error::InstanceError;
@@ -15,7 +14,9 @@ use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
-    build_import_spec, ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
+    build_import_spec, source_directories_equal, validate_source_directory,
+    ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
+    SourceDirectoryError,
 };
 use sealantern_interface::{InstanceService, InstanceServiceError};
 
@@ -110,7 +111,14 @@ impl std::error::Error for ImportExistingServerError {}
 pub async fn import_existing_server(
     request: ImportExistingServerRequest,
 ) -> Result<Instance, ImportExistingServerError> {
-    validate_source_directory(&request.source_directory)?;
+    validate_source_directory(&request.source_directory).map_err(|error| match error {
+        SourceDirectoryError::Unavailable(_) => {
+            import_error("source_unavailable", error.to_string())
+        }
+        SourceDirectoryError::NotDirectory(_) => {
+            import_error("source_not_directory", error.to_string())
+        }
+    })?;
 
     let service = instance_service()
         .await
@@ -120,7 +128,7 @@ pub async fn import_existing_server(
         .await
         .map_err(|error| import_error("list_failed", error.to_string()))?;
     if instances.iter().any(|instance| {
-        path_equals(instance.directory.as_path(), request.source_directory.as_path())
+        source_directories_equal(instance.directory.as_path(), request.source_directory.as_path())
     }) {
         return Err(import_error(
             "source_already_imported",
@@ -148,29 +156,4 @@ fn import_error(code: &'static str, message: impl Into<String>) -> ImportExistin
         code: code.to_string(),
         message: message.into(),
     }
-}
-
-/// 校验源目录可读：存在且为目录。
-fn validate_source_directory(path: &Path) -> Result<(), ImportExistingServerError> {
-    if !path.exists() {
-        return Err(import_error(
-            "source_unavailable",
-            format!("the selected directory does not exist: {}", path.display()),
-        ));
-    }
-    if !path.is_dir() {
-        return Err(import_error(
-            "source_not_directory",
-            format!("the selected path is not a directory: {}", path.display()),
-        ));
-    }
-    Ok(())
-}
-
-/// 忽略大小写比较两个路径是否指向同一目录。
-fn path_equals(first: &Path, second: &Path) -> bool {
-    first == second
-        || first
-            .to_string_lossy()
-            .eq_ignore_ascii_case(&second.to_string_lossy())
 }

@@ -77,8 +77,16 @@ const launchOptions = computed(() =>
 );
 
 const recognized = computed(() => report.value !== null);
+
+const hasLaunchOptions = computed(() => launchOptions.value.length > 0);
+
 const canSubmit = computed(
-  () => !!selectedDir.value && !scanning.value && !importing.value && recognized.value,
+  () =>
+    !!selectedDir.value &&
+    !scanning.value &&
+    !importing.value &&
+    recognized.value &&
+    hasLaunchOptions.value,
 );
 
 const recognizedImpl = computed(
