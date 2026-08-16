@@ -3,7 +3,7 @@ name = "sealantern"
 version = "1.2.0"
 description = "Minecraft Server Manager"
 authors = ["FPS_Z"]
-edition = "2021"
+edition.workspace = true
 default-run = "sealantern"
 
 [build-dependencies]

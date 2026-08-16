@@ -1,7 +1,7 @@
 [package]
 name = "java-manager"
 version = "0.3.0"
-edition = "2024"
+edition.workspace = true
 description = "A Rust library for managing and locating Java installations"
 license = "MIT OR Apache-2.0"
 keywords = ["java", "locator", "manager", "jvm"]
