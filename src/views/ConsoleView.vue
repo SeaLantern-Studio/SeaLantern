@@ -14,7 +14,6 @@ import SLConfirmDialog from "@components/common/SLConfirmDialog.vue";
 import CommandModal from "@components/console/CommandModal.vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { useServerStore } from "@stores/serverStore";
-import { useConsoleStore } from "@stores/consoleStore";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
 import { shareLogs } from "@api/logging";
@@ -35,7 +34,6 @@ import { formatBytes } from "@utils/serverUtils";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 const serverStore = useServerStore();
-const consoleStore = useConsoleStore();
 
 interface ConsoleOutputExpose {
   doScroll: () => void;
@@ -850,8 +848,6 @@ onMounted(async () => {
     if (isRunning.value) startStatsPolling();
   }
   unlistenLogLine = await serverApi.onLogLine(({ instance_id, line }) => {
-    // 无论当前选中哪个服务器,都写入跨页面缓存,供玩家页在线解析/首页警报使用
-    consoleStore.appendLocal(instance_id, line.line);
     const sid = serverId.value;
     if (!sid || instance_id !== sid) return;
     appendLogLine(line.line);
@@ -929,12 +925,7 @@ async function syncLogsOnce(sid: string) {
     if (lines.length === 0) {
       consoleOutputRef.value?.appendLines([i18n.t("console.no_logs_yet")]);
     } else {
-      const texts = lines.map((line) => line.line);
-      consoleOutputRef.value?.appendLines(texts);
-      // 首次同步历史日志到跨页面缓存,后续由实时订阅增量写入避免重复
-      if (!consoleStore.logs[sid] || consoleStore.logs[sid].length === 0) {
-        consoleStore.appendLogs(sid, texts);
-      }
+      consoleOutputRef.value?.appendLines(lines.map((line) => line.line));
     }
   } catch (e) {
     console.warn("加载服务器日志失败:", e);
