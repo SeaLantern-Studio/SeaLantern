@@ -6,6 +6,7 @@
 import type { AppSettings } from "@api/settings";
 import { isBrowserEnv } from "@api/tauri";
 import { getThemeColors, mapLegacyPlanName } from "@themes";
+import { isWindowsPlatform } from "@utils/platform";
 
 let _themeProviderOverrides: string[] = [];
 
@@ -133,6 +134,7 @@ export function applyColors(settings: AppSettings): void {
   const effectiveTheme = getEffectiveTheme(settings.theme);
   const isDark = effectiveTheme === "dark";
   const isAcrylic = settings.acrylic_enabled;
+  const isWindowsLightAcrylic = isAcrylic && !isDark && isWindowsPlatform();
 
   const actualPlan = isDark
     ? isAcrylic
@@ -194,13 +196,23 @@ export function applyColors(settings: AppSettings): void {
       acrylicBorderColor = "rgba(255, 255, 255, 0.08)";
     } else {
       // 亮色亚克力：白色半透明层次
-      surfaceColor = "rgba(255, 255, 255, 0.45)";
-      surfaceHoverColor = "rgba(255, 255, 255, 0.52)";
+      surfaceColor = isWindowsLightAcrylic
+        ? "rgba(255, 255, 255, 0.4)"
+        : "rgba(255, 255, 255, 0.45)";
+      surfaceHoverColor = isWindowsLightAcrylic
+        ? "rgba(255, 255, 255, 0.48)"
+        : "rgba(255, 255, 255, 0.52)";
       bgElevatedColor = "transparent";
-      bgHoverColor = "rgba(255, 255, 255, 0.48)";
+      bgHoverColor = isWindowsLightAcrylic
+        ? "rgba(255, 255, 255, 0.44)"
+        : "rgba(255, 255, 255, 0.48)";
       // 卡片玻璃：较低透明度，叠加在 surface 上仍能透出壁纸
-      glassBgColor = "rgba(255, 255, 255, 0.3)";
-      glassStrongBgColor = "rgba(255, 255, 255, 0.42)";
+      glassBgColor = isWindowsLightAcrylic
+        ? "rgba(255, 255, 255, 0.26)"
+        : "rgba(255, 255, 255, 0.3)";
+      glassStrongBgColor = isWindowsLightAcrylic
+        ? "rgba(255, 255, 255, 0.38)"
+        : "rgba(255, 255, 255, 0.42)";
       glassBorderColor = "rgba(15, 23, 42, 0.06)";
       // 浮层：较高透明度确保可读性
       acrylicBgColor = "rgba(255, 255, 255, 0.7)";
