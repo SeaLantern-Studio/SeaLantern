@@ -815,7 +815,7 @@
       "remove": "移除",
       "pick_image": "选择图片",
       "replace_image": "更换图片",
-      "personalize_page_import_export": "请前往“设置”页面进行导入/导出操作。",
+      "actions": "导入 / 导出",
       "font_family_default": "系统默认",
       "color_picker": "颜色选择器",
       "input_color_placeholder": "输入颜色值",

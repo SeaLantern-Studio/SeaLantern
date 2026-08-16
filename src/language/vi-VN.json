@@ -600,7 +600,7 @@
     "remove": "Xóa",
     "pick_image": "Chọn ảnh",
     "replace_image": "Thay ảnh",
-    "personalize_page_import_export": "Vui lòng vào trang 'Cài đặt' để nhập/xuất.",
+    "actions": "Nhập / Xuất",
     "font_family_default": "Mặc định hệ thống",
     "color_picker": "Bảng chọn màu",
     "input_color_placeholder": "Nhập giá trị màu",

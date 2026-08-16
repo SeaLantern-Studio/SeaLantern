@@ -600,7 +600,7 @@
     "remove": "Удалить",
     "pick_image": "Выбрать",
     "replace_image": "Заменить",
-    "personalize_page_import_export": "Для импорта/экспорта перейдите в Настройки",
+    "actions": "Импорт / Экспорт",
     "font_family_default": "Системный",
     "color_picker": "Палитра",
     "input_color_placeholder": "Введите цвет",

@@ -602,7 +602,7 @@
     "remove": "제거",
     "pick_image": "이미지 선택",
     "replace_image": "이미지 변경",
-    "personalize_page_import_export": "설정 가져오기/내보내기는 '설정' 페이지에서 가능합니다.",
+    "actions": "가져오기 / 내보내기",
     "font_family_default": "시스템 기본값",
     "color_picker": "색상 선택기",
     "input_color_placeholder": "색상 값 입력",

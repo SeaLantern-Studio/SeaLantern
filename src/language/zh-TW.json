@@ -601,7 +601,7 @@
     "remove": "移除",
     "pick_image": "選擇圖片",
     "replace_image": "更換圖片",
-    "personalize_page_import_export": "請前往「設定」頁面進行匯入/匯出操作。",
+    "actions": "匯入 / 匯出",
     "font_family_default": "系統預設",
     "color_picker": "顏色選擇器",
     "input_color_placeholder": "輸入顏色值",

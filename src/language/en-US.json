@@ -815,7 +815,7 @@
       "remove": "Remove",
       "pick_image": "Pick Image",
       "replace_image": "Replace Image",
-      "personalize_page_import_export": "Please go to the \"Settings\" page for import/export operations.",
+      "actions": "Import / Export",
       "font_family_default": "System Default",
       "color_picker": "Color Picker",
       "input_color_placeholder": "Input Color Value",

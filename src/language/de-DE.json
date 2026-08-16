@@ -600,7 +600,7 @@
     "remove": "Entfernen",
     "pick_image": "Bild auswählen",
     "replace_image": "Bild ersetzen",
-    "personalize_page_import_export": "Bitte gehe zur Seite 'Einstellungen' zum Importieren/Exportieren.",
+    "actions": "Import / Export",
     "font_family_default": "Systemstandard",
     "color_picker": "Farbwähler",
     "input_color_placeholder": "Farbwert eingeben",

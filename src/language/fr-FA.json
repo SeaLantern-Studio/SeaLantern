@@ -602,7 +602,7 @@
     "remove": "Retirer",
     "pick_image": "Choisir une image",
     "replace_image": "Remplacer l'image",
-    "personalize_page_import_export": "L'import/export se fait dans la page 'Paramètres'",
+    "actions": "Import / Export",
     "font_family_default": "Police système",
     "color_picker": "Sélecteur de couleur",
     "input_color_placeholder": "Entrez la valeur de couleur",

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
 import { useSettingsStore } from "@stores/settingsStore";
@@ -60,7 +59,6 @@ function getNavIcon(name: string): LucideIcon {
 
 const router = useRouter();
 const route = useRoute();
-const ui = useUiStore();
 const serverStore = useServerStore();
 const pluginStore = usePluginStore();
 const settingsStore = useSettingsStore();
@@ -148,14 +146,6 @@ const staticNavItems: NavItem[] = [
     group: "server",
   },
   {
-    name: "paint",
-    path: "/paint",
-    icon: "paint",
-    labelKey: "common.personalize",
-    label: i18n.t("common.personalize"),
-    group: "system",
-  },
-  {
     name: "plugins",
     path: "/plugins",
     icon: "blocks",
@@ -216,7 +206,7 @@ function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem
 }
 
 const navItems = computed<NavItem[]>(() => {
-  // 顺序：main(4项) → server组 → 插件注册项 → system组(个性化、插件管理、设置)
+  // 顺序：main(4项) → server组 → 插件注册项 → system组(插件管理、设置)
   const result: NavItem[] = [];
 
   // 1. main 组：首页、创建服务器、下载、联机
@@ -250,7 +240,7 @@ const navItems = computed<NavItem[]>(() => {
   const pluginRegisteredItems = [...unpositioned, ...defaultItems, ...remainingPluginItems];
   result.push(...pluginRegisteredItems);
 
-  // 4. system 组：个性化、插件管理、设置
+  // 4. system 组：插件管理、设置
   for (const item of staticNavItems) {
     if (item.group === "system") result.push(item);
   }

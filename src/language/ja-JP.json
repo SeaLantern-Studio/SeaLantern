@@ -601,7 +601,7 @@
     "remove": "削除",
     "pick_image": "画像を選択",
     "replace_image": "画像を交換",
-    "personalize_page_import_export": "「設定」ページでインポート/エクスポートを行ってください。",
+    "actions": "インポート / エクスポート",
     "font_family_default": "システムデフォルト",
     "color_picker": "カラーピッカー",
     "input_color_placeholder": "カラー値を入力",

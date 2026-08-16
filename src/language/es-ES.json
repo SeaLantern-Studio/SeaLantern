@@ -585,7 +585,7 @@
     "remove": "Eliminar",
     "pick_image": "Elegir imagen",
     "replace_image": "Reemplazar imagen",
-    "personalize_page_import_export": "Ve a la página de 'Ajustes' para importar/exportar.",
+    "actions": "Importar / Exportar",
     "font_family_default": "Fuente del sistema",
     "color_picker": "Selector de color",
     "input_color_placeholder": "Introduce el valor del color",
