@@ -97,14 +97,16 @@ impl std::fmt::Display for ImportExistingServerError {
 
 impl std::error::Error for ImportExistingServerError {}
 
-/// 检查已有服务器目录并构建可直接注册的实例规格。
+/// 检查已有服务器目录并构建可直接注册的导入 DTO。
 ///
-/// 规格的 `directory` 指向原始目录（FR-5：直接引用不复制）；启动目标由检查结果
-/// 按 [`LaunchProfilePolicy::AdoptBestCompatible`] 采纳最优候选。调用方可通过请求字段
+/// 返回 [`InstanceImportRequest`]（打包源目录与实例规格），由调用方直接用于创建实例
+/// 或进一步规划，而非以裸 `InstanceSpec` 层层传参。规格的 `directory` 指向原始目录
+/// （FR-5：直接引用不复制）；启动目标由检查结果按
+/// [`LaunchProfilePolicy::AdoptBestCompatible`] 采纳最优候选。调用方可通过请求字段
 /// 覆盖名称、端口、内存与 Java 配置，或显式指定要采纳的启动候选。
 pub fn build_import_spec(
     request: &ImportExistingServerRequest,
-) -> Result<InstanceSpec, ImportExistingServerError> {
+) -> Result<InstanceImportRequest, ImportExistingServerError> {
     let source = &request.source_directory;
     let report = inspect_server_artifact(source, &InspectionOptions::default())
         .map_err(ImportExistingServerError::Inspection)?;
@@ -182,7 +184,11 @@ pub fn build_import_spec(
         .map(|_| ())
         .map_err(ImportExistingServerError::InvalidInstance)?;
 
-    Ok(spec)
+    // 以 DTO 形式贯穿：打包源目录与实例规格，供调用方直接创建或规划。
+    Ok(InstanceImportRequest {
+        source_directory: request.source_directory.clone(),
+        instance: spec,
+    })
 }
 
 /// 由目录名生成稳定、合法的实例 ID（小写，仅保留字母数字与 `-`/`_`，追加时间戳防重）。

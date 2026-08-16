@@ -136,7 +136,7 @@ pub async fn import_existing_server(
         ));
     }
 
-    let spec = build_import_spec(&request).map_err(|error| match error {
+    let import_request = build_import_spec(&request).map_err(|error| match error {
         CoreImportError::Inspection(_) => import_error("inspection_failed", error.to_string()),
         CoreImportError::NoLaunchCandidate => {
             import_error("no_launch_candidate", error.to_string())
@@ -145,7 +145,7 @@ pub async fn import_existing_server(
     })?;
 
     service
-        .create(spec)
+        .create(import_request.instance)
         .await
         .map_err(|error| import_error("create_failed", error.to_string()))
 }

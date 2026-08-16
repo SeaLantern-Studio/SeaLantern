@@ -140,8 +140,8 @@ pub async fn import_existing_instance(
             "the selected directory is already imported as a server instance",
         ));
     }
-    let spec = build_import_spec(&request)?;
-    let instance = state.instance().create(spec).await?;
+    let import_request = build_import_spec(&request)?;
+    let instance = state.instance().create(import_request.instance).await?;
     Ok((StatusCode::CREATED, Json(instance)))
 }
 
