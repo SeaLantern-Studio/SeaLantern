@@ -8,9 +8,9 @@ members = [
     "server",
     "src-tauri",
     "crates/vendor/java-manager",
+    "crates/vendor/sysproxy",
 ]
 resolver = "2"
-exclude = ["crates/vendor/sysproxy"]
 
 [workspace.package]
 edition = "2024"
