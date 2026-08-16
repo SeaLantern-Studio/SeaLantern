@@ -9,8 +9,6 @@
 
 /* 组件样式 - Layout */
 @import "@styles/components/layout/AppLayout.css";
-@import "@styles/components/layout/AppSidebar.css";
-@import "@styles/components/layout/AppHeader.css";
 
 /* 组件样式 - Common */
 @import "@styles/components/common/SLCard.css";
