@@ -21,10 +21,14 @@ pub struct InstanceStore {
 
 impl InstanceStore {
     /// 加载或创建实例列表文件
+    ///
+    /// 若文件是 1.2.0 旧版裸数组格式，先迁移为新版 `InstanceList`
+    /// 并写回磁盘，保证升级后首次启动即可正常解析。
     pub async fn load(
         path: impl Into<std::path::PathBuf>,
     ) -> Result<Self, sealantern_infra::fs::FsError> {
         let path = path.into();
+        migrate_legacy_servers_file(&path).await?;
         let inner = ConfigFile::load_or_create(&path, InstanceList::default()).await?;
         Ok(Self { inner, path })
     }
@@ -59,4 +63,72 @@ impl InstanceStore {
     pub async fn backup(&self) -> Result<std::path::PathBuf, sealantern_infra::fs::FsError> {
         self.inner.backup().await
     }
+}
+
+/// 检测 1.2.0 旧版裸数组格式并迁移为新版 `InstanceList`，写回磁盘。
+///
+/// 旧版文件以 `[` 开头（数组）；新版以 `{` 开头（对象）。仅当文件存在且
+/// 以数组形式开头时才触发迁移，避免对空文件或已迁移文件做多余写入。
+async fn migrate_legacy_servers_file(
+    path: &std::path::Path,
+) -> Result<(), sealantern_infra::fs::FsError> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let raw = match tokio::fs::read(path).await {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            return Err(sealantern_infra::fs::FsError::Io {
+                operation: "read legacy servers",
+                path: path.to_path_buf(),
+                source: e,
+            })
+        }
+    };
+    let text = match String::from_utf8(raw) {
+        Ok(text) => text,
+        Err(e) => {
+            return Err(sealantern_infra::fs::FsError::Encoding {
+                path: path.to_path_buf(),
+                encoding: "UTF-8",
+                message: e.to_string(),
+            })
+        }
+    };
+    let trimmed = text.trim_start();
+    if !trimmed.starts_with('[') {
+        return Ok(());
+    }
+
+    let records: Vec<crate::models::LegacyServerInstance> = match serde_json::from_str(&text) {
+        Ok(records) => records,
+        Err(e) => {
+            return Err(sealantern_infra::fs::FsError::Serialization {
+                format: "json",
+                operation: "decode legacy servers",
+                path: path.to_path_buf(),
+                message: e.to_string(),
+            })
+        }
+    };
+    let list = InstanceList::migrate_legacy(records);
+    let content = match serde_json::to_string_pretty(&list) {
+        Ok(content) => content,
+        Err(e) => {
+            return Err(sealantern_infra::fs::FsError::Serialization {
+                format: "json",
+                operation: "encode migrated servers",
+                path: path.to_path_buf(),
+                message: e.to_string(),
+            })
+        }
+    };
+    if let Err(e) = tokio::fs::write(path, content).await {
+        return Err(sealantern_infra::fs::FsError::Io {
+            operation: "write migrated servers",
+            path: path.to_path_buf(),
+            source: e,
+        });
+    }
+    Ok(())
 }

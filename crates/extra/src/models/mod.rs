@@ -18,6 +18,7 @@ pub use app_update::{NullablePatch, PartialAppSettings, UpdateResult};
 pub use download_link::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
 pub use java::JavaInfo;
 pub use server::InstanceList;
+pub(crate) use server::LegacyServerInstance;
 pub use task::{TaskProgressResponse, TaskStatus};
 
 #[allow(deprecated)]
