@@ -91,11 +91,9 @@ const sectionTabs = computed(() => [
 onMounted(async () => {
   await loadSettings();
   await loadSystemFonts();
-
-  window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
-// keep-alive 缓存时 onUnmounted 不触发,监听器放 activated/deactivated 成对管理
+// 监听器集中到 activated/deactivated 成对注册,避免 keep-alive 下重复监听
 onActivated(() => {
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
@@ -105,6 +103,7 @@ onDeactivated(() => {
 });
 
 onUnmounted(() => {
+  // 未被 deactivated 直接销毁时的兜底清理
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (saveTimeout) {
     clearTimeout(saveTimeout);
