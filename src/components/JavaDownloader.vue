@@ -291,7 +291,9 @@ onUnmounted(() => {
 .progress-bar {
   height: 100%;
   background-color: var(--sl-primary);
+  /* 进度条宽度随下载进度动态变化,保留 width 过渡保证平滑 */
   transition:
+    width 0.3s ease-out,
     color 0.3s ease-out,
     background-color 0.3s ease-out,
     border-color 0.3s ease-out,

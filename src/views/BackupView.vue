@@ -170,7 +170,11 @@ function toggleContent(value: BackupContentType, enabled: boolean) {
 }
 
 onMounted(async () => {
-  await serverStore.refreshList();
+  try {
+    await serverStore.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   if (!serverStore.currentServerId && serverStore.servers.length > 0) {
     serverStore.setCurrentServer(serverStore.servers[0].id);
   }

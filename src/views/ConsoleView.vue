@@ -837,7 +837,11 @@ onMounted(async () => {
   startThemeObserver();
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
 
-  await serverStore.refreshList();
+  try {
+    await serverStore.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   if (!serverStore.currentServerId && serverStore.servers.length > 0) {
     serverStore.setCurrentServer(serverStore.servers[0].id);
   }
@@ -918,16 +922,23 @@ watch(isRunning, (running) => {
   }
 });
 
+// 日志同步请求序号:快速切换服务器时丢弃过期响应,避免旧日志写入新服务器的显示
+let syncLogsSeq = 0;
+
 async function syncLogsOnce(sid: string) {
+  const seq = ++syncLogsSeq;
   consoleOutputRef.value?.clear();
   try {
     const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
+    // 期间已切换到其它服务器,丢弃这次过期结果
+    if (seq !== syncLogsSeq) return;
     if (lines.length === 0) {
       consoleOutputRef.value?.appendLines([i18n.t("console.no_logs_yet")]);
     } else {
       consoleOutputRef.value?.appendLines(lines.map((line) => line.line));
     }
   } catch (e) {
+    if (seq !== syncLogsSeq) return;
     console.warn("加载服务器日志失败:", e);
     consoleOutputRef.value?.appendLines([i18n.t("console.logs_load_failed")]);
   }
