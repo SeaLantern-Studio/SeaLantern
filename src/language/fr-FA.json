@@ -649,6 +649,8 @@
     "max_log_lines_desc": "Nombre max de lignes conservées par serveur. Les anciennes lignes sont supprimées automatiquement. Défaut 5000",
     "appearance": "Apparence",
     "appearance_desc": "Personnaliser l'arrière-plan et les effets visuels",
+    "group_theme": "Thème",
+    "group_effect": "Affichage",
     "theme": "Thème",
     "theme_desc": "Choisissez le thème de l'application. 'Suivre le système' s'adapte au mode clair/sombre du système",
     "font_size": "Taille du texte",

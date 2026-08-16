@@ -706,6 +706,8 @@
       "max_log_lines_desc": "单个服务器最多保留的日志行数，超出后自动清除旧日志。默认 5000",
       "appearance": "外观",
       "appearance_desc": "自定义软件背景和视觉效果",
+      "group_theme": "主题",
+      "group_effect": "界面效果",
       "theme": "主题模式",
       "theme_desc": "选择应用的主题外观，\"跟随系统\"会自动匹配系统的深色/浅色模式",
       "font_size": "文本大小",

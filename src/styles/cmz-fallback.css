@@ -692,11 +692,11 @@
   margin-top: 2px;
 }
 
-/* 设置页内的 select 限制宽度，防止标题文字被挤压，右对齐 */
+/* 设置页内的 select 统一宽度，防止标题文字被挤压，右对齐 */
 .settings-entry .cmz-select {
-  width: 100%;
-  min-width: 140px;
-  max-width: 240px;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
   flex-shrink: 0;
   margin-left: auto;
 }

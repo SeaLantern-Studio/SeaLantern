@@ -706,6 +706,8 @@
       "max_log_lines_desc": "Maximum number of log lines to keep per server, older logs are automatically cleared beyond this limit. Default 5000",
       "appearance": "Appearance",
       "appearance_desc": "Customize software background and visual effects",
+      "group_theme": "Theme",
+      "group_effect": "Display",
       "theme": "Theme Mode",
       "theme_desc": "Select the theme appearance of the application, \"Follow System\" will automatically match the system's dark/light mode",
       "font_size": "Text Size",

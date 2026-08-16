@@ -2,7 +2,6 @@
 // 设置中心:个性化(外观/控制台)与系统设置(通用/服务器/网络/开发者)合并为单页
 // 左侧竖向 tabbar 使用 cmzya 0.6.2 的 scrollSpy 联动:点击滚动到区块,滚动更新指示
 import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated } from "vue";
-import ColorThemeCard from "@components/views/paint/ColorThemeCard.vue";
 import AppearanceCard from "@components/views/paint/AppearanceCard.vue";
 import ConsoleSettingsCard from "@components/views/settings/ConsoleSettingsCard.vue";
 import GeneralSettingsCard from "@components/views/settings/GeneralSettingsCard.vue";
@@ -68,7 +67,7 @@ const isThemeProxied = computed(() => !!themeProxyPlugin.value);
 const themeProxyPluginName = computed(() => themeProxyPlugin.value?.manifest.name || "");
 
 // 竖向 tabbar 区块定义,key 对应模板里的 data-settings-section
-const activeSection = ref("appearance");
+const activeSection = ref("general");
 
 // close_action 在 AppSettings 里是 string,卡片组件要联合类型,这里收口转换
 const closeActionModel = computed<"ask" | "minimize" | "close">({
@@ -79,9 +78,9 @@ const closeActionModel = computed<"ask" | "minimize" | "close">({
 });
 
 const sectionTabs = computed(() => [
+  { key: "general", label: i18n.t("settings.general") },
   { key: "appearance", label: i18n.t("settings.appearance") },
   { key: "console", label: i18n.t("settings.console") },
-  { key: "general", label: i18n.t("settings.general") },
   { key: "server", label: i18n.t("settings.server_defaults") },
   { key: "network", label: i18n.t("settings.network") },
   { key: "developer", label: i18n.t("settings.developer_mode") },
@@ -404,16 +403,19 @@ async function handleImport(json: string) {
       </div>
 
       <div class="settings-main">
-        <section data-settings-section="appearance" class="settings-section">
-          <ColorThemeCard
-            :color="settings.color"
-            :is-theme-proxied="isThemeProxied"
-            :theme-proxy-plugin-name="themeProxyPluginName"
-            @update:color="settings.color = $event"
+        <section data-settings-section="general" class="settings-section">
+          <GeneralSettingsCard
+            v-model:closeServersOnExit="settings.close_servers_on_exit"
+            v-model:closeServersOnUpdate="settings.close_servers_on_update"
+            v-model:autoAcceptEula="settings.auto_accept_eula"
+            v-model:closeAction="closeActionModel"
             @change="markChanged"
           />
+        </section>
 
+        <section data-settings-section="appearance" class="settings-section">
           <AppearanceCard
+            :color="settings.color"
             :theme="settings.theme"
             :font-size="fontSize"
             :font-family="settings.font_family"
@@ -429,6 +431,7 @@ async function handleImport(json: string) {
             :background-size="settings.background_size"
             :bg-settings-expanded="bgSettingsExpanded"
             :minimal-mode="settings.minimal_mode"
+            @update:color="settings.color = $event"
             @update:theme="settings.theme = $event"
             @update:font-size="fontSize = $event"
             @update:font-family="settings.font_family = $event"
@@ -458,16 +461,6 @@ async function handleImport(json: string) {
             v-model:maxLogLines="maxLogLines"
             :fontFamilyOptions="fontFamilyOptions"
             :fontsLoading="fontsLoading"
-            @change="markChanged"
-          />
-        </section>
-
-        <section data-settings-section="general" class="settings-section">
-          <GeneralSettingsCard
-            v-model:closeServersOnExit="settings.close_servers_on_exit"
-            v-model:closeServersOnUpdate="settings.close_servers_on_update"
-            v-model:autoAcceptEula="settings.auto_accept_eula"
-            v-model:closeAction="closeActionModel"
             @change="markChanged"
           />
         </section>

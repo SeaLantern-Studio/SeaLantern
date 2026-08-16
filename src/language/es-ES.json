@@ -649,6 +649,8 @@
     "max_log_lines_desc": "Número máximo de líneas por servidor. Las más antiguas se eliminan automáticamente. Por defecto 5000",
     "appearance": "Apariencia",
     "appearance_desc": "Personalizar fondo y efectos visuales",
+    "group_theme": "Tema",
+    "group_effect": "Pantalla",
     "theme": "Tema",
     "theme_desc": "Selecciona el tema. \"Seguir sistema\" se adapta al tema del sistema",
     "font_size": "Tamaño del texto",

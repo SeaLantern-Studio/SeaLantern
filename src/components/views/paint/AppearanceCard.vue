@@ -2,8 +2,10 @@
 import BackgroundSettings from "./BackgroundSettings.vue";
 import { i18n } from "@language";
 import { computed } from "vue";
+import { getThemeOptions } from "@themes";
 
 defineProps<{
+  color: string;
   theme: string;
   fontSize: string;
   fontFamily: string;
@@ -22,6 +24,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: "update:color", value: string): void;
   (e: "update:theme", value: string): void;
   (e: "update:fontSize", value: string): void;
   (e: "update:fontFamily", value: string): void;
@@ -41,6 +44,14 @@ const emit = defineEmits<{
   (e: "clearImage"): void;
   (e: "change"): void;
 }>();
+
+// 颜色主题预设选项，与旧 ColorThemeCard 一致
+const colorOptions = computed(() => getThemeOptions());
+
+function handleColorChange(value: string) {
+  emit("update:color", value);
+  emit("change");
+}
 
 const themeOptions = computed(() => [
   { label: i18n.t("settings.theme_options.auto"), value: "auto" },
@@ -77,6 +88,28 @@ function handleMinimalModeChange(value: boolean) {
 <template>
   <cmz-card :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
     <div class="sl-settings-group">
+      <div class="settings-group-title">{{ i18n.t("settings.group_theme") }}</div>
+
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.color_theme") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.color_theme_desc") }}</span>
+        </div>
+        <div class="sl-input-md">
+          <div v-if="isThemeProxied" class="theme-proxied-notice">
+            <span class="proxied-text">{{
+              i18n.t("settings.theme_proxied_by", { plugin: themeProxyPluginName })
+            }}</span>
+          </div>
+          <cmz-select
+            v-else
+            :model-value="color"
+            :options="colorOptions"
+            @update:model-value="handleColorChange"
+          />
+        </div>
+      </div>
+
       <div class="settings-entry">
         <div class="settings-entry-info">
           <span class="settings-entry-title">{{ i18n.t("settings.theme") }}</span>
@@ -134,6 +167,8 @@ function handleMinimalModeChange(value: boolean) {
         </div>
       </div>
 
+      <div class="settings-group-title">{{ i18n.t("settings.group_effect") }}</div>
+
       <div class="settings-entry">
         <div class="settings-entry-info">
           <span class="settings-entry-title">{{ i18n.t("settings.advanced_material") }}</span>
@@ -171,6 +206,15 @@ function handleMinimalModeChange(value: boolean) {
 </template>
 
 <style scoped>
+.settings-group-title {
+  margin: var(--sl-space-md) 0 var(--sl-space-xs);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--sl-text-tertiary);
+}
+
 .theme-proxied-notice {
   display: flex;
   align-items: center;

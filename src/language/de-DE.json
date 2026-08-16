@@ -649,6 +649,8 @@
     "max_log_lines_desc": "Maximale Anzahl der pro Server aufzubewahrenden Log-Zeilen. Ältere Logs werden automatisch gelöscht. Standard 5000",
     "appearance": "Erscheinungsbild",
     "appearance_desc": "Hintergrund und visuelle Effekte anpassen",
+    "group_theme": "Theme",
+    "group_effect": "Darstellung",
     "theme": "Theme-Modus",
     "theme_desc": "Wähle das Theme-Erscheinungsbild der Anwendung. „System folgen“ passt sich automatisch dem dunklen/hellen Modus des Systems an",
     "font_size": "Textgröße",

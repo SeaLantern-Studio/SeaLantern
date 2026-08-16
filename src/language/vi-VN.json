@@ -649,6 +649,8 @@
     "max_log_lines_desc": "Số dòng nhật ký tối đa giữ lại mỗi máy chủ, quá sẽ tự động xóa cũ. Mặc định 5000",
     "appearance": "Giao diện",
     "appearance_desc": "Tùy chỉnh nền và hiệu ứng",
+    "group_theme": "Chủ đề",
+    "group_effect": "Hiển thị",
     "theme": "Chế độ giao diện",
     "theme_desc": "Chọn giao diện, \"Theo hệ thống\" sẽ tự động theo chế độ sáng/tối của hệ thống",
     "font_size": "Cỡ chữ",
