@@ -18,6 +18,15 @@ let rainbowTimer: number | null = null;
 const RAINBOW_SPEED = 5;
 
 /**
+ * 将彩虹派生亮度钳制到设计边界内
+ * 派生色(light/dark 变体)基于补偿亮度加减偏移,可能越界,
+ * 统一钳制保证所有彩虹颜色处于同一感知亮度范围
+ */
+function clampRainbowLightness(lightness: number): number {
+  return Math.min(90, Math.max(8, lightness));
+}
+
+/**
  * 按色相补偿 HSL 亮度:同一亮度下黄区感知最亮、蓝区最暗,
  * 直接步进色相会忽亮忽暗,这里反向补偿让彩虹轮询视觉均匀
  */
@@ -50,7 +59,7 @@ function rainbowLightness(hue: number, baseL: number): number {
   const perceived = 0.2126 * r + 0.7152 * g + 0.0722 * b;
   // 感知亮度约 0.07(蓝)~0.88(黄),向 0.5 收敛补偿,系数控制力度
   const delta = (0.5 - perceived) * 0.5;
-  return Math.min(90, Math.max(8, baseL + delta * 100));
+  return clampRainbowLightness(baseL + delta * 100);
 }
 
 /**
@@ -62,13 +71,16 @@ function applyRainbowHue(hue: number): void {
   const isDark = root.getAttribute("data-theme") === "dark";
   const l = Math.round(rainbowLightness(hue, isDark ? 64 : 48));
   const lAccent = Math.round(rainbowLightness((hue + 45) % 360, isDark ? 72 : 56));
+  const lLight = clampRainbowLightness(l + 10);
+  const lDark = clampRainbowLightness(l - 10);
+  const lAccentLight = clampRainbowLightness(lAccent + 8);
   root.style.setProperty("--sl-primary", `hsl(${hue}, 82%, ${l}%)`);
-  root.style.setProperty("--sl-primary-light", `hsl(${hue}, 82%, ${l + 10}%)`);
-  root.style.setProperty("--sl-primary-dark", `hsl(${hue}, 82%, ${l - 10}%)`);
+  root.style.setProperty("--sl-primary-light", `hsl(${hue}, 82%, ${lLight}%)`);
+  root.style.setProperty("--sl-primary-dark", `hsl(${hue}, 82%, ${lDark}%)`);
   root.style.setProperty("--sl-primary-bg", `hsla(${hue}, 82%, ${l}%, 0.12)`);
   root.style.setProperty("--sl-secondary", `hsl(${(hue + 45) % 360}, 82%, ${lAccent}%)`);
   root.style.setProperty("--sl-accent", `hsl(${(hue + 45) % 360}, 82%, ${lAccent}%)`);
-  root.style.setProperty("--sl-accent-light", `hsl(${(hue + 45) % 360}, 82%, ${lAccent + 8}%)`);
+  root.style.setProperty("--sl-accent-light", `hsl(${(hue + 45) % 360}, 82%, ${lAccentLight}%)`);
 }
 
 function ensureRainbowLoop(): void {
@@ -417,8 +429,8 @@ export function applyColors(settings: AppSettings): void {
   let primaryBg: string;
   if (isRainbow) {
     // 彩虹主色是 hsl 字符串,不能走 hex 亮度调整,直接用补偿后的亮度派生
-    primaryLight = `hsl(${rainbowHue}, 82%, ${Math.min(90, rainbowL + 10)}%)`;
-    primaryDark = `hsl(${rainbowHue}, 82%, ${Math.max(8, rainbowL - 10)}%)`;
+    primaryLight = `hsl(${rainbowHue}, 82%, ${clampRainbowLightness(rainbowL + 10)}%)`;
+    primaryDark = `hsl(${rainbowHue}, 82%, ${clampRainbowLightness(rainbowL - 10)}%)`;
     primaryBg = `hsla(${rainbowHue}, 82%, ${rainbowL}%, 0.12)`;
   } else {
     primaryLight = isDark

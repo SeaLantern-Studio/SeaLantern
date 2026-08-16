@@ -318,6 +318,7 @@ function handleMinimalModeChange(value: boolean) {
   height: 20px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 1px solid rgba(15, 23, 42, 0.12);
+  /* 边框走主题变量,避免在暗色/高对比度主题下颜色丢失 */
+  border: 1px solid var(--sl-border);
 }
 </style>
