@@ -1,4 +1,5 @@
 /* AppSidebar 组件样式 */
+/* 侧栏透明,与窗口背景融合,主容器卡片浮在上面承担层次 */
 .sidebar {
   position: fixed;
   top: 0;
