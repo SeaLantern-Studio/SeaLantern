@@ -30,10 +30,9 @@ pub(crate) fn parse(bytes: &[u8]) -> ParsedManifest {
             continue;
         }
         if let Some(continuation) = line.strip_prefix(' ') {
-            if let Some(key) = current_key.as_ref() {
-                if let Some(value) = attributes.get_mut(key) {
-                    value.push_str(continuation);
-                }
+            if let Some(key) = current_key.as_ref()
+                && let Some(value) = attributes.get_mut(key) {
+                value.push_str(continuation);
             }
             continue;
         }

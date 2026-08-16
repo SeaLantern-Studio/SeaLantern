@@ -108,8 +108,8 @@ pub(super) fn detect(
         }
     }
 
-    if let Some((root, relative_jar)) = directory_launch {
-        if main_class.is_some() && main_class != Some(FABRIC_SERVER_LAUNCHER) {
+    if let Some((root, relative_jar)) = directory_launch
+        && main_class.is_some() && main_class != Some(FABRIC_SERVER_LAUNCHER) {
             findings.roles.push(Signal {
                 value: ArtifactRole::Runnable,
                 detector: "directory-root-jar-manifest",
@@ -135,7 +135,6 @@ pub(super) fn detect(
                 correlation_group: "directory-root-jar-manifest",
             });
         }
-    }
 }
 
 fn add_craftbukkit_product(
