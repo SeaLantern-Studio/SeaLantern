@@ -72,17 +72,15 @@ impl InstanceStore {
 async fn migrate_legacy_servers_file(
     path: &std::path::Path,
 ) -> Result<(), sealantern_infra::fs::FsError> {
-    if !path.exists() {
-        return Ok(());
-    }
     let raw = match tokio::fs::read(path).await {
         Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(e) => {
             return Err(sealantern_infra::fs::FsError::Io {
                 operation: "read legacy servers",
                 path: path.to_path_buf(),
                 source: e,
-            })
+            });
         }
     };
     let text = match String::from_utf8(raw) {
@@ -92,7 +90,7 @@ async fn migrate_legacy_servers_file(
                 path: path.to_path_buf(),
                 encoding: "UTF-8",
                 message: e.to_string(),
-            })
+            });
         }
     };
     let trimmed = text.trim_start();
@@ -108,7 +106,7 @@ async fn migrate_legacy_servers_file(
                 operation: "decode legacy servers",
                 path: path.to_path_buf(),
                 message: e.to_string(),
-            })
+            });
         }
     };
     let list = InstanceList::migrate_legacy(records);
@@ -120,7 +118,7 @@ async fn migrate_legacy_servers_file(
                 operation: "encode migrated servers",
                 path: path.to_path_buf(),
                 message: e.to_string(),
-            })
+            });
         }
     };
     if let Err(e) = tokio::fs::write(path, content).await {

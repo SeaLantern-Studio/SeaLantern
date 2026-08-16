@@ -64,16 +64,20 @@ impl InstanceList {
             let launch = LocalLaunch {
                 startup_mode: sealantern_core::instance::StartupMode::parse(&record.startup_mode)
                     .unwrap_or(sealantern_core::instance::StartupMode::Jar),
-                startup_target: Some(record.jar_path.into()),
+                startup_target: if record.jar_path.is_empty() {
+                    None
+                } else {
+                    Some(record.jar_path.into())
+                },
                 custom_command: record.custom_command,
                 custom_executable: None,
-                custom_arguments: record.jvm_args.clone(),
+                custom_arguments: Vec::new(),
                 java_executable: if record.java_path.is_empty() {
                     None
                 } else {
                     Some(record.java_path.into())
                 },
-                jvm_arguments: Vec::new(),
+                jvm_arguments: record.jvm_args,
             };
             let spec = InstanceSpec {
                 id: match InstanceId::new(record.id.clone()) {
