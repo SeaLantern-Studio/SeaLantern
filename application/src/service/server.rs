@@ -398,10 +398,10 @@ impl CoreServerService {
         // 清理残留进程：若旧进程仍在运行则拒绝启动，否则收敛旧日志管线。
         {
             let mut processes = self.processes_lock()?;
-            if let Some(managed) = processes.get_mut(&id_str) {
-                if managed.daemon.poll().map(|s| s.is_none()).unwrap_or(false) {
-                    return Err(ServerError::InvalidState.into());
-                }
+            if let Some(managed) = processes.get_mut(&id_str)
+                && managed.daemon.poll().map(|s| s.is_none()).unwrap_or(false)
+            {
+                return Err(ServerError::InvalidState.into());
             }
         }
         if let Some(recorder) = self.take_recorder_after_exit(&id_str)? {
@@ -542,10 +542,10 @@ impl CoreServerService {
         // 超时：强制终止进程树；失败时保留受管进程原状并返回错误。
         {
             let mut processes = self.processes_lock()?;
-            if let Some(managed) = processes.get_mut(&id_str) {
-                if let Err(error) = managed.daemon.terminate_tree() {
-                    return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
-                }
+            if let Some(managed) = processes.get_mut(&id_str)
+                && let Err(error) = managed.daemon.terminate_tree()
+            {
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
             }
         }
         // 终止成功后统一移除受管进程并收敛日志管线。

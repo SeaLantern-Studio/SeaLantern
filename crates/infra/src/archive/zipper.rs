@@ -67,10 +67,10 @@ fn create_zip_inner(source: &Path, destination: &Path) -> Result<ArchiveSummary,
 }
 
 fn remove_temporary_archive(path: &Path) {
-    if let Err(error) = fs::remove_file(path) {
-        if error.kind() != io::ErrorKind::NotFound {
-            crate::observability::archive_cleanup_failed(path, &error);
-        }
+    if let Err(error) = fs::remove_file(path)
+        && error.kind() != io::ErrorKind::NotFound
+    {
+        crate::observability::archive_cleanup_failed(path, &error);
     }
 }
 

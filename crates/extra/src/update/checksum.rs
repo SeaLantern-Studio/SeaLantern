@@ -102,10 +102,10 @@ pub async fn fetch_sha256_from_asset(
         return None;
     }
 
-    if let Some(content_length) = response.content_length() {
-        if content_length > 1024 * 1024 {
-            return None;
-        }
+    if let Some(content_length) = response.content_length()
+        && content_length > 1024 * 1024
+    {
+        return None;
     }
 
     let content = response.text().await.ok()?;
