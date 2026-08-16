@@ -509,8 +509,6 @@ async function handleImport(json: string) {
 
 <style scoped>
 .settings-view {
-  max-width: 960px;
-  margin: 0 auto;
   padding-bottom: var(--sl-space-2xl);
 }
 
@@ -529,16 +527,12 @@ async function handleImport(json: string) {
   gap: 0;
 }
 
-/* 竖 tabbar 吸顶,跟随内容滚动 */
+/* 竖 tabbar 吸顶,跟随内容滚动;宽度由 app.css 全局统一 */
 .settings-tabbar-sticky {
   position: sticky;
   top: var(--sl-space-md);
   flex-shrink: 0;
   z-index: 1;
-}
-
-.settings-tabbar-sticky .cmz-tab-bar--vertical {
-  min-width: 140px;
 }
 
 .settings-main {

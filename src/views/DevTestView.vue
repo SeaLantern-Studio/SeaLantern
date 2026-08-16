@@ -94,17 +94,12 @@ const tabs = [
   gap: 0;
 }
 
-/* 竖 tabbar 吸顶,跟随内容滚动 */
+/* 竖 tabbar 吸顶,跟随内容滚动;宽度由 app.css 全局统一 */
 .dev-tabbar-sticky {
   position: sticky;
   top: var(--sl-space-md);
   flex-shrink: 0;
   z-index: 1;
-}
-
-.dev-tabbar-sticky .cmz-tab-bar--vertical {
-  width: 220px;
-  min-width: 220px;
 }
 
 .dev-test-main {
