@@ -1,5 +1,5 @@
-use super::model::{Attributed, Detected, DetectionCandidate, EvidenceId};
 use super::MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE;
+use super::model::{Attributed, Detected, DetectionCandidate, EvidenceId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DetectionOutcome {
@@ -196,8 +196,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        resolve, resolve_with_minimum_confidence, server_implementation_outcome, DetectionClaim,
-        DetectionOutcome,
+        DetectionClaim, DetectionOutcome, resolve, resolve_with_minimum_confidence,
+        server_implementation_outcome,
     };
     use crate::provisioning::server_inspection::EvidenceId;
 

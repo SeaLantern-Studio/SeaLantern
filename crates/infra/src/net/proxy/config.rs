@@ -19,10 +19,10 @@ impl Default for ProxySettings {
 impl ProxySettings {
     /// 在设置应用到控制器之前进行验证。
     pub fn validate(&self) -> Result<(), ProxyConfigError> {
-        if let ProxyMode::Manual { proxy_url } = &self.mode {
-            if proxy_url.trim().is_empty() {
-                return Err(ProxyConfigError::EmptyManualProxy);
-            }
+        if let ProxyMode::Manual { proxy_url } = &self.mode
+            && proxy_url.trim().is_empty()
+        {
+            return Err(ProxyConfigError::EmptyManualProxy);
         }
 
         Ok(())

@@ -3,13 +3,13 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use reqwest::header::{HeaderMap, HeaderValue, CONTENT_LENGTH};
 use reqwest::StatusCode;
+use reqwest::header::{CONTENT_LENGTH, HeaderMap, HeaderValue};
 use url::Url;
 
 use super::executor::{
-    declared_body_too_large, is_public_ip, is_redirect, parse_target, validate_address,
-    validate_request_headers, PluginDnsResolver, MAX_DNS_ADDRESSES,
+    MAX_DNS_ADDRESSES, PluginDnsResolver, declared_body_too_large, is_public_ip, is_redirect,
+    parse_target, validate_address, validate_request_headers,
 };
 use super::{
     AllowedNetworkTarget, NetworkOrigin, PluginHttpMethod, PluginNetworkAddressPolicy,

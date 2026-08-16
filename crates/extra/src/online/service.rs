@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 
 use super::sculk::{self, ActiveTunnel};
 use super::{HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError, TunnelEvent, TunnelStatus};

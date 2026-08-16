@@ -1,6 +1,6 @@
 use super::{
-    capability, ApprovalMode, GrantKind, PolicyDecision, PolicyDenialReason, RiskLevel,
-    ScopeBinding, TrustSource,
+    ApprovalMode, GrantKind, PolicyDecision, PolicyDenialReason, RiskLevel, ScopeBinding,
+    TrustSource, capability,
 };
 
 /// 应用层完成授权、审批查询后交给纯策略求值器的事实集合。

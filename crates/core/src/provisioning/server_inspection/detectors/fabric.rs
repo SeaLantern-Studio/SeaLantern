@@ -7,8 +7,8 @@ use super::super::model::{
     ServerComponent, ServerComponentKind,
 };
 use super::{
-    ecosystems_for_key, manifest_location, product_from_key, ComponentFinding, Findings,
-    ProductFinding, ProductValueFinding, Signal,
+    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal, ecosystems_for_key,
+    manifest_location, product_from_key,
 };
 
 const FABRIC_SERVER_LAUNCHER: &str = "net.fabricmc.installer.ServerLauncher";

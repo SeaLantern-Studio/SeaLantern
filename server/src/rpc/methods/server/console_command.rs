@@ -39,8 +39,8 @@ use std::fmt;
 use std::future::Future;
 use std::sync::Arc;
 
-use serde::de::{self, Deserialize, Deserializer};
 use serde::Deserialize as DeriveDeserialize;
+use serde::de::{self, Deserialize, Deserializer};
 
 use crate::observability;
 use crate::rpc::axum::{RpcAxumMethod, RpcHttpMethod};
@@ -213,7 +213,7 @@ mod tests {
 
     use super::*;
     use crate::rpc::{
-        dispatch, RpcAccess, RpcContext, RpcErrorCode, RpcRequest, RpcRequestId, RpcTransport,
+        RpcAccess, RpcContext, RpcErrorCode, RpcRequest, RpcRequestId, RpcTransport, dispatch,
     };
 
     struct RecordingConsoleService {
@@ -322,10 +322,12 @@ mod tests {
             .expect_err("missing permission must be rejected");
 
         assert_eq!(error.code(), RpcErrorCode::PermissionDenied);
-        assert!(service
-            .requests
-            .lock()
-            .expect("test request log lock should not be poisoned")
-            .is_empty());
+        assert!(
+            service
+                .requests
+                .lock()
+                .expect("test request log lock should not be poisoned")
+                .is_empty()
+        );
     }
 }

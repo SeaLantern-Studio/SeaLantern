@@ -10,9 +10,9 @@
 //! 自己的传输（前端事件 / SSE）。订阅方消费慢导致的事件丢失可由
 //! `ConsoleService::logs(since)` 拉取补漏。
 
-use sealantern_core::process::read_output_lines;
 use sealantern_core::process::TerminalOutput;
-use sealantern_extra::server::log::{open_log_database, LogSource, LogWriter};
+use sealantern_core::process::read_output_lines;
+use sealantern_extra::server::log::{LogSource, LogWriter, open_log_database};
 use sealantern_interface::console::ConsoleLogLine;
 use serde::Serialize;
 use std::path::Path;

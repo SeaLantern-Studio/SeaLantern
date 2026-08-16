@@ -318,7 +318,7 @@ fn validate_unit_interval(field: &'static str, value: f32) -> Result<(), Setting
 mod tests {
     use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
 
-    use super::{AppSettings, SettingsGroup, DEFAULT_ACRYLIC_BLUR_LEVEL};
+    use super::{AppSettings, DEFAULT_ACRYLIC_BLUR_LEVEL, SettingsGroup};
 
     #[test]
     fn legacy_settings_default_to_medium_acrylic_blur() {

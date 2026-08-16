@@ -6,7 +6,7 @@ use cap_std::fs::Dir;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
-use super::{open_existing_directory, parent_path, ArchiveError};
+use super::{ArchiveError, open_existing_directory, parent_path};
 
 /// 统计 ZIP 创建过程中处理的条目数和非压缩字节数。
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -67,10 +67,10 @@ fn create_zip_inner(source: &Path, destination: &Path) -> Result<ArchiveSummary,
 }
 
 fn remove_temporary_archive(path: &Path) {
-    if let Err(error) = fs::remove_file(path) {
-        if error.kind() != io::ErrorKind::NotFound {
-            crate::observability::archive_cleanup_failed(path, &error);
-        }
+    if let Err(error) = fs::remove_file(path)
+        && error.kind() != io::ErrorKind::NotFound
+    {
+        crate::observability::archive_cleanup_failed(path, &error);
     }
 }
 

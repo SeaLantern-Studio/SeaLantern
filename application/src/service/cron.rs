@@ -4,8 +4,8 @@
 //! [`ServerService`] 执行重启和控制台命令。宿主仅依赖 `interface` 契约。
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -428,10 +428,12 @@ mod tests {
             *server.calls.lock().expect("calls lock"),
             ["restart:server-a", "command:server-a:say scheduled"]
         );
-        assert!(tokio::fs::read_to_string(&path)
-            .await
-            .expect("read persisted tasks")
-            .contains("say scheduled"));
+        assert!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("read persisted tasks")
+                .contains("say scheduled")
+        );
 
         let reloaded = CoreCronTaskService::with_path(path, server);
         assert_eq!(reloaded.list().await.expect("reload tasks").len(), 2);

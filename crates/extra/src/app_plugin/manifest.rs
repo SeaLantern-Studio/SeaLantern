@@ -35,7 +35,7 @@ pub struct PluginManifest {
 
 #[cfg(test)]
 mod tests {
-    use super::{PluginCapability, PluginManifest, PLUGIN_API_VERSION};
+    use super::{PLUGIN_API_VERSION, PluginCapability, PluginManifest};
 
     #[test]
     fn v2_manifest_uses_camel_case_api_version() {
@@ -80,9 +80,9 @@ mod tests {
 
     #[test]
     fn capability_rejects_unknown_fields() {
-        assert!(serde_json::from_str::<PluginCapability>(
-            r#"{"id":"plugin.log.emit","legacy":true}"#
-        )
-        .is_err());
+        assert!(
+            serde_json::from_str::<PluginCapability>(r#"{"id":"plugin.log.emit","legacy":true}"#)
+                .is_err()
+        );
     }
 }

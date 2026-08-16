@@ -2,8 +2,8 @@ use std::path::Path;
 
 use super::super::model::{ArtifactInfo, EvidenceSource, MinecraftVersionInfo, ReleaseChannel};
 use super::{
-    ecosystems_for_key, manifest_location, product_from_key, version_json_location, Findings,
-    ProductFinding, ProductValueFinding, Signal,
+    Findings, ProductFinding, ProductValueFinding, Signal, ecosystems_for_key, manifest_location,
+    product_from_key, version_json_location,
 };
 
 pub(super) fn detect(

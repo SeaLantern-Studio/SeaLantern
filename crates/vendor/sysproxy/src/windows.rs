@@ -2,20 +2,19 @@ use crate::{Autoproxy, Error, Result, Sysproxy};
 use std::{ffi::c_void, mem::size_of};
 use url::Url;
 use windows::{
-    core::{PCWSTR, PWSTR},
     Win32::{
-        NetworkManagement::Rras::{RasEnumEntriesW, ERROR_BUFFER_TOO_SMALL, RASENTRYNAMEW},
+        NetworkManagement::Rras::{ERROR_BUFFER_TOO_SMALL, RASENTRYNAMEW, RasEnumEntriesW},
         Networking::WinInet::{
-            InternetSetOptionW, INTERNET_OPTION_PER_CONNECTION_OPTION,
-            INTERNET_OPTION_PROXY_SETTINGS_CHANGED, INTERNET_OPTION_REFRESH,
-            INTERNET_PER_CONN_AUTOCONFIG_URL, INTERNET_PER_CONN_FLAGS, INTERNET_PER_CONN_OPTIONW,
-            INTERNET_PER_CONN_OPTIONW_0, INTERNET_PER_CONN_OPTION_LISTW,
-            INTERNET_PER_CONN_PROXY_BYPASS, INTERNET_PER_CONN_PROXY_SERVER, PROXY_TYPE_AUTO_DETECT,
-            PROXY_TYPE_AUTO_PROXY_URL, PROXY_TYPE_DIRECT, PROXY_TYPE_PROXY,
+            INTERNET_OPTION_PER_CONNECTION_OPTION, INTERNET_OPTION_PROXY_SETTINGS_CHANGED,
+            INTERNET_OPTION_REFRESH, INTERNET_PER_CONN_AUTOCONFIG_URL, INTERNET_PER_CONN_FLAGS,
+            INTERNET_PER_CONN_OPTION_LISTW, INTERNET_PER_CONN_OPTIONW, INTERNET_PER_CONN_OPTIONW_0,
+            INTERNET_PER_CONN_PROXY_BYPASS, INTERNET_PER_CONN_PROXY_SERVER, InternetSetOptionW,
+            PROXY_TYPE_AUTO_DETECT, PROXY_TYPE_AUTO_PROXY_URL, PROXY_TYPE_DIRECT, PROXY_TYPE_PROXY,
         },
     },
+    core::{PCWSTR, PWSTR},
 };
-use winreg::{enums, RegKey};
+use winreg::{RegKey, enums};
 
 pub use windows::core::Error as Win32Error;
 
@@ -271,18 +270,18 @@ fn find_http_proxy(proxy_server: &str) -> Option<&str> {
 #[inline]
 fn parse_proxy_address(address: &str, host: &mut String, port: &mut u16) {
     // 快速路径：host:port 或 [ipv6]:port，无需堆分配
-    if let Some((h, p)) = address.rsplit_once(':') {
-        if let Ok(port_num) = p.parse::<u16>() {
-            // 去除 IPv6 方括号: "[::1]" → "::1"
-            let clean = if h.starts_with('[') && h.ends_with(']') {
-                &h[1..h.len() - 1]
-            } else {
-                h
-            };
-            *host = clean.to_string();
-            *port = port_num;
-            return;
-        }
+    if let Some((h, p)) = address.rsplit_once(':')
+        && let Ok(port_num) = p.parse::<u16>()
+    {
+        // 去除 IPv6 方括号: "[::1]" → "::1"
+        let clean = if h.starts_with('[') && h.ends_with(']') {
+            &h[1..h.len() - 1]
+        } else {
+            h
+        };
+        *host = clean.to_string();
+        *port = port_num;
+        return;
     }
 
     // 回退：URL 解析器处理无端口的主机名等边缘情况

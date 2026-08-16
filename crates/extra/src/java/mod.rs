@@ -8,8 +8,8 @@ mod validation;
 
 pub use crate::models::JavaInfo;
 pub use discovery::{
-    detect_java_installations, detect_java_installations_with_diagnostics,
-    detect_java_installations_with_global_search, JavaDetectionReport,
+    JavaDetectionReport, detect_java_installations, detect_java_installations_with_diagnostics,
+    detect_java_installations_with_global_search,
 };
 pub use error::{JavaDiscoveryError, JavaValidationError};
 pub use index::{JavaSearchDirectory, JavaSearchIndex};

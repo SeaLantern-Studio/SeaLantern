@@ -37,15 +37,15 @@ pub use download::{calculate_progress, download_update_file_without_events, file
 pub use error::UpdateCheckError;
 pub use github::{fetch_release as fetch_github_release, find_suitable_asset};
 pub use install::{
-    check_pending_update, clear_pending_update, get_pending_update_file, get_update_cache_dir,
-    write_pending_update, INSTALL_IN_PROGRESS,
+    INSTALL_IN_PROGRESS, check_pending_update, clear_pending_update, get_pending_update_file,
+    get_update_cache_dir, write_pending_update,
 };
 pub use types::{
-    get_github_config, DownloadProgress, PendingUpdate, ReleaseAsset, ReleaseResponse, RepoConfig,
-    UpdateInfo,
+    DownloadProgress, PendingUpdate, ReleaseAsset, ReleaseResponse, RepoConfig, UpdateInfo,
+    get_github_config,
 };
 pub use version::{
-    compare_versions, normalize_release_tag_version, parse_version, ParsedVersion, PreIdent,
+    ParsedVersion, PreIdent, compare_versions, normalize_release_tag_version, parse_version,
 };
 
 #[cfg(target_os = "windows")]

@@ -135,13 +135,13 @@ fn current(app: &AppHandle) -> SystemTheme {
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
-        if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
-            if let Ok(theme) = window.theme() {
-                return match theme {
-                    tauri::Theme::Dark => SystemTheme::Dark,
-                    _ => SystemTheme::Light,
-                };
-            }
+        if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL)
+            && let Ok(theme) = window.theme()
+        {
+            return match theme {
+                tauri::Theme::Dark => SystemTheme::Dark,
+                _ => SystemTheme::Light,
+            };
         }
         SystemTheme::Light
     }
@@ -157,7 +157,7 @@ fn current(app: &AppHandle) -> SystemTheme {
 fn windows_theme() -> SystemTheme {
     use std::mem::MaybeUninit;
     use windows_sys::Win32::System::Registry::{
-        RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY_CURRENT_USER, KEY_READ, REG_DWORD,
+        HKEY_CURRENT_USER, KEY_READ, REG_DWORD, RegCloseKey, RegOpenKeyExW, RegQueryValueExW,
     };
 
     let key_path: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\0"

@@ -1,8 +1,8 @@
 use std::io;
 use std::process::ExitStatus;
 
-use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
+use serde::ser::{SerializeStruct, Serializer};
 
 use crate::process::Daemon;
 

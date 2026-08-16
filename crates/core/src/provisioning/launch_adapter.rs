@@ -79,7 +79,7 @@ fn script_startup_mode(path: &Path) -> Option<StartupMode> {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{adapt_launch_profile, LaunchAdapterError};
+    use super::{LaunchAdapterError, adapt_launch_profile};
     use crate::provisioning::server_inspection::{LaunchPlatform, LaunchProfile, LaunchTarget};
 
     fn profile(target: LaunchTarget) -> LaunchProfile {

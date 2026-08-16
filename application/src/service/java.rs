@@ -13,7 +13,7 @@
 
 use async_trait::async_trait;
 use sealantern_extra::java::{
-    detect_java_installations_with_diagnostics, validate_java, JavaDetectionReport,
+    JavaDetectionReport, detect_java_installations_with_diagnostics, validate_java,
 };
 use sealantern_extra::models::JavaInfo;
 use sealantern_interface::{JavaService, JavaServiceError};

@@ -7,7 +7,7 @@ use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
 
 use super::theme::{self, DesktopAppearanceState};
 use super::window_state::{
-    self as window_lifecycle, MainWindowMode, MainWindowTransition, MAIN_WINDOW_LABEL,
+    self as window_lifecycle, MAIN_WINDOW_LABEL, MainWindowMode, MainWindowTransition,
 };
 
 fn window_state_flags() -> StateFlags {

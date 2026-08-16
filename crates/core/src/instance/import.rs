@@ -139,7 +139,7 @@ impl std::error::Error for InstanceImportError {
 mod tests {
     use std::path::{Path, PathBuf};
 
-    use super::{plan_import, InstanceImportError, InstanceImportRequest};
+    use super::{InstanceImportError, InstanceImportRequest, plan_import};
     use crate::instance::{InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
 
     fn import_spec(startup_target: Option<PathBuf>, startup_mode: StartupMode) -> InstanceSpec {

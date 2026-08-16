@@ -87,7 +87,7 @@ impl FileCache {
                 Ok(metadata) => metadata,
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
                 Err(error) => {
-                    return Err(FsError::io("read cache entry metadata", key.as_path(), error))
+                    return Err(FsError::io("read cache entry metadata", key.as_path(), error));
                 }
             };
             if metadata.file_type().is_symlink() {

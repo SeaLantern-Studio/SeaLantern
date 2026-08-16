@@ -11,9 +11,10 @@ use crate::instance::{
 
 use super::launch_adapter::adapt_launch_profile;
 use super::server_inspection::{
-    detection_outcome, inspect_server_artifact, server_implementation_outcome, Detected,
-    DetectionOutcome, DiagnosticSeverity, InspectionDiagnostic, InspectionOptions, LaunchPlatform,
-    LaunchProfile, LaunchTarget, ReleaseChannel, ServerInspectionError, ServerInspectionReport,
+    Detected, DetectionOutcome, DiagnosticSeverity, InspectionDiagnostic, InspectionOptions,
+    LaunchPlatform, LaunchProfile, LaunchTarget, ReleaseChannel, ServerInspectionError,
+    ServerInspectionReport, detection_outcome, inspect_server_artifact,
+    server_implementation_outcome,
 };
 
 /// 控制检查结果是否可以替换已有的启动配置。
@@ -596,15 +597,15 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        apply_server_inspection, apply_server_inspection_with_options, compatible_launch_candidate,
-        unresolved_diagnostic, LaunchProfilePolicy, ServerInspectionProjectionOptions,
+        LaunchProfilePolicy, ServerInspectionProjectionOptions, apply_server_inspection,
+        apply_server_inspection_with_options, compatible_launch_candidate, unresolved_diagnostic,
     };
     use crate::instance::{InstanceId, InstanceSpec, LocalLaunch, StartupMode};
     use crate::provisioning::server_inspection::{
-        server_implementation_outcome, Attributed, Detected, DetectionCandidate, LaunchPlatform,
-        LaunchProfile, LaunchTarget,
+        Attributed, Detected, DetectionCandidate, LaunchPlatform, LaunchProfile, LaunchTarget,
+        server_implementation_outcome,
     };
-    use crate::provisioning::{inspect_server_artifact, InspectionOptions};
+    use crate::provisioning::{InspectionOptions, inspect_server_artifact};
     use zip::write::FileOptions;
 
     fn instance_spec() -> InstanceSpec {
@@ -663,14 +664,8 @@ mod tests {
         let path = write_test_jar(
             "custom-fork.jar",
             &[
-                (
-                    "META-INF/MANIFEST.MF",
-                    "Main-Class: io.papermc.paperclip.Main\r\n\r\n",
-                ),
-                (
-                    "META-INF/versions.list",
-                    "hash\t26.2\t26.2/custom-fork-26.2.jar\n",
-                ),
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/custom-fork-26.2.jar\n"),
                 (
                     "META-INF/libraries.list",
                     "hash\texample.server:custom-fork-api:26.2.build.1-stable\tcustom-fork-api.jar\n",
@@ -778,10 +773,7 @@ mod tests {
                     "META-INF/MANIFEST.MF",
                     "Implementation-Title: FabricInstaller\r\nImplementation-Version: 1.1.1\r\nMain-Class: net.fabricmc.installer.ServerLauncher\r\n\r\n",
                 ),
-                (
-                    "install.properties",
-                    "fabric-loader-version=0.19.3\ngame-version=26.2\n",
-                ),
+                ("install.properties", "fabric-loader-version=0.19.3\ngame-version=26.2\n"),
             ],
         );
         let report = inspect_server_artifact(&path, &InspectionOptions::default())
@@ -844,9 +836,11 @@ mod tests {
         assert_eq!(instance.game_version, "old-game");
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].code, "server_inspection_failed");
-        assert!(diagnostics[0]
-            .message
-            .contains("existing import metadata was preserved"));
+        assert!(
+            diagnostics[0]
+                .message
+                .contains("existing import metadata was preserved")
+        );
     }
 
     #[test]
@@ -890,11 +884,13 @@ mod tests {
                 .map(|snapshot| snapshot.inspected_at_unix_secs),
             Some(42)
         );
-        assert!(instance
-            .server_metadata
-            .as_ref()
-            .and_then(|snapshot| snapshot.subject.fingerprint.as_ref())
-            .is_some());
+        assert!(
+            instance
+                .server_metadata
+                .as_ref()
+                .and_then(|snapshot| snapshot.subject.fingerprint.as_ref())
+                .is_some()
+        );
     }
 
     #[test]
@@ -949,8 +945,10 @@ mod tests {
         let candidate = compatible_launch_candidate(&attributed, &mut diagnostics);
 
         assert!(candidate.is_none());
-        assert!(diagnostics[0]
-            .message
-            .contains("rejected and not returned as a candidate"));
+        assert!(
+            diagnostics[0]
+                .message
+                .contains("rejected and not returned as a candidate")
+        );
     }
 }

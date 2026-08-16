@@ -1,7 +1,7 @@
 //! 自动进入轻量模式的宿主侧延时任务。
 
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::Duration;
 
 pub struct AutoLightweightState {

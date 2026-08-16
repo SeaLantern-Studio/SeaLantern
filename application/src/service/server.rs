@@ -17,12 +17,12 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use sealantern_core::instance::{
-    restart_instance, Instance, InstanceId, InstanceLifecycleState, InstanceRestartDriver,
-    RestartPolicy, StartupMode,
+    Instance, InstanceId, InstanceLifecycleState, InstanceRestartDriver, RestartPolicy,
+    StartupMode, restart_instance,
 };
 use sealantern_core::process::{
-    build_command, CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal,
-    TerminalStream, WindowsConsoleEncoding,
+    CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal, TerminalStream,
+    WindowsConsoleEncoding, build_command,
 };
 use sealantern_interface::server::{ServerSnapshot, ServerState};
 use sealantern_interface::{InstanceService, ServerService, ServerServiceError, SettingsService};
@@ -398,10 +398,10 @@ impl CoreServerService {
         // 清理残留进程：若旧进程仍在运行则拒绝启动，否则收敛旧日志管线。
         {
             let mut processes = self.processes_lock()?;
-            if let Some(managed) = processes.get_mut(&id_str) {
-                if managed.daemon.poll().map(|s| s.is_none()).unwrap_or(false) {
-                    return Err(ServerError::InvalidState.into());
-                }
+            if let Some(managed) = processes.get_mut(&id_str)
+                && managed.daemon.poll().map(|s| s.is_none()).unwrap_or(false)
+            {
+                return Err(ServerError::InvalidState.into());
             }
         }
         if let Some(recorder) = self.take_recorder_after_exit(&id_str)? {
@@ -542,10 +542,10 @@ impl CoreServerService {
         // 超时：强制终止进程树；失败时保留受管进程原状并返回错误。
         {
             let mut processes = self.processes_lock()?;
-            if let Some(managed) = processes.get_mut(&id_str) {
-                if let Err(error) = managed.daemon.terminate_tree() {
-                    return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
-                }
+            if let Some(managed) = processes.get_mut(&id_str)
+                && let Err(error) = managed.daemon.terminate_tree()
+            {
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
             }
         }
         // 终止成功后统一移除受管进程并收敛日志管线。
@@ -681,9 +681,11 @@ mod tests {
         let second = InstanceId::new("second").expect("second id");
 
         let first_guard = service.lock_lifecycle(&first).await.expect("first lock");
-        assert!(tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&first))
-            .await
-            .is_err());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&first))
+                .await
+                .is_err()
+        );
         let second_guard =
             tokio::time::timeout(Duration::from_millis(20), service.lock_lifecycle(&second))
                 .await
@@ -700,11 +702,13 @@ mod tests {
 
         let locks = service.lifecycle_locks.lock().expect("lifecycle locks");
         assert_eq!(locks.len(), 2);
-        assert!(locks
-            .get(second.as_str())
-            .expect("second lock slot")
-            .upgrade()
-            .is_none());
+        assert!(
+            locks
+                .get(second.as_str())
+                .expect("second lock slot")
+                .upgrade()
+                .is_none()
+        );
         drop(locks);
         drop(reacquired);
 

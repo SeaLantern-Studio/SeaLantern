@@ -9,7 +9,7 @@ use sealantern_interface::settings::SettingsOverview;
 use sealantern_interface::{SettingsService, SettingsServiceError};
 use tauri::{AppHandle, Manager};
 
-use crate::desktop::{tray, AutoLightweightState};
+use crate::desktop::{AutoLightweightState, tray};
 
 /// 获取全局设置管理服务句柄（惰性初始化容器）。
 async fn settings_service() -> Result<Arc<CoreSettingsService>, SettingsServiceError> {

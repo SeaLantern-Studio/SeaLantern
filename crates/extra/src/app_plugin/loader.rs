@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
 use super::error::AppPluginError;
-use super::manifest::{PluginManifest, PLUGIN_API_VERSION};
+use super::manifest::{PLUGIN_API_VERSION, PluginManifest};
 use sealantern_core::app_plugin::capability;
 
 /// Locates and validates plugin manifests without evaluating plugin code.

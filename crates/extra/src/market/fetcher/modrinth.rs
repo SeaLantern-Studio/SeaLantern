@@ -20,8 +20,8 @@ use sealantern_infra::net::{ClientProvider, NetClient};
 
 use crate::market::error::MarketError;
 use crate::market::fetcher;
-use crate::market::fetcher::models::VersionFile;
 use crate::market::fetcher::Fetcher;
+use crate::market::fetcher::models::VersionFile;
 use crate::market::models::*;
 use crate::observability;
 
