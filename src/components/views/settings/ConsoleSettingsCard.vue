@@ -17,13 +17,6 @@ const emit = defineEmits<{
   (e: "update:maxLogLines", value: string): void;
   (e: "change"): void;
 }>();
-
-// 控制台字体大小走拖拽滑块,与外观卡的字体大小交互保持一致
-function handleConsoleFontSizeChange(e: Event) {
-  const v = (e.target as HTMLInputElement).value;
-  emit("update:consoleFontSize", v);
-  emit("change");
-}
 </script>
 
 <template>
@@ -41,7 +34,12 @@ function handleConsoleFontSizeChange(e: Event) {
             max="24"
             step="1"
             :value="consoleFontSize"
-            @input="handleConsoleFontSizeChange"
+            @input="
+              (e: Event) => {
+                emit('update:consoleFontSize', (e.target as HTMLInputElement).value);
+                emit('change');
+              }
+            "
             class="sl-slider"
           />
           <span class="sl-slider-value">{{ consoleFontSize }}px</span>
