@@ -50,6 +50,7 @@ const defaultSettings: AppSettings = {
   close_servers_on_exit: true,
   close_servers_on_update: true,
   auto_accept_eula: false,
+  auto_lightweight_minutes: null,
   default_max_memory: 4096,
   default_min_memory: 1024,
   default_port: 25565,

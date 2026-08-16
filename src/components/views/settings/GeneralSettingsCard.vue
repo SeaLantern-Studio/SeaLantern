@@ -6,6 +6,7 @@ const props = defineProps<{
   closeServersOnExit: boolean;
   closeServersOnUpdate: boolean;
   autoAcceptEula: boolean;
+  autoLightweightMinutes: number | null;
   closeAction: "ask" | "minimize" | "close";
 }>();
 
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   (e: "update:closeServersOnExit", value: boolean): void;
   (e: "update:closeServersOnUpdate", value: boolean): void;
   (e: "update:autoAcceptEula", value: boolean): void;
+  (e: "update:autoLightweightMinutes", value: number | null): void;
   (e: "update:closeAction", value: CloseAction): void;
   (e: "change"): void;
 }>();
@@ -24,11 +26,28 @@ function handleCloseActionChange(v: string | number) {
   emit("change");
 }
 
+function handleAutoLightweightToggle(enabled: boolean) {
+  emit("update:autoLightweightMinutes", enabled ? 3 : null);
+  emit("change");
+}
+
+function handleAutoLightweightDelayChange(value: string | number) {
+  emit("update:autoLightweightMinutes", Number(value));
+  emit("change");
+}
+
 const closeActionOptions = computed(() => [
   { label: i18n.t("settings.close_action_ask"), value: "ask" },
   { label: i18n.t("settings.close_action_minimize"), value: "minimize" },
   { label: i18n.t("settings.close_action_close"), value: "close" },
 ]);
+
+const autoLightweightDelayOptions = computed(() =>
+  [1, 3, 5, 10].map((minutes) => ({
+    label: `${minutes} ${i18n.t("settings.minutes")}`,
+    value: minutes,
+  })),
+);
 </script>
 
 <template>
@@ -47,6 +66,31 @@ const closeActionOptions = computed(() => [
               emit('change');
             }
           "
+        />
+      </div>
+
+      <div class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.auto_lightweight") }}</span>
+          <span class="settings-entry-desc">{{ i18n.t("settings.auto_lightweight_desc") }}</span>
+        </div>
+        <cmz-switch
+          :model-value="autoLightweightMinutes !== null"
+          @update:model-value="handleAutoLightweightToggle"
+        />
+      </div>
+
+      <div v-if="autoLightweightMinutes !== null" class="settings-entry">
+        <div class="settings-entry-info">
+          <span class="settings-entry-title">{{ i18n.t("settings.auto_lightweight_delay") }}</span>
+          <span class="settings-entry-desc">{{
+            i18n.t("settings.auto_lightweight_delay_desc")
+          }}</span>
+        </div>
+        <cmz-select
+          :model-value="autoLightweightMinutes"
+          :options="autoLightweightDelayOptions"
+          @update:model-value="handleAutoLightweightDelayChange"
         />
       </div>
 
