@@ -18,6 +18,7 @@ import { handleError } from "@utils/errorHandler";
 import { usePluginStore } from "@stores/pluginStore";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
+import { supportsNativeWindowMaterial } from "@utils/platform";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -26,6 +27,7 @@ import {
 
 const toast = useToast();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
+const nativeMaterialSupported = supportsNativeWindowMaterial();
 
 const settings = ref<AppSettings | null>(null);
 
@@ -424,6 +426,7 @@ async function handleImport(json: string) {
             :font-family-options="fontFamilyOptions"
             :fonts-loading="fontsLoading"
             :acrylic-enabled="settings.acrylic_enabled"
+            :native-material-supported="nativeMaterialSupported"
             :is-theme-proxied="isThemeProxied"
             :theme-proxy-plugin-name="themeProxyPluginName"
             :background-image="settings.background_image"
