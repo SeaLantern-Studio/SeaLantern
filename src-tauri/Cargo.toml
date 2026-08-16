@@ -6,10 +6,6 @@ authors = ["FPS_Z"]
 edition = "2021"
 default-run = "sealantern"
 
-[lib]
-name = "sealantern_lib"
-crate-type = ["lib"]
-
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -35,6 +31,3 @@ tokio = { version = "1.53.1", features = ["sync", "time"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_System_Registry"] }
-
-[features]
-docker = []

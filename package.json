@@ -18,9 +18,7 @@
     "commitlint": "commitlint",
     "prepare": "husky",
     "sv": "node ./scripts/version.mjs show",
-    "cv": "node ./scripts/version.mjs change",
-    "docker:dev": "cargo run -p docker-entry",
-    "docker:build": "docker build -t sealantern:docker ."
+    "cv": "node ./scripts/version.mjs change"
   },
   "dependencies": {
     "@codemirror/language": "^6.12.3",

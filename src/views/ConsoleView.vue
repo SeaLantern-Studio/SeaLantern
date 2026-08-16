@@ -812,10 +812,10 @@ onMounted(async () => {
     // 仅在服务器运行时启动资源轮询
     if (isRunning.value) startStatsPolling();
   }
-  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
+  unlistenLogLine = await serverApi.onLogLine(({ instance_id, line }) => {
     const sid = serverId.value;
-    if (!sid || server_id !== sid) return;
-    consoleOutputRef.value?.appendLines([line]);
+    if (!sid || instance_id !== sid) return;
+    consoleOutputRef.value?.appendLines([line.line]);
   });
   nextTick(() => doScroll());
 });
@@ -883,7 +883,7 @@ async function syncLogsOnce(sid: string) {
     if (lines.length === 0) {
       consoleOutputRef.value?.appendLines([i18n.t("console.no_logs_yet")]);
     } else {
-      consoleOutputRef.value?.appendLines(lines);
+      consoleOutputRef.value?.appendLines(lines.map((line) => line.line));
     }
   } catch (e) {
     console.warn("加载服务器日志失败:", e);
