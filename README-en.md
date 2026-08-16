@@ -63,11 +63,12 @@ The host-neutral `application` crate provides shared business orchestration. `sr
 
 Make sure the following tools are installed before you begin:
 
-| Dependency | Version |
-| ---------- | ------- |
-| Node.js    | 24 LTS  |
-| Rust       | stable  |
-| pnpm       | 9.15.9  |
+| Dependency      | Version |
+| --------------- | ------- |
+| Node.js         | 24 LTS  |
+| Rust            | stable  |
+| pnpm            | 9.15.9  |
+| Only (optional) | 0.0.7+  |
 
 For help setting up your development environment, see the [environment setup guide](https://docs.ideaflash.cn/en/dev/environment).
 
@@ -99,9 +100,29 @@ pnpm docker:dev
 
 Linux developers may need to install additional system dependencies required by Tauri. See the [Tauri prerequisites for Linux](https://tauri.app/start/prerequisites/#linux) for details.
 
+The repository includes an [`Onlyfile`](Onlyfile) that provides consistent commands for common development, build, and check tasks. Install [Only](https://github.com/KercyDing/only) when needed:
+
+```bash
+cargo install only
+```
+
+After installation, list all available tasks from the repository root:
+
+```bash
+only
+```
+
+Common commands include `only dev`, `only build`, `only check`, `only test`, and `only ci`.
+
 ### Code Quality Checks
 
-Before submitting changes, we **recommend** running the following checks:
+Before submitting changes, we **recommend** running the complete local CI suite:
+
+```bash
+only ci
+```
+
+This runs the frontend and backend static checks along with the full test suite. If Only is not installed, run the following commands separately:
 
 <details><summary>Frontend checks</summary>
 
