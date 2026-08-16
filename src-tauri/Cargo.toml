@@ -6,10 +6,6 @@ authors = ["FPS_Z"]
 edition = "2021"
 default-run = "sealantern"
 
-[lib]
-name = "sealantern_lib"
-crate-type = ["lib"]
-
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
