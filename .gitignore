@@ -35,4 +35,5 @@ target-goal-smoke/
 tmp/
 
 .tmp*
-.vscode/launch.json
+.vscode/
+idea/
