@@ -5,7 +5,7 @@ pub mod desktop;
 pub mod observability;
 
 use sealantern_application::services::AppServices;
-use sealantern_interface::OnlineTunnelService;
+use sealantern_interface::{OnlineTunnelService, SettingsService};
 use tauri::{AppHandle, Manager};
 
 use adapter::tauri::commands::catalog::{catalog_details, catalog_server_types, catalog_versions};
@@ -56,7 +56,7 @@ use desktop::{
     desktop_pick_jar_file, desktop_pick_java_file, desktop_pick_save_file,
     desktop_pick_server_executable, desktop_pick_startup_file, hide_main_window,
     restore_main_window, set_window_material, supports_liquid_glass, toggle_light_weight,
-    DesktopAppearanceState, MainWindowState,
+    AutoLightweightState, DesktopAppearanceState, MainWindowState,
 };
 
 fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
@@ -78,6 +78,7 @@ pub fn run() {
 
     let app = tauri::Builder::default()
         .manage(MainWindowState::new())
+        .manage(AutoLightweightState::new())
         .manage(DesktopAppearanceState::new())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
@@ -220,6 +221,15 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 error = %error,
                 "failed to initialize persisted network settings; continuing with direct network"
             );
+        }
+        match services.settings().get().await {
+            Ok(settings) => app_handle
+                .state::<AutoLightweightState>()
+                .configure(settings.auto_lightweight_minutes),
+            Err(error) => tracing::error!(
+                error = %error,
+                "failed to initialize automatic lightweight mode setting"
+            ),
         }
         Ok::<(), std::io::Error>(())
     })?;

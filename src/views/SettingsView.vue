@@ -412,6 +412,7 @@ async function handleImport(json: string) {
             v-model:closeServersOnExit="settings.close_servers_on_exit"
             v-model:closeServersOnUpdate="settings.close_servers_on_update"
             v-model:autoAcceptEula="settings.auto_accept_eula"
+            v-model:autoLightweightMinutes="settings.auto_lightweight_minutes"
             v-model:closeAction="closeActionModel"
             @change="markChanged"
           />

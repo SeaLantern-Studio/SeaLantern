@@ -3,6 +3,7 @@
 //! 按职责拆分各子模块，并将子模块的公开命令统一重新导出，
 //! 便于宿主在 `invoke_handler` 中集中注册。
 
+mod auto_lightweight;
 pub mod dialog;
 mod effects;
 pub mod lightweight;
@@ -16,6 +17,7 @@ pub use dialog::{
     desktop_pick_startup_file,
 };
 
+pub use auto_lightweight::AutoLightweightState;
 pub use effects::{apply_acrylic, set_window_material, supports_liquid_glass};
 pub use theme::DesktopAppearanceState;
 pub use tray::{hide_main_window, restore_main_window, toggle_light_weight};

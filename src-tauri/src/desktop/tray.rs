@@ -4,6 +4,7 @@ use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{App, AppHandle, Manager, Wry};
 
+use super::auto_lightweight::AutoLightweightState;
 use super::lightweight;
 use super::window_state::{
     self as window_lifecycle, MainWindowMode, MainWindowState, MAIN_WINDOW_LABEL,
@@ -69,6 +70,7 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn show_main_window(app: &AppHandle) {
+    app.state::<AutoLightweightState>().cancel();
     if let Err(error) = reveal_main_window(app) {
         tracing::error!(%error, "failed to show the main window from tray");
     }
@@ -95,6 +97,7 @@ fn reveal_main_window(app: &AppHandle) -> Result<(), String> {
 }
 
 fn toggle_light_weight_mode(app: &AppHandle) -> Result<(), String> {
+    app.state::<AutoLightweightState>().cancel();
     let state = app.state::<MainWindowState>();
     let mut transition = state.begin_transition()?;
     if transition.mode() == MainWindowMode::Background {
@@ -107,12 +110,15 @@ fn toggle_light_weight_mode(app: &AppHandle) -> Result<(), String> {
 /// 隐藏主窗口但保留 WebView，用于最小化到托盘。
 #[tauri::command]
 pub fn hide_main_window(app: AppHandle) -> Result<(), String> {
-    window_lifecycle::hide(&app)
+    window_lifecycle::hide(&app)?;
+    schedule_auto_lightweight(&app);
+    Ok(())
 }
 
 /// 显示主窗口；处于轻量模式时先重建 WebView。
 #[tauri::command]
 pub fn restore_main_window(app: AppHandle) -> Result<(), String> {
+    app.state::<AutoLightweightState>().cancel();
     reveal_main_window(&app)
 }
 
@@ -120,4 +126,31 @@ pub fn restore_main_window(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn toggle_light_weight(app: AppHandle) -> Result<(), String> {
     toggle_light_weight_mode(&app)
+}
+
+pub fn schedule_auto_lightweight(app: &AppHandle) {
+    let timer = app.state::<AutoLightweightState>();
+    let Some(delay) = timer.delay() else {
+        timer.cancel();
+        return;
+    };
+    if app.state::<MainWindowState>().mode() != MainWindowMode::Hidden {
+        timer.cancel();
+        return;
+    }
+
+    let app = app.clone();
+    timer.schedule(delay, move |ticket| {
+        let state = app.state::<MainWindowState>();
+        let Ok(mut transition) = state.begin_transition() else {
+            return;
+        };
+        if !ticket.is_current() || transition.mode() != MainWindowMode::Hidden {
+            return;
+        }
+        app.state::<AutoLightweightState>().cancel();
+        if let Err(error) = lightweight::enter(&app, &mut transition) {
+            tracing::error!(%error, "failed to enter lightweight mode automatically");
+        }
+    });
 }
