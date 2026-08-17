@@ -79,6 +79,9 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
 
     let update_routes = Router::new().route("/update", get(handlers::check_update));
 
+    let provisioning_routes =
+        Router::new().route("/provisioning/inspect", post(handlers::inspect_server));
+
     let download_routes = Router::new()
         .route("/downloads", post(handlers::create_download))
         .route("/downloads/{id}", get(handlers::query_download))
@@ -90,6 +93,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         .nest(API_PREFIX, system_routes)
         .nest(API_PREFIX, cron_routes)
         .nest(API_PREFIX, update_routes)
+        .nest(API_PREFIX, provisioning_routes)
         .nest(API_PREFIX, download_routes)
         .merge(plugin_rpc_routes)
         .merge(spa_router(config))
