@@ -11,7 +11,8 @@ use serde::Serialize;
 
 use sealantern_interface::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
-    ServerServiceError, SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
+    ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
+    UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -268,6 +269,27 @@ impl HttpError {
         }
     }
 
+    /// 由服务端检查与供给计划契约错误构建 HTTP 错误。
+    pub fn from_provisioning_error(error: ProvisioningServiceError) -> Self {
+        match error {
+            ProvisioningServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_provisioning_input",
+                message: error.to_string(),
+            },
+            ProvisioningServiceError::InspectionFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "provisioning_inspection_failed",
+                message: error.to_string(),
+            },
+            ProvisioningServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "provisioning_operation_failed",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 构建一个客户端输入错误（400），带具体错误码。
     pub fn bad_request(code: &'static str, message: impl Into<String>) -> Self {
         Self {
@@ -332,6 +354,12 @@ impl From<DownloadServiceError> for HttpError {
 impl From<UpdateCheckServiceError> for HttpError {
     fn from(error: UpdateCheckServiceError) -> Self {
         Self::from_update_error(error)
+    }
+}
+
+impl From<ProvisioningServiceError> for HttpError {
+    fn from(error: ProvisioningServiceError) -> Self {
+        Self::from_provisioning_error(error)
     }
 }
 

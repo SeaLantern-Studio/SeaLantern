@@ -6,7 +6,6 @@
 
 use axum::Json;
 use axum::extract::State;
-use axum::http::StatusCode;
 use std::path::Path;
 
 use sealantern_core::provisioning::ServerInspectionReport;
