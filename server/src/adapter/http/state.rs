@@ -75,7 +75,7 @@ impl AppState {
         self.services.download().clone()
     }
 
-    /// 访问供给（检查/计划）服务（`Arc` 共享句柄，clone 廉价）。
+    /// 访问服务端检查与供给计划服务（`Arc` 共享句柄，clone 廉价）。
     pub fn provisioning(&self) -> Arc<CoreProvisioningService> {
         self.services.provisioning().clone()
     }

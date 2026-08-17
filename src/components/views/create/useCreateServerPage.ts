@@ -557,10 +557,13 @@ export function useCreateServerPage() {
       detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
       const previousDetectedCoreKey = detectedCoreTypeKey.value;
       const previousDetectedMcVersion = detectedMcVersion.value;
-      detectedCoreTypeKey.value = discovered.detectedCoreTypeKey ?? "";
-      coreTypeOptions.value = discovered.coreTypeOptions;
-      detectedMcVersion.value = discovered.detectedMcVersion ?? "";
-      mcVersionOptions.value = discovered.mcVersionOptions;
+      // 后端可能返回嵌套对象而非纯字符串，统一归一化为字符串避免污染后续状态
+      detectedCoreTypeKey.value =
+        discovered.detectedCoreTypeKey == null ? "" : String(discovered.detectedCoreTypeKey);
+      coreTypeOptions.value = discovered.coreTypeOptions.map((opt) => String(opt));
+      detectedMcVersion.value =
+        discovered.detectedMcVersion == null ? "" : String(discovered.detectedMcVersion);
+      mcVersionOptions.value = discovered.mcVersionOptions.map((ver) => String(ver));
       mcVersionDetectionFailed.value = discovered.mcVersionDetectionFailed;
       startupCandidates.value = list;
 
@@ -673,7 +676,8 @@ export function useCreateServerPage() {
     let tempDownloadPath: string | null = null;
     let scannedStartup = selectedStartup.value;
     let scannedStartupMode = mapStartupModeForModpack(selectedStartup.value?.mode ?? "jar");
-    let scannedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
+    let scannedCoreType =
+      String(selectedCoreType.value ?? "").trim() || String(detectedCoreTypeKey.value ?? "").trim();
     let scannedMcVersion =
       scannedStartupMode === "starter"
         ? selectedMcVersion.value.trim() || detectedMcVersion.value.trim()

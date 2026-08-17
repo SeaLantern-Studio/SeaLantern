@@ -113,6 +113,12 @@ const axumRouteMap: Record<string, AxumRoute> = {
     method: "DELETE",
     path: (a) => `/downloads/${encodeURIComponent(String(a.id))}`,
   },
+  // 服务器检测
+  inspect_server: {
+    method: "POST",
+    path: () => "/provisioning/inspect",
+    body: (a) => ({ path: a.path }),
+  },
 };
 
 /** Tauri 原生 invoke，动态导入避免浏览器环境加载失败 */
