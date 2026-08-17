@@ -205,7 +205,7 @@ fn modpack_error(code: &'static str, message: impl Into<String>) -> ImportModpac
 /// - zip/tar.gz/tgz 压缩包：解压到 run_path
 /// - jar 单文件：复制到 run_path
 /// - 文件夹：直接引用原路径
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command(rename_all = "camelCase")]
 pub async fn import_modpack(request: ImportModpackRequest) -> Result<Instance, ImportModpackError> {
     use sealantern_core::provisioning::ImportModpackError as CoreError;
 

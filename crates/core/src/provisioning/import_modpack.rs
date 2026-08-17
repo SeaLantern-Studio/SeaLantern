@@ -44,7 +44,7 @@ pub fn infer_source_type(path: &Path) -> SourceType {
 
 /// 整合包导入请求。
 #[derive(Debug, Clone, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub struct ImportModpackRequest {
     /// 实例名称。
     pub name: String,
