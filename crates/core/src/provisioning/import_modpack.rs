@@ -8,6 +8,8 @@
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use uuid::Uuid;
+
 use crate::instance::{InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
 
 /// 来源类型枚举。
@@ -112,15 +114,6 @@ pub struct ImportModpackResult {
     pub spec: InstanceSpec,
 }
 
-/// 生成实例 ID（时间戳毫秒）。
-fn generate_instance_id() -> String {
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
-    format!("{}", ts)
-}
-
 /// 构建实例规格。
 ///
 /// 根据 import 请求和有效的目录路径构建 `InstanceSpec`。
@@ -129,7 +122,7 @@ pub fn build_instance_spec(
     directory: &Path,
     startup_target: Option<PathBuf>,
 ) -> Result<InstanceSpec, ImportModpackError> {
-    let id = generate_instance_id();
+    let id = Uuid::new_v4().to_string();
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
