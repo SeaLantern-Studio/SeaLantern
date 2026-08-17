@@ -21,18 +21,27 @@ pub struct ServerProperties {
 }
 
 /// 解析 server.properties 的绝对路径，并约束其落在服务器目录内。
+///
+/// 返回的路径已 canonicalize（文件存在时），可直接用于 I/O，避免 server.properties
+/// 本身是 symlink 时写入逃逸到服务器目录之外。文件不存在（首次写入）时回退到
+/// `canonical_dir.join("server.properties")`，父目录已 canonical 故仍在目录内。
 fn props_path(server_path: &str) -> Result<PathBuf, String> {
     let dir = Path::new(server_path);
     let props = dir.join("server.properties");
 
     let canonical_dir = std::fs::canonicalize(dir).map_err(|e| format!("无效的服务器目录: {e}"))?;
-    let canonical_parent = std::fs::canonicalize(props.parent().unwrap_or(dir))
-        .map_err(|e| format!("无效的配置路径: {e}"))?;
-    if !canonical_parent.starts_with(&canonical_dir) {
+
+    let canonical_props = if props.exists() {
+        std::fs::canonicalize(&props).map_err(|e| format!("无效的配置路径: {e}"))?
+    } else {
+        canonical_dir.join("server.properties")
+    };
+
+    if !canonical_props.starts_with(&canonical_dir) {
         return Err("配置路径必须在服务器目录内".to_string());
     }
 
-    Ok(props)
+    Ok(canonical_props)
 }
 
 fn parse_properties(text: &str) -> HashMap<String, String> {
