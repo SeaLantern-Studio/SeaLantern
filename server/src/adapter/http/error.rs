@@ -9,6 +9,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
 
+use sealantern_application::error::ImportExistingServerError as AppImportError;
 use sealantern_interface::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
     ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
@@ -346,6 +347,31 @@ impl From<ProvisioningServiceError> for HttpError {
                 Self::bad_request("inspection_failed", error.to_string())
             }
             ProvisioningServiceError::OperationFailed => Self::internal(error.to_string()),
+        }
+    }
+}
+
+impl From<AppImportError> for HttpError {
+    fn from(error: AppImportError) -> Self {
+        match error {
+            // 列表 / 创建失败沿用 InstanceServiceError 的既有映射，保留细分错误码。
+            AppImportError::ListFailed(source) | AppImportError::CreateFailed(source) => {
+                source.into()
+            }
+            AppImportError::SourceUnavailable(_) => {
+                Self::bad_request("source_unavailable", error.to_string())
+            }
+            AppImportError::SourceNotDirectory(_) => {
+                Self::bad_request("source_not_directory", error.to_string())
+            }
+            AppImportError::AlreadyImported => {
+                Self::bad_request("source_already_imported", error.to_string())
+            }
+            AppImportError::InspectionPanicked => {
+                Self::bad_request("import_panic", error.to_string())
+            }
+            AppImportError::Build(_) => Self::bad_request("import_invalid", error.to_string()),
+            AppImportError::PlanInvalid => Self::bad_request("invalid_instance", error.to_string()),
         }
     }
 }

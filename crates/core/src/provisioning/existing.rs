@@ -157,18 +157,18 @@ pub fn build_import_spec(
     );
 
     // 调用方显式指定启动候选时，覆盖采纳结果。
-    if let Some(selected) = &request.selected_launch_profile_id
-        && let Some(candidate) = projection
+    if let Some(selected) = &request.selected_launch_profile_id {
+        match projection
             .launch_candidates
             .iter()
             .find(|candidate| &candidate.profile_id == selected)
-    {
-        spec.launch = candidate.launch.clone();
-        if spec.launch.jvm_arguments.is_empty() {
-            spec.launch.jvm_arguments = request.jvm_arguments.clone().unwrap_or_default();
-        }
-        if spec.launch.java_executable.is_none() {
-            spec.launch.java_executable = request.java_executable.clone();
+        {
+            Some(candidate) => spec.launch = candidate.launch.clone(),
+            None => tracing::debug!(
+                target: "sealantern.core.provisioning.import",
+                selected = %selected,
+                "selected launch profile not found among inspection candidates; keeping adopted best-compatible launch"
+            ),
         }
     }
 
