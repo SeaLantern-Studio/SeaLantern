@@ -11,6 +11,7 @@ use sealantern_interface::{OnlineTunnelService, SettingsService};
 use tauri::{AppHandle, Manager};
 
 use adapter::tauri::commands::catalog::{catalog_details, catalog_server_types, catalog_versions};
+use adapter::tauri::commands::config::{read_server_properties, write_server_properties};
 use adapter::tauri::commands::console::get_server_logs;
 use adapter::tauri::commands::cron::{
     create_cron_task, delete_cron_task, list_cron_tasks, run_cron_task, set_cron_task_enabled,
@@ -152,6 +153,9 @@ fn main() {
             server_status,
             start_server,
             stop_server,
+            //服务器属性（server.properties）读写
+            read_server_properties,
+            write_server_properties,
             //下载与设置服务
             download_cancel,
             download_create,
