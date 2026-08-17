@@ -90,8 +90,13 @@ interface ArtifactInfo {
 
 interface ServerIdentityInfo {
   category: Detected<string>;
-  implementation: Detected<string>;
+  implementation: Detected<ServerProduct>;
   version: Detected<string>;
+}
+
+interface ServerProduct {
+  key: string;
+  display_name: string;
 }
 
 interface MinecraftVersionInfo {
@@ -132,6 +137,7 @@ interface Detected<T> {
 
 interface ServerComponent {
   kind: string;
+  key: string;
 }
 
 interface DetectionEvidence {
@@ -156,22 +162,22 @@ function extractCoreTypeOptions(report: ServerInspectionReport): string[] {
 
   // 主检测结果
   if (report.identity.implementation.value) {
-    options.add(report.identity.implementation.value);
+    options.add(report.identity.implementation.value.key);
   }
 
   // 备选检测结果
   if (report.identity.implementation.alternatives) {
     for (const alt of report.identity.implementation.alternatives) {
       if (alt.value) {
-        options.add(alt.value);
+        options.add(alt.value.key);
       }
     }
   }
 
   // 从组件中提取
   for (const component of report.components) {
-    if (component.value.kind) {
-      options.add(component.value.kind);
+    if (component.value.key) {
+      options.add(component.value.key);
     }
   }
 
@@ -370,67 +376,70 @@ export const serverApi = {
     const report = await invoke<ServerInspectionReport>("inspect_server", { path: sourcePath });
 
     // 从 LaunchProfile 构建启动候选项列表
-    const candidates: StartupCandidateItem[] = report.launches.map((launch, index) => {
+    const candidates: StartupCandidateItem[] = report.launches.flatMap((launch, index) => {
       const target = launch.value.target;
-      let mode: StartupCandidateItem["mode"] = "jar";
-      let path: string;
-      let label: string;
+      let candidate: StartupCandidateItem | null = null;
 
       switch (target.kind) {
         case "jar":
-          mode = "jar";
-          // target.path 为可选字段，缺失时回退到检测主体路径
-          path = target.path ?? report.subject.path;
-          label = `JAR: ${getFileName(path)}`;
+          // LocalLaunch cannot preserve program arguments; do not offer a
+          // candidate that would silently lose part of the detected command.
+          if (launch.value.program_arguments.length > 0) {
+            return [];
+          }
+          {
+            const path = target.path ?? report.subject.path;
+            candidate = {
+              id: launch.value.id,
+              mode: "jar",
+              label: `JAR: ${getFileName(path)}`,
+              detail: `Platform: ${launch.value.platform}`,
+              path,
+              recommended: 100 - index * 10,
+            };
+          }
           break;
         case "script": {
-          // 根据脚本扩展名确定模式，缺失时回退到检测主体路径
           const scriptPath = target.path ?? "";
-          if (scriptPath.endsWith(".bat")) {
+          const scriptExtension = scriptPath.toLowerCase();
+          let mode: StartupCandidateItem["mode"] | null = null;
+          if (scriptExtension.endsWith(".bat") || scriptExtension.endsWith(".cmd")) {
             mode = "bat";
-          } else if (scriptPath.endsWith(".sh")) {
+          } else if (scriptExtension.endsWith(".sh")) {
             mode = "sh";
-          } else if (scriptPath.endsWith(".ps1")) {
+          } else if (scriptExtension.endsWith(".ps1")) {
             mode = "ps1";
           }
-          path = scriptPath || report.subject.path;
-          label = `Script: ${getFileName(path)}`;
+          if (!mode) {
+            return [];
+          }
+          const path = scriptPath || report.subject.path;
+          candidate = {
+            id: launch.value.id,
+            mode,
+            label: `Script: ${getFileName(path)}`,
+            detail: `Platform: ${launch.value.platform}`,
+            path,
+            recommended: 100 - index * 10,
+          };
           break;
         }
+        // Main-class and argument-file targets have no equivalent in the
+        // current LocalLaunch model, so they must not be presented as JARs.
         case "main_class":
-          mode = "jar";
-          path = report.subject.path;
-          label = `Main Class: ${target.class_name}`;
-          break;
-        default:
-          path = report.subject.path;
-          label = `Launch ${index + 1}`;
+        case "argument_files":
+          return [];
       }
 
-      return {
-        id: launch.value.id,
-        mode,
-        label,
-        detail: `Platform: ${launch.value.platform}`,
-        path,
-        recommended: 100 - index * 10, // 第一个推荐度最高
-      };
+      return candidate ? [candidate] : [];
     });
 
-    // 如果没有检测到启动项,添加默认候选项
-    if (candidates.length === 0) {
-      candidates.push({
-        id: "default",
-        mode: "jar",
-        label: "Default JAR",
-        detail: "Use detected JAR file",
-        path: report.subject.path,
-        recommended: 50,
-      });
-    }
-
-    // 提取核心类型信息
-    const coreTypeValue = report.identity.implementation.value;
+    /*
+     * Do not synthesize a JAR candidate when inspection found no compatible
+     * launch. The subject can be a directory or an argument-file-only setup;
+     * the create page will retain its explicit custom-launch fallback.
+     */
+    const coreTypeValue = report.identity.implementation.value?.key;
     const coreTypeOptions = extractCoreTypeOptions(report);
 
     // 提取 Minecraft 版本信息
