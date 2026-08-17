@@ -100,6 +100,7 @@ jobs:
             frontend:
               - 'src/**'
               - 'scripts/**'
+              - 'tests/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'vite.config.ts'
@@ -300,3 +301,6 @@ jobs:
 
       - name: 运行前端全量检查
         run: pnpm run fmt:check && pnpm run lint && pnpm run build:check
+
+      - name: 运行前端测试
+        run: pnpm test

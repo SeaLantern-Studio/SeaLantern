@@ -489,10 +489,9 @@ fn get_service_id_by_display_name(scp: &SCPreferences, name: &CFString) -> Optio
         if let Some(interface) = service
             .network_interface()
             .and_then(|scn_inter| scn_inter.display_name())
+            && interface == *name
         {
-            if interface == *name {
-                return service.id();
-            }
+            return service.id();
         }
     }
     None
@@ -564,7 +563,7 @@ pub fn get_proxies_dict_from_service_uuid(
 }
 
 #[test]
-fn test_get_service_id_by_display_name() {
+fn test_get_service_id_by_display_name() -> Result<()> {
     let scp = SCPreferences::default(&CFString::new("sysproxy-rs"));
     let services = SCNetworkService::get_services(&scp);
 
@@ -575,13 +574,12 @@ fn test_get_service_id_by_display_name() {
             .and_then(|iface| iface.display_name())
     }) else {
         println!("No network service found, skipping test");
-        return;
+        return Ok(());
     };
 
     println!("Testing with service: {:?}", display_name);
-    let Some(service_uuid) = get_service_id_by_display_name(&scp, &display_name) else {
-        panic!("Failed to get service UUID for {:?}", display_name);
-    };
+    let service_uuid =
+        get_service_id_by_display_name(&scp, &display_name).ok_or(Error::NetworkInterface)?;
     assert!(!service_uuid.to_string().is_empty());
     println!("service_uuid: {:?}", service_uuid);
 
@@ -590,6 +588,7 @@ fn test_get_service_id_by_display_name() {
         Ok(proxies) => println!("proxies: {:?}", proxies),
         Err(e) => println!("No proxy settings for this service: {:?}", e),
     }
+    Ok(())
 }
 
 #[test]
@@ -608,19 +607,20 @@ fn test_set_bypass() {
 }
 
 #[test]
-fn parse_proxy_missing_fields_disable_proxy() {
+fn parse_proxy_missing_fields_disable_proxy() -> Result<()> {
     let dict = CFDictionary::from_CFType_pairs(&[(
         CFString::from_static_string("HTTPEnable"),
         CFNumber::from(1).as_CFType(),
     )]);
-    let proxy = parse_proxies_from_dict(&dict, ProxyType::Http).unwrap();
+    let proxy = parse_proxies_from_dict(&dict, ProxyType::Http)?;
     assert!(!proxy.enable);
     assert_eq!(proxy.host, "");
     assert_eq!(proxy.port, 0);
+    Ok(())
 }
 
 #[test]
-fn parse_proxy_negative_port_zeroed() {
+fn parse_proxy_negative_port_zeroed() -> Result<()> {
     let dict = CFDictionary::from_CFType_pairs(&[
         (CFString::from_static_string("HTTPEnable"), CFNumber::from(1).as_CFType()),
         (
@@ -629,9 +629,10 @@ fn parse_proxy_negative_port_zeroed() {
         ),
         (CFString::from_static_string("HTTPPort"), CFNumber::from(-1).as_CFType()),
     ]);
-    let proxy = parse_proxies_from_dict(&dict, ProxyType::Http).unwrap();
+    let proxy = parse_proxies_from_dict(&dict, ProxyType::Http)?;
     assert!(!proxy.enable);
     assert_eq!(proxy.port, 0);
+    Ok(())
 }
 
 #[test]
@@ -669,7 +670,7 @@ fn networksetup_nonzero_exit_returns_error() {
 }
 
 #[test]
-fn parse_proxy_too_large_port_zeroed() {
+fn parse_proxy_too_large_port_zeroed() -> Result<()> {
     let dict = CFDictionary::from_CFType_pairs(&[
         (CFString::from_static_string("HTTPEnable"), CFNumber::from(1).as_CFType()),
         (
@@ -678,33 +679,37 @@ fn parse_proxy_too_large_port_zeroed() {
         ),
         (CFString::from_static_string("HTTPPort"), CFNumber::from(i32::MAX).as_CFType()),
     ]);
-    let proxy = parse_proxies_from_dict(&dict, ProxyType::Http).unwrap();
+    let proxy = parse_proxies_from_dict(&dict, ProxyType::Http)?;
     assert!(!proxy.enable);
     assert_eq!(proxy.port, 0);
+    Ok(())
 }
 
 #[test]
-fn parse_bypass_missing_returns_empty() {
+fn parse_bypass_missing_returns_empty() -> Result<()> {
     let dict: CFDictionary<CFString, CFType> = CFDictionary::from_CFType_pairs(&[]);
-    let bypass = parse_bypass_from_dict(&dict).unwrap();
+    let bypass = parse_bypass_from_dict(&dict)?;
     assert!(bypass.is_empty());
+    Ok(())
 }
 
 #[test]
-fn parse_proxyauto_defaults_to_false_and_empty_url() {
+fn parse_proxyauto_defaults_to_false_and_empty_url() -> Result<()> {
     let dict: CFDictionary<CFString, CFType> = CFDictionary::from_CFType_pairs(&[]);
-    let auto = parse_proxyauto_from_dict(&dict).unwrap();
+    let auto = parse_proxyauto_from_dict(&dict)?;
     assert!(!auto.enable);
     assert_eq!(auto.url, "");
+    Ok(())
 }
 
 #[test]
-fn parse_proxyauto_disable_when_url_missing() {
+fn parse_proxyauto_disable_when_url_missing() -> Result<()> {
     let dict = CFDictionary::from_CFType_pairs(&[(
         CFString::from_static_string("ProxyAutoConfigEnable"),
         CFNumber::from(1).as_CFType(),
     )]);
-    let auto = parse_proxyauto_from_dict(&dict).unwrap();
+    let auto = parse_proxyauto_from_dict(&dict)?;
     assert!(!auto.enable);
     assert_eq!(auto.url, "");
+    Ok(())
 }

@@ -11,7 +11,8 @@ use serde::Serialize;
 
 use sealantern_interface::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
-    ServerServiceError, SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
+    ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
+    UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -332,6 +333,20 @@ impl From<DownloadServiceError> for HttpError {
 impl From<UpdateCheckServiceError> for HttpError {
     fn from(error: UpdateCheckServiceError) -> Self {
         Self::from_update_error(error)
+    }
+}
+
+impl From<ProvisioningServiceError> for HttpError {
+    fn from(error: ProvisioningServiceError) -> Self {
+        match error {
+            ProvisioningServiceError::InvalidInput => {
+                Self::bad_request("invalid_input", error.to_string())
+            }
+            ProvisioningServiceError::InspectionFailed => {
+                Self::bad_request("inspection_failed", error.to_string())
+            }
+            ProvisioningServiceError::OperationFailed => Self::internal(error.to_string()),
+        }
     }
 }
 

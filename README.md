@@ -103,7 +103,32 @@ cargo install only
 only
 ```
 
-常用命令包括 `only dev`、`only build`、`only check`、`only test` 和 `only ci`。
+常用的根级命令包括：
+
+| 命令         | 用途               |
+| ------------ | ------------------ |
+| `only dev`   | 启动桌面开发模式   |
+| `only build` | 构建本地应用       |
+| `only check` | 并行执行前后端检查 |
+| `only test`  | 并行执行前后端测试 |
+| `only ci`    | 执行完整本地 CI    |
+| `only clean` | 清理前后端产物     |
+
+也可以通过 group 单独运行某一侧的任务：
+
+```bash
+# 前端
+only front check
+only front test
+only front ci
+
+# 后端
+only back check
+only back test
+only back ci
+```
+
+`only ci` 会执行完整的前后端检查与测试，并在适合的位置并行运行。
 
 ### 代码检查
 
@@ -132,6 +157,9 @@ pnpm fmt
 
 # 检查代码格式
 pnpm fmt:check
+
+# 运行前端测试
+pnpm test
 ```
 
 </details>
@@ -147,6 +175,9 @@ cargo check --all-targets --workspace
 
 # 运行 Clippy 检查
 cargo clippy --all-targets --workspace -- -D warnings
+
+# 运行后端测试
+cargo test --all-targets --workspace
 ```
 
 </details>
