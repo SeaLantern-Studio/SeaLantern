@@ -88,8 +88,12 @@ pub fn write_server_properties(
     values: HashMap<String, String>,
 ) -> Result<(), String> {
     let props = props_path(&server_path)?;
-    let text =
-        std::fs::read_to_string(&props).map_err(|e| format!("读取 server.properties 失败: {e}"))?;
+    // 文件不存在（首次写入）视为空内容，与 props_path 对缺失文件的回退保持一致
+    let text = match std::fs::read_to_string(&props) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(format!("读取 server.properties 失败: {e}")),
+    };
 
     let mut remaining: HashSet<String> = values.keys().cloned().collect();
     let mut out: Vec<String> = Vec::new();

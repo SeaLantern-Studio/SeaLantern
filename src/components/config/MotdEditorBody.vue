@@ -90,12 +90,17 @@ function syncToolbarState() {
   if (!editor || !sel || !sel.anchorNode || !editor.contains(sel.anchorNode)) {
     return;
   }
+  // 从选区锚点的计算样式推导工具栏状态，避免依赖已弃用的 queryCommandState/Value
+  const node = sel.anchorNode;
+  const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element | null);
+  if (!el) return;
+  const cs = window.getComputedStyle(el);
   fmt.value = {
-    bold: document.queryCommandState("bold"),
-    italic: document.queryCommandState("italic"),
-    underline: document.queryCommandState("underline"),
-    strike: document.queryCommandState("strikeThrough"),
-    colorCode: colorCodeFromCss(String(document.queryCommandValue("foreColor") ?? "")),
+    bold: Number(cs.fontWeight) >= 600 || cs.fontWeight === "bold",
+    italic: cs.fontStyle === "italic",
+    underline: cs.textDecorationLine.includes("underline"),
+    strike: cs.textDecorationLine.includes("line-through"),
+    colorCode: colorCodeFromCss(cs.color),
   };
 }
 
@@ -107,10 +112,24 @@ function setEditorHtml(nextHtml: string) {
   syncToolbarState();
 }
 
+/**
+ * 通过 execCommand 施加编辑区内联格式。
+ * execCommand 已弃用且在部分浏览器中行为不完全一致，统一在此封装：做存在性检测并吞掉异常，
+ * 避免在不支持的环境直接抛错。后续若整体迁移到基于 Selection/Range 的 DOM 操作，调用方无需改动。
+ */
+function execFormatCommand(command: string, value?: string): boolean {
+  if (typeof document.execCommand !== "function") return false;
+  try {
+    return document.execCommand(command, false, value);
+  } catch {
+    return false;
+  }
+}
+
 function apply(cmd: string, val?: string) {
   editorRef.value?.focus();
-  document.execCommand("styleWithCSS", false, "true");
-  document.execCommand(cmd, false, val);
+  execFormatCommand("styleWithCSS", "true");
+  execFormatCommand(cmd, val);
   setEditorHtml(editorRef.value?.innerHTML ?? "");
 }
 
