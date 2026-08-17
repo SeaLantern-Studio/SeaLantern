@@ -7,52 +7,111 @@
 // 项目终端执行 `only` 来查看所有命令
 
 # 启动开发模式
-dev():
+dev() & _prepare:
     pnpm tauri dev
 
-# 构建应用
-build():
+# 构建本地应用
+build() & _prepare:
     pnpm tauri build
 
+# 执行全量检查
+check() & (front.check, back.check):
+    echo "格式化和检查完成！"
+
+# 执行全量测试
+test() & (front.test, back.test):
+    echo "测试成功！"
+
+# 运行全量 CI
+ci() & (front.ci, back.ci):
+    echo "本地 CI 成功！"
+
+# 清理全部构建产物
+clean() & (front.clean, back.clean):
+    echo "构建产物已全部清除！"
+
+# 环境检测
+_prepare() & (front._prepare, back._prepare):
+    echo "环境检测成功！"
+
+// =============== 前端 ===============
+# 前端检查和测试
+[front]
+# 准备前端环境
+_prepare() ? @has("pnpm"):
+    pnpm install
+
+_prepare():
+    echo "你的 pnpm 呢？"
+    exit 1
+
 # 格式化并检查前端
-front_check():
+check() & _prepare:
     pnpm fmt:check
     pnpm lint
     pnpm build:check
+    echo "前端检查完成！"
+
+# 运行前端集成测试
+test() & _prepare:
+    pnpm test
+    echo "前端测试成功！"
+
+# 执行前端 CI
+ci() & (check, test):
+    echo "前端 CI 成功！"
+
+# 清理前端构建产物
+clean():
+    rm -rf node_modules dist
+    echo "前端已清除！"
+
+// =============== 后端 ===============
+# 后端检查和测试
+[back]
+# 准备后端环境
+_prepare() ? @has("cargo"):
+    echo "后端环境检查通过！"
+
+_prepare():
+    echo "你的 cargo 呢？"
+    exit 1
 
 # 格式化并检查后端
-back_check():
+check() & _prepare:
     cargo fmt --all -- --check
     cargo check --workspace --all-targets
     cargo clippy --workspace --all-targets -- -D warnings
+    echo "后端检查完成！"
 
-# 执行全部检查
-check() & front_check & back_check:
-    echo "格式化和检查完成"
-
-# 运行测试
-test() ? @has("cargo-nextest"):
+# 运行后端测试
+test() ? @has("cargo-nextest") & _prepare:
     cargo nextest run --no-fail-fast
+    echo "后端测试成功！"
 
-test():
+test() & _prepare:
     cargo test --all-targets --workspace
+    echo "后端测试成功！"
 
-# 运行本地 CI
+# 执行后端 CI
 ci() & check & test:
-    echo "本地 CI 成功"
+    echo "后端 CI 成功！"
 
-# 清理构建产物
+# 清理后端构建产物
 clean():
-    rm -rf node_modules dist
-    echo "前端已清除"
-    cargo clean
-    echo "后端已清除"
+    rm -rf target
+    echo "后端已清除！"
 
+// =============== 版本相关 ===============
+// `only version <task>` 来触发
+// `publish` 仅 Admin 权限可用!
+# 版本相关命令
+[version]
 # 查看项目版本号
 show():
     pnpm sv
 
-# 发版(仅Admin可用)
+# 发布新版本
 publish(version):
     pnpm cv {{ version }}
     pnpm notice
