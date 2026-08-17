@@ -9,12 +9,12 @@
 
 use std::sync::Arc;
 
-use sealantern_application::error::ImportExistingServerError as AppImportError;
 use sealantern_application::error::InstanceError;
 use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::ImportExistingServerRequest;
+use sealantern_interface::ImportExistingServerError as AppImportError;
 use sealantern_interface::{InstanceService, InstanceServiceError};
 
 /// 获取全局实例管理服务句柄（惰性初始化容器）。
@@ -104,14 +104,14 @@ impl std::error::Error for ImportExistingServerError {}
 impl From<AppImportError> for ImportExistingServerError {
     fn from(error: AppImportError) -> Self {
         let code = match error {
-            AppImportError::SourceUnavailable(_) => "source_unavailable",
-            AppImportError::SourceNotDirectory(_) => "source_not_directory",
+            AppImportError::SourceUnavailable => "source_unavailable",
+            AppImportError::SourceNotDirectory => "source_not_directory",
             AppImportError::AlreadyImported => "source_already_imported",
             AppImportError::InspectionPanicked => "import_panic",
-            AppImportError::Build(_) => "import_invalid",
+            AppImportError::BuildFailed => "import_invalid",
             AppImportError::PlanInvalid => "invalid_instance",
-            AppImportError::ListFailed(_) => "list_failed",
-            AppImportError::CreateFailed(_) => "create_failed",
+            AppImportError::ListFailed => "list_failed",
+            AppImportError::CreateFailed => "create_failed",
         };
         Self {
             code: code.to_string(),

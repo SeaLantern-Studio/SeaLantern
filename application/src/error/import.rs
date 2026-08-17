@@ -6,7 +6,9 @@ use std::path::PathBuf;
 use sealantern_core::provisioning::{
     ImportExistingServerError as CoreImportError, SourceDirectoryError,
 };
-use sealantern_interface::InstanceServiceError;
+use sealantern_interface::{
+    ImportExistingServerError as InterfaceImportError, InstanceServiceError,
+};
 
 /// 导入已有服务器目录失败的应用层主错误。
 ///
@@ -81,5 +83,26 @@ impl From<SourceDirectoryError> for ImportExistingServerError {
 impl From<CoreImportError> for ImportExistingServerError {
     fn from(error: CoreImportError) -> Self {
         Self::Build(error)
+    }
+}
+
+impl From<ImportExistingServerError> for InterfaceImportError {
+    fn from(error: ImportExistingServerError) -> InterfaceImportError {
+        match error {
+            ImportExistingServerError::SourceUnavailable(_) => {
+                InterfaceImportError::SourceUnavailable
+            }
+            ImportExistingServerError::SourceNotDirectory(_) => {
+                InterfaceImportError::SourceNotDirectory
+            }
+            ImportExistingServerError::AlreadyImported => InterfaceImportError::AlreadyImported,
+            ImportExistingServerError::InspectionPanicked => {
+                InterfaceImportError::InspectionPanicked
+            }
+            ImportExistingServerError::Build(_) => InterfaceImportError::BuildFailed,
+            ImportExistingServerError::PlanInvalid => InterfaceImportError::PlanInvalid,
+            ImportExistingServerError::ListFailed(_) => InterfaceImportError::ListFailed,
+            ImportExistingServerError::CreateFailed(_) => InterfaceImportError::CreateFailed,
+        }
     }
 }

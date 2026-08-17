@@ -19,7 +19,9 @@ use sealantern_core::provisioning::{
 };
 use sealantern_extra::config::InstanceRegistry;
 use sealantern_infra::platform::get_app_data_dir;
-use sealantern_interface::{InstanceService, InstanceServiceError};
+use sealantern_interface::{
+    ImportExistingServerError as InterfaceImportError, InstanceService, InstanceServiceError,
+};
 
 use crate::error::ImportExistingServerError;
 use crate::error::InstanceError;
@@ -111,10 +113,12 @@ impl CoreInstanceService {
 
     /// 导入已有服务器目录：校验源目录 → 去重 → 构建导入规格 → 供给计划 → 持久化登记。
     ///
+    /// 返回应用层富错误（携带 PathBuf 用于日志详情）；契约层（[`InstanceService`]
+    /// 的 `import_existing_server`）在此之上收敛为薄契约错误。
     /// 编排逻辑收口于 service 层，命令层（Tauri / Axum）只负责参数转发与错误映射。
     /// 导入的实例直接引用原始目录（FR-5：不复制文件）；检查与构建规格为同步文件系统
     /// 扫描，经 `spawn_blocking` 调度到阻塞线程池，避免阻塞异步运行时核心线程。
-    pub async fn import_existing_server(
+    async fn import_existing_server_inner(
         &self,
         request: ImportExistingServerRequest,
     ) -> Result<Instance, ImportExistingServerError> {
@@ -177,6 +181,18 @@ impl InstanceService for CoreInstanceService {
     async fn update_path(&self, id: &InstanceId, path: &str) -> Result<(), InstanceServiceError> {
         self.update_path_inner(id, path).await.map_err(Into::into)
     }
+
+    async fn import_existing_server(
+        &self,
+        request: ImportExistingServerRequest,
+    ) -> Result<Instance, InterfaceImportError> {
+        self.import_existing_server_inner(request)
+            .await
+            .map_err(|rich| {
+                tracing::warn!(error = ?rich, "import existing server failed");
+                rich.into()
+            })
+    }
 }
 
 #[cfg(test)]
@@ -188,7 +204,7 @@ mod tests {
     use sealantern_core::instance::{LocalLaunch, StartupMode};
     use sealantern_core::provisioning::ImportExistingServerRequest;
 
-    use crate::error::ImportExistingServerError;
+    use sealantern_interface::ImportExistingServerError as InterfaceImportError;
 
     use super::*;
 
@@ -390,6 +406,6 @@ mod tests {
             .import_existing_server(import_request(missing, None))
             .await;
 
-        assert!(matches!(result, Err(ImportExistingServerError::SourceUnavailable(_))));
+        assert!(matches!(result, Err(InterfaceImportError::SourceUnavailable)));
     }
 }
