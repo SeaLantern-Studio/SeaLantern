@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 
 /// 由主机为受管实例分配的稳定标识符。
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

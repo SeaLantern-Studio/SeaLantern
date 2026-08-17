@@ -9,17 +9,18 @@ pub mod server_metadata;
 
 pub use extension::{InstanceExtension, InstanceExtensionError, InstanceExtensionKind};
 pub use identity::InstanceIdentity;
-pub use import::{plan_import, InstanceImportError, InstanceImportPlan, InstanceImportRequest};
+pub use import::{InstanceImportError, InstanceImportPlan, InstanceImportRequest, plan_import};
 pub use lifecycle::{
-    restart_instance, transition, InstanceLifecycleAction, InstanceLifecycleState,
-    InstanceRestartDriver, LifecycleTransitionError, RestartError, RestartOutcome, RestartPolicy,
+    InstanceLifecycleAction, InstanceLifecycleState, InstanceRestartDriver,
+    LifecycleTransitionError, RestartError, RestartOutcome, RestartPolicy, restart_instance,
+    transition,
 };
 pub use model::{Instance, InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
 pub use player::{PlayerName, PlayerNameError, PlayerSnapshot};
 pub use repository::InstanceRepository;
 pub use server_metadata::{
-    ServerMetadataComponent, ServerMetadataDiagnostic, ServerMetadataFingerprint,
-    ServerMetadataIdentity, ServerMetadataJava, ServerMetadataLaunch, ServerMetadataMinecraft,
-    ServerMetadataSnapshot, ServerMetadataSnapshotValidity, ServerMetadataSubject,
-    ServerMetadataSubjectKind, SERVER_METADATA_SNAPSHOT_SCHEMA_VERSION,
+    SERVER_METADATA_SNAPSHOT_SCHEMA_VERSION, ServerMetadataComponent, ServerMetadataDiagnostic,
+    ServerMetadataFingerprint, ServerMetadataIdentity, ServerMetadataJava, ServerMetadataLaunch,
+    ServerMetadataMinecraft, ServerMetadataSnapshot, ServerMetadataSnapshotValidity,
+    ServerMetadataSubject, ServerMetadataSubjectKind,
 };

@@ -14,9 +14,9 @@ use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
-    build_import_spec, plan_existing_instance, source_directories_equal, validate_source_directory,
     ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
-    SourceDirectoryError,
+    SourceDirectoryError, build_import_spec, plan_existing_instance, source_directories_equal,
+    validate_source_directory,
 };
 use sealantern_interface::{InstanceService, InstanceServiceError};
 

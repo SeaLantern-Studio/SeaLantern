@@ -113,7 +113,9 @@ impl RpcError {
     pub fn internal(operation: &'static str) -> Self {
         Self::new(
             RpcErrorCode::Internal,
-            format!("The server could not complete {operation}. Inspect server logs with the request ID."),
+            format!(
+                "The server could not complete {operation}. Inspect server logs with the request ID."
+            ),
         )
     }
 

@@ -62,6 +62,43 @@ const { loading: shareLoading, start: startShareLoading, stop: stopShareLoading 
 let unlistenLogLine: UnlistenFn | null = null;
 let statsTimer: ReturnType<typeof setInterval> | null = null;
 const SERVER_STATS_POLL_INTERVAL_MS = 3000;
+// 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
+let isPageVisible = true;
+
+// 日志批量缓冲:低输出逐行实时,高输出积压批量,避免每行触发全量重算
+let pendingLogLines: string[] = [];
+let logFlushTimer: ReturnType<typeof setTimeout> | null = null;
+let lastLogAppendAt = 0;
+const LOG_FLUSH_DELAY_MS = 50;
+const LOG_FLUSH_MAX_LINES = 50;
+
+// 逐行追加日志到控制台,高输出时自动聚合为批量
+function appendLogLine(line: string) {
+  const now = performance.now();
+  // 距上次追加超过窗口视为低输出,直接逐行追加保持零延迟
+  if (pendingLogLines.length === 0 && now - lastLogAppendAt >= LOG_FLUSH_DELAY_MS) {
+    flushLogLines([line]);
+    return;
+  }
+  pendingLogLines.push(line);
+  if (pendingLogLines.length >= LOG_FLUSH_MAX_LINES) {
+    flushLogLines();
+  } else if (logFlushTimer == null) {
+    logFlushTimer = setTimeout(() => flushLogLines(), LOG_FLUSH_DELAY_MS);
+  }
+}
+
+function flushLogLines(immediate?: string[]) {
+  if (logFlushTimer != null) {
+    clearTimeout(logFlushTimer);
+    logFlushTimer = null;
+  }
+  const batch = immediate ?? pendingLogLines;
+  pendingLogLines = [];
+  if (batch.length === 0) return;
+  lastLogAppendAt = performance.now();
+  consoleOutputRef.value?.appendLines(batch);
+}
 const forceStopConfirmVisible = ref(false);
 const pendingForceStopServerId = ref("");
 const pendingForceStopToken = ref("");
@@ -772,6 +809,7 @@ function startStatsPolling() {
   stopStatsPolling();
   void refreshServerStats();
   statsTimer = setInterval(() => {
+    if (!isPageVisible) return;
     void refreshServerStats();
   }, SERVER_STATS_POLL_INTERVAL_MS);
 }
@@ -783,12 +821,27 @@ function stopStatsPolling() {
   }
 }
 
+function handleVisibilityChange() {
+  const visible = document.visibilityState === "visible";
+  if (visible === isPageVisible) return;
+  isPageVisible = visible;
+  if (visible) {
+    if (isRunning.value) startStatsPolling();
+  } else {
+    stopStatsPolling();
+  }
+}
+
 onMounted(async () => {
   await loadConsoleSettings();
   startThemeObserver();
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
 
-  await serverStore.refreshList();
+  try {
+    await serverStore.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   if (!serverStore.currentServerId && serverStore.servers.length > 0) {
     serverStore.setCurrentServer(serverStore.servers[0].id);
   }
@@ -798,10 +851,10 @@ onMounted(async () => {
     // 仅在服务器运行时启动资源轮询
     if (isRunning.value) startStatsPolling();
   }
-  unlistenLogLine = await serverApi.onLogLine(({ server_id, line }) => {
+  unlistenLogLine = await serverApi.onLogLine(({ instance_id, line }) => {
     const sid = serverId.value;
-    if (!sid || server_id !== sid) return;
-    consoleOutputRef.value?.appendLines([line]);
+    if (!sid || instance_id !== sid) return;
+    appendLogLine(line.line);
   });
   nextTick(() => doScroll());
 });
@@ -810,6 +863,11 @@ onUnmounted(() => {
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdate as EventListener);
   stopThemeObserver();
   stopStatsPolling();
+  if (logFlushTimer != null) {
+    clearTimeout(logFlushTimer);
+    logFlushTimer = null;
+  }
+  pendingLogLines = [];
   if (unlistenLogLine) {
     unlistenLogLine();
     unlistenLogLine = null;
@@ -821,6 +879,7 @@ onActivated(async () => {
   startThemeObserver();
   // 仅在服务器运行时启动资源轮询
   if (isRunning.value) startStatsPolling();
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   // 重新激活时重新加载当前服务器日志（可能在其它页面已启动服务器）
   const sid = serverId.value;
   if (sid) {
@@ -834,6 +893,9 @@ onActivated(async () => {
 onDeactivated(() => {
   stopThemeObserver();
   stopStatsPolling();
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  // 切走前 flush 积压日志,避免缓冲区残留
+  flushLogLines();
 });
 
 watch(
@@ -860,16 +922,23 @@ watch(isRunning, (running) => {
   }
 });
 
+// 日志同步请求序号:快速切换服务器时丢弃过期响应,避免旧日志写入新服务器的显示
+let syncLogsSeq = 0;
+
 async function syncLogsOnce(sid: string) {
+  const seq = ++syncLogsSeq;
   consoleOutputRef.value?.clear();
   try {
     const lines = await serverApi.getLogs(sid, 0, Math.max(1, maxLogLines.value));
+    // 期间已切换到其它服务器,丢弃这次过期结果
+    if (seq !== syncLogsSeq) return;
     if (lines.length === 0) {
       consoleOutputRef.value?.appendLines([i18n.t("console.no_logs_yet")]);
     } else {
-      consoleOutputRef.value?.appendLines(lines);
+      consoleOutputRef.value?.appendLines(lines.map((line) => line.line));
     }
   } catch (e) {
+    if (seq !== syncLogsSeq) return;
     console.warn("加载服务器日志失败:", e);
     consoleOutputRef.value?.appendLines([i18n.t("console.logs_load_failed")]);
   }

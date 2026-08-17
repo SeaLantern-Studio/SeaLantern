@@ -59,7 +59,7 @@ const defaultSettings: AppSettings = {
   console_font_size: 12,
   console_font_family: "",
   console_letter_spacing: 0,
-  max_log_lines: 1000,
+  max_log_lines: 5000,
   cached_java_list: [],
   background_image: "",
   background_opacity: 0.3,

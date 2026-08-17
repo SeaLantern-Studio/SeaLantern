@@ -1101,7 +1101,8 @@
     "status": {
       "failed": "ダウンロードに失敗しました",
       "finished": "ダウンロードが完了しました",
-      "downloading": "ダウンロード中"
+      "downloading": "ダウンロード中",
+      "cancelled": "キャンセル済み"
     },
     "form": {
       "type": "カテゴリ",

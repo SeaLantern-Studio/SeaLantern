@@ -4,11 +4,11 @@
 //! [`CoreSystemService`](sealantern_application::service::CoreSystemService)
 //! 并收敛错误为 [`HttpError`](super::super::error::HttpError)。
 
-use axum::extract::{Path, State};
 use axum::Json;
+use axum::extract::{Path, State};
 
-use sealantern_interface::system::{ServerResourceUsage, SystemSnapshot};
 use sealantern_interface::SystemService;
+use sealantern_interface::system::{ServerResourceUsage, SystemSnapshot};
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

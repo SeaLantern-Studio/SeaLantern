@@ -1,6 +1,6 @@
 use crate::rpc::axum::HttpRpcAccessResolver;
 use crate::rpc::{RpcAccess, RpcError, RpcPermission, RpcResult};
-use axum::http::{header::AUTHORIZATION, HeaderMap, StatusCode};
+use axum::http::{HeaderMap, StatusCode, header::AUTHORIZATION};
 
 const PLUGIN_INVOKE_PERMISSION: &str = "plugin.v2.invoke";
 

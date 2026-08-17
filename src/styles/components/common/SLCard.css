@@ -68,7 +68,13 @@
   gap: var(--sl-space-md);
   border-radius: var(--sl-radius-lg);
   box-shadow: var(--sl-shadow-card);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -144,7 +150,13 @@
   margin-top: var(--sl-space-xs);
   border-top: 1px solid var(--sl-border-light);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   border-radius: var(--sl-radius-sm);
   position: relative;
   overflow: hidden;
@@ -162,7 +174,13 @@
   color: var(--sl-text-secondary);
   font-style: italic;
   text-align: center;
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   opacity: 1;
 }
 
@@ -174,7 +192,13 @@
 .sl-quote-author {
   font-size: 0.75rem;
   color: var(--sl-text-tertiary);
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   opacity: 1;
 }
 
@@ -225,7 +249,13 @@
   border-radius: 50%;
   background: var(--sl-primary);
   cursor: pointer;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .sl-slider::-webkit-slider-thumb:hover {
@@ -240,7 +270,13 @@
   background: var(--sl-primary);
   cursor: pointer;
   border: none;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .sl-slider::-moz-range-thumb:hover {
@@ -268,7 +304,13 @@
   border-radius: var(--sl-radius-sm);
   color: var(--sl-text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .sl-view-toggle:hover {

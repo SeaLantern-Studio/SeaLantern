@@ -11,13 +11,14 @@ mod server;
 mod task;
 
 pub use app::{
-    AppSettings, SettingsGroup, SettingsValidationError, CURRENT_CONFIG_VERSION,
-    DEFAULT_ACRYLIC_BLUR_LEVEL,
+    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, SettingsGroup,
+    SettingsValidationError,
 };
 pub use app_update::{NullablePatch, PartialAppSettings, UpdateResult};
 pub use download_link::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
 pub use java::JavaInfo;
 pub use server::InstanceList;
+pub(crate) use server::LegacyServerInstance;
 pub use task::{TaskProgressResponse, TaskStatus};
 
 #[allow(deprecated)]

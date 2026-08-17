@@ -74,10 +74,10 @@ impl MainWindowState {
 
     fn set_mode(&self, mode: MainWindowMode) {
         self.mode.store(mode as u8, Ordering::Release);
-        if let Ok(tray_item) = self.tray_item.lock() {
-            if let Some(tray_item) = tray_item.as_ref() {
-                let _ = tray_item.set_checked(mode == MainWindowMode::Background);
-            }
+        if let Ok(tray_item) = self.tray_item.lock()
+            && let Some(tray_item) = tray_item.as_ref()
+        {
+            let _ = tray_item.set_checked(mode == MainWindowMode::Background);
         }
     }
 }

@@ -13,9 +13,9 @@
 use sealantern_application::service::subscribe_log_events;
 use std::sync::Arc;
 use tauri::async_runtime::JoinHandle;
-use tauri::{async_runtime::spawn, AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, async_runtime::spawn};
 use tokio::sync::broadcast::error::RecvError;
-use tokio::sync::{watch, Mutex};
+use tokio::sync::{Mutex, watch};
 
 /// 服务器日志事件转发器的运行状态。
 ///

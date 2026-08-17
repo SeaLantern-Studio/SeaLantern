@@ -27,12 +27,12 @@ pub use hash::{
     find_sha256_in_line, is_sha256_hex, parse_sha256_from_checksum_content, sha256_file, sha256_hex,
 };
 pub use lock::FileLock;
-pub use metadata::{describe, file_size, FileMetadata};
+pub use metadata::{FileMetadata, describe, file_size};
 pub use path::SafeRelativePath;
 pub use persist::{
     read_json, read_toml, read_yaml, write_json_atomic, write_toml_atomic, write_yaml_atomic,
 };
-pub use read::{read_limited, read_string_limited, DataLimit};
+pub use read::{DataLimit, read_limited, read_string_limited};
 
 #[cfg(test)]
 pub(crate) fn test_dir(label: &str) -> std::path::PathBuf {

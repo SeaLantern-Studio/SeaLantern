@@ -29,7 +29,7 @@ pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
 pub use instance::CoreInstanceService;
 pub use java::CoreJavaService;
-pub use log_recorder::{subscribe_log_events, LogEvent, LogRecorder};
+pub use log_recorder::{LogEvent, LogRecorder, subscribe_log_events};
 pub use online_tunnel::CoreOnlineTunnelService;
 pub use provisioning::CoreProvisioningService;
 pub use proxy_monitoring::ProxyMonitoringService;

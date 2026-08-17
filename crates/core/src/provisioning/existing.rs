@@ -2,12 +2,13 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::instance::{
-    plan_import, Instance, InstanceError, InstanceId, InstanceImportError, InstanceImportPlan,
-    InstanceImportRequest, InstanceSpec, LocalLaunch, StartupMode,
+    Instance, InstanceError, InstanceId, InstanceImportError, InstanceImportPlan,
+    InstanceImportRequest, InstanceSpec, LocalLaunch, StartupMode, plan_import,
 };
 use crate::provisioning::{
-    apply_server_inspection_with_options, inspect_server_artifact, InspectionOptions,
-    LaunchProfilePolicy, ServerInspectionError, ServerInspectionProjectionOptions,
+    InspectionOptions, LaunchProfilePolicy, ServerInspectionError,
+    ServerInspectionProjectionOptions, apply_server_inspection_with_options,
+    inspect_server_artifact,
 };
 
 /// 为已有服务器目录构建导入计划。
@@ -156,19 +157,18 @@ pub fn build_import_spec(
     );
 
     // 调用方显式指定启动候选时，覆盖采纳结果。
-    if let Some(selected) = &request.selected_launch_profile_id {
-        if let Some(candidate) = projection
+    if let Some(selected) = &request.selected_launch_profile_id
+        && let Some(candidate) = projection
             .launch_candidates
             .iter()
             .find(|candidate| &candidate.profile_id == selected)
-        {
-            spec.launch = candidate.launch.clone();
-            if spec.launch.jvm_arguments.is_empty() {
-                spec.launch.jvm_arguments = request.jvm_arguments.clone().unwrap_or_default();
-            }
-            if spec.launch.java_executable.is_none() {
-                spec.launch.java_executable = request.java_executable.clone();
-            }
+    {
+        spec.launch = candidate.launch.clone();
+        if spec.launch.jvm_arguments.is_empty() {
+            spec.launch.jvm_arguments = request.jvm_arguments.clone().unwrap_or_default();
+        }
+        if spec.launch.java_executable.is_none() {
+            spec.launch.java_executable = request.java_executable.clone();
         }
     }
 

@@ -3,7 +3,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use super::core_parsing::{extract_minecraft_version, CoreKind};
+use super::core_parsing::{CoreKind, extract_minecraft_version};
 
 /// 根据启动文件扩展名选择的脚本格式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -358,7 +358,7 @@ impl std::error::Error for StartupParseError {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{logical_script_lines, parse_startup_script_content, CoreKind, StartupScriptKind};
+    use super::{CoreKind, StartupScriptKind, logical_script_lines, parse_startup_script_content};
 
     #[test]
     fn logical_lines_preserve_existing_continuation_whitespace() {

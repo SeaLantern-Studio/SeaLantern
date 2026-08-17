@@ -18,7 +18,15 @@ export interface ParsedServerCoreInfo {
 }
 
 export interface ServerLogLineEvent {
-  server_id: string;
+  instance_id: string;
+  line: ConsoleLogLine;
+}
+
+export interface ConsoleLogLine {
+  // Rust i64 经 Tauri/JSON 序列化后到达前端是 number，不能用 bigint
+  sequence: number;
+  timestamp: number;
+  source: string;
   line: string;
 }
 
@@ -347,8 +355,9 @@ export const serverApi = {
     await invoke("delete_instance", { id });
   },
 
-  async getLogs(id: string, since: number, maxLines?: number): Promise<string[]> {
-    return tauriInvoke("get_server_logs", { id, since, maxLines });
+  async getLogs(id: string, since: number, maxLines?: number): Promise<ConsoleLogLine[]> {
+    // 后端命令参数为 recent_limit，不传则可能一次性返回全部日志
+    return tauriInvoke("get_server_logs", { id, since, recent_limit: maxLines });
   },
 
   onLogLine(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
@@ -369,29 +378,49 @@ export const serverApi = {
   subscribeLogStream(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
     return new Promise((resolve) => {
       const url = `${HTTP_API_BASE}/api/logs/stream`;
-      const eventSource = new EventSource(url);
+      // 取消后不再重连;重连定时器与当前连接统一由 unlisten 管理
+      let cancelled = false;
+      let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+      let currentEventSource: EventSource | null = null;
 
-      eventSource.addEventListener("message", (event) => {
-        try {
-          const data = JSON.parse(event.data) as ServerLogLineEvent;
-          callback(data);
-        } catch (e) {
-          console.warn("[SSE] Failed to parse log event:", e);
-        }
-      });
+      const connect = (): void => {
+        if (cancelled) return;
+        const eventSource = new EventSource(url);
+        currentEventSource = eventSource;
 
-      eventSource.addEventListener("error", (e) => {
-        console.warn("[SSE] Connection error, reconnecting...", e);
-        // 自动重连：关闭旧连接，延迟后创建新连接
-        eventSource.close();
-        setTimeout(() => {
-          this.subscribeLogStream(callback);
-        }, 3000);
-      });
+        eventSource.addEventListener("message", (event) => {
+          try {
+            const data = JSON.parse(event.data) as ServerLogLineEvent;
+            callback(data);
+          } catch (e) {
+            console.warn("[SSE] Failed to parse log event:", e);
+          }
+        });
 
-      // 返回取消订阅函数
+        eventSource.addEventListener("error", (e) => {
+          console.warn("[SSE] Connection error, reconnecting...", e);
+          eventSource.close();
+          if (currentEventSource === eventSource) currentEventSource = null;
+          // 自动重连:延迟后创建新连接,取消后不再续连
+          if (!cancelled) {
+            reconnectTimer = setTimeout(connect, 3000);
+          }
+        });
+      };
+
+      connect();
+
+      // 返回取消订阅函数:关闭当前连接并阻止重连链
       resolve(() => {
-        eventSource.close();
+        cancelled = true;
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+        }
+        if (currentEventSource) {
+          currentEventSource.close();
+          currentEventSource = null;
+        }
       });
     });
   },

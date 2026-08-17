@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { shallowRef, triggerRef, computed } from "vue";
 import { i18n } from "@language";
 
 interface Props {
@@ -32,7 +32,9 @@ const emit = defineEmits<{
 
 const LOG_REGEX = /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/;
 
-const lines = ref<ConsoleLineObj[]>([]);
+// 日志行数组用 shallowRef 避免深度代理:行对象只追加/截断,无嵌套原地修改,
+// 高频追加下能省掉 5000 行对象的代理与依赖收集开销
+const lines = shallowRef<ConsoleLineObj[]>([]);
 
 function levelToType(level: string): ConsoleLineObj["type"] {
   switch (level) {
@@ -70,10 +72,13 @@ function appendLines(rawLines: string[]): void {
   if (lines.value.length > props.maxLogLines) {
     lines.value.splice(0, lines.value.length - props.maxLogLines);
   }
+  // shallowRef 不追踪 push/splice,手动触发依赖更新
+  triggerRef(lines);
 }
 
 function clear(): void {
   lines.value = [];
+  triggerRef(lines);
 }
 
 function getAllPlainText(): string {

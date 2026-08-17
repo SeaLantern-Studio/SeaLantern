@@ -439,8 +439,8 @@ mod tests {
     use std::path::PathBuf;
 
     use super::{
-        apply_java_environment, build_command, CommandBuildError, CommandBuildMode,
-        CommandBuildRequest, ConsoleInputPolicy, JavaEnvironment,
+        CommandBuildError, CommandBuildMode, CommandBuildRequest, ConsoleInputPolicy,
+        JavaEnvironment, apply_java_environment, build_command,
     };
 
     fn arguments(command: &Command) -> Vec<String> {

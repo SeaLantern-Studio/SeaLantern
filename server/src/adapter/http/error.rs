@@ -4,9 +4,9 @@
 //! `{ "code": "...", "message": "..." }`。状态码只做粗略分类，能告知前端
 //! 请求失败即可，不追求细粒度映射。
 
+use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use serde::Serialize;
 
 use sealantern_interface::{

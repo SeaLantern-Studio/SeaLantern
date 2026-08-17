@@ -7,8 +7,8 @@ use super::super::model::{
 };
 use super::manifest_attributes::attribute;
 use super::{
-    ecosystems_for_key, manifest_location, product_from_key, release_channel, ComponentFinding,
-    Findings, ProductFinding, ProductValueFinding, Signal,
+    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal, ecosystems_for_key,
+    manifest_location, product_from_key, release_channel,
 };
 
 const VELOCITY_MAIN: &str = "com.velocitypowered.proxy.Velocity";

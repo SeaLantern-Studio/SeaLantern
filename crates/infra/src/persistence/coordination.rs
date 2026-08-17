@@ -96,10 +96,10 @@ fn resource_identity(path: &Path) -> Result<PathBuf, PersistenceError> {
     if let Ok(canonical) = std::fs::canonicalize(&absolute) {
         return Ok(canonical);
     }
-    if let (Some(parent), Some(name)) = (absolute.parent(), absolute.file_name()) {
-        if let Ok(canonical_parent) = std::fs::canonicalize(parent) {
-            return Ok(canonical_parent.join(name));
-        }
+    if let (Some(parent), Some(name)) = (absolute.parent(), absolute.file_name())
+        && let Ok(canonical_parent) = std::fs::canonicalize(parent)
+    {
+        return Ok(canonical_parent.join(name));
     }
     Ok(absolute)
 }

@@ -10,7 +10,7 @@
       "asset_key": "macos-arm64"
     },
     {
-      "platform": "macos-15-intel",
+      "platform": "macos-26-intel",
       "name": "macOS x64",
       "args": "--target x86_64-apple-darwin",
       "rust_target": "x86_64-apple-darwin",

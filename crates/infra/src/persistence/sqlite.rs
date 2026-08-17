@@ -6,7 +6,7 @@ use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehav
 
 use crate::observability;
 
-use super::{process_lock_registry, PersistenceError, ProcessResourceLock};
+use super::{PersistenceError, ProcessResourceLock, process_lock_registry};
 
 /// 可安全传入 SQLite 参数绑定的动态值。
 pub use rusqlite::types::Value as SqlValue;
@@ -428,7 +428,8 @@ impl SqliteDatabase {
         let path = self.path.clone();
         let process_guard = self.coordination.read().await;
         let connection = Arc::clone(&self.connection);
-        let result = tokio::task::spawn_blocking(move || {
+
+        tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
             let connection = connection
                 .lock()
@@ -443,8 +444,7 @@ impl SqliteDatabase {
             })
         })
         .await
-        .map_err(|error| PersistenceError::Task { operation, source: error })?;
-        result
+        .map_err(|error| PersistenceError::Task { operation, source: error })?
     }
 
     async fn with_mut_connection<T, F>(
@@ -459,7 +459,8 @@ impl SqliteDatabase {
         let path = self.path.clone();
         let process_guard = self.coordination.write().await;
         let connection = Arc::clone(&self.connection);
-        let result = tokio::task::spawn_blocking(move || {
+
+        tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
             let mut connection =
                 connection
@@ -475,8 +476,7 @@ impl SqliteDatabase {
             })
         })
         .await
-        .map_err(|error| PersistenceError::Task { operation, source: error })?;
-        result
+        .map_err(|error| PersistenceError::Task { operation, source: error })?
     }
 }
 
@@ -842,9 +842,11 @@ mod tests {
                 .execute("INSERT INTO records (id) VALUES (?1)", vec![SqlValue::Integer(2)])
                 .await
         });
-        assert!(tokio::time::timeout(Duration::from_millis(10), &mut second_write)
-            .await
-            .is_err());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(10), &mut second_write)
+                .await
+                .is_err()
+        );
         first_write.await.unwrap().unwrap();
         second_write.await.unwrap().unwrap();
 

@@ -215,7 +215,13 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
   align-items: center;
   gap: var(--sl-space-md);
   padding: var(--sl-space-md);
-  transition: all var(--sl-transition-normal);
+  transition:
+    color var(--sl-transition-normal),
+    background-color var(--sl-transition-normal),
+    border-color var(--sl-transition-normal),
+    box-shadow var(--sl-transition-normal),
+    transform var(--sl-transition-normal),
+    opacity var(--sl-transition-normal);
 }
 
 .contributor-card.clickable {
@@ -354,7 +360,13 @@ function getCustomLinks(links: SocialLinks): [string, string][] {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .social-icon:hover {

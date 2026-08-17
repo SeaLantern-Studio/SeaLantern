@@ -268,8 +268,8 @@ mod tests {
     use std::sync::Mutex;
 
     use super::{
-        restart_instance, transition, InstanceLifecycleAction, InstanceLifecycleState,
-        InstanceRestartDriver, RestartPolicy,
+        InstanceLifecycleAction, InstanceLifecycleState, InstanceRestartDriver, RestartPolicy,
+        restart_instance, transition,
     };
     use crate::instance::{Instance, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
     use async_trait::async_trait;

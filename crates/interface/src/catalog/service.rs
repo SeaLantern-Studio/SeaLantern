@@ -14,7 +14,7 @@ pub trait ServerCatalogService: Send + Sync {
     async fn server_types(&self) -> Result<Vec<String>, ServerCatalogServiceError>;
     /// 返回指定服务器核心类型的可用版本列表。
     async fn versions(&self, server_type: String)
-        -> Result<Vec<String>, ServerCatalogServiceError>;
+    -> Result<Vec<String>, ServerCatalogServiceError>;
     /// 返回指定服务器核心类型、指定版本的下载链接。
     async fn details(
         &self,

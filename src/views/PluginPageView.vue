@@ -331,7 +331,13 @@ watch(
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 .back-btn:hover {
@@ -452,7 +458,13 @@ watch(
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 .preset-btn:hover {
@@ -586,7 +598,13 @@ watch(
   color: var(--text-secondary);
   font-size: var(--sl-font-size-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 .effect-btn:hover {
@@ -666,7 +684,13 @@ watch(
   color: var(--text-primary);
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 .ie-btn:hover {

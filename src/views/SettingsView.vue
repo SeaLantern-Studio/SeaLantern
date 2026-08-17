@@ -15,6 +15,12 @@ import { settingsApi, getSystemFonts, type AppSettings, type SettingsGroup } fro
 import { systemApi } from "@api/system";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
+import {
+  applyThemeWithReveal,
+  themeRevealTransition,
+  applyColors,
+  applyMinimalMode,
+} from "@utils/theme";
 import { usePluginStore } from "@stores/pluginStore";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
@@ -229,14 +235,32 @@ function handleAcrylicChange() {
 
 function handleMinimalModeChange(enabled: boolean) {
   markChanged();
-  document.documentElement.setAttribute("data-minimal", enabled ? "true" : "false");
+  applyMinimalMode(enabled);
 }
 
-function handleThemeChange() {
+function handleThemeChange(origin?: { x: number; y: number }) {
   markChanged();
   if (!settings.value) return;
 
-  applyTheme(settings.value.theme);
+  // 以下拉触发器为圆心做圆形扩散,主题没变时不播动画
+  const x = origin?.x ?? window.innerWidth / 2;
+  const y = origin?.y ?? window.innerHeight / 2;
+  applyThemeWithReveal(settings.value.theme, x, y, () => {
+    applyTheme(settings.value!.theme);
+    applyColors(settings.value!);
+  });
+}
+
+function handleColorChange(origin?: { x: number; y: number }) {
+  markChanged();
+  if (!settings.value) return;
+
+  // 主题色切换同样以下拉触发器为圆心做圆形扩散
+  const x = origin?.x ?? window.innerWidth / 2;
+  const y = origin?.y ?? window.innerHeight / 2;
+  themeRevealTransition(x, y, () => {
+    applyColors(settings.value!);
+  });
 }
 
 function handleJavaInstalled(path: string) {
@@ -449,6 +473,7 @@ async function handleImport(json: string) {
             @update:background-size="settings.background_size = $event"
             @update:minimal-mode="settings.minimal_mode = $event"
             @theme-change="handleThemeChange"
+            @color-change="handleColorChange"
             @font-size-change="handleFontSizeChange"
             @font-family-change="handleFontFamilyChange"
             @acrylic-change="handleAcrylicChange"

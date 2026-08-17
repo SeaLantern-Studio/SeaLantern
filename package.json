@@ -14,13 +14,12 @@
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "fmt:rust": "cargo fmt",
     "notice": "node ./scripts/notice.mjs",
     "commitlint": "commitlint",
     "prepare": "husky",
     "sv": "node ./scripts/version.mjs show",
-    "cv": "node ./scripts/version.mjs change",
-    "docker:dev": "cargo run -p docker-entry",
-    "docker:build": "docker build -t sealantern:docker ."
+    "cv": "node ./scripts/version.mjs change"
   },
   "dependencies": {
     "@codemirror/language": "^6.12.3",
@@ -38,10 +37,6 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.0",
     "@vueuse/core": "^14.2.1",
-    "@xterm/addon-clipboard": "^0.2.0",
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/addon-serialize": "^0.14.0",
-    "@xterm/xterm": "^6.0.0",
     "cmzya-modern-ui": "^0.6.2",
     "dompurify": "^3.3.3",
     "echarts": "^6.0.0",
@@ -75,6 +70,9 @@
   "lint-staged": {
     "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md,toml}": [
       "pnpm exec oxfmt"
+    ],
+    "*.rs": [
+      "node ./scripts/backend-fmt.mjs"
     ]
   },
   "packageManager": "pnpm@9.15.9"

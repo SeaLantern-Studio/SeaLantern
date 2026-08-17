@@ -1253,7 +1253,8 @@
       "status": {
         "failed": "Download failed",
         "finished": "Download finished",
-        "downloading": "Downloading"
+        "downloading": "Downloading",
+        "cancelled": "Cancelled"
       },
       "form": {
         "type": "Category",

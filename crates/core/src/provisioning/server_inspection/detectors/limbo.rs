@@ -5,8 +5,8 @@ use super::super::formats::manifest;
 use super::super::model::{EvidenceSource, ServerCategory, ServerComponent, ServerComponentKind};
 use super::manifest_attributes::attribute;
 use super::{
-    ecosystems_for_key, manifest_location, product_from_key, release_channel, ComponentFinding,
-    Findings, ProductFinding, ProductValueFinding, Signal,
+    ComponentFinding, Findings, ProductFinding, ProductValueFinding, Signal, ecosystems_for_key,
+    manifest_location, product_from_key, release_channel,
 };
 
 pub(super) fn detect(path: &Path, archive: &ArchiveMetadata, findings: &mut Findings) {

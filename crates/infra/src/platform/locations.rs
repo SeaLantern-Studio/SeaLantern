@@ -32,12 +32,12 @@ const APP_DOCKER_DATA_DIR: &str = "./data";
 /// 检查是否为 MSI 安装（程序安装在 Program Files 目录）。
 #[cfg(target_os = "windows")]
 fn is_msi_installation() -> bool {
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(parent) = exe_path.parent() {
-            let exe_str = parent.to_string_lossy().to_lowercase();
-            if exe_str.contains(r"\program files\") {
-                return true;
-            }
+    if let Ok(exe_path) = std::env::current_exe()
+        && let Some(parent) = exe_path.parent()
+    {
+        let exe_str = parent.to_string_lossy().to_lowercase();
+        if exe_str.contains(r"\program files\") {
+            return true;
         }
     }
     false
@@ -62,13 +62,12 @@ pub fn get_app_data_dir() -> PathBuf {
 
     #[cfg(target_os = "windows")]
     {
-        if is_msi_installation() {
-            if let Some(dir) = dirs::data_dir()
+        if is_msi_installation()
+            && let Some(dir) = dirs::data_dir()
                 .map(|d| d.join(APP_DIR_NAME))
                 .or_else(|| dirs::home_dir().map(|h| h.join(APP_DIR_HIDDEN)))
-            {
-                return dir;
-            }
+        {
+            return dir;
         }
         std::env::current_exe()
             .ok()

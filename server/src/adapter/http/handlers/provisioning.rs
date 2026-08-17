@@ -5,8 +5,8 @@
 
 use std::path::Path;
 
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 
 use sealantern_core::provisioning::ServerInspectionReport;
 use sealantern_interface::ProvisioningService;
