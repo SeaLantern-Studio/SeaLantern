@@ -5,6 +5,7 @@ import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
 import { configApi } from "@api/config";
 import MotdEditorBody from "@components/config/MotdEditorBody.vue";
+import { DEFAULT_MOTD } from "@utils/motdCodes";
 
 /**
  *
@@ -42,15 +43,15 @@ function setStatus(message: string) {
 async function loadMotd() {
   const server = selectedServer.value;
   if (!server) {
-    loadedMotd.value = "§7A Minecraft Server";
+    loadedMotd.value = DEFAULT_MOTD;
     return;
   }
   try {
     const data = await configApi.readServerProperties(server.path);
-    loadedMotd.value = data.raw["motd"] ?? "§7A Minecraft Server";
+    loadedMotd.value = data.raw["motd"] ?? DEFAULT_MOTD;
     statusMsg.value = null;
   } catch {
-    loadedMotd.value = "§7A Minecraft Server";
+    loadedMotd.value = DEFAULT_MOTD;
     setStatus(i18n.t("config.motd.load_failed"));
   }
 }

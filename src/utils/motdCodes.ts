@@ -50,6 +50,9 @@ export const MOTD_COLOR_MAP: Record<string, string> = {
 /** 彩虹渐变使用的颜色顺序 */
 export const MOTD_RAINBOW_COLOR_CODES = ["c", "6", "e", "a", "b", "9", "d"] as const;
 
+/** 缺省 MOTD 占位文本（服务器未配置 motd 时使用） */
+export const DEFAULT_MOTD = "§7A Minecraft Server";
+
 /** 工具栏格式状态 */
 export interface MotdFormatState {
   bold: boolean;
@@ -148,7 +151,7 @@ export function motdToHtml(motd: string): string {
  * 以避免脚本注入，并在非浏览器环境下直接回退原始文本。
  */
 export function htmlToMotd(html: string): string {
-  if (typeof document === "undefined") return html;
+  if (typeof document === "undefined" || typeof DOMParser === "undefined") return html;
   const doc = new DOMParser().parseFromString(html, "text/html");
   const root = doc.body;
   const output: string[] = [];
