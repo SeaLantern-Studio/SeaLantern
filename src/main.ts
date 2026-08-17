@@ -64,8 +64,11 @@ if (import.meta.env.DEV) {
     console.error("Unhandled Promise:", event.reason);
   });
 
-  // DEV 模式下将 invoke 挂载到 window，方便在浏览器控制台手动调用 Tauri 命令。
+  // DEV 模式下将 invoke 与 listen 挂载到 window，方便在浏览器控制台手动调用 Tauri 命令，并监听 Tauri 事件。
   // 例如触发崩溃报告测试：await window.__invoke("debug_panic")
+  // 例如监听服务器日志事件：
+  // let unlisten = await __listen("server-log-line", (event) => {console.log(event)});
+  // 使用 await unlisten(); 以取消监听。
   // 注意：此挂载仅在开发模式下存在，生产包中不会包含。
   (window as any).__invoke = invoke;
   (window as any).__listen = listen;
