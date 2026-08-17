@@ -17,6 +17,13 @@ export interface ParsedServerCoreInfo {
   jarPath: string | null;
 }
 
+/** 后端 parse_server_core_type 命令的原始返回结构（snake_case 字段） */
+interface ParsedServerCoreInfoRaw {
+  core_type: string;
+  main_class: string | null;
+  jar_path: string | null;
+}
+
 export interface ServerLogLineEvent {
   instance_id: string;
   line: ConsoleLogLine;
@@ -366,18 +373,19 @@ export const serverApi = {
     const candidates: StartupCandidateItem[] = report.launches.map((launch, index) => {
       const target = launch.value.target;
       let mode: StartupCandidateItem["mode"] = "jar";
-      let path = "";
-      let label = "";
+      let path: string;
+      let label: string;
 
       switch (target.kind) {
         case "jar":
           mode = "jar";
-          path = target.path;
+          // target.path 为可选字段，缺失时回退到检测主体路径
+          path = target.path ?? report.subject.path;
           label = `JAR: ${getFileName(path)}`;
           break;
-        case "script":
-          // 根据脚本扩展名确定模式
-          const scriptPath = target.path;
+        case "script": {
+          // 根据脚本扩展名确定模式，缺失时回退到检测主体路径
+          const scriptPath = target.path ?? "";
           if (scriptPath.endsWith(".bat")) {
             mode = "bat";
           } else if (scriptPath.endsWith(".sh")) {
@@ -385,9 +393,10 @@ export const serverApi = {
           } else if (scriptPath.endsWith(".ps1")) {
             mode = "ps1";
           }
-          path = scriptPath;
-          label = `Script: ${getFileName(scriptPath)}`;
+          path = scriptPath || report.subject.path;
+          label = `Script: ${getFileName(path)}`;
           break;
+        }
         case "main_class":
           mode = "jar";
           path = report.subject.path;
