@@ -17,6 +17,13 @@ export interface ParsedServerCoreInfo {
   jarPath: string | null;
 }
 
+/** 后端 parse_server_core_type 命令的原始返回结构（snake_case 字段） */
+interface ParsedServerCoreInfoRaw {
+  core_type: string;
+  main_class: string | null;
+  jar_path: string | null;
+}
+
 export interface ServerLogLineEvent {
   instance_id: string;
   line: ConsoleLogLine;
@@ -54,29 +61,127 @@ export interface StartupScanResult {
   mcVersionDetectionFailed: boolean;
 }
 
-interface ParsedServerCoreInfoRaw {
-  core_type: string;
-  main_class: string | null;
-  jar_path: string | null;
+/** 服务器检测报告（对应后端 ServerInspectionReport） */
+interface ServerInspectionReport {
+  schema_version: number;
+  subject: InspectionSubject;
+  artifact: ArtifactInfo;
+  identity: ServerIdentityInfo;
+  minecraft?: MinecraftVersionInfo;
+  java: JavaRequirementInfo;
+  components: Array<Attributed<ServerComponent>>;
+  launches: Array<Attributed<LaunchProfile>>;
+  evidence: DetectionEvidence[];
+  diagnostics: InspectionDiagnostic[];
 }
 
-interface StartupCandidateItemRaw {
-  id: string;
-  mode: string;
-  label: string;
-  detail: string;
+interface InspectionSubject {
   path: string;
-  recommended: number;
+  kind: "file" | "directory";
+  size_bytes?: number;
+  modified_at_unix_secs?: number;
 }
 
-interface StartupScanResultRaw {
-  parsed_core: ParsedServerCoreInfoRaw;
-  candidates: StartupCandidateItemRaw[];
-  detected_core_type_key: string | null;
-  core_type_options: string[];
-  mc_version_options: string[];
-  detected_mc_version: string | null;
-  mc_version_detection_failed: boolean;
+interface ArtifactInfo {
+  format: Detected<string>;
+  roles: Array<Attributed<string>>;
+  main_class: Detected<string>;
+}
+
+interface ServerIdentityInfo {
+  category: Detected<string>;
+  implementation: Detected<ServerProduct>;
+  version: Detected<string>;
+}
+
+interface ServerProduct {
+  key: string;
+  display_name: string;
+}
+
+interface MinecraftVersionInfo {
+  version?: Detected<string>;
+}
+
+interface JavaRequirementInfo {
+  minimum_major?: number;
+  maximum_major?: number;
+}
+
+interface LaunchProfile {
+  id: string;
+  platform: "any" | "windows" | "unix";
+  working_directory?: string;
+  target: LaunchTarget;
+  jvm_arguments: string[];
+  program_arguments: string[];
+}
+
+interface LaunchTarget {
+  kind: "jar" | "main_class" | "argument_files" | "script";
+  path?: string;
+  class_name?: string;
+  paths?: string[];
+}
+
+interface Attributed<T> {
+  value: T;
+  confidence: number;
+}
+
+interface Detected<T> {
+  value?: T;
+  confidence: number;
+  alternatives?: Array<{ value: T; confidence: number }>;
+}
+
+interface ServerComponent {
+  kind: string;
+  key: string;
+}
+
+interface DetectionEvidence {
+  id: number;
+  detector: string;
+}
+
+interface InspectionDiagnostic {
+  level: string;
+  message: string;
+}
+
+/** 从路径中提取文件名 */
+function getFileName(path: string): string {
+  const parts = path.split(/[/\\]/);
+  return parts[parts.length - 1] || path;
+}
+
+/** 从检测报告中提取核心类型选项 */
+function extractCoreTypeOptions(report: ServerInspectionReport): string[] {
+  const options: Set<string> = new Set();
+
+  // 主检测结果
+  if (report.identity.implementation.value) {
+    options.add(report.identity.implementation.value.key);
+  }
+
+  // 备选检测结果
+  if (report.identity.implementation.alternatives) {
+    for (const alt of report.identity.implementation.alternatives) {
+      if (alt.value) {
+        options.add(alt.value.key);
+      }
+    }
+  }
+
+  // 从组件中提取
+  for (const component of report.components) {
+    if (component.value.key) {
+      options.add(component.value.key);
+    }
+  }
+
+  return Array.from(options);
 }
 
 /** 后端 Instance 原始结构，字段和前端 ServerInstance 差异较大需转换 */
@@ -231,19 +336,21 @@ export const serverApi = {
     mcVersion?: string;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_modpack", {
-      name: params.name,
-      modpackPath: params.modpackPath,
-      javaPath: params.javaPath,
-      maxMemory: params.maxMemory,
-      minMemory: params.minMemory,
-      port: params.port,
-      startupMode: params.startupMode,
-      onlineMode: params.onlineMode,
-      customCommand: params.customCommand,
-      runPath: params.runPath,
-      startupFilePath: params.startupFilePath,
-      coreType: params.coreType,
-      mcVersion: params.mcVersion,
+      request: {
+        name: params.name,
+        modpackPath: params.modpackPath,
+        javaPath: params.javaPath,
+        maxMemory: params.maxMemory,
+        minMemory: params.minMemory,
+        port: params.port,
+        startupMode: params.startupMode,
+        onlineMode: params.onlineMode,
+        customCommand: params.customCommand,
+        runPath: params.runPath,
+        startupFilePath: params.startupFilePath,
+        coreType: params.coreType,
+        mcVersion: params.mcVersion,
+      },
     });
   },
 
@@ -258,34 +365,101 @@ export const serverApi = {
     };
   },
 
+  /**
+   * 扫描服务器目录的启动候选项
+   *
+   * 使用 inspect_server 命令检测服务器信息，从 LaunchProfile 构建候选列表
+   */
   async scanStartupCandidates(
     sourcePath: string,
-    sourceType: "archive" | "folder",
+    _sourceType: "archive" | "folder",
   ): Promise<StartupScanResult> {
-    const result = await tauriInvoke<StartupScanResultRaw>("scan_startup_candidates", {
-      sourcePath,
-      sourceType,
+    // 使用 inspect_server 获取服务器检测报告
+    const report = await invoke<ServerInspectionReport>("inspect_server", { path: sourcePath });
+
+    // 从 LaunchProfile 构建启动候选项列表
+    const candidates: StartupCandidateItem[] = report.launches.flatMap((launch, index) => {
+      const target = launch.value.target;
+      let candidate: StartupCandidateItem | null = null;
+
+      switch (target.kind) {
+        case "jar":
+          // LocalLaunch cannot preserve program arguments; do not offer a
+          // candidate that would silently lose part of the detected command.
+          if (launch.value.program_arguments.length > 0) {
+            return [];
+          }
+          {
+            const path = target.path ?? report.subject.path;
+            candidate = {
+              id: launch.value.id,
+              mode: "jar",
+              label: `JAR: ${getFileName(path)}`,
+              detail: `Platform: ${launch.value.platform}`,
+              path,
+              recommended: 100 - index * 10,
+            };
+          }
+          break;
+        case "script": {
+          const scriptPath = target.path ?? "";
+          const scriptExtension = scriptPath.toLowerCase();
+          let mode: StartupCandidateItem["mode"] | null = null;
+          if (scriptExtension.endsWith(".bat") || scriptExtension.endsWith(".cmd")) {
+            mode = "bat";
+          } else if (scriptExtension.endsWith(".sh")) {
+            mode = "sh";
+          } else if (scriptExtension.endsWith(".ps1")) {
+            mode = "ps1";
+          }
+          if (!mode) {
+            return [];
+          }
+          const path = scriptPath || report.subject.path;
+          candidate = {
+            id: launch.value.id,
+            mode,
+            label: `Script: ${getFileName(path)}`,
+            detail: `Platform: ${launch.value.platform}`,
+            path,
+            recommended: 100 - index * 10,
+          };
+          break;
+        }
+        // Main-class and argument-file targets have no equivalent in the
+        // current LocalLaunch model, so they must not be presented as JARs.
+        case "main_class":
+        case "argument_files":
+          return [];
+      }
+
+      return candidate ? [candidate] : [];
     });
+
+    /*
+     * Do not synthesize a JAR candidate when inspection found no compatible
+     * launch. The subject can be a directory or an argument-file-only setup;
+     * the create page will retain its explicit custom-launch fallback.
+     */
+    const coreTypeValue = report.identity.implementation.value?.key;
+    const coreTypeOptions = extractCoreTypeOptions(report);
+
+    // 提取 Minecraft 版本信息
+    const mcVersion = report.minecraft?.version?.value ?? null;
+    const mcVersionOptions = report.minecraft?.version?.alternatives?.map((a) => a.value) ?? [];
 
     return {
       parsedCore: {
-        coreType: result.parsed_core.core_type,
-        mainClass: result.parsed_core.main_class,
-        jarPath: result.parsed_core.jar_path,
+        coreType: coreTypeValue ?? "",
+        mainClass: report.artifact.main_class.value ?? null,
+        jarPath: report.subject.path,
       },
-      candidates: result.candidates.map((item) => ({
-        id: item.id,
-        mode: (item.mode as StartupCandidateItem["mode"]) ?? "jar",
-        label: item.label,
-        detail: item.detail,
-        path: item.path,
-        recommended: item.recommended,
-      })),
-      detectedCoreTypeKey: result.detected_core_type_key,
-      coreTypeOptions: result.core_type_options,
-      mcVersionOptions: result.mc_version_options,
-      detectedMcVersion: result.detected_mc_version,
-      mcVersionDetectionFailed: result.mc_version_detection_failed,
+      candidates,
+      detectedCoreTypeKey: coreTypeValue ?? null,
+      coreTypeOptions,
+      mcVersionOptions,
+      detectedMcVersion: mcVersion,
+      mcVersionDetectionFailed: !mcVersion && report.minecraft === null,
     };
   },
 

@@ -270,6 +270,27 @@ impl HttpError {
         }
     }
 
+    /// 由服务端检查与供给计划契约错误构建 HTTP 错误。
+    pub fn from_provisioning_error(error: ProvisioningServiceError) -> Self {
+        match error {
+            ProvisioningServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_provisioning_input",
+                message: error.to_string(),
+            },
+            ProvisioningServiceError::InspectionFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "provisioning_inspection_failed",
+                message: error.to_string(),
+            },
+            ProvisioningServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "provisioning_operation_failed",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 构建一个客户端输入错误（400），带具体错误码。
     pub fn bad_request(code: &'static str, message: impl Into<String>) -> Self {
         Self {
@@ -339,15 +360,7 @@ impl From<UpdateCheckServiceError> for HttpError {
 
 impl From<ProvisioningServiceError> for HttpError {
     fn from(error: ProvisioningServiceError) -> Self {
-        match error {
-            ProvisioningServiceError::InvalidInput => {
-                Self::bad_request("invalid_input", error.to_string())
-            }
-            ProvisioningServiceError::InspectionFailed => {
-                Self::bad_request("inspection_failed", error.to_string())
-            }
-            ProvisioningServiceError::OperationFailed => Self::internal(error.to_string()),
-        }
+        Self::from_provisioning_error(error)
     }
 }
 

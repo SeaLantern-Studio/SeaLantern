@@ -63,9 +63,6 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));
 
-    let provisioning_routes =
-        Router::new().route("/provisioning/inspect", post(handlers::inspect_server));
-
     let settings_routes = Router::new().route("/settings", get(handlers::settings_overview));
 
     let system_routes = Router::new()
@@ -82,6 +79,9 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         .route("/cron-tasks/{id}/run", post(handlers::run_cron_task));
 
     let update_routes = Router::new().route("/update", get(handlers::check_update));
+
+    let provisioning_routes =
+        Router::new().route("/provisioning/inspect", post(handlers::inspect_server));
 
     let download_routes = Router::new()
         .route("/downloads", post(handlers::create_download))
