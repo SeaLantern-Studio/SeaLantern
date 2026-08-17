@@ -41,6 +41,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
     let instance_routes = Router::new()
         .route("/instances", get(handlers::list_instances))
         .route("/instances", post(handlers::create_instance))
+        .route("/instances/import-existing", post(handlers::import_existing_instance))
         .route("/instances/{id}", get(handlers::get_instance))
         .route("/instances/{id}", delete(handlers::delete_instance))
         .route("/instances/{id}", patch(handlers::rename_instance))
@@ -61,6 +62,9 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
         // ── 嵌套子资源（后续扩展） ──
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));
+
+    let provisioning_routes =
+        Router::new().route("/provisioning/inspect", post(handlers::inspect_server));
 
     let settings_routes = Router::new().route("/settings", get(handlers::settings_overview));
 
@@ -89,6 +93,7 @@ pub fn build_router(services: AppServices, config: ViteConfig) -> Router {
 
     Router::new()
         .nest(API_PREFIX, instance_routes)
+        .nest(API_PREFIX, provisioning_routes)
         .nest(API_PREFIX, settings_routes)
         .nest(API_PREFIX, system_routes)
         .nest(API_PREFIX, cron_routes)
