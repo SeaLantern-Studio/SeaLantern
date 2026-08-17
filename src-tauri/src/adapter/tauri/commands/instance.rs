@@ -13,6 +13,11 @@ use sealantern_application::error::InstanceError;
 use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
+use sealantern_core::provisioning::{
+    ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
+    SourceDirectoryError, build_import_spec, plan_existing_instance, source_directories_equal,
+    validate_source_directory,
+};
 use sealantern_interface::{InstanceService, InstanceServiceError};
 
 /// 获取全局实例管理服务句柄（惰性初始化容器）。
@@ -77,4 +82,92 @@ pub async fn update_instance_path(id: String, path: String) -> Result<(), Instan
     let service = instance_service().await?;
     let id = parse_id_for_tauri(id)?;
     service.update_path(&id, &path).await
+}
+
+/// 导入已有服务器目录失败时返回给前端的错误。
+///
+/// 同时实现 `Serialize` 与 `std::error::Error`，便于 Tauri 序列化回调用方并携带
+/// 稳定的机器可读错误码（如 `source_unavailable` / `no_launch_candidate`）。
+#[derive(Debug, serde::Serialize)]
+pub struct ImportExistingServerError {
+    /// 稳定错误码（机器可读）。
+    pub code: String,
+    /// 人类可读消息。
+    pub message: String,
+}
+
+impl std::fmt::Display for ImportExistingServerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for ImportExistingServerError {}
+
+/// 导入已有服务器目录：校验 → 去重 → 检查 → 构建规格 → 注册。
+///
+/// 导入的实例直接引用原始目录（FR-5：不复制文件），启动目标由检查结果采纳最优候选。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn import_existing_server(
+    request: ImportExistingServerRequest,
+) -> Result<Instance, ImportExistingServerError> {
+    validate_source_directory(&request.source_directory).map_err(|error| match error {
+        SourceDirectoryError::Unavailable(_) => {
+            import_error("source_unavailable", error.to_string())
+        }
+        SourceDirectoryError::NotDirectory(_) => {
+            import_error("source_not_directory", error.to_string())
+        }
+    })?;
+
+    let service = instance_service()
+        .await
+        .map_err(|error| import_error("service_unavailable", error.to_string()))?;
+    let instances = service
+        .list()
+        .await
+        .map_err(|error| import_error("list_failed", error.to_string()))?;
+    if instances.iter().any(|instance| {
+        source_directories_equal(instance.directory.as_path(), request.source_directory.as_path())
+    }) {
+        return Err(import_error(
+            "source_already_imported",
+            "the selected directory is already imported as a server instance",
+        ));
+    }
+
+    // `build_import_spec` 内部执行同步目录扫描（inspect_server_artifact），
+    // 放到 blocking 线程，避免阻塞 async 运行时。
+    let import_request = tokio::task::spawn_blocking({
+        let request = request.clone();
+        move || build_import_spec(&request)
+    })
+    .await
+    .map_err(|join_error| {
+        import_error("import_panic", format!("import spec build failed: {join_error}"))
+    })?;
+    let import_request = import_request.map_err(|error| match error {
+        CoreImportError::Inspection(_) => import_error("inspection_failed", error.to_string()),
+        CoreImportError::NoLaunchCandidate => {
+            import_error("no_launch_candidate", error.to_string())
+        }
+        CoreImportError::InvalidInstance(_) => import_error("invalid_instance", error.to_string()),
+    })?;
+
+    // 流经既有后端原语 plan_existing_instance 完成启动目标校验与归一化，
+    // 复用已有的导入规划能力，而非直接以裸规格创建实例。
+    let plan = plan_existing_instance(import_request)
+        .map_err(|error| import_error("invalid_instance", error.to_string()))?;
+    service
+        .create(plan.instance.spec())
+        .await
+        .map_err(|error| import_error("create_failed", error.to_string()))
+}
+
+/// 构造一个带稳定错误码的导入错误。
+fn import_error(code: &'static str, message: impl Into<String>) -> ImportExistingServerError {
+    ImportExistingServerError {
+        code: code.to_string(),
+        message: message.into(),
+    }
 }

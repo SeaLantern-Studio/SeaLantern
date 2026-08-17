@@ -140,6 +140,9 @@ jobs:
       - name: 运行前端全量检查
         run: pnpm run fmt:check && pnpm run lint && pnpm run build:check
 
+      - name: 运行前端测试
+        run: pnpm test
+
       - name: 检查 Rust 格式
         run: cargo fmt --all -- --check
 
