@@ -530,66 +530,6 @@ fn parse_kde_proxy(schema: &str, service: &str) -> Result<(String, u16)> {
     Err(Error::ParseStr("schema".into()))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_legacy_spaced_http_entry() {
-        let (host, port) = parse_kde_proxy("http://127.0.0.1 7897", "http").unwrap();
-        assert_eq!(host, "127.0.0.1");
-        assert_eq!(port, 7897);
-    }
-
-    #[test]
-    fn parse_legacy_spaced_socks_entry_without_scheme() {
-        let (host, port) = parse_kde_proxy("127.0.0.1 7897", "socks").unwrap();
-        assert_eq!(host, "127.0.0.1");
-        assert_eq!(port, 7897);
-    }
-
-    #[test]
-    fn parse_plasma_colon_entry() {
-        let (host, port) = parse_kde_proxy("http://127.0.0.1:7897", "http").unwrap();
-        assert_eq!(host, "127.0.0.1");
-        assert_eq!(port, 7897);
-    }
-
-    #[test]
-    fn parse_url_without_port_defaults_to_80() {
-        let (host, port) = parse_kde_proxy("http://127.0.0.1", "http").unwrap();
-        assert_eq!(host, "127.0.0.1");
-        assert_eq!(port, 80);
-    }
-
-    #[test]
-    fn parse_https_without_port_defaults_to_443() {
-        let (host, port) = parse_kde_proxy("https://proxy.example.com", "https").unwrap();
-        assert_eq!(host, "proxy.example.com");
-        assert_eq!(port, 443);
-    }
-
-    #[test]
-    fn empty_schema_returns_empty_result() {
-        let (host, port) = parse_kde_proxy("", "http").unwrap();
-        assert_eq!(host, "");
-        assert_eq!(port, 0);
-    }
-
-    #[test]
-    fn rejects_mismatched_or_ambiguous_proxy_urls() {
-        for schema in [
-            "socks://127.0.0.1:1080",
-            "http://user:password@127.0.0.1:7890",
-            "http://127.0.0.1:7890/path",
-            "http://127.0.0.1:7890?query=1",
-            "http://127.0.0.1:7890#fragment",
-        ] {
-            assert!(parse_kde_proxy(schema, "http").is_err());
-        }
-    }
-}
-
 impl Autoproxy {
     #[inline]
     pub fn get_auto_proxy() -> Result<Autoproxy> {
@@ -694,5 +634,71 @@ impl Autoproxy {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_legacy_spaced_http_entry() -> Result<()> {
+        let (host, port) = parse_kde_proxy("http://127.0.0.1 7897", "http")?;
+        assert_eq!(host, "127.0.0.1");
+        assert_eq!(port, 7897);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_legacy_spaced_socks_entry_without_scheme() -> Result<()> {
+        let (host, port) = parse_kde_proxy("127.0.0.1 7897", "socks")?;
+        assert_eq!(host, "127.0.0.1");
+        assert_eq!(port, 7897);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_plasma_colon_entry() -> Result<()> {
+        let (host, port) = parse_kde_proxy("http://127.0.0.1:7897", "http")?;
+        assert_eq!(host, "127.0.0.1");
+        assert_eq!(port, 7897);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_url_without_port_defaults_to_80() -> Result<()> {
+        let (host, port) = parse_kde_proxy("http://127.0.0.1", "http")?;
+        assert_eq!(host, "127.0.0.1");
+        assert_eq!(port, 80);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_https_without_port_defaults_to_443() -> Result<()> {
+        let (host, port) = parse_kde_proxy("https://proxy.example.com", "https")?;
+        assert_eq!(host, "proxy.example.com");
+        assert_eq!(port, 443);
+        Ok(())
+    }
+
+    #[test]
+    fn empty_schema_returns_empty_result() -> Result<()> {
+        let (host, port) = parse_kde_proxy("", "http")?;
+        assert_eq!(host, "");
+        assert_eq!(port, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_mismatched_or_ambiguous_proxy_urls() {
+        for schema in [
+            "socks://127.0.0.1:1080",
+            "http://user:password@127.0.0.1:7890",
+            "http://127.0.0.1:7890/path",
+            "http://127.0.0.1:7890?query=1",
+            "http://127.0.0.1:7890#fragment",
+        ] {
+            assert!(parse_kde_proxy(schema, "http").is_err());
+        }
     }
 }
