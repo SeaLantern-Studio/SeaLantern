@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { WandSparkles } from "lucide-vue-next";
+import { i18n } from "@language";
+import MotdVisualEditor from "@components/config/MotdVisualEditor.vue";
+
 interface Option {
   label: string;
   value: string | number;
@@ -23,6 +28,8 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   "update:modelValue": [value: string | boolean | number];
 }>();
+
+const showMotdEditor = ref(false);
 
 function isBooleanControl(valueType: string | undefined, value: string | undefined) {
   return valueType === "boolean" || value === "true" || value === "false";
@@ -53,6 +60,35 @@ function isBooleanControl(valueType: string | undefined, value: string | undefin
         @update:modelValue="emit('update:modelValue', $event)"
       />
     </template>
+    <template v-else-if="propertyKey === 'motd'">
+      <div class="config-property-control-row">
+        <cmz-input
+          :modelValue="modelValue"
+          :placeholder="defaultValue"
+          class="config-property-control-input"
+          @update:modelValue="emit('update:modelValue', $event)"
+        />
+        <cmz-tooltip :content="i18n.t('config.motd.open_editor')">
+          <cmz-button
+            size="sm"
+            variant="outline"
+            class="config-property-motd-edit-btn"
+            @click="showMotdEditor = true"
+          >
+            <WandSparkles :size="14" />
+          </cmz-button>
+        </cmz-tooltip>
+      </div>
+      <MotdVisualEditor
+        v-if="showMotdEditor"
+        :modelValue="modelValue"
+        @apply="
+          emit('update:modelValue', $event);
+          showMotdEditor = false;
+        "
+        @close="showMotdEditor = false"
+      />
+    </template>
     <template v-else>
       <cmz-input
         :modelValue="modelValue"
@@ -81,5 +117,16 @@ function isBooleanControl(valueType: string | undefined, value: string | undefin
 
 .config-property-control-input {
   width: 100%;
+}
+
+.config-property-control-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+}
+
+.config-property-motd-edit-btn {
+  flex-shrink: 0;
 }
 </style>

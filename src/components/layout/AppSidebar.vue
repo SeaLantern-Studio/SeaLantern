@@ -26,6 +26,8 @@ import {
   Archive,
   BookOpen,
   Beaker,
+  Wrench,
+  MessageSquareText,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
@@ -51,6 +53,8 @@ const iconMap: Record<string, LucideIcon> = {
   archive: Archive,
   book: BookOpen,
   beaker: Beaker,
+  wrench: Wrench,
+  motd: MessageSquareText,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -135,6 +139,14 @@ const staticNavItems: NavItem[] = [
     icon: "users",
     labelKey: "common.player_manage",
     label: i18n.t("common.player_manage"),
+    group: "server",
+  },
+  {
+    name: "tools",
+    path: "/tools",
+    icon: "wrench",
+    labelKey: "common.tools",
+    label: i18n.t("common.tools"),
     group: "server",
   },
   {

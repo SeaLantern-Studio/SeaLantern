@@ -1,0 +1,355 @@
+/* MOTD 可视化编辑器样式（ ServerIntroVisualizerTool，适配 --sl-* 变量与双主题） */
+
+@font-face {
+  font-family: minecraft;
+  src: url("../../assets/motd/minecraft-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: minecraft;
+  src: url("../../assets/motd/minecraft-bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+}
+
+@font-face {
+  font-family: minecraft;
+  src: url("../../assets/motd/minecraft-italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* 服务器列表泥土纹理背景 */
+.motd-editor-dirt-bg {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 16%), rgb(255 255 255 / 14%)),
+    url("../../assets/motd/minecraft-background-dark.png");
+  background-size: 80px;
+  background-repeat: repeat;
+  image-rendering: pixelated;
+}
+
+[data-theme="dark"] .motd-editor-dirt-bg {
+  background-image: url("../../assets/motd/minecraft-background-dark.png");
+}
+
+.motd-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-md);
+}
+
+.motd-editor__surface {
+  border: 1px solid var(--sl-border-light);
+  background: var(--sl-surface);
+  overflow: hidden;
+  border-radius: var(--sl-radius-sm);
+}
+
+.motd-editor__inner {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sl-space-sm);
+  min-height: 96px;
+  padding: var(--sl-space-md);
+}
+
+.motd-editor__icon {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.motd-editor__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  font-family: minecraft, monospace;
+  font-size: 1rem;
+  line-height: 1.12;
+}
+
+.motd-editor__name-line {
+  text-shadow: 2px 2px #3f3f3f;
+  white-space: pre-wrap;
+  margin-bottom: 2px;
+}
+
+.motd-editor__output {
+  min-height: calc(2 * 1.12em);
+  height: calc(2 * 1.12em);
+  max-height: calc(2 * 1.12em);
+  max-width: 540px;
+  outline: none;
+  color: #fff;
+  word-break: break-word;
+  overflow: hidden;
+  white-space: pre-wrap;
+  text-shadow: 2px 2px #3f3f3f;
+}
+
+.motd-editor__output div {
+  min-height: 1.12em;
+  margin: 0;
+  line-height: 1.12;
+}
+
+/* 工具栏 */
+.motd-editor__toolbar {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sl-space-sm);
+  padding: var(--sl-space-sm) var(--sl-space-md);
+  background: var(--sl-bg-secondary);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-sm);
+}
+
+.motd-editor__toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-xs);
+  align-items: center;
+}
+
+.motd-editor__tool-btn {
+  min-width: 20px;
+  height: 24px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 var(--sl-space-xs);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-xs);
+  background: var(--sl-surface);
+  cursor: pointer;
+  font-family: minecraft, monospace;
+  font-size: 0.875rem;
+  line-height: 1;
+  color: var(--sl-text-primary);
+}
+
+.motd-editor__tool-btn:hover {
+  background: var(--sl-bg-tertiary);
+  border-color: var(--sl-border);
+}
+
+.motd-editor__tool-btn.is-active {
+  background: var(--sl-bg-tertiary);
+  border-color: var(--sl-primary);
+}
+
+[data-theme="dark"] .motd-editor__tool-btn {
+  border-color: rgb(255 255 255 / 25%);
+  background-image: linear-gradient(rgb(255 255 255 / 20%), rgb(255 255 255 / 20%));
+  background-color: transparent;
+  color: #fff;
+}
+
+[data-theme="dark"] .motd-editor__tool-btn:hover {
+  background-image: linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 30%));
+  border-color: rgb(255 255 255 / 35%);
+}
+
+[data-theme="dark"] .motd-editor__tool-btn.is-active {
+  background-image: linear-gradient(rgb(255 255 255 / 40%), rgb(255 255 255 / 40%));
+  border-color: rgb(255 255 255 / 45%);
+}
+
+/* 导出 / 导入面板 */
+.motd-editor__panel-title {
+  margin: 0 0 var(--sl-space-sm);
+  color: var(--sl-text-primary);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.motd-editor__panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sl-space-sm);
+  margin-bottom: var(--sl-space-sm);
+}
+
+.motd-editor__panel-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sl-space-sm);
+}
+
+.motd-editor__escape-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+  color: var(--sl-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.motd-editor__import-box {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-xs);
+}
+
+.motd-editor__import-input {
+  width: 260px;
+  height: 30px;
+  padding: 0 var(--sl-space-sm);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg);
+  color: var(--sl-text-primary);
+  font-size: 0.75rem;
+}
+
+.motd-editor__export-pre {
+  margin: 0;
+  min-height: 56px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-sm);
+  padding: var(--sl-space-sm);
+  background: var(--sl-bg);
+  color: var(--sl-text-primary);
+  font-family: var(--sl-font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+}
+
+.motd-editor__status {
+  min-height: 1.2em;
+  margin: var(--sl-space-xs) 0 0;
+  color: var(--sl-text-secondary);
+  font-size: 0.8125rem;
+}
+
+/* 模板区 */
+.motd-editor__templates {
+  border-top: 1px solid var(--sl-border-light);
+  padding-top: var(--sl-space-md);
+}
+
+.motd-editor__templates-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sl-space-sm);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.motd-editor__template-btn {
+  padding: var(--sl-space-sm);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-secondary);
+  color: var(--sl-text-primary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.motd-editor__template-btn:hover {
+  border-color: var(--sl-border);
+  background: var(--sl-bg-tertiary);
+}
+
+.motd-editor__template-header {
+  margin-bottom: var(--sl-space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sl-space-sm);
+}
+
+.motd-editor__template-title {
+  font-size: 0.75rem;
+  color: var(--sl-text-secondary);
+}
+
+.motd-editor__template-provider {
+  margin-left: auto;
+  color: var(--sl-text-tertiary);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+
+.motd-editor__template-preview {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: var(--sl-space-sm);
+  min-height: 64px;
+  padding: var(--sl-space-xs);
+  border: 1px solid rgb(255 255 255 / 14%);
+  align-items: start;
+}
+
+.motd-editor__template-icon {
+  width: 53px;
+  height: 53px;
+  object-fit: cover;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.motd-editor__template-text {
+  min-width: 0;
+  color: #fff;
+  font-family: minecraft, monospace;
+  font-size: 0.75rem;
+  line-height: 1.12;
+}
+
+.motd-editor__template-name-line,
+.motd-editor__template-output {
+  text-shadow: 1px 1px #3f3f3f;
+  white-space: pre-wrap;
+}
+
+.motd-editor__template-name-line {
+  margin-bottom: 2px;
+}
+
+.motd-editor__template-output {
+  height: calc(2 * 1.12em);
+  overflow: hidden;
+}
+
+.motd-editor__template-output div {
+  min-height: 1.12em;
+  margin: 0;
+  line-height: 1.12;
+}
+
+@media (max-width: 980px) {
+  .motd-editor__panel-header,
+  .motd-editor__panel-tools,
+  .motd-editor__import-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .motd-editor__import-input {
+    width: 100%;
+  }
+
+  .motd-editor__templates-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 独立工具页底部应用按钮行 */
+.motd-editor__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--sl-space-md);
+}
