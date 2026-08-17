@@ -106,7 +106,32 @@ After installation, list all available tasks from the repository root:
 only
 ```
 
-Common commands include `only dev`, `only build`, `only check`, `only test`, and `only ci`.
+Common root-level commands include:
+
+| Command      | Purpose                                     |
+| ------------ | ------------------------------------------- |
+| `only dev`   | Start desktop development mode              |
+| `only build` | Build the local application                 |
+| `only check` | Run frontend and backend checks in parallel |
+| `only test`  | Run frontend and backend tests in parallel  |
+| `only ci`    | Run the complete local CI workflow          |
+| `only clean` | Clean frontend and backend outputs          |
+
+You can also run tasks for one side through its group:
+
+```bash
+# Frontend
+only front check
+only front test
+only front ci
+
+# Backend
+only back check
+only back test
+only back ci
+```
+
+`only ci` runs all frontend and backend checks and tests, using parallel execution where appropriate.
 
 ### Code Quality Checks
 
@@ -135,6 +160,9 @@ pnpm fmt
 
 # Check code formatting
 pnpm fmt:check
+
+# Run frontend tests
+pnpm test
 ```
 
 </details>
@@ -150,6 +178,9 @@ cargo check --all-targets --workspace
 
 # Run Clippy and treat warnings as errors
 cargo clippy --all-targets --workspace -- -D warnings
+
+# Run backend tests
+cargo test --all-targets --workspace
 ```
 
 </details>
