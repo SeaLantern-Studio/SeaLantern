@@ -7,15 +7,15 @@
 // 项目终端执行 `only` 来查看所有命令
 
 # 启动开发模式
-dev():
+dev() & _envcheck:
     pnpm tauri dev
 
 # 构建应用
-build():
+build() & _envcheck:
     pnpm tauri build
 
 # 格式化并检查前端
-front_check():
+front_check() & _envcheck:
     pnpm fmt:check
     pnpm lint
     pnpm build:check
@@ -60,3 +60,21 @@ publish(version):
     git commit -am "chore: 升级到 {{ version }}"
     git tag {{ version }}
     git push --atomic origin HEAD {{ version }}
+
+// =============== Helper Tasks ===============
+// 下面的是辅助任务，无法通过 only 触发
+# pnpm 安装
+_preinstall() ? @has("pnpm"):
+    pnpm install
+
+_preinstall():
+    echo '请先安装 pnpm!'
+    exit 1
+
+# 环境检查
+_envcheck() ? @has("cargo") & _preinstall:
+    echo '通过'
+
+_envcheck() & _preinstall:
+    echo '请先安装 cargo!'
+    exit 1
