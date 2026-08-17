@@ -474,7 +474,7 @@ fn parse_url(schema: &str, expected_scheme: &str) -> Option<(String, u16)> {
     let valid = url.scheme().eq_ignore_ascii_case(expected_scheme)
         && url.username().is_empty()
         && url.password().is_none()
-        && url.path() == "/"
+        && matches!(url.path(), "" | "/")
         && url.query().is_none()
         && url.fragment().is_none();
     if !valid {
@@ -658,6 +658,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_socks_url_without_path() -> Result<()> {
+        let (host, port) = parse_kde_proxy("socks://127.0.0.1:7897", "socks")?;
+        assert_eq!(host, "127.0.0.1");
+        assert_eq!(port, 7897);
+        Ok(())
+    }
+
+    #[test]
     fn parse_plasma_colon_entry() -> Result<()> {
         let (host, port) = parse_kde_proxy("http://127.0.0.1:7897", "http")?;
         assert_eq!(host, "127.0.0.1");
@@ -700,5 +708,7 @@ mod tests {
         ] {
             assert!(parse_kde_proxy(schema, "http").is_err());
         }
+
+        assert!(parse_kde_proxy("socks://127.0.0.1:1080/path", "socks").is_err());
     }
 }
