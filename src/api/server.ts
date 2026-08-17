@@ -336,19 +336,21 @@ export const serverApi = {
     mcVersion?: string;
   }): Promise<ServerInstance> {
     return tauriInvoke("import_modpack", {
-      name: params.name,
-      modpackPath: params.modpackPath,
-      javaPath: params.javaPath,
-      maxMemory: params.maxMemory,
-      minMemory: params.minMemory,
-      port: params.port,
-      startupMode: params.startupMode,
-      onlineMode: params.onlineMode,
-      customCommand: params.customCommand,
-      runPath: params.runPath,
-      startupFilePath: params.startupFilePath,
-      coreType: params.coreType,
-      mcVersion: params.mcVersion,
+      request: {
+        name: params.name,
+        modpackPath: params.modpackPath,
+        javaPath: params.javaPath,
+        maxMemory: params.maxMemory,
+        minMemory: params.minMemory,
+        port: params.port,
+        startupMode: params.startupMode,
+        onlineMode: params.onlineMode,
+        customCommand: params.customCommand,
+        runPath: params.runPath,
+        startupFilePath: params.startupFilePath,
+        coreType: params.coreType,
+        mcVersion: params.mcVersion,
+      },
     });
   },
 
