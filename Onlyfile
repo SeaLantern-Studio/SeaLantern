@@ -7,7 +7,7 @@
 // 项目终端执行 `only` 来查看所有命令
 
 # 启动开发模式
-dev():
+dev() & _prepare:
     pnpm tauri dev
 
 # 构建本地应用
