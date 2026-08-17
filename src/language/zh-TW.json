@@ -1101,7 +1101,8 @@
     "status": {
       "failed": "下載失敗",
       "finished": "下載完成",
-      "downloading": "下載中"
+      "downloading": "下載中",
+      "cancelled": "已取消"
     },
     "form": {
       "type": "類別",

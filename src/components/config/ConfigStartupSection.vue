@@ -189,7 +189,13 @@ watch([maxMemory, minMemory], () => {
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .config-entry:hover {

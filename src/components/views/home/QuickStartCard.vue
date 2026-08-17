@@ -59,7 +59,13 @@ const emit = defineEmits<{
   margin-top: var(--sl-space-md);
   border-top: 1px solid var(--sl-border-light);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   border-radius: var(--sl-radius-sm);
   position: relative;
   overflow: hidden;
@@ -78,7 +84,13 @@ const emit = defineEmits<{
   font-family: var(--sl-font-sans);
   font-style: italic;
   text-align: center;
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   opacity: 1;
 }
 
@@ -91,7 +103,13 @@ const emit = defineEmits<{
   font-size: 0.75rem;
   color: var(--sl-text-secondary);
   font-family: var(--sl-font-sans);
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   opacity: 1;
 }
 

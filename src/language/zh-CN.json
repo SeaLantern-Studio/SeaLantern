@@ -1259,7 +1259,8 @@
       "status": {
         "failed": "下载失败",
         "finished": "下载完成",
-        "downloading": "下载中"
+        "downloading": "下载中",
+        "cancelled": "已取消"
       },
       "form": {
         "type": "类别",

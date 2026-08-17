@@ -64,7 +64,11 @@ function getAddLabel(): string {
 
 onActivated(async () => {
   isPageVisible = true;
-  await store.refreshList();
+  try {
+    await store.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
   }
@@ -132,8 +136,13 @@ watch(
   },
 );
 
+// 加载请求序号:快速切换服务器时丢弃过期响应,避免旧数据覆盖当前服务器
+let loadSeq = 0;
+
 async function loadAll() {
   if (!serverPath.value) return;
+  const seq = ++loadSeq;
+  const sid = selectedServerId.value;
   await withLoading(async () => {
     // 三个接口互不依赖,并行拉取降低总延迟
     const [whitelistRes, bannedRes, opsRes] = await Promise.all([
@@ -141,6 +150,8 @@ async function loadAll() {
       playerApi.getBannedPlayers(serverPath.value),
       playerApi.getOps(serverPath.value),
     ]);
+    // 期间已切换服务器,丢弃这次过期结果
+    if (seq !== loadSeq || sid !== selectedServerId.value) return;
     whitelist.value = whitelistRes;
     bannedPlayers.value = bannedRes;
     ops.value = opsRes;

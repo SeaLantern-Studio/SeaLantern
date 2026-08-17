@@ -1101,7 +1101,8 @@
     "status": {
       "failed": "Échec du téléchargement",
       "finished": "Téléchargement terminé",
-      "downloading": "Téléchargement en cours"
+      "downloading": "Téléchargement en cours",
+      "cancelled": "Annulé"
     },
     "form": {
       "type": "Catégorie",

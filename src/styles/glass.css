@@ -8,7 +8,6 @@
   backdrop-filter: blur(var(--cmz-blur-md)) saturate(var(--cmz-saturate-normal));
   -webkit-backdrop-filter: blur(var(--cmz-blur-md)) saturate(var(--cmz-saturate-normal));
   border: 1px solid var(--cmz-glass-border);
-  will-change: backdrop-filter;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
@@ -18,7 +17,6 @@
   backdrop-filter: blur(var(--cmz-blur-sm)) saturate(var(--cmz-saturate-subtle));
   -webkit-backdrop-filter: blur(var(--cmz-blur-sm)) saturate(var(--cmz-saturate-subtle));
   border: 1px solid var(--cmz-glass-border);
-  will-change: backdrop-filter;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
@@ -28,7 +26,6 @@
   backdrop-filter: blur(var(--cmz-blur-xl)) saturate(var(--cmz-saturate-strong));
   -webkit-backdrop-filter: blur(var(--cmz-blur-xl)) saturate(var(--cmz-saturate-strong));
   border: 1px solid var(--cmz-glass-border);
-  will-change: backdrop-filter;
   transform: translateZ(0);
   backface-visibility: hidden;
 }
@@ -44,7 +41,6 @@
     box-shadow var(--cmz-transition-normal),
     transform var(--cmz-transition-normal),
     border-color var(--cmz-transition-fast);
-  will-change: backdrop-filter, transform, box-shadow;
   transform: translateZ(0);
   backface-visibility: hidden;
 }

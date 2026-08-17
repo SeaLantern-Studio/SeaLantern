@@ -291,7 +291,15 @@ onUnmounted(() => {
 .progress-bar {
   height: 100%;
   background-color: var(--sl-primary);
-  transition: all 0.3s ease-out;
+  /* 进度条宽度随下载进度动态变化,保留 width 过渡保证平滑 */
+  transition:
+    width 0.3s ease-out,
+    color 0.3s ease-out,
+    background-color 0.3s ease-out,
+    border-color 0.3s ease-out,
+    box-shadow 0.3s ease-out,
+    transform 0.3s ease-out,
+    opacity 0.3s ease-out;
 }
 
 @keyframes indeterminate {

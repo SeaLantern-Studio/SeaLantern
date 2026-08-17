@@ -1101,7 +1101,8 @@
     "status": {
       "failed": "다운로드 실패",
       "finished": "다운로드 완료",
-      "downloading": "다운로드 중"
+      "downloading": "다운로드 중",
+      "cancelled": "취소됨"
     },
     "form": {
       "type": "카테고리",

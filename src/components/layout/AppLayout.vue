@@ -67,14 +67,18 @@ onUnmounted(() => {
 
 const backgroundStyle = computed(() => {
   if (!backgroundImage.value) return {};
-  return {
+  const style: Record<string, string | number> = {
     backgroundImage: `url(${backgroundImage.value})`,
     backgroundSize: backgroundSize.value,
     backgroundPosition: "center",
     backgroundRepeat: "no-repeat",
     opacity: backgroundOpacity.value,
-    filter: `blur(${backgroundBlur.value}px) brightness(${backgroundBrightness.value})`,
   };
+  // blur=0 且 brightness=1 时不挂 filter,避免无意义的全屏重采样层
+  if (backgroundBlur.value > 0 || backgroundBrightness.value !== 1) {
+    style.filter = `blur(${backgroundBlur.value}px) brightness(${backgroundBrightness.value})`;
+  }
+  return style;
 });
 </script>
 

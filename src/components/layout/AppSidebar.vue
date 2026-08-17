@@ -315,7 +315,11 @@ watch(
 );
 
 onMounted(async () => {
-  await serverStore.refreshList();
+  try {
+    await serverStore.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   updateNavIndicator();
 });
 

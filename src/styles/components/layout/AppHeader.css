@@ -108,7 +108,13 @@
   height: 28px;
   border-radius: var(--sl-radius-sm);
   color: var(--sl-text-secondary);
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
   -webkit-app-region: no-drag;
   cursor: pointer;
   z-index: 10;
@@ -134,7 +140,13 @@
   width: 32px;
   height: 32px;
   border-radius: var(--sl-radius-full);
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;

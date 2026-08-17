@@ -210,7 +210,9 @@
 /* 滑入滑出过渡（上下） */
 .sl-slide-up-enter-active,
 .sl-slide-up-leave-active {
-  transition: all var(--sl-transition-normal);
+  transition:
+    opacity,
+    transform var(--sl-transition-normal);
 }
 
 .sl-slide-up-enter-from,
@@ -222,7 +224,9 @@
 /* 滑入滑出过渡（缩放） */
 .sl-scale-enter-active,
 .sl-scale-leave-active {
-  transition: all var(--sl-transition-normal);
+  transition:
+    opacity,
+    transform var(--sl-transition-normal);
 }
 
 .sl-scale-enter-from,

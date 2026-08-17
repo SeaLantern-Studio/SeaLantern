@@ -299,7 +299,13 @@ function getStatusClass(s: string | undefined): string {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
   padding: 4px;
   border-radius: var(--sl-radius-sm);
   flex-shrink: 0;
@@ -333,7 +339,13 @@ function getStatusClass(s: string | undefined): string {
   font-size: 1rem;
   font-weight: 600;
   outline: none;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .server-name-input:focus {
@@ -355,7 +367,13 @@ function getStatusClass(s: string | undefined): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .inline-edit-btn.save {
@@ -400,7 +418,13 @@ function getStatusClass(s: string | undefined): string {
   border-radius: var(--sl-radius-full);
   white-space: nowrap;
   border: 1px solid var(--sl-border);
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .meta-tag[onclick],
@@ -444,7 +468,13 @@ function getStatusClass(s: string | undefined): string {
   padding: 8px var(--sl-space-sm);
   border-radius: var(--sl-radius-md);
   border: 1px solid var(--sl-border);
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
   cursor: pointer;
   user-select: none;
 }
@@ -494,12 +524,24 @@ function getStatusClass(s: string | undefined): string {
 .primary-actions :deep(.cmz-button) {
   min-width: 72px;
   border-radius: var(--sl-radius-md);
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .secondary-actions :deep(.cmz-button) {
   border-radius: var(--sl-radius-md);
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .server-card-actions :deep(.cmz-button:hover) {
