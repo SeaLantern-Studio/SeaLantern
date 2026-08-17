@@ -7,86 +7,97 @@
 // 项目终端执行 `only` 来查看所有命令
 
 # 启动开发模式
-dev() & _prepare:
+dev():
     pnpm tauri dev
 
 # 构建本地应用
 build() & _prepare:
     pnpm tauri build
 
-# 执行全部检查
-check() & (front_check, back_check):
+# 执行全量检查
+check() & (front.check, back.check):
     echo "格式化和检查完成！"
 
-# 执行全部测试
-test() & (front_test, back_test):
+# 执行全量测试
+test() & (front.test, back.test):
     echo "测试成功！"
 
-# 运行本地 CI
-ci() & (_front_ci, _back_ci):
+# 运行全量 CI
+ci() & (front.ci, back.ci):
     echo "本地 CI 成功！"
 
+# 清理全部构建产物
+clean() & (front.clean, back.clean):
+    echo "构建产物已全部清除！"
+
+# 环境检测
+_prepare() & (front._prepare, back._prepare):
+    echo "环境检测成功！"
+
+// =============== 前端 ===============
+# 前端检查和测试
+[front]
+# 准备前端环境
+_prepare() ? @has("pnpm"):
+    pnpm install
+
+_prepare():
+    echo "你的 pnpm 呢？"
+    exit 1
+
 # 格式化并检查前端
-front_check() & _front_prepare:
+check() & _prepare:
     pnpm fmt:check
     pnpm lint
     pnpm build:check
 
+# 运行前端集成测试
+test() & _prepare:
+    pnpm test
+
+# 执行前端 CI
+ci() & (check, test):
+    echo "前端 CI 成功！"
+
+# 清理前端构建产物
+clean():
+    rm -rf node_modules dist
+    echo "前端已清除！"
+
+// =============== 后端 ===============
+# 后端检查和测试
+[back]
+# 准备后端环境
+_prepare() ? @has("cargo"):
+    echo "后端环境检查通过！"
+
+_prepare():
+    echo "你的 cargo 呢？"
+    exit 1
+
 # 格式化并检查后端
-back_check() & _back_prepare:
+check() & _prepare:
     cargo fmt --all -- --check
     cargo check --workspace --all-targets
     cargo clippy --workspace --all-targets -- -D warnings
 
-# 运行前端测试
-front_test() & _front_prepare:
-    pnpm test
-
 # 运行后端测试
-back_test() ? @has("cargo-nextest") & _back_prepare:
+test() ? @has("cargo-nextest") & _prepare:
     cargo nextest run --no-fail-fast
 
-back_test() & _back_prepare:
+test() & _prepare:
     cargo test --all-targets --workspace
 
-# 清理构建产物
+# 执行后端 CI
+ci() & check & test:
+    echo "后端 CI 成功！"
+
+# 清理后端构建产物
 clean():
-    rm -rf node_modules dist
-    echo "前端已清除！"
     rm -rf target
     echo "后端已清除！"
 
-// =============== Private Tasks ===============
-// 下面的是辅助任务，无法通过 only 触发
-# 执行前端 CI
-_front_ci() & (front_check, front_test):
-    echo "前端 CI 成功！"
-
-# 执行后端 CI
-_back_ci() & back_check & back_test:
-    echo "后端 CI 成功！"
-
-# 准备完整环境
-_prepare() & (_front_prepare, _back_prepare):
-    echo "环境准备完成！"
-
-# 准备前端环境
-_front_prepare() ? @has("pnpm"):
-    pnpm install
-
-_front_prepare():
-    echo "你的 pnpm 呢？"
-    exit 1
-
-# 准备后端环境
-_back_prepare() ? @has("cargo"):
-    echo "后端环境检查通过！"
-
-_back_prepare():
-    echo "你的 cargo 呢？"
-    exit 1
-
-// =============== Version Tasks ===============
+// =============== 版本相关 ===============
 // `only version <task>` 来触发
 // `publish` 仅 Admin 权限可用!
 # 版本相关命令
