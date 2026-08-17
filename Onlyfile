@@ -50,10 +50,12 @@ check() & _prepare:
     pnpm fmt:check
     pnpm lint
     pnpm build:check
+    echo "前端检查完成！"
 
 # 运行前端集成测试
 test() & _prepare:
     pnpm test
+    echo "前端测试成功！"
 
 # 执行前端 CI
 ci() & (check, test):
@@ -80,13 +82,16 @@ check() & _prepare:
     cargo fmt --all -- --check
     cargo check --workspace --all-targets
     cargo clippy --workspace --all-targets -- -D warnings
+    echo "后端检查完成！"
 
 # 运行后端测试
 test() ? @has("cargo-nextest") & _prepare:
     cargo nextest run --no-fail-fast
+    echo "后端测试成功！"
 
 test() & _prepare:
     cargo test --all-targets --workspace
+    echo "后端测试成功！"
 
 # 执行后端 CI
 ci() & check & test:
