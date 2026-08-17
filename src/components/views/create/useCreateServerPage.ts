@@ -108,6 +108,23 @@ export function useCreateServerPage() {
   let runPathConflictTimer: ReturnType<typeof setTimeout> | null = null;
   let runPathConflictRequestId = 0;
 
+  // 下载等待轮询句柄与取消回调:离开页面时中止等待
+  let downloadWaitTimer: ReturnType<typeof setInterval> | null = null;
+  let downloadWaitReject: ((reason: Error) => void) | null = null;
+
+  // 中止下载等待:清理定时器并 reject Promise,避免组件卸载后定时器残留
+  function downloadWaitResolved() {
+    if (downloadWaitTimer) {
+      clearInterval(downloadWaitTimer);
+      downloadWaitTimer = null;
+    }
+    if (downloadWaitReject) {
+      const reject = downloadWaitReject;
+      downloadWaitReject = null;
+      reject(new Error(i18n.t("downloadServerView.status.cancelled")));
+    }
+  }
+
   const serverName = ref("My Server");
   const maxMemory = ref("2048");
   const minMemory = ref("512");
@@ -262,6 +279,8 @@ export function useCreateServerPage() {
       unlistenSourceDropEvent();
       unlistenSourceDropEvent = null;
     }
+    // 下载等待轮询:离开页面时中止,避免定时器残留直到下载结束
+    downloadWaitResolved();
   });
 
   function scheduleRunPathConflictCheck() {
@@ -685,9 +704,12 @@ export function useCreateServerPage() {
 
           // 等待下载完成
           await new Promise<void>((resolve, reject) => {
+            downloadWaitReject = reject;
             const checkInterval = setInterval(() => {
               if (downloadStore.isFinished) {
                 clearInterval(checkInterval);
+                downloadWaitTimer = null;
+                downloadWaitReject = null;
                 if (downloadStore.isError) {
                   reject(
                     new Error(
@@ -699,6 +721,7 @@ export function useCreateServerPage() {
                 }
               }
             }, 300);
+            downloadWaitTimer = checkInterval;
           });
 
           // 下载完成，扫描启动项

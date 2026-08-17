@@ -1101,7 +1101,8 @@
     "status": {
       "failed": "Ошибка загрузки",
       "finished": "Загрузка завершена",
-      "downloading": "Загрузка"
+      "downloading": "Загрузка",
+      "cancelled": "Отменено"
     },
     "form": {
       "type": "Категория",

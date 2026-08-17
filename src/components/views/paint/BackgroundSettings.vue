@@ -257,7 +257,13 @@ function handleImageLoad() {
   height: 32px;
   border-radius: var(--sl-radius-sm);
   color: var(--sl-text-secondary);
-  transition: all var(--sl-transition-normal);
+  transition:
+    color var(--sl-transition-normal),
+    background-color var(--sl-transition-normal),
+    border-color var(--sl-transition-normal),
+    box-shadow var(--sl-transition-normal),
+    transform var(--sl-transition-normal),
+    opacity var(--sl-transition-normal);
   flex-shrink: 0;
 }
 
@@ -277,7 +283,13 @@ function handleImageLoad() {
 
 .collapse-enter-active,
 .collapse-leave-active {
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   overflow: hidden;
 }
 
@@ -435,7 +447,13 @@ function handleImageLoad() {
   border-radius: 50%;
   background: var(--sl-primary);
   cursor: pointer;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .sl-slider::-webkit-slider-thumb:hover {
@@ -450,7 +468,13 @@ function handleImageLoad() {
   background: var(--sl-primary);
   cursor: pointer;
   border: none;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .sl-slider::-moz-range-thumb:hover {

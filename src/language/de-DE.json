@@ -1101,7 +1101,8 @@
     "status": {
       "failed": "Download fehlgeschlagen",
       "finished": "Download abgeschlossen",
-      "downloading": "Wird heruntergeladen"
+      "downloading": "Wird heruntergeladen",
+      "cancelled": "Abgebrochen"
     },
     "form": {
       "type": "Kategorie",

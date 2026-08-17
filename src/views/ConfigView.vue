@@ -168,7 +168,11 @@ const translatedDescriptionByKey = computed(() => {
 });
 
 onMounted(async () => {
-  await store.refreshList();
+  try {
+    await store.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   const routeId = route.params.id as string;
   if (routeId) {
     store.setCurrentServer(routeId);

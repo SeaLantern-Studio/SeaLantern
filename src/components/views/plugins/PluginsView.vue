@@ -1443,7 +1443,13 @@ function goToMarket() {
   color: var(--sl-text-primary);
   font-size: 13px;
   width: 180px;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .plugin-search:focus {
@@ -1721,7 +1727,13 @@ function goToMarket() {
   border-radius: var(--sl-radius-md);
   background: var(--sl-bg-tertiary);
   cursor: pointer;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .batch-delete-option:hover {
@@ -1845,7 +1857,13 @@ function goToMarket() {
   border-radius: var(--sl-radius-xs);
   color: var(--sl-text-tertiary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .repo-link-btn:hover {
@@ -1903,7 +1921,13 @@ function goToMarket() {
   border-radius: var(--sl-radius-sm);
   color: var(--sl-text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .settings-btn:hover {
@@ -1967,7 +1991,13 @@ function goToMarket() {
   color: var(--sl-text-secondary);
   cursor: pointer;
   border-radius: var(--sl-radius-md);
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .modal-close:hover {
@@ -2014,7 +2044,13 @@ function goToMarket() {
   border: 1px solid var(--sl-border);
   border-radius: var(--sl-radius-md);
   outline: none;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .setting-input:hover {
@@ -2065,7 +2101,13 @@ function goToMarket() {
   border-radius: var(--sl-radius-md);
   outline: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;

@@ -378,29 +378,49 @@ export const serverApi = {
   subscribeLogStream(callback: (payload: ServerLogLineEvent) => void): Promise<UnlistenFn> {
     return new Promise((resolve) => {
       const url = `${HTTP_API_BASE}/api/logs/stream`;
-      const eventSource = new EventSource(url);
+      // 取消后不再重连;重连定时器与当前连接统一由 unlisten 管理
+      let cancelled = false;
+      let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+      let currentEventSource: EventSource | null = null;
 
-      eventSource.addEventListener("message", (event) => {
-        try {
-          const data = JSON.parse(event.data) as ServerLogLineEvent;
-          callback(data);
-        } catch (e) {
-          console.warn("[SSE] Failed to parse log event:", e);
-        }
-      });
+      const connect = (): void => {
+        if (cancelled) return;
+        const eventSource = new EventSource(url);
+        currentEventSource = eventSource;
 
-      eventSource.addEventListener("error", (e) => {
-        console.warn("[SSE] Connection error, reconnecting...", e);
-        // 自动重连：关闭旧连接，延迟后创建新连接
-        eventSource.close();
-        setTimeout(() => {
-          this.subscribeLogStream(callback);
-        }, 3000);
-      });
+        eventSource.addEventListener("message", (event) => {
+          try {
+            const data = JSON.parse(event.data) as ServerLogLineEvent;
+            callback(data);
+          } catch (e) {
+            console.warn("[SSE] Failed to parse log event:", e);
+          }
+        });
 
-      // 返回取消订阅函数
+        eventSource.addEventListener("error", (e) => {
+          console.warn("[SSE] Connection error, reconnecting...", e);
+          eventSource.close();
+          if (currentEventSource === eventSource) currentEventSource = null;
+          // 自动重连:延迟后创建新连接,取消后不再续连
+          if (!cancelled) {
+            reconnectTimer = setTimeout(connect, 3000);
+          }
+        });
+      };
+
+      connect();
+
+      // 返回取消订阅函数:关闭当前连接并阻止重连链
       resolve(() => {
-        eventSource.close();
+        cancelled = true;
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+        }
+        if (currentEventSource) {
+          currentEventSource.close();
+          currentEventSource = null;
+        }
       });
     });
   },

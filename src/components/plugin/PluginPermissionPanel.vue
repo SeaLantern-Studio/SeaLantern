@@ -511,7 +511,13 @@ function formatTime(timestamp: number): string {
   color: var(--sl-text-secondary);
   font-size: var(--sl-font-size-xs);
   cursor: pointer;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .permission-btn:hover {

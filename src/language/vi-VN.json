@@ -1101,7 +1101,8 @@
     "status": {
       "failed": "Tải xuống thất bại",
       "finished": "Tải xuống hoàn tất",
-      "downloading": "Đang tải xuống"
+      "downloading": "Đang tải xuống",
+      "cancelled": "Đã hủy"
     },
     "form": {
       "type": "Danh mục",
