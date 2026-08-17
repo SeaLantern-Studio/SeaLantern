@@ -62,6 +62,18 @@ export interface MotdFormatState {
   colorCode: string;
 }
 
+/** motdToHtml / htmlToMotd 内部跟踪的当前文本修饰状态 */
+interface MotdRunState {
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strike: boolean;
+}
+
+/** 颜色与样式代码全集（颜色 0-9 a-f + 样式 r l o n m） */
+const MOTD_ALL_CODES = `${MOTD_COLOR_CODES.join("")}rlomn`;
+
 function rgbToHex(color: string): string | null {
   const m = color.replace(/\s+/g, "").match(/^rgb\((\d+),(\d+),(\d+)\)$/i);
   if (!m) return null;
@@ -87,6 +99,11 @@ export function unicodeEscape(text: string): string {
   return out;
 }
 
+/** 解码 Java Properties 风格的 \uXXXX 转义（读取时与 unicodeEscape 的写入对齐） */
+export function unicodeUnescape(text: string): string {
+  return text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -103,7 +120,13 @@ export function motdToHtml(motd: string): string {
     .map((line) => {
       const spans: string[] = [];
       let buf = "";
-      let state = { color: "f", bold: false, italic: false, underline: false, strike: false };
+      let state: MotdRunState = {
+        color: "f",
+        bold: false,
+        italic: false,
+        underline: false,
+        strike: false,
+      };
       const flush = () => {
         if (!buf) return;
         const styleParts = [`color: ${MOTD_COLOR_MAP[state.color] ?? MOTD_COLOR_MAP.f}`];
@@ -122,7 +145,7 @@ export function motdToHtml(motd: string): string {
         const ch = line[i];
         if ((ch === "§" || ch === "&") && i + 1 < line.length) {
           const code = line[i + 1].toLowerCase();
-          if ("0123456789abcdefrlomn".includes(code)) {
+          if (MOTD_ALL_CODES.includes(code)) {
             i += 1;
             flush();
             if (code in MOTD_COLOR_MAP) {
@@ -155,10 +178,7 @@ export function htmlToMotd(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const root = doc.body;
   const output: string[] = [];
-  const walk = (
-    node: Node,
-    state: { color: string; bold: boolean; italic: boolean; underline: boolean; strike: boolean },
-  ) => {
+  const walk = (node: Node, state: MotdRunState) => {
     if (node.nodeType === Node.TEXT_NODE) {
       output.push(node.textContent ?? "");
       return;
@@ -168,7 +188,11 @@ export function htmlToMotd(html: string): string {
       output.push("\n");
       return;
     }
-    if (node.tagName === "DIV" && output.length && output[output.length - 1] !== "\n")
+    if (
+      (node.tagName === "DIV" || node.tagName === "P") &&
+      output.length &&
+      output[output.length - 1] !== "\n"
+    )
       output.push("\n");
     const next = { ...state };
     const code = colorCodeFromCss(node.style.color || "");
@@ -199,7 +223,13 @@ export function htmlToMotd(html: string): string {
     }
     for (const child of Array.from(node.childNodes)) walk(child, next);
   };
-  const base = { color: "f", bold: false, italic: false, underline: false, strike: false };
+  const base: MotdRunState = {
+    color: "f",
+    bold: false,
+    italic: false,
+    underline: false,
+    strike: false,
+  };
   for (const n of Array.from(root.childNodes)) walk(n, base);
   return output
     .join("")
@@ -209,10 +239,11 @@ export function htmlToMotd(html: string): string {
 
 /**
  * 规范化外部输入的 MOTD 文本：
- * 去掉 motd= 前缀，把字面 \n 转为换行（server.properties 存储格式 → 编辑格式）
+ * 去掉 motd= 前缀，把字面 \n 转为换行（server.properties 存储格式 → 编辑格式），
+ * 并解码 \uXXXX 转义以对齐「转义 Unicode」导出选项的写入。
  */
 export function normalizeMotdText(raw: string): string {
-  return raw.replace(/^motd=/i, "").replace(/\\n/g, "\n");
+  return unicodeUnescape(raw.replace(/^motd=/i, "").replace(/\\n/g, "\n"));
 }
 
 /** 编辑格式 → server.properties 存储格式（换行转为字面 \n） */
