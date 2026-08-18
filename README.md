@@ -65,7 +65,7 @@
 | Node.js      | 24 LTS |
 | Rust         | stable |
 | pnpm         | 9.15.9 |
-| Only（可选） | 0.0.7+ |
+| Only（可选） | 0.4.0+ |
 
 如果你还没有配置开发环境，可以先查看 [环境配置](https://docs.ideaflash.cn/zh/dev/environment)。
 
