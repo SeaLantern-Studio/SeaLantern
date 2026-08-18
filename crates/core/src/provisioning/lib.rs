@@ -3,6 +3,7 @@ pub mod core_parsing;
 pub mod create;
 pub mod existing;
 pub mod import_metadata;
+pub mod import_modpack;
 mod launch_adapter;
 pub mod modpack;
 pub mod run_dir;
@@ -24,6 +25,10 @@ pub use import_metadata::{
     ImportLaunchCandidate, LaunchProfilePolicy, ServerInspectionProjection,
     ServerInspectionProjectionOptions, apply_server_inspection,
     apply_server_inspection_with_options, inspect_and_apply_import_metadata,
+};
+pub use import_modpack::{
+    ImportModpackError, ImportModpackRequest, ImportModpackResult, SourceType, build_instance_spec,
+    infer_source_type, plan_import_modpack,
 };
 pub use modpack::{
     ModpackProvisionError, ModpackProvisionPlan, ModpackProvisionRequest, plan_modpack,
