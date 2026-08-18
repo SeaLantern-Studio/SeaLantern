@@ -9,6 +9,12 @@ pub enum BackupFormat {
     TarGz,
 }
 
+impl Default for BackupFormat {
+    fn default() -> Self {
+        Self::Zip
+    }
+}
+
 impl BackupFormat {
     pub fn extension(&self) -> &'static str {
         match self {
@@ -107,17 +113,35 @@ pub struct CreateBackupRequest {
 #[serde(rename_all = "camelCase")]
 pub struct BackupSettings {
     /// 最大备份数量（范围1-50）
+    #[serde(default = "default_max_backups")]
     pub max_backups: u32,
     /// 自动备份开关
+    #[serde(default)]
     pub auto_backup_enabled: bool,
     /// 自动备份间隔（小时）
+    #[serde(default = "default_auto_backup_interval")]
     pub auto_backup_interval: u32,
     /// 自动备份内容
+    #[serde(default = "default_auto_backup_contents")]
     pub auto_backup_contents: Vec<BackupContentType>,
     /// 默认压缩格式
+    #[serde(default)]
     pub default_format: BackupFormat,
     /// 压缩级别
+    #[serde(default)]
     pub compression_level: CompressionLevel,
+}
+
+fn default_max_backups() -> u32 {
+    10
+}
+
+fn default_auto_backup_interval() -> u32 {
+    24
+}
+
+fn default_auto_backup_contents() -> Vec<BackupContentType> {
+    vec![BackupContentType::Core, BackupContentType::Config, BackupContentType::World]
 }
 
 impl Default for BackupSettings {
