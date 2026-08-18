@@ -104,6 +104,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'vite.config.ts'
+              - 'knip.json'
               - 'tsconfig*.json'
               - 'index.html'
               - '.oxlintrc.json'
@@ -301,6 +302,11 @@ jobs:
 
       - name: 运行前端全量检查
         run: pnpm run fmt:check && pnpm run lint && pnpm run build:check
+
+      - name: Knip 死代码 dry-run（非阻塞，仅报告）
+        # TODO(#1016): 冗余项清理完毕后移除 continue-on-error，改为强制检查
+        continue-on-error: true
+        run: pnpm knip
 
       - name: 运行前端测试
         run: pnpm test
