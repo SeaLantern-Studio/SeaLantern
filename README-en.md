@@ -68,7 +68,7 @@ Make sure the following tools are installed before you begin:
 | Node.js         | 24 LTS  |
 | Rust            | stable  |
 | pnpm            | 9.15.9  |
-| Only (optional) | 0.0.7+  |
+| Only (optional) | 0.4.0+  |
 
 For help setting up your development environment, see the [environment setup guide](https://docs.ideaflash.cn/en/dev/environment).
 
