@@ -1,6 +1,10 @@
 //! 备份管理 Tauri 命令。
 
+use sealantern_application::services::AppServices;
+use sealantern_core::instance::InstanceId;
 use sealantern_extra::backup::{BackupItem, BackupSettings, CreateBackupRequest};
+use sealantern_interface::server::ServerState;
+use sealantern_interface::{InstanceService, ServerService};
 
 /// 获取备份列表
 #[tauri::command]
@@ -13,16 +17,41 @@ pub async fn get_backup_list(server_id: String) -> Result<Vec<BackupItem>, Strin
 /// 创建备份
 #[tauri::command]
 pub async fn create_backup(request: CreateBackupRequest) -> Result<BackupItem, String> {
-    // 从服务器ID获取服务器目录
-    // 注意:这里需要从应用状态获取服务器目录和运行状态
-    // 临时实现,实际使用时需要完善
+    let services = AppServices::get().await.map_err(|e| e.to_string())?;
 
-    // TODO: 从应用状态获取:
-    // 1. 服务器目录路径
-    // 2. 服务器运行状态检查函数
+    // 解析实例 ID
+    let instance_id = InstanceId::new(request.server_id.clone()).map_err(|e| e.to_string())?;
 
-    // 临时返回错误,提示需要在应用状态中实现
-    Err(format!("需要从应用状态获取服务器信息,请完善实现。请求: {:?}", request))
+    // 查找实例获取服务器目录
+    let instance = services
+        .instance()
+        .find(&instance_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("服务器实例不存在: {}", request.server_id))?;
+
+    // 检查服务器是否正在运行
+    let server_status = services
+        .server()
+        .status(&instance_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if server_status.state != ServerState::Stopped {
+        return Err(format!(
+            "服务器正在运行，无法创建备份。请先停止服务器。当前状态: {:?}",
+            server_status.state
+        ));
+    }
+
+    // 执行备份
+    sealantern_extra::backup::create_backup(
+        request,
+        instance.directory.clone(),
+        |_server_id| true, // 已验证服务器已停止
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// 删除备份
@@ -35,9 +64,42 @@ pub async fn delete_backup(backup_id: String) -> Result<(), String> {
 
 /// 恢复备份
 #[tauri::command]
-pub async fn restore_backup(_backup_id: String) -> Result<(), String> {
-    // 同 create_backup,需要从应用状态获取服务器信息
-    Err("需要从应用状态获取服务器信息,请完善实现".to_string())
+pub async fn restore_backup(backup_id: String, server_id: String) -> Result<(), String> {
+    let services = AppServices::get().await.map_err(|e| e.to_string())?;
+
+    // 解析实例 ID
+    let instance_id = InstanceId::new(server_id.clone()).map_err(|e| e.to_string())?;
+
+    // 查找实例获取服务器目录
+    let instance = services
+        .instance()
+        .find(&instance_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("服务器实例不存在: {}", server_id))?;
+
+    // 检查服务器是否正在运行
+    let server_status = services
+        .server()
+        .status(&instance_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if server_status.state != ServerState::Stopped {
+        return Err(format!(
+            "服务器正在运行，无法恢复备份。请先停止服务器。当前状态: {:?}",
+            server_status.state
+        ));
+    }
+
+    // 执行恢复
+    sealantern_extra::backup::restore_backup(
+        backup_id,
+        instance.directory.clone(),
+        |_server_id| true, // 已验证服务器已停止
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// 获取备份设置

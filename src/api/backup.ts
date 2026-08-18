@@ -57,8 +57,8 @@ export const backupApi = {
   },
 
   /** 恢复备份 */
-  async restore(backupId: string): Promise<void> {
-    return tauriInvoke("restore_backup", { backupId });
+  async restore(backupId: string, serverId: string): Promise<void> {
+    return tauriInvoke("restore_backup", { backupId, serverId });
   },
 
   /** 获取备份设置 */
