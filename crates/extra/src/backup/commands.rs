@@ -18,7 +18,7 @@ pub async fn create_backup(
     check_server_stopped: impl Fn(&str) -> bool + Send + 'static,
 ) -> BackupResult<BackupItem> {
     let manager = BackupManager::new()?;
-    
+
     // 在阻塞任务中执行备份
     tokio::task::spawn_blocking(move || {
         manager.create_backup(request, &server_dir, check_server_stopped)
@@ -40,7 +40,7 @@ pub async fn restore_backup(
     check_server_stopped: impl Fn(&str) -> bool + Send + 'static,
 ) -> BackupResult<()> {
     let manager = BackupManager::new()?;
-    
+
     // 在阻塞任务中执行恢复
     tokio::task::spawn_blocking(move || {
         manager.restore_backup(&backup_id, &server_dir, check_server_stopped)

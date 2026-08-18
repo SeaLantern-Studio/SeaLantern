@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
-pub mod backup;
 pub mod app_plugin;
+pub mod backup;
 pub mod config;
 pub mod download_link;
 pub mod java;
