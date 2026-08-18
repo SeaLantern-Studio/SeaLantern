@@ -1,18 +1,13 @@
 use serde::{Deserialize, Serialize};
 
 /// 备份格式
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BackupFormat {
+    #[default]
     Zip,
     #[serde(rename = "tar.gz")]
     TarGz,
-}
-
-impl Default for BackupFormat {
-    fn default() -> Self {
-        Self::Zip
-    }
 }
 
 impl BackupFormat {
@@ -34,18 +29,13 @@ impl std::fmt::Display for BackupFormat {
 }
 
 /// 压缩级别
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CompressionLevel {
     Low,
+    #[default]
     Medium,
     High,
-}
-
-impl Default for CompressionLevel {
-    fn default() -> Self {
-        Self::Medium
-    }
 }
 
 /// 备份内容类型

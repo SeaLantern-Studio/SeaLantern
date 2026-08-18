@@ -347,7 +347,7 @@ impl BackupManager {
         );
 
         // 创建临时目录用于解压备份
-        let temp_base = tempfile::tempdir().map_err(|e| BackupError::Io(e))?;
+        let temp_base = tempfile::tempdir().map_err(BackupError::Io)?;
         let extract_dir = temp_base.path().join("extracted");
 
         // 解压备份文件
