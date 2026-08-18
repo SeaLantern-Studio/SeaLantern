@@ -15,9 +15,11 @@ use sealantern_application::services::AppServices;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
     ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
-    SourceDirectoryError, build_import_spec, plan_existing_instance, source_directories_equal,
+    ImportModpackRequest, SourceDirectoryError, SourceType, build_import_spec, infer_source_type,
+    plan_existing_instance, plan_import_modpack, source_directories_equal,
     validate_source_directory,
 };
+use sealantern_infra::archive::extract_zip;
 use sealantern_interface::{InstanceService, InstanceServiceError};
 
 /// 获取全局实例管理服务句柄（惰性初始化容器）。
@@ -170,4 +172,92 @@ fn import_error(code: &'static str, message: impl Into<String>) -> ImportExistin
         code: code.to_string(),
         message: message.into(),
     }
+}
+
+/// 整合包导入失败时返回给前端的错误。
+#[derive(Debug, serde::Serialize)]
+pub struct ImportModpackError {
+    /// 稳定错误码（机器可读）。
+    pub code: String,
+    /// 人类可读消息。
+    pub message: String,
+}
+
+impl std::fmt::Display for ImportModpackError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for ImportModpackError {}
+
+/// 构造一个带稳定错误码的整合包导入错误。
+fn modpack_error(code: &'static str, message: impl Into<String>) -> ImportModpackError {
+    ImportModpackError {
+        code: code.to_string(),
+        message: message.into(),
+    }
+}
+
+/// 导入整合包或服务器文件夹。
+///
+/// 支持三种来源：
+/// - zip/tar.gz/tgz 压缩包：解压到 run_path
+/// - jar 单文件：复制到 run_path
+/// - 文件夹：直接引用原路径
+#[tauri::command(rename_all = "camelCase")]
+pub async fn import_modpack(request: ImportModpackRequest) -> Result<Instance, ImportModpackError> {
+    use sealantern_core::provisioning::ImportModpackError as CoreError;
+
+    // 1. 判断来源类型
+    let source_type = infer_source_type(&request.modpack_path);
+
+    // 2. 规划导入（构建 InstanceSpec）
+    let result = plan_import_modpack(&request).map_err(|error| match error {
+        CoreError::InvalidStartupMode(msg) => {
+            modpack_error("invalid_startup_mode", format!("invalid startup mode: {msg}"))
+        }
+        CoreError::InvalidInstanceId(err) => {
+            modpack_error("invalid_instance_id", format!("failed to create instance ID: {err}"))
+        }
+        CoreError::ExtractFailed(msg) => modpack_error("extract_failed", msg),
+        CoreError::CreateDirectoryFailed(msg) => modpack_error("create_directory_failed", msg),
+        CoreError::CopyFailed(msg) => modpack_error("copy_failed", msg),
+    })?;
+
+    // 3. 执行文件操作（根据来源类型）
+    match source_type {
+        SourceType::Archive => {
+            // 解压 zip/tar.gz 到 run_path
+            extract_zip(&request.modpack_path, &result.directory).map_err(|error| {
+                modpack_error("extract_failed", format!("failed to extract archive: {error}"))
+            })?;
+        }
+        SourceType::JarFile => {
+            // 创建 run_path 目录并复制 jar
+            std::fs::create_dir_all(&result.directory).map_err(|error| {
+                modpack_error(
+                    "create_directory_failed",
+                    format!("failed to create run directory: {error}"),
+                )
+            })?;
+            if let Some(ref dest_path) = result.startup_target {
+                std::fs::copy(&request.modpack_path, dest_path).map_err(|error| {
+                    modpack_error("copy_jar_failed", format!("failed to copy jar file: {error}"))
+                })?;
+            }
+        }
+        SourceType::Folder => {
+            // 直接引用原目录，无需文件操作
+        }
+    }
+
+    // 4. 创建实例
+    let service = instance_service()
+        .await
+        .map_err(|error| modpack_error("service_unavailable", error.to_string()))?;
+    service
+        .create(result.spec)
+        .await
+        .map_err(|error| modpack_error("create_failed", error.to_string()))
 }
