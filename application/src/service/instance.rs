@@ -12,18 +12,25 @@
 use async_trait::async_trait;
 use std::path::PathBuf;
 
-use sealantern_core::instance::{Instance, InstanceId, InstanceImportError, InstanceSpec};
+use sealantern_core::instance::InstanceImportError;
+use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
     ExistingInstanceError, ImportExistingServerError as CoreImportError,
-    ImportExistingServerRequest, ImportModpackError as CoreModpackError, ImportModpackRequest,
-    SourceType, build_import_spec, infer_source_type, plan_existing_instance, plan_import_modpack,
+    ImportModpackError as CoreModpackError, ImportModpackRequest, SourceType, infer_source_type,
+    plan_import_modpack,
+};
+use sealantern_core::provisioning::{
+    ImportExistingServerRequest, build_import_spec, plan_existing_instance,
     source_directories_equal, validate_source_directory,
 };
 use sealantern_extra::config::InstanceRegistry;
 use sealantern_infra::archive::extract_zip;
 use sealantern_infra::platform::get_app_data_dir;
-use sealantern_interface::{InstanceService, InstanceServiceError};
+use sealantern_interface::{
+    ImportExistingServerError as InterfaceImportError, InstanceService, InstanceServiceError,
+};
 
+use crate::error::ImportExistingServerError;
 use crate::error::InstanceError;
 
 /// 实例列表数据文件名，置于应用数据根目录。
@@ -71,10 +78,20 @@ impl CoreInstanceService {
     async fn create_inner(&self, spec: InstanceSpec) -> Result<Instance, InstanceError> {
         let instance = Instance::new(spec)?;
         let mut registry = self.registry.lock().await;
-        // 持锁检查 ID 是否已存在，避免 save_instance 的 upsert 语义静默覆盖旧数据。
+
         if registry.get(&instance.id).is_some() {
             return Err(InstanceError::AlreadyExists);
         }
+
+        // 目录维度的“良性锁”：在持锁状态下检查是否已有相同目录
+        if registry
+            .list()
+            .iter()
+            .any(|existing| source_directories_equal(&existing.directory, &instance.directory))
+        {
+            return Err(InstanceError::AlreadyExists);
+        }
+
         registry.save_instance(&instance).await?;
         Ok(instance)
     }
@@ -110,6 +127,48 @@ impl CoreInstanceService {
         registry.save_instance(&instance).await?;
         Ok(())
     }
+
+    /// 导入已有服务器目录：校验源目录 → 去重 → 构建导入规格 → 供给计划 → 持久化登记。
+    ///
+    /// 返回应用层富错误（携带 PathBuf 用于日志详情）；契约层（[`InstanceService`]
+    /// 的 `import_existing_server`）在此之上收敛为薄契约错误。
+    /// 编排逻辑收口于 service 层，命令层（Tauri / Axum）只负责参数转发与错误映射。
+    /// 导入的实例直接引用原始目录（FR-5：不复制文件）；检查与构建规格为同步文件系统
+    /// 扫描，经 `spawn_blocking` 调度到阻塞线程池，避免阻塞异步运行时核心线程。
+    async fn import_existing_server_inner(
+        &self,
+        request: ImportExistingServerRequest,
+    ) -> Result<Instance, ImportExistingServerError> {
+        validate_source_directory(&request.source_directory)?;
+
+        let instances = self
+            .list()
+            .await
+            .map_err(ImportExistingServerError::ListFailed)?;
+        if instances.iter().any(|instance| {
+            source_directories_equal(
+                instance.directory.as_path(),
+                request.source_directory.as_path(),
+            )
+        }) {
+            return Err(ImportExistingServerError::AlreadyImported);
+        }
+
+        let import_request = tokio::task::spawn_blocking({
+            let request = request.clone();
+            move || build_import_spec(&request)
+        })
+        .await
+        .map_err(|_| ImportExistingServerError::InspectionPanicked)?
+        .map_err(ImportExistingServerError::from)?;
+
+        let plan = plan_existing_instance(import_request)
+            .map_err(ImportExistingServerError::PlanInvalid)?;
+
+        self.create(plan.instance.spec())
+            .await
+            .map_err(ImportExistingServerError::CreateFailed)
+    }
 }
 
 #[async_trait]
@@ -143,74 +202,13 @@ impl InstanceService for CoreInstanceService {
     async fn import_existing_server(
         &self,
         request: ImportExistingServerRequest,
-    ) -> Result<Instance, InstanceServiceError> {
-        // 源目录必须存在且为目录。
-        validate_source_directory(&request.source_directory).map_err(|error| {
-            tracing::warn!(
-                target: "sealantern.application.instance",
-                error = %error,
-                "import rejected: source directory unavailable"
-            );
-            InstanceError::ImportSourceUnavailable
-        })?;
-
-        // 源目录已被其他实例引用时拒绝导入。
-        {
-            let registry = self.registry.lock().await;
-            if registry.list().iter().any(|instance| {
-                source_directories_equal(
-                    instance.directory.as_path(),
-                    request.source_directory.as_path(),
-                )
-            }) {
-                return Err(InstanceError::ImportSourceAlreadyImported.into());
-            }
-        }
-
-        // build_import_spec 内部做同步目录扫描，放到 blocking 线程执行。
-        let import_request = tokio::task::spawn_blocking({
-            let request = request.clone();
-            move || build_import_spec(&request)
-        })
-        .await
-        .map_err(|join_error| {
-            tracing::error!(
-                target: "sealantern.application.instance",
-                error = %join_error,
-                "import spec build task failed"
-            );
-            InstanceError::ImportFailed
-        })?;
-        let import_request = import_request.map_err(|error| {
-            tracing::warn!(
-                target: "sealantern.application.instance",
-                error = %error,
-                "import spec build failed"
-            );
-            match error {
-                CoreImportError::Inspection(_) => InstanceError::ImportFailed,
-                CoreImportError::NoLaunchCandidate => InstanceError::ImportNoLaunchCandidate,
-                CoreImportError::InvalidInstance(source) => InstanceError::Invalid { source },
-            }
-        })?;
-
-        // 经导入规划校验启动目标后注册实例。
-        let plan = plan_existing_instance(import_request).map_err(|error| {
-            tracing::warn!(
-                target: "sealantern.application.instance",
-                error = %error,
-                "import plan failed"
-            );
-            match error {
-                ExistingInstanceError::Import(InstanceImportError::Instance(source)) => {
-                    InstanceError::Invalid { source }
-                }
-                _ => InstanceError::ImportFailed,
-            }
-        })?;
-        self.create_inner(plan.instance.spec())
+    ) -> Result<Instance, InterfaceImportError> {
+        self.import_existing_server_inner(request)
             .await
-            .map_err(Into::into)
+            .map_err(|rich| {
+                tracing::warn!(error = ?rich, "import existing server failed");
+                rich.into()
+            })
     }
 
     async fn import_modpack(
@@ -290,9 +288,14 @@ impl InstanceService for CoreInstanceService {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::fs::{self, File};
+    use std::io::Write;
+    use std::path::{Path, PathBuf};
 
     use sealantern_core::instance::{LocalLaunch, StartupMode};
+    use sealantern_core::provisioning::ImportExistingServerRequest;
+
+    use sealantern_interface::ImportExistingServerError as InterfaceImportError;
 
     use super::*;
 
@@ -426,6 +429,75 @@ mod tests {
         assert_eq!(found.expect("exists").directory, PathBuf::from("/tmp/server-a"));
 
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    /// 写一个最小可识别服务器 jar：含 `Main-Class` 清单即可被通用检测器识别为可启动 jar。
+    fn write_test_jar(path: &Path, manifest: &str) {
+        use zip::write::FileOptions;
+        let file = File::create(path).expect("create test JAR");
+        let mut archive = zip::ZipWriter::new(file);
+        archive
+            .start_file("META-INF/MANIFEST.MF", FileOptions::<()>::default())
+            .expect("create manifest entry");
+        archive
+            .write_all(manifest.as_bytes())
+            .expect("write manifest");
+        archive.finish().expect("finish test JAR");
+    }
+
+    fn import_request(
+        source_directory: PathBuf,
+        jvm_arguments: Option<Vec<String>>,
+    ) -> ImportExistingServerRequest {
+        ImportExistingServerRequest {
+            source_directory,
+            name: None,
+            port: None,
+            max_memory_mib: None,
+            min_memory_mib: None,
+            java_executable: None,
+            jvm_arguments,
+            selected_launch_profile_id: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn import_existing_server_applies_explicit_jvm_override() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let source = root.path().join("demo-server");
+        fs::create_dir_all(&source).expect("create source dir");
+        write_test_jar(
+            &source.join("server.jar"),
+            "Manifest-Version: 1.0\r\nMain-Class: com.example.DemoServer\r\n\r\n",
+        );
+
+        let service = CoreInstanceService::with_path(root.path().join("servers.json"))
+            .await
+            .expect("load service");
+
+        let instance = service
+            .import_existing_server(import_request(source, Some(vec!["-Xmx4G".to_string()])))
+            .await
+            .expect("import should succeed");
+
+        // 用户显式 JVM 参数必须无条件覆盖检查识别所得（existing.rs:177-182 的覆盖语义）。
+        assert_eq!(instance.launch.jvm_arguments, vec!["-Xmx4G".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn import_existing_server_rejects_unavailable_source() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let missing = root.path().join("does-not-exist");
+
+        let service = CoreInstanceService::with_path(root.path().join("servers.json"))
+            .await
+            .expect("load service");
+
+        let result = service
+            .import_existing_server(import_request(missing, None))
+            .await;
+
+        assert!(matches!(result, Err(InterfaceImportError::SourceUnavailable)));
     }
 
     #[tokio::test]

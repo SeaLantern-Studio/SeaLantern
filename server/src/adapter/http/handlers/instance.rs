@@ -9,11 +9,8 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
-use sealantern_core::provisioning::{
-    ImportExistingServerError as CoreImportError, ImportExistingServerRequest,
-    SourceDirectoryError, build_import_spec, source_directories_equal, validate_source_directory,
-};
-use sealantern_interface::{InstanceService, ProvisioningService};
+use sealantern_core::provisioning::ImportExistingServerRequest;
+use sealantern_interface::InstanceService;
 
 use super::super::error::HttpError;
 use super::super::state::AppState;
@@ -117,55 +114,13 @@ fn parse_id(raw: &str) -> Result<InstanceId, HttpError> {
 
 /// `POST /api/instances/import-existing` — 导入已有服务器目录。
 ///
-/// 导入的实例直接引用原始目录（FR-5：不复制文件），启动目标由检查结果采纳最优候选。
+/// 校验、去重、检查与规格构建均由 `CoreInstanceService::import_existing_server`
+/// 在 service 层完成；本 handler 仅做参数转发与错误映射。导入实例直接引用原始
+/// 目录（FR-5：不复制文件）。
 pub async fn import_existing_instance(
     State(state): State<AppState>,
     Json(request): Json<ImportExistingServerRequest>,
 ) -> Result<(StatusCode, Json<Instance>), HttpError> {
-    validate_source_directory(&request.source_directory).map_err(|error| match error {
-        SourceDirectoryError::Unavailable(_) => {
-            HttpError::bad_request("source_unavailable", error.to_string())
-        }
-        SourceDirectoryError::NotDirectory(_) => {
-            HttpError::bad_request("source_not_directory", error.to_string())
-        }
-    })?;
-    let instances = state.instance().list().await?;
-    if instances.iter().any(|instance| {
-        source_directories_equal(instance.directory.as_path(), request.source_directory.as_path())
-    }) {
-        return Err(HttpError::bad_request(
-            "source_already_imported",
-            "the selected directory is already imported as a server instance",
-        ));
-    }
-    // `build_import_spec` 内部执行同步目录扫描（inspect_server_artifact），
-    // 放到 blocking 线程，避免阻塞 async 运行时。
-    let import_request = tokio::task::spawn_blocking({
-        let request = request.clone();
-        move || build_import_spec(&request)
-    })
-    .await
-    .map_err(|join_error| HttpError::internal(format!("import spec build failed: {join_error}")))?;
-    let import_request = import_request.map_err(HttpError::from)?;
-    // 流经既有后端原语 plan_existing_instance 完成启动目标校验与归一化，
-    // 复用已有的导入规划能力，而非直接以裸规格创建实例。
-    let plan = state
-        .provisioning()
-        .plan_existing_instance(import_request)
-        .await
-        .map_err(|error| HttpError::bad_request("invalid_instance", error.to_string()))?;
-    let instance = state.instance().create(plan.instance.spec()).await?;
+    let instance = state.instance().import_existing_server(request).await?;
     Ok((StatusCode::CREATED, Json(instance)))
-}
-
-impl From<CoreImportError> for HttpError {
-    fn from(error: CoreImportError) -> Self {
-        let code = match error {
-            CoreImportError::Inspection(_) => "inspection_failed",
-            CoreImportError::NoLaunchCandidate => "no_launch_candidate",
-            CoreImportError::InvalidInstance(_) => "invalid_instance",
-        };
-        HttpError::bad_request(code, error.to_string())
-    }
 }

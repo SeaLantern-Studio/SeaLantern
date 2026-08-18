@@ -1,4 +1,4 @@
-use crate::error::InstanceServiceError;
+use crate::error::{ImportExistingServerError, InstanceServiceError};
 use async_trait::async_trait;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{ImportExistingServerRequest, ImportModpackRequest};
@@ -29,15 +29,13 @@ pub trait InstanceService: Send + Sync {
     /// 更新实例目录路径。
     async fn update_path(&self, id: &InstanceId, path: &str) -> Result<(), InstanceServiceError>;
 
-    /// 导入已有服务器目录为受管实例（FR-5：直接引用原目录，不复制文件）。
+    /// 导入已有服务器目录：校验源目录 → 去重 → 构建导入规格 → 供给计划 → 持久化登记。
     ///
-    /// 内部执行源目录校验、重复导入检查与启动目标识别；失败返回
-    /// [`InstanceServiceError::SourceUnavailable`]、[`InstanceServiceError::SourceAlreadyImported`]
-    /// 或 [`InstanceServiceError::NoLaunchCandidate`] 等分类错误。
+    /// 返回薄契约错误（无主机路径载荷）；底层失败详情由实现层写入受控日志。
     async fn import_existing_server(
         &self,
         request: ImportExistingServerRequest,
-    ) -> Result<Instance, InstanceServiceError>;
+    ) -> Result<Instance, ImportExistingServerError>;
 
     /// 导入整合包为受管实例。
     ///
@@ -127,6 +125,17 @@ mod tests {
         ) -> Result<(), InstanceServiceError> {
             self.calls.lock().expect("lock").push("update_path");
             Ok(())
+        }
+
+        async fn import_existing_server(
+            &self,
+            _request: ImportExistingServerRequest,
+        ) -> Result<Instance, ImportExistingServerError> {
+            self.calls
+                .lock()
+                .expect("lock")
+                .push("import_existing_server");
+            Ok(sample_instance())
         }
 
         async fn import_existing_server(

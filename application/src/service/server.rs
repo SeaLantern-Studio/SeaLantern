@@ -109,9 +109,9 @@ pub struct CoreServerService {
     stopping: Mutex<HashSet<String>>,
     /// 每个实例独立的生命周期操作锁。
     lifecycle_locks: Mutex<HashMap<String, Weak<AsyncMutex<()>>>>,
-    /// 探测到并已按主版本降序缓存的本机 Java 安装列表；首次缺失 Java 时填充，
-    /// 之后复用，避免每次启动都扫描文件系统。探测失败（任务取消 / 无可用 Java）
-    /// 不写入缓存，下次启动可重试。
+    /// 探测到并已按主版本降序缓存的本机 Java 安装列表；首次探测到结果（含“无可用
+    /// Java”的空列表）时填充，之后复用，避免每次启动都扫描文件系统。`spawn_blocking`
+    /// 任务被取消或 panic（探测任务本身失败）时不写入缓存，下次启动可重试。
     java_installations: Mutex<Option<Vec<JavaInfo>>>,
 }
 
@@ -225,7 +225,8 @@ impl CoreServerService {
                 return None;
             }
         };
-        // 仅当探测成功且非空时才写入缓存，保证失败可重试。
+        // 探测成功（含空列表）即写入缓存，跳过下一次启动的文件系统扫描；
+        // 任务被取消 / panic 的分支已在上方提前返回，不会写入缓存，下次可重试。
         if let Ok(mut cache) = self.java_installations.lock() {
             *cache = Some(detected.clone());
         }
