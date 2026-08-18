@@ -12,7 +12,7 @@ pub async fn get_backup_list(server_id: String) -> Result<Vec<BackupItem>, Strin
 
 /// 创建备份
 #[tauri::command]
-pub async fn create_backup(_request: CreateBackupRequest) -> Result<BackupItem, String> {
+pub async fn create_backup(request: CreateBackupRequest) -> Result<BackupItem, String> {
     // 从服务器ID获取服务器目录
     // 注意:这里需要从应用状态获取服务器目录和运行状态
     // 临时实现,实际使用时需要完善
@@ -22,7 +22,7 @@ pub async fn create_backup(_request: CreateBackupRequest) -> Result<BackupItem, 
     // 2. 服务器运行状态检查函数
 
     // 临时返回错误,提示需要在应用状态中实现
-    Err("需要从应用状态获取服务器信息,请完善实现".to_string())
+    Err(format!("需要从应用状态获取服务器信息,请完善实现。请求: {:?}", request))
 }
 
 /// 删除备份

@@ -48,7 +48,7 @@ export const backupApi = {
 
   /** 创建备份 */
   async create(request: CreateBackupRequest): Promise<BackupItem> {
-    return tauriInvoke("create_backup", { ...request });
+    return tauriInvoke("create_backup", { request });
   },
 
   /** 删除备份 */
