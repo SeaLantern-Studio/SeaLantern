@@ -67,6 +67,7 @@ impl BackupContentType {
 
 /// 备份项
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BackupItem {
     /// 备份ID
     pub id: String,
@@ -86,6 +87,7 @@ pub struct BackupItem {
 
 /// 创建备份请求
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateBackupRequest {
     /// 服务器ID
     pub server_id: String,
@@ -102,6 +104,7 @@ pub struct CreateBackupRequest {
 
 /// 备份设置
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BackupSettings {
     /// 最大备份数量（范围1-50）
     pub max_backups: u32,
