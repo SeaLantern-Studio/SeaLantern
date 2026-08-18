@@ -6,35 +6,35 @@ use sealantern_extra::config::{ServerProperties, ServerPropertiesManager};
 
 /// 读取服务器配置文件 (server.properties)
 #[tauri::command]
-pub async fn read_server_properties(serverPath: String) -> Result<ServerProperties, String> {
-    let manager = ServerPropertiesManager::new(&serverPath);
+pub async fn read_server_properties(server_path: String) -> Result<ServerProperties, String> {
+    let manager = ServerPropertiesManager::new(&server_path);
     manager.read().map_err(|e| e.to_string())
 }
 
 /// 写入服务器配置文件
 #[tauri::command]
 pub async fn write_server_properties(
-    serverPath: String,
+    server_path: String,
     values: BTreeMap<String, String>,
 ) -> Result<(), String> {
-    let manager = ServerPropertiesManager::new(&serverPath);
+    let manager = ServerPropertiesManager::new(&server_path);
     manager.write(&values).map_err(|e| e.to_string())
 }
 
 /// 读取 server.properties 原始文本
 #[tauri::command]
-pub async fn read_server_properties_source(serverPath: String) -> Result<String, String> {
-    let manager = ServerPropertiesManager::new(&serverPath);
+pub async fn read_server_properties_source(server_path: String) -> Result<String, String> {
+    let manager = ServerPropertiesManager::new(&server_path);
     manager.read_source().map_err(|e| e.to_string())
 }
 
 /// 直接写入 server.properties 原始文本
 #[tauri::command]
 pub async fn write_server_properties_source(
-    serverPath: String,
+    server_path: String,
     source: String,
 ) -> Result<(), String> {
-    let manager = ServerPropertiesManager::new(&serverPath);
+    let manager = ServerPropertiesManager::new(&server_path);
     manager.write_source(&source).map_err(|e| e.to_string())
 }
 
@@ -47,10 +47,10 @@ pub async fn parse_server_properties_source(source: String) -> Result<ServerProp
 /// 预览可视化配置写回后最终文本
 #[tauri::command]
 pub async fn preview_server_properties_write(
-    serverPath: String,
+    server_path: String,
     values: BTreeMap<String, String>,
 ) -> Result<String, String> {
-    let manager = ServerPropertiesManager::new(&serverPath);
+    let manager = ServerPropertiesManager::new(&server_path);
     manager.preview_write(&values).map_err(|e| e.to_string())
 }
 
