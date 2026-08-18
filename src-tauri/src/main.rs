@@ -45,6 +45,11 @@ use adapter::tauri::commands::server::{
     force_stop_server, restart_server, send_server_command, server_status, start_server,
     stop_server,
 };
+use adapter::tauri::commands::server_config::{
+    parse_server_properties_source, preview_server_properties_write,
+    preview_server_properties_write_from_source, read_server_properties,
+    read_server_properties_source, write_server_properties, write_server_properties_source,
+};
 use adapter::tauri::commands::settings::{
     export_settings, get_settings, import_settings, reset_settings, settings_overview,
     update_settings, update_settings_partial,
@@ -123,6 +128,14 @@ fn main() {
             get_backup_settings,
             restore_backup,
             update_backup_settings,
+            //服务器配置管理契约命令
+            parse_server_properties_source,
+            preview_server_properties_write,
+            preview_server_properties_write_from_source,
+            read_server_properties,
+            read_server_properties_source,
+            write_server_properties,
+            write_server_properties_source,
             //服务器定时任务契约命令
             create_cron_task,
             delete_cron_task,

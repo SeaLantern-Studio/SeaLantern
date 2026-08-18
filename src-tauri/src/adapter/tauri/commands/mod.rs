@@ -15,6 +15,7 @@ pub mod online_tunnel;
 pub mod plugin;
 pub mod provisioning;
 pub mod server;
+pub mod server_config;
 pub mod settings;
 pub mod system;
 pub mod update;
