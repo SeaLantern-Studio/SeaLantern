@@ -23,6 +23,16 @@ pub enum InstanceError {
     },
     /// 实例当前状态不允许该操作（如未运行时停止、已运行时重复启动）。
     InvalidState,
+    /// 客户端提供的导入输入不合法（如无效启动模式）。
+    InvalidInput,
+    /// 导入源目录不可用（不存在或不可读）。
+    ImportSourceUnavailable,
+    /// 导入源目录已是受管实例（重复导入）。
+    ImportSourceAlreadyImported,
+    /// 导入源目录中未找到可启动的服务端文件。
+    ImportNoLaunchCandidate,
+    /// 导入操作底层执行失败（检查、解压、复制等）。
+    ImportFailed,
     /// 底层 IO / 供给 / 进程操作失败。
     OperationFailed {
         /// 底层来源错误（如存储/序列化）。
@@ -43,6 +53,17 @@ impl fmt::Display for InstanceError {
             Self::InvalidState => {
                 write!(formatter, "server instance is in an invalid state for this operation")
             }
+            Self::InvalidInput => write!(formatter, "invalid server import input"),
+            Self::ImportSourceUnavailable => {
+                write!(formatter, "import source directory is unavailable")
+            }
+            Self::ImportSourceAlreadyImported => {
+                write!(formatter, "source directory is already imported as a server instance")
+            }
+            Self::ImportNoLaunchCandidate => {
+                write!(formatter, "no launchable server artifact was found in the source directory")
+            }
+            Self::ImportFailed => write!(formatter, "server import operation failed"),
             Self::OperationFailed { source } => {
                 write!(formatter, "server instance operation failed: {source}")
             }
@@ -84,6 +105,11 @@ impl From<InstanceError> for InstanceServiceError {
             InstanceError::AlreadyExists => Self::AlreadyExists,
             InstanceError::Invalid { .. } => Self::InvalidInput,
             InstanceError::InvalidState => Self::InvalidState,
+            InstanceError::InvalidInput => Self::InvalidInput,
+            InstanceError::ImportSourceUnavailable => Self::SourceUnavailable,
+            InstanceError::ImportSourceAlreadyImported => Self::SourceAlreadyImported,
+            InstanceError::ImportNoLaunchCandidate => Self::NoLaunchCandidate,
+            InstanceError::ImportFailed => Self::OperationFailed,
             InstanceError::OperationFailed { .. } => Self::OperationFailed,
             InstanceError::Unsupported => Self::Unsupported,
             InstanceError::Internal(_) => Self::OperationFailed,

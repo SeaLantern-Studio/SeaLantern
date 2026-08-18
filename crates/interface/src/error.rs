@@ -53,6 +53,12 @@ pub enum InstanceServiceError {
     InvalidInput,
     /// 实例当前状态不允许该操作（如未运行时停止、已运行时重复启动）。
     InvalidState,
+    /// 导入源目录不存在或不可访问。
+    SourceUnavailable,
+    /// 导入源目录已是受管实例（重复导入）。
+    SourceAlreadyImported,
+    /// 导入源目录中未找到可启动的服务端文件。
+    NoLaunchCandidate,
     /// 底层 IO / 供给 / 进程操作失败。
     OperationFailed,
     /// 该能力尚未实现（占位）。
@@ -66,6 +72,13 @@ impl std::fmt::Display for InstanceServiceError {
             Self::AlreadyExists => "server instance already exists",
             Self::InvalidInput => "invalid input",
             Self::InvalidState => "server instance is in an invalid state",
+            Self::SourceUnavailable => "import source directory is unavailable",
+            Self::SourceAlreadyImported => {
+                "source directory is already imported as a server instance"
+            }
+            Self::NoLaunchCandidate => {
+                "no launchable server artifact was found in the source directory"
+            }
             Self::OperationFailed => "server instance operation failed",
             Self::Unsupported => "operation not supported",
         };

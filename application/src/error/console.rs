@@ -58,6 +58,9 @@ impl From<sealantern_interface::InstanceServiceError> for ConsoleError {
             sealantern_interface::InstanceServiceError::InvalidInput => Self::InvalidInput,
             sealantern_interface::InstanceServiceError::InvalidState
             | sealantern_interface::InstanceServiceError::AlreadyExists
+            | sealantern_interface::InstanceServiceError::SourceUnavailable
+            | sealantern_interface::InstanceServiceError::SourceAlreadyImported
+            | sealantern_interface::InstanceServiceError::NoLaunchCandidate
             | sealantern_interface::InstanceServiceError::OperationFailed => {
                 Self::OperationFailed { source: Box::new(source) }
             }

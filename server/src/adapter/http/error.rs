@@ -111,6 +111,21 @@ impl HttpError {
                 code: "instance_invalid_state",
                 message: error.to_string(),
             },
+            InstanceServiceError::SourceUnavailable => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "import_source_unavailable",
+                message: error.to_string(),
+            },
+            InstanceServiceError::SourceAlreadyImported => Self {
+                status: StatusCode::CONFLICT,
+                code: "import_source_already_imported",
+                message: error.to_string(),
+            },
+            InstanceServiceError::NoLaunchCandidate => Self {
+                status: StatusCode::UNPROCESSABLE_ENTITY,
+                code: "import_no_launch_candidate",
+                message: error.to_string(),
+            },
             InstanceServiceError::OperationFailed => Self {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 code: "instance_operation_failed",
