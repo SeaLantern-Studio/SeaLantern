@@ -10,6 +10,7 @@ import ConfigComparePanel from "@components/config/ConfigComparePanel.vue";
 import type { ComparePanelRow } from "@views/config/useConfigCompare";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { i18n } from "@language";
+import MotdEditorBody from "./MotdEditorBody.vue";
 
 interface Option {
   label: string;
@@ -45,6 +46,8 @@ interface Props {
   sourceDraftText: string;
   compareTargetSourceDraftText: string;
   sourceParseError: string | null;
+  motdValue: string;
+  serverName: string;
 }
 
 defineProps<Props>();
@@ -59,11 +62,18 @@ const emit = defineEmits<{
   addSourceValue: [payload: UpdateValuePayload];
   addTargetValue: [payload: UpdateValuePayload];
   updateCompareTargetServer: [value: string | number];
+  updateMotd: [value: string];
 }>();
 </script>
 
 <template>
   <div v-show="editorMode === 'visual'">
+    <MotdEditorBody
+      embedded
+      :modelValue="motdValue"
+      :server-name="serverName"
+      @apply="emit('updateMotd', $event)"
+    />
     <ConfigCategories
       :categories="categories"
       :activeCategory="activeCategory"

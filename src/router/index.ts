@@ -90,20 +90,7 @@ const routes = [
     component: () => import("@views/BackupView.vue"),
     meta: { titleKey: "common.backup", icon: "archive" },
   },
-  {
-    // 工具中心页：卡片网格进入各独立工具
-    path: "/tools",
-    name: "tools",
-    component: () => import("@views/ToolsView.vue"),
-    meta: { titleKey: "common.tools", icon: "wrench" },
-  },
-  {
-    // MOTD 可视化工具页：从工具中心进入
-    path: "/motd",
-    name: "motd",
-    component: () => import("@views/MotdToolView.vue"),
-    meta: { titleKey: "common.motd_tool", icon: "motd" },
-  },
+
   {
     path: "/help",
     name: "help",

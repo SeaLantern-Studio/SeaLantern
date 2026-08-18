@@ -630,6 +630,40 @@
         "pause-when-empty-seconds": "当服务器空闲时自动暂停的秒数，0为禁用",
         "region-file-compression": "区域文件压缩方式",
         "status-heartbeat-interval": "服务器状态心跳间隔（秒）"
+      },
+      "motd": {
+        "title": "MOTD 可视化编辑器",
+        "open_editor": "打开可视化编辑器",
+        "apply": "应用",
+        "bold": "粗体",
+        "italic": "斜体",
+        "underline": "下划线",
+        "strikethrough": "删除线",
+        "rainbow": "彩虹文字",
+        "clear_format": "清除格式",
+        "export_title": "导出",
+        "escape_unicode": "Unicode 转义",
+        "import_placeholder": "在此粘贴 MOTD 文本…",
+        "import_button": "导入",
+        "import_empty": "导入内容为空",
+        "imported": "已导入",
+        "copy": "复制",
+        "copied": "已复制！",
+        "copy_failed": "复制失败",
+        "select_text_first": "请先在编辑器中选中文本",
+        "select_in_editor": "请先在编辑器中点击一下",
+        "templates_title": "模板",
+        "styles": {
+          "classic": "经典",
+          "classical": "古典",
+          "cyber": "赛博",
+          "black_gold": "黑金",
+          "gradient": "渐变",
+          "minimal": "极简",
+          "dark": "暗黑",
+          "symbols": "符号",
+          "cozy": "温馨"
+        }
       }
     },
     "players": {

@@ -142,14 +142,6 @@ const staticNavItems: NavItem[] = [
     group: "server",
   },
   {
-    name: "tools",
-    path: "/tools",
-    icon: "wrench",
-    labelKey: "common.tools",
-    label: i18n.t("common.tools"),
-    group: "server",
-  },
-  {
     name: "backup",
     path: "/backup",
     icon: "archive",

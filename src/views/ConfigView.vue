@@ -262,6 +262,8 @@ onActivated(async () => {
 
           <template v-if="activeTab === 'properties'">
             <ConfigPropertiesSection
+              :motdValue="propertiesEditor.editValues.value['motd'] ?? ''"
+              :serverName="currentServer?.name ?? 'Minecraft Server'"
               :editorMode="propertiesEditor.editorMode.value"
               :loading="propertiesEditor.loading.value"
               :compareLoading="compare.compareLoading.value"
@@ -296,6 +298,7 @@ onActivated(async () => {
               @addSourceValue="propertiesEditor.updateValue($event.key, $event.value)"
               @addTargetValue="compare.updateCompareTargetValue($event.key, $event.value)"
               @updateCompareTargetServer="compare.handleCompareTargetServerChange"
+              @updateMotd="propertiesEditor.updateValue('motd', $event)"
             />
           </template>
 

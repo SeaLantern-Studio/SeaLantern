@@ -15,7 +15,7 @@ import {
   unicodeEscape,
   type MotdFormatState,
 } from "@utils/motdCodes";
-import { MOTD_TEMPLATES, MOTD_TEMPLATE_PROVIDER } from "@data/motdTemplates";
+import { MOTD_TEMPLATES } from "@data/motdTemplates";
 import "@styles/components/MotdVisualEditor.css";
 
 interface Props {
@@ -61,7 +61,7 @@ let selectionAbort: AbortController | null = null;
 const templatePreviews = computed(() =>
   MOTD_TEMPLATES.map((template) => ({
     ...template,
-    name: `${i18n.t(`config.motd.styles.${template.style}`)} ${template.index}`,
+    name: `${i18n.t(`config.motd.styles.${template.name}`)} ${template.index + 1}`,
     previewHtml: motdToHtml(normalizeMotdText(template.value)),
   })),
 );
@@ -209,7 +209,7 @@ function onEditorKeyDown(event: KeyboardEvent) {
   }
 }
 
-function applyTemplate(rawTemplate: string) {
+function applyTemplate(rawTemplate: string | string[]) {
   setEditorHtml(motdToHtml(normalizeMotdText(rawTemplate)));
   editorRef.value?.focus();
 }
@@ -402,7 +402,6 @@ defineExpose({
         >
           <div class="motd-editor__template-header">
             <span class="motd-editor__template-title">{{ template.name }}</span>
-            <span class="motd-editor__template-provider">{{ MOTD_TEMPLATE_PROVIDER }}</span>
           </div>
           <div class="motd-editor__template-preview motd-editor-dirt-bg">
             <img :src="unknownServerIcon" alt="template icon" class="motd-editor__template-icon" />

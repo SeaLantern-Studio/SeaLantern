@@ -630,6 +630,40 @@
         "bug-report-link": "Bug Report Link",
         "broadcast-rcon-to-ops": "Broadcast RCON Commands to Ops",
         "broadcast-console-to-ops": "Broadcast Console Commands to Ops"
+      },
+      "motd": {
+        "title": "MOTD Visual Editor",
+        "open_editor": "Open Visual Editor",
+        "apply": "Apply",
+        "bold": "Bold",
+        "italic": "Italic",
+        "underline": "Underline",
+        "strikethrough": "Strikethrough",
+        "rainbow": "Rainbow Text",
+        "clear_format": "Clear Format",
+        "export_title": "Export",
+        "escape_unicode": "Unicode Escape",
+        "import_placeholder": "Paste MOTD text here…",
+        "import_button": "Import",
+        "import_empty": "Import content is empty",
+        "imported": "Imported",
+        "copy": "Copy",
+        "copied": "Copied!",
+        "copy_failed": "Copy failed",
+        "select_text_first": "Please select text in the editor first",
+        "select_in_editor": "Please click in the editor first",
+        "templates_title": "Templates",
+        "styles": {
+          "classic": "Classic",
+          "classical": "Classical",
+          "cyber": "Cyber",
+          "black_gold": "Black Gold",
+          "gradient": "Gradient",
+          "minimal": "Minimal",
+          "dark": "Dark",
+          "symbols": "Symbols",
+          "cozy": "Cozy"
+        }
       }
     },
     "players": {

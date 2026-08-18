@@ -239,11 +239,14 @@ export function htmlToMotd(html: string): string {
 
 /**
  * 规范化外部输入的 MOTD 文本：
- * 去掉 motd= 前缀，把字面 \n 转为换行（server.properties 存储格式 → 编辑格式），
- * 并解码 \uXXXX 转义以对齐「转义 Unicode」导出选项的写入。
+ * - string：去掉 motd= 前缀，把字面 \n 拆成多行（server.properties 存储格式 → 编辑格式），解码 \uXXXX
+ * - string[]：每行一个元素，仅第一个元素去 motd= 前缀，每行解码 \uXXXX，最后 join("\n")
  */
-export function normalizeMotdText(raw: string): string {
-  return unicodeUnescape(raw.replace(/^motd=/i, "").replace(/\\n/g, "\n"));
+export function normalizeMotdText(raw: string | string[]): string {
+  const lines = Array.isArray(raw) ? raw : raw.replace(/^motd=/i, "").split("\\n");
+  return lines
+    .map((line, i) => unicodeUnescape(i === 0 ? line.replace(/^motd=/i, "") : line))
+    .join("\n");
 }
 
 /** 编辑格式 → server.properties 存储格式（换行转为字面 \n） */
