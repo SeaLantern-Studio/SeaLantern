@@ -114,9 +114,8 @@ pub fn build_import_spec(
 
     let folder_name = source
         .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("imported-server")
-        .to_string();
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "imported-server".to_string());
 
     let mut spec = InstanceSpec {
         id: make_instance_id(&folder_name),

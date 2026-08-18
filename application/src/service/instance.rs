@@ -146,7 +146,7 @@ impl CoreInstanceService {
         .map_err(ImportExistingServerError::from)?;
 
         let plan = plan_existing_instance(import_request)
-            .map_err(|_| ImportExistingServerError::PlanInvalid)?;
+            .map_err(ImportExistingServerError::PlanInvalid)?;
 
         self.create(plan.instance.spec())
             .await

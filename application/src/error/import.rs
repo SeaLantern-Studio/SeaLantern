@@ -4,7 +4,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use sealantern_core::provisioning::{
-    ImportExistingServerError as CoreImportError, SourceDirectoryError,
+    ExistingInstanceError, ImportExistingServerError as CoreImportError, SourceDirectoryError,
 };
 use sealantern_interface::{
     ImportExistingServerError as InterfaceImportError, InstanceServiceError,
@@ -28,7 +28,7 @@ pub enum ImportExistingServerError {
     /// 检查服务器目录并构建导入规格失败。
     Build(CoreImportError),
     /// 供给计划校验失败（启动目标 / 实例规格非法）。
-    PlanInvalid,
+    PlanInvalid(ExistingInstanceError),
     /// 实例列表查询失败。
     ListFailed(InstanceServiceError),
     /// 导入实例创建持久化失败。
@@ -51,7 +51,9 @@ impl fmt::Display for ImportExistingServerError {
                 write!(formatter, "import spec build task panicked or was cancelled")
             }
             Self::Build(error) => write!(formatter, "failed to build import spec: {error}"),
-            Self::PlanInvalid => write!(formatter, "imported instance spec is invalid"),
+            Self::PlanInvalid(error) => {
+                write!(formatter, "imported instance plan is invalid: {error}")
+            }
             Self::ListFailed(error) => write!(formatter, "failed to list instances: {error}"),
             Self::CreateFailed(error) => {
                 write!(formatter, "failed to create imported instance: {error}")
@@ -64,6 +66,7 @@ impl std::error::Error for ImportExistingServerError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Build(error) => Some(error),
+            Self::PlanInvalid(error) => Some(error),
             Self::ListFailed(error) => Some(error),
             Self::CreateFailed(error) => Some(error),
             _ => None,
@@ -100,7 +103,7 @@ impl From<ImportExistingServerError> for InterfaceImportError {
                 InterfaceImportError::InspectionPanicked
             }
             ImportExistingServerError::Build(_) => InterfaceImportError::BuildFailed,
-            ImportExistingServerError::PlanInvalid => InterfaceImportError::PlanInvalid,
+            ImportExistingServerError::PlanInvalid(_) => InterfaceImportError::PlanInvalid,
             ImportExistingServerError::ListFailed(_) => InterfaceImportError::ListFailed,
             ImportExistingServerError::CreateFailed(_) => InterfaceImportError::CreateFailed,
         }
