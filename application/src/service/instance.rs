@@ -71,14 +71,23 @@ impl CoreInstanceService {
     async fn create_inner(&self, spec: InstanceSpec) -> Result<Instance, InstanceError> {
         let instance = Instance::new(spec)?;
         let mut registry = self.registry.lock().await;
-        // 持锁检查 ID 是否已存在，避免 save_instance 的 upsert 语义静默覆盖旧数据。
+
         if registry.get(&instance.id).is_some() {
             return Err(InstanceError::AlreadyExists);
         }
+
+        // 目录维度的“良性锁”：在持锁状态下检查是否已有相同目录
+        if registry
+            .list()
+            .iter()
+            .any(|existing| source_directories_equal(&existing.directory, &instance.directory))
+        {
+            return Err(InstanceError::AlreadyImported);
+        }
+
         registry.save_instance(&instance).await?;
         Ok(instance)
     }
-
     /// 内部删除实例，返回应用层主错误。
     async fn delete_inner(&self, id: &InstanceId) -> Result<(), InstanceError> {
         let mut registry = self.registry.lock().await;
