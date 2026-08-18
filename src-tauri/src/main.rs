@@ -10,6 +10,10 @@ use sealantern_application::services::AppServices;
 use sealantern_interface::{OnlineTunnelService, SettingsService};
 use tauri::{AppHandle, Manager};
 
+use adapter::tauri::commands::backup::{
+    create_backup, delete_backup, get_backup_list, get_backup_settings, restore_backup,
+    update_backup_settings,
+};
 use adapter::tauri::commands::catalog::{catalog_details, catalog_server_types, catalog_versions};
 use adapter::tauri::commands::console::get_server_logs;
 use adapter::tauri::commands::cron::{
@@ -112,6 +116,13 @@ fn main() {
             restore_main_window,
             toggle_light_weight,
             frontend_ready,
+            //服务器备份管理契约命令
+            create_backup,
+            delete_backup,
+            get_backup_list,
+            get_backup_settings,
+            restore_backup,
+            update_backup_settings,
             //服务器定时任务契约命令
             create_cron_task,
             delete_cron_task,
