@@ -82,7 +82,7 @@ impl CoreInstanceService {
             .iter()
             .any(|existing| source_directories_equal(&existing.directory, &instance.directory))
         {
-            return Err(InstanceError::AlreadyImported);
+            return Err(InstanceError::AlreadyExists);
         }
 
         registry.save_instance(&instance).await?;
