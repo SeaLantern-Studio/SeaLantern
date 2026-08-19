@@ -120,9 +120,9 @@ mod tests {
         let valid_settings = BackupSettings::default();
         assert!(manager.validate_settings(&valid_settings).is_ok());
 
-        // 测试无效的最大备份数量
+        // 测试无效的最大备份数量（小于1）
         let mut invalid_settings = BackupSettings::default();
-        invalid_settings.max_backups = 100;
+        invalid_settings.max_backups = 0;
         assert!(manager.validate_settings(&invalid_settings).is_err());
 
         // 测试空内容

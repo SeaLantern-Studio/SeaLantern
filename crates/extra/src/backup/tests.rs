@@ -72,9 +72,7 @@ mod tests {
         let manager = BackupManager::new().unwrap();
         let backup_id = Uuid::new_v4().to_string();
 
-        let request = DeleteBackupRequest {
-            backup_id: backup_id.clone(),
-        };
+        let request = DeleteBackupRequest { backup_id: backup_id.clone() };
 
         let result = manager.delete_backup(&request);
         assert!(result.is_err());
@@ -128,7 +126,9 @@ mod tests {
             check_server_stopped: false,
         };
 
-        let backup = manager.create_backup(&create_request).expect("backup should be created");
+        let backup = manager
+            .create_backup(&create_request)
+            .expect("backup should be created");
         let backup_id = backup.id.clone();
 
         // Then, restore the backup with `check_server_stopped = false`
@@ -159,7 +159,9 @@ mod tests {
             check_server_stopped: false,
         };
 
-        let backup = manager.create_backup(&create_request).expect("backup should be created");
+        let backup = manager
+            .create_backup(&create_request)
+            .expect("backup should be created");
         let backup_id = backup.id.clone();
 
         // Locate the backup archive on disk and corrupt it by truncating/removing it.
