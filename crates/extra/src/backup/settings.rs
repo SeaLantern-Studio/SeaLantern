@@ -121,14 +121,18 @@ mod tests {
         assert!(manager.validate_settings(&valid_settings).is_ok());
 
         // 测试无效的最大备份数量（小于1）
-        let mut invalid_settings = BackupSettings::default();
-        invalid_settings.max_backups = 0;
+        let invalid_settings = BackupSettings {
+            max_backups: 0,
+            ..BackupSettings::default()
+        };
         assert!(manager.validate_settings(&invalid_settings).is_err());
 
         // 测试空内容
-        let mut empty_content_settings = BackupSettings::default();
-        empty_content_settings.auto_backup_enabled = true;
-        empty_content_settings.auto_backup_contents = vec![];
+        let empty_content_settings = BackupSettings {
+            auto_backup_enabled: true,
+            auto_backup_contents: vec![],
+            ..BackupSettings::default()
+        };
         assert!(manager.validate_settings(&empty_content_settings).is_err());
     }
 }

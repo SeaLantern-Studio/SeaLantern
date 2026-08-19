@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+mod backup_tests {
     use std::fs;
     use std::path::{Path, PathBuf};
 

@@ -135,7 +135,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: 运行 Clippy 检查
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   backend-test-application:
     name: 后端测试 (application)
