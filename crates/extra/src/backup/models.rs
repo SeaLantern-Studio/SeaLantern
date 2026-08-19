@@ -122,29 +122,30 @@ pub struct BackupSettings {
     pub compression_level: CompressionLevel,
 }
 
+const DEFAULT_MAX_BACKUPS: u32 = 10;
+const DEFAULT_AUTO_BACKUP_INTERVAL: u32 = 24;
+const DEFAULT_AUTO_BACKUP_CONTENTS: &[BackupContentType] =
+    &[BackupContentType::Core, BackupContentType::Config, BackupContentType::World];
+
 fn default_max_backups() -> u32 {
-    10
+    DEFAULT_MAX_BACKUPS
 }
 
 fn default_auto_backup_interval() -> u32 {
-    24
+    DEFAULT_AUTO_BACKUP_INTERVAL
 }
 
 fn default_auto_backup_contents() -> Vec<BackupContentType> {
-    vec![BackupContentType::Core, BackupContentType::Config, BackupContentType::World]
+    DEFAULT_AUTO_BACKUP_CONTENTS.to_vec()
 }
 
 impl Default for BackupSettings {
     fn default() -> Self {
         Self {
-            max_backups: 10,
+            max_backups: DEFAULT_MAX_BACKUPS,
             auto_backup_enabled: false,
-            auto_backup_interval: 24,
-            auto_backup_contents: vec![
-                BackupContentType::Core,
-                BackupContentType::Config,
-                BackupContentType::World,
-            ],
+            auto_backup_interval: DEFAULT_AUTO_BACKUP_INTERVAL,
+            auto_backup_contents: DEFAULT_AUTO_BACKUP_CONTENTS.to_vec(),
             default_format: BackupFormat::Zip,
             compression_level: CompressionLevel::Medium,
         }
