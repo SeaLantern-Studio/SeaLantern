@@ -27,6 +27,6 @@ pub use server::{
     force_stop_server, restart_server, send_server_command, server_status, start_server,
     stop_server,
 };
-pub use settings::settings_overview;
+pub use settings::{get_settings, settings_overview};
 pub use system::{default_run_path, server_resource_usage, system_snapshot};
 pub use update::check_update;
