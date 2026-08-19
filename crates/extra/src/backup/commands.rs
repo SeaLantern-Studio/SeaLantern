@@ -20,12 +20,10 @@ pub async fn create_backup(
     let manager = BackupManager::new()?;
 
     // 在阻塞任务中执行备份
-    let result = tokio::task::spawn_blocking(move || {
+    tokio::task::spawn_blocking(move || {
         manager.create_backup(request, &server_dir, check_server_stopped)
     })
-    .await?;
-
-    result
+    .await?
 }
 
 /// 删除备份
@@ -43,12 +41,10 @@ pub async fn restore_backup(
     let manager = BackupManager::new()?;
 
     // 在阻塞任务中执行恢复
-    let result = tokio::task::spawn_blocking(move || {
+    tokio::task::spawn_blocking(move || {
         manager.restore_backup(&backup_id, &server_dir, check_server_stopped)
     })
-    .await?;
-
-    result
+    .await?
 }
 
 /// 获取备份设置
