@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { Bold, Copy, Eraser, Italic, Sparkles, Strikethrough, Underline } from "lucide-vue-next";
 import { i18n } from "@language";
 import unknownServerIcon from "@assets/motd/unknown_server.jpg";
@@ -237,6 +237,14 @@ async function copyMotd() {
 function handleApply() {
   emit("apply", exportMotd.value);
 }
+
+/// 监听 modelValue 变化，更新编辑器内容`
+watch(
+  () => props.modelValue,
+  (next) => {
+    setEditorHtml(motdToHtml(normalizeMotdText(next || "")));
+  },
+);
 
 onMounted(() => {
   setEditorHtml(motdToHtml(normalizeMotdText(props.modelValue || "")));

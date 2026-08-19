@@ -118,10 +118,19 @@ pub fn write_server_properties(
     for key in &remaining {
         out.push(format!("{key}={}", values[key]));
     }
+    // 读取原文件以检测行尾符（CRLF/LF）和末尾换行状态
+    let existing = fs::read_to_string(&props).unwrap_or_default();
+    let eol = if existing.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let has_trailing_eol = existing.ends_with(eol);
 
-    let mut content = out.join("\n");
-    if !content.is_empty() {
-        content.push('\n');
+    // 用原行尾符拼接内容，并视原文件末尾换行情况决定是否追加
+    let mut content = out.join(eol);
+    if has_trailing_eol && !content.is_empty() {
+        content.push_str(eol);
     }
     std::fs::write(&props, content).map_err(|e| format!("写入 server.properties 失败: {e}"))?;
     Ok(())
