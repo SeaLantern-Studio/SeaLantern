@@ -20,11 +20,12 @@ pub async fn create_backup(
     let manager = BackupManager::new()?;
 
     // 在阻塞任务中执行备份
-    tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         manager.create_backup(request, &server_dir, check_server_stopped)
     })
-    .await
-    .unwrap() // unwrap 是安全的，因为我们的闭包不会 panic
+    .await?;
+
+    result
 }
 
 /// 删除备份
@@ -42,11 +43,12 @@ pub async fn restore_backup(
     let manager = BackupManager::new()?;
 
     // 在阻塞任务中执行恢复
-    tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         manager.restore_backup(&backup_id, &server_dir, check_server_stopped)
     })
-    .await
-    .unwrap()
+    .await?;
+
+    result
 }
 
 /// 获取备份设置

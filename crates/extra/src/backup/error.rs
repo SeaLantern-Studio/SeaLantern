@@ -37,6 +37,9 @@ pub enum BackupError {
 
     #[error("设置验证失败: {0}")]
     Validation(String),
+
+    #[error("后台任务失败: {0}")]
+    TaskFailed(#[from] tokio::task::JoinError),
 }
 
 pub type BackupResult<T> = Result<T, BackupError>;
