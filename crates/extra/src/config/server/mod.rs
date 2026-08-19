@@ -87,10 +87,7 @@ impl ServerPropertiesManager {
 
         // 更新已有的键值对
         for (key, value) in values {
-            let found = lines.iter_mut().find(|line| {
-                let line = line.trim();
-                !line.starts_with('#') && line.contains('=') && line.starts_with(key)
-            });
+            let found = lines.iter_mut().find(|line| line_matches_key(line, key));
 
             if let Some(line) = found {
                 *line = format!("{}={}", key, value);
@@ -155,10 +152,7 @@ impl ServerPropertiesManager {
         };
 
         for (key, value) in values {
-            let found = lines.iter_mut().find(|line| {
-                let line = line.trim();
-                !line.starts_with('#') && line.contains('=') && line.starts_with(key)
-            });
+            let found = lines.iter_mut().find(|line| line_matches_key(line, key));
 
             if let Some(line) = found {
                 *line = format!("{}={}", key, value);
@@ -178,10 +172,7 @@ impl ServerPropertiesManager {
         let mut lines = source.lines().map(|s| s.to_string()).collect::<Vec<_>>();
 
         for (key, value) in values {
-            let found = lines.iter_mut().find(|line| {
-                let line = line.trim();
-                !line.starts_with('#') && line.contains('=') && line.starts_with(key)
-            });
+            let found = lines.iter_mut().find(|line| line_matches_key(line, key));
 
             if let Some(line) = found {
                 *line = format!("{}={}", key, value);
@@ -191,6 +182,18 @@ impl ServerPropertiesManager {
         }
 
         Ok(lines.join("\n"))
+    }
+}
+
+/// 判断一行是否匹配指定的键（精确匹配，忽略前导空白和注释）
+fn line_matches_key(line: &str, key: &str) -> bool {
+    let trimmed = line.trim();
+    if trimmed.starts_with('#') || trimmed.starts_with('!') {
+        return false;
+    }
+    match trimmed.find('=') {
+        Some(pos) => trimmed[..pos].trim() == key,
+        None => false,
     }
 }
 
