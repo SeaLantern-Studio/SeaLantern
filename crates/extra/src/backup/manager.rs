@@ -136,7 +136,7 @@ impl BackupManager {
         fs::create_dir_all(&server_backup_dir)?;
 
         // 生成备份信息
-        let backup_id = Self::generate_backup_id()?;
+        let backup_id = Self::generate_backup_id();
         let created_at = Utc::now();
         let name = request
             .name
