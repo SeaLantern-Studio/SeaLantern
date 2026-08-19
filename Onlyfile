@@ -64,6 +64,12 @@ group front {
     test() & _prepare:
         pnpm test
 
+    [help] 报告前端未使用代码
+    [pass] 前端未使用代码检查通过！
+    [fail] 前端未使用代码检查失败！
+    knip() & _prepare:
+        pnpm knip
+
     [help] 执行前端 CI
     [pass] 前端 CI 成功！
     ci() & (check, test)
