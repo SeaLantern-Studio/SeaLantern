@@ -13,14 +13,8 @@ use sealantern_application::error::InstanceError;
 use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
-use sealantern_core::provisioning::{
-    ImportExistingServerRequest, ImportModpackRequest, SourceType, infer_source_type,
-    plan_import_modpack,
-};
-use sealantern_infra::archive::extract_zip;
-use sealantern_interface::{
-    ImportExistingServerError as AppImportError, InstanceService, InstanceServiceError,
-};
+use sealantern_core::provisioning::{ImportExistingServerRequest, ImportModpackRequest};
+use sealantern_interface::{InstanceService, InstanceServiceError};
 
 /// 获取全局实例管理服务句柄（惰性初始化容器）。
 ///
@@ -86,45 +80,6 @@ pub async fn update_instance_path(id: String, path: String) -> Result<(), Instan
     service.update_path(&id, &path).await
 }
 
-/// 导入已有服务器目录失败时返回给前端的错误。
-///
-/// 同时实现 `Serialize` 与 `std::error::Error`，便于 Tauri 序列化回调用方并携带
-/// 稳定的机器可读错误码（如 `source_unavailable` / `no_launch_candidate`）。
-#[derive(Debug, serde::Serialize)]
-pub struct ImportExistingServerError {
-    /// 稳定错误码（机器可读）。
-    pub code: String,
-    /// 人类可读消息。
-    pub message: String,
-}
-
-impl std::fmt::Display for ImportExistingServerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for ImportExistingServerError {}
-
-impl From<AppImportError> for ImportExistingServerError {
-    fn from(error: AppImportError) -> Self {
-        let code = match error {
-            AppImportError::SourceUnavailable => "source_unavailable",
-            AppImportError::SourceNotDirectory => "source_not_directory",
-            AppImportError::AlreadyImported => "source_already_imported",
-            AppImportError::InspectionPanicked => "import_panic",
-            AppImportError::BuildFailed => "import_invalid",
-            AppImportError::PlanInvalid => "invalid_instance",
-            AppImportError::ListFailed => "list_failed",
-            AppImportError::CreateFailed => "create_failed",
-        };
-        Self {
-            code: code.to_string(),
-            message: error.to_string(),
-        }
-    }
-}
-
 /// 导入已有服务器目录：转发至 service 层编排，仅做错误映射。
 ///
 /// 校验、去重、检查与规格构建均在 `CoreInstanceService::import_existing_server`
@@ -132,42 +87,9 @@ impl From<AppImportError> for ImportExistingServerError {
 #[tauri::command(rename_all = "snake_case")]
 pub async fn import_existing_server(
     request: ImportExistingServerRequest,
-) -> Result<Instance, ImportExistingServerError> {
-    let service = instance_service()
-        .await
-        .map_err(|error| ImportExistingServerError {
-            code: "service_unavailable".to_string(),
-            message: error.to_string(),
-        })?;
-    service
-        .import_existing_server(request)
-        .await
-        .map_err(Into::into)
-}
-
-/// 整合包导入失败时返回给前端的错误。
-#[derive(Debug, serde::Serialize)]
-pub struct ImportModpackError {
-    /// 稳定错误码（机器可读）。
-    pub code: String,
-    /// 人类可读消息。
-    pub message: String,
-}
-
-impl std::fmt::Display for ImportModpackError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for ImportModpackError {}
-
-/// 构造一个带稳定错误码的整合包导入错误。
-fn modpack_error(code: &'static str, message: impl Into<String>) -> ImportModpackError {
-    ImportModpackError {
-        code: code.to_string(),
-        message: message.into(),
-    }
+) -> Result<Instance, InstanceServiceError> {
+    let service = instance_service().await?;
+    service.import_existing_server(request).await
 }
 
 /// 导入整合包或服务器文件夹。

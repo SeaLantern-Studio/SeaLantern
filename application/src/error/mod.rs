@@ -12,8 +12,6 @@ pub mod console;
 pub mod cron;
 /// 下载任务管理领域错误。
 pub mod download;
-/// 导入已有服务器领域错误。
-pub mod import;
 /// 实例管理领域错误。
 pub mod instance;
 /// 插件管理领域错误。
@@ -31,7 +29,6 @@ pub use config::ConfigError;
 pub use console::ConsoleError;
 pub use cron::CronTaskError;
 pub use download::DownloadError;
-pub use import::ImportExistingServerError;
 pub use instance::InstanceError;
 pub use plugin::PluginError;
 pub use server::ServerError;

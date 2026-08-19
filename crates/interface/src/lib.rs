@@ -46,8 +46,6 @@ pub use error::ConsoleServiceError;
 pub use error::CronTaskServiceError;
 /// 下载任务管理错误枚举。
 pub use error::DownloadServiceError;
-/// 导入已有服务器错误枚举。
-pub use error::ImportExistingServerError;
 /// 服务器实例管理错误枚举。
 pub use error::InstanceServiceError;
 /// Java 检测与校验错误枚举。

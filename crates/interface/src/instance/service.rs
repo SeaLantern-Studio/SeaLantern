@@ -1,4 +1,4 @@
-use crate::error::{ImportExistingServerError, InstanceServiceError};
+use crate::error::InstanceServiceError;
 use async_trait::async_trait;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{ImportExistingServerRequest, ImportModpackRequest};
@@ -35,7 +35,7 @@ pub trait InstanceService: Send + Sync {
     async fn import_existing_server(
         &self,
         request: ImportExistingServerRequest,
-    ) -> Result<Instance, ImportExistingServerError>;
+    ) -> Result<Instance, InstanceServiceError>;
 
     /// 导入整合包为受管实例。
     ///
@@ -125,17 +125,6 @@ mod tests {
         ) -> Result<(), InstanceServiceError> {
             self.calls.lock().expect("lock").push("update_path");
             Ok(())
-        }
-
-        async fn import_existing_server(
-            &self,
-            _request: ImportExistingServerRequest,
-        ) -> Result<Instance, ImportExistingServerError> {
-            self.calls
-                .lock()
-                .expect("lock")
-                .push("import_existing_server");
-            Ok(sample_instance())
         }
 
         async fn import_existing_server(

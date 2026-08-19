@@ -12,25 +12,17 @@
 use async_trait::async_trait;
 use std::path::PathBuf;
 
-use sealantern_core::instance::InstanceImportError;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
-    ExistingInstanceError, ImportExistingServerError as CoreImportError,
-    ImportModpackError as CoreModpackError, ImportModpackRequest, SourceType, infer_source_type,
-    plan_import_modpack,
-};
-use sealantern_core::provisioning::{
-    ImportExistingServerRequest, build_import_spec, plan_existing_instance,
+    ImportExistingServerRequest, ImportModpackError as CoreModpackError, ImportModpackRequest,
+    SourceType, build_import_spec, infer_source_type, plan_existing_instance, plan_import_modpack,
     source_directories_equal, validate_source_directory,
 };
 use sealantern_extra::config::InstanceRegistry;
 use sealantern_infra::archive::extract_zip;
 use sealantern_infra::platform::get_app_data_dir;
-use sealantern_interface::{
-    ImportExistingServerError as InterfaceImportError, InstanceService, InstanceServiceError,
-};
+use sealantern_interface::{InstanceService, InstanceServiceError};
 
-use crate::error::ImportExistingServerError;
 use crate::error::InstanceError;
 
 /// 实例列表数据文件名，置于应用数据根目录。
@@ -138,20 +130,20 @@ impl CoreInstanceService {
     async fn import_existing_server_inner(
         &self,
         request: ImportExistingServerRequest,
-    ) -> Result<Instance, ImportExistingServerError> {
+    ) -> Result<Instance, InstanceError> {
         validate_source_directory(&request.source_directory)?;
 
         let instances = self
             .list()
             .await
-            .map_err(ImportExistingServerError::ListFailed)?;
+            .map_err(|e| InstanceError::ImportListFailed { source: e })?;
         if instances.iter().any(|instance| {
             source_directories_equal(
                 instance.directory.as_path(),
                 request.source_directory.as_path(),
             )
         }) {
-            return Err(ImportExistingServerError::AlreadyImported);
+            return Err(InstanceError::SourceAlreadyImported);
         }
 
         let import_request = tokio::task::spawn_blocking({
@@ -159,15 +151,14 @@ impl CoreInstanceService {
             move || build_import_spec(&request)
         })
         .await
-        .map_err(|_| ImportExistingServerError::InspectionPanicked)?
-        .map_err(ImportExistingServerError::from)?;
+        .map_err(|_| InstanceError::InspectionPanicked)?
+        .map_err(InstanceError::from)?;
 
-        let plan = plan_existing_instance(import_request)
-            .map_err(ImportExistingServerError::PlanInvalid)?;
+        let plan = plan_existing_instance(import_request).map_err(InstanceError::from)?;
 
         self.create(plan.instance.spec())
             .await
-            .map_err(ImportExistingServerError::CreateFailed)
+            .map_err(|e| InstanceError::ImportCreateFailed { source: e })
     }
 }
 
@@ -202,12 +193,12 @@ impl InstanceService for CoreInstanceService {
     async fn import_existing_server(
         &self,
         request: ImportExistingServerRequest,
-    ) -> Result<Instance, InterfaceImportError> {
+    ) -> Result<Instance, InstanceServiceError> {
         self.import_existing_server_inner(request)
             .await
-            .map_err(|rich| {
-                tracing::warn!(error = ?rich, "import existing server failed");
-                rich.into()
+            .map_err(|e| {
+                tracing::warn!(error = ?e, "import existing server failed");
+                e.into()
             })
     }
 
@@ -295,7 +286,7 @@ mod tests {
     use sealantern_core::instance::{LocalLaunch, StartupMode};
     use sealantern_core::provisioning::ImportExistingServerRequest;
 
-    use sealantern_interface::ImportExistingServerError as InterfaceImportError;
+    use sealantern_interface::InstanceServiceError;
 
     use super::*;
 
@@ -497,7 +488,7 @@ mod tests {
             .import_existing_server(import_request(missing, None))
             .await;
 
-        assert!(matches!(result, Err(InterfaceImportError::SourceUnavailable)));
+        assert!(matches!(result, Err(InstanceServiceError::SourceUnavailable)));
     }
 
     #[tokio::test]
