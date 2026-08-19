@@ -119,7 +119,7 @@ pub fn write_server_properties(
         out.push(format!("{key}={}", values[key]));
     }
     // 读取原文件以检测行尾符（CRLF/LF）和末尾换行状态
-    let existing = fs::read_to_string(&props).unwrap_or_default();
+    let existing = std::fs::read_to_string(&props).unwrap_or_default();
     let eol = if existing.contains("\r\n") {
         "\r\n"
     } else {
