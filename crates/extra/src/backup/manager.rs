@@ -1,11 +1,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use chrono::{DateTime, Utc};
 use sealantern_infra::archive::{create_zip, extract_zip};
 use sealantern_infra::platform::get_app_data_dir;
 use tracing::{debug, error, info, warn};
+use uuid::Uuid;
 
 use super::error::{BackupError, BackupResult};
 use super::models::*;
@@ -54,11 +54,7 @@ impl BackupManager {
 
     /// 生成备份ID
     fn generate_backup_id() -> String {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
-        format!("backup-{}", timestamp)
+        format!("backup-{}", Uuid::new_v4())
     }
 
     /// 生成备份文件名
