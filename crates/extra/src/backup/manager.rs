@@ -242,7 +242,11 @@ impl BackupManager {
                 fs::create_dir_all(&dest_path)?;
                 self.copy_dir_all(&source_path, &dest_path)?;
             } else {
-                fs::create_dir_all(dest_path.parent().unwrap())?;
+                let parent = dest_path.parent().ok_or_else(|| {
+                    error!("目标路径无父目录: {:?}", dest_path);
+                    BackupError::Validation(format!("目标路径无父目录: {:?}", dest_path))
+                })?;
+                fs::create_dir_all(parent)?;
                 fs::copy(&source_path, &dest_path)?;
             }
         }
@@ -407,7 +411,11 @@ impl BackupManager {
                 fs::create_dir_all(&dest_path)?;
                 self.copy_dir_all(&source_path, &dest_path)?;
             } else {
-                fs::create_dir_all(dest_path.parent().unwrap())?;
+                let parent = dest_path.parent().ok_or_else(|| {
+                    error!("目标路径无父目录: {:?}", dest_path);
+                    BackupError::Validation(format!("目标路径无父目录: {:?}", dest_path))
+                })?;
+                fs::create_dir_all(parent)?;
                 fs::copy(&source_path, &dest_path)?;
             }
         }
