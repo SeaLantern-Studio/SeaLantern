@@ -547,28 +547,18 @@ export function applyDeveloperMode(enabled: boolean): void {
 
 /**
  * 阻止右键菜单
- *
- * TODO: 请在后端重构完成后恢复（临时置空，开发调试用）
- * 拦截逻辑依赖后端 developer_mode 设置，但后端正在重构、
- * 暂时无法提供设置，为避免开发者模式下右键仍被拦截，
- * 暂时屏蔽此逻辑。恢复 `e.preventDefault()` 即可。
  */
-function blockContextMenu(_e: Event): void {
-  // TODO: 请在后端重构完成后恢复
-  // e.preventDefault();
+function blockContextMenu(e: Event): void {
+  e.preventDefault();
 }
 
 /**
  * 阻止开发者工具快捷键
- *
- * TODO: 请在后端重构完成后恢复（临时置空，开发调试用）
- * 原因同上，恢复 `e.preventDefault()` 即可。
  */
-function blockDevTools(_e: KeyboardEvent): void {
-  // TODO: 请在后端重构完成后恢复
-  // if (e.key === "F12") {
-  //   e.preventDefault();
-  // }
+function blockDevTools(e: KeyboardEvent): void {
+  if (e.key === "F12") {
+    e.preventDefault();
+  }
 }
 
 /**
