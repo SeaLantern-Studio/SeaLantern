@@ -19,24 +19,24 @@ build() & _prepare:
 
 [help] 执行全量检查
 [pass] 格式化和检查完成！
-check() & (front.check, back.check):
+check() & (front.check, back.check)
 
 [help] 执行全量测试
 [pass] 测试成功！
-test() & (front.test, back.test):
+test() & (front.test, back.test)
 
 [help] 运行全量 CI
 [desc] 并行执行前后端 CI。
 [pass] 本地 CI 成功！🎉
-ci() & (front.ci, back.ci):
+ci() & (front.ci, back.ci)
 
 [help] 清理全部构建产物
 [pass] 构建产物已全部清除！
-clean() & (front.clean, back.clean):
+clean() & (front.clean, back.clean)
 
 [help] 环境检测
 [pass] 环境检测成功！
-_prepare() & (front._prepare, back._prepare):
+_prepare() & (front._prepare, back._prepare)
 
 # =============== 前端 ===============
 [help] 前端任务
@@ -66,7 +66,7 @@ group front {
 
     [help] 执行前端 CI
     [pass] 前端 CI 成功！
-    ci() & (check, test):
+    ci() & (check, test)
 
     [help] 清理前端构建产物
     [pass] 前端已清除！
@@ -81,7 +81,7 @@ group back {
 
     [help] 准备后端环境
     [pass] 后端环境检查通过！
-    _prepare() ? @has("cargo"):
+    _prepare() ? @has("cargo")
 
     [fail] 你的 cargo 呢？
     _prepare():
@@ -106,7 +106,7 @@ group back {
 
     [help] 执行后端 CI
     [pass] 后端 CI 成功！
-    ci() & check & test:
+    ci() & check & test
 
     [help] 清理后端构建产物
     [pass] 后端已清除！

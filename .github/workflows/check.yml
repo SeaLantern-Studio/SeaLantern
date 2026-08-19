@@ -117,7 +117,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -241,7 +241,7 @@ jobs:
     needs: [changes, backend-lint]
     if: ${{ needs.changes.outputs['backend-tauri'] == 'true' }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 6
+    timeout-minutes: 15
     steps:
       - name: 检出代码
         uses: actions/checkout@v4

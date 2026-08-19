@@ -1,7 +1,7 @@
-use crate::error::{ImportExistingServerError, InstanceServiceError};
+use crate::error::InstanceServiceError;
 use async_trait::async_trait;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
-use sealantern_core::provisioning::ImportExistingServerRequest;
+use sealantern_core::provisioning::{ImportExistingServerRequest, ImportModpackRequest};
 
 /// 管理服务器实例记录的宿主能力端口。
 ///
@@ -35,7 +35,16 @@ pub trait InstanceService: Send + Sync {
     async fn import_existing_server(
         &self,
         request: ImportExistingServerRequest,
-    ) -> Result<Instance, ImportExistingServerError>;
+    ) -> Result<Instance, InstanceServiceError>;
+
+    /// 导入整合包为受管实例。
+    ///
+    /// 支持三种来源：压缩包解压到运行目录、jar 单文件复制到运行目录、文件夹直接引用。
+    /// 文件操作与实例注册均在此方法内完成。
+    async fn import_modpack(
+        &self,
+        request: ImportModpackRequest,
+    ) -> Result<Instance, InstanceServiceError>;
 }
 
 #[cfg(test)]
@@ -121,11 +130,19 @@ mod tests {
         async fn import_existing_server(
             &self,
             _request: ImportExistingServerRequest,
-        ) -> Result<Instance, ImportExistingServerError> {
+        ) -> Result<Instance, InstanceServiceError> {
             self.calls
                 .lock()
                 .expect("lock")
                 .push("import_existing_server");
+            Ok(sample_instance())
+        }
+
+        async fn import_modpack(
+            &self,
+            _request: ImportModpackRequest,
+        ) -> Result<Instance, InstanceServiceError> {
+            self.calls.lock().expect("lock").push("import_modpack");
             Ok(sample_instance())
         }
     }

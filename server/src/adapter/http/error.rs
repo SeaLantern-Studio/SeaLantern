@@ -9,7 +9,6 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
 
-use sealantern_interface::ImportExistingServerError as AppImportError;
 use sealantern_interface::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
     ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
@@ -110,6 +109,46 @@ impl HttpError {
             InstanceServiceError::InvalidState => Self {
                 status: StatusCode::BAD_REQUEST,
                 code: "instance_invalid_state",
+                message: error.to_string(),
+            },
+            InstanceServiceError::SourceUnavailable => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "import_source_unavailable",
+                message: error.to_string(),
+            },
+            InstanceServiceError::SourceAlreadyImported => Self {
+                status: StatusCode::CONFLICT,
+                code: "import_source_already_imported",
+                message: error.to_string(),
+            },
+            InstanceServiceError::NoLaunchCandidate => Self {
+                status: StatusCode::UNPROCESSABLE_ENTITY,
+                code: "import_no_launch_candidate",
+                message: error.to_string(),
+            },
+            InstanceServiceError::SourceNotDirectory => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "source_not_directory",
+                message: error.to_string(),
+            },
+            InstanceServiceError::InspectionPanicked => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "import_panic",
+                message: error.to_string(),
+            },
+            InstanceServiceError::BuildFailed => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "import_invalid",
+                message: error.to_string(),
+            },
+            InstanceServiceError::PlanInvalid => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_instance",
+                message: error.to_string(),
+            },
+            InstanceServiceError::ListFailed | InstanceServiceError::CreateFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "instance_operation_failed",
                 message: error.to_string(),
             },
             InstanceServiceError::OperationFailed => Self {
@@ -361,31 +400,6 @@ impl From<UpdateCheckServiceError> for HttpError {
 impl From<ProvisioningServiceError> for HttpError {
     fn from(error: ProvisioningServiceError) -> Self {
         Self::from_provisioning_error(error)
-    }
-}
-
-impl From<AppImportError> for HttpError {
-    fn from(error: AppImportError) -> Self {
-        match error {
-            // 列表 / 创建失败沿用 InstanceServiceError 的既有稳定码（无载荷，按操作失败归类）。
-            AppImportError::ListFailed | AppImportError::CreateFailed => {
-                InstanceServiceError::OperationFailed.into()
-            }
-            AppImportError::SourceUnavailable => {
-                Self::bad_request("source_unavailable", error.to_string())
-            }
-            AppImportError::SourceNotDirectory => {
-                Self::bad_request("source_not_directory", error.to_string())
-            }
-            AppImportError::AlreadyImported => {
-                Self::bad_request("source_already_imported", error.to_string())
-            }
-            AppImportError::InspectionPanicked => {
-                Self::bad_request("import_panic", error.to_string())
-            }
-            AppImportError::BuildFailed => Self::bad_request("import_invalid", error.to_string()),
-            AppImportError::PlanInvalid => Self::bad_request("invalid_instance", error.to_string()),
-        }
     }
 }
 

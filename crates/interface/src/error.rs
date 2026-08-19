@@ -53,6 +53,24 @@ pub enum InstanceServiceError {
     InvalidInput,
     /// 实例当前状态不允许该操作（如未运行时停止、已运行时重复启动）。
     InvalidState,
+    /// 导入源目录不存在或不可访问。
+    SourceUnavailable,
+    /// 给定导入路径存在但不是目录。
+    SourceNotDirectory,
+    /// 导入源目录已是受管实例（重复导入）。
+    SourceAlreadyImported,
+    /// 导入源目录中未找到可启动的服务端文件。
+    NoLaunchCandidate,
+    /// 阻塞的导入检查 / 构建任务被取消或 panic。
+    InspectionPanicked,
+    /// 检查服务器目录并构建导入规格失败。
+    BuildFailed,
+    /// 导入供给计划校验失败（启动目标 / 实例规格非法）。
+    PlanInvalid,
+    /// 导入前查询实例列表失败。
+    ListFailed,
+    /// 导入实例创建持久化失败。
+    CreateFailed,
     /// 底层 IO / 供给 / 进程操作失败。
     OperationFailed,
     /// 该能力尚未实现（占位）。
@@ -66,6 +84,19 @@ impl std::fmt::Display for InstanceServiceError {
             Self::AlreadyExists => "server instance already exists",
             Self::InvalidInput => "invalid input",
             Self::InvalidState => "server instance is in an invalid state",
+            Self::SourceUnavailable => "import source directory is unavailable",
+            Self::SourceNotDirectory => "the selected path is not a directory",
+            Self::SourceAlreadyImported => {
+                "source directory is already imported as a server instance"
+            }
+            Self::NoLaunchCandidate => {
+                "no launchable server artifact was found in the source directory"
+            }
+            Self::InspectionPanicked => "import spec build task panicked or was cancelled",
+            Self::BuildFailed => "failed to build import spec",
+            Self::PlanInvalid => "imported instance spec is invalid",
+            Self::ListFailed => "failed to list instances",
+            Self::CreateFailed => "failed to create imported instance",
             Self::OperationFailed => "server instance operation failed",
             Self::Unsupported => "operation not supported",
         };
@@ -74,51 +105,6 @@ impl std::fmt::Display for InstanceServiceError {
 }
 
 impl std::error::Error for InstanceServiceError {}
-
-/// 导入已有服务器失败的契约错误类别。
-///
-/// 分类风格与 [`InstanceServiceError`] 一致：不携带主机路径、源目录内容等
-/// 敏感细节，底层失败详情由应用层写入受控日志。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ImportExistingServerError {
-    /// 源目录不存在或不可访问。
-    SourceUnavailable,
-    /// 给定路径存在但不是目录。
-    SourceNotDirectory,
-    /// 该目录已被导入为实例（去重拦截）。
-    AlreadyImported,
-    /// 阻塞的检查 / 构建任务被取消或 panic。
-    InspectionPanicked,
-    /// 检查服务器目录并构建导入规格失败。
-    BuildFailed,
-    /// 供给计划校验失败（启动目标 / 实例规格非法）。
-    PlanInvalid,
-    /// 实例列表查询失败。
-    ListFailed,
-    /// 导入实例创建持久化失败。
-    CreateFailed,
-}
-
-impl std::fmt::Display for ImportExistingServerError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let message = match self {
-            Self::SourceUnavailable => "the selected directory does not exist",
-            Self::SourceNotDirectory => "the selected path is not a directory",
-            Self::AlreadyImported => {
-                "the selected directory is already imported as a server instance"
-            }
-            Self::InspectionPanicked => "import spec build task panicked or was cancelled",
-            Self::BuildFailed => "failed to build import spec",
-            Self::PlanInvalid => "imported instance spec is invalid",
-            Self::ListFailed => "failed to list instances",
-            Self::CreateFailed => "failed to create imported instance",
-        };
-        formatter.write_str(message)
-    }
-}
-
-impl std::error::Error for ImportExistingServerError {}
 
 /// 服务器进程管理失败的契约错误类别。
 ///
