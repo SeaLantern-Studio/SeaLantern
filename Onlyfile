@@ -1,121 +1,137 @@
-// Onlyfile (Version: 0.0.7)
-//
-// 详情请见：https://github.com/KercyDing/only
-// 安装：`cargo install only`，详见 Repo README
-// vscode 插件：kercyding.onlyfile
-//
-// 项目终端执行 `only` 来查看所有命令
+# 执行 `only` 来查看所有命令
+# 详情请见：https://github.com/KercyDing/only
+# 安装：`cargo install only`
+# VSCode 插件：kercyding.onlyfile
 
-# 启动开发模式
+!version 0.4
+
+[help] 启动开发模式
+[pass] 开发模式已启动！
+[fail] 开发模式启动失败！
 dev() & _prepare:
     pnpm tauri dev
 
-# 构建本地应用
+[help] 构建本地应用
+[pass] 构建完成！
+[fail] 构建失败！
 build() & _prepare:
     pnpm tauri build
 
-# 执行全量检查
+[help] 执行全量检查
+[pass] 格式化和检查完成！
 check() & (front.check, back.check):
-    echo "格式化和检查完成！"
 
-# 执行全量测试
+[help] 执行全量测试
+[pass] 测试成功！
 test() & (front.test, back.test):
-    echo "测试成功！"
 
-# 运行全量 CI
+[help] 运行全量 CI
+[desc] 并行执行前后端 CI。
+[pass] 本地 CI 成功！🎉
 ci() & (front.ci, back.ci):
-    echo "本地 CI 成功！"
 
-# 清理全部构建产物
+[help] 清理全部构建产物
+[pass] 构建产物已全部清除！
 clean() & (front.clean, back.clean):
-    echo "构建产物已全部清除！"
 
-# 环境检测
+[help] 环境检测
+[pass] 环境检测成功！
 _prepare() & (front._prepare, back._prepare):
-    echo "环境检测成功！"
 
-// =============== 前端 ===============
-# 前端检查和测试
-[front]
-# 准备前端环境
-_prepare() ? @has("pnpm"):
-    pnpm install
+# =============== 前端 ===============
+[help] 前端任务
+group front {
 
-_prepare():
-    echo "你的 pnpm 呢？"
-    exit 1
+    [help] 准备前端环境
+    _prepare() ? @has("pnpm"):
+        pnpm install
 
-# 格式化并检查前端
-check() & _prepare:
-    pnpm fmt:check
-    pnpm lint
-    pnpm build:check
-    echo "前端检查完成！"
+    [fail] 你的 pnpm 呢？
+    _prepare():
+        exit 1
 
-# 运行前端集成测试
-test() & _prepare:
-    pnpm test
-    echo "前端测试成功！"
+    [help] 格式化并检查前端
+    [pass] 前端检查完成！
+    [fail] 前端检查失败！
+    check() & _prepare:
+        pnpm fmt:check
+        pnpm lint
+        pnpm build:check
 
-# 执行前端 CI
-ci() & (check, test):
-    echo "前端 CI 成功！"
+    [help] 运行前端集成测试
+    [pass] 前端测试成功！
+    [fail] 前端测试失败！
+    test() & _prepare:
+        pnpm test
 
-# 清理前端构建产物
-clean():
-    rm -rf node_modules dist
-    echo "前端已清除！"
+    [help] 执行前端 CI
+    [pass] 前端 CI 成功！
+    ci() & (check, test):
 
-// =============== 后端 ===============
-# 后端检查和测试
-[back]
-# 准备后端环境
-_prepare() ? @has("cargo"):
-    echo "后端环境检查通过！"
+    [help] 清理前端构建产物
+    [pass] 前端已清除！
+    [fail] 前端清理失败！
+    clean():
+        rm -rf node_modules dist
+}
 
-_prepare():
-    echo "你的 cargo 呢？"
-    exit 1
+# =============== 后端 ===============
+[help] 后端任务
+group back {
 
-# 格式化并检查后端
-check() & _prepare:
-    cargo fmt --all -- --check
-    cargo check --workspace --all-targets
-    cargo clippy --workspace --all-targets -- -D warnings
-    echo "后端检查完成！"
+    [help] 准备后端环境
+    [pass] 后端环境检查通过！
+    _prepare() ? @has("cargo"):
 
-# 运行后端测试
-test() ? @has("cargo-nextest") & _prepare:
-    cargo nextest run --no-fail-fast
-    echo "后端测试成功！"
+    [fail] 你的 cargo 呢？
+    _prepare():
+        exit 1
 
-test() & _prepare:
-    cargo test --all-targets --workspace
-    echo "后端测试成功！"
+    [help] 格式化并检查后端
+    [pass] 后端检查完成！
+    [fail] 后端检查失败！
+    check() & _prepare:
+        cargo fmt --all -- --check
+        cargo check --workspace --all-targets
+        cargo clippy --workspace --all-targets -- -D warnings
 
-# 执行后端 CI
-ci() & check & test:
-    echo "后端 CI 成功！"
+    [help] 运行后端测试
+    [pass] 后端测试成功！
+    [fail] 后端测试失败！
+    test() ? @has("cargo-nextest") & _prepare:
+        cargo nextest run --no-fail-fast
 
-# 清理后端构建产物
-clean():
-    rm -rf target
-    echo "后端已清除！"
+    test() & _prepare:
+        cargo test --all-targets --workspace
 
-// =============== 版本相关 ===============
-// `only version <task>` 来触发
-// `publish` 仅 Admin 权限可用!
-# 版本相关命令
-[version]
-# 查看项目版本号
-show():
-    pnpm sv
+    [help] 执行后端 CI
+    [pass] 后端 CI 成功！
+    ci() & check & test:
 
-# 发布新版本
-publish(version):
-    pnpm cv {{ version }}
-    pnpm notice
-    only ci
-    git commit -am "chore: 升级到 {{ version }}"
-    git tag {{ version }}
-    git push --atomic origin HEAD {{ version }}
+    [help] 清理后端构建产物
+    [pass] 后端已清除！
+    [fail] 后端清理失败！
+    clean():
+        cargo clean
+}
+
+# =============== 版本相关 ===============
+[help] 版本相关命令
+group version {
+
+    [help] 查看项目版本号
+    show():
+        pnpm sv
+
+    [help] 发布新版本
+    [desc] 仅 Repo Admin 有权限
+    [pass] 成功发布！
+    [fail] 版本号不对哦~
+    publish(version):
+        pnpm cv {{ version }}
+        pnpm notice
+        only ci
+        git commit -am "chore: 升级到 {{ version }}"
+        git tag {{ version }}
+        git push --atomic origin HEAD {{ version }}
+}

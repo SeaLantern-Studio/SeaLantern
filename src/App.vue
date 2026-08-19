@@ -62,22 +62,7 @@ interface ServerStartFallbackEventPayload {
   reason: string;
 }
 
-// ============================================================
-// TODO: 请在后端重构完成后恢复
-// 临时开关：禁用右键捕获（开发调试用）
-// 原因：右键行为依赖后端 developer_mode 设置，但后端正在重构、
-//       暂时无法提供设置，导致开发者模式下右键仍被错误拦截。
-// 恢复方式：后端重构完成后，将 TEMP_DISABLE_CONTEXT_MENU_CAPTURE
-//          改为 false（或直接删除此开关及相关 return 分支）即可。
-// ============================================================
-const TEMP_DISABLE_CONTEXT_MENU_CAPTURE = true;
-
 async function handleGlobalContextMenu(event: MouseEvent) {
-  // TODO: 请在后端重构完成后恢复（临时禁用右键捕获，见上方开关说明）
-  if (TEMP_DISABLE_CONTEXT_MENU_CAPTURE) {
-    return;
-  }
-
   // 在浏览器环境（Docker 模式）下，不阻止右键菜单，允许开发者工具
   if (isBrowserEnv()) {
     return;
