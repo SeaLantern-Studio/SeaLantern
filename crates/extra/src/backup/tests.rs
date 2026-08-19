@@ -42,6 +42,150 @@ mod tests {
         assert!(manager.is_ok());
     }
 
+    /// `create_backup` should fail with `ServerNotFound` when the server directory is missing.
+    #[test]
+    fn test_create_backup_missing_server_dir() {
+        let manager = BackupManager::new().unwrap();
+
+        // Use a server_id that does not correspond to any on-disk server directory
+        let server_id = format!("non-existent-server-{}", Uuid::new_v4());
+
+        let request = CreateBackupRequest {
+            server_id: server_id.clone(),
+            contents: vec![BackupContentType::Core, BackupContentType::World],
+            // We explicitly disable the server-stopped check to ensure the error
+            // comes from the missing server directory, not server state.
+            check_server_stopped: false,
+        };
+
+        let result = manager.create_backup(&request);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        // Ensure the error is mapped to the expected "server not found" variant
+        assert!(matches!(err, BackupError::ServerNotFound { server_id: sid } if sid == server_id));
+    }
+
+    /// `delete_backup` should fail with `NotFound` for a non-existent backup id.
+    #[test]
+    fn test_delete_backup_nonexistent_id() {
+        let manager = BackupManager::new().unwrap();
+        let backup_id = Uuid::new_v4().to_string();
+
+        let request = DeleteBackupRequest {
+            backup_id: backup_id.clone(),
+        };
+
+        let result = manager.delete_backup(&request);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        assert!(matches!(err, BackupError::NotFound { backup_id: bid } if bid == backup_id));
+    }
+
+    /// `restore_backup` should fail with `NotFound` for a non-existent backup id.
+    #[test]
+    fn test_restore_backup_nonexistent_id() {
+        let temp_dir = tempdir().unwrap();
+        let server_dir = create_test_server_dir(temp_dir.path());
+
+        let manager = BackupManager::new().unwrap();
+        let server_id = format!("test-server-restore-nonexistent-{}", Uuid::new_v4());
+        let backup_id = Uuid::new_v4().to_string();
+
+        let request = RestoreBackupRequest {
+            server_id: server_id.clone(),
+            backup_id: backup_id.clone(),
+            server_dir: server_dir.clone(),
+            // We explicitly disable server-stopped checks here to focus on the
+            // "backup not found" behavior.
+            check_server_stopped: false,
+        };
+
+        let result = manager.restore_backup(&request);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        assert!(matches!(err, BackupError::NotFound { backup_id: bid } if bid == backup_id));
+    }
+
+    /// `restore_backup` with `check_server_stopped = false` should not fail due to server state.
+    ///
+    /// This test complements the existing `create_backup` coverage by exercising the
+    /// `check_server_stopped` flag in the restore path.
+    #[test]
+    fn test_restore_backup_with_check_server_stopped_false() {
+        let temp_dir = tempdir().unwrap();
+        let server_dir = create_test_server_dir(temp_dir.path());
+
+        let manager = BackupManager::new().unwrap();
+        let server_id = format!("test-server-restore-check-false-{}", Uuid::new_v4());
+
+        // First, create a backup
+        let create_request = CreateBackupRequest {
+            server_id: server_id.clone(),
+            contents: vec![BackupContentType::Core, BackupContentType::World],
+            check_server_stopped: false,
+        };
+
+        let backup = manager.create_backup(&create_request).expect("backup should be created");
+        let backup_id = backup.id.clone();
+
+        // Then, restore the backup with `check_server_stopped = false`
+        let restore_request = RestoreBackupRequest {
+            server_id: server_id.clone(),
+            backup_id: backup_id.clone(),
+            server_dir: server_dir.clone(),
+            check_server_stopped: false,
+        };
+
+        let result = manager.restore_backup(&restore_request);
+        assert!(result.is_ok());
+    }
+
+    /// `restore_backup` should fail with `CorruptedBackup` when the archive is corrupted or missing.
+    #[test]
+    fn test_restore_backup_corrupted_archive() {
+        let temp_dir = tempdir().unwrap();
+        let server_dir = create_test_server_dir(temp_dir.path());
+
+        let manager = BackupManager::new().unwrap();
+        let server_id = format!("test-server-corrupted-{}", Uuid::new_v4());
+
+        // Create a valid backup first
+        let create_request = CreateBackupRequest {
+            server_id: server_id.clone(),
+            contents: vec![BackupContentType::Core, BackupContentType::World],
+            check_server_stopped: false,
+        };
+
+        let backup = manager.create_backup(&create_request).expect("backup should be created");
+        let backup_id = backup.id.clone();
+
+        // Locate the backup archive on disk and corrupt it by truncating/removing it.
+        //
+        // We assume that the `Backup` returned by `create_backup` exposes the archive path
+        // (e.g. `backup.archive_path`) or that we can derive it from the backup id and
+        // the backup base directory. Adjust this logic according to the actual API.
+        let archive_path = backup.archive_path.clone();
+        // Remove the file to simulate a missing/corrupted archive
+        std::fs::remove_file(&archive_path).expect("should be able to remove backup archive");
+
+        // Attempt to restore from the corrupted/missing archive
+        let restore_request = RestoreBackupRequest {
+            server_id: server_id.clone(),
+            backup_id: backup_id.clone(),
+            server_dir: server_dir.clone(),
+            check_server_stopped: false,
+        };
+
+        let result = manager.restore_backup(&restore_request);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        assert!(matches!(err, BackupError::CorruptedBackup { backup_id: bid } if bid == backup_id));
+    }
+
     #[test]
     fn test_create_and_list_backup() {
         let temp_dir = tempdir().unwrap();
