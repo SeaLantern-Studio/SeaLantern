@@ -302,13 +302,12 @@ async function handleKick(name: string) {
 
 <template>
   <div class="player-view animate-stagger-in">
-    <PlayerLookup :server-path="serverPath" />
-
     <div v-if="!selectedServerId" class="player-empty-state">
       <p class="text-body">{{ i18n.t("players.no_server") }}</p>
     </div>
 
     <template v-else>
+      <PlayerLookup :server-path="serverPath" />
       <div class="player-content-layout">
         <PlayerTabs
           v-model="activeTab"
