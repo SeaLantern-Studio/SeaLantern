@@ -7,6 +7,8 @@ import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
 import PlayerAvatar from "@components/views/player/PlayerAvatar.vue";
 
+const props = defineProps<{ serverPath: string }>();
+
 const username = ref("");
 const result = ref<PlayerProfile | null>(null);
 const copied = ref(false);
@@ -25,15 +27,15 @@ async function handleLookup() {
 
   await withLoading(async () => {
     try {
-      result.value = await playerApi.lookupPlayer(name);
+      result.value = await playerApi.lookupPlayer(props.serverPath, name);
     } catch (e: unknown) {
       const err = String(e);
       if (err === "not_found") {
         toast.error(i18n.t("players.lookup_not_found"));
-      } else if (err === "rate_limited") {
-        toast.error(i18n.t("players.lookup_rate_limited"));
       } else if (err === "invalid_input") {
         toast.error(i18n.t("players.lookup_invalid_input"));
+      } else if (err === "server_not_selected") {
+        toast.error(i18n.t("players.lookup_service_unavailable"));
       } else {
         toast.error(i18n.t("players.lookup_service_unavailable"));
       }

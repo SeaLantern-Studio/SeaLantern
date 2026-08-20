@@ -1,11 +1,12 @@
 use async_trait::async_trait;
-use sealantern_infra::net::{NetError, global_client};
 use sealantern_interface::{PlayerLookupError, PlayerLookupService, PlayerProfile};
-/// Mojang API 返回的 JSON 格式。
+use std::path::Path;
+
+/// usercache.json 里每条记录的格式。
 #[derive(serde::Deserialize)]
-struct MojangProfileResponse {
+struct UserCacheEntry {
     name: String,
-    id: String,
+    uuid: String,
 }
 
 pub struct CorePlayerService;
@@ -16,39 +17,51 @@ impl CorePlayerService {
     }
 }
 
+impl Default for CorePlayerService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl PlayerLookupService for CorePlayerService {
-    async fn lookup(&self, username: String) -> Result<PlayerProfile, PlayerLookupError> {
-        // 1. 校验 username（空或含非法字符 → InvalidInput）
+    async fn lookup(&self, server_path: String, username: String) -> Result<PlayerProfile, PlayerLookupError> {
+        // 1. 校验用户名：不能空，只能字母数字下划线
         let username = username.trim();
         if username.is_empty() || !username.chars().all(|c| c.is_alphanumeric() || c == '_') {
             return Err(PlayerLookupError::InvalidInput);
         }
-        // 2. 拿客户端：let client = global_client().map_err(|_| PlayerLookupError::ServiceUnavailable)?;
-        let client = global_client().map_err(|_| PlayerLookupError::ServiceUnavailable)?;
-        // 3. 发 GET 请求到 Mojang API
-        let url = format!("https://api.mojang.com/users/profiles/minecraft/{}", username);
-        // 4. 根据状态码判断：
-        let result = client
-            .get(&url)
-            .map_err(|_| PlayerLookupError::ServiceUnavailable)?
-            .send()
-            .await;
-        match result {
-            Ok(resp) => {
-                // 200 和 204 都走这里，要区分
-                if resp.status().as_u16() == 204 {
-                    return Err(PlayerLookupError::NotFound);
-                }
-                // 200 -> 解析json
-                let mojang: MojangProfileResponse = resp
-                    .json()
-                    .await
-                    .map_err(|_| PlayerLookupError::ServiceUnavailable)?;
-                Ok(PlayerProfile { name: mojang.name, uuid: mojang.id })
+
+        // 2. 校验服务器路径
+        if server_path.trim().is_empty() {
+            return Err(PlayerLookupError::ServerNotSelected);
+        }
+
+        // 3. 读 usercache.json
+        let cache_path = Path::new(&server_path).join("usercache.json");
+        let content = tokio::fs::read_to_string(&cache_path)
+            .await
+            .map_err(|_| PlayerLookupError::ServiceUnavailable)?;
+
+        // 4. 解析 JSON 数组，按用户名查找（不区分大小写）
+        let entries: Vec<UserCacheEntry> = serde_json::from_str(&content)
+            .map_err(|_| PlayerLookupError::ServiceUnavailable)?;
+
+        let found = entries
+            .iter()
+            .find(|e| e.name.eq_ignore_ascii_case(username));
+
+        match found {
+            Some(entry) => {
+                // usercache.json 的 UUID 是 8-4-4-4-12 带连字符格式
+                // 去掉连字符，保持无连字符形式
+                let uuid = entry.uuid.replace('-', "");
+                Ok(PlayerProfile {
+                    name: entry.name.clone(),
+                    uuid,
+                })
             }
-            Err(NetError::Response(429, _)) => Err(PlayerLookupError::RateLimited),
-            Err(_) => Err(PlayerLookupError::ServiceUnavailable),
+            None => Err(PlayerLookupError::NotFound),
         }
     }
 }

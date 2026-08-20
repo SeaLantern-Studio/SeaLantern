@@ -12,9 +12,9 @@ pub enum PlayerLookupError {
     NotFound,
     //玩家名空或非法字符
     InvalidInput,
-    //被限流
-    RateLimited,
-    //Mojang 挂了/网络错误
+    //服务器目录未选择
+    ServerNotSelected,
+    //读取本地文件失败
     ServiceUnavailable,
 }
 impl std::fmt::Display for PlayerLookupError {
@@ -22,7 +22,7 @@ impl std::fmt::Display for PlayerLookupError {
         let message = match self {
             Self::NotFound => "player not found",
             Self::InvalidInput => "invalid player input",
-            Self::RateLimited => "rate limited",
+            Self::ServerNotSelected => "server not selected",
             Self::ServiceUnavailable => "service unavailable",
         };
         formatter.write_str(message)

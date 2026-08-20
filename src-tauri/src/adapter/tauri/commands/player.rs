@@ -16,9 +16,9 @@ async fn player_service() -> Result<Arc<CorePlayerService>, PlayerLookupError> {
     Ok(services.player().clone())
 }
 
-/// 按用户名查询玩家档案（UUID 等）。
+/// 按用户名查询玩家档案（UUID），从服务器本地 usercache.json 读取。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn lookup_player(username: String) -> Result<PlayerProfile, PlayerLookupError> {
+pub async fn lookup_player(server_path: String, username: String) -> Result<PlayerProfile, PlayerLookupError> {
     let service = player_service().await?;
-    service.lookup(username).await
+    service.lookup(server_path, username).await
 }

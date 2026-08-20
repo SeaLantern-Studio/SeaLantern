@@ -11,6 +11,9 @@ pub struct PlayerProfile {
     /// 玩家名。
     pub name: String,
     /// 玩家 UUID（无连字符形式）。
+    ///
+    /// 来源为服务器本地的 usercache.json，原始格式为 8-4-4-4-12 带连字符，
+    /// 此处统一去掉连字符返回 32 位 hex。
     pub uuid: String,
 }
 
@@ -20,7 +23,8 @@ pub trait PlayerLookupService: Send + Sync {
     /// 按用户名查询玩家档案。
     ///
     /// 输入为空或含非法字符返回 [`PlayerLookupError::InvalidInput`]；
-    /// 目标不存在返回 [`PlayerLookupError::NotFound`]；上游限流或不可用时
-    /// 返回 [`PlayerLookupError::RateLimited`] / [`PlayerLookupError::ServiceUnavailable`]。
-    async fn lookup(&self, username: String) -> Result<PlayerProfile, PlayerLookupError>;
+    /// 服务器路径为空返回 [`PlayerLookupError::ServerNotSelected`]；
+    /// 目标不存在返回 [`PlayerLookupError::NotFound`]；
+    /// 本地文件读取/解析失败返回 [`PlayerLookupError::ServiceUnavailable`]。
+    async fn lookup(&self, server_path: String, username: String) -> Result<PlayerProfile, PlayerLookupError>;
 }
