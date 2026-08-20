@@ -609,7 +609,17 @@
     "add_whitelist": "Add to Whitelist",
     "server_not_run": "Player management requires server to be running",
     "reason": "Reason",
-    "status_online": "Online"
+    "status_online": "Online",
+    "lookup_title": "Tra cứu UUID",
+    "lookup_placeholder": "Nhập tên người chơi",
+    "lookup_button": "Tra cứu",
+    "lookup_name_label": "Tên",
+    "lookup_copy_uuid": "Sao chép UUID",
+    "lookup_not_found": "Không tìm thấy người chơi",
+    "lookup_rate_limited": "Quá nhiều yêu cầu, vui lòng thử lại sau",
+    "lookup_service_unavailable": "Dịch vụ tra cứu không khả dụng",
+    "lookup_invalid_input": "Tên người chơi không hợp lệ",
+    "lookup_copy_failed": "Sao chép thất bại"
   },
   "settings": {
     "title": "Cài đặt ứng dụng",

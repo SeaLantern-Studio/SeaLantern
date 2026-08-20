@@ -22,7 +22,7 @@ export { configApi } from "@api/config";
 export type { ConfigEntry, ServerProperties } from "@api/config";
 
 export { playerApi } from "@api/player";
-export type { PlayerEntry, BanEntry, OpEntry } from "@api/player";
+export type { PlayerEntry, BanEntry, OpEntry, PlayerProfile } from "@api/player";
 
 export { settingsApi, getSystemFonts } from "@api/settings";
 export type { AppSettings } from "@api/settings";

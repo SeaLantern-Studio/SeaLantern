@@ -4,6 +4,33 @@
 //! 由 `application` 层的主错误（`application::error`）转换而来。
 //! 底层失败详情由应用层记录到受控日志，不跨传输面泄漏。
 
+/// 玩家查询失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerLookupError {
+    // 玩家不存在
+    NotFound,
+    //玩家名空或非法字符
+    InvalidInput,
+    //被限流
+    RateLimited,
+    //Mojang 挂了/网络错误
+    ServiceUnavailable,
+}
+impl std::fmt::Display for PlayerLookupError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::NotFound => "player not found",
+            Self::InvalidInput => "invalid player input",
+            Self::RateLimited => "rate limited",
+            Self::ServiceUnavailable => "service unavailable",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for PlayerLookupError {}
+
 /// 服务器定时任务操作失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]

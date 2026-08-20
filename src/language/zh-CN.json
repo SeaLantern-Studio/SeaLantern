@@ -665,7 +665,17 @@
       "empty": "无",
       "level": "等级",
       "reason": "原因",
-      "status_online": "在线"
+      "status_online": "在线",
+      "lookup_title": "查询 UUID",
+      "lookup_placeholder": "输入玩家游戏ID",
+      "lookup_button": "查询",
+      "lookup_name_label": "玩家名",
+      "lookup_copy_uuid": "复制 UUID",
+      "lookup_not_found": "未找到该玩家",
+      "lookup_rate_limited": "查询过于频繁，请稍后再试",
+      "lookup_service_unavailable": "查询服务暂不可用",
+      "lookup_invalid_input": "玩家名无效",
+      "lookup_copy_failed": "复制失败"
     },
     "settings": {
       "title": "应用设置",

@@ -609,7 +609,17 @@
     "add_whitelist": "Add to Whitelist",
     "server_not_run": "Player management requires server to be running",
     "reason": "Reason",
-    "status_online": "Online"
+    "status_online": "Online",
+    "lookup_title": "UUID suchen",
+    "lookup_placeholder": "Spielernamen eingeben",
+    "lookup_button": "Suchen",
+    "lookup_name_label": "Name",
+    "lookup_copy_uuid": "UUID kopieren",
+    "lookup_not_found": "Spieler nicht gefunden",
+    "lookup_rate_limited": "Zu viele Anfragen, bitte später erneut versuchen",
+    "lookup_service_unavailable": "Suchdienst nicht verfügbar",
+    "lookup_invalid_input": "Ungültiger Spielername",
+    "lookup_copy_failed": "Kopieren fehlgeschlagen"
   },
   "settings": {
     "title": "Einstellungen",

@@ -609,7 +609,17 @@
     "add_whitelist": "Add to Whitelist",
     "server_not_run": "Player management requires server to be running",
     "reason": "Reason",
-    "status_online": "Online"
+    "status_online": "Online",
+    "lookup_title": "UUID 조회",
+    "lookup_placeholder": "플레이어 이름 입력",
+    "lookup_button": "조회",
+    "lookup_name_label": "플레이어명",
+    "lookup_copy_uuid": "UUID 복사",
+    "lookup_not_found": "플레이어를 찾을 수 없습니다",
+    "lookup_rate_limited": "요청이 너무 많습니다. 나중에 다시 시도해 주세요",
+    "lookup_service_unavailable": "조회 서비스를 사용할 수 없습니다",
+    "lookup_invalid_input": "잘못된 플레이어 이름",
+    "lookup_copy_failed": "복사 실패"
   },
   "settings": {
     "title": "애플리케이션 설정",

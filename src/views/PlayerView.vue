@@ -13,6 +13,7 @@ import PlayerTabs from "@components/views/player/PlayerTabs.vue";
 import PlayerActionBar from "@components/views/player/PlayerActionBar.vue";
 import PlayerList from "@components/views/player/PlayerList.vue";
 import PlayerModals from "@components/views/player/PlayerModals.vue";
+import PlayerLookup from "@components/views/player/PlayerLookup.vue";
 
 type PlayerTab = "online" | "whitelist" | "banned" | "ops";
 
@@ -301,6 +302,8 @@ async function handleKick(name: string) {
 
 <template>
   <div class="player-view animate-stagger-in">
+    <PlayerLookup />
+
     <div v-if="!selectedServerId" class="player-empty-state">
       <p class="text-body">{{ i18n.t("players.no_server") }}</p>
     </div>

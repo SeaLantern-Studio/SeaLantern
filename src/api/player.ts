@@ -31,6 +31,14 @@ export interface OpEntry {
 }
 
 /**
+ * Mojang 玩家档案（按用户名查询 UUID 的结果）
+ */
+export interface PlayerProfile {
+  name: string;
+  uuid: string;
+}
+
+/**
  * 玩家管理 API
  */
 export const playerApi = {
@@ -109,5 +117,12 @@ export const playerApi = {
    */
   async exportLogs(logs: string[], savePath: string): Promise<void> {
     return tauriInvoke("export_logs", { logs, savePath });
+  },
+
+  /**
+   * 按用户名查询 Mojang 玩家档案（UUID）
+   */
+  async lookupPlayer(username: string): Promise<PlayerProfile> {
+    return tauriInvoke("lookup_player", { username });
   },
 };
