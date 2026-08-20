@@ -20,7 +20,8 @@
     "commitlint": "commitlint",
     "prepare": "husky",
     "sv": "node ./scripts/version.mjs show",
-    "cv": "node ./scripts/version.mjs change"
+    "cv": "node ./scripts/version.mjs change",
+    "knip": "knip"
   },
   "dependencies": {
     "@codemirror/language": "^6.12.3",
@@ -57,6 +58,7 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "glob": "^13.0.0",
     "husky": "^9.1.7",
+    "knip": "^6.32.2",
     "license-checker-rseidelsohn": "^4.0.0",
     "lint-staged": "^16.4.0",
     "oxfmt": "^0.35.0",

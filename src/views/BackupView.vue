@@ -124,7 +124,7 @@ async function createBackup() {
 async function restoreBackup(backup: BackupItem) {
   restoringId.value = backup.id;
   try {
-    await backupApi.restore(backup.id);
+    await backupApi.restore(backup.id, backup.serverId);
     toast.success(i18n.t("backup.restore_success"));
   } catch {
     toast.error(i18n.t("backup.restore_failed"));
