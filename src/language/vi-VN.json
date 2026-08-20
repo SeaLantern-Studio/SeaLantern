@@ -617,6 +617,7 @@
     "lookup_copy_uuid": "Sao chép UUID",
     "lookup_not_found": "Không tìm thấy người chơi",
     "lookup_rate_limited": "Quá nhiều yêu cầu, vui lòng thử lại sau",
+    "lookup_server_not_selected": "Vui lòng chọn máy chủ trước",
     "lookup_service_unavailable": "Dịch vụ tra cứu không khả dụng",
     "lookup_invalid_input": "Tên người chơi không hợp lệ",
     "lookup_copy_failed": "Sao chép thất bại"

@@ -617,6 +617,7 @@
     "lookup_copy_uuid": "複製 UUID",
     "lookup_not_found": "未找到該玩家",
     "lookup_rate_limited": "查詢過於頻繁，請稍後再試",
+    "lookup_server_not_selected": "請先選擇伺服器",
     "lookup_service_unavailable": "查詢服務暫不可用",
     "lookup_invalid_input": "玩家名無效",
     "lookup_copy_failed": "複製失敗"

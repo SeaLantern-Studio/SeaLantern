@@ -22,6 +22,11 @@ async function handleLookup() {
     return;
   }
 
+  if (!props.serverPath) {
+    toast.error(i18n.t("players.lookup_server_not_selected"));
+    return;
+  }
+
   result.value = null;
   copied.value = false;
 
@@ -35,7 +40,7 @@ async function handleLookup() {
       } else if (err === "invalid_input") {
         toast.error(i18n.t("players.lookup_invalid_input"));
       } else if (err === "server_not_selected") {
-        toast.error(i18n.t("players.lookup_service_unavailable"));
+        toast.error(i18n.t("players.lookup_server_not_selected"));
       } else {
         toast.error(i18n.t("players.lookup_service_unavailable"));
       }

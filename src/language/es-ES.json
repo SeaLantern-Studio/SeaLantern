@@ -617,6 +617,7 @@
     "lookup_copy_uuid": "Copiar UUID",
     "lookup_not_found": "Jugador no encontrado",
     "lookup_rate_limited": "Demasiadas solicitudes, inténtelo más tarde",
+    "lookup_server_not_selected": "Selecciona un servidor primero",
     "lookup_service_unavailable": "Servicio de búsqueda no disponible",
     "lookup_invalid_input": "Nombre de jugador no válido",
     "lookup_copy_failed": "Error al copiar"

@@ -617,6 +617,7 @@
     "lookup_copy_uuid": "Копировать UUID",
     "lookup_not_found": "Игрок не найден",
     "lookup_rate_limited": "Слишком много запросов, попробуйте позже",
+    "lookup_server_not_selected": "Сначала выберите сервер",
     "lookup_service_unavailable": "Сервис поиска недоступен",
     "lookup_invalid_input": "Неверное имя игрока",
     "lookup_copy_failed": "Ошибка копирования"

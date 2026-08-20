@@ -673,6 +673,7 @@
       "lookup_copy_uuid": "复制 UUID",
       "lookup_not_found": "未找到该玩家",
       "lookup_rate_limited": "查询过于频繁，请稍后再试",
+      "lookup_server_not_selected": "请先选择服务器",
       "lookup_service_unavailable": "查询服务暂不可用",
       "lookup_invalid_input": "玩家名无效",
       "lookup_copy_failed": "复制失败"

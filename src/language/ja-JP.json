@@ -617,6 +617,7 @@
     "lookup_copy_uuid": "UUID をコピー",
     "lookup_not_found": "プレイヤーが見つかりません",
     "lookup_rate_limited": "リクエストが多すぎます、後でもう一度お試しください",
+    "lookup_server_not_selected": "最初にサーバーを選択してください",
     "lookup_service_unavailable": "検索サービスは利用できません",
     "lookup_invalid_input": "無効なプレイヤー名",
     "lookup_copy_failed": "コピーに失敗しました"
