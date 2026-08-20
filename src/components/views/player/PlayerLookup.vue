@@ -27,12 +27,12 @@ async function handleLookup() {
     try {
       result.value = await playerApi.lookupPlayer(name);
     } catch (e: unknown) {
-      const errStr = String(e);
-      if (errStr.includes("NotFound")) {
+      const err = String(e);
+      if (err === "not_found") {
         toast.error(i18n.t("players.lookup_not_found"));
-      } else if (errStr.includes("RateLimited")) {
+      } else if (err === "rate_limited") {
         toast.error(i18n.t("players.lookup_rate_limited"));
-      } else if (errStr.includes("InvalidInput")) {
+      } else if (err === "invalid_input") {
         toast.error(i18n.t("players.lookup_invalid_input"));
       } else {
         toast.error(i18n.t("players.lookup_service_unavailable"));
@@ -63,8 +63,7 @@ async function copyUuid() {
     <div class="lookup-form">
       <cmz-input
         :placeholder="i18n.t('players.lookup_placeholder')"
-        :modelValue="username"
-        @update:modelValue="username = $event"
+        v-model="username"
         @keyup.enter="handleLookup"
       />
       <cmz-button :loading="loading" @click="handleLookup">
