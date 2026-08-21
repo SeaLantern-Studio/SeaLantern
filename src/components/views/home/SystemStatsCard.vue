@@ -41,7 +41,7 @@ function toggleViewMode() {
 </script>
 
 <template>
-  <cmz-card variant="glass" class="stats-card">
+  <cmz-card class="stats-card">
     <template #header>
       <div class="stats-card-header">
         <span class="card-title">{{ i18n.t("home.system_resources") }}</span>

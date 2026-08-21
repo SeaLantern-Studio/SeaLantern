@@ -212,8 +212,8 @@
 .console-terminal-shell .cmz-console .cmz-console__input-line:focus-within {
   border-radius: var(--cmz-radius-md, var(--sl-radius-md));
   border-color: var(--sl-glass-border, var(--sl-border-light));
-  /* 玻璃底色从 surface 调配,不用 --sl-glass-bg,避免暗色主题的纯黑底透出来 */
-  background: color-mix(in srgb, var(--sl-surface) 82%, transparent);
+  /* 玻璃底色从 surface 调配,压低不透明度让原生材质模糊透出来 */
+  background: color-mix(in srgb, var(--sl-surface) 60%, transparent);
   backdrop-filter: blur(var(--sl-blur-xxl, 40px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-xxl, 40px)) saturate(var(--sl-saturate-normal, 180%));
   box-shadow: none !important;

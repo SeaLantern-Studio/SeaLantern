@@ -136,13 +136,12 @@ onDeactivated(() => {
     <main :key="currentSection" class="help-content animate-stagger-in">
       <!-- 项目简介：顶部 + 特性卡片网格 + 底部 -->
       <template v-if="pageType === 'intro'">
-        <cmz-markdown :content="introTop" variant="glass" />
+        <cmz-markdown :content="introTop" variant="card" />
         <h2 class="section-heading">{{ i18n.t("help.features_heading") }}</h2>
         <div class="feature-grid">
           <cmz-card
             v-for="feature in introFeatures"
             :key="feature.title"
-            variant="glass"
             padding="lg"
             class="feature-card"
           >
@@ -151,7 +150,7 @@ onDeactivated(() => {
             <p class="feature-note">{{ feature.note }}</p>
           </cmz-card>
         </div>
-        <cmz-markdown :content="introFooter" variant="glass" />
+        <cmz-markdown :content="introFooter" variant="card" />
       </template>
 
       <!-- 下载安装：平台卡片 -->
@@ -165,7 +164,6 @@ onDeactivated(() => {
             <cmz-card
               v-for="item in platform.items"
               :key="item.format"
-              variant="glass"
               padding="none"
               class="download-card"
             >
@@ -181,7 +179,7 @@ onDeactivated(() => {
           </div>
           <p v-if="platform.notes" class="platform-notes">{{ platform.notes }}</p>
         </div>
-        <cmz-markdown :content="helpDocs['download']" variant="glass" />
+        <cmz-markdown :content="helpDocs['download']" variant="card" />
       </template>
 
       <!-- 核心获取：服务端类型对比卡片 -->
@@ -192,7 +190,6 @@ onDeactivated(() => {
           <cmz-card
             v-for="server in serverTypes"
             :key="server.name"
-            variant="glass"
             padding="lg"
             class="server-card"
           >
@@ -238,7 +235,7 @@ onDeactivated(() => {
             </a>
           </cmz-card>
         </div>
-        <cmz-markdown :content="helpDocs['server-jar']" variant="glass" />
+        <cmz-markdown :content="helpDocs['server-jar']" variant="card" />
       </template>
 
       <!-- 快速开始：步骤编号卡片 -->
@@ -248,7 +245,6 @@ onDeactivated(() => {
           <cmz-card
             v-for="step in gettingStartedSteps"
             :key="step.number"
-            variant="glass"
             padding="lg"
             class="step-card"
           >
@@ -260,7 +256,7 @@ onDeactivated(() => {
             </div>
           </cmz-card>
         </div>
-        <cmz-markdown :content="helpDocs['getting-started']" variant="glass" />
+        <cmz-markdown :content="helpDocs['getting-started']" variant="card" />
       </template>
 
       <!-- 功能总览：特性卡片网格 -->
@@ -271,7 +267,6 @@ onDeactivated(() => {
           <cmz-card
             v-for="feature in featureItems"
             :key="feature.title"
-            variant="glass"
             padding="lg"
             class="feature-card"
           >
@@ -285,20 +280,14 @@ onDeactivated(() => {
       <template v-else-if="pageType === 'tutorial'">
         <template v-for="(seg, idx) in tutorialSegments" :key="idx">
           <!-- MD 段落 -->
-          <cmz-markdown v-if="seg.type === 'md'" :content="seg.content" variant="glass" />
+          <cmz-markdown v-if="seg.type === 'md'" :content="seg.content" variant="card" />
           <!-- 配置项卡片 -->
           <template v-else-if="seg.type === 'config-cards'">
             <h2 class="section-heading" style="margin-top: var(--sl-space-lg)">
               {{ i18n.t("help.common_configs") }}
             </h2>
             <div class="config-grid">
-              <cmz-card
-                v-for="item in configItems"
-                :key="item.key"
-                variant="glass"
-                padding="md"
-                class="mini-card"
-              >
+              <cmz-card v-for="item in configItems" :key="item.key" padding="md" class="mini-card">
                 <code class="mini-card-key">{{ item.key }}</code>
                 <p class="mini-card-desc">{{ item.desc }}</p>
                 <span class="mini-card-default"
@@ -317,7 +306,6 @@ onDeactivated(() => {
               <cmz-card
                 v-for="plugin in pluginRecommendations"
                 :key="plugin.name"
-                variant="glass"
                 padding="md"
                 class="plugin-card"
               >
@@ -340,7 +328,6 @@ onDeactivated(() => {
               <cmz-card
                 v-for="item in memorySuggestions"
                 :key="item.players"
-                variant="glass"
                 padding="md"
                 class="memory-card"
               >
@@ -376,7 +363,7 @@ onDeactivated(() => {
       </template>
 
       <!-- 其他页面 -->
-      <cmz-markdown v-else :content="contentMd" variant="glass" />
+      <cmz-markdown v-else :content="contentMd" variant="card" />
     </main>
   </div>
 </template>
@@ -481,7 +468,7 @@ onDeactivated(() => {
   margin-bottom: var(--sl-space-lg);
 }
 
-/* 毛玻璃外观由 cmz-card variant="glass" 提供,这里只管布局 */
+/* 卡片底色走组件库默认 surface,透明感由原生窗口材质提供 */
 .feature-card {
   transition:
     border-color 0.2s,
@@ -490,9 +477,7 @@ onDeactivated(() => {
 
 .feature-card:hover {
   border-color: var(--sl-primary);
-  box-shadow:
-    0 0 0 1px var(--sl-primary),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px var(--sl-primary);
 }
 
 .feature-title {
@@ -544,9 +529,7 @@ onDeactivated(() => {
 
 .download-card:hover {
   border-color: var(--sl-primary);
-  box-shadow:
-    0 0 0 1px var(--sl-primary),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px var(--sl-primary);
 }
 
 .download-card-body {
@@ -612,9 +595,7 @@ onDeactivated(() => {
 
 .server-card:hover {
   border-color: var(--sl-primary);
-  box-shadow:
-    0 0 0 1px var(--sl-primary),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px var(--sl-primary);
 }
 
 .server-card-header {
@@ -739,9 +720,7 @@ onDeactivated(() => {
 
 .step-card:hover {
   border-color: var(--sl-primary);
-  box-shadow:
-    0 0 0 1px var(--sl-primary),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px var(--sl-primary);
 }
 
 .step-number {
@@ -833,9 +812,7 @@ onDeactivated(() => {
 
 .mini-card:hover {
   border-color: var(--sl-primary);
-  box-shadow:
-    0 0 0 1px var(--sl-primary),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px var(--sl-primary);
 }
 
 .mini-card-key {
@@ -892,9 +869,7 @@ onDeactivated(() => {
 
 .plugin-card:hover {
   border-color: var(--sl-primary);
-  box-shadow:
-    0 0 0 1px var(--sl-primary),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px var(--sl-primary);
 }
 
 .plugin-card-header {
@@ -952,9 +927,7 @@ onDeactivated(() => {
 
 .memory-card:hover {
   border-color: var(--sl-primary);
-  box-shadow:
-    0 0 0 1px var(--sl-primary),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px var(--sl-primary);
 }
 
 .memory-players {
