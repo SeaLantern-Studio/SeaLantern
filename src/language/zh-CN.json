@@ -676,7 +676,9 @@
       "lookup_server_not_selected": "请先选择服务器",
       "lookup_service_unavailable": "查询服务暂不可用",
       "lookup_invalid_input": "玩家名无效",
-      "lookup_copy_failed": "复制失败"
+      "lookup_copy_failed": "复制失败",
+      "search_placeholder": "搜索玩家...",
+      "uuid_copied": "UUID 已复制"
     },
     "settings": {
       "title": "应用设置",

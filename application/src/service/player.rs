@@ -25,7 +25,11 @@ impl Default for CorePlayerService {
 
 #[async_trait]
 impl PlayerLookupService for CorePlayerService {
-    async fn lookup(&self, server_path: String, username: String) -> Result<PlayerProfile, PlayerLookupError> {
+    async fn lookup(
+        &self,
+        server_path: String,
+        username: String,
+    ) -> Result<PlayerProfile, PlayerLookupError> {
         // 1. 校验用户名：不能空，只能字母数字下划线
         let username = username.trim();
         if username.is_empty() || !username.chars().all(|c| c.is_alphanumeric() || c == '_') {
@@ -44,8 +48,8 @@ impl PlayerLookupService for CorePlayerService {
             .map_err(|_| PlayerLookupError::ServiceUnavailable)?;
 
         // 4. 解析 JSON 数组，按用户名查找（不区分大小写）
-        let entries: Vec<UserCacheEntry> = serde_json::from_str(&content)
-            .map_err(|_| PlayerLookupError::ServiceUnavailable)?;
+        let entries: Vec<UserCacheEntry> =
+            serde_json::from_str(&content).map_err(|_| PlayerLookupError::ServiceUnavailable)?;
 
         let found = entries
             .iter()
@@ -56,10 +60,7 @@ impl PlayerLookupService for CorePlayerService {
                 // usercache.json 的 UUID 是 8-4-4-4-12 带连字符格式
                 // 去掉连字符，保持无连字符形式
                 let uuid = entry.uuid.replace('-', "");
-                Ok(PlayerProfile {
-                    name: entry.name.clone(),
-                    uuid,
-                })
+                Ok(PlayerProfile { name: entry.name.clone(), uuid })
             }
             None => Err(PlayerLookupError::NotFound),
         }

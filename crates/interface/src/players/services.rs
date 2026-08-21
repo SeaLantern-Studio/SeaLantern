@@ -1,3 +1,11 @@
+/*
+ * @Author: hjcba 1174368998@qq.com
+ * @Date: 2026-08-20 18:54:01
+ * @LastEditors: hjcba 1174368998@qq.com
+ * @LastEditTime: 2026-08-21 10:03:37
+ * @FilePath: \SeaLantern\crates\interface\src\players\services.rs
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 //! 玩家查询服务契约。
 
 use async_trait::async_trait;
@@ -26,5 +34,9 @@ pub trait PlayerLookupService: Send + Sync {
     /// 服务器路径为空返回 [`PlayerLookupError::ServerNotSelected`]；
     /// 目标不存在返回 [`PlayerLookupError::NotFound`]；
     /// 本地文件读取/解析失败返回 [`PlayerLookupError::ServiceUnavailable`]。
-    async fn lookup(&self, server_path: String, username: String) -> Result<PlayerProfile, PlayerLookupError>;
+    async fn lookup(
+        &self,
+        server_path: String,
+        username: String,
+    ) -> Result<PlayerProfile, PlayerLookupError>;
 }

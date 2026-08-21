@@ -620,7 +620,9 @@
     "lookup_server_not_selected": "最初にサーバーを選択してください",
     "lookup_service_unavailable": "検索サービスは利用できません",
     "lookup_invalid_input": "無効なプレイヤー名",
-    "lookup_copy_failed": "コピーに失敗しました"
+    "lookup_copy_failed": "コピーに失敗しました",
+    "search_placeholder": "プレイヤーを検索...",
+    "uuid_copied": "UUIDをコピーしました"
   },
   "settings": {
     "title": "アプリケーション設定",

@@ -620,7 +620,9 @@
     "lookup_server_not_selected": "Selecciona un servidor primero",
     "lookup_service_unavailable": "Servicio de búsqueda no disponible",
     "lookup_invalid_input": "Nombre de jugador no válido",
-    "lookup_copy_failed": "Error al copiar"
+    "lookup_copy_failed": "Error al copiar",
+    "search_placeholder": "Buscar jugador...",
+    "uuid_copied": "UUID copiado"
   },
   "settings": {
     "title": "Ajustes",

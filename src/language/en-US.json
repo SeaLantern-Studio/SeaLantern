@@ -676,7 +676,9 @@
       "lookup_server_not_selected": "Please select a server first",
       "lookup_service_unavailable": "Lookup service unavailable",
       "lookup_invalid_input": "Invalid username",
-      "lookup_copy_failed": "Copy failed"
+      "lookup_copy_failed": "Copy failed",
+      "search_placeholder": "Search player...",
+      "uuid_copied": "UUID copied"
     },
     "settings": {
       "title": "Settings",

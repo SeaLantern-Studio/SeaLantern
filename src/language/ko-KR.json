@@ -620,7 +620,9 @@
     "lookup_server_not_selected": "먼저 서버를 선택해 주세요",
     "lookup_service_unavailable": "조회 서비스를 사용할 수 없습니다",
     "lookup_invalid_input": "잘못된 플레이어 이름",
-    "lookup_copy_failed": "복사 실패"
+    "lookup_copy_failed": "복사 실패",
+    "search_placeholder": "플레이어 검색...",
+    "uuid_copied": "UUID가 복사되었습니다"
   },
   "settings": {
     "title": "애플리케이션 설정",

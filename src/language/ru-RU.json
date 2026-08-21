@@ -620,7 +620,9 @@
     "lookup_server_not_selected": "Сначала выберите сервер",
     "lookup_service_unavailable": "Сервис поиска недоступен",
     "lookup_invalid_input": "Неверное имя игрока",
-    "lookup_copy_failed": "Ошибка копирования"
+    "lookup_copy_failed": "Ошибка копирования",
+    "search_placeholder": "Поиск игрока...",
+    "uuid_copied": "UUID скопирован"
   },
   "settings": {
     "title": "Настройки",

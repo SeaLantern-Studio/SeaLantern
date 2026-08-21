@@ -620,7 +620,9 @@
     "lookup_server_not_selected": "請先選擇伺服器",
     "lookup_service_unavailable": "查詢服務暫不可用",
     "lookup_invalid_input": "玩家名無效",
-    "lookup_copy_failed": "複製失敗"
+    "lookup_copy_failed": "複製失敗",
+    "search_placeholder": "搜尋玩家...",
+    "uuid_copied": "UUID 已複製"
   },
   "settings": {
     "title": "應用程式設定",

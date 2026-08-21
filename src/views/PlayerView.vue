@@ -13,7 +13,6 @@ import PlayerTabs from "@components/views/player/PlayerTabs.vue";
 import PlayerActionBar from "@components/views/player/PlayerActionBar.vue";
 import PlayerList from "@components/views/player/PlayerList.vue";
 import PlayerModals from "@components/views/player/PlayerModals.vue";
-import PlayerLookup from "@components/views/player/PlayerLookup.vue";
 
 type PlayerTab = "online" | "whitelist" | "banned" | "ops";
 
@@ -307,7 +306,6 @@ async function handleKick(name: string) {
     </div>
 
     <template v-else>
-      <PlayerLookup :server-path="serverPath" />
       <div class="player-content-layout">
         <PlayerTabs
           v-model="activeTab"
@@ -329,6 +327,7 @@ async function handleKick(name: string) {
           <PlayerList
             :loading="loading"
             :tab="activeTab"
+            :server-path="serverPath"
             :onlinePlayers="onlinePlayers"
             :whitelist="whitelist"
             :bannedPlayers="bannedPlayers"

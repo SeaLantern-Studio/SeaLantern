@@ -620,7 +620,9 @@
     "lookup_server_not_selected": "Vui lòng chọn máy chủ trước",
     "lookup_service_unavailable": "Dịch vụ tra cứu không khả dụng",
     "lookup_invalid_input": "Tên người chơi không hợp lệ",
-    "lookup_copy_failed": "Sao chép thất bại"
+    "lookup_copy_failed": "Sao chép thất bại",
+    "search_placeholder": "Tìm người chơi...",
+    "uuid_copied": "Đã sao chép UUID"
   },
   "settings": {
     "title": "Cài đặt ứng dụng",

@@ -620,7 +620,9 @@
     "lookup_server_not_selected": "Bitte zuerst einen Server auswählen",
     "lookup_service_unavailable": "Suchdienst nicht verfügbar",
     "lookup_invalid_input": "Ungültiger Spielername",
-    "lookup_copy_failed": "Kopieren fehlgeschlagen"
+    "lookup_copy_failed": "Kopieren fehlgeschlagen",
+    "search_placeholder": "Spieler suchen...",
+    "uuid_copied": "UUID kopiert"
   },
   "settings": {
     "title": "Einstellungen",
