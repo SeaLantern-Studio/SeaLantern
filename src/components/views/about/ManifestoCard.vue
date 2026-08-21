@@ -3,7 +3,7 @@ import { i18n } from "@language";
 </script>
 
 <template>
-  <cmz-card>
+  <cmz-card variant="glass">
     <div class="manifesto">
       <h3 class="manifesto-title">{{ i18n.t("about.manifesto_title") }}</h3>
       <p class="manifesto-text">

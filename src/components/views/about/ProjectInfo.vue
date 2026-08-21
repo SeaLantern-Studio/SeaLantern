@@ -57,7 +57,7 @@ async function handleManualDownload() {
 </script>
 
 <template>
-  <cmz-card :title="i18n.t('about.project_info')">
+  <cmz-card variant="glass" :title="i18n.t('about.project_info')">
     <div class="info-list">
       <div class="info-item">
         <span class="info-label">{{ i18n.t("about.version") }}</span>

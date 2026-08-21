@@ -178,7 +178,7 @@ watch(
     </div>
 
     <div v-else class="plugin-content">
-      <cmz-card class="info-card">
+      <cmz-card variant="glass" class="info-card">
         <div class="plugin-info">
           <div class="plugin-icon" v-if="pluginStore.icons[plugin.manifest.id]">
             <img :src="pluginStore.icons[plugin.manifest.id]" :alt="plugin.manifest.name" />
@@ -201,7 +201,7 @@ watch(
         </div>
       </cmz-card>
 
-      <cmz-card v-if="isThemeProvider && pluginPresets" class="presets-card">
+      <cmz-card v-if="isThemeProvider && pluginPresets" variant="glass" class="presets-card">
         <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
         <div class="presets-grid">
           <cmz-button
@@ -217,7 +217,7 @@ watch(
       </cmz-card>
 
       <template v-if="plugin.manifest.settings?.length">
-        <cmz-card class="settings-card">
+        <cmz-card variant="glass" class="settings-card">
           <h3 class="section-title">{{ i18n.t("plugins.plugin_settings") }}</h3>
           <div class="settings-form">
             <div v-for="field in plugin.manifest.settings" :key="field.key" class="form-field">
@@ -250,6 +250,7 @@ watch(
         <cmz-card
           v-for="depPlugin in dependentPlugins"
           :key="depPlugin.manifest.id"
+          variant="glass"
           class="settings-card dependent-settings"
         >
           <h3 class="section-title">

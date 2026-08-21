@@ -360,7 +360,7 @@ onDeactivated(() => {
 
 <template>
   <div class="tunnel-view animate-stagger-in">
-    <cmz-card :title="i18n.t('tunnel.status_title')" padding="md">
+    <cmz-card variant="glass" :title="i18n.t('tunnel.status_title')" padding="md">
       <template #actions>
         <button
           class="ticket-icon-btn"
@@ -435,7 +435,7 @@ onDeactivated(() => {
     </cmz-card>
 
     <div class="tunnel-form-cards">
-      <cmz-card :title="i18n.t('tunnel.host_title')" padding="md">
+      <cmz-card variant="glass" :title="i18n.t('tunnel.host_title')" padding="md">
         <div class="form-grid">
           <cmz-input
             v-model="hostPort"
@@ -492,7 +492,7 @@ onDeactivated(() => {
         </div>
       </cmz-card>
 
-      <cmz-card :title="i18n.t('tunnel.join_title')" variant="solid" padding="md">
+      <cmz-card :title="i18n.t('tunnel.join_title')" variant="glass" padding="md">
         <div class="form-grid">
           <cmz-input
             :model-value="joinTicket"

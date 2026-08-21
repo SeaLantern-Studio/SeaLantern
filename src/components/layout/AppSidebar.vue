@@ -106,14 +106,6 @@ const staticNavItems: NavItem[] = [
     group: "main",
   },
   {
-    name: "tunnel",
-    path: "/tunnel",
-    icon: "link2",
-    labelKey: "common.tunnel",
-    label: i18n.t("common.tunnel"),
-    group: "main",
-  },
-  {
     name: "console",
     path: "/console",
     icon: "terminal",
@@ -151,6 +143,14 @@ const staticNavItems: NavItem[] = [
     icon: "blocks",
     labelKey: "common.plugins",
     label: i18n.t("common.plugins"),
+    group: "system",
+  },
+  {
+    name: "tunnel",
+    path: "/tunnel",
+    icon: "link2",
+    labelKey: "common.tunnel",
+    label: i18n.t("common.tunnel"),
     group: "system",
   },
   {
@@ -206,15 +206,15 @@ function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem
 }
 
 const navItems = computed<NavItem[]>(() => {
-  // 顺序：main(4项) → server组 → 插件注册项 → system组(插件管理、设置)
+  // 顺序：main(3项) → server组 → 插件注册项 → system组(插件管理、联机、设置、帮助)
   const result: NavItem[] = [];
 
-  // 1. main 组：首页、创建服务器、下载、联机
+  // 1. main 组：首页、创建服务器、下载
   for (const item of staticNavItems) {
     if (item.group === "main") result.push(item);
   }
 
-  // 2. server 组：控制台、配置、玩家管理
+  // 2. server 组：控制台、配置、玩家管理、备份
   for (const item of staticNavItems) {
     if (item.group === "server") result.push(item);
   }
@@ -240,7 +240,7 @@ const navItems = computed<NavItem[]>(() => {
   const pluginRegisteredItems = [...unpositioned, ...defaultItems, ...remainingPluginItems];
   result.push(...pluginRegisteredItems);
 
-  // 4. system 组：插件管理、设置
+  // 4. system 组：插件管理、联机、设置、帮助
   for (const item of staticNavItems) {
     if (item.group === "system") result.push(item);
   }

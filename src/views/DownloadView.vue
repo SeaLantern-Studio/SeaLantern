@@ -372,7 +372,7 @@ onMounted(() => {
 <template>
   <div class="download-view animate-stagger-in">
     <div class="download-cards">
-      <cmz-card :title="i18n.t('downloadServerView.title')">
+      <cmz-card variant="glass" :title="i18n.t('downloadServerView.title')">
         <DownloadServerForm
           :serverTypeOptions="serverTypeOptions"
           :versionOptions="versionOptions"
@@ -415,7 +415,7 @@ onMounted(() => {
         </div>
       </cmz-card>
 
-      <cmz-card :title="i18n.t('download-file.title')">
+      <cmz-card variant="glass" :title="i18n.t('download-file.title')">
         <DownloadForm
           :url="url"
           :savePath="savePath"

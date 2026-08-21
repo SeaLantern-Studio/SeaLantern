@@ -13,6 +13,7 @@ const emit = defineEmits<{
 
 <template>
   <cmz-card
+    variant="glass"
     :title="i18n.t('settings.developer_mode')"
     :subtitle="i18n.t('settings.developer_mode_desc')"
   >

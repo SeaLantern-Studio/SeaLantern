@@ -51,7 +51,11 @@ const autoLightweightDelayOptions = computed(() =>
 </script>
 
 <template>
-  <cmz-card :title="i18n.t('settings.general')" :subtitle="i18n.t('settings.general_desc')">
+  <cmz-card
+    variant="glass"
+    :title="i18n.t('settings.general')"
+    :subtitle="i18n.t('settings.general_desc')"
+  >
     <div class="sl-settings-group">
       <div class="settings-entry">
         <div class="settings-entry-info">

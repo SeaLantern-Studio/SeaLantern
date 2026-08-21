@@ -899,6 +899,7 @@ function goToMarket() {
             batchMode && selectedPlugins.has(plugin.manifest.id),
             getDependencyInfo(plugin.manifest.id),
           ]"
+          variant="glass"
           class="plugin-card"
           :class="{ 'plugin-card--selected': batchMode && selectedPlugins.has(plugin.manifest.id) }"
         >

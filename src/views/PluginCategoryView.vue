@@ -196,7 +196,7 @@ watch(
         </div>
       </header>
 
-      <cmz-card v-if="isThemeProvider && pluginPresets" class="settings-card">
+      <cmz-card v-if="isThemeProvider && pluginPresets" variant="glass" class="settings-card">
         <h3 class="section-title">{{ i18n.t("plugins.preset_theme") }}</h3>
         <div class="presets-grid">
           <button
@@ -221,7 +221,11 @@ watch(
         </div>
       </cmz-card>
 
-      <cmz-card v-if="plugin.manifest.settings?.length" class="settings-card main-settings">
+      <cmz-card
+        v-if="plugin.manifest.settings?.length"
+        variant="glass"
+        class="settings-card main-settings"
+      >
         <h3 class="section-title">{{ plugin.manifest.name }} {{ i18n.t("plugins.settings") }}</h3>
         <div class="settings-form">
           <cmz-form-field
@@ -288,6 +292,7 @@ watch(
         <cmz-card
           v-for="depPlugin in dependentPlugins"
           :key="depPlugin.manifest.id"
+          variant="glass"
           class="settings-card dependent-settings"
         >
           <div class="dependent-header">
