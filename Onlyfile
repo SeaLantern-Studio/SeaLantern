@@ -1,5 +1,6 @@
 # 执行 `only` 来查看所有命令
 # 详情请见：https://github.com/KercyDing/only
+#
 # 安装：`cargo install only`
 # VSCode 插件：kercyding.onlyfile
 
@@ -134,10 +135,10 @@ group version {
     [pass] 成功发布！
     [fail] 版本号不对哦~
     publish(version):
-        pnpm cv {{ version }}
+        pnpm cv {{version}}
         pnpm notice
         only ci
-        git commit -am "chore: 升级到 {{ version }}"
-        git tag {{ version }}
-        git push --atomic origin HEAD {{ version }}
+        git commit -am "chore: 升级到 {{version}}"
+        git tag {{version}}
+        git push --atomic origin HEAD {{version}}
 }
