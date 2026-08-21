@@ -3,14 +3,14 @@ import { computed, ref } from "vue";
 import { i18n } from "@language";
 import { searchResources, type ResourceSearchResult } from "@api/resource";
 import { useToast } from "cmzya-modern-ui";
-import { useLoading } from "@composables/useAsync";
+import { useAsync } from "@composables/useAsync";
 
 const toast = useToast();
 const keyword = ref("");
 const results = ref<ResourceSearchResult[]>([]);
 const activeResult = ref<ResourceSearchResult | null>(null);
 
-const { loading, execute: executeSearch } = useLoading(async () => {
+const { loading, execute: executeSearch } = useAsync(async () => {
   if (!keyword.value.trim()) {
     results.value = [];
     return [];
