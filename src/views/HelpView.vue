@@ -321,7 +321,7 @@ onDeactivated(() => {
               :id="item.question"
               :title="item.question"
             >
-              <cmz-markdown :content="item.answer" variant="glass" />
+              <cmz-markdown :content="item.answer" />
             </Cmz_AccordionPanel>
           </Cmz_Accordion>
         </div>
@@ -743,10 +743,6 @@ onDeactivated(() => {
 
 .faq-accordion {
   margin-bottom: var(--sl-space-md);
-}
-
-.faq-accordion :deep(.cmz-accordion-panel__content-inner) {
-  padding: var(--sl-space-md);
 }
 
 .step-body {
