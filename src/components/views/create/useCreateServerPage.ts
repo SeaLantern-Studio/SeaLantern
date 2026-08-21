@@ -684,13 +684,13 @@ export function useCreateServerPage() {
             const checkInterval = setInterval(() => {
               if (dlTask.isFinished) {
                 clearInterval(checkInterval);
-                if (dlTask.status === "Completed") {
+                if (dlTask.status.kind === "simple" && dlTask.status.message === "Completed") {
                   resolve();
                 } else {
                   reject(
                     new Error(
-                      typeof dlTask.status === "object" && "Error" in dlTask.status
-                        ? dlTask.status.Error
+                      typeof dlTask.status === "object" && dlTask.status.kind === "error"
+                        ? dlTask.status.message
                         : i18n.t("downloadServerView.status.failed"),
                     ),
                   );

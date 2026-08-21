@@ -17,6 +17,19 @@ const CURSEFORGE_SEARCH_URL = "https://api.curseforge.com/v1/mods/search";
 const CURSEFORGE_API_KEY = import.meta.env.VITE_CURSEFORGE_API_KEY || "";
 const CURSEFORGE_GAME_ID = 432; // Minecraft
 
+function formatSearchError(reason: unknown): string {
+  if (reason instanceof Error) {
+    return reason.message;
+  }
+  if (typeof reason === "object" && reason !== null && "message" in reason) {
+    const message = (reason as { message?: unknown }).message;
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+  return String(reason);
+}
+
 function normalizeModrinthHit(hit: any): ResourceSearchResult {
   return {
     id: hit.project_id || hit.id || "",
@@ -120,7 +133,7 @@ export async function searchResources(query: string, limit = 20): Promise<Resour
   if (results.length === 0) {
     if (settled[0].status === "rejected" && settled[1].status === "rejected") {
       throw new Error(
-        `Both sources failed: Modrinth (${settled[0].reason}), CurseForge (${settled[1].reason})`,
+        `Both sources failed: Modrinth (${formatSearchError(settled[0].reason)}), CurseForge (${formatSearchError(settled[1].reason)})`,
       );
     }
   }

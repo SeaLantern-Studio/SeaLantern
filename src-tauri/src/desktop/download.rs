@@ -17,22 +17,22 @@ pub struct DownloadTaskInfo {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(untagged)]
+#[serde(tag = "kind", rename_all = "camelCase")]
 pub enum TaskStatus {
-    Simple(String),
-    Error { #[serde(rename = "Error")] error: String },
+    Simple { message: String },
+    Error { message: String },
 }
 
 impl DownloadTaskInfo {
     fn from_snapshot(id: &str, snapshot: sealantern_infra::download::DownloadSnapshot) -> Self {
         let status = if let Some(error) = snapshot.error {
-            TaskStatus::Error { error }
+            TaskStatus::Error { message: error }
         } else if snapshot.is_finished {
-            TaskStatus::Simple("Completed".to_string())
+            TaskStatus::Simple { message: "Completed".to_string() }
         } else if snapshot.downloaded > 0 {
-            TaskStatus::Simple("Downloading".to_string())
+            TaskStatus::Simple { message: "Downloading".to_string() }
         } else {
-            TaskStatus::Simple("Pending".to_string())
+            TaskStatus::Simple { message: "Pending".to_string() }
         };
 
         Self {

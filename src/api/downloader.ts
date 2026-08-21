@@ -2,7 +2,9 @@ import { reactive, onUnmounted, computed } from "vue";
 import { tauriInvoke } from "./tauri";
 import { i18n } from "@language";
 
-export type TaskStatus = "Pending" | "Downloading" | "Completed" | { Error: string };
+export type TaskStatus =
+  | { kind: "simple"; message: "Pending" | "Downloading" | "Completed" }
+  | { kind: "error"; message: string };
 
 export interface DownloadTaskInfo {
   id: string;
@@ -75,18 +77,20 @@ export const downloadApi = {
       totalSize: 0,
       downloaded: 0,
       progress: 0,
-      status: "Pending",
+      status: { kind: "simple", message: "Pending" },
       isFinished: false,
     });
 
     const errorMessage = computed(() => {
-      if (typeof taskInfo.status === "object" && "Error" in taskInfo.status) {
-        return taskInfo.status.Error;
+      if (typeof taskInfo.status === "object" && taskInfo.status.kind === "error") {
+        return taskInfo.status.message;
       }
       return null;
     });
 
-    const isSuccess = computed(() => taskInfo.status === "Completed");
+    const isSuccess = computed(
+      () => taskInfo.status.kind === "simple" && taskInfo.status.message === "Completed",
+    );
 
     let timer: number | null = null;
     let activeSession = 0;
@@ -97,7 +101,7 @@ export const downloadApi = {
       const session = ++activeSession;
       taskInfo.isFinished = false;
       taskInfo.progress = 0;
-      taskInfo.status = "Pending";
+      taskInfo.status = { kind: "simple", message: "Pending" };
 
       try {
         const id = await this.downloadFile(options);
@@ -136,7 +140,10 @@ export const downloadApi = {
             }
           } catch (err) {
             if (session === activeSession && taskInfo.id === id && !taskInfo.isFinished) {
-              taskInfo.status = { Error: i18n.t("downloader.connection_lost") };
+              taskInfo.status = {
+                kind: "error",
+                message: i18n.t("downloader.connection_lost"),
+              };
             }
             clearInterval(intervalId);
             if (timer === intervalId) timer = null;
@@ -146,7 +153,7 @@ export const downloadApi = {
         }, 800);
         timer = intervalId;
       } catch (err: any) {
-        taskInfo.status = { Error: err.toString() };
+        taskInfo.status = { kind: "error", message: err.toString() };
         taskInfo.isFinished = true;
       }
     };
@@ -165,7 +172,7 @@ export const downloadApi = {
       taskInfo.totalSize = 0;
       taskInfo.downloaded = 0;
       taskInfo.progress = 0;
-      taskInfo.status = "Pending";
+      taskInfo.status = { kind: "simple", message: "Pending" };
       taskInfo.isFinished = false;
     };
 
