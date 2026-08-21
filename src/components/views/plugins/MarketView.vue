@@ -379,7 +379,6 @@ onMounted(() => {
           installedIds.has(plugin.id),
           enabledIds.has(plugin.id),
         ]"
-        variant="glass"
         class="market-card"
         hoverable
         @click="showDetail(plugin)"

@@ -30,7 +30,7 @@ function handleNumberInput(e: Event, type: "maxMemory" | "minMemory" | "port") {
 </script>
 
 <template>
-  <cmz-card variant="glass" :title="i18n.t('create.title')">
+  <cmz-card :title="i18n.t('create.title')">
     <div class="form-grid">
       <div class="server-name-row">
         <cmz-input

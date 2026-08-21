@@ -133,7 +133,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <cmz-card variant="glass" class="create-stepper-card" :title="i18n.t('create.title')">
+    <cmz-card class="create-stepper-card" :title="i18n.t('create.title')">
       <StepperRoot
         orientation="vertical"
         :model-value="activeStep"

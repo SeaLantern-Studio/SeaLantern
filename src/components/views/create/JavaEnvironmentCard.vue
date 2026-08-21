@@ -65,11 +65,7 @@ async function pickJavaFile() {
 </script>
 
 <template>
-  <cmz-card
-    variant="glass"
-    :title="i18n.t('create.java_env')"
-    :subtitle="i18n.t('create.java_scan')"
-  >
+  <cmz-card :title="i18n.t('create.java_env')" :subtitle="i18n.t('create.java_scan')">
     <div v-if="loading" class="java-loading">
       <cmz-spinner size="sm" />
       <span>{{ i18n.t("create.scanning") }}</span>

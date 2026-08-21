@@ -118,11 +118,7 @@ function handleMinimalModeChange(value: boolean) {
 </script>
 
 <template>
-  <cmz-card
-    variant="glass"
-    :title="i18n.t('settings.appearance')"
-    :subtitle="i18n.t('settings.appearance_desc')"
-  >
+  <cmz-card :title="i18n.t('settings.appearance')" :subtitle="i18n.t('settings.appearance_desc')">
     <div class="sl-settings-group">
       <div class="settings-group-title">{{ i18n.t("settings.group_theme") }}</div>
 

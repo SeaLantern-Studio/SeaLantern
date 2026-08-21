@@ -20,11 +20,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <cmz-card
-    variant="glass"
-    :title="i18n.t('settings.console')"
-    :subtitle="i18n.t('settings.console_desc')"
-  >
+  <cmz-card :title="i18n.t('settings.console')" :subtitle="i18n.t('settings.console_desc')">
     <div class="sl-settings-group">
       <div class="settings-entry">
         <div class="settings-entry-info">

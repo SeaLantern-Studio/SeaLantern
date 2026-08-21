@@ -4,7 +4,7 @@ import { i18n } from "@language";
 </script>
 
 <template>
-  <cmz-card variant="glass" :title="i18n.t('about.contribute_ways')">
+  <cmz-card :title="i18n.t('about.contribute_ways')">
     <div class="contribute-ways">
       <div class="way-item">
         <div class="way-icon">

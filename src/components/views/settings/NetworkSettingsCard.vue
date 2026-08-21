@@ -77,11 +77,7 @@ async function applyProxy() {
 </script>
 
 <template>
-  <cmz-card
-    variant="glass"
-    :title="i18n.t('settings.network')"
-    :subtitle="i18n.t('settings.network_desc')"
-  >
+  <cmz-card :title="i18n.t('settings.network')" :subtitle="i18n.t('settings.network_desc')">
     <div class="sl-settings-group">
       <div class="settings-entry">
         <div class="settings-entry-info">
