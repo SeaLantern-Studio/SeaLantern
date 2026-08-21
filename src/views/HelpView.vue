@@ -139,11 +139,17 @@ onDeactivated(() => {
         <cmz-markdown :content="introTop" variant="glass" />
         <h2 class="section-heading">{{ i18n.t("help.features_heading") }}</h2>
         <div class="feature-grid">
-          <div v-for="feature in introFeatures" :key="feature.title" class="feature-card">
+          <cmz-card
+            v-for="feature in introFeatures"
+            :key="feature.title"
+            variant="glass"
+            padding="lg"
+            class="feature-card"
+          >
             <h3 class="feature-title">{{ feature.title }}</h3>
             <p class="feature-desc">{{ feature.desc }}</p>
             <p class="feature-note">{{ feature.note }}</p>
-          </div>
+          </cmz-card>
         </div>
         <cmz-markdown :content="introFooter" variant="glass" />
       </template>
@@ -156,7 +162,13 @@ onDeactivated(() => {
           <h2 class="section-heading">{{ platform.name }}</h2>
           <p class="platform-subtitle">{{ platform.subtitle }}</p>
           <div class="download-grid">
-            <div v-for="item in platform.items" :key="item.format" class="download-card">
+            <cmz-card
+              v-for="item in platform.items"
+              :key="item.format"
+              variant="glass"
+              padding="none"
+              class="download-card"
+            >
               <div class="download-card-body">
                 <h3 class="download-format">{{ item.format }}</h3>
                 <p class="download-desc">{{ item.desc }}</p>
@@ -165,7 +177,7 @@ onDeactivated(() => {
                 <Download :size="16" />
                 <span>{{ i18n.t("help.download_btn") }}</span>
               </a>
-            </div>
+            </cmz-card>
           </div>
           <p v-if="platform.notes" class="platform-notes">{{ platform.notes }}</p>
         </div>
@@ -177,7 +189,13 @@ onDeactivated(() => {
         <h1 class="page-title">{{ i18n.t("help.sections.server_jar") }}</h1>
         <p class="page-subtitle">{{ i18n.t("help.server_jar_subtitle") }}</p>
         <div class="server-grid">
-          <div v-for="server in serverTypes" :key="server.name" class="server-card">
+          <cmz-card
+            v-for="server in serverTypes"
+            :key="server.name"
+            variant="glass"
+            padding="lg"
+            class="server-card"
+          >
             <div class="server-card-header">
               <h2 class="server-name">{{ server.name }}</h2>
               <div class="server-tags">
@@ -218,7 +236,7 @@ onDeactivated(() => {
               <span>{{ i18n.t("help.go_download") }}</span>
               <ChevronRight :size="14" />
             </a>
-          </div>
+          </cmz-card>
         </div>
         <cmz-markdown :content="helpDocs['server-jar']" variant="glass" />
       </template>
@@ -227,14 +245,20 @@ onDeactivated(() => {
       <template v-else-if="pageType === 'getting-started'">
         <h1 class="page-title">{{ i18n.t("help.sections.getting_started") }}</h1>
         <div class="steps-container">
-          <div v-for="step in gettingStartedSteps" :key="step.number" class="step-card">
+          <cmz-card
+            v-for="step in gettingStartedSteps"
+            :key="step.number"
+            variant="glass"
+            padding="lg"
+            class="step-card"
+          >
             <div class="step-number">{{ step.number }}</div>
             <div class="step-body">
               <h2 class="step-title">{{ step.title }}</h2>
               <p class="step-content">{{ step.content }}</p>
               <p v-if="step.detail" class="step-detail">{{ step.detail }}</p>
             </div>
-          </div>
+          </cmz-card>
         </div>
         <cmz-markdown :content="helpDocs['getting-started']" variant="glass" />
       </template>
@@ -244,10 +268,16 @@ onDeactivated(() => {
         <h1 class="page-title">{{ i18n.t("help.sections.features") }}</h1>
         <p class="page-subtitle">{{ i18n.t("help.features_subtitle") }}</p>
         <div class="feature-grid">
-          <div v-for="feature in featureItems" :key="feature.title" class="feature-card">
+          <cmz-card
+            v-for="feature in featureItems"
+            :key="feature.title"
+            variant="glass"
+            padding="lg"
+            class="feature-card"
+          >
             <h3 class="feature-title">{{ feature.title }}</h3>
             <p class="feature-desc">{{ feature.desc }}</p>
-          </div>
+          </cmz-card>
         </div>
       </template>
 
@@ -262,13 +292,19 @@ onDeactivated(() => {
               {{ i18n.t("help.common_configs") }}
             </h2>
             <div class="config-grid">
-              <div v-for="item in configItems" :key="item.key" class="mini-card">
+              <cmz-card
+                v-for="item in configItems"
+                :key="item.key"
+                variant="glass"
+                padding="md"
+                class="mini-card"
+              >
                 <code class="mini-card-key">{{ item.key }}</code>
                 <p class="mini-card-desc">{{ item.desc }}</p>
                 <span class="mini-card-default"
                   >{{ i18n.t("help.default_label") }}<code>{{ item.default }}</code></span
                 >
-              </div>
+              </cmz-card>
             </div>
           </template>
           <!-- 插件推荐卡片 -->
@@ -278,7 +314,13 @@ onDeactivated(() => {
             </h2>
             <p class="mini-card-note">{{ i18n.t("help.plugin_click_hint") }}</p>
             <div class="plugin-grid">
-              <div v-for="plugin in pluginRecommendations" :key="plugin.name" class="plugin-card">
+              <cmz-card
+                v-for="plugin in pluginRecommendations"
+                :key="plugin.name"
+                variant="glass"
+                padding="md"
+                class="plugin-card"
+              >
                 <div class="plugin-card-header">
                   <a :href="plugin.url" class="plugin-name" target="_blank" rel="noreferrer">{{
                     plugin.name
@@ -286,7 +328,7 @@ onDeactivated(() => {
                   <span class="plugin-category">{{ plugin.category }}</span>
                 </div>
                 <p class="plugin-desc">{{ plugin.desc }}</p>
-              </div>
+              </cmz-card>
             </div>
           </template>
           <!-- 内存分配建议卡片 -->
@@ -295,11 +337,17 @@ onDeactivated(() => {
               {{ i18n.t("help.memory_suggestions") }}
             </h2>
             <div class="memory-grid">
-              <div v-for="item in memorySuggestions" :key="item.players" class="memory-card">
+              <cmz-card
+                v-for="item in memorySuggestions"
+                :key="item.players"
+                variant="glass"
+                padding="md"
+                class="memory-card"
+              >
                 <span class="memory-players">{{ item.players }}</span>
                 <span class="memory-value">{{ item.memory }}</span>
                 <span class="memory-desc">{{ item.desc }}</span>
-              </div>
+              </cmz-card>
             </div>
           </template>
         </template>
@@ -433,14 +481,8 @@ onDeactivated(() => {
   margin-bottom: var(--sl-space-lg);
 }
 
+/* 毛玻璃外观由 cmz-card variant="glass" 提供,这里只管布局 */
 .feature-card {
-  background: var(--sl-glass-bg);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  border: 1px solid var(--sl-glass-border);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-lg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -494,13 +536,7 @@ onDeactivated(() => {
 .download-card {
   display: flex;
   flex-direction: column;
-  background: var(--sl-glass-bg);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  border: 1px solid var(--sl-glass-border);
-  border-radius: var(--sl-radius-md);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -567,15 +603,8 @@ onDeactivated(() => {
 }
 
 .server-card {
-  background: var(--sl-glass-bg);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  border: 1px solid var(--sl-glass-border);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-lg);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -703,13 +732,6 @@ onDeactivated(() => {
 .step-card {
   display: flex;
   gap: var(--sl-space-md);
-  background: var(--sl-glass-bg);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  border: 1px solid var(--sl-glass-border);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-lg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -801,16 +823,9 @@ onDeactivated(() => {
 }
 
 .mini-card {
-  background: var(--sl-glass-bg);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  border: 1px solid var(--sl-glass-border);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-md);
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -867,16 +882,9 @@ onDeactivated(() => {
 }
 
 .plugin-card {
-  background: var(--sl-glass-bg);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  border: 1px solid var(--sl-glass-border);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-md);
   display: flex;
   flex-direction: column;
   gap: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
@@ -932,18 +940,11 @@ onDeactivated(() => {
 }
 
 .memory-card {
-  background: var(--sl-glass-bg);
-  backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  -webkit-backdrop-filter: blur(var(--sl-blur-md)) saturate(var(--sl-saturate-normal));
-  border: 1px solid var(--sl-glass-border);
-  border-radius: var(--sl-radius-md);
-  padding: var(--sl-space-md);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
