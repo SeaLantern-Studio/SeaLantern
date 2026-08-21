@@ -7,6 +7,7 @@
 use axum::Json;
 use axum::extract::State;
 
+use sealantern_extra::models::AppSettings;
 use sealantern_interface::SettingsService;
 use sealantern_interface::settings::SettingsOverview;
 
@@ -20,6 +21,16 @@ pub async fn settings_overview(
     state
         .settings()
         .settings_overview()
+        .await
+        .map(Json)
+        .map_err(HttpError::from)
+}
+
+/// `GET /api/settings/all` — 获取当前完整设置。
+pub async fn get_settings(State(state): State<AppState>) -> Result<Json<AppSettings>, HttpError> {
+    state
+        .settings()
+        .get()
         .await
         .map(Json)
         .map_err(HttpError::from)
