@@ -263,7 +263,7 @@
   height: 20px;
   background-color: var(--sl-primary);
   border-radius: 0 var(--sl-radius-full) var(--sl-radius-full) 0;
-  transition: top 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: top var(--sl-transition-normal);
   z-index: 10;
   will-change: top;
   transform: translateZ(0);

@@ -71,7 +71,7 @@ function getStatusClass(s: string | undefined): string {
 </script>
 
 <template>
-  <cmz-card variant="glass" class="server-card" :data-server-id="server.id">
+  <cmz-card class="server-card" :data-server-id="server.id">
     <div class="status-badge-container">
       <div class="status-indicator" :class="getStatusClass(status)">
         <span class="status-dot"></span>

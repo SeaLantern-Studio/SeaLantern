@@ -100,9 +100,10 @@
   --sl-line-height-relaxed: 1.625;
 
   /* -- Transitions -- */
-  --sl-transition-fast: 0.15s ease;
-  --sl-transition-normal: 0.25s ease;
-  --sl-transition-slow: 0.4s ease;
+  /* 缓动统一 cubic-bezier(.4,0,.2,1),时长按节奏分级 */
+  --sl-transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --sl-transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --sl-transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* -- Layout -- */
   --sl-sidebar-width: 220px;

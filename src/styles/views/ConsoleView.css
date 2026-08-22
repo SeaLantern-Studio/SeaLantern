@@ -172,8 +172,7 @@
   position: relative;
 }
 
-/* 控制台容器:独立圆角卡片 */
-.console-terminal-shell > .cmz-console-wrap,
+/* 控制台容器:独立圆角卡片 (0.7.0 起库无外层 wrap,直接挂 .cmz-console) */
 .console-terminal-shell .cmz-console {
   flex: 1 1 auto;
   min-height: 0;
@@ -188,14 +187,11 @@
   --cmz-console-text-dim: var(--sl-text-tertiary);
   --cmz-console-overlay-hover: color-mix(in srgb, var(--sl-text-primary) 6%, transparent);
   --cmz-console-overlay-active: color-mix(in srgb, var(--sl-text-primary) 3%, transparent);
-  /* 从变量层彻底关闭 cmzya 体系的黑色基调阴影,避免输入框/下拉等控件带黑雾 */
+  /* 从变量层彻底关闭 cmzya 体系的黑色基调阴影,避免输入框/下拉等控件带黑雾
+     (0.7.0 起库收敛为 sm/md/lg/elevated/focus 五档) */
   --cmz-shadow-lg: none;
   --cmz-shadow-md: none;
   --cmz-shadow-sm: none;
-  --cmz-shadow-button: none;
-  --cmz-shadow-button-hover: none;
-  --cmz-shadow-input: none;
-  --cmz-shadow-input-focus: none;
   --cmz-shadow-focus: 0 0 0 2px color-mix(in srgb, var(--sl-primary) 35%, transparent);
   /* 输入框毛玻璃用最大档,配合日志穿透才有可见磨砂效果 */
   --cmz-acrylic-blur: var(--sl-blur-xxl, 40px);
@@ -216,8 +212,8 @@
 .console-terminal-shell .cmz-console .cmz-console__input-line:focus-within {
   border-radius: var(--cmz-radius-md, var(--sl-radius-md));
   border-color: var(--sl-glass-border, var(--sl-border-light));
-  /* 玻璃底色从 surface 调配,不用 --sl-glass-bg,避免暗色主题的纯黑底透出来 */
-  background: color-mix(in srgb, var(--sl-surface) 82%, transparent);
+  /* 玻璃底色从 surface 调配,压低不透明度让原生材质模糊透出来 */
+  background: color-mix(in srgb, var(--sl-surface) 60%, transparent);
   backdrop-filter: blur(var(--sl-blur-xxl, 40px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-xxl, 40px)) saturate(var(--sl-saturate-normal, 180%));
   box-shadow: none !important;

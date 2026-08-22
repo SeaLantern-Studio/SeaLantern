@@ -10,7 +10,6 @@
   --cmz-primary-dark: var(--sl-primary-dark);
   --cmz-primary-bg: var(--sl-primary-bg);
   --cmz-accent: var(--sl-accent);
-  --cmz-accent-light: var(--sl-accent-light);
   --cmz-bg: var(--sl-bg);
   --cmz-bg-secondary: var(--sl-bg-secondary);
   --cmz-bg-tertiary: var(--sl-bg-tertiary);
@@ -23,13 +22,10 @@
   --cmz-text-tertiary: var(--sl-text-tertiary);
   --cmz-text-inverse: var(--sl-text-inverse);
   --cmz-success: var(--sl-success);
-  --cmz-success-dark: var(--sl-success);
   --cmz-success-bg: var(--sl-success-bg);
   --cmz-warning: var(--sl-warning);
-  --cmz-warning-dark: var(--sl-warning);
   --cmz-warning-bg: var(--sl-warning-bg);
   --cmz-error: var(--sl-error);
-  --cmz-error-dark: var(--sl-error);
   --cmz-error-bg: var(--sl-error-bg);
   --cmz-info: var(--sl-info);
   --cmz-info-bg: var(--sl-info-bg);
@@ -67,14 +63,11 @@
   --cmz-shadow-md: var(--sl-shadow-md);
   --cmz-shadow-lg: var(--sl-shadow-lg);
   --cmz-shadow-xl: var(--sl-shadow-xl);
-  --cmz-shadow-card: var(--sl-shadow-card);
-  --cmz-shadow-button: var(--sl-shadow-button);
-  --cmz-shadow-button-hover: var(--sl-shadow-button-hover);
-  --cmz-shadow-input: var(--sl-shadow-input);
-  --cmz-shadow-input-focus: var(--sl-shadow-input-focus);
   --cmz-shadow-elevated: var(--sl-shadow-elevated);
   --cmz-shadow-focus: var(--sl-shadow-input-focus);
-  --cmz-progress-color: var(--sl-primary);
+  /* 交互位移量:项目约束按钮 hover 不位移,卡片抬起保持 -1px (0.7.0 库默认 -1px/-2px) */
+  --cmz-btn-hover-lift: 0px;
+  --cmz-card-hover-lift: -1px;
   --cmz-blur-sm: var(--sl-blur-sm);
   --cmz-blur-md: var(--sl-blur-md);
   --cmz-blur-lg: var(--sl-blur-lg);
@@ -85,14 +78,11 @@
   --cmz-saturate-normal: var(--sl-saturate-normal);
   --cmz-saturate-strong: var(--sl-saturate-strong);
   --cmz-z-dropdown: 100;
-  --cmz-z-sticky: 200;
   --cmz-z-tooltip: 500;
   --cmz-z-modal-backdrop: 800;
   --cmz-z-modal: 900;
   --cmz-z-toast: 1000;
   --cmz-opacity-disabled: 0.4;
-  --cmz-opacity-hover: 0.8;
-  --cmz-opacity-muted: 0.6;
   /* CmzYa 特有状态色（映射到项目 --sl-* 变量） */
   --cmz-debug: var(--sl-debug);
   --cmz-debug-bg: var(--sl-debug-bg);
@@ -110,9 +100,6 @@
   --cmz-console-timestamp: var(--sl-text-tertiary);
   --cmz-console-line-number: var(--sl-text-tertiary);
   --cmz-console-line-number-active: var(--sl-primary);
-  --cmz-console-bracket-line-height: 1.5;
-  --cmz-console-selection-bg: var(--sl-primary-bg);
-  --cmz-console-selection-text: var(--sl-text-primary);
   --cmz-console-overlay-hover: rgba(0, 0, 0, 0.04);
   --cmz-console-overlay-active: rgba(0, 0, 0, 0.08);
   /* Markdown 网格默认值 */

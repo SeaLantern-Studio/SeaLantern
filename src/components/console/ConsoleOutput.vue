@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { shallowRef, triggerRef, computed } from "vue";
+import { shallowRef, computed } from "vue";
 import { i18n } from "@language";
 
 interface Props {
@@ -32,8 +32,9 @@ const emit = defineEmits<{
 
 const LOG_REGEX = /^\[(\d{2}:\d{2}:\d{2})\] \[(.*?)\/(ERROR|INFO|WARN|DEBUG|FATAL)\]: (.*)$/;
 
-// 日志行数组用 shallowRef 避免深度代理:行对象只追加/截断,无嵌套原地修改,
-// 高频追加下能省掉 5000 行对象的代理与依赖收集开销
+// 日志行数组用 shallowRef 避免深度代理:行对象只读不改,高频追加下省掉
+// 5000 行对象的代理与依赖收集开销。库组件按 props 引用判断变化,
+// 所以每次追加必须替换整个数组,不能原地 push
 const lines = shallowRef<ConsoleLineObj[]>([]);
 
 function levelToType(level: string): ConsoleLineObj["type"] {
@@ -68,17 +69,16 @@ function parseLine(line: string): ConsoleLineObj {
 function appendLines(rawLines: string[]): void {
   if (rawLines.length === 0) return;
   const newLines = rawLines.map(parseLine);
-  lines.value.push(...newLines);
-  if (lines.value.length > props.maxLogLines) {
-    lines.value.splice(0, lines.value.length - props.maxLogLines);
+  const next = [...lines.value, ...newLines];
+  if (next.length > props.maxLogLines) {
+    next.splice(0, next.length - props.maxLogLines);
   }
-  // shallowRef 不追踪 push/splice,手动触发依赖更新
-  triggerRef(lines);
+  // 替换引用触发更新,库组件靠引用变化才会重算渲染
+  lines.value = next;
 }
 
 function clear(): void {
   lines.value = [];
-  triggerRef(lines);
 }
 
 function getAllPlainText(): string {

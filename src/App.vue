@@ -269,5 +269,3 @@ function handleUpdateModalClose() {
   </template>
   <SLContextMenu />
 </template>
-
-<style src="@styles/app.css"></style>

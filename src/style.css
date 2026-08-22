@@ -7,8 +7,7 @@
 @import "@styles/animations.css";
 @import "@styles/glass.css";
 
-/* 组件样式 - Layout */
-@import "@styles/components/layout/AppLayout.css";
+/* 组件样式 - Layout(AppLayout 由组件内 scoped 引入,避免全局+scoped 双份) */
 
 /* 组件样式 - Common */
 @import "@styles/components/common/SLCard.css";
