@@ -18,9 +18,9 @@ use crate::error::InstanceError;
 use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceError};
 use crate::service::{
     CoreConsoleService, CoreCronTaskService, CoreDownloadService, CoreInstanceService,
-    CoreJavaService, CoreOnlineTunnelService, CoreProvisioningService, CoreServerCatalogService,
-    CoreServerService, CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
-    CoreUpdateInstallService, ProxyMonitoringService,
+    CoreJavaService, CoreOnlineTunnelService, CorePlayerService, CoreProvisioningService,
+    CoreServerCatalogService, CoreServerService, CoreSettingsService, CoreSystemService,
+    CoreUpdateCheckService, CoreUpdateInstallService, ProxyMonitoringService,
 };
 use sealantern_interface::OnlineTunnelService;
 
@@ -65,6 +65,8 @@ pub struct AppServicesInner {
     pub update: Arc<CoreUpdateCheckService>,
     /// 应用更新安装服务。
     pub update_install: Arc<CoreUpdateInstallService>,
+    /// 玩家查询服务。
+    pub player: Arc<CorePlayerService>,
     /// 惰性初始化的应用插件服务。
     plugin: tokio::sync::OnceCell<Arc<CorePluginService>>,
 }
@@ -98,6 +100,7 @@ impl AppServices {
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 update: Arc::new(CoreUpdateCheckService::new()),
                 update_install: Arc::new(CoreUpdateInstallService),
+                player: Arc::new(CorePlayerService::new()),
                 plugin: tokio::sync::OnceCell::new(),
             }),
         }
@@ -297,6 +300,16 @@ impl AppServices {
     /// 便捷访问入口：一步拿到更新检查服务的共享句柄（惰性初始化 + 可替换）。
     pub async fn update_service() -> Result<Arc<CoreUpdateCheckService>, InstanceError> {
         Ok(Self::get().await?.update().clone())
+    }
+
+    /// 访问玩家查询服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn player(&self) -> &Arc<CorePlayerService> {
+        &self.inner.player
+    }
+
+    /// 便捷访问入口：一步拿到玩家查询服务的共享句柄（惰性初始化 + 可替换）。
+    pub async fn player_service() -> Result<Arc<CorePlayerService>, InstanceError> {
+        Ok(Self::get().await?.player().clone())
     }
 
     /// 获取应用插件服务；首次调用才打开策略数据库，避免阻塞常规启动路径。

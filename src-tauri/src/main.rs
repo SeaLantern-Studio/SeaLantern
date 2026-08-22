@@ -31,6 +31,7 @@ use adapter::tauri::commands::online_tunnel::{
     OnlineTunnelEventForwarder, online_tunnel_host, online_tunnel_join, online_tunnel_status,
     online_tunnel_stop,
 };
+use adapter::tauri::commands::player::lookup_player;
 use adapter::tauri::commands::plugin::{
     plugin_v2_approve_session, plugin_v2_audit, plugin_v2_disable, plugin_v2_discover,
     plugin_v2_enable, plugin_v2_end_session, plugin_v2_grant_persistent, plugin_v2_grant_session,
@@ -202,6 +203,8 @@ fn main() {
             update_download,
             update_install,
             update_pending,
+            //玩家查询服务
+            lookup_player,
             //插件 v2 宿主能力与策略管理
             plugin_v2_approve_session,
             plugin_v2_audit,
@@ -337,6 +340,7 @@ mod tests {
         "update_settings",
         "update_settings_partial",
         "check_update",
+        "lookup_player",
     ];
 
     #[test]

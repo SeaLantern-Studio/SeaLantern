@@ -327,6 +327,7 @@ async function handleKick(name: string) {
           <PlayerList
             :loading="loading"
             :tab="activeTab"
+            :server-path="serverPath"
             :onlinePlayers="onlinePlayers"
             :whitelist="whitelist"
             :bannedPlayers="bannedPlayers"

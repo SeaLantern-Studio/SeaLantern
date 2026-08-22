@@ -31,6 +31,14 @@ export interface OpEntry {
 }
 
 /**
+ * 玩家档案（按用户名查询 UUID 的结果，来源为服务器本地 usercache.json）
+ */
+export interface PlayerProfile {
+  name: string;
+  uuid: string;
+}
+
+/**
  * 玩家管理 API
  */
 export const playerApi = {
@@ -109,5 +117,12 @@ export const playerApi = {
    */
   async exportLogs(logs: string[], savePath: string): Promise<void> {
     return tauriInvoke("export_logs", { logs, savePath });
+  },
+
+  /**
+   * 按用户名查询玩家档案（UUID），从服务器本地 usercache.json 读取
+   */
+  async lookupPlayer(serverPath: string, username: string): Promise<PlayerProfile> {
+    return tauriInvoke("lookup_player", { serverPath, username });
   },
 };
