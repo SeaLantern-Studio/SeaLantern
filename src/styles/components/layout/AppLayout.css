@@ -43,7 +43,7 @@
   display: flex;
   flex-direction: column;
   margin-left: var(--sl-sidebar-width);
-  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: margin-left var(--sl-transition-normal);
   min-width: 0;
   background: transparent;
   padding: 0 12px 12px 12px;

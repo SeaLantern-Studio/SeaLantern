@@ -1,48 +1,47 @@
 /* Glass 工具类 - 由 CmzYa CSS 变量驱动
  * data-acrylic 和 data-theme 由 CmzYa 原生管理
  * 更新 CmzYa 即可自动同步效果
+ * 注意:透明窗口下 blur 采不到窗外内容,这些类只用于 WebView 内浮层(遮底)
  */
+
+/* 公共玻璃外壳:边框 + 合成层,由各变体补充背景与模糊强度 */
+.glass,
+.glass-subtle,
+.glass-strong,
+.glass-card {
+  border: 1px solid var(--cmz-glass-border);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
 
 .glass {
   background: var(--cmz-glass-bg);
   backdrop-filter: blur(var(--cmz-blur-md)) saturate(var(--cmz-saturate-normal));
   -webkit-backdrop-filter: blur(var(--cmz-blur-md)) saturate(var(--cmz-saturate-normal));
-  border: 1px solid var(--cmz-glass-border);
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 .glass-subtle {
   background: var(--cmz-bg-secondary);
   backdrop-filter: blur(var(--cmz-blur-sm)) saturate(var(--cmz-saturate-subtle));
   -webkit-backdrop-filter: blur(var(--cmz-blur-sm)) saturate(var(--cmz-saturate-subtle));
-  border: 1px solid var(--cmz-glass-border);
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 .glass-strong {
   background: var(--cmz-acrylic-bg-strong);
   backdrop-filter: blur(var(--cmz-blur-xl)) saturate(var(--cmz-saturate-strong));
   -webkit-backdrop-filter: blur(var(--cmz-blur-xl)) saturate(var(--cmz-saturate-strong));
-  border: 1px solid var(--cmz-glass-border);
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 .glass-card {
   background: var(--cmz-glass-bg);
   backdrop-filter: blur(var(--cmz-blur-md)) saturate(var(--cmz-saturate-normal));
   -webkit-backdrop-filter: blur(var(--cmz-blur-md)) saturate(var(--cmz-saturate-normal));
-  border: 1px solid var(--cmz-glass-border);
   border-radius: var(--cmz-radius-lg);
   box-shadow: var(--cmz-shadow-md);
   transition:
     box-shadow var(--cmz-transition-normal),
     transform var(--cmz-transition-normal),
     border-color var(--cmz-transition-fast);
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 .glass-card:hover {

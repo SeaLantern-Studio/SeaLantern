@@ -72,6 +72,12 @@ h6 {
   color: var(--sl-text-tertiary);
 }
 
+/* -- 描述文字 -- */
+.text-caption {
+  font-size: var(--sl-font-size-sm);
+  color: var(--sl-text-tertiary);
+}
+
 /* -- 标题样式 -- */
 .text-heading {
   font-family: var(--sl-font-display);
@@ -161,16 +167,4 @@ h6 {
 
 .font-bold {
   font-weight: 700;
-}
-
-/* -- 已废弃：保留向后兼容 -- */
-.text-display {
-  font-size: var(--sl-font-size-4xl);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.text-caption {
-  font-size: var(--sl-font-size-sm);
-  color: var(--sl-text-tertiary);
 }
