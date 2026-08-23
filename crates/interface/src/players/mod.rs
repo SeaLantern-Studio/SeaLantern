@@ -4,4 +4,7 @@
 
 mod services;
 
-pub use services::{PlayerLookupService, PlayerProfile};
+pub use services::{
+    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerListService, PlayerLookupService,
+    PlayerProfile,
+};

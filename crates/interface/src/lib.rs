@@ -56,6 +56,8 @@ pub use error::JavaServiceError;
 pub use error::OnlineTunnelServiceError;
 /// 玩家查询错误枚举。
 pub use error::PlayerLookupError;
+/// 玩家列表查询错误枚举。
+pub use error::PlayerListError;
 /// 服务端检查与实例供给计划失败类别。
 pub use error::ProvisioningServiceError;
 /// 服务器核心下载目录错误枚举。
@@ -81,8 +83,12 @@ pub use online::{
 };
 /// 玩家查询服务端口。
 pub use players::PlayerLookupService;
+/// 玩家列表查询服务端口。
+pub use players::PlayerListService;
 /// 玩家档案模型。
 pub use players::PlayerProfile;
+/// 玩家列表 DTO。
+pub use players::{BanEntryDto, OpEntryDto, PlayerEntryDto};
 /// 服务端检查与实例供给计划服务端口。
 pub use provisioning::ProvisioningService;
 /// 服务器进程管理服务端口。

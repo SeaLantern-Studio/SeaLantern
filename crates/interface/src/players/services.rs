@@ -11,7 +11,7 @@
 use async_trait::async_trait;
 use serde::Serialize;
 
-use crate::error::PlayerLookupError;
+use crate::error::{PlayerListError, PlayerLookupError};
 
 /// 按用户名查询到的玩家档案。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -39,4 +39,62 @@ pub trait PlayerLookupService: Send + Sync {
         server_path: String,
         username: String,
     ) -> Result<PlayerProfile, PlayerLookupError>;
+}
+
+// ── 玩家列表 DTO ──────────────────────────────────────────────
+
+/// 单条玩家条目（含 UUID）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct PlayerEntryDto {
+    pub uuid: String,
+    pub name: String,
+}
+
+/// 封禁条目。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct BanEntryDto {
+    pub uuid: String,
+    pub name: String,
+    pub reason: String,
+}
+
+/// OP 条目。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct OpEntryDto {
+    pub uuid: String,
+    pub name: String,
+    pub level: i32,
+}
+
+/// 玩家列表查询宿主能力端口。
+///
+/// 在线玩家、白名单、封禁、OP 列表等通过控制台命令捕获的服务契约。
+#[async_trait]
+pub trait PlayerListService: Send + Sync {
+    /// 获取在线玩家名列表（发 `list` 命令）。
+    async fn get_online_players(&self, server_id: String) -> Result<Vec<String>, PlayerListError>;
+
+    /// 获取白名单（发 `whitelist list`，UUID 由 usercache 反查）。
+    async fn get_whitelist(
+        &self,
+        server_id: String,
+        server_path: String,
+    ) -> Result<Vec<PlayerEntryDto>, PlayerListError>;
+
+    /// 获取封禁列表（发 `banlist`，UUID 由 usercache 反查）。
+    async fn get_banned_players(
+        &self,
+        server_id: String,
+        server_path: String,
+    ) -> Result<Vec<BanEntryDto>, PlayerListError>;
+
+    /// 获取在线 OP 列表（从 `list` 输出里 `*` 前缀的玩家）。
+    async fn get_ops(
+        &self,
+        server_id: String,
+        server_path: String,
+    ) -> Result<Vec<OpEntryDto>, PlayerListError>;
 }

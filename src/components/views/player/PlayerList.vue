@@ -104,7 +104,7 @@ async function handleCopyUuid(name: string, uuid?: string) {
         />
         <div class="player-info">
           <span class="player-name">{{ name }}</span>
-          <cmz-badge :text="i18n.t('players.status_online')" color="#22c55e" />
+          <cmz-badge :text="i18n.t('players.status_online')" color="var(--sl-success)" />
         </div>
         <div class="player-actions">
           <cmz-button variant="ghost" size="sm" @click="emit('kick', name)">{{
@@ -162,7 +162,7 @@ async function handleCopyUuid(name: string, uuid?: string) {
             >{{ i18n.t("players.reason") }}: {{ p.reason || i18n.t("players.empty") }}</span
           >
         </div>
-        <cmz-badge :text="i18n.t('players.ban')" color="#ef4444" />
+        <cmz-badge :text="i18n.t('players.ban')" color="var(--sl-error)" />
         <div class="player-actions">
           <cmz-button
             variant="ghost"
@@ -192,7 +192,7 @@ async function handleCopyUuid(name: string, uuid?: string) {
           <span class="player-name">{{ p.name }}</span>
           <span class="text-caption">{{ i18n.t("players.level") }}: {{ p.level }}</span>
         </div>
-        <cmz-badge text="OP" color="#f59e0b" />
+        <cmz-badge text="OP" color="var(--sl-warning)" />
         <div class="player-actions">
           <cmz-button
             variant="ghost"
