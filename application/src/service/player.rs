@@ -89,8 +89,7 @@ impl PlayerLookupService for CorePlayerService {
 #[async_trait]
 impl PlayerListService for CorePlayerService {
     async fn get_online_players(&self, server_id: String) -> Result<Vec<String>, PlayerListError> {
-        let lines = capture_command_output(&server_id, "list", Duration::from_secs(6))
-            .await?;
+        let lines = capture_command_output(&server_id, "list", Duration::from_secs(6)).await?;
         Ok(parse_online_names(&lines))
     }
 
@@ -146,11 +145,7 @@ impl PlayerListService for CorePlayerService {
 // ── 内部辅助函数 ───────────────────────────────────────────────
 
 /// 用 usercache.json 反查 UUID，查不到返回空串（不阻断列表展示）。
-async fn lookup_uuid(
-    svc: &Arc<CorePlayerService>,
-    server_path: &str,
-    name: &str,
-) -> String {
+async fn lookup_uuid(svc: &Arc<CorePlayerService>, server_path: &str, name: &str) -> String {
     match svc.lookup(server_path.to_string(), name.to_string()).await {
         Ok(profile) => profile.uuid,
         Err(_) => String::new(),
@@ -159,10 +154,7 @@ async fn lookup_uuid(
 
 /// 批量把玩家名解析为含 UUID 的条目。
 async fn resolve_entries(server_path: &str, names: Vec<String>) -> Vec<PlayerEntryDto> {
-    let svc = match AppServices::player_service().await {
-        Ok(svc) => Some(svc),
-        Err(_) => None,
-    };
+    let svc = AppServices::player_service().await.ok();
     let mut out = Vec::with_capacity(names.len());
     for name in names {
         let uuid = match &svc {
@@ -282,16 +274,17 @@ fn parse_whitelist_names(lines: &[String]) -> Vec<String> {
     // 1) 命中"空集"声明 → 直接返回。
     if lines.iter().any(|l| {
         let lower = l.to_lowercase();
-        lower.contains("no whitelisted players")
-            || lower.contains("no players are whitelisted")
+        lower.contains("no whitelisted players") || lower.contains("no players are whitelisted")
     }) {
         return Vec::new();
     }
 
     // 2) 找包含 "whitelisted player" 的那一行。
-    let Some((idx, line)) = lines.iter().enumerate().find(|(_, l)| {
-        l.to_lowercase().contains("whitelisted player")
-    }) else {
+    let Some((idx, line)) = lines
+        .iter()
+        .enumerate()
+        .find(|(_, l)| l.to_lowercase().contains("whitelisted player"))
+    else {
         return Vec::new();
     };
 
@@ -455,9 +448,7 @@ mod tests {
 
     #[test]
     fn parse_online_names_single_line_inline_list() {
-        let lines = vec![
-            "There are 2 of a max of 20 players online: Notch, jeb".to_string(),
-        ];
+        let lines = vec!["There are 2 of a max of 20 players online: Notch, jeb".to_string()];
         assert_eq!(parse_online_names(&lines), vec!["Notch", "jeb"]);
     }
 
@@ -472,9 +463,7 @@ mod tests {
 
     #[test]
     fn parse_online_names_strips_op_asterisk_prefix() {
-        let lines = vec![
-            "There are 2 of a max of 20 players online: * Notch, jeb".to_string(),
-        ];
+        let lines = vec!["There are 2 of a max of 20 players online: * Notch, jeb".to_string()];
         assert_eq!(parse_online_names(&lines), vec!["Notch", "jeb"]);
     }
 
@@ -502,17 +491,14 @@ mod tests {
 
     #[test]
     fn parse_whitelist_names_inline_list() {
-        let lines = vec![
-            "There are 2 whitelisted players: alice, bob".to_string(),
-        ];
+        let lines = vec!["There are 2 whitelisted players: alice, bob".to_string()];
         assert_eq!(parse_whitelist_names(&lines), vec!["alice", "bob"]);
     }
 
     #[test]
     fn parse_op_names_marks_prefixed_entries() {
-        let lines = vec![
-            "There are 3 of a max of 20 players online: * Notch, jeb, dinnerbone".to_string(),
-        ];
+        let lines =
+            vec!["There are 3 of a max of 20 players online: * Notch, jeb, dinnerbone".to_string()];
         assert_eq!(parse_online_op_names(&lines), vec!["Notch"]);
     }
 
@@ -573,9 +559,7 @@ mod tests {
 
     #[test]
     fn parse_ban_entries_singular_header_inline() {
-        let lines = vec![
-            "There is 1 ban: alice (banned by Admin, reason: griefing)".to_string(),
-        ];
+        let lines = vec!["There is 1 ban: alice (banned by Admin, reason: griefing)".to_string()];
         let bans = parse_ban_entries(&lines);
         assert_eq!(bans.len(), 1);
         assert_eq!(bans[0].0, "alice");

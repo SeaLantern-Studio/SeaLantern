@@ -14,8 +14,8 @@ use sealantern_core::instance::InstanceId;
 use sealantern_interface::ServerService;
 use tracing::warn;
 
-use crate::services::AppServices;
 use crate::service::subscribe_log_events;
+use crate::services::AppServices;
 
 /// 捕获过程中的错误。
 #[derive(Debug)]
@@ -54,10 +54,10 @@ pub async fn capture_command_output(
     command: &str,
     timeout: Duration,
 ) -> Result<Vec<String>, CaptureError> {
-    let id =
-        InstanceId::new(server_id).map_err(|_| CaptureError::InvalidInput)?;
-    let server_svc =
-        AppServices::server_service().await.map_err(|_| CaptureError::Unavailable)?;
+    let id = InstanceId::new(server_id).map_err(|_| CaptureError::InvalidInput)?;
+    let server_svc = AppServices::server_service()
+        .await
+        .map_err(|_| CaptureError::Unavailable)?;
 
     // 先订阅，再发命令，保证响应行不被漏掉。
     let mut rx = subscribe_log_events();
@@ -157,10 +157,7 @@ mod tests {
 
     #[test]
     fn strip_log_prefix_no_prefix_unchanged() {
-        assert_eq!(
-            strip_log_prefix("There are no bans"),
-            "There are no bans"
-        );
+        assert_eq!(strip_log_prefix("There are no bans"), "There are no bans");
     }
 
     #[test]

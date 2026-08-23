@@ -5,6 +5,5 @@
 mod services;
 
 pub use services::{
-    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerListService, PlayerLookupService,
-    PlayerProfile,
+    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerListService, PlayerLookupService, PlayerProfile,
 };
