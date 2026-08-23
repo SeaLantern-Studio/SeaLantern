@@ -2,7 +2,6 @@
 // keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理刷新定时器
 import { ref, onActivated, onDeactivated, computed, watch } from "vue";
 import { useServerStore } from "@stores/serverStore";
-import { useConsoleStore } from "@stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
 import { TIME, MESSAGES, getMessage } from "@utils/constants";
 import { validatePlayerName, handleError } from "@utils/errorHandler";
@@ -17,7 +16,6 @@ import PlayerModals from "@components/views/player/PlayerModals.vue";
 type PlayerTab = "online" | "whitelist" | "banned" | "ops";
 
 const store = useServerStore();
-const consoleStore = useConsoleStore();
 
 const activeTab = ref<PlayerTab>("online");
 
@@ -75,7 +73,7 @@ onActivated(async () => {
   if (store.currentServerId) {
     await store.refreshStatus(store.currentServerId);
     await loadAll();
-    parseOnlinePlayers();
+    await loadOnline();
   }
   startRefresh();
   document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -93,7 +91,7 @@ function startRefresh() {
     if (selectedServerId.value) {
       await store.refreshStatus(selectedServerId.value);
       await loadAll();
-      parseOnlinePlayers();
+      await loadOnline();
     }
   }, 5000);
 }
@@ -109,7 +107,7 @@ async function refreshNow() {
   if (selectedServerId.value) {
     await store.refreshStatus(selectedServerId.value);
     await loadAll();
-    parseOnlinePlayers();
+    await loadOnline();
   }
 }
 
@@ -131,7 +129,7 @@ watch(
     if (store.currentServerId) {
       await store.refreshStatus(store.currentServerId);
       await loadAll();
-      parseOnlinePlayers();
+      await loadOnline();
     }
   },
 );
@@ -144,56 +142,43 @@ async function loadAll() {
   const seq = ++loadSeq;
   const sid = selectedServerId.value;
   await withLoading(async () => {
-    // 三个接口互不依赖,并行拉取降低总延迟
-    const [whitelistRes, bannedRes, opsRes] = await Promise.all([
-      playerApi.getWhitelist(serverPath.value),
-      playerApi.getBannedPlayers(serverPath.value),
-      playerApi.getOps(serverPath.value),
-    ]);
-    // 期间已切换服务器,丢弃这次过期结果
-    if (seq !== loadSeq || sid !== selectedServerId.value) return;
-    whitelist.value = whitelistRes;
-    bannedPlayers.value = bannedRes;
-    ops.value = opsRes;
+    try {
+      // 三个接口互不依赖,并行拉取降低总延迟
+      const [whitelistRes, bannedRes, opsRes] = await Promise.all([
+        playerApi.getWhitelist(sid, serverPath.value),
+        playerApi.getBannedPlayers(sid, serverPath.value),
+        playerApi.getOps(sid, serverPath.value),
+      ]);
+      // 期间已切换服务器,丢弃这次过期结果
+      if (seq !== loadSeq || sid !== selectedServerId.value) return;
+      whitelist.value = whitelistRes;
+      bannedPlayers.value = bannedRes;
+      ops.value = opsRes;
+    } catch (e) {
+      if (seq !== loadSeq || sid !== selectedServerId.value) return;
+      console.error("[players] 加载白名单/封禁/OP 失败:", e);
+      toast.error(`加载白名单/封禁/OP 失败: ${handleError(e, "LoadPlayers")}`);
+    }
   });
 }
 
-function parseOnlinePlayers() {
-  const sid = selectedServerId.value;
-  const logs = consoleStore.logs[sid] || [];
-  const players: string[] = [];
-
-  let startIndex = 0;
-  for (let i = logs.length - 1; i >= 0; i--) {
-    const line = logs[i];
-    if (/Done \([\d.]+s\)! For help/.test(line) || /Starting minecraft server/i.test(line)) {
-      startIndex = i;
-      break;
-    }
+async function loadOnline() {
+  if (!isRunning.value || !selectedServerId.value) {
+    onlinePlayers.value = [];
+    return;
   }
-
-  for (let i = startIndex; i < logs.length; i++) {
-    const line = logs[i];
-    const joinMatch = line.match(/\]: (\w+) joined the game/);
-    const loginMatch = line.match(/\]: UUID of player (\w+) is/);
-    const leftMatch = line.match(/\]: (\w+) left the game/);
-
-    if (joinMatch) {
-      const name = joinMatch[1];
-      if (!players.includes(name)) players.push(name);
-    }
-    if (loginMatch) {
-      const name = loginMatch[1];
-      if (!players.includes(name)) players.push(name);
-    }
-    if (leftMatch) {
-      const name = leftMatch[1];
-      const idx = players.indexOf(name);
-      if (idx > -1) players.splice(idx, 1);
-    }
+  try {
+    // 在线玩家来自服务器 list 命令的实时回显,而非解析历史日志
+    const names = await playerApi.getOnlinePlayers(selectedServerId.value);
+    // 切服务器或刷新了过期响应,丢弃
+    if (selectedServerId.value !== store.currentServerId) return;
+    onlinePlayers.value = names;
+  } catch (e) {
+    if (selectedServerId.value !== store.currentServerId) return;
+    console.error("[players] 加载在线玩家失败:", e);
+    onlinePlayers.value = [];
+    toast.error(`加载在线玩家失败: ${handleError(e, "LoadOnlinePlayers")}`);
   }
-
-  onlinePlayers.value = players;
 }
 
 function openAddModal() {
@@ -292,7 +277,7 @@ async function handleKick(name: string) {
   try {
     await playerApi.kickPlayer(selectedServerId.value, name);
     toast.success(`${name} ${getMessage(MESSAGES.SUCCESS.PLAYER_KICKED)}`);
-    setTimeout(() => parseOnlinePlayers(), TIME.SUCCESS_MESSAGE_DURATION);
+    setTimeout(() => loadOnline(), TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
     toast.error(handleError(e, "KickPlayer"));
   }
