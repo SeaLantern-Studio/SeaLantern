@@ -62,12 +62,15 @@ pub async fn capture_command_output(
     // 先订阅，再发命令，保证响应行不被漏掉。
     let mut rx = subscribe_log_events();
 
+    // 超时从"准备发命令"那一刻起算，避免 send_command 本身耗时把总捕获
+    // 时间推到配置的 timeout 之外。
+    let deadline = Instant::now() + timeout;
+
     server_svc
         .send_command(&id, command)
         .await
         .map_err(|_| CaptureError::ServerNotRunning)?;
 
-    let deadline = Instant::now() + timeout;
     // 响应通常很快回来；用 750ms 的"静默窗口"判定响应结束 —— 比 500ms
     // 稍宽裕，避开日志批 flush 抖动导致提前退出。
     let stable_wait = Duration::from_millis(750);

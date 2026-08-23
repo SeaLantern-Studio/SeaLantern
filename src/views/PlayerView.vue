@@ -136,6 +136,8 @@ watch(
 
 // 加载请求序号:快速切换服务器时丢弃过期响应,避免旧数据覆盖当前服务器
 let loadSeq = 0;
+// 在线玩家请求单独的序号,因为 loadOnline 可被 handleKick 独立触发
+let onlineLoadSeq = 0;
 
 async function loadAll() {
   if (!serverPath.value) return;
@@ -167,14 +169,16 @@ async function loadOnline() {
     onlinePlayers.value = [];
     return;
   }
+  const seq = ++onlineLoadSeq;
+  const sid = selectedServerId.value;
   try {
     // 在线玩家来自服务器 list 命令的实时回显,而非解析历史日志
-    const names = await playerApi.getOnlinePlayers(selectedServerId.value);
-    // 切服务器或刷新了过期响应,丢弃
-    if (selectedServerId.value !== store.currentServerId) return;
+    const names = await playerApi.getOnlinePlayers(sid);
+    // 期间已切换服务器或发起新请求,丢弃这次过期结果
+    if (seq !== onlineLoadSeq || sid !== selectedServerId.value) return;
     onlinePlayers.value = names;
   } catch (e) {
-    if (selectedServerId.value !== store.currentServerId) return;
+    if (seq !== onlineLoadSeq || sid !== selectedServerId.value) return;
     console.error("[players] 加载在线玩家失败:", e);
     onlinePlayers.value = [];
     toast.error(`加载在线玩家失败: ${handleError(e, "LoadOnlinePlayers")}`);
