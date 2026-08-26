@@ -140,16 +140,17 @@ let loadSeq = 0;
 let onlineLoadSeq = 0;
 
 async function loadAll() {
-  if (!serverPath.value) return;
+  if (!selectedServerId.value) return;
   const seq = ++loadSeq;
   const sid = selectedServerId.value;
   await withLoading(async () => {
     try {
-      // 三个接口互不依赖,并行拉取降低总延迟
+      // 三个接口互不依赖,并行拉取降低总延迟；只传 server_id,目录由后端
+      // 经实例注册表解析（不信任前端 server_path,避免 A/B 服数据错位）
       const [whitelistRes, bannedRes, opsRes] = await Promise.all([
-        playerApi.getWhitelist(sid, serverPath.value),
-        playerApi.getBannedPlayers(sid, serverPath.value),
-        playerApi.getOps(sid, serverPath.value),
+        playerApi.getWhitelist(sid),
+        playerApi.getBannedPlayers(sid),
+        playerApi.getOps(sid),
       ]);
       // 期间已切换服务器,丢弃这次过期结果
       if (seq !== loadSeq || sid !== selectedServerId.value) return;

@@ -78,23 +78,27 @@ pub trait PlayerListService: Send + Sync {
     async fn get_online_players(&self, server_id: String) -> Result<Vec<String>, PlayerListError>;
 
     /// 获取白名单（发 `whitelist list`，UUID 由 usercache 反查）。
+    ///
+    /// 只收 `server_id`；内部经实例注册表解析出唯一可信目录，不信任前端传入
+    /// 的 `server_path`（见 code review：server_id 与 server_path 分开信任）。
     async fn get_whitelist(
         &self,
         server_id: String,
-        server_path: String,
     ) -> Result<Vec<PlayerEntryDto>, PlayerListError>;
 
     /// 获取封禁列表（发 `banlist`，UUID 由 usercache 反查）。
+    ///
+    /// 只收 `server_id`；内部经实例注册表解析出唯一可信目录。
     async fn get_banned_players(
         &self,
         server_id: String,
-        server_path: String,
     ) -> Result<Vec<BanEntryDto>, PlayerListError>;
 
     /// 获取在线 OP 列表（从 `list` 输出里 `*` 前缀的玩家）。
+    ///
+    /// 只收 `server_id`；内部经实例注册表解析出唯一可信目录。
     async fn get_ops(
         &self,
         server_id: String,
-        server_path: String,
     ) -> Result<Vec<OpEntryDto>, PlayerListError>;
 }

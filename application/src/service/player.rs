@@ -2,14 +2,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use sealantern_core::instance::InstanceId;
 use sealantern_interface::{
-    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerListError, PlayerListService, PlayerLookupError,
-    PlayerLookupService, PlayerProfile,
+    BanEntryDto, InstanceService, OpEntryDto, PlayerEntryDto, PlayerListError, PlayerListService,
+    PlayerLookupError, PlayerLookupService, PlayerProfile,
 };
 use std::path::Path;
 
 use crate::service::capture_command_output;
-use crate::services::AppServices;
+use crate::service::CoreInstanceService;
 
 /// usercache.json 里每条记录的格式。
 #[derive(serde::Deserialize)]
@@ -18,17 +19,31 @@ struct UserCacheEntry {
     uuid: String,
 }
 
-pub struct CorePlayerService;
-
-impl CorePlayerService {
-    pub fn new() -> Self {
-        Self
-    }
+pub struct CorePlayerService {
+    /// 实例注册表：用于由 server_id 解析出唯一可信的服务器目录，
+    /// 而非信任前端传入的 server_path（见 code review：server_id 与
+    /// server_path 分开信任）。
+    instance_svc: Arc<CoreInstanceService>,
 }
 
-impl Default for CorePlayerService {
-    fn default() -> Self {
-        Self::new()
+impl CorePlayerService {
+    pub fn new(instance_svc: Arc<CoreInstanceService>) -> Self {
+        Self { instance_svc }
+    }
+
+    /// 由 server_id 经实例注册表解析出唯一可信的服务器目录。
+    ///
+    /// 这是玩家子系统唯一允许获取目录的入口：不接收前端传入的 server_path，
+    /// 避免 A 服的 list 回显与 B 服 usercache 拼出错误 UUID。
+    async fn resolve_directory(&self, server_id: &str) -> Result<String, PlayerListError> {
+        let id = InstanceId::new(server_id).map_err(|_| PlayerListError::InvalidInput)?;
+        let instance = self
+            .instance_svc
+            .find(&id)
+            .await
+            .map_err(|_| PlayerListError::ServiceUnavailable)?
+            .ok_or(PlayerListError::ServiceUnavailable)?;
+        Ok(instance.directory.to_string_lossy().into_owned())
     }
 }
 
@@ -38,6 +53,7 @@ impl From<crate::service::CaptureError> for PlayerListError {
             crate::service::CaptureError::InvalidInput => PlayerListError::InvalidInput,
             crate::service::CaptureError::ServerNotRunning => PlayerListError::ServerNotRunning,
             crate::service::CaptureError::Unavailable => PlayerListError::ServiceUnavailable,
+            crate::service::CaptureError::NoResponse => PlayerListError::CaptureFailed,
         }
     }
 }
@@ -96,27 +112,37 @@ impl PlayerListService for CorePlayerService {
     async fn get_whitelist(
         &self,
         server_id: String,
-        server_path: String,
     ) -> Result<Vec<PlayerEntryDto>, PlayerListError> {
         let lines =
             capture_command_output(&server_id, "whitelist list", Duration::from_secs(6)).await?;
+        let server_path = self.resolve_directory(&server_id).await?;
         let names = parse_whitelist_names(&lines);
-        Ok(resolve_entries(&server_path, names).await)
+        let mut out = Vec::with_capacity(names.len());
+        for name in names {
+            let uuid = self
+                .lookup(server_path.clone(), name.clone())
+                .await
+                .map(|p| p.uuid)
+                .unwrap_or_default();
+            out.push(PlayerEntryDto { uuid, name });
+        }
+        Ok(out)
     }
 
     async fn get_banned_players(
         &self,
         server_id: String,
-        server_path: String,
     ) -> Result<Vec<BanEntryDto>, PlayerListError> {
         let lines = capture_command_output(&server_id, "banlist", Duration::from_secs(6)).await?;
+        let server_path = self.resolve_directory(&server_id).await?;
         let bans = parse_ban_entries(&lines);
-        let svc = AppServices::player_service()
-            .await
-            .map_err(|_| PlayerListError::ServiceUnavailable)?;
         let mut out = Vec::with_capacity(bans.len());
         for (name, reason) in bans {
-            let uuid = lookup_uuid(&svc, &server_path, &name).await;
+            let uuid = self
+                .lookup(server_path.clone(), name.clone())
+                .await
+                .map(|p| p.uuid)
+                .unwrap_or_default();
             out.push(BanEntryDto { uuid, name, reason });
         }
         Ok(out)
@@ -125,45 +151,22 @@ impl PlayerListService for CorePlayerService {
     async fn get_ops(
         &self,
         server_id: String,
-        server_path: String,
     ) -> Result<Vec<OpEntryDto>, PlayerListError> {
         let lines = capture_command_output(&server_id, "list", Duration::from_secs(6)).await?;
+        let server_path = self.resolve_directory(&server_id).await?;
         let names = parse_online_op_names(&lines);
-        let svc = AppServices::player_service()
-            .await
-            .map_err(|_| PlayerListError::ServiceUnavailable)?;
         let mut out = Vec::with_capacity(names.len());
         for name in names {
-            let uuid = lookup_uuid(&svc, &server_path, &name).await;
+            let uuid = self
+                .lookup(server_path.clone(), name.clone())
+                .await
+                .map(|p| p.uuid)
+                .unwrap_or_default();
             // Minecraft Java 控制台不输出 OP 等级，统一按默认 4 处理。
             out.push(OpEntryDto { uuid, name, level: 4 });
         }
         Ok(out)
     }
-}
-
-// ── 内部辅助函数 ───────────────────────────────────────────────
-
-/// 用 usercache.json 反查 UUID，查不到返回空串（不阻断列表展示）。
-async fn lookup_uuid(svc: &Arc<CorePlayerService>, server_path: &str, name: &str) -> String {
-    match svc.lookup(server_path.to_string(), name.to_string()).await {
-        Ok(profile) => profile.uuid,
-        Err(_) => String::new(),
-    }
-}
-
-/// 批量把玩家名解析为含 UUID 的条目。
-async fn resolve_entries(server_path: &str, names: Vec<String>) -> Vec<PlayerEntryDto> {
-    let svc = AppServices::player_service().await.ok();
-    let mut out = Vec::with_capacity(names.len());
-    for name in names {
-        let uuid = match &svc {
-            Some(svc) => lookup_uuid(svc, server_path, &name).await,
-            None => String::new(),
-        };
-        out.push(PlayerEntryDto { uuid, name });
-    }
-    out
 }
 
 // ── 控制台回显解析函数 ─────────────────────────────────────────

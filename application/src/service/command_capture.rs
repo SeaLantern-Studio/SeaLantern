@@ -8,11 +8,13 @@
 //! 再写入命令，然后从事件流里挑出属于当前实例、且来源为服务器自身的日志行，
 //! 直到一段时间没有新行（响应稳定）或超过超时上限。
 
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex as StdMutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use sealantern_core::instance::InstanceId;
 use sealantern_interface::ServerService;
-use tracing::warn;
+use tokio::sync::Mutex as AsyncMutex;
 
 use crate::service::subscribe_log_events;
 use crate::services::AppServices;
@@ -26,6 +28,12 @@ pub enum CaptureError {
     ServerNotRunning,
     /// 服务装配层不可用（控制台 / 服务器服务拿不到）。
     Unavailable,
+    /// 命令已发出，但在超时内未捕获到任何服务器回显行。
+    ///
+    /// 此前被伪装成空列表返回（warning 后 `Ok(vec![])`），会掩盖真正的
+    /// 捕获失败（RCON、stdout 被重定向、日志延迟等）。改为显式错误，让
+    /// 上层决定是报错还是降级展示（见 code review：捕获失败被伪装成空列表）。
+    NoResponse,
 }
 
 impl std::fmt::Display for CaptureError {
@@ -34,8 +42,31 @@ impl std::fmt::Display for CaptureError {
             CaptureError::InvalidInput => write!(f, "invalid server id"),
             CaptureError::ServerNotRunning => write!(f, "server is not running"),
             CaptureError::Unavailable => write!(f, "services unavailable"),
+            CaptureError::NoResponse => write!(f, "command sent but no server response captured"),
         }
     }
+}
+
+/// 每个实例一把捕获锁：保证同一实例同一时刻只有一个 `capture_command_output`
+/// 在读取日志流，避免并发命令（如 `list` / `whitelist list` / `banlist`）的
+/// 回显在共享日志广播上互相串线（见 code review：命令响应会穿线）。
+static CAPTURE_LOCKS: OnceLock<StdMutex<HashMap<String, Arc<AsyncMutex<()>>>>> =
+    OnceLock::new();
+
+/// 取（或创建）某实例的捕获锁。
+///
+/// 外层 `StdMutex` 只用于保护映射表，拿到 `Arc` 后立即释放，不会跨 await 持有；
+/// 真正的串行化由内层 `AsyncMutex` 在捕获期间持有。
+fn capture_lock_for(server_id: &str) -> Arc<AsyncMutex<()>> {
+    let registry = CAPTURE_LOCKS.get_or_init(|| StdMutex::new(HashMap::new()));
+    let mut guard = registry
+        .lock()
+        .expect("capture lock registry poisoned");
+    Arc::clone(
+        guard
+            .entry(server_id.to_string())
+            .or_insert_with(|| Arc::new(AsyncMutex::new(()))),
+    )
 }
 
 /// 向运行中的服务器发送一条命令，返回其控制台回显的行（已去重）。
@@ -58,6 +89,12 @@ pub async fn capture_command_output(
     let server_svc = AppServices::server_service()
         .await
         .map_err(|_| CaptureError::Unavailable)?;
+
+    // 同一实例串行化：一次只让一条命令的回显进入捕获窗口，避免并发命令
+    // （list / whitelist list / banlist）的响应在共享日志流上互相串线
+    // （见 code review：命令响应会穿线）。锁覆盖发命令到捕获结束的整段。
+    let capture_lock = capture_lock_for(server_id);
+    let _permit = capture_lock.lock().await;
 
     // 先订阅，再发命令，保证响应行不被漏掉。
     let mut rx = subscribe_log_events();
@@ -110,14 +147,10 @@ pub async fn capture_command_output(
     }
 
     if !got_first {
-        // 给开发 / 运维留一条排查线索：哪些命令在哪种环境下完全收不到
-        // 回显（可能因为启用了 RCON、stdout 被重定向等情况）。
-        warn!(
-            target: "sealantern.application.command_capture",
-            server_id,
-            command,
-            "命令已发出，但未在 {timeout:?} 内捕获到任何服务器回显行"
-        );
+        // 之前这里只 warn 然后返回 Ok(空列表)，会把"捕获失败"（RCON、
+        // stdout 被重定向、日志延迟）伪装成"真的没有数据"，导致前端静默
+        // 展示空列表。改为显式错误，让上层决定报错还是降级展示。
+        return Err(CaptureError::NoResponse);
     }
 
     Ok(captured)

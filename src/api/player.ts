@@ -56,22 +56,22 @@ export const playerApi = {
   /**
    * 获取白名单（向服务器发送 whitelist list 命令，UUID 由 usercache 反查）
    */
-  async getWhitelist(serverId: string, serverPath: string): Promise<PlayerEntry[]> {
-    return tauriInvoke("get_whitelist", { server_id: serverId, server_path: serverPath });
+  async getWhitelist(serverId: string): Promise<PlayerEntry[]> {
+    return tauriInvoke("get_whitelist", { server_id: serverId });
   },
 
   /**
    * 获取封禁玩家列表
    */
-  async getBannedPlayers(serverId: string, serverPath: string): Promise<BanEntry[]> {
-    return tauriInvoke("get_banned_players", { server_id: serverId, server_path: serverPath });
+  async getBannedPlayers(serverId: string): Promise<BanEntry[]> {
+    return tauriInvoke("get_banned_players", { server_id: serverId });
   },
 
   /**
    * 获取 OP 列表（当前为 list 输出里 * 前缀的在线玩家）
    */
-  async getOps(serverId: string, serverPath: string): Promise<OpEntry[]> {
-    return tauriInvoke("get_ops", { server_id: serverId, server_path: serverPath });
+  async getOps(serverId: string): Promise<OpEntry[]> {
+    return tauriInvoke("get_ops", { server_id: serverId });
   },
 
   /**
@@ -133,7 +133,7 @@ export const playerApi = {
   /**
    * 按用户名查询玩家档案（UUID），从服务器本地 usercache.json 读取
    */
-  async lookupPlayer(serverPath: string, username: string): Promise<PlayerProfile> {
-    return tauriInvoke("lookup_player", { server_path: serverPath, username });
+  async lookupPlayer(serverId: string, username: string): Promise<PlayerProfile> {
+    return tauriInvoke("lookup_player", { server_id: serverId, username });
   },
 };

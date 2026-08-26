@@ -91,7 +91,7 @@ impl AppServices {
                 cron: Arc::new(CoreCronTaskService::new(server.clone())),
                 system: Arc::new(CoreSystemService::new(instance.clone(), server.clone())),
                 server,
-                instance,
+                instance: instance.clone(),
                 java: Arc::new(CoreJavaService),
                 online_tunnel: Arc::new(CoreOnlineTunnelService::default()),
                 catalog: Arc::new(CoreServerCatalogService),
@@ -100,7 +100,7 @@ impl AppServices {
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 update: Arc::new(CoreUpdateCheckService::new()),
                 update_install: Arc::new(CoreUpdateInstallService),
-                player: Arc::new(CorePlayerService::new()),
+                player: Arc::new(CorePlayerService::new(instance.clone())),
                 plugin: tokio::sync::OnceCell::new(),
             }),
         }
