@@ -43,7 +43,8 @@ import { isMacOSPlatform } from "@utils/platform";
  * 恢复步骤：
  * 1. 移除 navItems 计算属性中对 settingsStore.settings.developer_mode 的条件判断
  * 2. 恢复 orderedNavGroups 中对 plugins-default 和 plugins-custom 组的渲染
- * 3. 确认插件功能完整可用后，移除本 TODO:在实现插件功能后恢复插件相关导航 注释
+ * 3. 移除第 4 步新增的对静态 "plugins" 项的过滤条件
+ * 4. 确认插件功能完整可用后，移除本 TODO:在实现插件功能后恢复插件相关导航 注释
  */
 
 const iconMap: Record<string, LucideIcon> = {
