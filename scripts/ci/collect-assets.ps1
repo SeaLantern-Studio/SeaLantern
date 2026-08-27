@@ -20,9 +20,11 @@ if (-not $env:RUNNER_TEMP) {
     throw 'RUNNER_TEMP is not set.'
 }
 
-$searchRoots = @('target', 'src-tauri/target') |
-    ForEach-Object { Join-Path $repoDir $_ } |
-    Where-Object { Test-Path -LiteralPath $_ -PathType Container }
+$searchRoots = @(
+    @('target', 'src-tauri/target') |
+        ForEach-Object { Join-Path $repoDir $_ } |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Container }
+)
 if ($searchRoots.Count -eq 0) {
     throw 'No target directory was found.'
 }

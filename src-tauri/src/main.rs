@@ -67,10 +67,10 @@ use adapter::tauri::commands::update_install::{
 use adapter::tauri::events::LogSenderState;
 use desktop::{
     AutoLightweightState, DesktopAppearanceState, MainWindowState, apply_acrylic,
-    desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
-    desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
-    desktop_pick_startup_file, hide_main_window, restore_main_window, set_window_material,
-    supports_liquid_glass, toggle_light_weight,
+    desktop_open_folder, desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file,
+    desktop_pick_jar_file, desktop_pick_java_file, desktop_pick_save_file,
+    desktop_pick_server_executable, desktop_pick_startup_file, hide_main_window,
+    restore_main_window, set_window_material, supports_liquid_glass, toggle_light_weight,
 };
 
 fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
@@ -107,6 +107,7 @@ fn main() {
         .manage(LogSenderState::new())
         .invoke_handler(tauri::generate_handler![
             //桌面端能力（由desktop/dialog提供）
+            desktop_open_folder,
             desktop_pick_archive_file,
             desktop_pick_folder,
             desktop_pick_image_file,

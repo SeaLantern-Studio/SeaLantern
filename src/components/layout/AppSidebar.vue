@@ -31,6 +31,22 @@ import {
 import logoSvg from "@assets/logo.svg";
 import { isMacOSPlatform } from "@utils/platform";
 
+/**
+ * TODO:在实现插件功能后恢复插件相关导航
+ *
+ * 当前：若未启用开发者模式 (settingsStore.settings.developer_mode)，隐藏所有插件相关导航：
+ *   - 静态导航项中的 "plugins" (/plugins, group="system")
+ *   - 插件管理导航 (pluginNavItems, 路径 /plugin/{plugin_id})
+ *   - 插件侧边栏项 (pluginStore.sidebarItems 相关)
+ *   - 导航分组中的 plugins-default 和 plugins-custom 组
+ *
+ * 恢复步骤：
+ * 1. 移除 navItems 计算属性中对 settingsStore.settings.developer_mode 的条件判断
+ * 2. 恢复 orderedNavGroups 中对 plugins-default 和 plugins-custom 组的渲染
+ * 3. 移除第 4 步新增的对静态 "plugins" 项的过滤条件
+ * 4. 确认插件功能完整可用后，移除本 TODO:在实现插件功能后恢复插件相关导航 注释
+ */
+
 const iconMap: Record<string, LucideIcon> = {
   home: Home,
   plus: Plus,
@@ -219,30 +235,47 @@ const navItems = computed<NavItem[]>(() => {
     if (item.group === "server") result.push(item);
   }
 
-  // 3. 插件注册的导航项（在 main/server 和 system 之间）
-  const positioned = pluginStore.sidebarItems
-    .filter((i) => !i.isDefault && i.after)
-    .map(sidebarItemToNavItem);
+  // 3. 插件注册的导航项（在 main/server 和 system 之间）——仅开发者模式显示
+  if (settingsStore.settings.developer_mode) {
+    const positioned = pluginStore.sidebarItems
+      .filter((i) => !i.isDefault && i.after)
+      .map(sidebarItemToNavItem);
 
-  const unpositioned = pluginStore.sidebarItems
-    .filter((i) => !i.isDefault && !i.after)
-    .map(sidebarItemToNavItem);
+    const unpositioned = pluginStore.sidebarItems
+      .filter((i) => !i.isDefault && !i.after)
+      .map(sidebarItemToNavItem);
 
-  const defaultItems = pluginStore.sidebarItems
-    .filter((i) => i.isDefault)
-    .map(sidebarItemToNavItem);
+    const defaultItems = pluginStore.sidebarItems
+      .filter((i) => i.isDefault)
+      .map(sidebarItemToNavItem);
 
-  const handledPluginIds = new Set(pluginStore.sidebarItems.map((i) => i.pluginId));
-  const remainingPluginItems = pluginNavItems.value.filter(
-    (i) => !i.pluginId || !handledPluginIds.has(i.pluginId),
-  );
+    const handledPluginIds = new Set(pluginStore.sidebarItems.map((i) => i.pluginId));
+    const remainingPluginItems = pluginNavItems.value.filter(
+      (i) => !i.pluginId || !handledPluginIds.has(i.pluginId),
+    );
 
-  const pluginRegisteredItems = [...unpositioned, ...defaultItems, ...remainingPluginItems];
-  result.push(...pluginRegisteredItems);
+    const pluginRegisteredItems = [...unpositioned, ...defaultItems, ...remainingPluginItems];
+    result.push(...pluginRegisteredItems);
 
-  // 4. system 组：插件管理、联机、设置、帮助
+    // 处理有 after 定位的插件项（仅开发者模式）
+    for (const item of positioned) {
+      const targetIdx = result.findIndex((r) => r.name === item.after);
+      if (targetIdx !== -1) {
+        result.splice(targetIdx + 1, 0, item);
+      } else {
+        result.push(item);
+      }
+    }
+  }
+
+  // 4. system 组：插件管理、联机、设置、帮助——仅开发者模式显示插件管理
   for (const item of staticNavItems) {
-    if (item.group === "system") result.push(item);
+    if (item.group === "system") {
+      if (item.name === "plugins" && !settingsStore.settings.developer_mode) {
+        continue; // 跳过插件管理入口
+      }
+      result.push(item);
+    }
   }
 
   // 5. 开发者模式：仅当设置开启时展示测试工具入口
@@ -255,16 +288,6 @@ const navItems = computed<NavItem[]>(() => {
       label: i18n.t("common.dev_test"),
       group: "dev",
     });
-  }
-
-  // 处理有 after 定位的插件项
-  for (const item of positioned) {
-    const targetIdx = result.findIndex((r) => r.name === item.after);
-    if (targetIdx !== -1) {
-      result.splice(targetIdx + 1, 0, item);
-    } else {
-      result.push(item);
-    }
   }
 
   return result;
@@ -402,10 +425,18 @@ const orderedNavGroups = computed<NavGroup[]>(() => {
   for (const item of navItems.value) {
     const effectiveGroup = item.group;
     if (item.isPlugin && !item.after) {
-      // 插件自定义项单独成组
-      groups.push({ group: "plugins-custom", items: [item] });
-      currentGroup = null;
+      // 插件自定义项单独成组——仅开发者模式显示
+      if (settingsStore.settings.developer_mode) {
+        groups.push({ group: "plugins-custom", items: [item] });
+        currentGroup = null;
+      }
       continue;
+    }
+    if (effectiveGroup === "plugins-default" || effectiveGroup === "plugins-custom") {
+      // 插件默认/自定义分组仅在开发者模式下显示
+      if (!settingsStore.settings.developer_mode) {
+        continue;
+      }
     }
     if (!currentGroup || currentGroup.group !== effectiveGroup) {
       currentGroup = { group: effectiveGroup, items: [] };
