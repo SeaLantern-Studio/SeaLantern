@@ -97,8 +97,5 @@ pub trait PlayerListService: Send + Sync {
     /// 获取在线 OP 列表（从 `list` 输出里 `*` 前缀的玩家）。
     ///
     /// 只收 `server_id`；内部经实例注册表解析出唯一可信目录。
-    async fn get_ops(
-        &self,
-        server_id: String,
-    ) -> Result<Vec<OpEntryDto>, PlayerListError>;
+    async fn get_ops(&self, server_id: String) -> Result<Vec<OpEntryDto>, PlayerListError>;
 }

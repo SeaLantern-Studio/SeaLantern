@@ -9,8 +9,8 @@ use sealantern_interface::{
 };
 use std::path::Path;
 
-use crate::service::capture_command_output;
 use crate::service::CoreInstanceService;
+use crate::service::capture_command_output;
 
 /// usercache.json 里每条记录的格式。
 #[derive(serde::Deserialize)]
@@ -148,10 +148,7 @@ impl PlayerListService for CorePlayerService {
         Ok(out)
     }
 
-    async fn get_ops(
-        &self,
-        server_id: String,
-    ) -> Result<Vec<OpEntryDto>, PlayerListError> {
+    async fn get_ops(&self, server_id: String) -> Result<Vec<OpEntryDto>, PlayerListError> {
         let lines = capture_command_output(&server_id, "list", Duration::from_secs(6)).await?;
         let server_path = self.resolve_directory(&server_id).await?;
         let names = parse_online_op_names(&lines);

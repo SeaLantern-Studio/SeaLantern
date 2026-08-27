@@ -60,9 +60,7 @@ pub async fn get_online_players(server_id: String) -> Result<Vec<String>, Player
 
 /// 白名单：发 `whitelist list`，解析名字后用 usercache 反查 UUID。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn get_whitelist(
-    server_id: String,
-) -> Result<Vec<PlayerEntryDto>, PlayerListError> {
+pub async fn get_whitelist(server_id: String) -> Result<Vec<PlayerEntryDto>, PlayerListError> {
     let service = AppServices::player_service()
         .await
         .map_err(|_| PlayerListError::ServiceUnavailable)?;
@@ -71,9 +69,7 @@ pub async fn get_whitelist(
 
 /// 封禁列表：发 `banlist`，解析名字+原因，UUID 用 usercache 反查。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn get_banned_players(
-    server_id: String,
-) -> Result<Vec<BanEntryDto>, PlayerListError> {
+pub async fn get_banned_players(server_id: String) -> Result<Vec<BanEntryDto>, PlayerListError> {
     let service = AppServices::player_service()
         .await
         .map_err(|_| PlayerListError::ServiceUnavailable)?;
@@ -82,9 +78,7 @@ pub async fn get_banned_players(
 
 /// OP 列表：发 `list` 命令，解析带 `*` 前缀的在线玩家。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn get_ops(
-    server_id: String,
-) -> Result<Vec<OpEntryDto>, PlayerListError> {
+pub async fn get_ops(server_id: String) -> Result<Vec<OpEntryDto>, PlayerListError> {
     let service = AppServices::player_service()
         .await
         .map_err(|_| PlayerListError::ServiceUnavailable)?;

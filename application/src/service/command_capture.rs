@@ -50,8 +50,7 @@ impl std::fmt::Display for CaptureError {
 /// 每个实例一把捕获锁：保证同一实例同一时刻只有一个 `capture_command_output`
 /// 在读取日志流，避免并发命令（如 `list` / `whitelist list` / `banlist`）的
 /// 回显在共享日志广播上互相串线（见 code review：命令响应会穿线）。
-static CAPTURE_LOCKS: OnceLock<StdMutex<HashMap<String, Arc<AsyncMutex<()>>>>> =
-    OnceLock::new();
+static CAPTURE_LOCKS: OnceLock<StdMutex<HashMap<String, Arc<AsyncMutex<()>>>>> = OnceLock::new();
 
 /// 取（或创建）某实例的捕获锁。
 ///
@@ -59,9 +58,7 @@ static CAPTURE_LOCKS: OnceLock<StdMutex<HashMap<String, Arc<AsyncMutex<()>>>>> =
 /// 真正的串行化由内层 `AsyncMutex` 在捕获期间持有。
 fn capture_lock_for(server_id: &str) -> Arc<AsyncMutex<()>> {
     let registry = CAPTURE_LOCKS.get_or_init(|| StdMutex::new(HashMap::new()));
-    let mut guard = registry
-        .lock()
-        .expect("capture lock registry poisoned");
+    let mut guard = registry.lock().expect("capture lock registry poisoned");
     Arc::clone(
         guard
             .entry(server_id.to_string())
