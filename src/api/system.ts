@@ -300,7 +300,7 @@ export const systemApi = {
     if (isUploadSupported()) {
       throw new Error("Docker环境不支持从浏览器直接打开本地文件夹");
     }
-    return tauriInvoke("open_folder", { path });
+    return tauriInvoke("desktop_open_folder", { path });
   },
 
   async getDefaultRunPath(): Promise<string> {
