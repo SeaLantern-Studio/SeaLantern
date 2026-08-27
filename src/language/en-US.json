@@ -665,7 +665,20 @@
       "empty": "Empty",
       "level": "Level",
       "reason": "Reason",
-      "status_online": "Online"
+      "status_online": "Online",
+      "lookup_title": "Lookup UUID",
+      "lookup_placeholder": "Enter player username",
+      "lookup_button": "Search",
+      "lookup_name_label": "Name",
+      "lookup_copy_uuid": "Copy UUID",
+      "lookup_not_found": "Player not found",
+      "lookup_rate_limited": "Too many requests, please try again later",
+      "lookup_server_not_selected": "Please select a server first",
+      "lookup_service_unavailable": "Lookup service unavailable",
+      "lookup_invalid_input": "Invalid username",
+      "lookup_copy_failed": "Copy failed",
+      "search_placeholder": "Search player...",
+      "uuid_copied": "UUID copied"
     },
     "settings": {
       "title": "Settings",

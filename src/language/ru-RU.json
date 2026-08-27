@@ -609,7 +609,20 @@
     "add_whitelist": "Add to Whitelist",
     "server_not_run": "Player management requires server to be running",
     "reason": "Reason",
-    "status_online": "Online"
+    "status_online": "Online",
+    "lookup_title": "Поиск UUID",
+    "lookup_placeholder": "Введите имя игрока",
+    "lookup_button": "Поиск",
+    "lookup_name_label": "Имя",
+    "lookup_copy_uuid": "Копировать UUID",
+    "lookup_not_found": "Игрок не найден",
+    "lookup_rate_limited": "Слишком много запросов, попробуйте позже",
+    "lookup_server_not_selected": "Сначала выберите сервер",
+    "lookup_service_unavailable": "Сервис поиска недоступен",
+    "lookup_invalid_input": "Неверное имя игрока",
+    "lookup_copy_failed": "Ошибка копирования",
+    "search_placeholder": "Поиск игрока...",
+    "uuid_copied": "UUID скопирован"
   },
   "settings": {
     "title": "Настройки",

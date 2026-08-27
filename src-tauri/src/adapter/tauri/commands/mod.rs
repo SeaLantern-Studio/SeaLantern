@@ -12,6 +12,7 @@ pub mod instance;
 pub mod java;
 pub mod logging;
 pub mod online_tunnel;
+pub mod player;
 pub mod plugin;
 pub mod provisioning;
 pub mod server;

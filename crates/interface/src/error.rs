@@ -4,6 +4,33 @@
 //! 由 `application` 层的主错误（`application::error`）转换而来。
 //! 底层失败详情由应用层记录到受控日志，不跨传输面泄漏。
 
+/// 玩家查询失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerLookupError {
+    // 玩家不存在
+    NotFound,
+    //玩家名空或非法字符
+    InvalidInput,
+    //服务器目录未选择
+    ServerNotSelected,
+    //读取本地文件失败
+    ServiceUnavailable,
+}
+impl std::fmt::Display for PlayerLookupError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::NotFound => "player not found",
+            Self::InvalidInput => "invalid player input",
+            Self::ServerNotSelected => "server not selected",
+            Self::ServiceUnavailable => "service unavailable",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for PlayerLookupError {}
+
 /// 服务器定时任务操作失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -404,6 +431,35 @@ impl std::fmt::Display for OnlineTunnelServiceError {
 }
 
 impl std::error::Error for OnlineTunnelServiceError {}
+
+/// 玩家列表查询失败的契约错误类别。
+///
+/// 用于在线玩家、白名单、封禁、OP 列表等通过控制台命令捕获的服务。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerListError {
+    /// 客户端提供的输入不合法（如空服务器 ID）。
+    InvalidInput,
+    /// 服务器未在运行（无法写入 stdin 发送命令）。
+    ServerNotRunning,
+    /// 服务装配层不可用。
+    ServiceUnavailable,
+    /// 命令已发出但未在超时内收到回显。
+    CaptureFailed,
+}
+
+impl std::fmt::Display for PlayerListError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidInput => "invalid player list input",
+            Self::ServerNotRunning => "server is not running",
+            Self::ServiceUnavailable => "player list service unavailable",
+            Self::CaptureFailed => "command capture failed or timed out",
+        })
+    }
+}
+
+impl std::error::Error for PlayerListError {}
 
 #[cfg(test)]
 mod tests {

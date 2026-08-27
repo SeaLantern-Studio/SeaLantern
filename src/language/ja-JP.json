@@ -609,7 +609,20 @@
     "add_whitelist": "Add to Whitelist",
     "server_not_run": "Player management requires server to be running",
     "reason": "Reason",
-    "status_online": "Online"
+    "status_online": "Online",
+    "lookup_title": "UUID 検索",
+    "lookup_placeholder": "プレイヤー名を入力",
+    "lookup_button": "検索",
+    "lookup_name_label": "プレイヤー名",
+    "lookup_copy_uuid": "UUID をコピー",
+    "lookup_not_found": "プレイヤーが見つかりません",
+    "lookup_rate_limited": "リクエストが多すぎます、後でもう一度お試しください",
+    "lookup_server_not_selected": "最初にサーバーを選択してください",
+    "lookup_service_unavailable": "検索サービスは利用できません",
+    "lookup_invalid_input": "無効なプレイヤー名",
+    "lookup_copy_failed": "コピーに失敗しました",
+    "search_placeholder": "プレイヤーを検索...",
+    "uuid_copied": "UUIDをコピーしました"
   },
   "settings": {
     "title": "アプリケーション設定",
