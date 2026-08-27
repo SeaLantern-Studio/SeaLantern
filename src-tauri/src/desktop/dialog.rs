@@ -3,7 +3,7 @@
 //! 实现 system 模块的文件选择、保存与文件夹选择接口：
 //! `desktop_pick_jar_file` / `desktop_pick_archive_file` / `desktop_pick_startup_file` /
 //! `desktop_pick_server_executable` / `desktop_pick_java_file` / `desktop_pick_save_file` /
-//! `desktop_pick_folder` / `desktop_pick_image_file`。
+//! `desktop_pick_folder` / `desktop_pick_image_file` / `desktop_open_folder`。
 //!
 //! 对话框由 `tauri-plugin-dialog` 提供，采用回调 + 通道转发结果：
 //! 选中返回路径字符串，取消返回 `null`。
@@ -12,6 +12,7 @@ use std::path::Path;
 use std::sync::mpsc;
 
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 
 /// 打开系统文件选择器选择 JAR 文件。
 ///
@@ -206,4 +207,32 @@ pub fn desktop_pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, 
         });
 
     rx.recv().map_err(|e| format!("Dialog error: {}", e))
+}
+
+/// 在系统文件管理器中打开指定文件夹路径。
+///
+/// 使用 `tauri-plugin-opener` 打开文件夹，成功返回 `true`，失败返回错误信息。
+#[tauri::command(rename_all = "snake_case")]
+pub fn desktop_open_folder(app: tauri::AppHandle, path: String) -> Result<bool, String> {
+    let path_buf = Path::new(&path);
+
+    if !path_buf.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+
+    if !path_buf.is_dir() {
+        return Err(format!("Path is not a directory: {}", path));
+    }
+
+    // open_path 需要实现 Into<String> 的类型，将 PathBuf 转为字符串
+    let path_str = path_buf
+        .to_str()
+        .ok_or_else(|| "Invalid path: contains non-UTF-8 characters".to_string())?
+        .to_string();
+
+    app.opener()
+        .open_path(path_str, None::<&str>)
+        .map_err(|e| format!("Failed to open folder: {}", e))?;
+
+    Ok(true)
 }

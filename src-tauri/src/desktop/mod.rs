@@ -12,9 +12,9 @@ pub mod tray;
 pub mod window_state;
 
 pub use dialog::{
-    desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file, desktop_pick_jar_file,
-    desktop_pick_java_file, desktop_pick_save_file, desktop_pick_server_executable,
-    desktop_pick_startup_file,
+    desktop_open_folder, desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file,
+    desktop_pick_jar_file, desktop_pick_java_file, desktop_pick_save_file,
+    desktop_pick_server_executable, desktop_pick_startup_file,
 };
 
 pub use auto_lightweight::AutoLightweightState;
