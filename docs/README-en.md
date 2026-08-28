@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="src/assets/logo.svg" alt="Sea Lantern logo" width="200" height="200">
+<img src="../src/assets/logo.svg" alt="Sea Lantern logo" width="200" height="200">
 
 # Sea Lantern
 
@@ -12,7 +12,7 @@ A lightweight Minecraft server management tool
   <a href="https://github.com/SeaLantern-Studio/SeaLantern/releases/latest"><img src="https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=Latest" alt="Latest GitHub Release"></a>
 </div>
 
-<kbd>[简体中文](README.md)</kbd> <kbd>English</kbd>
+<kbd>[简体中文](../README.md)</kbd> <kbd>English</kbd>
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
@@ -20,13 +20,11 @@ A lightweight Minecraft server management tool
 
 ## What It Does
 
-- [x] Download Minecraft server software
-- [x] Customize the server setup and launch experience
-- [x] Edit server configuration through a clear and intuitive interface
-      Currently limited to the vanilla `server.properties` file
-- [x] Run frequently used console commands with ease
-- [ ] JVM presets and a community sharing hub
-- [ ] Run servers in containerized Docker environments
+- [x] Download and inspect Minecraft server software
+- [x] Create or import servers and manage their lifecycle
+- [x] Run console commands and inspect server logs
+- [x] Edit server configuration through a clear interface
+- [x] Provide application capabilities such as backups, scheduled tasks, updates, and plugins
 
 ## Quick Start
 
@@ -42,22 +40,17 @@ A lightweight Minecraft server management tool
 - **Frontend**: Vue 3 + TypeScript + Vite
 - **Backend**: Rust + Tauri 2 (Desktop host) + Axum (Web host)
 - **Communication**: Tauri IPC/Event on Desktop, HTTP/WebSocket/SSE on Web, and host bridges for plugins
-- **Docker**: `itzg/minecraft-server`
-
-No Electron. No Node.js backend. No Webpack.
+  No Electron. No Node.js backend. No Webpack.
 
 Sea Lantern starts quickly, has a small footprint, and keeps memory usage low.
 
-The host-neutral `application` crate provides shared business orchestration. `src-tauri` and `server` are the Desktop and Web hosts, while `interface` contains only contracts genuinely shared by both. Reusable frontend business code goes through `src/api`; host-specific pages and features may evolve independently. See [Project Architecture and Code Organization](docs/architecture.md).
+The host-neutral `application` crate provides shared business orchestration. `src-tauri` and `server` are the Desktop and Web hosts, while `interface` provides contracts shared by both. Reusable frontend business code goes through `src/api`; host-specific pages and features may evolve independently. See [Project Architecture and Code Organization](design/architecture.md).
 
 > The interface is rendered using the operating system's native WebView.
 
-## Roadmap
+## Project Roadmap
 
-- **Backup management** — Incremental backups and restoration for Minecraft worlds
-- **Scheduled tasks** — Automatic restarts, scheduled backups, and timed command execution
-- **Resource management** — Search for and install plugins and mods from Modrinth and CurseForge
-- **NAT traversal** — Integrate FRP to provide a more stable and reliable connection for multiplayer servers
+See the [project roadmap](roadmap/README.md) for current priorities, known gaps, and deferred directions.
 
 ## For Developers
 
@@ -94,7 +87,7 @@ pnpm dev
 
 Linux developers may need to install additional system dependencies required by Tauri. See the [Tauri prerequisites for Linux](https://tauri.app/start/prerequisites/#linux) for details.
 
-The repository includes an [`Onlyfile`](Onlyfile) that provides consistent commands for common development, build, and check tasks. Install [Only](https://github.com/KercyDing/only) when needed:
+The repository includes an [`Onlyfile`](../Onlyfile) that provides consistent commands for common development, build, and check tasks. Install [Only](https://github.com/KercyDing/only) when needed:
 
 ```bash
 cargo install only
@@ -189,7 +182,7 @@ The project includes a CI workflow that automatically runs code-quality checks o
 
 ## Contributing
 
-Contributions of all kinds are welcome, including code, documentation, translations, bug reports, feature requests, and UI concepts.
+Contributions of all kinds are welcome, including code, documentation, translations, bug reports, feature requests, and UI concepts. Read the [contribution and verification rules](rules/contributing.md) before submitting a change.
 
 1. Fork the repository
 2. Create a new development branch
@@ -214,7 +207,7 @@ Thank you to everyone who has contributed to Sea Lantern!
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE).
+[GNU Affero General Public License v3.0](../LICENSE).
 
 ## Acknowledgements
 

@@ -12,7 +12,7 @@
   <a href="https://github.com/SeaLantern-Studio/SeaLantern/releases/latest"><img src="https://img.shields.io/github/v/release/SeaLantern-Studio/SeaLantern?style=flat&logo=github&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" alt="GitHub Latest"></a>
 </div>
 
-<kbd>简体中文</kbd> <kbd>[English](README-en.md)</kbd>
+<kbd>简体中文</kbd> <kbd>[English](docs/README-en.md)</kbd>
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SeaLantern-Studio/SeaLantern)
 
@@ -20,12 +20,11 @@
 
 ## 能干什么
 
-- [x] 下载服务器核心
-- [x] 客制化开服器体验
-- [x] 方便直观的更改配置(目前仅支持原版的`server.properties`)
-- [x] 快捷控制台命令
-- [ ] JVM 预设与分享社区
-- [ ] 在 Docker 容器化环境下运行
+- [x] 下载和检测 Minecraft 服务端核心
+- [x] 创建或导入服务器并管理启动生命周期
+- [x] 通过控制台执行命令并查看日志
+- [x] 方便直观地修改服务器配置
+- [x] 提供备份、定时任务、更新和插件等应用能力
 
 ## 快速开始
 
@@ -41,20 +40,15 @@
 - **前端**: Vue 3 + TypeScript + Vite
 - **后端**: Rust + Tauri 2（Desktop 宿主）+ Axum（Web 宿主）
 - **通信**: Desktop 使用 Tauri IPC/Event，Web 使用 HTTP/WebSocket/SSE，插件使用宿主 Bridge
-- **Docker**: itzg/minecraft-server
+  没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
 
-没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
-
-`application` 提供宿主无关的公共业务编排，`src-tauri` 与 `server` 分别作为 Desktop、Web 宿主，`interface` 只定义两端真正共用的契约。可复用的前端业务通过 `src/api` 接入，宿主专用页面和功能可以独立演进。详见[项目架构与代码组织](docs/architecture.md)。
+`application` 提供宿主无关的公共业务编排，`src-tauri` 与 `server` 分别作为 Desktop、Web 宿主，`interface` 提供两端共用的服务契约。可复用的前端业务通过 `src/api` 接入，宿主专用页面和功能可以独立演进。详见[项目架构与代码组织](docs/design/architecture.md)。
 
 > 使用系统 Webview 渲染。
 
-## 待开发功能
+## 项目路线
 
-- 备份管理 - 世界存档的增量备份和还原
-- 定时任务 - 自动重启、定时备份、定时执行命令
-- 资源管理 - 从 Modrinth 和 CurseForge 搜索安装插件和模组
-- 内网穿透 - 集成 FRP，为现有联机功能提供更稳定可靠的连接方案
+当前工程优先级、已知缺口和暂不纳入的方向见 [Roadmap](docs/roadmap/README.md)。
 
 ## 给开发者
 
@@ -187,6 +181,8 @@ cargo test --all-targets --workspace
 ## 参与开发
 
 我们欢迎任何形式的贡献：代码、文档、翻译、问题反馈、功能建议，或者 UI 草图都可以。
+
+提交修改前请阅读[贡献与验证规则](docs/rules/contributing.md)和[文档维护规则](docs/rules/documentation.md)。
 
 1. Fork 仓库
 2. 新建自己的开发分支

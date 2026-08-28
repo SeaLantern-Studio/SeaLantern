@@ -32,7 +32,7 @@ CLAUDE.md
 
 # smoke test
 target-goal-smoke/
-tmp/
+/tmp/
 
 .tmp*
 
