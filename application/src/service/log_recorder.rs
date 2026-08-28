@@ -15,9 +15,11 @@ use sealantern_core::process::read_output_lines;
 use sealantern_extra::server::log::{LogSource, LogWriter, open_log_database};
 use sealantern_interface::console::ConsoleLogLine;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::{Mutex as StdMutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::sync::mpsc;
 
 /// 广播通道容量；消费慢时丢弃旧事件，调用方可拉取补漏。
 const LOG_EVENT_CHANNEL_CAPACITY: usize = 1024;
@@ -48,6 +50,63 @@ pub fn subscribe_log_events() -> tokio::sync::broadcast::Receiver<LogEvent> {
 fn publish_log_event(event: LogEvent) {
     if let Some(sender) = LOG_EVENT_BROADCAST.get() {
         let _ = sender.send(event);
+    }
+}
+
+/// 命令响应捕获的专用通道注册表（按实例 ID 分组）。
+///
+/// `command_capture` 在发命令前注册一条 `mpsc` 发送端，reader 把该实例的
+/// `server` 源日志行转发给所有已注册发送端；捕获侧各自 drain 自己的接收端，
+/// 从而取代“全局 broadcast + 每实例锁”的实现（见 code review：A-专用响应通道）。
+/// 通道容量由调用方决定，转发用 `try_send`，满或已注销时丢弃该行（捕获侧有
+/// timeout 兜底，不会死等）。
+static CAPTURE_SENDERS: OnceLock<StdMutex<HashMap<String, Vec<mpsc::Sender<ConsoleLogLine>>>>> =
+    OnceLock::new();
+
+/// 注册一条命令捕获通道，返回 slot 索引供后续注销。
+///
+/// 必须在 `send_command` **之前**调用，确保不漏掉响应首行。
+pub fn register_capture_sender(server_id: &str, tx: mpsc::Sender<ConsoleLogLine>) -> usize {
+    let registry = CAPTURE_SENDERS.get_or_init(|| StdMutex::new(HashMap::new()));
+    let mut guard = registry.lock().expect("capture sender registry poisoned");
+    let slots = guard.entry(server_id.to_string()).or_default();
+    slots.push(tx);
+    slots.len() - 1
+}
+
+/// 按 slot 注销并 drop 对应发送端。
+pub fn deregister_capture_sender(server_id: &str, slot: usize) {
+    let Some(registry) = CAPTURE_SENDERS.get() else {
+        return;
+    };
+    let mut guard = registry.lock().expect("capture sender registry poisoned");
+    if let Some(slots) = guard.get_mut(server_id) {
+        if slot < slots.len() {
+            slots.remove(slot);
+        }
+        if slots.is_empty() {
+            guard.remove(server_id);
+        }
+    }
+}
+
+/// 把该实例的 `server` 源日志行转发给所有已注册捕获通道。
+///
+/// 在阻塞 reader 线程调用，故用 `try_send`（不跨 `await`）；通道满或发送端已
+/// drop 时忽略该行。
+pub fn forward_to_capture_senders(server_id: &str, line: ConsoleLogLine) {
+    let Some(registry) = CAPTURE_SENDERS.get() else {
+        return;
+    };
+    let senders = {
+        let guard = registry.lock().expect("capture sender registry poisoned");
+        match guard.get(server_id) {
+            Some(slots) => slots.clone(),
+            None => return,
+        }
+    };
+    for tx in senders {
+        let _ = tx.try_send(line.clone());
     }
 }
 
@@ -111,15 +170,18 @@ impl LogRecorder {
                         LogSource::Server,
                         line.clone(),
                         Some(Box::new(move |sequence| {
+                            let console_line = ConsoleLogLine {
+                                sequence,
+                                timestamp,
+                                source: "server".to_owned(),
+                                line: line.clone(),
+                            };
                             publish_log_event(LogEvent {
-                                instance_id,
-                                line: ConsoleLogLine {
-                                    sequence,
-                                    timestamp,
-                                    source: "server".to_owned(),
-                                    line,
-                                },
+                                instance_id: instance_id.clone(),
+                                line: console_line.clone(),
                             });
+                            // 同一条 server 源行额外转发给命令捕获通道（见专用响应通道方案）。
+                            forward_to_capture_senders(&instance_id, console_line);
                         })),
                     );
                 });

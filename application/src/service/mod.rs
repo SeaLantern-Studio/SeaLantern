@@ -32,7 +32,10 @@ pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
 pub use instance::CoreInstanceService;
 pub use java::CoreJavaService;
-pub use log_recorder::{LogEvent, LogRecorder, subscribe_log_events};
+pub use log_recorder::{
+    LogEvent, LogRecorder, deregister_capture_sender, forward_to_capture_senders,
+    register_capture_sender, subscribe_log_events,
+};
 pub use online_tunnel::CoreOnlineTunnelService;
 pub use player::CorePlayerService;
 pub use provisioning::CoreProvisioningService;

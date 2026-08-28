@@ -38,11 +38,6 @@ let isPageVisible = true;
 
 const selectedServerId = computed(() => store.currentServerId || "");
 
-const serverPath = computed(() => {
-  const server = store.servers.find((s) => s.id === selectedServerId.value);
-  return server?.path || "";
-});
-
 const isRunning = computed(() => {
   return store.statuses[selectedServerId.value]?.status === "Running";
 });
@@ -317,7 +312,7 @@ async function handleKick(name: string) {
           <PlayerList
             :loading="loading"
             :tab="activeTab"
-            :server-path="serverPath"
+            :server-id="selectedServerId"
             :onlinePlayers="onlinePlayers"
             :whitelist="whitelist"
             :bannedPlayers="bannedPlayers"

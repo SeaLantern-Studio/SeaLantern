@@ -10,7 +10,7 @@ type PlayerTab = "online" | "whitelist" | "banned" | "ops";
 const props = defineProps<{
   loading?: boolean;
   tab: PlayerTab;
-  serverPath?: string;
+  serverId?: string;
   onlinePlayers?: string[];
   whitelist?: Array<{ name: string; uuid: string }>;
   bannedPlayers?: Array<{ name: string; uuid: string; reason?: string }>;
@@ -55,9 +55,9 @@ async function handleCopyUuid(name: string, uuid?: string) {
   let uuidToCopy = uuid;
   if (!uuidToCopy) {
     // 在线玩家没有 UUID 数据，从 usercache.json 查询
-    if (!props.serverPath) return;
+    if (!props.serverId) return;
     try {
-      const profile = await playerApi.lookupPlayer(props.serverPath, name);
+      const profile = await playerApi.lookupPlayer(props.serverId, name);
       uuidToCopy = profile.uuid;
     } catch {
       toast.error(i18n.t("players.lookup_not_found"));
