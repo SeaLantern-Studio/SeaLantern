@@ -6,8 +6,9 @@ use zip::result::ZipError;
 /// 归档操作返回的错误。
 ///
 /// 大部分变体与具体归档格式无关（路径校验、资源上限、目标冲突等），
-/// 仅 [`ArchiveError::Zip`] 承载 ZIP 特有的底层错误。新增格式时应
-/// 追加各自的底层错误变体，而不是复用 `Zip`。
+/// 底层格式错误则各自独立：[`ArchiveError::Zip`] 承载 ZIP 的
+/// [`ZipError`]，[`ArchiveError::Tar`] 承载 tar/gzip 流的解析错误。
+/// 新增格式时应追加各自的底层错误变体，而不是复用已有变体。
 #[derive(Debug)]
 pub enum ArchiveError {
     /// 操作系统文件操作失败。
@@ -21,6 +22,16 @@ pub enum ArchiveError {
         operation: &'static str,
         path: PathBuf,
         source: ZipError,
+    },
+    /// tar 或 gzip 流无法读取或写入。
+    ///
+    /// tar 与 flate2 都以 [`std::io::Error`] 报告格式错误，因此与
+    /// [`ArchiveError::Io`] 共用错误类型，但语义上区分「归档内容不合法」
+    /// 与「文件系统操作失败」。
+    Tar {
+        operation: &'static str,
+        path: PathBuf,
+        source: std::io::Error,
     },
     /// 请求的归档源不是一个常规目录。
     InvalidSource { path: PathBuf, reason: &'static str },
@@ -78,6 +89,14 @@ impl ArchiveError {
         Self::Zip { operation, path: path.into(), source }
     }
 
+    pub(crate) fn tar(
+        operation: &'static str,
+        path: impl Into<PathBuf>,
+        source: std::io::Error,
+    ) -> Self {
+        Self::Tar { operation, path: path.into(), source }
+    }
+
     pub(crate) fn entry(&self) -> Option<&str> {
         match self {
             Self::UnsafeEntry { entry, .. }
@@ -98,6 +117,11 @@ impl fmt::Display for ArchiveError {
             Self::Zip { operation, path, source } => write!(
                 formatter,
                 "failed to {operation} ZIP archive '{}': {source}",
+                path.display()
+            ),
+            Self::Tar { operation, path, source } => write!(
+                formatter,
+                "failed to {operation} tar.gz archive '{}': {source}",
                 path.display()
             ),
             Self::InvalidSource { path, reason } => {
@@ -155,6 +179,7 @@ impl std::error::Error for ArchiveError {
         match self {
             Self::Io { source, .. } => Some(source),
             Self::Zip { source, .. } => Some(source),
+            Self::Tar { source, .. } => Some(source),
             Self::SymbolicLinkTargetRead { source, .. } => Some(source),
             _ => None,
         }

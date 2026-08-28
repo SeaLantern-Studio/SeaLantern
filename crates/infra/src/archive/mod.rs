@@ -9,6 +9,7 @@
 //! - [`limits`] / [`entry`]：与归档格式无关的资源限制、统计与路径校验
 //! - [`symbol_link`]：符号链接载荷解析
 //! - [`zip_read`] / [`zip_write`]：ZIP 格式的解压与创建
+//! - [`tar_read`]：tar.gz 格式的解压
 //!
 //! 本文件内的目录句柄辅助函数同样与格式无关，供各格式适配器共用。
 
@@ -16,6 +17,7 @@ mod entry;
 mod error;
 mod limits;
 mod symbol_link;
+mod tar_read;
 mod zip_read;
 mod zip_write;
 
@@ -27,6 +29,7 @@ use cap_std::fs::Dir;
 pub use error::ArchiveError;
 pub use limits::{ArchiveSummary, ExtractionLimits, ExtractionSummary};
 pub use symbol_link::{is_symbolic_link, parse_symbolic_link_target};
+pub use tar_read::{extract_tar_gz, extract_tar_gz_with_limits};
 pub use zip_read::{extract_zip, extract_zip_with_limits};
 pub use zip_write::create_zip;
 
