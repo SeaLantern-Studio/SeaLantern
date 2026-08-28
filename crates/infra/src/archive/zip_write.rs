@@ -6,18 +6,8 @@ use cap_std::fs::Dir;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
+use super::limits::{ArchiveSummary, accumulate_bytes};
 use super::{ArchiveError, open_existing_directory, parent_path};
-
-/// 统计 ZIP 创建过程中处理的条目数和非压缩字节数。
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct ArchiveSummary {
-    /// 已写入的普通文件数。
-    pub files: u64,
-    /// 已写入的目录条目数。
-    pub directories: u64,
-    /// 已写入的文件总非压缩字节数。
-    pub bytes: u64,
-}
 
 /// 创建包含 source 目录内容的 ZIP 归档文件。
 ///
@@ -52,7 +42,7 @@ fn create_zip_inner(source: &Path, destination: &Path) -> Result<ArchiveSummary,
         Ok(summary) => {
             if let Err(error) = fs::hard_link(&temporary, destination) {
                 let publish_error =
-                    ArchiveError::io("publish completed ZIP archive", destination, error);
+                    ArchiveError::io("publish completed archive", destination, error);
                 remove_temporary_archive(&temporary);
                 return Err(publish_error);
             }
@@ -74,6 +64,10 @@ fn remove_temporary_archive(path: &Path) {
     }
 }
 
+/// 拒绝已存在的目标路径，并确保其父目录存在。
+///
+/// 归档创建从不覆盖既有文件：目标存在即返回 [`ArchiveError::DestinationExists`]，
+/// 避免用部分写入的结果替换原有归档。
 fn reject_existing_destination(destination: &Path) -> Result<(), ArchiveError> {
     match fs::symlink_metadata(destination) {
         Ok(_) => {
@@ -81,15 +75,19 @@ fn reject_existing_destination(destination: &Path) -> Result<(), ArchiveError> {
         }
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => {
-            return Err(ArchiveError::io("read ZIP destination metadata", destination, error));
+            return Err(ArchiveError::io("read archive destination metadata", destination, error));
         }
     }
     let parent = parent_path(destination);
     fs::create_dir_all(parent)
-        .map_err(|error| ArchiveError::io("create ZIP destination parent", parent, error))?;
+        .map_err(|error| ArchiveError::io("create archive destination parent", parent, error))?;
     Ok(())
 }
 
+/// 广度遍历源目录并写入 ZIP 条目。
+///
+/// 子目录按名称排序后入栈，保证同一份源目录产出稳定的条目顺序。
+/// 符号链接与设备等特殊条目一律拒绝，不做跟随。
 fn write_archive(
     source_root: &Dir,
     source_path: &Path,
@@ -99,7 +97,7 @@ fn write_archive(
         .write(true)
         .create_new(true)
         .open(temporary)
-        .map_err(|error| ArchiveError::io("create temporary ZIP archive", temporary, error))?;
+        .map_err(|error| ArchiveError::io("create temporary archive", temporary, error))?;
     let mut writer = ZipWriter::new(file);
     let file_options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Deflated)
@@ -118,12 +116,16 @@ fn write_archive(
                 &directory
             })
             .map_err(|error| {
-                ArchiveError::io("read ZIP source directory", source_path.join(&directory), error)
+                ArchiveError::io(
+                    "read archive source directory",
+                    source_path.join(&directory),
+                    error,
+                )
             })?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|error| {
                 ArchiveError::io(
-                    "iterate ZIP source directory",
+                    "iterate archive source directory",
                     source_path.join(&directory),
                     error,
                 )
@@ -135,7 +137,7 @@ fn write_archive(
             let relative = directory.join(child.file_name());
             let display_path = source_path.join(&relative);
             let metadata = source_root.symlink_metadata(&relative).map_err(|error| {
-                ArchiveError::io("read ZIP source entry metadata", &display_path, error)
+                ArchiveError::io("read archive source entry metadata", &display_path, error)
             })?;
             let file_type = metadata.file_type();
             if file_type.is_symlink() {
@@ -165,22 +167,20 @@ fn write_archive(
             writer
                 .start_file(name, file_options)
                 .map_err(|error| ArchiveError::zip("start file entry in", temporary, error))?;
-            let mut input = source_root
-                .open(&relative)
-                .map_err(|error| ArchiveError::io("open ZIP source file", &display_path, error))?;
-            let copied = io::copy(&mut input, &mut writer)
-                .map_err(|error| ArchiveError::io("write ZIP file entry", &display_path, error))?;
+            let mut input = source_root.open(&relative).map_err(|error| {
+                ArchiveError::io("open archive source file", &display_path, error)
+            })?;
+            let copied = io::copy(&mut input, &mut writer).map_err(|error| {
+                ArchiveError::io("write archive file entry", &display_path, error)
+            })?;
             summary.files += 1;
-            summary.bytes =
-                summary
-                    .bytes
-                    .checked_add(copied)
-                    .ok_or_else(|| ArchiveError::LimitExceeded {
-                        archive: temporary.to_path_buf(),
-                        limit: "archive source bytes",
-                        observed: u64::MAX,
-                        maximum: u64::MAX - 1,
-                    })?;
+            summary.bytes = accumulate_bytes(
+                summary.bytes,
+                copied,
+                temporary,
+                "archive source bytes",
+                u64::MAX - 1,
+            )?;
         }
         directories.extend(child_directories.into_iter().rev());
     }
@@ -199,6 +199,7 @@ fn temporary_path(destination: &Path) -> PathBuf {
     parent_path(destination).join(format!(".{filename}.{}.tmp", uuid::Uuid::new_v4()))
 }
 
+/// 将相对路径转换为归档内使用的正斜杠条目名。
 fn portable_name(path: &Path) -> Result<String, ArchiveError> {
     let mut name = String::new();
     for component in path.components() {

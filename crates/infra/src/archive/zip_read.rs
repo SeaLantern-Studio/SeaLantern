@@ -1,54 +1,18 @@
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::{Read, Write};
+use std::path::Path;
 
-use cap_std::fs::{Dir, OpenOptions};
+use cap_std::fs::OpenOptions;
 use zip::ZipArchive;
 
-use crate::fs::SafeRelativePath;
-
-use super::{ArchiveError, create_new_directory, is_symbolic_link, parse_symbolic_link_target};
+use super::limits::{ExtractionLimits, ExtractionSummary, accumulate_bytes, check_limit};
+use super::{
+    ArchiveError, create_new_directory, ensure_directory, ensure_parent_dirs, is_symbolic_link,
+    parse_symbolic_link_target, safe_entry_path,
+};
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: u64 = 4 * 1024;
-
-/// ZIP 解压前后应用的资源限制。
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ExtractionLimits {
-    /// 磁盘上可接受的压缩 ZIP 文件最大大小。
-    pub max_archive_bytes: u64,
-    /// ZIP 中央目录中的最大条目数。
-    pub max_entries: usize,
-    /// 单个常规文件的最大未压缩字节数。
-    pub max_entry_bytes: u64,
-    /// 所有条目写入的最大未压缩字节总数。
-    pub max_total_bytes: u64,
-    /// 可接受的未压缩与压缩字节的最大比率。
-    pub max_compression_ratio: u64,
-}
-
-impl Default for ExtractionLimits {
-    fn default() -> Self {
-        Self {
-            max_archive_bytes: 4 * 1024 * 1024 * 1024,
-            max_entries: 10_000,
-            max_entry_bytes: 4 * 1024 * 1024 * 1024,
-            max_total_bytes: 16 * 1024 * 1024 * 1024,
-            max_compression_ratio: 200,
-        }
-    }
-}
-
-/// 统计 ZIP 解压过程中处理的条目数和未压缩字节数。
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct ExtractionSummary {
-    /// 解压的常规文件数。
-    pub files: u64,
-    /// 解压的目录条目数。
-    pub directories: u64,
-    /// 解压的文件未压缩字节总数。
-    pub bytes: u64,
-}
 
 /// 使用默认限制将 ZIP 压缩包解压到新的目标目录中。
 ///
@@ -138,6 +102,10 @@ fn extract_zip_inner(
     Ok(summary)
 }
 
+/// 在创建目标目录之前完成全量预检。
+///
+/// ZIP 拥有中央目录，条目数、输出路径去重、符号链接与各项字节上限都能在
+/// 写入任何文件之前判定，因此校验失败时目标目录不会被创建。
 fn validate_archive(
     archive: &mut ZipArchive<File>,
     archive_path: &Path,
@@ -179,16 +147,16 @@ fn validate_archive(
             entry_size,
             limits.max_entry_bytes,
         )?;
-        total_bytes =
-            total_bytes
-                .checked_add(entry_size)
-                .ok_or_else(|| ArchiveError::LimitExceeded {
-                    archive: archive_path.to_path_buf(),
-                    limit: "total uncompressed bytes",
-                    observed: u64::MAX,
-                    maximum: limits.max_total_bytes,
-                })?;
+        total_bytes = accumulate_bytes(
+            total_bytes,
+            entry_size,
+            archive_path,
+            "total uncompressed bytes",
+            limits.max_total_bytes,
+        )?;
         check_limit(archive_path, "total uncompressed bytes", total_bytes, limits.max_total_bytes)?;
+        // ZIP 每个条目独立压缩，可按条目比较压缩比；声明为非空却压缩到 0
+        // 字节的条目同样按超限拒绝。
         let compressed_size = entry.compressed_size();
         if entry_size > 0
             && (compressed_size == 0
@@ -205,69 +173,10 @@ fn validate_archive(
     Ok(())
 }
 
-fn safe_entry_path(
-    archive_path: &Path,
-    entry_name: &str,
-) -> Result<SafeRelativePath, ArchiveError> {
-    SafeRelativePath::parse(entry_name).map_err(|error| ArchiveError::UnsafeEntry {
-        archive: archive_path.to_path_buf(),
-        entry: entry_name.to_string(),
-        reason: error.to_string(),
-    })
-}
-
-fn ensure_parent_dirs(root: &Dir, path: &Path, destination: &Path) -> Result<(), ArchiveError> {
-    let Some(parent) = path.parent() else {
-        return Ok(());
-    };
-    let mut current = PathBuf::new();
-    for component in parent.components() {
-        current.push(component);
-        match root.open_dir(&current) {
-            Ok(_) => {}
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {
-                root.create_dir(&current).map_err(|error| {
-                    ArchiveError::io(
-                        "create ZIP entry parent directory",
-                        destination.join(&current),
-                        error,
-                    )
-                })?;
-                root.open_dir(&current).map_err(|error| {
-                    ArchiveError::io(
-                        "open ZIP entry parent directory",
-                        destination.join(&current),
-                        error,
-                    )
-                })?;
-            }
-            Err(error) => {
-                return Err(ArchiveError::io(
-                    "open ZIP entry parent directory",
-                    destination.join(&current),
-                    error,
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn ensure_directory(root: &Dir, path: &Path, destination: &Path) -> Result<(), ArchiveError> {
-    ensure_parent_dirs(root, path, destination)?;
-    match root.create_dir(path) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-            root.open_dir(path).map(|_| ()).map_err(|error| {
-                ArchiveError::io("open ZIP entry directory", destination.join(path), error)
-            })
-        }
-        Err(error) => {
-            Err(ArchiveError::io("create ZIP entry directory", destination.join(path), error))
-        }
-    }
-}
-
+/// 流式拷贝条目内容，并按实际读取的字节数复核上限。
+///
+/// 中央目录声明的大小不可信，因此写入过程中重新累加单条目字节与总字节，
+/// 任一超限立即中止。
 fn copy_entry_with_limits(
     entry: &mut zip::read::ZipFile<'_>,
     output: &mut cap_std::fs::File,
@@ -287,30 +196,26 @@ fn copy_entry_with_limits(
         if count == 0 {
             return Ok(entry_bytes);
         }
-        entry_bytes =
-            entry_bytes
-                .checked_add(count as u64)
-                .ok_or_else(|| ArchiveError::LimitExceeded {
-                    archive: archive_path.to_path_buf(),
-                    limit: "per-entry uncompressed bytes",
-                    observed: u64::MAX,
-                    maximum: limits.max_entry_bytes,
-                })?;
+        entry_bytes = accumulate_bytes(
+            entry_bytes,
+            count as u64,
+            archive_path,
+            "per-entry uncompressed bytes",
+            limits.max_entry_bytes,
+        )?;
         check_limit(
             archive_path,
             "per-entry uncompressed bytes",
             entry_bytes,
             limits.max_entry_bytes,
         )?;
-        *total_bytes =
-            total_bytes
-                .checked_add(count as u64)
-                .ok_or_else(|| ArchiveError::LimitExceeded {
-                    archive: archive_path.to_path_buf(),
-                    limit: "total uncompressed bytes",
-                    observed: u64::MAX,
-                    maximum: limits.max_total_bytes,
-                })?;
+        *total_bytes = accumulate_bytes(
+            *total_bytes,
+            count as u64,
+            archive_path,
+            "total uncompressed bytes",
+            limits.max_total_bytes,
+        )?;
         check_limit(
             archive_path,
             "total uncompressed bytes",
@@ -327,6 +232,9 @@ fn copy_entry_with_limits(
     }
 }
 
+/// 读取并校验符号链接载荷，用于在拒绝条目前给出精确原因。
+///
+/// ZIP 把符号链接目标存放在条目内容中，需要读取后才能判定其是否可移植。
 fn validate_symbolic_link_target(
     entry: &mut zip::read::ZipFile<'_>,
     archive_path: &Path,
@@ -359,23 +267,6 @@ fn validate_symbolic_link_target(
         }
         Err(error) => Err(error),
     }
-}
-
-fn check_limit(
-    archive: &Path,
-    limit: &'static str,
-    observed: u64,
-    maximum: u64,
-) -> Result<(), ArchiveError> {
-    if observed > maximum {
-        return Err(ArchiveError::LimitExceeded {
-            archive: archive.to_path_buf(),
-            limit,
-            observed,
-            maximum,
-        });
-    }
-    Ok(())
 }
 
 #[cfg(test)]
