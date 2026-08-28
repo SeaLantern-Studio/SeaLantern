@@ -4,7 +4,7 @@
 //! [`CoreServerService`]、[`CoreDownloadService`]、[`CoreCronTaskService`]、
 //! [`CoreJavaService`]、[`CoreServerCatalogService`]、[`CoreProvisioningService`]、
 //! [`CoreOnlineTunnelService`]、[`CoreUpdateInstallService`]），实现
-//! `application::port` 的能力端口，由 `services` 装配层组装进全局容器。
+//! `application::port` 的能力端口，由 `services` 装配层组装进应用服务容器。
 
 mod catalog;
 mod console;

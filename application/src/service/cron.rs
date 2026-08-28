@@ -5,7 +5,6 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -77,7 +76,6 @@ where
     executor: ServerCronTaskExecutor<S>,
     inner: tokio::sync::OnceCell<tokio::sync::Mutex<InnerCronTaskService<S>>>,
     scheduler: tokio::sync::Mutex<Option<CronSchedulerHandle>>,
-    scheduler_active: AtomicBool,
 }
 
 impl CoreCronTaskService<CoreServerService> {
@@ -98,7 +96,6 @@ where
             executor: ServerCronTaskExecutor { server },
             inner: tokio::sync::OnceCell::new(),
             scheduler: tokio::sync::Mutex::new(None),
-            scheduler_active: AtomicBool::new(true),
         }
     }
 
@@ -126,24 +123,12 @@ where
         true
     }
 
-    /// 永久停用此服务的后台调度器，供应用服务容器替换旧实例时调用。
-    pub(crate) async fn deactivate_scheduler(&self) {
-        self.scheduler_active.store(false, Ordering::Release);
-        self.stop_scheduler().await;
-    }
-
     async fn start_scheduler_with_intervals(
         self: &Arc<Self>,
         tick_interval: Duration,
         error_retry_interval: Duration,
     ) -> bool {
-        if !self.scheduler_active.load(Ordering::Acquire) {
-            return false;
-        }
         let mut scheduler = self.scheduler.lock().await;
-        if !self.scheduler_active.load(Ordering::Acquire) {
-            return false;
-        }
         if scheduler
             .as_ref()
             .is_some_and(|handle| !handle.task.is_finished())
@@ -503,15 +488,6 @@ mod tests {
 
         assert!(service.stop_scheduler().await);
         assert!(!service.stop_scheduler().await);
-        service.deactivate_scheduler().await;
-        assert!(
-            !service
-                .start_scheduler_with_intervals(
-                    Duration::from_millis(10),
-                    Duration::from_millis(20),
-                )
-                .await
-        );
         assert_eq!(*server.calls.lock().expect("calls lock"), ["restart:server-a"]);
     }
 }

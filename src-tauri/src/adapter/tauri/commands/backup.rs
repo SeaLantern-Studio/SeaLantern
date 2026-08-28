@@ -5,6 +5,7 @@ use sealantern_application::services::AppServices;
 use sealantern_contract::server::ServerState;
 use sealantern_core::instance::InstanceId;
 use sealantern_feature::backup::{BackupItem, BackupSettings, CreateBackupRequest};
+use tauri::State;
 
 /// 获取备份列表
 #[tauri::command]
@@ -16,9 +17,10 @@ pub async fn get_backup_list(server_id: String) -> Result<Vec<BackupItem>, Strin
 
 /// 创建备份
 #[tauri::command]
-pub async fn create_backup(request: CreateBackupRequest) -> Result<BackupItem, String> {
-    let services = AppServices::get().await.map_err(|e| e.to_string())?;
-
+pub async fn create_backup(
+    services: State<'_, AppServices>,
+    request: CreateBackupRequest,
+) -> Result<BackupItem, String> {
     // 解析实例 ID
     let instance_id = InstanceId::new(request.server_id.clone()).map_err(|e| e.to_string())?;
 
@@ -64,9 +66,11 @@ pub async fn delete_backup(backup_id: String) -> Result<(), String> {
 
 /// 恢复备份
 #[tauri::command]
-pub async fn restore_backup(backup_id: String, server_id: String) -> Result<(), String> {
-    let services = AppServices::get().await.map_err(|e| e.to_string())?;
-
+pub async fn restore_backup(
+    services: State<'_, AppServices>,
+    backup_id: String,
+    server_id: String,
+) -> Result<(), String> {
     // 解析实例 ID
     let instance_id = InstanceId::new(server_id.clone()).map_err(|e| e.to_string())?;
 

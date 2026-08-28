@@ -9,7 +9,7 @@ SeaLantern 的普通业务使用 RESTful RPC：
 1. Web 宿主只有一个 Axum 应用和一个监听入口，由 `server/src/adapter/http/router.rs` 统一组装 SPA、普通业务 API 和插件 API。
 2. 普通业务按资源和业务动作组织路径，例如 `/api/instances/{id}`、`/api/instances/{id}/start`、`/api/downloads/{id}`；生命周期动作可以使用动作子路径，不要求为了形式上的 CRUD 强行改写。
 3. HTTP 方法、状态码和 JSON 响应表达业务结果。成功响应直接返回类型化 JSON；错误统一为 `{ "code": "...", "message": "..." }`，不使用普通业务通用的 `method_id + JSON` 调度包络。
-4. `application/src/port` 定义类型化业务能力端口，`AppServices` 是进程内服务访问 facade；Tauri command 和 Axum handler 都是薄适配器，共用同一组端口和实现。
+4. `application/src/port` 定义类型化业务能力端口，`AppServices` 由宿主 composition root 创建并显式注入 Tauri `State` 或 Axum `AppState`；Tauri command 和 Axum handler 都是薄适配器，共用同一组端口和实现，不通过隐式全局 locator 取服务。宿主退出前调用 `AppServices::shutdown()`，统一停止容器启动的后台服务。
 5. 插件 v2 的 `POST /api/rpc/plugin/v2/invoke` 是有意保留的 RPC 例外。插件能力调用具有动态 capability、scope、trust 和授权令牌语义，必须经过独立 Bearer 认证和应用层策略检查，不能借此为普通业务恢复通用 RPC。
 
 这里的“合二为一”指普通业务的 Web 入口和路由模型合并为同一个 Axum RESTful API；不把 Desktop 的 Tauri IPC 强行改成 HTTP，也不取消插件的专用 RPC 边界。
@@ -17,6 +17,7 @@ SeaLantern 的普通业务使用 RESTful RPC：
 ## 当前状态
 
 - `server/src/main.rs` 只创建一个 `TcpListener`，并把 `build_router` 交给 `axum::serve`。
+- `application/src/services.rs` 的 `AppServices::build()` 只由宿主启动装配调用；Desktop 通过 Tauri `State` 持有，Web 通过 `AppState` 传入 handler；两个宿主在退出路径调用 `AppServices::shutdown()`。
 - `server/src/adapter/http/router.rs` 是生产路由入口，已挂载普通业务 REST 路由和插件 v2 RPC 路由。
 - `server/src/rpc/router.rs` 仍保留旧的通用 RPC 方法注册器，当前只被 RPC 模块自己的测试使用，没有被生产入口嵌套。这是迁移残留，不是第二个监听服务，也不是普通业务的目标架构。
 - `src/api/invoke.ts` 是前端的统一调用入口，负责 Tauri invoke 与 Axum REST 映射；`src/api/rpc.ts` 没有生产调用方，待调用清理后删除。

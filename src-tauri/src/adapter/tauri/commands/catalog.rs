@@ -9,40 +9,33 @@
 use sealantern_application::port::ServerCatalogService;
 use sealantern_application::services::AppServices;
 use sealantern_contract::{DownloadLink, ServerCatalogServiceError};
+use tauri::State;
 
 /// 查询全部可用的服务器核心类型。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn catalog_server_types() -> Result<Vec<String>, ServerCatalogServiceError> {
-    AppServices::get()
-        .await
-        .map_err(|_| ServerCatalogServiceError::OperationFailed)?
-        .catalog()
-        .server_types()
-        .await
+pub async fn catalog_server_types(
+    services: State<'_, AppServices>,
+) -> Result<Vec<String>, ServerCatalogServiceError> {
+    services.catalog().server_types().await
 }
 
 /// 查询指定服务器核心类型支持的全部版本。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn catalog_versions(
+    services: State<'_, AppServices>,
     server_type: String,
 ) -> Result<Vec<String>, ServerCatalogServiceError> {
-    AppServices::get()
-        .await
-        .map_err(|_| ServerCatalogServiceError::OperationFailed)?
-        .catalog()
-        .versions(server_type)
-        .await
+    services.catalog().versions(server_type).await
 }
 
 /// 查询指定服务器核心类型、指定版本的下载链接。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn catalog_details(
+    services: State<'_, AppServices>,
     server_type: String,
     server_version: String,
 ) -> Result<DownloadLink, ServerCatalogServiceError> {
-    AppServices::get()
-        .await
-        .map_err(|_| ServerCatalogServiceError::OperationFailed)?
+    services
         .catalog()
         .details(server_type, server_version)
         .await

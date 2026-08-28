@@ -33,18 +33,18 @@ flowchart TD
 
 ## Workspace 分层
 
-| 路径              | 当前职责                                                                                                         | 不应放入的内容                                  |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `application`     | `application/src/port` 定义服务端口，`application/src/service` 实现用例，`AppServices` 提供进程级服务访问 facade | Tauri command、Axum request 解析、Vue 逻辑      |
-| `crates/contract` | 跨宿主共享的 DTO、事件、可序列化错误和配置模型；不依赖项目实现层                                                 | 服务 trait、路由注册、RPC handler、宿主生命周期 |
-| `crates/core`     | 实例模型、生命周期、进程/终端、服务器检测和供给计划，以及插件能力与策略的传输无关类型                            | 宿主状态、HTTP/Tauri 类型                       |
-| `crates/feature`  | 备份、配置、Java、市场、在线隧道、更新、日志和 Lua 插件 loader/manager/engine                                    | 宿主传输入口和公共服务端口                      |
-| `crates/infra`    | 文件系统、归档、下载、网络、代理、持久化和平台适配                                                               | 业务用例和前端协议                              |
-| `src-tauri`       | Desktop 进程入口、Tauri command/event、窗口、托盘、轻量模式和桌面文件/进程能力                                   | Web server 实现                                 |
-| `server`          | Web 进程入口、单一 Axum RESTful API、插件 RPC、Vite dev/static SPA 组装和监听生命周期                            | Desktop 窗口与 Tauri 状态                       |
-| `crates/vendor`   | 独立许可的 vendored crate，例如 `java-manager` 和 `sysproxy`                                                     | 项目公共领域规则                                |
+| 路径              | 当前职责                                                                                                    | 不应放入的内容                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `application`     | `application/src/port` 定义服务端口，`application/src/service` 实现用例，`AppServices` 提供显式共享服务句柄 | Tauri command、Axum request 解析、Vue 逻辑      |
+| `crates/contract` | 跨宿主共享的 DTO、事件、可序列化错误和配置模型；不依赖项目实现层                                            | 服务 trait、路由注册、RPC handler、宿主生命周期 |
+| `crates/core`     | 实例模型、生命周期、进程/终端、服务器检测和供给计划，以及插件能力与策略的传输无关类型                       | 宿主状态、HTTP/Tauri 类型                       |
+| `crates/feature`  | 备份、配置、Java、市场、在线隧道、更新、日志和 Lua 插件 loader/manager/engine                               | 宿主传输入口和公共服务端口                      |
+| `crates/infra`    | 文件系统、归档、下载、网络、代理、持久化和平台适配                                                          | 业务用例和前端协议                              |
+| `src-tauri`       | Desktop 进程入口、Tauri command/event、窗口、托盘、轻量模式和桌面文件/进程能力                              | Web server 实现                                 |
+| `server`          | Web 进程入口、单一 Axum RESTful API、插件 RPC、Vite dev/static SPA 组装和监听生命周期                       | Desktop 窗口与 Tauri 状态                       |
+| `crates/vendor`   | 独立许可的 vendored crate，例如 `java-manager` 和 `sysproxy`                                                | 项目公共领域规则                                |
 
-`application::port` 是能力契约，`AppServices` 是进程内服务访问 facade，二者都不属于 `contract`。`contract` 只拥有跨宿主传输所需的数据和错误形状；需要 `core` 领域对象或功能实现的服务 trait 放在 `application/src/port`，由应用实现完成转换和错误收敛。
+`application::port` 是能力契约，`AppServices` 是由 composition root 创建并显式传入宿主状态的服务聚合句柄，二者都不属于 `contract`。`contract` 只拥有跨宿主传输所需的数据和错误形状；需要 `core` 领域对象或功能实现的服务 trait 放在 `application/src/port`，由应用实现完成转换和错误收敛。业务实现和适配器不得通过隐式全局 locator 获取服务。宿主退出前必须调用 `AppServices::shutdown()`，停止 Cron、系统代理监控和在线隧道；不能依赖丢弃句柄回收后台任务。
 
 ## 依赖与调用边界
 
@@ -79,11 +79,11 @@ contract ──────────────────────► n
 
 ### Desktop
 
-`src-tauri/src/main.rs` 创建 Tauri builder，注册 `src-tauri/src/adapter/tauri/commands` 下的命令，初始化 `AppServices`，并设置窗口、托盘、日志转发和退出清理。桌面专用的文件选择、窗口材质、轻量模式和本地事件留在 `src-tauri/src/desktop` 或对应 adapter 中。
+`src-tauri/src/main.rs` 创建 Tauri builder，注册 `src-tauri/src/adapter/tauri/commands` 下的命令，在 `setup` 中调用 `AppServices::build()` 并通过 Tauri `State` 管理服务句柄，然后设置窗口、托盘、日志转发和退出清理。退出时先停止事件/日志转发，再调用 `AppServices::shutdown()` 收敛应用后台服务。桌面专用的文件选择、窗口材质、轻量模式和本地事件留在 `src-tauri/src/desktop` 或对应 adapter 中。
 
 ### Web
 
-`server/src/main.rs` 初始化 `AppServices`，构建 Vite 配置并启动 Axum。它只创建一个 `TcpListener`；`server/src/adapter/http/router.rs` 是生产路由入口，将普通业务 RESTful API、插件 v2 RPC 和 SPA 路由组装在同一个 Axum 应用中。
+`server/src/main.rs` 调用 `AppServices::build()`，将返回的句柄显式传入 `AppState`，再构建 Vite 配置并启动 Axum。服务正常退出或监听服务出错前都会调用 `AppServices::shutdown()`。它只创建一个 `TcpListener`；`server/src/adapter/http/router.rs` 是生产路由入口，将普通业务 RESTful API、插件 v2 RPC 和 SPA 路由组装在同一个 Axum 应用中。
 
 普通业务当前路由族包括实例与服务器生命周期、供给检查、设置、系统资源、定时任务、更新和下载；插件能力调用是单独的 `/api/rpc/plugin/v2/invoke` RPC 路由，并有自己的 Bearer 认证边界。`server/src/rpc/router.rs` 的通用 RPC 注册器是迁移残留，目前仅由自身测试使用，没有第二个监听入口。
 
@@ -94,7 +94,7 @@ contract ──────────────────────► n
 ### 共享业务
 
 1. 在 `crates/contract` 复用或补充宿主共用的输入、输出、事件和错误 DTO。
-2. 在 `application/src/port` 定义服务能力端口，在 `application/src/service` 实现用例，并在 `application/src/services.rs` 装配服务。
+2. 在 `application/src/port` 定义服务能力端口，在 `application/src/service` 实现用例，并在 `application/src/services.rs` 装配 `AppServices`；由宿主 composition root 创建一次后显式传入适配器状态。
 3. 在 Desktop 和 Web 各自添加薄适配器，只负责传输和宿主上下文。
 4. 在 `src/api` 暴露业务方法；只有已经有 Web 路由的能力才增加双模式映射。
 5. 为端口实现、宿主适配器和路由契约分别补充针对边界的测试。

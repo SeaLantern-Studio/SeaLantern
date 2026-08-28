@@ -9,9 +9,19 @@ use super::{HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError, TunnelEvent
 ///
 /// 一个服务实例最多持有一条活动隧道。调用方通过实例生命周期管理隧道，避免旧实现中
 /// 进程级全局状态导致的测试干扰和宿主重复初始化问题。
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct OnlineTunnelService {
     state: Arc<Mutex<ServiceState>>,
+    state_changed: Arc<tokio::sync::Notify>,
+}
+
+impl Default for OnlineTunnelService {
+    fn default() -> Self {
+        Self {
+            state: Arc::new(Mutex::new(ServiceState::Idle)),
+            state_changed: Arc::new(tokio::sync::Notify::new()),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -64,13 +74,19 @@ impl OnlineTunnelService {
 
     /// 幂等关闭服务持有的活动隧道，供宿主退出流程调用。
     pub async fn shutdown(&self) -> Result<(), OnlineTunnelError> {
-        match self.begin_stop().await {
-            Ok(active) => {
-                self.finish_stop(active).await;
-                Ok(())
+        loop {
+            // 在调用 begin_stop 前创建通知 future，避免状态刚从 Starting/
+            // Stopping 转换时错过唤醒。
+            let notified = self.state_changed.notified();
+            match self.begin_stop().await {
+                Ok(active) => {
+                    self.finish_stop(active).await;
+                    return Ok(());
+                }
+                Err(OnlineTunnelError::NotRunning) => return Ok(()),
+                Err(OnlineTunnelError::Busy) => notified.await,
+                Err(error) => return Err(error),
             }
-            Err(OnlineTunnelError::NotRunning) => Ok(()),
-            Err(error) => Err(error),
         }
     }
 
@@ -109,6 +125,7 @@ impl OnlineTunnelService {
         let mut state = self.state.lock().await;
         if matches!(&*state, ServiceState::Starting) {
             *state = ServiceState::Idle;
+            self.state_changed.notify_waiters();
         }
     }
 
@@ -138,6 +155,7 @@ impl OnlineTunnelService {
         let mut state = self.state.lock().await;
         if matches!(&*state, ServiceState::Stopping) {
             *state = ServiceState::Idle;
+            self.state_changed.notify_waiters();
         }
         crate::observability::online_tunnel_stopped(mode.as_str());
     }
@@ -160,6 +178,7 @@ impl OnlineTunnelService {
             return Err(OnlineTunnelError::Busy);
         }
         *state = ServiceState::Active(active);
+        self.state_changed.notify_waiters();
         crate::observability::online_tunnel_started(mode.as_str());
         Ok(status)
     }
@@ -203,5 +222,26 @@ mod tests {
             .shutdown()
             .await
             .expect("idle shutdown must succeed");
+    }
+
+    #[tokio::test]
+    async fn shutdown_waits_for_transient_state_to_finish() {
+        let service = OnlineTunnelService::default();
+        *service.state.lock().await = ServiceState::Starting;
+
+        let shutdown_service = service.clone();
+        let mut shutdown = tokio::spawn(async move { shutdown_service.shutdown().await });
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(20), &mut shutdown)
+                .await
+                .is_err()
+        );
+
+        *service.state.lock().await = ServiceState::Idle;
+        service.state_changed.notify_waiters();
+        shutdown
+            .await
+            .expect("shutdown task should finish")
+            .expect("transient state shutdown should succeed");
     }
 }

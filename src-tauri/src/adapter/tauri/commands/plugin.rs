@@ -8,10 +8,15 @@ use sealantern_application::plugin::{
 use sealantern_application::services::AppServices;
 use sealantern_core::app_plugin::{CapabilityInvocation, ScopeBinding, TrustSource};
 use sealantern_feature::app_plugin::PluginInfo;
+use tauri::State;
 
-async fn plugin_service() -> Result<std::sync::Arc<CorePluginService>, String> {
-    AppServices::plugin_service()
+async fn plugin_service(
+    services: &AppServices,
+) -> Result<std::sync::Arc<CorePluginService>, String> {
+    services
+        .plugin()
         .await
+        .map(Clone::clone)
         .map_err(|error| error.to_string())
 }
 
@@ -20,13 +25,20 @@ fn map_error(error: PluginServiceError) -> String {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_discover() -> Result<Vec<PathBuf>, String> {
-    plugin_service().await?.discover().await.map_err(map_error)
+pub async fn plugin_v2_discover(services: State<'_, AppServices>) -> Result<Vec<PathBuf>, String> {
+    plugin_service(&services)
+        .await?
+        .discover()
+        .await
+        .map_err(map_error)
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_load(plugin_dir: PathBuf) -> Result<PluginInfo, String> {
-    plugin_service()
+pub async fn plugin_v2_load(
+    services: State<'_, AppServices>,
+    plugin_dir: PathBuf,
+) -> Result<PluginInfo, String> {
+    plugin_service(&services)
         .await?
         .load(&plugin_dir)
         .await
@@ -34,8 +46,11 @@ pub async fn plugin_v2_load(plugin_dir: PathBuf) -> Result<PluginInfo, String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_enable(plugin_id: String) -> Result<(), String> {
-    plugin_service()
+pub async fn plugin_v2_enable(
+    services: State<'_, AppServices>,
+    plugin_id: String,
+) -> Result<(), String> {
+    plugin_service(&services)
         .await?
         .enable(&plugin_id)
         .await
@@ -43,8 +58,11 @@ pub async fn plugin_v2_enable(plugin_id: String) -> Result<(), String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_disable(plugin_id: String) -> Result<(), String> {
-    plugin_service()
+pub async fn plugin_v2_disable(
+    services: State<'_, AppServices>,
+    plugin_id: String,
+) -> Result<(), String> {
+    plugin_service(&services)
         .await?
         .disable(&plugin_id)
         .await
@@ -52,8 +70,11 @@ pub async fn plugin_v2_disable(plugin_id: String) -> Result<(), String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_unload(plugin_id: String) -> Result<(), String> {
-    plugin_service()
+pub async fn plugin_v2_unload(
+    services: State<'_, AppServices>,
+    plugin_id: String,
+) -> Result<(), String> {
+    plugin_service(&services)
         .await?
         .unload(&plugin_id)
         .await
@@ -61,17 +82,24 @@ pub async fn plugin_v2_unload(plugin_id: String) -> Result<(), String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_plugins() -> Result<Vec<PluginInfo>, String> {
-    plugin_service().await?.plugins().await.map_err(map_error)
+pub async fn plugin_v2_plugins(
+    services: State<'_, AppServices>,
+) -> Result<Vec<PluginInfo>, String> {
+    plugin_service(&services)
+        .await?
+        .plugins()
+        .await
+        .map_err(map_error)
 }
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_grant_persistent(
+    services: State<'_, AppServices>,
     plugin_id: String,
     capability_id: String,
     scope: Option<ScopeBinding>,
 ) -> Result<(), String> {
-    plugin_service()
+    plugin_service(&services)
         .await?
         .policy()
         .grant_persistent(&plugin_id, &capability_id, scope.as_ref())
@@ -81,11 +109,12 @@ pub async fn plugin_v2_grant_persistent(
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_revoke_persistent(
+    services: State<'_, AppServices>,
     plugin_id: String,
     capability_id: String,
     scope: Option<ScopeBinding>,
 ) -> Result<(), String> {
-    plugin_service()
+    plugin_service(&services)
         .await?
         .policy()
         .revoke_persistent(&plugin_id, &capability_id, scope.as_ref())
@@ -95,10 +124,11 @@ pub async fn plugin_v2_revoke_persistent(
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_set_trust(
+    services: State<'_, AppServices>,
     plugin_id: String,
     trust_source: TrustSource,
 ) -> Result<(), String> {
-    plugin_service()
+    plugin_service(&services)
         .await?
         .policy()
         .set_trust(&plugin_id, trust_source)
@@ -107,8 +137,11 @@ pub async fn plugin_v2_set_trust(
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_grant_session(grant: SessionGrant) -> Result<(), String> {
-    plugin_service()
+pub async fn plugin_v2_grant_session(
+    services: State<'_, AppServices>,
+    grant: SessionGrant,
+) -> Result<(), String> {
+    plugin_service(&services)
         .await?
         .policy()
         .grant_session(grant)
@@ -117,8 +150,11 @@ pub async fn plugin_v2_grant_session(grant: SessionGrant) -> Result<(), String> 
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_approve_session(approval: SessionApproval) -> Result<(), String> {
-    plugin_service()
+pub async fn plugin_v2_approve_session(
+    services: State<'_, AppServices>,
+    approval: SessionApproval,
+) -> Result<(), String> {
+    plugin_service(&services)
         .await?
         .policy()
         .approve_session(approval)
@@ -128,12 +164,13 @@ pub async fn plugin_v2_approve_session(approval: SessionApproval) -> Result<(), 
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_issue_approval_token(
+    services: State<'_, AppServices>,
     session_id: String,
     plugin_id: String,
     capability_id: String,
     scope: Option<ScopeBinding>,
 ) -> Result<String, String> {
-    plugin_service()
+    plugin_service(&services)
         .await?
         .policy()
         .issue_single_use_token(&session_id, &plugin_id, &capability_id, scope)
@@ -142,8 +179,11 @@ pub async fn plugin_v2_issue_approval_token(
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_end_session(session_id: String) -> Result<(), String> {
-    plugin_service()
+pub async fn plugin_v2_end_session(
+    services: State<'_, AppServices>,
+    session_id: String,
+) -> Result<(), String> {
+    plugin_service(&services)
         .await?
         .policy()
         .end_session(&session_id)
@@ -152,8 +192,11 @@ pub async fn plugin_v2_end_session(session_id: String) -> Result<(), String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn plugin_v2_audit(limit: u32) -> Result<Vec<AuditEntry>, String> {
-    plugin_service()
+pub async fn plugin_v2_audit(
+    services: State<'_, AppServices>,
+    limit: u32,
+) -> Result<Vec<AuditEntry>, String> {
+    plugin_service(&services)
         .await?
         .policy()
         .audit_entries(limit)
@@ -163,9 +206,10 @@ pub async fn plugin_v2_audit(limit: u32) -> Result<Vec<AuditEntry>, String> {
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_invoke(
+    services: State<'_, AppServices>,
     invocation: CapabilityInvocation,
 ) -> Result<serde_json::Value, String> {
-    plugin_service()
+    plugin_service(&services)
         .await?
         .invoke(invocation)
         .await

@@ -50,11 +50,9 @@ pub struct DefaultMarketGateway {
 
 impl DefaultMarketGateway {
     pub fn new() -> Result<Self, String> {
-        let client = sealantern_infra::net::NetClient::from_config(&Default::default())
-            .map_err(|error| error.to_string())?;
         Ok(Self {
-            modrinth: Arc::new(sealantern_feature::market::ModrinthFetcher::new(client.clone())),
-            spiget: Arc::new(sealantern_feature::market::SpigetFetcher::new(client)),
+            modrinth: Arc::new(sealantern_feature::market::ModrinthFetcher::global()),
+            spiget: Arc::new(sealantern_feature::market::SpigetFetcher::global()),
         })
     }
 

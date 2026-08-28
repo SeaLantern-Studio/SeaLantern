@@ -6,7 +6,7 @@ pub mod adapter;
 pub mod desktop;
 pub mod observability;
 
-use sealantern_application::port::{OnlineTunnelService, SettingsService};
+use sealantern_application::port::SettingsService;
 use sealantern_application::services::AppServices;
 use tauri::{AppHandle, Manager};
 
@@ -225,7 +225,7 @@ fn main() {
         .expect("error while building Sea Lantern");
 
     // 全局退出钩子：覆盖窗口销毁、`app.exit`、操作系统关闭等所有退出路径，
-    // 保证异步服务（日志转发、在线隧道）在进程退出前统一清理。
+    // 保证异步服务（应用服务、事件转发、日志转发）在进程退出前统一清理。
     app.run(|app_handle, event| match event {
         // 销毁最后一个 WebView 是轻量模式的正常路径，不能退出后台进程。
         tauri::RunEvent::ExitRequested { api, code: None, .. } => api.prevent_exit(),
@@ -238,8 +238,8 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     //这里提供app_handle，便于使用时直接clone
     let app_handle = app.handle().clone();
 
-    tauri::async_runtime::block_on(async {
-        let services = AppServices::get().await.map_err(|error| {
+    let services = tauri::async_runtime::block_on(async {
+        let services = AppServices::build().await.map_err(|error| {
             std::io::Error::other(format!("failed to assemble application services: {error}"))
         })?;
         if let Err(error) = services.initialize_network_settings().await {
@@ -259,16 +259,24 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 "failed to initialize automatic lightweight mode setting"
             ),
         }
-        Ok::<(), std::io::Error>(())
+        Ok::<AppServices, std::io::Error>(services)
     })?;
 
     // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
     #[cfg(not(target_os = "macos"))]
-    if let Some(window) = app.get_webview_window("main") {
-        window.set_decorations(false)?;
+    if let Some(window) = app.get_webview_window("main")
+        && let Err(error) = window.set_decorations(false)
+    {
+        shutdown_services(&services);
+        return Err(error.into());
     }
 
-    desktop::tray::setup(app)?;
+    if let Err(error) = desktop::tray::setup(app) {
+        shutdown_services(&services);
+        return Err(error);
+    }
+
+    app.manage(services);
 
     let handle_for_server_log = app_handle.clone();
     let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
@@ -277,21 +285,25 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// 应用退出时关闭后台异步服务（当前为在线隧道和日志提交器）。
+/// 应用退出时关闭后台异步服务。
 fn on_shutdown(app_handle: AppHandle) {
     let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
     tauri::async_runtime::block_on(async { log_sender.stop().await });
 
-    let Some(services) = AppServices::try_get() else {
-        return;
-    };
+    let forwarder: tauri::State<'_, OnlineTunnelEventForwarder> = app_handle.state();
+    tauri::async_runtime::block_on(async { forwarder.clear().await });
 
-    tauri::async_runtime::block_on(async move {
-        if let Err(error) = services.online_tunnel().shutdown().await {
+    let services = app_handle.state::<AppServices>().inner().clone();
+    shutdown_services(&services);
+}
+
+fn shutdown_services(services: &AppServices) {
+    tauri::async_runtime::block_on(async {
+        if let Err(error) = services.shutdown().await {
             tracing::error!(
-                target: "sealantern.tauri.online_tunnel",
+                target: "sealantern.tauri.services",
                 error = %error,
-                "failed to shut down online tunnel"
+                "failed to shut down application services"
             );
         }
     });

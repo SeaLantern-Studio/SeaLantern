@@ -7,52 +7,63 @@ use sealantern_application::service::CoreCronTaskService;
 use sealantern_application::services::AppServices;
 use sealantern_contract::CronTaskServiceError;
 use sealantern_contract::cron::{CronTask, CronTaskDraft, CronTaskRun};
+use tauri::State;
 
-async fn cron_service() -> Result<Arc<CoreCronTaskService>, CronTaskServiceError> {
-    let services = AppServices::get()
-        .await
-        .map_err(|_| CronTaskServiceError::OperationFailed)?;
-    Ok(services.cron().clone())
+fn cron_service(services: &AppServices) -> Arc<CoreCronTaskService> {
+    services.cron().clone()
 }
 
 /// 列出全部定时任务。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn list_cron_tasks() -> Result<Vec<CronTask>, CronTaskServiceError> {
-    cron_service().await?.list().await
+pub async fn list_cron_tasks(
+    services: State<'_, AppServices>,
+) -> Result<Vec<CronTask>, CronTaskServiceError> {
+    cron_service(&services).list().await
 }
 
 /// 创建定时任务。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn create_cron_task(draft: CronTaskDraft) -> Result<CronTask, CronTaskServiceError> {
-    cron_service().await?.create(draft).await
+pub async fn create_cron_task(
+    services: State<'_, AppServices>,
+    draft: CronTaskDraft,
+) -> Result<CronTask, CronTaskServiceError> {
+    cron_service(&services).create(draft).await
 }
 
 /// 更新定时任务。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn update_cron_task(
+    services: State<'_, AppServices>,
     id: String,
     draft: CronTaskDraft,
 ) -> Result<CronTask, CronTaskServiceError> {
-    cron_service().await?.update(&id, draft).await
+    cron_service(&services).update(&id, draft).await
 }
 
 /// 删除定时任务。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn delete_cron_task(id: String) -> Result<(), CronTaskServiceError> {
-    cron_service().await?.delete(&id).await
+pub async fn delete_cron_task(
+    services: State<'_, AppServices>,
+    id: String,
+) -> Result<(), CronTaskServiceError> {
+    cron_service(&services).delete(&id).await
 }
 
 /// 启用或禁用定时任务。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn set_cron_task_enabled(
+    services: State<'_, AppServices>,
     id: String,
     enabled: bool,
 ) -> Result<CronTask, CronTaskServiceError> {
-    cron_service().await?.set_enabled(&id, enabled).await
+    cron_service(&services).set_enabled(&id, enabled).await
 }
 
 /// 立即执行一次定时任务。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn run_cron_task(id: String) -> Result<CronTaskRun, CronTaskServiceError> {
-    cron_service().await?.run_now(&id).await
+pub async fn run_cron_task(
+    services: State<'_, AppServices>,
+    id: String,
+) -> Result<CronTaskRun, CronTaskServiceError> {
+    cron_service(&services).run_now(&id).await
 }

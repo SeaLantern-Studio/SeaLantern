@@ -1,13 +1,8 @@
 //! 应用服务自托管容器（装配层）。
 //!
-//! 在进程内持有并暴露全局服务，不绑定 Tauri 生命周期，便于 Tauri 命令、
-//! HTTP / IPC 等任意宿主复用。本模块只负责把 [`CoreInstanceService`] 等
-//! 实现装配进容器，不承载业务逻辑。
-//!
-//! 容器使用异步安全的 `tokio::sync::RwLock<Option<Arc<...>>>`：
-//! - 惰性初始化：首次 `get()` 才异步构造，避免 `run()` 时 `block_on` 长时间阻塞启动；
-//! - 可替换：测试可注入干净实例 / 配置变更可重载，不依赖 `OnceLock` 的"一次定死"；
-//! - 并发安全：多次并发 `get()` 只初始化一次，不重复加载。
+//! 在进程内持有一组共享应用服务，具体由 Tauri / HTTP 等宿主的 composition root
+//! 显式构造和持有。本模块只负责把 [`CoreInstanceService`] 等实现装配进容器，
+//! 不承载业务逻辑，也不提供隐式的全局 service locator。
 //!
 //! `AppServices` 是内部 `Arc` 的轻量句柄（clone 廉价 → 可跨 async 边界随处持有）。
 
@@ -24,7 +19,7 @@ use crate::service::{
     CoreUpdateInstallService, ProxyMonitoringService,
 };
 
-/// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
+/// 应用服务聚合句柄；由宿主 composition root 创建并显式传递。
 #[derive(Clone)]
 pub struct AppServices {
     inner: Arc<AppServicesInner>,
@@ -33,8 +28,8 @@ pub struct AppServices {
 /// 被 `AppServices` 持有的服务聚合。
 ///
 /// 各服务以 `Arc<T>` 持有，便于便捷访问函数直接对外暴露共享句柄；
-/// 后续新增服务只需在此加一个 `Arc<XxxService>` 字段，在 [`AppServices`]
-/// 下补一条 `pub async fn xxx_service()` 便捷函数即可，无需改动调用方。
+/// 后续新增服务只需在此加一个 `Arc<XxxService>` 字段，并在宿主状态或适配器
+/// 中通过 [`AppServices`] 访问，无需引入新的全局访问函数。
 pub struct AppServicesInner {
     background_started: AtomicBool,
     /// 下载任务管理服务。
@@ -69,12 +64,8 @@ pub struct AppServicesInner {
     plugin: tokio::sync::OnceCell<Arc<CorePluginService>>,
 }
 
-/// 进程级全局容器。惰性初始化，可替换。
-static SERVICES: tokio::sync::RwLock<Option<Arc<AppServicesInner>>> =
-    tokio::sync::RwLock::const_new(None);
-
 impl AppServices {
-    /// 从既有实例构造句柄（供测试/重载注入 `register`）。
+    /// 从既有实例构造句柄（供宿主装配和测试注入）。
     ///
     /// 服务器进程服务共享同一实例服务句柄；下载/定时任务/系统资源服务自动构造。
     pub fn from_inner(instance: CoreInstanceService) -> Self {
@@ -103,68 +94,20 @@ impl AppServices {
         }
     }
 
-    /// 惰性获取全局服务。
+    /// 异步构造应用服务句柄，并启动由容器拥有的后台服务。
     ///
-    /// 首次调用时异步构造（实例注册表加载），并注册为全局；之后调用复用同一实例。
-    /// 并发首次调用也只初始化一次，其余等待并复用首个注册的结果。
-    pub async fn get() -> Result<Self, InstanceError> {
-        // 快速路径：已初始化直接返回（读锁，无 IO）。
-        if let Some(existing) = SERVICES.read().await.clone() {
-            let services = Self { inner: existing };
-            services.start_background_services().await;
-            return Ok(services);
-        }
-
-        // 惰性构造：释放读锁后异步加载，避免持锁阻塞。
-        let built = Self::from_inner(CoreInstanceService::new().await?);
-
-        // 注册：加写锁；若并发期间已有人注册,则复用其结果，丢弃本次构造。
-        let mut guard = SERVICES.write().await;
-        let inner = match guard.as_ref() {
-            Some(existing) => existing.clone(),
-            None => {
-                guard.replace(built.inner.clone());
-                built.inner.clone()
-            }
-        };
-        drop(guard);
-
-        let services = Self { inner };
+    /// 每个宿主的 composition root 只应调用一次；这是一个为当前宿主创建
+    /// 独立服务图的构造器，不是进程级共享入口。构造后的句柄应通过宿主
+    /// 状态显式传给 handler / command，而不是在业务代码中重复构造。
+    pub async fn build() -> Result<Self, InstanceError> {
+        let services = Self::from_inner(CoreInstanceService::new().await?);
         services.start_background_services().await;
         Ok(services)
-    }
-
-    /// 显式注册给定服务（启动预热 / 测试注入 / 重载用），覆盖既有实例。
-    pub async fn register(instance: CoreInstanceService) -> Result<Self, InstanceError> {
-        let services = Self::from_inner(instance);
-        let inner = services.inner.clone();
-        let previous = SERVICES.write().await.replace(inner.clone());
-        if let Some(previous) = previous {
-            previous.cron.deactivate_scheduler().await;
-            previous.proxy_monitoring.stop().await;
-            let _ = previous.online_tunnel.shutdown().await;
-        }
-        let services = Self { inner };
-        services.start_background_services().await;
-        Ok(services)
-    }
-
-    /// 非阻塞尝试取全局服务；未初始化时返回 `None`（供无需初始化的路径判断）。
-    pub fn try_get() -> Option<Self> {
-        SERVICES
-            .try_read()
-            .ok()
-            .and_then(|g| g.clone().map(|inner| Self { inner }))
     }
 
     /// 访问下载任务管理服务（`Arc` 共享句柄，clone 廉价）。
     pub fn download(&self) -> &Arc<CoreDownloadService> {
         &self.inner.download
-    }
-
-    /// 便捷访问入口：一步拿到下载任务管理服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn download_service() -> Result<Arc<CoreDownloadService>, InstanceError> {
-        Ok(Self::get().await?.download().clone())
     }
 
     /// 访问实例管理服务（`Arc` 共享句柄，clone 廉价）。
@@ -192,29 +135,14 @@ impl AppServices {
         &self.inner.provisioning
     }
 
-    /// 便捷访问入口：一步拿到实例管理服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn instance_service() -> Result<Arc<CoreInstanceService>, InstanceError> {
-        Ok(Self::get().await?.instance().clone())
-    }
-
     /// 访问服务器进程管理服务（`Arc` 共享句柄，clone 廉价）。
     pub fn server(&self) -> &Arc<CoreServerService> {
         &self.inner.server
     }
 
-    /// 便捷访问入口：一步拿到服务器进程管理服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn server_service() -> Result<Arc<CoreServerService>, InstanceError> {
-        Ok(Self::get().await?.server().clone())
-    }
-
     /// 访问服务器控制台日志服务（`Arc` 共享句柄，clone 廉价）。
     pub fn console(&self) -> &Arc<CoreConsoleService> {
         &self.inner.console
-    }
-
-    /// 便捷访问入口：一步拿到服务器控制台日志服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn console_service() -> Result<Arc<CoreConsoleService>, InstanceError> {
-        Ok(Self::get().await?.console().clone())
     }
 
     /// 访问设置信息服务（`Arc` 共享句柄，clone 廉价）。
@@ -242,19 +170,20 @@ impl AppServices {
         settings_result
     }
 
-    /// 便捷访问入口：一步拿到设置信息服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn settings_service() -> Result<Arc<CoreSettingsService>, InstanceError> {
-        Ok(Self::get().await?.settings().clone())
+    /// 停止由服务容器启动的后台任务并关闭活动在线隧道。
+    ///
+    /// 所有步骤都是幂等的；Cron 和代理监控的停止不会失败，在线隧道的
+    /// 底层错误则返回给宿主记录。宿主退出前应调用此方法，而不是依赖
+    /// 丢弃句柄触发后台任务结束。
+    pub async fn shutdown(&self) -> Result<(), sealantern_contract::OnlineTunnelServiceError> {
+        self.inner.cron.stop_scheduler().await;
+        self.inner.proxy_monitoring.stop().await;
+        self.inner.online_tunnel.shutdown().await
     }
 
     /// 访问服务器定时任务服务（`Arc` 共享句柄，clone 廉价）。
     pub fn cron(&self) -> &Arc<CoreCronTaskService> {
         &self.inner.cron
-    }
-
-    /// 便捷访问入口：一步拿到定时任务服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn cron_service() -> Result<Arc<CoreCronTaskService>, InstanceError> {
-        Ok(Self::get().await?.cron().clone())
     }
 
     async fn start_background_services(&self) {
@@ -279,11 +208,6 @@ impl AppServices {
         &self.inner.system
     }
 
-    /// 便捷访问入口：一步拿到系统资源信息服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn system_service() -> Result<Arc<CoreSystemService>, InstanceError> {
-        Ok(Self::get().await?.system().clone())
-    }
-
     /// 访问应用更新检查服务（`Arc` 共享句柄，clone 廉价）。
     pub fn update(&self) -> &Arc<CoreUpdateCheckService> {
         &self.inner.update
@@ -292,11 +216,6 @@ impl AppServices {
     /// 访问应用更新安装服务（`Arc` 共享句柄，clone 廉价）。
     pub fn update_install(&self) -> &Arc<CoreUpdateInstallService> {
         &self.inner.update_install
-    }
-
-    /// 便捷访问入口：一步拿到更新检查服务的共享句柄（惰性初始化 + 可替换）。
-    pub async fn update_service() -> Result<Arc<CoreUpdateCheckService>, InstanceError> {
-        Ok(Self::get().await?.update().clone())
     }
 
     /// 获取应用插件服务；首次调用才打开策略数据库，避免阻塞常规启动路径。
@@ -318,15 +237,5 @@ impl AppServices {
                 .map(Arc::new)
             })
             .await
-    }
-
-    /// 便捷访问入口：一步拿到应用插件服务的共享句柄。
-    pub async fn plugin_service() -> Result<Arc<CorePluginService>, PluginServiceError> {
-        Ok(Self::get()
-            .await
-            .map_err(|error| PluginServiceError::Initialization(error.to_string()))?
-            .plugin()
-            .await?
-            .clone())
     }
 }

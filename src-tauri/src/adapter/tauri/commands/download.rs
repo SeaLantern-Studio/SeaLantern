@@ -11,13 +11,11 @@ use sealantern_application::service::CoreDownloadService;
 use sealantern_application::services::AppServices;
 use sealantern_contract::DownloadServiceError;
 use sealantern_contract::download::{DownloadRequest, DownloadTaskInfo};
+use tauri::State;
 
-/// 获取全局下载任务管理服务句柄（惰性初始化容器）。
-async fn download_service() -> Result<Arc<CoreDownloadService>, DownloadServiceError> {
-    let services = AppServices::get()
-        .await
-        .map_err(|_| DownloadServiceError::OperationFailed)?;
-    Ok(services.download().clone())
+/// 获取宿主注入的下载任务管理服务句柄。
+fn download_service(services: &AppServices) -> Arc<CoreDownloadService> {
+    services.download().clone()
 }
 
 /// 创建下载任务请求。
@@ -37,9 +35,10 @@ pub struct CreateDownloadRequest {
 /// 创建下载任务，返回任务信息。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn download_create(
+    services: State<'_, AppServices>,
     request: CreateDownloadRequest,
 ) -> Result<DownloadTaskInfo, DownloadServiceError> {
-    let service = download_service().await?;
+    let service = download_service(&services);
     let id = service
         .create(DownloadRequest {
             url: request.url,
@@ -55,8 +54,11 @@ pub async fn download_create(
 
 /// 查询下载任务进度。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn download_query(id: String) -> Result<DownloadTaskInfo, DownloadServiceError> {
-    let service = download_service().await?;
+pub async fn download_query(
+    services: State<'_, AppServices>,
+    id: String,
+) -> Result<DownloadTaskInfo, DownloadServiceError> {
+    let service = download_service(&services);
     service
         .poll(&id)
         .await?
@@ -65,7 +67,10 @@ pub async fn download_query(id: String) -> Result<DownloadTaskInfo, DownloadServ
 
 /// 取消下载任务。
 #[tauri::command(rename_all = "snake_case")]
-pub async fn download_cancel(id: String) -> Result<(), DownloadServiceError> {
-    let service = download_service().await?;
+pub async fn download_cancel(
+    services: State<'_, AppServices>,
+    id: String,
+) -> Result<(), DownloadServiceError> {
+    let service = download_service(&services);
     service.cancel(&id).await
 }
