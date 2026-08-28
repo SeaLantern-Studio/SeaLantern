@@ -23,6 +23,7 @@ jobs:
       backend-server: ${{ steps.filter.outputs['backend-server'] }}
       backend-tauri: ${{ steps.filter.outputs['backend-tauri'] }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
 
@@ -110,6 +111,12 @@ jobs:
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
               - '.github/actions/**'
+              - '.github/workflows/check.yml'
+            docs:
+              - 'docs/**'
+              - 'scripts/check-docs-tmp.mjs'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
               - '.github/workflows/check.yml'
 
   backend-lint:
@@ -310,3 +317,21 @@ jobs:
 
       - name: 运行前端测试
         run: pnpm test
+
+  docs-check:
+    name: 文档临时文件检查
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 pnpm 环境
+        uses: ./.github/actions/setup-pnpm
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 校验临时文档
+        run: pnpm docs:check

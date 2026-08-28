@@ -79,6 +79,7 @@ cargo test --all-targets --workspace
 3. 外部作者提交的 PR 需要关联当前仓库的 Issue；`issue-check.yml` 对项目成员、所有者和带 `internal` 标签的 PR 有明确豁免。
 4. 只修改文档时也要检查内部链接、源码路径和命令是否仍然存在。
 5. 不提交构建产物、运行时日志或根目录 `tmp/` 内容；临时文档按[文档维护规则](./documentation.md)处理。
+6. 在 Review 或 PR 过程中发现 `docs/tmp` 中的文档已经过期，可以直接删除该文档；即使它与当前 PR 的主题无关，也不需要为了保留它而修改或关联当前 PR 内容。
 
 ## 不确定时
 

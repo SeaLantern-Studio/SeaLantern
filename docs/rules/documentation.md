@@ -23,8 +23,9 @@
 
 `docs/tmp` 只允许存放有明确失效条件的资料，例如阶段计划、交接说明和一次性验证记录。
 
-- 文件必须带 YAML front matter，并提供符合当前示例和 CI 校验器要求的过期信息。
-- front matter 的字段名和校验语义以 `docs/tmp` 示例及 CI 实现为准；修改 schema 时必须同步更新示例、校验器和本规则，不能出现第二套约定。
+- 文件必须带 YAML front matter，并包含非空字符串 `author`、非空字符串数组 `references` 和 `expiration-time`。
+- `expiration-time` 使用 `YYYYMMDD`；早于 CI 运行当天 UTC 日期的文档视为过期。`docs/tmp/example.md` 可以保留示例占位值，其他文件不得使用占位值。
+- 校验实现是 `scripts/check-docs-tmp.mjs`，本地运行 `pnpm docs:check`。修改 schema 时必须同步更新示例、校验器和本规则，不能出现第二套约定。
 - 临时文档不得成为长期设计或规则的唯一来源；方案确认后转写到 `roadmap`、`design` 或 `rules`，原文再删除或归档。
 - 过期文档不得继续被当前文档链接；保留历史价值的内容只提炼成 `archive` 摘要。
 
