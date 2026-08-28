@@ -5,14 +5,17 @@ use super::ArchiveError;
 const UNIX_FILE_TYPE_MASK: u32 = 0o170000;
 const UNIX_SYMBOLIC_LINK: u32 = 0o120000;
 
-/// 判断 ZIP Unix 属性是否将条目标识为符号链接。
+/// 判断 Unix 权限位是否将条目标识为符号链接。
+///
+/// 适用于任何在 header 中携带 Unix mode 的归档格式（ZIP 的 external
+/// attributes、tar 的 mode 字段）。
 pub fn is_symbolic_link(unix_mode: Option<u32>) -> bool {
     unix_mode.is_some_and(|mode| mode & UNIX_FILE_TYPE_MASK == UNIX_SYMBOLIC_LINK)
 }
 
-/// 将 ZIP 符号链接载荷解析为可移植的、相对于根目录的目标路径。
+/// 将归档中的符号链接载荷解析为可移植的、相对于根目录的目标路径。
 ///
-/// ZIP 符号链接载荷是原始字节。它们必须是 UTF-8 编码，且仅包含普通斜杠分隔的组件，
+/// 符号链接载荷是原始字节。它们必须是 UTF-8 编码，且仅包含普通斜杠分隔的组件，
 /// 之后调用方才可以安全地应用特定于平台的链接创建策略。
 pub fn parse_symbolic_link_target(target: &[u8]) -> Result<SafeRelativePath, ArchiveError> {
     let target = std::str::from_utf8(target).map_err(|_| {
