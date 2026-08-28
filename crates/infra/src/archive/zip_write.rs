@@ -11,8 +11,11 @@ use super::{ArchiveError, open_existing_directory, parent_path};
 
 /// 创建包含 source 目录内容的 ZIP 归档文件。
 ///
-/// 目标文件必须不存在。临时归档在目标目录中完成，然后通过硬链接放置到最终位置，
-/// 因此源文件读取或写入失败不会用部分结果替换原有的归档文件。
+/// 目标文件必须不存在。临时归档在目标目录中完成，然后通过 rename 原子地移动到
+/// 最终位置，因此源文件读取或写入失败不会用部分结果替换原有的归档文件。
+///
+/// 选择 rename 而非硬链接是因为前者不依赖文件系统的链接能力（FAT32/exFAT 等
+/// 不支持硬链接），且成功后无需再清理临时文件。
 pub fn create_zip(
     source: impl AsRef<Path>,
     destination: impl AsRef<Path>,
@@ -40,13 +43,12 @@ fn create_zip_inner(source: &Path, destination: &Path) -> Result<ArchiveSummary,
     let result = write_archive(&source_root, source, &temporary);
     match result {
         Ok(summary) => {
-            if let Err(error) = fs::hard_link(&temporary, destination) {
+            if let Err(error) = fs::rename(&temporary, destination) {
                 let publish_error =
                     ArchiveError::io("publish completed archive", destination, error);
                 remove_temporary_archive(&temporary);
                 return Err(publish_error);
             }
-            remove_temporary_archive(&temporary);
             Ok(summary)
         }
         Err(error) => {
@@ -56,6 +58,10 @@ fn create_zip_inner(source: &Path, destination: &Path) -> Result<ArchiveSummary,
     }
 }
 
+/// 清理未能发布的临时归档。
+///
+/// 仅在失败路径上调用：成功时临时文件已被 rename 移走，路径不再存在。
+/// 清理失败只记录日志，不覆盖调用方要返回的原始错误。
 fn remove_temporary_archive(path: &Path) {
     if let Err(error) = fs::remove_file(path)
         && error.kind() != io::ErrorKind::NotFound
@@ -246,6 +252,12 @@ mod tests {
             b"motd=Sea Lantern"
         );
         assert!(extracted.join("nested/empty").is_dir());
+        // rename 发布后临时文件不应残留，输出目录里只有归档本身。
+        let published: Vec<_> = fs::read_dir(root.join("output"))
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(published, vec![std::ffi::OsString::from("server.zip")]);
 
         fs::remove_dir_all(root).unwrap();
     }
