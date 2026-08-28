@@ -6,8 +6,8 @@ pub mod adapter;
 pub mod desktop;
 pub mod observability;
 
+use sealantern_application::port::{OnlineTunnelService, SettingsService};
 use sealantern_application::services::AppServices;
-use sealantern_interface::{OnlineTunnelService, SettingsService};
 use tauri::{AppHandle, Manager};
 
 use adapter::tauri::commands::backup::{

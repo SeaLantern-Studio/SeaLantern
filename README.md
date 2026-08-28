@@ -42,7 +42,7 @@
 - **通信**: Desktop 使用 Tauri IPC/Event，Web 使用 HTTP/WebSocket/SSE，插件使用宿主 Bridge
   没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
 
-`application` 提供宿主无关的公共业务编排，`src-tauri` 与 `server` 分别作为 Desktop、Web 宿主，`interface` 提供两端共用的服务契约。可复用的前端业务通过 `src/api` 接入，宿主专用页面和功能可以独立演进。详见[项目架构与代码组织](docs/design/architecture.md)。
+`application` 提供宿主无关的公共业务编排，`src-tauri` 与 `server` 分别作为 Desktop、Web 宿主，`application::port` 定义服务能力端口，`contract` 提供两端共用的 DTO 和错误契约。普通 Web 业务遵循 [RESTful RPC 设计](docs/design/RESTful-RPC-Design.md)。可复用的前端业务通过 `src/api` 接入，宿主专用页面和功能可以独立演进。详见[项目架构与代码组织](docs/design/architecture.md)。
 
 > 使用系统 Webview 渲染。
 

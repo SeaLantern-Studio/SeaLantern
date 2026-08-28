@@ -9,10 +9,11 @@
 
 use std::sync::Arc;
 
+use sealantern_application::port::SystemService;
 use sealantern_application::service::CoreSystemService;
 use sealantern_application::services::AppServices;
-use sealantern_interface::system::{ServerResourceUsage, SystemSnapshot};
-use sealantern_interface::{SystemService, SystemServiceError};
+use sealantern_contract::SystemServiceError;
+use sealantern_contract::system::{ServerResourceUsage, SystemSnapshot};
 
 /// 获取全局系统资源信息服务句柄（惰性初始化容器）。
 async fn system_service() -> Result<Arc<CoreSystemService>, SystemServiceError> {

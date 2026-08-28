@@ -19,11 +19,11 @@ tauri-plugin-process = "2.3"
 tauri-plugin-window-state = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-sealantern-extra = { path = "../crates/extra" }
+sealantern-feature = { path = "../crates/feature" }
 sealantern-core = { path = "../crates/core" }
 sealantern-infra = { path = "../crates/infra" }
 sealantern-application = { path = "../application" }
-sealantern-interface = { path = "../crates/interface" }
+sealantern-contract = { path = "../crates/contract" }
 async-trait = "0.1.91"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

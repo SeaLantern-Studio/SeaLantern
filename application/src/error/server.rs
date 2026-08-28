@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use sealantern_interface::error::ServerServiceError;
+use sealantern_contract::error::ServerServiceError;
 
 /// 服务器进程管理操作失败的应用层主错误。
 ///

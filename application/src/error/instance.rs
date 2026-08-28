@@ -5,10 +5,10 @@ use std::path::PathBuf;
 
 use sealantern_infra::fs::FsError;
 
+use sealantern_contract::error::InstanceServiceError;
 use sealantern_core::provisioning::{
     ExistingInstanceError, ImportExistingServerError as CoreImportError, SourceDirectoryError,
 };
-use sealantern_interface::error::InstanceServiceError;
 
 /// 实例管理操作失败的应用层主错误。
 ///

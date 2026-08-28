@@ -7,7 +7,7 @@ use sealantern_application::plugin::{
 };
 use sealantern_application::services::AppServices;
 use sealantern_core::app_plugin::{CapabilityInvocation, ScopeBinding, TrustSource};
-use sealantern_extra::app_plugin::PluginInfo;
+use sealantern_feature::app_plugin::PluginInfo;
 
 async fn plugin_service() -> Result<std::sync::Arc<CorePluginService>, String> {
     AppServices::plugin_service()

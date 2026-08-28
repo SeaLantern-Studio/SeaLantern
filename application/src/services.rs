@@ -16,13 +16,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::error::InstanceError;
 use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceError};
+use crate::port::OnlineTunnelService;
 use crate::service::{
     CoreConsoleService, CoreCronTaskService, CoreDownloadService, CoreInstanceService,
     CoreJavaService, CoreOnlineTunnelService, CoreProvisioningService, CoreServerCatalogService,
     CoreServerService, CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
     CoreUpdateInstallService, ProxyMonitoringService,
 };
-use sealantern_interface::OnlineTunnelService;
 
 /// 真正的全局服务容器（进程级单例，内部为异步锁 + 可配置）。
 #[derive(Clone)]
@@ -230,7 +230,7 @@ impl AppServices {
     /// 后续设置操作的重试自动跟上。
     pub async fn initialize_network_settings(
         &self,
-    ) -> Result<(), sealantern_interface::SettingsServiceError> {
+    ) -> Result<(), sealantern_contract::SettingsServiceError> {
         let settings_result = self.inner.settings.initialize().await;
         if self.inner.proxy_monitoring.start().await {
             tracing::info!(

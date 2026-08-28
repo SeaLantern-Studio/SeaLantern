@@ -6,10 +6,11 @@
 //! 错误统一为接口契约错误 [`ConsoleServiceError`]，可序列化回前端，
 //! 不携带底层敏感细节。
 
+use sealantern_application::port::ConsoleService;
 use sealantern_application::services::AppServices;
+use sealantern_contract::ConsoleServiceError;
+use sealantern_contract::console::ConsoleLogLine;
 use sealantern_core::instance::InstanceId;
-use sealantern_interface::console::ConsoleLogLine;
-use sealantern_interface::{ConsoleService, ConsoleServiceError};
 
 /// 解析 Tauri 命令传入的实例 ID 字符串。
 ///

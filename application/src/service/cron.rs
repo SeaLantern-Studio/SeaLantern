@@ -1,7 +1,7 @@
 //! 服务器定时任务服务实现。
 //!
-//! 使用 `extra` 的 Cron 调度与 JSON 持久化能力，并通过注入的
-//! [`ServerService`] 执行重启和控制台命令。宿主仅依赖 `interface` 契约。
+//! 使用 `feature` 的 Cron 调度与 JSON 持久化能力，并通过注入的
+//! [`crate::port::ServerService`] 执行重启和控制台命令。宿主仅依赖 `contract` DTO。
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -10,20 +10,19 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use chrono::Utc;
+use sealantern_contract::cron::{CronTask, CronTaskAction, CronTaskDraft, CronTaskRun};
+use sealantern_contract::{CronTaskServiceError, ServerServiceError};
 use sealantern_core::instance::InstanceId;
-use sealantern_extra::server::cron_task::{
-    CronTask as ExtraCronTask, CronTaskAction as ExtraCronTaskAction,
-    CronTaskDraft as ExtraCronTaskDraft, CronTaskError as ExtraCronTaskError,
-    CronTaskExecutor as ExtraCronTaskExecutor, CronTaskRun as ExtraCronTaskRun,
-    CronTaskService as ExtraCronTaskService,
+use sealantern_feature::server::cron_task::{
+    CronTask as FeatureCronTask, CronTaskAction as FeatureCronTaskAction,
+    CronTaskDraft as FeatureCronTaskDraft, CronTaskError as FeatureCronTaskError,
+    CronTaskExecutor as FeatureCronTaskExecutor, CronTaskRun as FeatureCronTaskRun,
+    CronTaskService as FeatureCronTaskService,
 };
 use sealantern_infra::platform::get_app_data_dir;
-use sealantern_interface::cron::{CronTask, CronTaskAction, CronTaskDraft, CronTaskRun};
-use sealantern_interface::{
-    CronTaskService, CronTaskServiceError, ServerService, ServerServiceError,
-};
 
 use crate::error::CronTaskError;
+use crate::port::{CronTaskService, ServerService};
 
 use super::CoreServerService;
 
@@ -50,7 +49,7 @@ impl<S> Clone for ServerCronTaskExecutor<S> {
 }
 
 #[async_trait]
-impl<S> ExtraCronTaskExecutor for ServerCronTaskExecutor<S>
+impl<S> FeatureCronTaskExecutor for ServerCronTaskExecutor<S>
 where
     S: ServerService + 'static,
 {
@@ -67,9 +66,9 @@ where
     }
 }
 
-type InnerCronTaskService<S> = ExtraCronTaskService<ServerCronTaskExecutor<S>>;
+type InnerCronTaskService<S> = FeatureCronTaskService<ServerCronTaskExecutor<S>>;
 
-/// 基于 `extra` 调度实现与服务器进程契约的定时任务服务。
+/// 基于 `feature` 调度实现与服务器进程契约的定时任务服务。
 pub struct CoreCronTaskService<S = CoreServerService>
 where
     S: ServerService + 'static,
@@ -197,7 +196,7 @@ where
         let service = self
             .inner
             .get_or_try_init(|| async {
-                ExtraCronTaskService::load(self.path.clone(), self.executor.clone())
+                FeatureCronTaskService::load(self.path.clone(), self.executor.clone())
                     .await
                     .map(tokio::sync::Mutex::new)
                     .map_err(contract_error)
@@ -225,7 +224,7 @@ where
     async fn create(&self, draft: CronTaskDraft) -> Result<CronTask, CronTaskServiceError> {
         let mut service = self.service().await?;
         service
-            .create(draft_to_extra(draft))
+            .create(draft_to_feature(draft))
             .await
             .map(task_to_contract)
             .map_err(contract_error)
@@ -238,7 +237,7 @@ where
     ) -> Result<CronTask, CronTaskServiceError> {
         let mut service = self.service().await?;
         service
-            .update(id, draft_to_extra(draft))
+            .update(id, draft_to_feature(draft))
             .await
             .map(task_to_contract)
             .map_err(contract_error)
@@ -272,7 +271,7 @@ fn parse_instance_id(raw: &str) -> Result<InstanceId, ServerServiceError> {
     InstanceId::new(raw.to_owned()).map_err(|_| ServerServiceError::InvalidInput)
 }
 
-fn contract_error(error: ExtraCronTaskError) -> CronTaskServiceError {
+fn contract_error(error: FeatureCronTaskError) -> CronTaskServiceError {
     let error = CronTaskError::from(error);
     tracing::error!(
         target: "sealantern.application.cron_task",
@@ -282,31 +281,31 @@ fn contract_error(error: ExtraCronTaskError) -> CronTaskServiceError {
     error.into()
 }
 
-fn action_to_extra(action: CronTaskAction) -> ExtraCronTaskAction {
+fn action_to_feature(action: CronTaskAction) -> FeatureCronTaskAction {
     match action {
-        CronTaskAction::Restart => ExtraCronTaskAction::Restart,
-        CronTaskAction::Command { command } => ExtraCronTaskAction::Command { command },
+        CronTaskAction::Restart => FeatureCronTaskAction::Restart,
+        CronTaskAction::Command { command } => FeatureCronTaskAction::Command { command },
     }
 }
 
-fn action_to_contract(action: ExtraCronTaskAction) -> CronTaskAction {
+fn action_to_contract(action: FeatureCronTaskAction) -> CronTaskAction {
     match action {
-        ExtraCronTaskAction::Restart => CronTaskAction::Restart,
-        ExtraCronTaskAction::Command { command } => CronTaskAction::Command { command },
+        FeatureCronTaskAction::Restart => CronTaskAction::Restart,
+        FeatureCronTaskAction::Command { command } => CronTaskAction::Command { command },
     }
 }
 
-fn draft_to_extra(draft: CronTaskDraft) -> ExtraCronTaskDraft {
-    ExtraCronTaskDraft {
+fn draft_to_feature(draft: CronTaskDraft) -> FeatureCronTaskDraft {
+    FeatureCronTaskDraft {
         name: draft.name,
         server_id: draft.server_id,
         cron_expression: draft.cron_expression,
-        action: action_to_extra(draft.action),
+        action: action_to_feature(draft.action),
         enabled: draft.enabled,
     }
 }
 
-fn task_to_contract(task: ExtraCronTask) -> CronTask {
+fn task_to_contract(task: FeatureCronTask) -> CronTask {
     CronTask {
         id: task.id,
         name: task.name,
@@ -320,7 +319,7 @@ fn task_to_contract(task: ExtraCronTask) -> CronTask {
     }
 }
 
-fn run_to_contract(run: ExtraCronTaskRun) -> CronTaskRun {
+fn run_to_contract(run: FeatureCronTaskRun) -> CronTaskRun {
     CronTaskRun {
         task_id: run.task_id,
         server_id: run.server_id,
@@ -334,7 +333,7 @@ fn run_to_contract(run: ExtraCronTaskRun) -> CronTaskRun {
 mod tests {
     use std::sync::Mutex;
 
-    use sealantern_interface::server::{ServerSnapshot, ServerState};
+    use sealantern_contract::server::{ServerSnapshot, ServerState};
     use tempfile::tempdir;
 
     use super::*;

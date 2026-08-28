@@ -10,11 +10,12 @@
 use std::sync::Arc;
 
 use sealantern_application::error::InstanceError;
+use sealantern_application::port::InstanceService;
 use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
+use sealantern_contract::InstanceServiceError;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{ImportExistingServerRequest, ImportModpackRequest};
-use sealantern_interface::{InstanceService, InstanceServiceError};
 
 /// 获取全局实例管理服务句柄（惰性初始化容器）。
 ///

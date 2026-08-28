@@ -1,10 +1,10 @@
 //! 在线隧道服务实现。
 //!
-//! 实现 [`sealantern_interface::OnlineTunnelService`] 能力端口，包装
-//! `extra` 的在线隧道实现（[`ExtraOnlineTunnelService`]），向宿主提供
+//! 实现 [`crate::port::OnlineTunnelService`] 能力端口，包装
+//! `feature` 的在线隧道实现（[`FeatureOnlineTunnelService`]），向宿主提供
 //! 开服（host）/ 联机（join）/ 停止 / 状态查询 / 事件订阅 / 关闭能力。
 //!
-//! 本层只做两件事：把接口请求转换为 `extra` 的请求模型，并把 `extra`
+//! 本层只做两件事：把接口请求转换为 `feature` 的请求模型，并把 `feature`
 //! 返回的状态、事件与错误映射回接口契约类型。
 //!
 //! 错误分层：底层 [`OnlineTunnelError`] 按语义映射为
@@ -12,25 +12,28 @@
 //! `Busy`，未运行 → `NotRunning`，其余 provider 失败 → `OperationFailed`。
 
 use async_trait::async_trait;
-use sealantern_extra::online::{
-    HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError,
-    OnlineTunnelService as ExtraOnlineTunnelService, TunnelConnection, TunnelEvent, TunnelIdentity,
-    TunnelMode, TunnelStatus, TunnelTicket,
-};
-use sealantern_interface::{
+use sealantern_contract::OnlineTunnelServiceError;
+use sealantern_contract::online::{
     OnlineTunnelConnection, OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest,
-    OnlineTunnelMode, OnlineTunnelService, OnlineTunnelServiceError, OnlineTunnelStatus,
+    OnlineTunnelMode, OnlineTunnelStatus,
+};
+use sealantern_feature::online::{
+    HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError,
+    OnlineTunnelService as FeatureOnlineTunnelService, TunnelConnection, TunnelEvent,
+    TunnelIdentity, TunnelMode, TunnelStatus, TunnelTicket,
 };
 use tokio::sync::broadcast;
 
-/// 基于 `extra` 在线隧道实现的在线隧道服务。
+use crate::port::OnlineTunnelService;
+
+/// 基于 `feature` 在线隧道实现的在线隧道服务。
 ///
-/// 内部持有 `extra` 层隧道服务句柄，对外提供接口契约视图；
+/// 内部持有 `feature` 层隧道服务句柄，对外提供公共契约视图；
 /// 隧道会话由底层维护，本服务只做请求转换与结果映射。
 #[derive(Clone, Default)]
 pub struct CoreOnlineTunnelService {
-    /// `extra` 层的隧道服务（实际连接与事件源）。
-    inner: ExtraOnlineTunnelService,
+    /// `feature` 层的隧道服务（实际连接与事件源）。
+    inner: FeatureOnlineTunnelService,
 }
 
 #[async_trait]

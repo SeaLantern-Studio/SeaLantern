@@ -44,7 +44,7 @@ A lightweight Minecraft server management tool
 
 Sea Lantern starts quickly, has a small footprint, and keeps memory usage low.
 
-The host-neutral `application` crate provides shared business orchestration. `src-tauri` and `server` are the Desktop and Web hosts, while `interface` provides contracts shared by both. Reusable frontend business code goes through `src/api`; host-specific pages and features may evolve independently. See [Project Architecture and Code Organization](design/architecture.md).
+The host-neutral `application` crate provides shared business orchestration. `application::port` defines service capability ports, while `contract` owns DTOs and errors shared by the Desktop and Web hosts. Ordinary Web business follows the [RESTful RPC design](design/RESTful-RPC-Design.md). Reusable frontend business code goes through `src/api`; host-specific pages and features may evolve independently. See [Project Architecture and Code Organization](design/architecture.md).
 
 > The interface is rendered using the operating system's native WebView.
 

@@ -1,36 +1,37 @@
 //! 服务器实例记录管理服务实现。
 //!
-//! 实现 [`sealantern_interface::InstanceService`] 能力端口，用 `extra` 的
-//! [`InstanceRegistry`](sealantern_extra::config::InstanceRegistry)（持久化到
+//! 实现 [`crate::port::InstanceService`] 能力端口，用 `feature` 的
+//! [`InstanceRegistry`](sealantern_feature::config::InstanceRegistry)（持久化到
 //! `sea_lantern_servers.json`）驱动实例记录的查询与 CRUD。服务器进程生命周期
-//! 由 [`sealantern_interface::ServerService`] 负责（见 `service/server.rs`）。
+//! 由 [`crate::port::ServerService`] 负责（见 `service/server.rs`）。
 //!
 //! 错误分层：内部以应用层主错误 [`InstanceError`] 为源头，沿
-//! `core/extra/infra` → `application::error::instance` → `interface::error`
+//! `core/feature/infra` → `application::error::instance` → `contract::error`
 //! 收敛；暴露 [`InstanceService`] 时统一转为接口契约错误 [`InstanceServiceError`]。
 
 use async_trait::async_trait;
 use std::path::PathBuf;
 
+use sealantern_contract::InstanceServiceError;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
     ImportExistingServerRequest, ImportModpackError as CoreModpackError, ImportModpackRequest,
     SourceType, build_import_spec, infer_source_type, plan_existing_instance, plan_import_modpack,
     source_directories_equal, validate_source_directory,
 };
-use sealantern_extra::config::InstanceRegistry;
+use sealantern_feature::config::InstanceRegistry;
 use sealantern_infra::archive::extract_zip;
 use sealantern_infra::platform::get_app_data_dir;
-use sealantern_interface::{InstanceService, InstanceServiceError};
 
 use crate::error::InstanceError;
+use crate::port::InstanceService;
 
 /// 实例列表数据文件名，置于应用数据根目录。
 ///
 /// 沿用历史版本使用的文件名，以保证旧数据文件可被读取迁移。
 const INSTANCES_FILE: &str = "sea_lantern_servers.json";
 
-/// 基于 `core` + `extra` 的实例管理宿主能力实现。
+/// 基于 `core` + `feature` 的实例管理宿主能力实现。
 pub struct CoreInstanceService {
     registry: tokio::sync::Mutex<InstanceRegistry>,
 }
@@ -286,7 +287,7 @@ mod tests {
     use sealantern_core::instance::{LocalLaunch, StartupMode};
     use sealantern_core::provisioning::ImportExistingServerRequest;
 
-    use sealantern_interface::InstanceServiceError;
+    use sealantern_contract::InstanceServiceError;
 
     use super::*;
 

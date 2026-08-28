@@ -6,9 +6,9 @@
 //! 错误统一为接口契约错误 [`ServerCatalogServiceError`]，可序列化回前端，
 //! 不携带底层敏感细节。
 
+use sealantern_application::port::ServerCatalogService;
 use sealantern_application::services::AppServices;
-use sealantern_extra::download_link::DownloadLink;
-use sealantern_interface::{ServerCatalogService, ServerCatalogServiceError};
+use sealantern_contract::{DownloadLink, ServerCatalogServiceError};
 
 /// 查询全部可用的服务器核心类型。
 #[tauri::command(rename_all = "snake_case")]

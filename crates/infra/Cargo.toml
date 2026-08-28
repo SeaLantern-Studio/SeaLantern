@@ -12,6 +12,7 @@ default = []
 blocking = ["reqwest/blocking"]
 
 [dependencies]
+sealantern-contract = { path = "../contract" }
 atomicwrites = "0.4"
 bytes = "1"
 cap-std = "4"

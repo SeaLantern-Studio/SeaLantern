@@ -2,11 +2,13 @@
 
 use std::sync::Arc;
 
+use sealantern_application::port::SettingsService;
 use sealantern_application::service::CoreSettingsService;
 use sealantern_application::services::AppServices;
-use sealantern_extra::models::{AppSettings, PartialAppSettings, UpdateResult};
-use sealantern_interface::settings::SettingsOverview;
-use sealantern_interface::{SettingsService, SettingsServiceError};
+use sealantern_contract::SettingsServiceError;
+use sealantern_contract::settings::{
+    AppSettings, PartialAppSettings, SettingsOverview, UpdateResult,
+};
 use tauri::{AppHandle, Manager};
 
 use crate::desktop::{AutoLightweightState, tray};

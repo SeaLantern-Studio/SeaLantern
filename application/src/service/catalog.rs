@@ -1,7 +1,7 @@
 //! 服务器目录服务实现。
 //!
-//! 实现 [`sealantern_interface::ServerCatalogService`] 能力端口，组合
-//! `extra` 的下载链接管理能力（[`LinkManager`]），向宿主提供可用的
+//! 实现 [`crate::port::ServerCatalogService`] 能力端口，组合
+//! `feature` 的下载链接管理能力（[`LinkManager`]），向宿主提供可用的
 //! 服务器类型、版本与下载详情查询。
 //!
 //! 错误分层：配置拉取 / 解析失败统一收敛为
@@ -9,10 +9,12 @@
 //! 收敛为 [`ServerCatalogServiceError::NotFound`]。
 
 use async_trait::async_trait;
-use sealantern_extra::download_link::{DownloadLink, LinkError, LinkManager};
-use sealantern_interface::{ServerCatalogService, ServerCatalogServiceError};
+use sealantern_contract::{DownloadLink, ServerCatalogServiceError};
+use sealantern_feature::download_link::{LinkError, LinkManager};
 
-/// 基于 `extra` 下载链接管理的服务器目录服务实现。
+use crate::port::ServerCatalogService;
+
+/// 基于 `feature` 下载链接管理的服务器目录服务实现。
 #[derive(Debug, Default)]
 pub struct CoreServerCatalogService;
 

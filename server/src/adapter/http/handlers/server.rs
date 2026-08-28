@@ -7,9 +7,9 @@
 use axum::Json;
 use axum::extract::{Path, State};
 
+use sealantern_application::port::ServerService;
+use sealantern_contract::server::ServerSnapshot;
 use sealantern_core::instance::InstanceId;
-use sealantern_interface::ServerService;
-use sealantern_interface::server::ServerSnapshot;
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

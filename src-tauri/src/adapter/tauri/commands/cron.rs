@@ -2,10 +2,11 @@
 
 use std::sync::Arc;
 
+use sealantern_application::port::CronTaskService;
 use sealantern_application::service::CoreCronTaskService;
 use sealantern_application::services::AppServices;
-use sealantern_interface::cron::{CronTask, CronTaskDraft, CronTaskRun};
-use sealantern_interface::{CronTaskService, CronTaskServiceError};
+use sealantern_contract::CronTaskServiceError;
+use sealantern_contract::cron::{CronTask, CronTaskDraft, CronTaskRun};
 
 async fn cron_service() -> Result<Arc<CoreCronTaskService>, CronTaskServiceError> {
     let services = AppServices::get()

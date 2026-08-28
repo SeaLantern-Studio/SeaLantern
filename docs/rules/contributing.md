@@ -65,7 +65,7 @@ cargo test --all-targets --workspace
 
 ## 代码落位
 
-- 新的共享业务进入 `application`，公共服务契约和 DTO 进入 `crates/interface`，领域逻辑进入 `crates/core`，扩展能力进入 `crates/extra`，通用技术能力进入 `crates/infra`。
+- 新的共享业务用例进入 `application/src/service`，能力端口进入 `application/src/port`，公共 DTO 和错误进入 `crates/contract`，领域逻辑进入 `crates/core`，功能实现进入 `crates/feature`，通用技术能力进入 `crates/infra`。
 - Tauri command/event 只做 Desktop 传输和宿主上下文适配；Axum handler 只做 HTTP 传输和宿主上下文适配。
 - 页面通过 `src/api` 调用业务。不要在页面中复制 Rust 业务规则或手写一套只在某个宿主有效的共享逻辑。
 - 新增错误优先使用现有的领域错误或具名错误类型，在宿主边界转换为适合 Tauri/HTTP 的响应；不存在统一的 `Result<String>` 规则。

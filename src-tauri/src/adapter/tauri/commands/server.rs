@@ -2,11 +2,12 @@
 
 use std::sync::Arc;
 
+use sealantern_application::port::ServerService;
 use sealantern_application::service::CoreServerService;
 use sealantern_application::services::AppServices;
+use sealantern_contract::ServerServiceError;
+use sealantern_contract::server::ServerSnapshot;
 use sealantern_core::instance::InstanceId;
-use sealantern_interface::server::ServerSnapshot;
-use sealantern_interface::{ServerService, ServerServiceError};
 
 /// 获取全局服务器进程管理服务句柄（惰性初始化容器）。
 async fn server_service() -> Result<Arc<CoreServerService>, ServerServiceError> {

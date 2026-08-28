@@ -8,9 +8,9 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 
+use sealantern_application::port::InstanceService;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::ImportExistingServerRequest;
-use sealantern_interface::InstanceService;
 
 use super::super::error::HttpError;
 use super::super::state::AppState;
@@ -60,7 +60,7 @@ pub async fn get_instance(
         .instance()
         .find(&id)
         .await?
-        .ok_or(sealantern_interface::InstanceServiceError::InstanceNotFound)?;
+        .ok_or(sealantern_contract::InstanceServiceError::InstanceNotFound)?;
     Ok(Json(instance))
 }
 
@@ -86,7 +86,7 @@ pub async fn rename_instance(
         .instance()
         .find(&id)
         .await?
-        .ok_or(sealantern_interface::InstanceServiceError::InstanceNotFound)?;
+        .ok_or(sealantern_contract::InstanceServiceError::InstanceNotFound)?;
     Ok(Json(instance))
 }
 
@@ -102,7 +102,7 @@ pub async fn update_instance_path(
         .instance()
         .find(&id)
         .await?
-        .ok_or(sealantern_interface::InstanceServiceError::InstanceNotFound)?;
+        .ok_or(sealantern_contract::InstanceServiceError::InstanceNotFound)?;
     Ok(Json(instance))
 }
 

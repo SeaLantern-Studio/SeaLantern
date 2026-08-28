@@ -9,13 +9,14 @@
 
 use std::path::Path;
 
+use sealantern_application::port::ProvisioningService;
 use sealantern_application::services::AppServices;
+use sealantern_contract::ProvisioningServiceError;
 use sealantern_core::instance::{InstanceImportPlan, InstanceImportRequest};
 use sealantern_core::provisioning::{
     CopyInstancePlan, CopyInstanceRequest, ModpackProvisionPlan, ModpackProvisionRequest,
     ServerInspectionReport, StartupScriptInfo,
 };
-use sealantern_interface::{ProvisioningService, ProvisioningServiceError};
 
 /// 获取全局应用服务句柄（惰性初始化容器）。
 async fn services() -> Result<AppServices, ProvisioningServiceError> {

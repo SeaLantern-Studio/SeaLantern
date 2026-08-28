@@ -153,9 +153,9 @@ jobs:
         run: |
           cargo test -p sealantern-application
           cargo test -p sealantern-core --lib
-          cargo test -p sealantern-extra
+          cargo test -p sealantern-feature
           cargo test -p sealantern-infra --all-features
-          cargo test -p sealantern-interface
+          cargo test -p sealantern-contract
           cargo test -p sealantern-server
           cargo test --bin sealantern -p sealantern
 

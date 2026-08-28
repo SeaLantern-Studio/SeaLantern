@@ -5,6 +5,7 @@
 ## 文档
 
 - [当前架构与代码组织](./architecture.md)
+- [RESTful RPC 设计](./RESTful-RPC-Design.md)
 - [插件 v2 设计与安全边界](./plugin.md)
 - [前端设计契约](./frontend.md)
 

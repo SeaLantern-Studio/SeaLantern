@@ -6,9 +6,10 @@
 //! 错误统一为接口契约错误 [`UpdateInstallServiceError`]，可序列化回前端，
 //! 不携带底层敏感细节。
 
+use sealantern_application::port::UpdateInstallService;
 use sealantern_application::services::AppServices;
-use sealantern_extra::update::PendingUpdate;
-use sealantern_interface::{UpdateInstallService, UpdateInstallServiceError};
+use sealantern_contract::UpdateInstallServiceError;
+use sealantern_contract::update::PendingUpdate;
 
 /// 获取全局应用服务句柄（惰性初始化容器）。
 async fn service() -> Result<AppServices, UpdateInstallServiceError> {

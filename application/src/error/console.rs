@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use sealantern_interface::error::ConsoleServiceError;
+use sealantern_contract::error::ConsoleServiceError;
 
 /// 服务器控制台日志操作失败的应用层主错误。
 ///
@@ -51,26 +51,26 @@ impl From<sealantern_infra::persistence::PersistenceError> for ConsoleError {
     }
 }
 
-impl From<sealantern_interface::InstanceServiceError> for ConsoleError {
-    fn from(source: sealantern_interface::InstanceServiceError) -> Self {
+impl From<sealantern_contract::InstanceServiceError> for ConsoleError {
+    fn from(source: sealantern_contract::InstanceServiceError) -> Self {
         match source {
-            sealantern_interface::InstanceServiceError::InstanceNotFound => Self::InstanceNotFound,
-            sealantern_interface::InstanceServiceError::InvalidInput => Self::InvalidInput,
-            sealantern_interface::InstanceServiceError::InvalidState
-            | sealantern_interface::InstanceServiceError::AlreadyExists
-            | sealantern_interface::InstanceServiceError::SourceUnavailable
-            | sealantern_interface::InstanceServiceError::SourceNotDirectory
-            | sealantern_interface::InstanceServiceError::SourceAlreadyImported
-            | sealantern_interface::InstanceServiceError::NoLaunchCandidate
-            | sealantern_interface::InstanceServiceError::InspectionPanicked
-            | sealantern_interface::InstanceServiceError::BuildFailed
-            | sealantern_interface::InstanceServiceError::PlanInvalid
-            | sealantern_interface::InstanceServiceError::ListFailed
-            | sealantern_interface::InstanceServiceError::CreateFailed
-            | sealantern_interface::InstanceServiceError::OperationFailed => {
+            sealantern_contract::InstanceServiceError::InstanceNotFound => Self::InstanceNotFound,
+            sealantern_contract::InstanceServiceError::InvalidInput => Self::InvalidInput,
+            sealantern_contract::InstanceServiceError::InvalidState
+            | sealantern_contract::InstanceServiceError::AlreadyExists
+            | sealantern_contract::InstanceServiceError::SourceUnavailable
+            | sealantern_contract::InstanceServiceError::SourceNotDirectory
+            | sealantern_contract::InstanceServiceError::SourceAlreadyImported
+            | sealantern_contract::InstanceServiceError::NoLaunchCandidate
+            | sealantern_contract::InstanceServiceError::InspectionPanicked
+            | sealantern_contract::InstanceServiceError::BuildFailed
+            | sealantern_contract::InstanceServiceError::PlanInvalid
+            | sealantern_contract::InstanceServiceError::ListFailed
+            | sealantern_contract::InstanceServiceError::CreateFailed
+            | sealantern_contract::InstanceServiceError::OperationFailed => {
                 Self::OperationFailed { source: Box::new(source) }
             }
-            sealantern_interface::InstanceServiceError::Unsupported => Self::Unsupported,
+            sealantern_contract::InstanceServiceError::Unsupported => Self::Unsupported,
         }
     }
 }

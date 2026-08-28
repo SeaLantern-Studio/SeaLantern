@@ -5302,10 +5302,10 @@ version = "1.3.1"
 dependencies = [
  "async-trait",
  "sealantern-application",
+ "sealantern-contract",
  "sealantern-core",
- "sealantern-extra",
+ "sealantern-feature",
  "sealantern-infra",
- "sealantern-interface",
  "serde",
  "serde_json",
  "tauri",
@@ -5328,10 +5328,10 @@ version = "1.3.1"
 dependencies = [
  "async-trait",
  "chrono",
+ "sealantern-contract",
  "sealantern-core",
- "sealantern-extra",
+ "sealantern-feature",
  "sealantern-infra",
- "sealantern-interface",
  "serde",
  "serde_json",
  "tempfile",
@@ -5339,6 +5339,15 @@ dependencies = [
  "tracing",
  "uuid",
  "zip",
+]
+
+[[package]]
+name = "sealantern-contract"
+version = "1.3.1"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -5357,7 +5366,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sealantern-extra"
+name = "sealantern-feature"
 version = "1.3.1"
 dependencies = [
  "async-trait",
@@ -5371,6 +5380,7 @@ dependencies = [
  "reqwest 0.12.28",
  "rusqlite",
  "sculk",
+ "sealantern-contract",
  "sealantern-core",
  "sealantern-infra",
  "serde",
@@ -5397,6 +5407,7 @@ dependencies = [
  "ipnet",
  "reqwest 0.12.28",
  "rusqlite",
+ "sealantern-contract",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -5413,19 +5424,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sealantern-interface"
-version = "1.3.1"
-dependencies = [
- "async-trait",
- "chrono",
- "sealantern-core",
- "sealantern-extra",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "sealantern-server"
 version = "1.3.1"
 dependencies = [
@@ -5433,9 +5431,8 @@ dependencies = [
  "axum-vite",
  "include_dir",
  "sealantern-application",
+ "sealantern-contract",
  "sealantern-core",
- "sealantern-extra",
- "sealantern-interface",
  "serde",
  "serde_json",
  "tempfile",

@@ -8,19 +8,19 @@ use sealantern_core::app_plugin::{
     CapabilityDispatchError, CapabilityDispatcher, CapabilityInvocation, ExecutionPrincipal,
     PolicyDecision, ScopeKind, capability,
 };
-use sealantern_extra::market::{
+use sealantern_feature::market::{
     Fetcher, MarketError, MarketSource, ResourceInfo, SearchResult, Version,
 };
 use sealantern_infra::net::{
     NetworkOrigin, PluginHttpMethod, PluginNetworkAddressPolicy, PluginNetworkExecutor,
     PluginNetworkLimits, PluginNetworkRequest, PluginNetworkScope,
 };
-use sealantern_interface::{InstanceService, ServerService, SystemService};
 use serde::Deserialize;
 use serde_json::Value;
 use tokio::sync::Mutex;
 
 use super::PluginPolicyStore;
+use crate::port::{InstanceService, ServerService, SystemService};
 
 const MARKET_PAGE_SIZE_LIMIT: u32 = 100;
 const MAX_PLUGIN_NETWORK_IN_FLIGHT: usize = 8;
@@ -53,8 +53,8 @@ impl DefaultMarketGateway {
         let client = sealantern_infra::net::NetClient::from_config(&Default::default())
             .map_err(|error| error.to_string())?;
         Ok(Self {
-            modrinth: Arc::new(sealantern_extra::market::ModrinthFetcher::new(client.clone())),
-            spiget: Arc::new(sealantern_extra::market::SpigetFetcher::new(client)),
+            modrinth: Arc::new(sealantern_feature::market::ModrinthFetcher::new(client.clone())),
+            spiget: Arc::new(sealantern_feature::market::SpigetFetcher::new(client)),
         })
     }
 

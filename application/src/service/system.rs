@@ -1,6 +1,6 @@
 //! 系统资源信息服务实现。
 //!
-//! 实现 [`sealantern_interface::SystemService`] 能力端口，组合 `infra` 的
+//! 实现 [`crate::port::SystemService`] 能力端口，组合 `infra` 的
 //! 平台系统采集能力（CPU / 内存 / 磁盘 / 网络 / 进程 / 目录占用），
 //! 向宿主提供整机快照、进程资源与目录磁盘占用。
 //!
@@ -11,18 +11,19 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use sealantern_contract::SystemServiceError;
+use sealantern_contract::server::ServerState;
+use sealantern_contract::system::{
+    CpuInfo, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
+    ServerResourceUsage, SystemSnapshot,
+};
 use sealantern_infra::platform::{
     collect_disks, collect_networks, collect_process_usage, collect_resource_snapshot,
     collect_system_info, cpu_brand_name, get_default_run_path, process_count,
 };
-use sealantern_interface::server::ServerState;
-use sealantern_interface::system::{
-    CpuInfo, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
-    ServerResourceUsage, SystemSnapshot,
-};
-use sealantern_interface::{InstanceService, ServerService, SystemService, SystemServiceError};
 
 use crate::error::SystemError;
+use crate::port::{InstanceService, ServerService, SystemService};
 use crate::service::{CoreInstanceService, CoreServerService};
 
 /// CPU 采样间隔：`sysinfo` 的 CPU 使用率是增量值，需间隔两次采样取后一次。

@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use sealantern_extra::config::{ServerProperties, ServerPropertiesManager};
+use sealantern_feature::config::{ServerProperties, ServerPropertiesManager};
 
 /// 读取服务器配置文件 (server.properties)
 #[tauri::command]

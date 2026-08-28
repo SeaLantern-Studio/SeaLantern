@@ -7,7 +7,7 @@
 | 层           | 路径                                                             | 职责                                                                           |
 | ------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | 能力契约     | `crates/core/src/app_plugin`                                     | 能力目录、调用请求、scope、trust、风险和策略决策类型；不执行 Lua、不访问持久化 |
-| 运行时       | `crates/extra/src/app_plugin`                                    | API v2 manifest 校验、Lua engine、loader、manager、生命周期和插件私有数据边界  |
+| 运行时       | `crates/feature/src/app_plugin`                                  | API v2 manifest 校验、Lua engine、loader、manager、生命周期和插件私有数据边界  |
 | 应用层       | `application/src/plugin`                                         | 策略 SQLite、持久/会话授权、审批令牌、审计记录和能力 dispatcher                |
 | Desktop 适配 | `src-tauri/src/adapter/tauri/commands/plugin.rs`                 | `plugin_v2_*` Tauri commands                                                   |
 | Web 适配     | `server/src/rpc/methods/plugin`、`server/src/rpc/plugin_auth.rs` | `plugin.v2.invoke` RPC 与 Bearer token 认证                                    |
@@ -61,7 +61,7 @@ manifest 和能力声明拒绝未知字段；未知的能力 ID、旧 API 版本
 ## 源码锚点
 
 - [能力契约](../../crates/core/src/app_plugin)
-- [manifest 与 loader](../../crates/extra/src/app_plugin)
+- [manifest 与 loader](../../crates/feature/src/app_plugin)
 - [插件应用服务](../../application/src/plugin)
 - [Desktop plugin commands](../../src-tauri/src/adapter/tauri/commands/plugin.rs)
 - [Web plugin RPC](../../server/src/rpc/methods/plugin/invoke.rs)

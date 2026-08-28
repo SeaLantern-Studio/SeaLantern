@@ -1,6 +1,6 @@
 //! 服务器日志记录管线编排。
 //!
-//! 组合 `core` 的输出读取原语（[`read_output_lines`]）与 `extra` 的日志
+//! 组合 `core` 的输出读取原语（[`read_output_lines`]）与 `feature` 的日志
 //! 写入能力（[`LogWriter`]），把进程 stdout / stderr 的读取、解码、批量
 //! 落库与实时事件推送串成一条管线。生命周期（启动 / 收敛）由
 //! [`CoreServerService`](crate::service::CoreServerService) 驱动。
@@ -10,10 +10,10 @@
 //! 自己的传输（前端事件 / SSE）。订阅方消费慢导致的事件丢失可由
 //! `ConsoleService::logs(since)` 拉取补漏。
 
+use sealantern_contract::console::ConsoleLogLine;
 use sealantern_core::process::TerminalOutput;
 use sealantern_core::process::read_output_lines;
-use sealantern_extra::server::log::{LogSource, LogWriter, open_log_database};
-use sealantern_interface::console::ConsoleLogLine;
+use sealantern_feature::server::log::{LogSource, LogWriter, open_log_database};
 use serde::Serialize;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -202,7 +202,7 @@ mod tests {
     use std::process::{Command, Stdio};
 
     use sealantern_core::process::{Daemon, Terminal, TerminalStream};
-    use sealantern_extra::server::log::{open_log_database, read_logs};
+    use sealantern_feature::server::log::{open_log_database, read_logs};
 
     use super::*;
 

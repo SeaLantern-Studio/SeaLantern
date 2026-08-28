@@ -9,10 +9,11 @@
 
 use std::sync::Mutex;
 
+use sealantern_application::port::OnlineTunnelService;
 use sealantern_application::services::AppServices;
-use sealantern_interface::{
-    OnlineTunnelHostRequest, OnlineTunnelJoinRequest, OnlineTunnelService,
-    OnlineTunnelServiceError, OnlineTunnelStatus,
+use sealantern_contract::OnlineTunnelServiceError;
+use sealantern_contract::online::{
+    OnlineTunnelHostRequest, OnlineTunnelJoinRequest, OnlineTunnelStatus,
 };
 use tauri::{AppHandle, Emitter, State};
 

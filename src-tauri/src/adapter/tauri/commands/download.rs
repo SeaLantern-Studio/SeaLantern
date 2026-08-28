@@ -6,10 +6,11 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 
+use sealantern_application::port::DownloadService;
 use sealantern_application::service::CoreDownloadService;
 use sealantern_application::services::AppServices;
-use sealantern_interface::download::{DownloadRequest, DownloadTaskInfo};
-use sealantern_interface::{DownloadService, DownloadServiceError};
+use sealantern_contract::DownloadServiceError;
+use sealantern_contract::download::{DownloadRequest, DownloadTaskInfo};
 
 /// 获取全局下载任务管理服务句柄（惰性初始化容器）。
 async fn download_service() -> Result<Arc<CoreDownloadService>, DownloadServiceError> {

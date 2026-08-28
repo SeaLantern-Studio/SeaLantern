@@ -2,10 +2,11 @@
 
 use std::sync::Arc;
 
+use sealantern_application::port::UpdateCheckService;
 use sealantern_application::service::CoreUpdateCheckService;
 use sealantern_application::services::AppServices;
-use sealantern_interface::update::UpdateInfo;
-use sealantern_interface::{UpdateCheckService, UpdateCheckServiceError};
+use sealantern_contract::UpdateCheckServiceError;
+use sealantern_contract::update::UpdateInfo;
 
 async fn update_service() -> Result<Arc<CoreUpdateCheckService>, UpdateCheckServiceError> {
     let services = AppServices::get().await.map_err(|error| {

@@ -6,10 +6,10 @@
 //! 错误统一为接口契约错误 [`JavaServiceError`]，可序列化回前端，
 //! 不携带底层敏感细节。
 
+use sealantern_application::port::JavaService;
 use sealantern_application::services::AppServices;
-use sealantern_extra::java::JavaDetectionReport;
-use sealantern_extra::models::JavaInfo;
-use sealantern_interface::{JavaService, JavaServiceError};
+use sealantern_contract::JavaServiceError;
+use sealantern_contract::java::{JavaDetectionReport, JavaInfo};
 
 /// 自动检测本机已安装的 Java 运行时。
 ///

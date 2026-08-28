@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use sealantern_core::app_plugin::{CapabilityDispatchError, CapabilityInvocation};
-use sealantern_extra::app_plugin::{
+use sealantern_feature::app_plugin::{
     AsyncPluginManager, PluginInfo, PluginLoader, PluginManagerConfig,
 };
 use sealantern_infra::platform::get_app_data_dir;
@@ -31,7 +31,7 @@ pub trait PluginService: Send + Sync {
 /// 应用插件服务的可恢复错误。
 #[derive(Debug)]
 pub enum PluginServiceError {
-    Runtime(sealantern_extra::app_plugin::AppPluginError),
+    Runtime(sealantern_feature::app_plugin::AppPluginError),
     Policy(PluginPolicyError),
     Dispatch(CapabilityDispatchError),
     Initialization(String),
@@ -54,8 +54,8 @@ impl std::fmt::Display for PluginServiceError {
 
 impl std::error::Error for PluginServiceError {}
 
-impl From<sealantern_extra::app_plugin::AppPluginError> for PluginServiceError {
-    fn from(error: sealantern_extra::app_plugin::AppPluginError) -> Self {
+impl From<sealantern_feature::app_plugin::AppPluginError> for PluginServiceError {
+    fn from(error: sealantern_feature::app_plugin::AppPluginError) -> Self {
         Self::Runtime(error)
     }
 }
