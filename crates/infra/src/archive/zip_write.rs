@@ -7,22 +7,34 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
 use super::limits::{ArchiveSummary, accumulate_bytes};
-use super::{ArchiveError, open_existing_directory, parent_path};
+use super::{ArchiveError, CompressionLevel, open_existing_directory, parent_path};
 
-/// 创建包含 source 目录内容的 ZIP 归档文件。
+/// 使用默认压缩级别创建包含 source 目录内容的 ZIP 归档文件。
+///
+/// 语义与 [`create_zip_with_level`] 相同，压缩级别取
+/// [`CompressionLevel::Medium`]。
+pub fn create_zip(
+    source: impl AsRef<Path>,
+    destination: impl AsRef<Path>,
+) -> Result<ArchiveSummary, ArchiveError> {
+    create_zip_with_level(source, destination, CompressionLevel::default())
+}
+
+/// 使用显式压缩级别创建包含 source 目录内容的 ZIP 归档文件。
 ///
 /// 目标文件必须不存在。临时归档在目标目录中完成，然后通过 rename 原子地移动到
 /// 最终位置，因此源文件读取或写入失败不会用部分结果替换原有的归档文件。
 ///
 /// 选择 rename 而非硬链接是因为前者不依赖文件系统的链接能力（FAT32/exFAT 等
 /// 不支持硬链接），且成功后无需再清理临时文件。
-pub fn create_zip(
+pub fn create_zip_with_level(
     source: impl AsRef<Path>,
     destination: impl AsRef<Path>,
+    level: CompressionLevel,
 ) -> Result<ArchiveSummary, ArchiveError> {
     let source = source.as_ref();
     let destination = destination.as_ref();
-    let result = create_zip_inner(source, destination);
+    let result = create_zip_inner(source, destination, level);
     if let Err(error) = &result {
         crate::observability::archive_operation_failed_with_context(
             "create ZIP",
@@ -35,12 +47,16 @@ pub fn create_zip(
     result
 }
 
-fn create_zip_inner(source: &Path, destination: &Path) -> Result<ArchiveSummary, ArchiveError> {
+fn create_zip_inner(
+    source: &Path,
+    destination: &Path,
+    level: CompressionLevel,
+) -> Result<ArchiveSummary, ArchiveError> {
     reject_existing_destination(destination)?;
     let source_root =
         open_existing_directory(source, "source must be a directory that is not a symbolic link")?;
     let temporary = temporary_path(destination);
-    let result = write_archive(&source_root, source, &temporary);
+    let result = write_archive(&source_root, source, &temporary, level);
     match result {
         Ok(summary) => {
             if let Err(error) = fs::rename(&temporary, destination) {
@@ -98,6 +114,7 @@ fn write_archive(
     source_root: &Dir,
     source_path: &Path,
     temporary: &Path,
+    level: CompressionLevel,
 ) -> Result<ArchiveSummary, ArchiveError> {
     let file = OpenOptions::new()
         .write(true)
@@ -107,6 +124,7 @@ fn write_archive(
     let mut writer = ZipWriter::new(file);
     let file_options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Deflated)
+        .compression_level(Some(level.deflate_level() as i64))
         .large_file(true);
     let directory_options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Stored)
@@ -258,6 +276,27 @@ mod tests {
             .map(|entry| entry.unwrap().file_name())
             .collect();
         assert_eq!(published, vec![std::ffi::OsString::from("server.zip")]);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn honours_the_requested_compression_level() {
+        let root = crate::fs::test_dir("zip-level");
+        let source = root.join("source");
+        fs::create_dir_all(&source).unwrap();
+        // 高度可压缩且足够大的负载，使级别差异体现在输出体积上。
+        fs::write(source.join("payload.bin"), "sea lantern ".repeat(8192)).unwrap();
+
+        let low = root.join("low.zip");
+        let high = root.join("high.zip");
+        create_zip_with_level(&source, &low, CompressionLevel::Low).unwrap();
+        create_zip_with_level(&source, &high, CompressionLevel::High).unwrap();
+
+        assert!(
+            fs::metadata(&high).unwrap().len() < fs::metadata(&low).unwrap().len(),
+            "high compression should produce a smaller archive"
+        );
 
         fs::remove_dir_all(root).unwrap();
     }

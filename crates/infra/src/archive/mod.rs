@@ -7,6 +7,7 @@
 //!
 //! 模块划分：
 //! - [`limits`] / [`entry`]：与归档格式无关的资源限制、统计与路径校验
+//! - [`format`]：按魔数识别归档格式，以及压缩级别定义
 //! - [`symbol_link`]：符号链接载荷解析
 //! - [`zip_read`] / [`zip_write`]：ZIP 格式的解压与创建
 //! - [`tar_read`] / [`tar_write`]：tar.gz 格式的解压与创建
@@ -15,6 +16,7 @@
 
 mod entry;
 mod error;
+mod format;
 mod limits;
 mod symbol_link;
 mod tar_read;
@@ -28,12 +30,13 @@ use cap_std::ambient_authority;
 use cap_std::fs::Dir;
 
 pub use error::ArchiveError;
+pub use format::{ArchiveFormat, CompressionLevel, detect_archive_format};
 pub use limits::{ArchiveSummary, ExtractionLimits, ExtractionSummary};
 pub use symbol_link::{is_symbolic_link, parse_symbolic_link_target};
 pub use tar_read::{extract_tar_gz, extract_tar_gz_with_limits};
-pub use tar_write::create_tar_gz;
+pub use tar_write::{create_tar_gz, create_tar_gz_with_level};
 pub use zip_read::{extract_zip, extract_zip_with_limits};
-pub use zip_write::create_zip;
+pub use zip_write::{create_zip, create_zip_with_level};
 
 use entry::{
     EntryPathRegistry, check_entry_path_length, ensure_directory, ensure_parent_dirs,
