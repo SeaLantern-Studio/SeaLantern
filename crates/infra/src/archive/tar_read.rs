@@ -35,6 +35,15 @@ const MAX_SYMBOLIC_LINK_TARGET_BYTES: usize = 4 * 1024;
 /// 分配约束在可忽略的范围。
 const MAX_SEGMENT_BYTES: u64 = 1024 * 1024;
 
+/// tar 结束标记之后允许的最大填充字节数。
+///
+/// tar 以两个全零块表示归档结束，其后按实现惯例还会补齐到固定记录大小：
+/// GNU tar 默认的 blocking factor 为 20，即补齐到 10240 字节的整数倍。因此
+/// 结束标记之后出现成片零字节是合法的，只是不允许出现非零数据。
+///
+/// 上限取 64 KiB，覆盖各实现常用的记录大小，同时避免用无限零字节流拖住解压。
+const MAX_TRAILING_PADDING_BYTES: u64 = 64 * 1024;
+
 /// 被解码器拦下的一次限制越界。
 ///
 /// 解码器只能返回 [`io::Error`]，无法直接携带 [`ArchiveError::LimitExceeded`]
@@ -129,6 +138,9 @@ impl<R: Read> Read for LimitedReader<R> {
         Ok(count)
     }
 }
+
+/// 本模块使用的完整读取栈：文件 → 缓冲 → gzip 解压 → 限流。
+type TarGzReader = LimitedReader<GzDecoder<BufReader<File>>>;
 
 /// 把底层 I/O 错误还原为精确的归档错误。
 ///
@@ -273,7 +285,7 @@ fn unpack_entries(
     let file = File::open(archive_path)
         .map_err(|error| ArchiveError::io("open tar.gz archive", archive_path, error))?;
     let stream_limits = Rc::new(StreamLimits::new(archive_size, limits));
-    let reader = LimitedReader {
+    let reader: TarGzReader = LimitedReader {
         inner: GzDecoder::new(BufReader::new(file)),
         limits: Rc::clone(&stream_limits),
     };
@@ -329,7 +341,55 @@ fn unpack_entries(
         summary.files += 1;
     }
 
+    // 条目迭代结束意味着 tar 读到了结束标记，但底层流可能还有数据。
+    // `entries` 借用了 `archive`，for 循环已消费该迭代器，借用随之结束。
+    reject_trailing_data(archive.into_inner(), &stream_limits, archive_path)?;
     Ok(summary)
+}
+
+/// 拒绝 tar 结束标记之后出现的非零数据。
+///
+/// tar 读到两个全零块即停止迭代，之后不再关心底层流。若此时仍有非零数据，说明
+/// 归档被拼接过：解压方只会看到前一段内容，而其他工具可能读出完全不同的结果。
+/// gzip 的 CRC 校验对此无效——追加的数据可以是另一个完整合法的 gzip 成员。
+///
+/// 成片零字节按记录对齐填充接受，见 [`MAX_TRAILING_PADDING_BYTES`]。
+///
+/// 接受完整的读取栈而非泛型 reader：`GzDecoder` 在单成员模式下读完一个成员即
+/// 返回 EOF，因此这里读到的是同一个 gzip 成员内 tar 结束标记之后的字节。
+fn reject_trailing_data(
+    mut reader: TarGzReader,
+    stream_limits: &StreamLimits,
+    archive_path: &Path,
+) -> Result<(), ArchiveError> {
+    // 结束标记之后的读取不属于任何条目，单独作为一段计量。
+    stream_limits.start_segment();
+    let mut buffer = [0_u8; 8 * 1024];
+    let mut padding = 0_u64;
+    loop {
+        let count = reader.read(&mut buffer).map_err(|error| {
+            stream_error(stream_limits, "read trailing data from", archive_path, error)
+        })?;
+        if count == 0 {
+            return Ok(());
+        }
+        if buffer[..count].iter().any(|byte| *byte != 0) {
+            return Err(ArchiveError::UnsafeEntry {
+                archive: archive_path.to_path_buf(),
+                entry: String::new(),
+                reason: "archive contains data after the end-of-archive marker".to_string(),
+            });
+        }
+        padding = accumulate_bytes(
+            padding,
+            count as u64,
+            archive_path,
+            "trailing padding bytes",
+            MAX_TRAILING_PADDING_BYTES,
+        )?;
+        check_limit(archive_path, "trailing padding bytes", padding, MAX_TRAILING_PADDING_BYTES)?;
+        stream_limits.start_segment();
+    }
 }
 
 /// 校验条目名长度并取出用于错误展示的名称。
@@ -618,6 +678,89 @@ mod tests {
 
         assert_eq!(summary.files, 1);
         assert_eq!(std::fs::read(destination.join(&long_name)).unwrap(), b"say\n");
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// 写出一个正常归档，并在 tar 结束标记之后追加原始字节。
+    ///
+    /// 追加内容位于同一个 gzip 成员内：`Builder::into_inner` 已写出结束块，
+    /// 此时 `GzEncoder` 仍未 finish，继续写入即落在结束标记之后。
+    fn write_archive_with_trailing_bytes(path: &Path, trailing: &[u8]) {
+        let file = File::create(path).unwrap();
+        let mut builder = Builder::new(GzEncoder::new(file, Compression::default()));
+        let mut header = Header::new_gnu();
+        header.set_entry_type(EntryType::Regular);
+        header.set_size(16);
+        header.set_mode(0o644);
+        header.set_mtime(0);
+        builder
+            .append_data(&mut header, "server.properties", &b"motd=Sea Lantern"[..])
+            .unwrap();
+        let mut encoder = builder.into_inner().unwrap();
+        encoder.write_all(trailing).unwrap();
+        encoder.finish().unwrap();
+    }
+
+    #[test]
+    fn rejects_data_after_the_end_of_archive_marker() {
+        let root = crate::fs::test_dir("tar-trailing-data");
+        let archive = root.join("appended.tar.gz");
+        let destination = root.join("destination");
+        // 追加一个看似合法的 tar 块：gzip 的 CRC 覆盖它，因此校验和无法发现。
+        let mut trailing = vec![0_u8; 512];
+        trailing[0] = b'x';
+        write_archive_with_trailing_bytes(&archive, &trailing);
+
+        assert!(matches!(
+            extract_tar_gz(&archive, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn accepts_record_alignment_padding_after_the_marker() {
+        let root = crate::fs::test_dir("tar-trailing-padding");
+        let archive = root.join("padded.tar.gz");
+        let destination = root.join("destination");
+        // GNU tar 默认补齐到 10240 字节的记录边界，全零填充必须被接受。
+        write_archive_with_trailing_bytes(&archive, &vec![0_u8; 10240]);
+
+        let summary = extract_tar_gz(&archive, &destination).unwrap();
+
+        assert_eq!(summary.files, 1);
+        assert_eq!(
+            std::fs::read(destination.join("server.properties")).unwrap(),
+            b"motd=Sea Lantern"
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_excessive_padding_after_the_marker() {
+        let root = crate::fs::test_dir("tar-trailing-flood");
+        let archive = root.join("flooded.tar.gz");
+        let destination = root.join("destination");
+        write_archive_with_trailing_bytes(
+            &archive,
+            &vec![0_u8; (MAX_TRAILING_PADDING_BYTES + 1) as usize],
+        );
+
+        // 放开压缩比：成片零字节压缩率极高，默认比率会先于填充上限触发，
+        // 掩盖本测试要验证的约束。
+        let limits = ExtractionLimits {
+            max_compression_ratio: u64::MAX,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_tar_gz_with_limits(&archive, &destination, limits),
+            Err(ArchiveError::LimitExceeded { limit: "trailing padding bytes", .. })
+        ));
+        assert!(!destination.exists());
 
         std::fs::remove_dir_all(root).unwrap();
     }
