@@ -24,6 +24,18 @@ fn map_error(error: PluginServiceError) -> String {
     error.to_string()
 }
 
+fn validate_user_trust_source(trust_source: TrustSource) -> Result<(), String> {
+    match trust_source {
+        TrustSource::UntrustedLocal | TrustSource::LocallyTrusted => Ok(()),
+        TrustSource::StandardMarketplace
+        | TrustSource::VerifiedPublisher
+        | TrustSource::BuiltIn => {
+            Err("trust source must be established by the host, not supplied by the frontend"
+                .to_owned())
+        }
+    }
+}
+
 #[tauri::command(rename_all = "snake_case")]
 pub async fn plugin_v2_discover(services: State<'_, AppServices>) -> Result<Vec<PathBuf>, String> {
     plugin_service(&services)
@@ -128,12 +140,33 @@ pub async fn plugin_v2_set_trust(
     plugin_id: String,
     trust_source: TrustSource,
 ) -> Result<(), String> {
+    validate_user_trust_source(trust_source)?;
     plugin_service(&services)
         .await?
         .policy()
         .set_trust(&plugin_id, trust_source)
         .await
         .map_err(|error| error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_user_trust_source;
+    use sealantern_core::app_plugin::TrustSource;
+
+    #[test]
+    fn only_explicit_local_trust_decisions_are_accepted() {
+        assert!(validate_user_trust_source(TrustSource::UntrustedLocal).is_ok());
+        assert!(validate_user_trust_source(TrustSource::LocallyTrusted).is_ok());
+
+        for source in [
+            TrustSource::StandardMarketplace,
+            TrustSource::VerifiedPublisher,
+            TrustSource::BuiltIn,
+        ] {
+            assert!(validate_user_trust_source(source).is_err());
+        }
+    }
 }
 
 #[tauri::command(rename_all = "snake_case")]
