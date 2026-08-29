@@ -17,6 +17,12 @@ pub enum BackupError {
     #[error("IO错误: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("文件系统错误: {0}")]
+    FileSystem(#[from] sealantern_infra::fs::FsError),
+
+    #[error("ZIP写入错误: {0}")]
+    Zip(#[from] zip::result::ZipError),
+
     #[error("压缩错误: {0}")]
     Archive(#[from] sealantern_infra::archive::ArchiveError),
 
@@ -31,6 +37,9 @@ pub enum BackupError {
 
     #[error("备份文件损坏: {0}")]
     CorruptedBackup(PathBuf),
+
+    #[error("可用内存不足，无法解压备份: 当前{available}字节，至少需要{required}字节")]
+    InsufficientMemory { available: u64, required: u64 },
 
     #[error("序列化错误: {0}")]
     Json(#[from] serde_json::Error),

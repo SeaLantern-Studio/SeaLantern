@@ -24,6 +24,9 @@ urlencoding = "2"
 uuid = { version = "1", features = ["v4"] }
 thiserror = "1"
 tempfile = "3"
+flate2 = "1"
+tar = { version = "0.4", default-features = false }
+zip = { version = "2.0", default-features = false, features = ["deflate"] }
 sealantern-core = { path = "../core" }
 sealantern-infra = { path = "../infra" }
 rusqlite = { version = "0.32", features = ["bundled"] }
@@ -37,4 +40,5 @@ sculk = { version = "=0.3.1", default-features = false, optional = true }
 java-manager = { path = "../vendor/java-manager" }
 
 [dev-dependencies]
+proptest = "1"
 tempfile = "3"

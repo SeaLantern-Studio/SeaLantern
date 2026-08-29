@@ -99,6 +99,7 @@ pub async fn restore_backup(
     // 执行恢复
     sealantern_feature::backup::restore_backup(
         backup_id,
+        server_id,
         instance.directory.clone(),
         |_server_id| true, // 已验证服务器已停止
     )

@@ -1,4 +1,15 @@
+use std::path::{Component, Path};
+
 use serde::{Deserialize, Serialize};
+
+pub(crate) fn is_safe_path_component(value: &str) -> bool {
+    if value.is_empty() || value.contains(['/', '\\', ':', '\0']) || value.contains(['\n', '\r']) {
+        return false;
+    }
+
+    let mut components = Path::new(value).components();
+    matches!(components.next(), Some(Component::Normal(_))) && components.next().is_none()
+}
 
 /// 备份格式
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -108,7 +119,7 @@ pub struct BackupSettings {
     /// 自动备份开关
     #[serde(default)]
     pub auto_backup_enabled: bool,
-    /// 自动备份间隔（小时）
+    /// 自动备份间隔（小时，范围1-720）
     #[serde(default = "default_auto_backup_interval")]
     pub auto_backup_interval: u32,
     /// 自动备份内容
