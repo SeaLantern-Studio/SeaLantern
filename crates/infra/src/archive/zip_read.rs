@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
@@ -8,8 +7,9 @@ use zip::ZipArchive;
 
 use super::limits::{ExtractionLimits, ExtractionSummary, accumulate_bytes, check_limit};
 use super::{
-    ArchiveError, check_entry_path_length, create_new_directory, ensure_directory,
-    ensure_parent_dirs, is_symbolic_link, parse_symbolic_link_target, safe_entry_path,
+    ArchiveError, EntryPathRegistry, check_entry_path_length, create_new_directory,
+    ensure_directory, ensure_parent_dirs, is_symbolic_link, parse_symbolic_link_target,
+    safe_entry_path,
 };
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: u64 = 4 * 1024;
@@ -113,7 +113,7 @@ fn validate_archive(
 ) -> Result<(), ArchiveError> {
     check_limit(archive_path, "entry count", archive.len() as u64, limits.max_entries as u64)?;
 
-    let mut paths = HashSet::with_capacity(archive.len());
+    let mut paths = EntryPathRegistry::with_capacity(archive.len());
     let mut total_bytes = 0_u64;
     for index in 0..archive.len() {
         let mut entry = archive
@@ -122,13 +122,8 @@ fn validate_archive(
         check_entry_path_length(archive_path, entry.name_raw(), limits.max_entry_path_bytes)?;
         let entry_name = entry.name().to_owned();
         let relative = safe_entry_path(archive_path, &entry_name)?;
-        if !paths.insert(relative.clone()) {
-            return Err(ArchiveError::UnsafeEntry {
-                archive: archive_path.to_path_buf(),
-                entry: entry_name,
-                reason: "archive contains duplicate output paths".to_string(),
-            });
-        }
+        let is_directory = entry.is_dir();
+        paths.register(archive_path, &relative, &entry_name, is_directory)?;
         if is_symbolic_link(entry.unix_mode()) {
             validate_symbolic_link_target(&mut entry, archive_path, &entry_name)?;
             return Err(ArchiveError::UnsupportedEntry {
@@ -137,7 +132,7 @@ fn validate_archive(
                 kind: "symbolic link",
             });
         }
-        if entry.is_dir() {
+        if is_directory {
             continue;
         }
 
@@ -349,6 +344,33 @@ mod tests {
                 limit: "per-entry uncompressed bytes",
                 ..
             })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_file_entry_that_blocks_a_parent_directory() {
+        let root = crate::fs::test_dir("zip-path-conflict");
+        let archive_path = root.join("conflict.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        // `config` 先作为普通文件出现，随后的条目却要用它当父目录。
+        writer
+            .start_file("config", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"not a directory").unwrap();
+        writer
+            .start_file("config/server.properties", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"motd=Sea Lantern").unwrap();
+        writer.finish().unwrap();
+
+        assert!(matches!(
+            extract_zip(&archive_path, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
         ));
         assert!(!destination.exists());
 

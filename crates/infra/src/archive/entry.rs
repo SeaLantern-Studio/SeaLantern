@@ -7,6 +7,7 @@
 //! 所有路径操作都通过目录句柄完成，不拼接绝对路径，避免校验与创建之间
 //! 出现符号链接替换竞争。`destination` 参数仅用于错误消息展示。
 
+use std::collections::HashSet;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -15,6 +16,105 @@ use cap_std::fs::Dir;
 use crate::fs::SafeRelativePath;
 
 use super::ArchiveError;
+
+/// 已登记的条目输出路径，用于在写入之前发现路径冲突。
+///
+/// 单靠 [`SafeRelativePath`] 只能保证每个条目不逃逸解压根目录，无法发现条目
+/// 之间的相互冲突。以下三类都会导致条目覆盖、写入失败或语义歧义：
+///
+/// - 两个条目解析到同一输出路径
+/// - 某个条目的祖先路径已作为普通文件出现，该文件会阻断此条目的父目录
+/// - 同一路径既作普通文件又作目录使用
+///
+/// 目录句柄的逐层解析最终也会让这些归档写入失败，但那时已经流式写出了部分
+/// 内容，且错误退化为笼统的 I/O 失败。提前登记可以给出明确原因，并让 tar.gz
+/// 这类无法预检的格式尽早中止。
+#[derive(Debug, Default)]
+pub(super) struct EntryPathRegistry {
+    /// 已出现的显式条目路径，用于重复检测。
+    seen: HashSet<PathBuf>,
+    /// 已作为普通文件出现的路径。
+    files: HashSet<PathBuf>,
+    /// 已作为目录使用的路径，含由子条目隐式引入的祖先目录。
+    directories: HashSet<PathBuf>,
+}
+
+impl EntryPathRegistry {
+    pub(super) fn with_capacity(capacity: usize) -> Self {
+        Self {
+            seen: HashSet::with_capacity(capacity),
+            files: HashSet::new(),
+            directories: HashSet::new(),
+        }
+    }
+
+    /// 登记条目路径，与既有条目冲突时返回 [`ArchiveError::UnsafeEntry`]。
+    ///
+    /// 祖先目录在登记时一并记入，因此「同一路径既作文件又作目录」的判定是
+    /// 常数时间的集合查询，无需遍历已登记条目。
+    pub(super) fn register(
+        &mut self,
+        archive_path: &Path,
+        relative: &SafeRelativePath,
+        entry_name: &str,
+        is_directory: bool,
+    ) -> Result<(), ArchiveError> {
+        let path = relative.as_path();
+        if !self.seen.insert(path.to_path_buf()) {
+            return Err(conflict(
+                archive_path,
+                entry_name,
+                "archive contains duplicate output paths",
+            ));
+        }
+        if ancestors(path).any(|ancestor| self.files.contains(ancestor)) {
+            return Err(conflict(
+                archive_path,
+                entry_name,
+                "a file entry blocks a parent directory of this entry",
+            ));
+        }
+
+        if is_directory {
+            if self.files.contains(path) {
+                return Err(conflict(
+                    archive_path,
+                    entry_name,
+                    "path is already used by a file entry",
+                ));
+            }
+            self.directories.insert(path.to_path_buf());
+        } else {
+            if self.directories.contains(path) {
+                return Err(conflict(
+                    archive_path,
+                    entry_name,
+                    "path is already used as a directory",
+                ));
+            }
+            self.files.insert(path.to_path_buf());
+        }
+
+        self.directories
+            .extend(ancestors(path).map(Path::to_path_buf));
+        Ok(())
+    }
+}
+
+/// 遍历路径的各级祖先，跳过路径自身与空的根。
+fn ancestors(path: &Path) -> impl Iterator<Item = &Path> {
+    path.ancestors()
+        .skip(1)
+        .filter(|ancestor| !ancestor.as_os_str().is_empty())
+}
+
+fn conflict(archive_path: &Path, entry_name: &str, reason: &'static str) -> ArchiveError {
+    ArchiveError::UnsafeEntry {
+        archive: archive_path.to_path_buf(),
+        entry: entry_name.to_string(),
+        reason: reason.to_string(),
+    }
+}
 
 /// 校验条目名长度未超过上限。
 ///
@@ -159,6 +259,67 @@ mod tests {
                 maximum: 23,
                 ..
             })
+        ));
+    }
+
+    /// 按顺序登记若干 `(条目名, 是否目录)`，返回首个失败。
+    fn register_all(entries: &[(&str, bool)]) -> Result<(), ArchiveError> {
+        let archive = Path::new("archive.zip");
+        let mut registry = EntryPathRegistry::default();
+        for (name, is_directory) in entries {
+            let relative = safe_entry_path(archive, name)?;
+            registry.register(archive, &relative, name, *is_directory)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn accepts_files_alongside_their_explicit_parent_directory() {
+        assert!(
+            register_all(&[
+                ("config", true),
+                ("config/server.properties", false),
+                ("config/nested", true),
+                ("config/nested/level.dat", false),
+            ])
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn accepts_a_directory_declared_after_its_children() {
+        // 目录条目晚于其内部文件出现是合法的归档顺序，隐式登记的祖先目录
+        // 不应与随后的显式目录条目冲突。
+        assert!(register_all(&[("config/server.properties", false), ("config", true)]).is_ok());
+    }
+
+    #[test]
+    fn rejects_duplicate_output_paths() {
+        assert!(matches!(
+            register_all(&[("server.properties", false), ("server.properties", false)]),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_a_file_that_blocks_a_later_parent_directory() {
+        // `config` 先作为普通文件出现，之后的 `config/server.properties`
+        // 无法在其下创建父目录。
+        assert!(matches!(
+            register_all(&[("config", false), ("config/server.properties", false)]),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_a_path_used_as_both_file_and_directory() {
+        assert!(matches!(
+            register_all(&[("config", true), ("config", false)]),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(matches!(
+            register_all(&[("config", false), ("config", true)]),
+            Err(ArchiveError::UnsafeEntry { .. })
         ));
     }
 }

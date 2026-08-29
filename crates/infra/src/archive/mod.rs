@@ -33,7 +33,10 @@ pub use tar_read::{extract_tar_gz, extract_tar_gz_with_limits};
 pub use zip_read::{extract_zip, extract_zip_with_limits};
 pub use zip_write::create_zip;
 
-use entry::{check_entry_path_length, ensure_directory, ensure_parent_dirs, safe_entry_path};
+use entry::{
+    EntryPathRegistry, check_entry_path_length, ensure_directory, ensure_parent_dirs,
+    safe_entry_path,
+};
 
 /// 打开一个已存在的普通目录，拒绝符号链接与非目录路径。
 ///

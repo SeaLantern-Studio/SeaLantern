@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -11,10 +10,10 @@ use tar::{Entry, EntryType};
 
 use super::limits::{ExtractionLimits, ExtractionSummary, accumulate_bytes, check_limit};
 use super::{
-    ArchiveError, check_entry_path_length, create_new_directory, ensure_directory,
-    ensure_parent_dirs, is_symbolic_link, parent_path, parse_symbolic_link_target, safe_entry_path,
+    ArchiveError, EntryPathRegistry, check_entry_path_length, create_new_directory,
+    ensure_directory, ensure_parent_dirs, is_symbolic_link, parent_path,
+    parse_symbolic_link_target, safe_entry_path,
 };
-use crate::fs::SafeRelativePath;
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: usize = 4 * 1024;
 
@@ -284,7 +283,7 @@ fn unpack_entries(
         .map_err(|error| stream_error(&stream_limits, "read", archive_path, error))?;
 
     let mut summary = ExtractionSummary::default();
-    let mut seen = HashSet::new();
+    let mut paths = EntryPathRegistry::default();
     let mut entry_count = 0_u64;
 
     for entry in entries {
@@ -303,10 +302,11 @@ fn unpack_entries(
             continue;
         };
         let relative = safe_entry_path(archive_path, &normalized)?;
-        reject_duplicate_path(&mut seen, &relative, archive_path, &entry_name)?;
+        let is_directory = entry.header().entry_type() == EntryType::Directory;
+        paths.register(archive_path, &relative, &entry_name, is_directory)?;
         reject_unsupported_entry(&mut entry, archive_path, &entry_name)?;
 
-        if entry.header().entry_type() == EntryType::Directory {
+        if is_directory {
             ensure_directory(root, &relative, destination)?;
             summary.directories += 1;
             continue;
@@ -365,26 +365,6 @@ fn normalize_entry_name(entry_name: &str) -> Option<String> {
         return None;
     }
     Some(name.to_string())
-}
-
-/// 拒绝解析到同一输出路径的重复条目。
-///
-/// tar 允许同名条目重复出现（增量归档的覆盖语义），但解压时逐个
-/// `create_new` 写入会失败，且覆盖语义本身容易被利用，因此直接拒绝。
-fn reject_duplicate_path(
-    seen: &mut HashSet<SafeRelativePath>,
-    relative: &SafeRelativePath,
-    archive_path: &Path,
-    entry_name: &str,
-) -> Result<(), ArchiveError> {
-    if seen.insert(relative.clone()) {
-        return Ok(());
-    }
-    Err(ArchiveError::UnsafeEntry {
-        archive: archive_path.to_path_buf(),
-        entry: entry_name.to_string(),
-        reason: "archive contains duplicate output paths".to_string(),
-    })
 }
 
 /// 拒绝除普通文件与目录以外的所有条目类型。
@@ -638,6 +618,29 @@ mod tests {
 
         assert_eq!(summary.files, 1);
         assert_eq!(std::fs::read(destination.join(&long_name)).unwrap(), b"say\n");
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_file_entry_that_blocks_a_parent_directory() {
+        let root = crate::fs::test_dir("tar-path-conflict");
+        let archive = root.join("conflict.tar.gz");
+        let destination = root.join("destination");
+        // `config` 先作为普通文件出现，随后的条目却要用它当父目录。
+        write_archive(
+            &archive,
+            &[
+                ("config", EntryType::Regular, b"not a directory"),
+                ("config/server.properties", EntryType::Regular, b"motd=Sea Lantern"),
+            ],
+        );
+
+        assert!(matches!(
+            extract_tar_gz(&archive, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(!destination.exists());
 
         std::fs::remove_dir_all(root).unwrap();
     }
