@@ -22,6 +22,13 @@ pub struct ExtractionLimits {
     pub max_entry_bytes: u64,
     /// 所有条目写入的最大未压缩字节总数。
     pub max_total_bytes: u64,
+    /// 单个条目名允许的最大字节数。
+    ///
+    /// 条目名会被存入去重集合并全程持有到解压结束，因此其内存占用是
+    /// 「条目数 × 单条路径长度」而非流式的读完即弃。缺少此上限时，
+    /// 归档可以用大量超长路径撑爆内存，而条目内容的各项字节上限
+    /// 对此无效。
+    pub max_entry_path_bytes: usize,
     /// 可接受的未压缩与压缩字节的最大比率。
     ///
     /// ZIP 按条目比较（每个条目独立压缩，有各自的压缩后大小）；
@@ -37,6 +44,7 @@ impl Default for ExtractionLimits {
             max_entries: 10_000,
             max_entry_bytes: 4 * 1024 * 1024 * 1024,
             max_total_bytes: 16 * 1024 * 1024 * 1024,
+            max_entry_path_bytes: 4096,
             max_compression_ratio: 200,
         }
     }

@@ -11,8 +11,8 @@ use tar::{Entry, EntryType};
 
 use super::limits::{ExtractionLimits, ExtractionSummary, accumulate_bytes, check_limit};
 use super::{
-    ArchiveError, create_new_directory, ensure_directory, ensure_parent_dirs, is_symbolic_link,
-    parent_path, parse_symbolic_link_target, safe_entry_path,
+    ArchiveError, check_entry_path_length, create_new_directory, ensure_directory,
+    ensure_parent_dirs, is_symbolic_link, parent_path, parse_symbolic_link_target, safe_entry_path,
 };
 use crate::fs::SafeRelativePath;
 
@@ -297,7 +297,7 @@ fn unpack_entries(
         entry_count += 1;
         check_limit(archive_path, "entry count", entry_count, limits.max_entries as u64)?;
 
-        let entry_name = entry_display_name(&entry);
+        let entry_name = entry_display_name(&entry, archive_path, limits.max_entry_path_bytes)?;
         let Some(normalized) = normalize_entry_name(&entry_name) else {
             // `./` 与 `/` 这类仅指代解压根目录的条目没有对应输出，跳过。
             continue;
@@ -332,11 +332,19 @@ fn unpack_entries(
     Ok(summary)
 }
 
-/// 取条目名用于错误展示，路径不是 UTF-8 时按有损方式转换。
+/// 校验条目名长度并取出用于错误展示的名称。
 ///
-/// 展示用名称必须总能取到，真正的路径安全性由 [`safe_entry_path`] 判定。
-fn entry_display_name<R: Read>(entry: &Entry<'_, R>) -> String {
-    String::from_utf8_lossy(&entry.path_bytes()).into_owned()
+/// 长度校验在转换为 `String` 之前完成：`from_utf8_lossy` 会为超长路径分配
+/// 同等大小的内存，检查必须先于分配。名称本身按有损方式转换，因为展示用名称
+/// 必须总能取到，真正的路径安全性由 [`safe_entry_path`] 判定。
+fn entry_display_name<R: Read>(
+    entry: &Entry<'_, R>,
+    archive_path: &Path,
+    max_entry_path_bytes: usize,
+) -> Result<String, ArchiveError> {
+    let raw = entry.path_bytes();
+    check_entry_path_length(archive_path, &raw, max_entry_path_bytes)?;
+    Ok(String::from_utf8_lossy(&raw).into_owned())
 }
 
 /// 把 tar 条目名规范化为可交给 [`SafeRelativePath`] 校验的形式。
@@ -630,6 +638,43 @@ mod tests {
 
         assert_eq!(summary.files, 1);
         assert_eq!(std::fs::read(destination.join(&long_name)).unwrap(), b"say\n");
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_entry_paths_above_the_length_limit() {
+        let root = crate::fs::test_dir("tar-path-length");
+        let archive = root.join("long-name.tar.gz");
+        let destination = root.join("destination");
+        // 超过 ustar name 字段，tar 会写出 GNU longname 扩展头；长度校验必须
+        // 认这个合并后的完整路径，而不是 header 里被截断的那 100 字节。
+        let long_name = format!("config/{}.properties", "a".repeat(200));
+        let file = File::create(&archive).unwrap();
+        let mut builder = Builder::new(GzEncoder::new(file, Compression::default()));
+        let mut header = Header::new_gnu();
+        header.set_entry_type(EntryType::Regular);
+        header.set_size(7);
+        header.set_mode(0o644);
+        header.set_mtime(0);
+        builder
+            .append_data(&mut header, &long_name, &b"payload"[..])
+            .unwrap();
+        builder.into_inner().unwrap().finish().unwrap();
+
+        let limits = ExtractionLimits {
+            max_entry_path_bytes: 64,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_tar_gz_with_limits(&archive, &destination, limits),
+            Err(ArchiveError::LimitExceeded {
+                limit: "entry path bytes",
+                maximum: 64,
+                ..
+            })
+        ));
+        assert!(!destination.exists());
 
         std::fs::remove_dir_all(root).unwrap();
     }

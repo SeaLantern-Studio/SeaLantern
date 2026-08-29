@@ -8,8 +8,8 @@ use zip::ZipArchive;
 
 use super::limits::{ExtractionLimits, ExtractionSummary, accumulate_bytes, check_limit};
 use super::{
-    ArchiveError, create_new_directory, ensure_directory, ensure_parent_dirs, is_symbolic_link,
-    parse_symbolic_link_target, safe_entry_path,
+    ArchiveError, check_entry_path_length, create_new_directory, ensure_directory,
+    ensure_parent_dirs, is_symbolic_link, parse_symbolic_link_target, safe_entry_path,
 };
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: u64 = 4 * 1024;
@@ -119,6 +119,7 @@ fn validate_archive(
         let mut entry = archive
             .by_index(index)
             .map_err(|error| ArchiveError::zip("read entry from", archive_path, error))?;
+        check_entry_path_length(archive_path, entry.name_raw(), limits.max_entry_path_bytes)?;
         let entry_name = entry.name().to_owned();
         let relative = safe_entry_path(archive_path, &entry_name)?;
         if !paths.insert(relative.clone()) {
@@ -346,6 +347,38 @@ mod tests {
             extract_zip_with_limits(&archive_path, &destination, limits),
             Err(ArchiveError::LimitExceeded {
                 limit: "per-entry uncompressed bytes",
+                ..
+            })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn enforces_entry_path_length_before_creating_destination() {
+        let root = crate::fs::test_dir("zip-path-length");
+        let archive_path = root.join("long-name.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        let long_name = "a".repeat(64);
+        writer
+            .start_file(&long_name, SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"payload").unwrap();
+        writer.finish().unwrap();
+
+        let limits = ExtractionLimits {
+            max_entry_path_bytes: 32,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_zip_with_limits(&archive_path, &destination, limits),
+            Err(ArchiveError::LimitExceeded {
+                limit: "entry path bytes",
+                observed: 64,
+                maximum: 32,
                 ..
             })
         ));

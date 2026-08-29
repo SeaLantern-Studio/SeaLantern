@@ -16,6 +16,29 @@ use crate::fs::SafeRelativePath;
 
 use super::ArchiveError;
 
+/// 校验条目名长度未超过上限。
+///
+/// 接受原始字节而非字符串：条目名在转为 `String` 时就会分配一次，超长路径
+/// 必须在那之前拦下，否则限制形同虚设。
+///
+/// 条目名与条目内容不同，会被存入去重集合并持有到解压结束，因此需要独立于
+/// [`ExtractionLimits::max_entry_bytes`] 的上限约束其累积内存占用。
+pub(super) fn check_entry_path_length(
+    archive_path: &Path,
+    entry_name: &[u8],
+    maximum: usize,
+) -> Result<(), ArchiveError> {
+    if entry_name.len() <= maximum {
+        return Ok(());
+    }
+    Err(ArchiveError::LimitExceeded {
+        archive: archive_path.to_path_buf(),
+        limit: "entry path bytes",
+        observed: entry_name.len() as u64,
+        maximum: maximum as u64,
+    })
+}
+
 /// 将归档条目名解析为安全的相对路径。
 ///
 /// 拒绝绝对路径、含 `..` 遍历组件、含反斜杠等不可移植的条目名。
@@ -122,5 +145,20 @@ mod tests {
     fn accepts_nested_entry_names() {
         let parsed = safe_entry_path(Path::new("archive.zip"), "config/server.properties").unwrap();
         assert_eq!(parsed.as_path(), Path::new("config/server.properties"));
+    }
+
+    #[test]
+    fn rejects_entry_names_above_the_length_limit() {
+        let archive = Path::new("archive.zip");
+        assert!(check_entry_path_length(archive, b"config/server.properties", 24).is_ok());
+        assert!(matches!(
+            check_entry_path_length(archive, b"config/server.properties", 23),
+            Err(ArchiveError::LimitExceeded {
+                limit: "entry path bytes",
+                observed: 24,
+                maximum: 23,
+                ..
+            })
+        ));
     }
 }

@@ -206,6 +206,7 @@ fn zip_extraction_limits() -> ExtractionLimits {
         max_entries: MAX_ENTRIES,
         max_entry_bytes: MAX_ENTRY_BYTES,
         max_total_bytes: MAX_TOTAL_BYTES,
+        max_entry_path_bytes: MAX_ENTRY_PATH_BYTES,
         max_compression_ratio: MAX_COMPRESSION_RATIO,
     }
 }
