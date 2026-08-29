@@ -1,7 +1,9 @@
+use std::cell::Cell;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{BufReader, Read, Write};
+use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use cap_std::fs::{Dir, OpenOptions};
 use flate2::read::GzDecoder;
@@ -15,6 +17,140 @@ use super::{
 use crate::fs::SafeRelativePath;
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: usize = 4 * 1024;
+
+/// 单个「读取段」允许的最大解压字节数。
+///
+/// tar 会在 `next_entry` 内部把 GNU longname / longlink 与 PAX 扩展头的全部
+/// 内容读进 `Vec<u8>`，且不施加任何上限（`Entry::read_all` 的 `with_capacity`
+/// 只限制初始容量，随后的 `read_to_end` 无界增长）。这意味着恶意归档只要把
+/// 扩展头的 size 字段声明成数 GB，就能在任何条目交到本模块手上之前耗尽内存，
+/// [`ExtractionLimits::max_entry_bytes`] 完全拦不住。
+///
+/// 因此解码器按「段」限流：调用方每确认消费一段数据就重置计数，两次重置之间
+/// 的累计解压字节不得超过此上限。条目内容由 [`copy_entry_with_limits`] 逐块
+/// 读取并逐块重置，大文件不受影响；扩展头的一次性读取全部落在同一段内，声明
+/// 过大即被拒绝。
+///
+/// 上限取 1 MiB：合法扩展头承载的是路径与元数据，量级为几 KiB（tar 自身的
+/// 路径上限即 4 KiB 级别），留出两个数量级余量已足够，同时把最坏一次性内存
+/// 分配约束在可忽略的范围。
+const MAX_SEGMENT_BYTES: u64 = 1024 * 1024;
+
+/// 被解码器拦下的一次限制越界。
+///
+/// 解码器只能返回 [`io::Error`]，无法直接携带 [`ArchiveError::LimitExceeded`]
+/// 所需的归档路径与计数。这里记录足以重建该错误的最小信息，由调用方在拿到
+/// I/O 错误后取出并还原为精确的限制错误。
+#[derive(Clone, Copy, Debug)]
+struct LimitBreach {
+    limit: &'static str,
+    observed: u64,
+    maximum: u64,
+}
+
+/// gzip 解压流的字节计量与限制状态。
+///
+/// 由解码器与解压循环共享：解码器在每次读取后记账，解压循环在确认消费完一段
+/// 数据后重置段计数。所有字段都是 `Cell`，因为 [`Read`] 只提供 `&mut self`
+/// 而状态需要在被 `tar::Archive` 拿走所有权后仍可从外部访问。
+struct StreamLimits {
+    /// 本段已解压字节数，见 [`MAX_SEGMENT_BYTES`]。
+    segment: Cell<u64>,
+    /// 全流已解压字节数，含 tar header 与块填充。
+    total: Cell<u64>,
+    /// 全流解压字节上限。
+    max_total: u64,
+    /// 由归档文件字节数与最大压缩比推得的解压字节上限。
+    max_ratio_bytes: u64,
+    /// 最近一次越界记录，供调用方还原精确错误。
+    breach: Cell<Option<LimitBreach>>,
+}
+
+impl StreamLimits {
+    fn new(archive_size: u64, limits: ExtractionLimits) -> Self {
+        Self {
+            segment: Cell::new(0),
+            total: Cell::new(0),
+            max_total: limits.max_total_bytes,
+            max_ratio_bytes: archive_size.saturating_mul(limits.max_compression_ratio),
+            breach: Cell::new(None),
+        }
+    }
+
+    /// 记录本次解压出的字节数，超过任一上限时返回错误。
+    fn account(&self, count: u64) -> io::Result<()> {
+        let segment = self.segment.get().saturating_add(count);
+        self.segment.set(segment);
+        if segment > MAX_SEGMENT_BYTES {
+            return Err(self.breach("uncompressed segment bytes", segment, MAX_SEGMENT_BYTES));
+        }
+
+        let Some(total) = self.total.get().checked_add(count) else {
+            return Err(self.breach("total uncompressed bytes", u64::MAX, self.max_total));
+        };
+        self.total.set(total);
+        if total > self.max_total {
+            return Err(self.breach("total uncompressed bytes", total, self.max_total));
+        }
+        if total > self.max_ratio_bytes {
+            return Err(self.breach("compression ratio", total, self.max_ratio_bytes));
+        }
+        Ok(())
+    }
+
+    fn breach(&self, limit: &'static str, observed: u64, maximum: u64) -> io::Error {
+        self.breach
+            .set(Some(LimitBreach { limit, observed, maximum }));
+        io::Error::new(io::ErrorKind::InvalidData, "archive exceeds configured extraction limits")
+    }
+
+    /// 开始新的读取段。
+    fn start_segment(&self) {
+        self.segment.set(0);
+    }
+
+    fn take_breach(&self) -> Option<LimitBreach> {
+        self.breach.take()
+    }
+}
+
+/// 按 [`StreamLimits`] 记账的解压流包装器。
+///
+/// 位于 gzip 解码器与 tar 解析器之间，因此 tar 内部读取（header、块填充、
+/// 扩展头内容）与条目内容读取一律计入。这是扩展头无界读取的唯一拦截点。
+struct LimitedReader<R> {
+    inner: R,
+    limits: Rc<StreamLimits>,
+}
+
+impl<R: Read> Read for LimitedReader<R> {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        let count = self.inner.read(buffer)?;
+        self.limits.account(count as u64)?;
+        Ok(count)
+    }
+}
+
+/// 把底层 I/O 错误还原为精确的归档错误。
+///
+/// 解码器越界时只能返回占位的 [`io::Error`]，真实原因记录在
+/// [`StreamLimits::breach`] 中，优先取用。
+fn stream_error(
+    limits: &StreamLimits,
+    operation: &'static str,
+    archive_path: &Path,
+    error: io::Error,
+) -> ArchiveError {
+    match limits.take_breach() {
+        Some(breach) => ArchiveError::LimitExceeded {
+            archive: archive_path.to_path_buf(),
+            limit: breach.limit,
+            observed: breach.observed,
+            maximum: breach.maximum,
+        },
+        None => ArchiveError::tar(operation, archive_path, error),
+    }
+}
 
 /// 使用默认限制将 tar.gz 归档解压到新的目标目录中。
 ///
@@ -125,6 +261,9 @@ fn remove_temporary_directory(path: &Path) {
 /// 流式读取 tar.gz 条目并写入临时解压根目录。
 ///
 /// `destination` 仅用于错误消息展示，实际写入始终通过 `root` 目录句柄完成。
+///
+/// gzip 解码器外层套 [`LimitedReader`]，使 tar 解析器的内部读取（header、块
+/// 填充、GNU/PAX 扩展头内容）与条目内容一并受限，见 [`MAX_SEGMENT_BYTES`]。
 fn unpack_entries(
     root: &Dir,
     archive_path: &Path,
@@ -134,18 +273,27 @@ fn unpack_entries(
 ) -> Result<ExtractionSummary, ArchiveError> {
     let file = File::open(archive_path)
         .map_err(|error| ArchiveError::io("open tar.gz archive", archive_path, error))?;
-    let mut archive = tar::Archive::new(GzDecoder::new(BufReader::new(file)));
+    let stream_limits = Rc::new(StreamLimits::new(archive_size, limits));
+    let reader = LimitedReader {
+        inner: GzDecoder::new(BufReader::new(file)),
+        limits: Rc::clone(&stream_limits),
+    };
+    let mut archive = tar::Archive::new(reader);
     let entries = archive
         .entries()
-        .map_err(|error| ArchiveError::tar("read", archive_path, error))?;
+        .map_err(|error| stream_error(&stream_limits, "read", archive_path, error))?;
 
     let mut summary = ExtractionSummary::default();
     let mut seen = HashSet::new();
     let mut entry_count = 0_u64;
 
     for entry in entries {
-        let mut entry =
-            entry.map_err(|error| ArchiveError::tar("read entry from", archive_path, error))?;
+        // 读取下一个条目头会连带消费上一个条目的剩余内容与块填充，因此在
+        // 取到条目之后才重置段计数，避免把跳过的字节算进新的一段。
+        let mut entry = entry.map_err(|error| {
+            stream_error(&stream_limits, "read entry from", archive_path, error)
+        })?;
+        stream_limits.start_segment();
         entry_count += 1;
         check_limit(archive_path, "entry count", entry_count, limits.max_entries as u64)?;
 
@@ -175,7 +323,7 @@ fn unpack_entries(
             &output_path,
             archive_path,
             &mut summary.bytes,
-            archive_size,
+            &stream_limits,
             limits,
         )?;
         summary.files += 1;
@@ -265,6 +413,9 @@ fn reject_unsupported_entry<R: Read>(
 }
 
 /// 供错误消息使用的条目类型名称。
+///
+/// 不含 GNU longname/longlink 与 PAX 扩展头：tar 在 `next_entry` 内部就已消费
+/// 并合并了这些头，它们永远不会作为独立条目出现在迭代结果中。
 fn entry_type_name(entry_type: EntryType) -> &'static str {
     match entry_type {
         EntryType::Link => "hard link",
@@ -274,8 +425,6 @@ fn entry_type_name(entry_type: EntryType) -> &'static str {
         EntryType::Fifo => "fifo",
         EntryType::Continuous => "continuous file",
         EntryType::GNUSparse => "sparse file",
-        EntryType::GNULongName | EntryType::GNULongLink => "gnu extension header",
-        EntryType::XHeader | EntryType::XGlobalHeader => "pax extension header",
         _ => "unrecognized",
     }
 }
@@ -315,18 +464,18 @@ fn validate_symbolic_link_target<R: Read>(
     }
 }
 
-/// 流式拷贝条目内容，按实际读取的字节数复核各项上限。
+/// 流式拷贝条目内容，按实际读取的字节数复核单条目上限。
 ///
-/// header 声明的大小不可信，因此完全依据实际读取量累加。压缩比在这里按
-/// 「累计解压字节 / 归档文件字节」判定：gzip 对整个 tar 流统一压缩，单个
-/// 条目没有独立的压缩后大小，无法像 ZIP 那样逐条比较。
+/// header 声明的大小不可信，因此完全依据实际读取量累加。总字节与压缩比由
+/// [`StreamLimits`] 在解码器层统一约束，这里只补充 tar 层面才有的单条目上限，
+/// 并在每块之后重置段计数，使大文件不受 [`MAX_SEGMENT_BYTES`] 影响。
 fn copy_entry_with_limits<R: Read>(
     entry: &mut Entry<'_, R>,
     output: &mut cap_std::fs::File,
     output_path: &Path,
     archive_path: &Path,
     total_bytes: &mut u64,
-    archive_size: u64,
+    stream_limits: &StreamLimits,
     limits: ExtractionLimits,
 ) -> Result<(), ArchiveError> {
     let mut buffer = [0_u8; 64 * 1024];
@@ -334,10 +483,11 @@ fn copy_entry_with_limits<R: Read>(
     loop {
         let count = entry
             .read(&mut buffer)
-            .map_err(|error| ArchiveError::tar("read entry from", archive_path, error))?;
+            .map_err(|error| stream_error(stream_limits, "read entry from", archive_path, error))?;
         if count == 0 {
             return Ok(());
         }
+        stream_limits.start_segment();
         entry_bytes = accumulate_bytes(
             entry_bytes,
             count as u64,
@@ -357,18 +507,6 @@ fn copy_entry_with_limits<R: Read>(
             archive_path,
             "total uncompressed bytes",
             limits.max_total_bytes,
-        )?;
-        check_limit(
-            archive_path,
-            "total uncompressed bytes",
-            *total_bytes,
-            limits.max_total_bytes,
-        )?;
-        check_limit(
-            archive_path,
-            "compression ratio",
-            *total_bytes,
-            archive_size.saturating_mul(limits.max_compression_ratio),
         )?;
         output
             .write_all(&buffer[..count])
@@ -418,6 +556,82 @@ mod tests {
             builder.append(&header, payload).unwrap();
         }
         builder.into_inner().unwrap().finish().unwrap();
+    }
+
+    /// 构造一个声明了超大 size 的 GNU 扩展头条目，用于验证扩展头限流。
+    ///
+    /// `tar` 在 `next_entry` 内部会把这类条目的内容整体读进内存，因此归档不会
+    /// 走到本模块的条目循环——拦截必须发生在解码器层。
+    fn write_oversized_extension_header(path: &Path, declared_size: u64) {
+        let file = File::create(path).unwrap();
+        let mut builder = Builder::new(GzEncoder::new(file, Compression::default()));
+        let mut header = Header::new_gnu();
+        header.set_entry_type(EntryType::GNULongName);
+        header.set_size(declared_size);
+        header.set_mode(0o644);
+        header.set_mtime(0);
+        let name = b"././@LongLink";
+        header.as_gnu_mut().unwrap().name[..name.len()].copy_from_slice(name);
+        header.set_cksum();
+        // 高度可压缩的载荷：归档文件本身很小，解压后却超过段上限。
+        let payload = vec![b'a'; declared_size as usize];
+        builder.append(&header, &payload[..]).unwrap();
+        builder.into_inner().unwrap().finish().unwrap();
+    }
+
+    #[test]
+    fn rejects_oversized_extension_header_before_reading_entries() {
+        let root = crate::fs::test_dir("tar-extension-header");
+        let archive = root.join("bomb.tar.gz");
+        let destination = root.join("destination");
+        write_oversized_extension_header(&archive, MAX_SEGMENT_BYTES * 2);
+
+        // 放开压缩比与总字节上限，隔离出段上限这一条约束：本测试要证明的是
+        // 扩展头的一次性读取被拦下，而不是恰好被其他上限挡住。
+        let limits = ExtractionLimits {
+            max_compression_ratio: u64::MAX,
+            max_total_bytes: u64::MAX,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_tar_gz_with_limits(&archive, &destination, limits),
+            Err(ArchiveError::LimitExceeded { limit: "uncompressed segment bytes", .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn extracts_paths_that_require_a_gnu_long_name_header() {
+        let root = crate::fs::test_dir("tar-long-name");
+        let archive = root.join("long.tar.gz");
+        let destination = root.join("destination");
+        // 超过 ustar name 字段的 100 字节，tar 会自动写出 GNU longname 扩展头。
+        let long_name = format!(
+            "datapacks/{}/data/{}/functions/tick.mcfunction",
+            "a".repeat(60),
+            "b".repeat(40)
+        );
+        assert!(long_name.len() > 100);
+        let file = File::create(&archive).unwrap();
+        let mut builder = Builder::new(GzEncoder::new(file, Compression::default()));
+        let mut header = Header::new_gnu();
+        header.set_entry_type(EntryType::Regular);
+        header.set_size(4);
+        header.set_mode(0o644);
+        header.set_mtime(0);
+        builder
+            .append_data(&mut header, &long_name, &b"say\n"[..])
+            .unwrap();
+        builder.into_inner().unwrap().finish().unwrap();
+
+        let summary = extract_tar_gz(&archive, &destination).unwrap();
+
+        assert_eq!(summary.files, 1);
+        assert_eq!(std::fs::read(destination.join(&long_name)).unwrap(), b"say\n");
+
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
