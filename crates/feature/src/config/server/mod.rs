@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
+use sealantern_infra::fs::{FileLock, FsError, write_atomic_blocking};
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
@@ -54,51 +55,21 @@ impl ServerPropertiesManager {
         }
 
         let content = fs::read_to_string(&file_path)?;
-        let raw = parse_properties(&content)?;
+        let properties = properties_from_source(&content)?;
 
-        // 将原始配置转换为条目列表
-        let entries = raw
-            .iter()
-            .map(|(key, value)| ConfigEntry {
-                key: key.clone(),
-                value: value.clone(),
-                description: String::new(),
-                value_type: "string".to_string(),
-                default_value: String::new(),
-                category: "general".to_string(),
-            })
-            .collect();
-
-        debug!("读取 server.properties 成功，共 {} 项", raw.len());
-        Ok(ServerProperties { entries, raw })
+        debug!("读取 server.properties 成功，共 {} 项", properties.raw.len());
+        Ok(properties)
     }
 
     /// 写入服务器配置文件
     pub fn write(&self, values: &BTreeMap<String, String>) -> Result<(), ServerPropertiesError> {
         let file_path = self.properties_file();
+        let _lock = lock_properties_file(&file_path)?;
 
         // 如果文件存在，先读取现有内容以保留注释和顺序
-        let mut lines = if file_path.exists() {
-            let content = fs::read_to_string(&file_path)?;
-            content.lines().map(|s| s.to_string()).collect::<Vec<_>>()
-        } else {
-            vec!["#Minecraft server properties".to_string()]
-        };
-
-        // 更新已有的键值对
-        for (key, value) in values {
-            let found = lines.iter_mut().find(|line| line_matches_key(line, key));
-
-            if let Some(line) = found {
-                *line = format!("{}={}", key, value);
-            } else {
-                lines.push(format!("{}={}", key, value));
-            }
-        }
-
-        // 写回文件
-        let content = lines.join("\n");
-        fs::write(&file_path, content)?;
+        let source = read_source_or_default(&file_path)?;
+        let content = apply_values_to_source(&source, values);
+        write_properties_file(&file_path, &content)?;
 
         debug!("写入 server.properties 成功");
         Ok(())
@@ -114,27 +85,15 @@ impl ServerPropertiesManager {
     /// 写入原始文本
     pub fn write_source(&self, source: &str) -> Result<(), ServerPropertiesError> {
         let file_path = self.properties_file();
-        fs::write(&file_path, source)?;
+        let _lock = lock_properties_file(&file_path)?;
+        write_properties_file(&file_path, source)?;
         debug!("写入 server.properties 原始文本成功");
         Ok(())
     }
 
     /// 解析原始文本
     pub fn parse_source(source: &str) -> Result<ServerProperties, ServerPropertiesError> {
-        let raw = parse_properties(source)?;
-        let entries = raw
-            .iter()
-            .map(|(key, value)| ConfigEntry {
-                key: key.clone(),
-                value: value.clone(),
-                description: String::new(),
-                value_type: "string".to_string(),
-                default_value: String::new(),
-                category: "general".to_string(),
-            })
-            .collect();
-
-        Ok(ServerProperties { entries, raw })
+        properties_from_source(source)
     }
 
     /// 预览写入后的文本
@@ -143,25 +102,8 @@ impl ServerPropertiesManager {
         values: &BTreeMap<String, String>,
     ) -> Result<String, ServerPropertiesError> {
         let file_path = self.properties_file();
-
-        let mut lines = if file_path.exists() {
-            let content = fs::read_to_string(&file_path)?;
-            content.lines().map(|s| s.to_string()).collect::<Vec<_>>()
-        } else {
-            vec!["#Minecraft server properties".to_string()]
-        };
-
-        for (key, value) in values {
-            let found = lines.iter_mut().find(|line| line_matches_key(line, key));
-
-            if let Some(line) = found {
-                *line = format!("{}={}", key, value);
-            } else {
-                lines.push(format!("{}={}", key, value));
-            }
-        }
-
-        Ok(lines.join("\n"))
+        let source = read_source_or_default(&file_path)?;
+        Ok(apply_values_to_source(&source, values))
     }
 
     /// 从源码预览写入
@@ -169,20 +111,185 @@ impl ServerPropertiesManager {
         source: &str,
         values: &BTreeMap<String, String>,
     ) -> Result<String, ServerPropertiesError> {
-        let mut lines = source.lines().map(|s| s.to_string()).collect::<Vec<_>>();
-
-        for (key, value) in values {
-            let found = lines.iter_mut().find(|line| line_matches_key(line, key));
-
-            if let Some(line) = found {
-                *line = format!("{}={}", key, value);
-            } else {
-                lines.push(format!("{}={}", key, value));
-            }
-        }
-
-        Ok(lines.join("\n"))
+        Ok(apply_values_to_source(source, values))
     }
+}
+
+const DEFAULT_SOURCE: &str = "#Minecraft server properties";
+
+#[derive(Clone, Copy)]
+struct PropertyMetadata {
+    value_type: &'static str,
+    default_value: &'static str,
+    category: &'static str,
+}
+
+/// 仅为编辑器已经支持的常见字段提供小型 schema；未知字段仍保持可编辑字符串。
+fn property_metadata(key: &str, value: &str) -> PropertyMetadata {
+    let value_type = match key {
+        "server-port"
+        | "max-players"
+        | "view-distance"
+        | "simulation-distance"
+        | "max-tick-time"
+        | "network-compression-threshold"
+        | "spawn-protection"
+        | "max-world-size"
+        | "op-permission-level"
+        | "player-idle-timeout"
+        | "rate-limit"
+        | "management-server-port"
+        | "function-permission-level"
+        | "entity-broadcast-range-percentage" => "number",
+        "online-mode"
+        | "white-list"
+        | "enforce-whitelist"
+        | "hardcore"
+        | "pvp"
+        | "allow-flight"
+        | "allow-nether"
+        | "spawn-monsters"
+        | "spawn-animals"
+        | "spawn-npcs"
+        | "generate-structures"
+        | "enable-command-block"
+        | "enable-query"
+        | "enable-rcon"
+        | "enable-status"
+        | "force-gamemode"
+        | "sync-chunk-writes"
+        | "accepts-transfers"
+        | "management-server-enabled"
+        | "management-server-tls-enabled"
+        | "use-native-transport"
+        | "log-ips"
+        | "prevent-proxy-connections"
+        | "require-resource-pack"
+        | "hide-online-players" => "boolean",
+        _ if matches!(value, "true" | "false") => "boolean",
+        _ => "string",
+    };
+
+    let category = match key {
+        "server-port"
+        | "server-ip"
+        | "online-mode"
+        | "enable-query"
+        | "enable-rcon"
+        | "management-server-enabled"
+        | "management-server-host"
+        | "management-server-port"
+        | "management-server-secret"
+        | "management-server-tls-enabled"
+        | "management-server-tls-keystore"
+        | "management-server-tls-keystore-password" => "network",
+        "max-players"
+        | "white-list"
+        | "enforce-whitelist"
+        | "op-permission-level"
+        | "player-idle-timeout"
+        | "hide-online-players"
+        | "function-permission-level" => "player",
+        "gamemode"
+        | "difficulty"
+        | "hardcore"
+        | "pvp"
+        | "allow-flight"
+        | "allow-nether"
+        | "spawn-monsters"
+        | "spawn-animals"
+        | "spawn-npcs"
+        | "generate-structures"
+        | "enable-command-block"
+        | "enable-status"
+        | "force-gamemode"
+        | "accepts-transfers"
+        | "require-resource-pack" => "game",
+        "level-name"
+        | "level-seed"
+        | "level-type"
+        | "spawn-protection"
+        | "max-world-size"
+        | "resource-pack"
+        | "resource-pack-id"
+        | "resource-pack-prompt"
+        | "resource-pack-sha1" => "world",
+        "view-distance"
+        | "simulation-distance"
+        | "max-tick-time"
+        | "network-compression-threshold"
+        | "sync-chunk-writes"
+        | "use-native-transport"
+        | "max-chained-neighbor-updates"
+        | "entity-broadcast-range-percentage" => "performance",
+        "motd" => "display",
+        _ => "other",
+    };
+
+    let default_value = match key {
+        "server-port" => "25565",
+        "max-players" => "20",
+        "gamemode" => "survival",
+        "difficulty" => "easy",
+        _ => "",
+    };
+
+    PropertyMetadata { value_type, default_value, category }
+}
+
+fn properties_from_source(source: &str) -> Result<ServerProperties, ServerPropertiesError> {
+    let raw = parse_properties(source)?;
+    let entries = raw
+        .iter()
+        .map(|(key, value)| {
+            let metadata = property_metadata(key, value);
+            ConfigEntry {
+                key: key.clone(),
+                value: value.clone(),
+                description: String::new(),
+                value_type: metadata.value_type.to_string(),
+                default_value: metadata.default_value.to_string(),
+                category: metadata.category.to_string(),
+            }
+        })
+        .collect();
+
+    Ok(ServerProperties { entries, raw })
+}
+
+fn read_source_or_default(path: &Path) -> Result<String, ServerPropertiesError> {
+    match fs::read_to_string(path) {
+        Ok(content) => Ok(content),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(DEFAULT_SOURCE.to_owned()),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn apply_values_to_source(source: &str, values: &BTreeMap<String, String>) -> String {
+    let mut lines = source.lines().map(str::to_owned).collect::<Vec<_>>();
+
+    for (key, value) in values {
+        // 解析规则是重复键后者生效，因此写回也更新最后一个匹配项。
+        if let Some(index) = lines.iter().rposition(|line| line_matches_key(line, key)) {
+            lines[index] = format!("{key}={value}");
+        } else {
+            lines.push(format!("{key}={value}"));
+        }
+    }
+
+    lines.join("\n")
+}
+
+fn lock_properties_file(path: &Path) -> Result<FileLock, ServerPropertiesError> {
+    FileLock::try_acquire(path).map_err(storage_error)
+}
+
+fn write_properties_file(path: &Path, content: &str) -> Result<(), ServerPropertiesError> {
+    write_atomic_blocking(path, content.as_bytes()).map_err(storage_error)
+}
+
+fn storage_error(error: FsError) -> ServerPropertiesError {
+    std::io::Error::other(error.to_string()).into()
 }
 
 /// 判断一行是否匹配指定的键（精确匹配，忽略前导空白和注释）
@@ -197,7 +304,7 @@ fn line_matches_key(line: &str, key: &str) -> bool {
     }
 }
 
-/// 解析 Java Properties 格式
+/// 解析 Minecraft `server.properties` 使用的 `key=value` 子集。
 fn parse_properties(content: &str) -> Result<BTreeMap<String, String>, ServerPropertiesError> {
     let mut map = BTreeMap::new();
 
@@ -235,6 +342,10 @@ pub enum ServerPropertiesError {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
+    use proptest::prelude::*;
+
     use super::*;
 
     #[test]
@@ -247,5 +358,78 @@ max-players=20
         let result = parse_properties(content).unwrap();
         assert_eq!(result.get("server-port"), Some(&"25565".to_string()));
         assert_eq!(result.get("max-players"), Some(&"20".to_string()));
+    }
+
+    #[test]
+    fn metadata_describes_known_editor_fields() {
+        let properties = ServerPropertiesManager::parse_source(
+            "server-port=25565\nonline-mode=true\ngamemode=survival\nunknown=value",
+        )
+        .unwrap();
+
+        let by_key = properties
+            .entries
+            .into_iter()
+            .map(|entry| (entry.key.clone(), entry))
+            .collect::<BTreeMap<_, _>>();
+        assert_eq!(by_key["server-port"].value_type, "number");
+        assert_eq!(by_key["server-port"].default_value, "25565");
+        assert_eq!(by_key["server-port"].category, "network");
+        assert_eq!(by_key["online-mode"].value_type, "boolean");
+        assert_eq!(by_key["unknown"].value_type, "string");
+        assert_eq!(by_key["unknown"].category, "other");
+    }
+
+    #[test]
+    fn duplicate_keys_are_updated_using_the_same_last_value_parser_rule() {
+        let mut values = BTreeMap::new();
+        values.insert("motd".to_string(), "new".to_string());
+
+        let source = "motd=old\n# keep\nmotd=latest";
+        let preview = ServerPropertiesManager::preview_write_from_source(source, &values).unwrap();
+
+        assert_eq!(preview, "motd=old\n# keep\nmotd=new");
+        assert_eq!(parse_properties(&preview).unwrap()["motd"], "new");
+    }
+
+    #[test]
+    fn file_writes_are_atomic_and_release_the_lock() {
+        let root = tempfile::tempdir().expect("temporary server directory should be created");
+        let manager = ServerPropertiesManager::new(root.path());
+
+        manager
+            .write_source("motd=Sea Lantern")
+            .expect("server properties should be written");
+
+        let path = root.path().join("server.properties");
+        assert_eq!(
+            std::fs::read_to_string(&path).expect("server properties should be readable"),
+            "motd=Sea Lantern"
+        );
+        let lock = FileLock::try_acquire(&path).expect("write should release the file lock");
+        drop(lock);
+    }
+
+    proptest! {
+        #[test]
+        fn applying_updates_matches_an_independent_map_model(
+            initial in prop::collection::vec(("[a-z][a-z0-9-]{0,8}", "[a-zA-Z0-9._/=-]{0,12}"), 0..24),
+            updates in prop::collection::vec(("[a-z][a-z0-9-]{0,8}", "[a-zA-Z0-9._/=-]{0,12}"), 0..24),
+        ) {
+            let initial = initial.into_iter().collect::<BTreeMap<_, _>>();
+            let updates = updates.into_iter().collect::<BTreeMap<_, _>>();
+            let source = initial
+                .iter()
+                .map(|(key, value)| format!("{key}={value}"))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            let mut expected = initial;
+            expected.extend(updates.clone());
+
+            let output = apply_values_to_source(&source, &updates);
+            prop_assert_eq!(parse_properties(&output)?, expected);
+            prop_assert_eq!(apply_values_to_source(&output, &updates), output);
+        }
     }
 }

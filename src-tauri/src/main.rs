@@ -8,7 +8,7 @@ pub mod observability;
 
 use sealantern_application::port::SettingsService;
 use sealantern_application::services::AppServices;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 
 use adapter::tauri::commands::backup::{
     create_backup, delete_backup, get_backup_list, get_backup_settings, restore_backup,
@@ -87,6 +87,61 @@ fn main() {
     observability::init();
 
     let app = tauri::Builder::default()
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let app_handle = window.app_handle().clone();
+                let window = window.clone();
+                let settings = app_handle
+                    .try_state::<AppServices>()
+                    .map(|services| services.settings().clone());
+
+                tauri::async_runtime::spawn(async move {
+                    let close_action = match settings {
+                        Some(settings) => match settings.get().await {
+                            Ok(settings) => settings.close_action,
+                            Err(error) => {
+                                tracing::error!(
+                                    error = %error,
+                                    "failed to read close action; asking before exit"
+                                );
+                                "ask".to_owned()
+                            }
+                        },
+                        None => {
+                            tracing::error!(
+                                "application services are unavailable; asking before exit"
+                            );
+                            "ask".to_owned()
+                        }
+                    };
+
+                    match close_action.as_str() {
+                        "minimize" => {
+                            if let Err(error) = window.hide() {
+                                tracing::error!(
+                                    error = %error,
+                                    "failed to minimize main window to tray"
+                                );
+                            }
+                        }
+                        "close" => app_handle.exit(0),
+                        _ => {
+                            if let Err(error) = window.emit("close-requested", ()) {
+                                tracing::error!(
+                                    error = %error,
+                                    "failed to notify frontend about main window close request"
+                                );
+                            }
+                        }
+                    }
+                });
+            }
+        })
         .manage(MainWindowState::new())
         .manage(AutoLightweightState::new())
         .manage(DesktopAppearanceState::new())

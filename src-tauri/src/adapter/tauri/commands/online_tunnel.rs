@@ -16,6 +16,7 @@ use sealantern_contract::online::{
     OnlineTunnelHostRequest, OnlineTunnelJoinRequest, OnlineTunnelStatus,
 };
 use tauri::{AppHandle, Emitter, State};
+use tokio::sync::broadcast::error::RecvError;
 
 /// 持有在线隧道事件转发任务的后台句柄。
 ///
@@ -36,8 +37,26 @@ impl OnlineTunnelEventForwarder {
         self.clear().await;
         let mut events = services.online_tunnel().subscribe().await?;
         let task = tauri::async_runtime::spawn(async move {
-            while let Ok(event) = events.recv().await {
-                let _ = app.emit("online_tunnel_event", event);
+            loop {
+                match events.recv().await {
+                    Ok(event) => {
+                        if let Err(error) = app.emit("online_tunnel_event", &event) {
+                            tracing::error!(
+                                target: "sealantern.tauri.online_tunnel",
+                                error = %error,
+                                "failed to emit online tunnel event"
+                            );
+                        }
+                    }
+                    Err(RecvError::Lagged(skipped)) => {
+                        tracing::warn!(
+                            target: "sealantern.tauri.online_tunnel",
+                            skipped,
+                            "online tunnel event forwarder lagged"
+                        );
+                    }
+                    Err(RecvError::Closed) => break,
+                }
             }
         });
 
