@@ -2,13 +2,15 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 pub mod adapter;
 pub mod desktop;
 pub mod observability;
 
 use sealantern_application::port::SettingsService;
 use sealantern_application::services::AppServices;
-use tauri::{AppHandle, Emitter, Manager, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 use adapter::tauri::commands::backup::{
     create_backup, delete_backup, get_backup_list, get_backup_settings, restore_backup,
@@ -76,9 +78,33 @@ fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
     StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED
 }
 
+#[derive(Default)]
+struct CloseRequestState {
+    frontend_listener_ready: AtomicBool,
+}
+
+impl CloseRequestState {
+    fn is_frontend_listener_ready(&self) -> bool {
+        self.frontend_listener_ready.load(Ordering::Acquire)
+    }
+}
+
 #[tauri::command]
 fn frontend_ready(app: AppHandle) {
     desktop::tray::show_when_ready(&app);
+}
+
+#[tauri::command]
+fn set_close_request_listener_ready(state: State<'_, CloseRequestState>, ready: bool) {
+    state
+        .frontend_listener_ready
+        .store(ready, Ordering::Release);
+}
+
+fn app_handle_has_close_listener(app_handle: &AppHandle) -> bool {
+    app_handle
+        .try_state::<CloseRequestState>()
+        .is_some_and(|state| state.is_frontend_listener_ready())
 }
 
 /// 启动桌面应用。
@@ -93,6 +119,14 @@ fn main() {
             }
 
             if let WindowEvent::CloseRequested { api, .. } = event {
+                let listener_ready = app_handle_has_close_listener(window.app_handle());
+                if !listener_ready {
+                    tracing::warn!(
+                        "close request listener is unavailable; allowing the native close"
+                    );
+                    return;
+                }
+
                 api.prevent_close();
                 let app_handle = window.app_handle().clone();
                 let window = window.clone();
@@ -127,6 +161,7 @@ fn main() {
                                     error = %error,
                                     "failed to minimize main window to tray"
                                 );
+                                app_handle.exit(0);
                             }
                         }
                         "close" => app_handle.exit(0),
@@ -136,6 +171,7 @@ fn main() {
                                     error = %error,
                                     "failed to notify frontend about main window close request"
                                 );
+                                app_handle.exit(0);
                             }
                         }
                     }
@@ -143,6 +179,7 @@ fn main() {
             }
         })
         .manage(MainWindowState::new())
+        .manage(CloseRequestState::default())
         .manage(AutoLightweightState::new())
         .manage(DesktopAppearanceState::new())
         .plugin(tauri_plugin_opener::init())
@@ -177,6 +214,7 @@ fn main() {
             restore_main_window,
             toggle_light_weight,
             frontend_ready,
+            set_close_request_listener_ready,
             //服务器备份管理契约命令
             create_backup,
             delete_backup,
