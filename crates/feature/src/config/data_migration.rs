@@ -13,11 +13,13 @@
 use std::path::{Path, PathBuf};
 
 use crate::observability;
-use sealantern_infra::fs::{DataLimit, FileLock, read_string_limited};
+use sealantern_infra::fs::{DataLimit, FileLock, FsError, read_string_limited};
 use sealantern_infra::platform::get_app_data_dir;
 
 const APP_DATA_LOCATOR_FILE: &str = "data_dir.json";
 const LOCATOR_READ_LIMIT: DataLimit = DataLimit::new(64 * 1024);
+const LOCATOR_LOCK_RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
+const LOCATOR_LOCK_WAIT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// 迁移过程的条目统计。
 #[derive(Debug, Default, Clone, Copy)]
@@ -39,24 +41,25 @@ struct MigrationStats {
 /// 环境变量 `SEALANTERN_DATA_DIR` 不受此迁移影响（优先级更高）。
 ///
 /// 迁移使用异步文件 I/O，避免大数据目录阻塞启动线程。
-pub async fn run_startup_migration() {
+pub async fn run_startup_migration() -> Result<(), FsError> {
     let default_dir = get_app_data_dir();
     let locator_path = default_dir.join(APP_DATA_LOCATOR_FILE);
-    run_startup_migration_at(&locator_path, &default_dir).await;
+    run_startup_migration_at(&locator_path, &default_dir).await
 }
 
-async fn run_startup_migration_at(locator_path: &Path, default_dir: &Path) {
+async fn run_startup_migration_at(locator_path: &Path, default_dir: &Path) -> Result<(), FsError> {
     // Tauri 和 HTTP 宿主可能同时启动，定位器锁覆盖检测、搬迁和清理全过程。
-    let _lock = match lock_locator(locator_path).await {
+    // 锁竞争必须等待，不能让调用方在迁移完成前加载默认配置。
+    let _lock = match lock_locator_with_retry(locator_path).await {
         Ok(lock) => lock,
         Err(error) => {
             observability::config_migration_failed(&error);
-            return;
+            return Err(error);
         }
     };
 
     if !locator_path.exists() {
-        return;
+        return Ok(());
     }
 
     // 读取定位器中的旧数据目录
@@ -64,14 +67,14 @@ async fn run_startup_migration_at(locator_path: &Path, default_dir: &Path) {
         Some(dir) if dir != default_dir => dir,
         None => {
             observability::config_locator_unreadable(locator_path);
-            return;
+            return Ok(());
         }
         _ => {
             // 定位器指向的就是默认目录，不需要迁移，清理文件即可
             if let Err(e) = tokio::fs::remove_file(locator_path).await {
                 observability::config_locator_cleanup_failed(locator_path, &e);
             }
-            return;
+            return Ok(());
         }
     };
 
@@ -81,7 +84,7 @@ async fn run_startup_migration_at(locator_path: &Path, default_dir: &Path) {
             old_dir.display(),
             locator_path.display()
         ));
-        return;
+        return Ok(());
     }
 
     observability::config_migration_started(&old_dir, default_dir);
@@ -102,6 +105,8 @@ async fn run_startup_migration_at(locator_path: &Path, default_dir: &Path) {
             observability::config_migration_failed(&e);
         }
     }
+
+    Ok(())
 }
 
 /// 从定位器文件读取自定义路径
@@ -117,12 +122,30 @@ async fn read_locator(path: &Path) -> Option<PathBuf> {
     }
 }
 
-async fn lock_locator(path: &Path) -> Result<FileLock, String> {
+async fn lock_locator(path: &Path) -> Result<FileLock, FsError> {
     let path = path.to_path_buf();
     tokio::task::spawn_blocking(move || FileLock::try_acquire(path))
         .await
-        .map_err(|error| format!("获取数据目录定位器锁失败: {error}"))?
-        .map_err(|error| error.to_string())
+        .map_err(|error| FsError::Task {
+            operation: "acquire data directory locator lock",
+            message: error.to_string(),
+        })?
+}
+
+async fn lock_locator_with_retry(path: &Path) -> Result<FileLock, FsError> {
+    let deadline = tokio::time::Instant::now() + LOCATOR_LOCK_WAIT_TIMEOUT;
+    loop {
+        match lock_locator(path).await {
+            Ok(lock) => return Ok(lock),
+            Err(error @ FsError::AlreadyLocked(_)) => {
+                if tokio::time::Instant::now() >= deadline {
+                    return Err(error);
+                }
+                tokio::time::sleep(LOCATOR_LOCK_RETRY_DELAY).await;
+            }
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 /// 搬迁数据目录内容（重命名源目录 + 复制 + 清理迁移源）。
@@ -320,7 +343,9 @@ mod tests {
         .await
         .expect("locator should be written");
 
-        run_startup_migration_at(&locator, &default_dir).await;
+        run_startup_migration_at(&locator, &default_dir)
+            .await
+            .expect("startup migration should acquire the locator lock");
 
         assert_eq!(
             tokio::fs::read_to_string(default_dir.join("settings.json"))
@@ -349,8 +374,56 @@ mod tests {
         .await
         .expect("locator should be written");
 
-        run_startup_migration_at(&locator, &default_dir).await;
+        run_startup_migration_at(&locator, &default_dir)
+            .await
+            .expect("startup migration should acquire the locator lock");
 
         assert!(locator.exists(), "missing source should not discard locator");
+    }
+
+    #[tokio::test]
+    async fn startup_migration_waits_for_another_host_to_release_locator_lock() {
+        let root = tempfile::tempdir().expect("temporary migration directory should be created");
+        let default_dir = root.path().join("default");
+        let old_dir = root.path().join("old");
+        let locator = default_dir.join(APP_DATA_LOCATOR_FILE);
+        tokio::fs::create_dir_all(&old_dir)
+            .await
+            .expect("old data directory should be created");
+        tokio::fs::write(old_dir.join("settings.json"), "{\"ok\":true}")
+            .await
+            .expect("old data should be written");
+        tokio::fs::create_dir_all(&default_dir)
+            .await
+            .expect("default data directory should be created");
+        tokio::fs::write(
+            &locator,
+            serde_json::to_vec(&serde_json::json!({ "data_dir": old_dir }))
+                .expect("locator should be encoded"),
+        )
+        .await
+        .expect("locator should be written");
+
+        let held_lock = FileLock::try_acquire(&locator).expect("test should hold locator lock");
+        let migration_locator = locator.clone();
+        let migration_default_dir = default_dir.clone();
+        let migration = tokio::spawn(async move {
+            run_startup_migration_at(&migration_locator, &migration_default_dir).await
+        });
+
+        tokio::time::sleep(LOCATOR_LOCK_RETRY_DELAY * 2).await;
+        drop(held_lock);
+
+        migration
+            .await
+            .expect("migration task should finish")
+            .expect("migration should succeed after the lock is released");
+        assert_eq!(
+            tokio::fs::read_to_string(default_dir.join("settings.json"))
+                .await
+                .expect("migrated data should be readable"),
+            "{\"ok\":true}"
+        );
+        assert!(!locator.exists(), "completed migration should remove locator");
     }
 }
