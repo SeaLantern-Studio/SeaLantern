@@ -13,9 +13,11 @@
 use std::path::{Path, PathBuf};
 
 use crate::observability;
+use sealantern_infra::fs::{DataLimit, FileLock, read_string_limited};
 use sealantern_infra::platform::get_app_data_dir;
 
 const APP_DATA_LOCATOR_FILE: &str = "data_dir.json";
+const LOCATOR_READ_LIMIT: DataLimit = DataLimit::new(64 * 1024);
 
 /// 迁移过程的条目统计。
 #[derive(Debug, Default, Clone, Copy)]
@@ -40,37 +42,58 @@ struct MigrationStats {
 pub async fn run_startup_migration() {
     let default_dir = get_app_data_dir();
     let locator_path = default_dir.join(APP_DATA_LOCATOR_FILE);
+    run_startup_migration_at(&locator_path, &default_dir).await;
+}
+
+async fn run_startup_migration_at(locator_path: &Path, default_dir: &Path) {
+    // Tauri 和 HTTP 宿主可能同时启动，定位器锁覆盖检测、搬迁和清理全过程。
+    let _lock = match lock_locator(locator_path).await {
+        Ok(lock) => lock,
+        Err(error) => {
+            observability::config_migration_failed(&error);
+            return;
+        }
+    };
 
     if !locator_path.exists() {
         return;
     }
 
     // 读取定位器中的旧数据目录
-    let old_dir = match read_locator(&locator_path).await {
+    let old_dir = match read_locator(locator_path).await {
         Some(dir) if dir != default_dir => dir,
         None => {
-            observability::config_locator_unreadable(&locator_path);
+            observability::config_locator_unreadable(locator_path);
             return;
         }
         _ => {
             // 定位器指向的就是默认目录，不需要迁移，清理文件即可
-            if let Err(e) = std::fs::remove_file(&locator_path) {
-                observability::config_locator_cleanup_failed(&locator_path, &e);
+            if let Err(e) = tokio::fs::remove_file(locator_path).await {
+                observability::config_locator_cleanup_failed(locator_path, &e);
             }
             return;
         }
     };
 
-    observability::config_migration_started(&old_dir, &default_dir);
+    if !old_dir.exists() {
+        observability::config_migration_failed(&format!(
+            "旧数据目录 '{}' 不存在，保留定位器文件 '{}'",
+            old_dir.display(),
+            locator_path.display()
+        ));
+        return;
+    }
+
+    observability::config_migration_started(&old_dir, default_dir);
 
     // 搬迁数据：将旧目录下的内容复制到默认目录
-    match migrate_data_dir(&old_dir, &default_dir).await {
+    match migrate_data_dir(&old_dir, default_dir).await {
         Ok(stats) => {
             observability::config_migration_summary(stats.files_copied, stats.dirs_copied);
 
             // 删除定位器文件
-            if let Err(e) = std::fs::remove_file(&locator_path) {
-                observability::config_locator_cleanup_failed(&locator_path, &e);
+            if let Err(e) = tokio::fs::remove_file(locator_path).await {
+                observability::config_locator_cleanup_failed(locator_path, &e);
             } else {
                 observability::config_migration_completed();
             }
@@ -83,7 +106,7 @@ pub async fn run_startup_migration() {
 
 /// 从定位器文件读取自定义路径
 async fn read_locator(path: &Path) -> Option<PathBuf> {
-    let content = tokio::fs::read_to_string(path).await.ok()?;
+    let content = read_string_limited(path, LOCATOR_READ_LIMIT).await.ok()?;
     let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
     let dir = parsed.get("data_dir")?.as_str()?;
     let trimmed = dir.trim();
@@ -92,6 +115,14 @@ async fn read_locator(path: &Path) -> Option<PathBuf> {
     } else {
         Some(PathBuf::from(trimmed))
     }
+}
+
+async fn lock_locator(path: &Path) -> Result<FileLock, String> {
+    let path = path.to_path_buf();
+    tokio::task::spawn_blocking(move || FileLock::try_acquire(path))
+        .await
+        .map_err(|error| format!("获取数据目录定位器锁失败: {error}"))?
+        .map_err(|error| error.to_string())
 }
 
 /// 搬迁数据目录内容（重命名源目录 + 复制 + 清理迁移源）。
@@ -105,14 +136,12 @@ async fn read_locator(path: &Path) -> Option<PathBuf> {
 /// 5. 复制成功则清理迁移源（清理失败仅告警，数据已完整迁移）；
 ///    复制失败则回滚重命名，保留旧目录原样（回滚失败必须告警）。
 async fn migrate_data_dir(src: &Path, dst: &Path) -> Result<MigrationStats, String> {
-    let mut stats = MigrationStats::default();
-
     // 崩溃残留恢复：上次迁移中断时 src 可能已被重命名走，先恢复原名再继续，
     // 否则上层会误判"无需迁移"并删除定位器，导致旧数据永久失联
     recover_interrupted_migration(src).await?;
 
     if !src.exists() {
-        return Ok(stats); // 旧目录不存在，无需搬迁
+        return Err(format!("旧数据目录 '{}' 不存在，无法完成迁移", src.display()));
     }
 
     // S1: 源/目标不能存在包含关系，否则递归复制会膨胀、删除会误删数据树
@@ -144,15 +173,13 @@ async fn migrate_data_dir(src: &Path, dst: &Path) -> Result<MigrationStats, Stri
     // 从迁移源复制到目标
     match copy_dir_recursive(staged.clone(), dst.to_path_buf()).await {
         Ok(sub) => {
-            stats = sub;
-
             // 复制成功，清理迁移源；清理失败不影响迁移结果（数据已在目标），
             // 仅告警，残留目录留待下次启动时由残留恢复逻辑处理
             if let Err(e) = tokio::fs::remove_dir_all(&staged).await {
                 observability::config_migration_cleanup_failed(&staged, &e);
             }
 
-            Ok(stats)
+            Ok(sub)
         }
         Err(e) => {
             // 复制失败：回滚重命名，保留旧目录原样；回滚失败必须告警，
@@ -264,4 +291,66 @@ fn copy_dir_recursive(
 
         Ok(stats)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn startup_migration_moves_files_and_removes_locator() {
+        let root = tempfile::tempdir().expect("temporary migration directory should be created");
+        let default_dir = root.path().join("default");
+        let old_dir = root.path().join("old");
+        let locator = default_dir.join(APP_DATA_LOCATOR_FILE);
+        tokio::fs::create_dir_all(&old_dir)
+            .await
+            .expect("old data directory should be created");
+        tokio::fs::write(old_dir.join("settings.json"), "{\"ok\":true}")
+            .await
+            .expect("old data should be written");
+        tokio::fs::create_dir_all(&default_dir)
+            .await
+            .expect("default data directory should be created");
+        tokio::fs::write(
+            &locator,
+            serde_json::to_vec(&serde_json::json!({ "data_dir": old_dir }))
+                .expect("locator should be encoded"),
+        )
+        .await
+        .expect("locator should be written");
+
+        run_startup_migration_at(&locator, &default_dir).await;
+
+        assert_eq!(
+            tokio::fs::read_to_string(default_dir.join("settings.json"))
+                .await
+                .expect("migrated data should be readable"),
+            "{\"ok\":true}"
+        );
+        assert!(!locator.exists(), "completed migration should remove locator");
+        assert!(!old_dir.exists(), "completed migration should clean old directory");
+    }
+
+    #[tokio::test]
+    async fn missing_migration_source_keeps_locator() {
+        let root = tempfile::tempdir().expect("temporary migration directory should be created");
+        let default_dir = root.path().join("default");
+        let old_dir = root.path().join("missing");
+        let locator = default_dir.join(APP_DATA_LOCATOR_FILE);
+        tokio::fs::create_dir_all(&default_dir)
+            .await
+            .expect("default data directory should be created");
+        tokio::fs::write(
+            &locator,
+            serde_json::to_vec(&serde_json::json!({ "data_dir": old_dir }))
+                .expect("locator should be encoded"),
+        )
+        .await
+        .expect("locator should be written");
+
+        run_startup_migration_at(&locator, &default_dir).await;
+
+        assert!(locator.exists(), "missing source should not discard locator");
+    }
 }

@@ -48,6 +48,7 @@ impl InstanceRegistry {
     pub async fn save_instance(&mut self, instance: &Instance) -> Result<(), FsError> {
         let id = instance.id.clone();
         let name = instance.name.clone();
+        let mut inserted = false;
         let result = self
             .store
             .update(|list| {
@@ -55,12 +56,16 @@ impl InstanceRegistry {
                     *existing = instance.clone();
                 } else {
                     list.instances.push(instance.clone());
+                    inserted = true;
                 }
             })
             .await;
 
         match &result {
-            Ok(()) => observability::config_registry_server_added(&self.path, id.as_str(), &name),
+            Ok(()) if inserted => {
+                observability::config_registry_server_added(&self.path, id.as_str(), &name)
+            }
+            Ok(()) => observability::config_registry_server_updated(&self.path, id.as_str()),
             Err(e) => observability::config_registry_operation_failed(
                 &self.path,
                 "save",

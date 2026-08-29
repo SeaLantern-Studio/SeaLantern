@@ -295,14 +295,31 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
         auto_backup: bool,
         update: impl FnOnce(&mut T) -> Result<bool, E>,
     ) -> Result<T, UpdatePersistedError<E>> {
+        let (data, _) =
+            Self::try_update_persisted_if_changed_with_backup(path, default, auto_backup, update)
+                .await?;
+        Ok(data)
+    }
+
+    /// 在单个文件锁内加载、更新并持久化配置，同时返回本次生成的备份路径。
+    ///
+    /// 这是需要在成功事件中记录备份位置的迁移场景使用的扩展版本；不需要备份
+    /// 详情的调用方应继续使用 [`Self::try_update_persisted_if_changed`]。
+    pub async fn try_update_persisted_if_changed_with_backup<E>(
+        path: impl Into<PathBuf>,
+        default: T,
+        auto_backup: bool,
+        update: impl FnOnce(&mut T) -> Result<bool, E>,
+    ) -> Result<(T, Option<PathBuf>), UpdatePersistedError<E>> {
         let path = path.into();
         let format = ConfigFormat::from_extension(&path)?;
         let _guard = lock_config(&path).await?;
         let mut data = load_data_or_default(&path, format, default).await?;
+        let mut backup = None;
 
         if update(&mut data).map_err(UpdatePersistedError::Update)? {
             if auto_backup && path.exists() {
-                backup_path(&path).await?;
+                backup = Some(backup_path(&path).await?);
             }
             let content = format.serialize(&data).map_err(|error| {
                 UpdatePersistedError::Storage(FsError::serialization(
@@ -314,7 +331,7 @@ impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
             })?;
             write_atomic(&path, content.as_bytes()).await?;
         }
-        Ok(data)
+        Ok((data, backup))
     }
 
     pub async fn backup(&self) -> Result<PathBuf, FsError> {

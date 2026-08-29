@@ -100,6 +100,7 @@ impl AppServices {
     /// 独立服务图的构造器，不是进程级共享入口。构造后的句柄应通过宿主
     /// 状态显式传给 handler / command，而不是在业务代码中重复构造。
     pub async fn build() -> Result<Self, InstanceError> {
+        sealantern_feature::config::data_migration::run_startup_migration().await;
         let services = Self::from_inner(CoreInstanceService::new().await?);
         services.start_background_services().await;
         Ok(services)

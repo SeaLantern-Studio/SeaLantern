@@ -116,18 +116,58 @@ impl SettingsManager {
 
         // 版本迁移：分步升级，迁移前备份
         let version = mgr.inner.get().config_version;
+        if version > CURRENT_CONFIG_VERSION {
+            return Err(SettingsError::invalid_input(
+                "config_version",
+                format!(
+                    "unsupported future config version {version}; current version is {CURRENT_CONFIG_VERSION}"
+                ),
+            ));
+        }
         if version < CURRENT_CONFIG_VERSION {
-            let backup = backup_settings_file(&path).await?;
-            let mut settings = mgr.inner.get().clone();
-            upgrade_settings(&mut settings, version);
-            mgr.inner.set(settings);
-            mgr.inner.save(false).await?;
-            observability::config_settings_version_upgraded(
+            let mut upgraded_from = None;
+            let updated = ConfigFile::try_update_persisted_if_changed_with_backup(
                 &path,
-                version,
-                CURRENT_CONFIG_VERSION,
-                &backup,
-            );
+                AppSettings::default(),
+                true,
+                |settings| {
+                    let from_version = settings.config_version;
+                    if from_version > CURRENT_CONFIG_VERSION {
+                        return Err(SettingsError::invalid_input(
+                            "config_version",
+                            format!(
+                                "unsupported future config version {from_version}; current version is {CURRENT_CONFIG_VERSION}"
+                            ),
+                        ));
+                    }
+                    if from_version < CURRENT_CONFIG_VERSION {
+                        upgrade_settings(settings, from_version);
+                        settings.validate()?;
+                        upgraded_from = Some(from_version);
+                        Ok(true)
+                    } else {
+                        settings.validate()?;
+                        Ok(false)
+                    }
+                },
+            )
+            .await;
+            let (settings, backup) = match updated {
+                Ok(result) => result,
+                Err(UpdatePersistedError::Storage(error)) => return Err(error.into()),
+                Err(UpdatePersistedError::Update(error)) => return Err(error),
+            };
+            mgr.inner.set(settings);
+            if let (Some(from_version), Some(backup)) = (upgraded_from, backup) {
+                observability::config_settings_version_upgraded(
+                    &path,
+                    from_version,
+                    CURRENT_CONFIG_VERSION,
+                    &backup,
+                );
+            }
+        } else {
+            mgr.inner.get().validate()?;
         }
 
         observability::config_settings_loaded(&path, mgr.inner.get().config_version);
@@ -433,10 +473,18 @@ async fn migrate_legacy_format(path: &Path) -> Result<bool, FsError> {
     Ok(true)
 }
 
-/// 判断 JSON 内容是否为旧版嵌套格式（存在 `preferences` 对象）。
+/// 判断 JSON 内容是否为旧版嵌套格式。
+///
+/// 必须同时具备旧版的数字 `version` 和嵌套 `preferences`，且不能已经是
+/// 新版扁平配置；仅凭一个同名扩展字段不能触发破坏性迁移。
 fn is_legacy_format(content: &str) -> bool {
     serde_json::from_str::<serde_json::Value>(content)
-        .map(|v| v.get("preferences").is_some_and(|p| p.is_object()))
+        .map(|v| {
+            v.get("config_version").is_none()
+                && v.get("version").is_some_and(|version| version.is_number())
+                && v.get("preferences")
+                    .is_some_and(|preferences| preferences.is_object())
+        })
         .unwrap_or(false)
 }
 
@@ -444,22 +492,14 @@ fn is_legacy_format(content: &str) -> bool {
 ///
 /// 未来新增结构变更时，在循环内按版本号补充分支迁移，
 /// 版本号提升与字段迁移保持同步。
-fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
-    let mut version = from_version;
-    while version < CURRENT_CONFIG_VERSION {
-        // v0 → v1：扁平结构首次引入，此前旧版数据由 legacy 迁移处理。
-        // v1 → v2：Java 缓存新增置信度字段，缺失值由 serde 默认补齐。
-        // v2 → v3：新增全局代理设置，缺失值由 serde 默认补为 Adaptive。
-        // v3 → v4：服务器日志是否丢弃空行的配置。
-        // v4 → v5：新增自动进入轻量模式的延时配置，缺失值默认关闭。
-        version += 1;
-    }
+fn upgrade_settings(settings: &mut AppSettings, _from_version: u32) {
+    // 当前所有历史版本差异都由 serde 默认值覆盖，没有实际字段转换步骤。
     settings.config_version = CURRENT_CONFIG_VERSION;
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{SETTINGS_FILE_NAME, SettingsManager, default_settings_path};
+    use super::{SETTINGS_FILE_NAME, SettingsManager, default_settings_path, is_legacy_format};
     use crate::config::{AppSettings, JavaInfo, PartialAppSettings};
     use crate::models::CURRENT_CONFIG_VERSION;
     use sealantern_infra::fs::{FileLock, FsError};
@@ -748,5 +788,89 @@ mod tests {
         .expect("upgraded settings should decode");
         assert_eq!(persisted.config_version, CURRENT_CONFIG_VERSION);
         assert_eq!(persisted.proxy.mode, ProxyMode::Adaptive);
+    }
+
+    #[tokio::test]
+    async fn semantically_invalid_persisted_settings_are_rejected() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut invalid = serde_json::to_value(AppSettings::default())
+            .expect("settings fixture should serialize");
+        invalid["default_port"] = 0.into();
+        let original = serde_json::to_string_pretty(&invalid).expect("fixture should encode");
+        tokio::fs::write(&path, &original)
+            .await
+            .expect("invalid settings fixture should be written");
+
+        let result = SettingsManager::load(&path).await;
+
+        assert!(matches!(result, Err(SettingsError::InvalidInput { field: "default_port", .. })));
+        assert_eq!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("invalid settings should remain available for repair"),
+            original
+        );
+    }
+
+    #[tokio::test]
+    async fn future_settings_version_is_rejected_without_rewriting_file() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut future = serde_json::to_value(AppSettings::default())
+            .expect("settings fixture should serialize");
+        future["config_version"] = (CURRENT_CONFIG_VERSION + 1).into();
+        let original = serde_json::to_string_pretty(&future).expect("fixture should encode");
+        tokio::fs::write(&path, &original)
+            .await
+            .expect("future settings fixture should be written");
+
+        let result = SettingsManager::load(&path).await;
+
+        assert!(matches!(
+            result,
+            Err(SettingsError::InvalidInput { field: "config_version", .. })
+        ));
+        assert_eq!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("future settings should remain available for a newer version"),
+            original
+        );
+    }
+
+    #[test]
+    fn legacy_detection_requires_the_legacy_version_marker() {
+        assert!(is_legacy_format(r#"{"version":1,"preferences":{}}"#));
+        assert!(!is_legacy_format(r#"{"preferences":{}}"#));
+        assert!(!is_legacy_format(r#"{"version":1,"config_version":5,"preferences":{}}"#));
+    }
+
+    #[tokio::test]
+    async fn legacy_nested_settings_are_migrated_without_losing_preferences() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        tokio::fs::write(
+            &path,
+            r#"{
+              "version": 1,
+              "preferences": {
+                "language": "zh-CN",
+                "theme": "dark",
+                "developer_mode": true
+              }
+            }"#,
+        )
+        .await
+        .expect("legacy settings fixture should be written");
+
+        let manager = SettingsManager::load(&path)
+            .await
+            .expect("legacy settings should migrate");
+
+        assert_eq!(manager.get().language, "zh-CN");
+        assert_eq!(manager.get().theme, "dark");
+        assert!(manager.get().developer_mode);
+        assert_eq!(manager.get().config_version, CURRENT_CONFIG_VERSION);
     }
 }
