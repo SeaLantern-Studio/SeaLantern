@@ -166,7 +166,7 @@ fn write_archive(
                     kind: "symbolic link",
                 });
             }
-            let name = portable_name(&relative)?;
+            let name = portable_name(&relative, &display_path)?;
             if file_type.is_dir() {
                 writer
                     .add_directory(name, directory_options)
@@ -220,7 +220,12 @@ fn temporary_path(destination: &Path) -> PathBuf {
 }
 
 /// 将相对路径转换为归档内使用的正斜杠条目名。
-fn portable_name(path: &Path) -> Result<String, ArchiveError> {
+///
+/// 转换结果与解压侧共用同一套路径可移植性判定（[`crate::fs::SafeRelativePath`]）：
+/// 写入侧在产出归档时就拒绝 Windows 保留名、尾随点/空格等不可移植名称，而不是
+/// 等到恢复时才由 `safe_entry_path` 拒绝——否则会产出「备份成功但永远恢复不了」
+/// 的归档。`display_path` 仅用于错误消息展示源文件位置。
+fn portable_name(path: &Path, display_path: &Path) -> Result<String, ArchiveError> {
     let mut name = String::new();
     for component in path.components() {
         let component =
@@ -236,6 +241,12 @@ fn portable_name(path: &Path) -> Result<String, ArchiveError> {
         }
         name.push_str(component);
     }
+    crate::fs::SafeRelativePath::parse(&name).map_err(|_| {
+        ArchiveError::UnsupportedSourceEntry {
+            path: display_path.to_path_buf(),
+            kind: "non-portable name",
+        }
+    })?;
     Ok(name)
 }
 
@@ -243,6 +254,47 @@ fn portable_name(path: &Path) -> Result<String, ArchiveError> {
 mod tests {
     use super::*;
     use crate::archive::extract_zip;
+
+    /// 源目录内出现 Windows 保留名等不可移植名称时，创建应失败而非产出
+    /// 「备份成功但永远恢复不了」的归档。仅在 Unix 上测试：Windows 无法创建
+    /// 名为 `NUL` 的文件（保留设备名）。
+    #[cfg(unix)]
+    #[test]
+    fn rejects_non_portable_source_entry_names() {
+        let root = crate::fs::test_dir("zip-non-portable");
+        let source = root.join("source");
+        let archive = root.join("output").join("server.zip");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("NUL"), b"reserved name").unwrap();
+        fs::write(source.join("normal.properties"), b"motd=Sea Lantern").unwrap();
+
+        assert!(matches!(
+            create_zip(&source, &archive),
+            Err(ArchiveError::UnsupportedSourceEntry { .. })
+        ));
+        assert!(!archive.exists());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    /// 带尾随点的名称同样不可移植，写入侧应拒绝。
+    #[cfg(unix)]
+    #[test]
+    fn rejects_trailing_dot_source_entry_names() {
+        let root = crate::fs::test_dir("zip-trailing-dot");
+        let source = root.join("source");
+        let archive = root.join("output").join("server.zip");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("evil."), b"trailing dot").unwrap();
+
+        assert!(matches!(
+            create_zip(&source, &archive),
+            Err(ArchiveError::UnsupportedSourceEntry { .. })
+        ));
+        assert!(!archive.exists());
+
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn archives_and_extracts_directory_contents() {
