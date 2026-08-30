@@ -82,10 +82,22 @@ fn try_rename_no_replace(_temporary: &Path, _destination: &Path) -> Option<io::R
 ///
 /// [`std::fs::hard_link`] 在目标已存在时返回 `AlreadyExists`，这正是所需的
 /// 语义且全平台一致。链接建立后临时路径与目标指向同一份内容，删除前者不会
-/// 丢失数据；删除失败时目标已就位，仅残留临时文件，交由调用方清理。
+/// 丢失数据。
+///
+/// `remove_file` 失败（例如杀毒软件短暂占用临时文件）时**不视为发布失败**：
+/// 发布的实质目标——目标文件就位且未覆盖既有内容——此时已达成，临时文件残留
+/// 只是清理问题，交由 observability 记录后照常返回成功。若此处返回 Err，
+/// 调用方会向用户报告备份失败，但目标文件其实已经就位；用户看到失败重试时，
+/// 又因目标已存在而再次失败，形成无法自愈的错误提示。
 fn publish_file(temporary: &Path, destination: &Path) -> io::Result<()> {
     std::fs::hard_link(temporary, destination)?;
-    std::fs::remove_file(temporary)
+    if let Err(error) = std::fs::remove_file(temporary)
+        && error.kind() != io::ErrorKind::NotFound
+    {
+        // 目标已就位，残留的临时文件交给上层清理路径；此处仅记录日志。
+        crate::observability::archive_cleanup_failed(temporary, &error);
+    }
+    Ok(())
 }
 
 /// 以近似 create-new 的语义发布目录。
