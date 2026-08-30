@@ -5504,6 +5504,7 @@ dependencies = [
  "ipnet",
  "reqwest 0.12.28",
  "rusqlite",
+ "rustix 1.1.4",
  "sealantern-contract",
  "serde",
  "serde_json",

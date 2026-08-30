@@ -8,7 +8,7 @@ use flate2::write::GzEncoder;
 use tar::{Builder, EntryType, Header};
 
 use super::limits::{ArchiveSummary, accumulate_bytes};
-use super::{ArchiveError, CompressionLevel, open_existing_directory, parent_path};
+use super::{ArchiveError, CompressionLevel, open_existing_directory, parent_path, publish_new};
 
 /// 归档内普通文件条目的固定权限位。
 ///
@@ -33,8 +33,9 @@ pub fn create_tar_gz(
 
 /// 使用显式压缩级别创建包含 source 目录内容的 tar.gz 归档文件。
 ///
-/// 目标文件必须不存在。临时归档在目标同一父目录中完成，然后通过 rename 原子地
-/// 移动到最终位置，因此源文件读取或写入失败不会用部分结果替换原有的归档文件。
+/// 目标文件必须不存在。临时归档在目标同一父目录中完成，然后经 [`publish_new`]
+/// 以 create-new 语义移动到最终位置，因此源文件读取或写入失败不会用部分结果
+/// 替换原有的归档文件，目标在写入期间才出现也不会被覆盖。
 ///
 /// 条目元数据被规范化：权限固定为 [`FILE_MODE`] / [`DIRECTORY_MODE`]，mtime 与
 /// uid/gid 归零，子目录按名称排序遍历。同一份源目录内容与同一压缩级别因此产出
@@ -73,11 +74,9 @@ fn create_tar_gz_inner(
     let temporary = temporary_path(destination);
     match write_archive(&source_root, source, &temporary, level) {
         Ok(summary) => {
-            if let Err(error) = fs::rename(&temporary, destination) {
-                let publish_error =
-                    ArchiveError::io("publish completed archive", destination, error);
+            if let Err(error) = publish_new(&temporary, destination) {
                 remove_temporary_archive(&temporary);
-                return Err(publish_error);
+                return Err(error);
             }
             Ok(summary)
         }

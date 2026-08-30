@@ -12,7 +12,7 @@ use super::limits::{ExtractionLimits, ExtractionSummary, accumulate_bytes, check
 use super::{
     ArchiveError, EntryPathRegistry, check_entry_path_length, create_new_directory,
     ensure_directory, ensure_parent_dirs, is_symbolic_link, parent_path,
-    parse_symbolic_link_target, safe_entry_path,
+    parse_symbolic_link_target, publish_new, safe_entry_path,
 };
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: usize = 4 * 1024;
@@ -191,8 +191,8 @@ pub fn extract_tar_gz(
 ///
 /// tar 是不可回退的流，没有 ZIP 那样的中央目录，无法在写入前完成全量预检。
 /// 为了保持与 [`super::extract_zip`] 相同的「失败时目标目录从未出现」语义，
-/// 解压先写入同一父目录下的临时目录，全部条目成功后再 rename 到目标位置；
-/// 任何一步失败都会删除临时目录。
+/// 解压先写入同一父目录下的临时目录，全部条目成功后经 [`publish_new`] 以
+/// create-new 语义移动到目标位置；任何一步失败都会删除临时目录。
 ///
 /// 因此所有条目名、重复路径、符号链接与字节上限都在流式读取过程中逐条校验，
 /// 校验失败时已写入的部分随临时目录一起被丢弃。
@@ -230,15 +230,13 @@ fn extract_tar_gz_inner(
     let temporary = temporary_directory_path(destination);
     let root = create_new_directory(&temporary)?;
     let result = unpack_entries(&root, archive_path, destination, archive_size, limits);
-    // Windows 上持有目录句柄会阻止 rename，因此在发布之前释放。
+    // Windows 上持有目录句柄会阻止移动，因此在发布之前释放。
     drop(root);
     match result {
         Ok(summary) => {
-            if let Err(error) = std::fs::rename(&temporary, destination) {
-                let publish_error =
-                    ArchiveError::io("publish extracted archive", destination, error);
+            if let Err(error) = publish_new(&temporary, destination) {
                 remove_temporary_directory(&temporary);
-                return Err(publish_error);
+                return Err(error);
             }
             Ok(summary)
         }

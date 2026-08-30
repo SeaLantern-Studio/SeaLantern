@@ -7,7 +7,7 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
 use super::limits::{ArchiveSummary, accumulate_bytes};
-use super::{ArchiveError, CompressionLevel, open_existing_directory, parent_path};
+use super::{ArchiveError, CompressionLevel, open_existing_directory, parent_path, publish_new};
 
 /// 使用默认压缩级别创建包含 source 目录内容的 ZIP 归档文件。
 ///
@@ -22,11 +22,9 @@ pub fn create_zip(
 
 /// 使用显式压缩级别创建包含 source 目录内容的 ZIP 归档文件。
 ///
-/// 目标文件必须不存在。临时归档在目标目录中完成，然后通过 rename 原子地移动到
-/// 最终位置，因此源文件读取或写入失败不会用部分结果替换原有的归档文件。
-///
-/// 选择 rename 而非硬链接是因为前者不依赖文件系统的链接能力（FAT32/exFAT 等
-/// 不支持硬链接），且成功后无需再清理临时文件。
+/// 目标文件必须不存在。临时归档在目标同一目录中完成，然后经 [`publish_new`]
+/// 以 create-new 语义移动到最终位置，因此源文件读取或写入失败不会用部分结果
+/// 替换原有的归档文件，目标在写入期间才出现也不会被覆盖。
 pub fn create_zip_with_level(
     source: impl AsRef<Path>,
     destination: impl AsRef<Path>,
@@ -59,11 +57,9 @@ fn create_zip_inner(
     let result = write_archive(&source_root, source, &temporary, level);
     match result {
         Ok(summary) => {
-            if let Err(error) = fs::rename(&temporary, destination) {
-                let publish_error =
-                    ArchiveError::io("publish completed archive", destination, error);
+            if let Err(error) = publish_new(&temporary, destination) {
                 remove_temporary_archive(&temporary);
-                return Err(publish_error);
+                return Err(error);
             }
             Ok(summary)
         }

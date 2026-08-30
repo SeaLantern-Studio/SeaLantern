@@ -8,6 +8,7 @@
 //! 模块划分：
 //! - [`limits`] / [`entry`]：与归档格式无关的资源限制、统计与路径校验
 //! - [`format`]：按魔数识别归档格式，以及压缩级别定义
+//! - [`publish`]：不覆盖既有条目的原子发布
 //! - [`symbol_link`]：符号链接载荷解析
 //! - [`zip_read`] / [`zip_write`]：ZIP 格式的解压与创建
 //! - [`tar_read`] / [`tar_write`]：tar.gz 格式的解压与创建
@@ -18,6 +19,7 @@ mod entry;
 mod error;
 mod format;
 mod limits;
+mod publish;
 mod symbol_link;
 mod tar_read;
 mod tar_write;
@@ -42,6 +44,7 @@ use entry::{
     EntryPathRegistry, check_entry_path_length, ensure_directory, ensure_parent_dirs,
     safe_entry_path,
 };
+use publish::publish_new;
 
 /// 打开一个已存在的普通目录，拒绝符号链接与非目录路径。
 ///
