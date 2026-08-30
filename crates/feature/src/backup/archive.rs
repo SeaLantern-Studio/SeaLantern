@@ -29,6 +29,10 @@ const MIN_AVAILABLE_MEMORY_BYTES: u64 = 128 * 1024 * 1024;
 const STREAMING_MEMORY_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_INDEX_MEMORY_BYTES: u64 = 128 * 1024 * 1024;
 
+/// 开始施加压缩比上限的解压字节数，与 infra 的
+/// [`ExtractionLimits::min_ratio_enforcement_bytes`] 默认值一致。
+const MIN_RATIO_ENFORCEMENT_BYTES: u64 = 64 * 1024;
+
 const BACKUP_TARGET: &str = "sealantern.feature.backup";
 const EVENT_MEMORY_PREFLIGHT: &str = "backup_restore_memory_preflight";
 
@@ -70,10 +74,12 @@ pub(crate) fn create_archive(
 /// 校验只用创建过程已经得到的统计与归档文件大小，不重新读取归档内容——对 ZIP
 /// 而言可以省下一次中央目录扫描，对 tar.gz 而言可以省下整整一遍解压。
 ///
-/// 覆盖归档大小、条目数、总解压字节与整体压缩比。压缩比对 tar.gz 与恢复侧的
-/// 判定完全一致（gzip 整体压缩）；对 ZIP 是整体近似，因为恢复侧按条目比较，
-/// 逐条目的严格判定仍在恢复时执行。这一层的作用是零成本拦下明显不可恢复的
-/// 归档，例如大段重复内容压出的极高压缩比。
+/// 覆盖归档大小、条目数、总解压字节与整体压缩比。压缩比判定与解压侧共用
+/// `ExtractionLimits::min_ratio_enforcement_bytes` 阈值：低于该绝对量的归档
+/// 不施加比率判定（tar.gz 的固定开销会使小归档压缩比天然虚高），确保创建侧
+/// 与解压侧对同一归档给出一致结论。对 ZIP 的比率判定是整体近似，因为解压侧
+/// 按条目比较，逐条目的严格判定仍在恢复时执行；这一层的作用是零成本拦下明显
+/// 不可恢复的归档，例如大段重复内容压出的极高压缩比。
 fn verify_restorable(
     archive_path: &Path,
     summary: sealantern_infra::archive::ArchiveSummary,
@@ -86,7 +92,10 @@ fn verify_restorable(
     if summary.bytes > MAX_TOTAL_BYTES {
         return Err(unrestorable(archive_path, "解压后总大小超过恢复限制"));
     }
-    if summary.bytes > archive_bytes.saturating_mul(MAX_COMPRESSION_RATIO) {
+    let threshold = extraction_limits().min_ratio_enforcement_bytes;
+    if summary.bytes > archive_bytes.saturating_mul(MAX_COMPRESSION_RATIO)
+        && summary.bytes > threshold
+    {
         return Err(unrestorable(archive_path, "压缩比超过恢复限制"));
     }
     Ok(())
@@ -254,6 +263,7 @@ fn extraction_limits() -> ExtractionLimits {
         max_total_bytes: MAX_TOTAL_BYTES,
         max_entry_path_bytes: MAX_ENTRY_PATH_BYTES,
         max_compression_ratio: MAX_COMPRESSION_RATIO,
+        min_ratio_enforcement_bytes: MIN_RATIO_ENFORCEMENT_BYTES,
     }
 }
 

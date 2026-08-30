@@ -35,6 +35,18 @@ pub struct ExtractionLimits {
     /// tar.gz 为整体流压缩，单条目无压缩后大小，只能比较累计解压
     /// 字节与归档文件总字节的比率，且该比较在解压流上持续进行。
     pub max_compression_ratio: u64,
+    /// 开始施加压缩比上限的解压字节数。
+    ///
+    /// tar.gz 有与内容无关的固定开销：tar 结束标记占 1024 字节，GNU tar 默认
+    /// 还会把归档补齐到 10240 字节的记录边界，而这些成片零字节压缩后只剩
+    /// 几十字节。因此一个近乎为空的合法归档，压缩比可以轻易超过
+    /// [`Self::max_compression_ratio`]——失真来自固定开销，而非可疑内容。
+    ///
+    /// 压缩比的意义在于拦下解压后体积失控的归档，这与绝对量有关：低于此阈值
+    /// 的输出无论压缩比多高都不构成威胁。默认值取 64 KiB，比最大固定开销
+    /// （10240 字节对齐 + 1024 字节结束标记）宽约 5 倍，足以覆盖小归档，
+    /// 同时把「高压缩比但小体积」的绕过窗口收窄到两个数量级以内。
+    pub min_ratio_enforcement_bytes: u64,
 }
 
 impl Default for ExtractionLimits {
@@ -46,6 +58,7 @@ impl Default for ExtractionLimits {
             max_total_bytes: 16 * 1024 * 1024 * 1024,
             max_entry_path_bytes: 4096,
             max_compression_ratio: 200,
+            min_ratio_enforcement_bytes: 64 * 1024,
         }
     }
 }
