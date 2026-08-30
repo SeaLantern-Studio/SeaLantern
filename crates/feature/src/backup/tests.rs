@@ -526,22 +526,42 @@ mod backup_tests {
     }
 
     #[test]
-    fn test_tar_gz_rejects_trailing_padding() {
+    fn test_tar_gz_rejects_data_after_end_of_archive_marker() {
         let temp_dir = tempdir().unwrap();
         let archive_path = temp_dir.path().join("trailing.tar.gz");
         let file = File::create(&archive_path).unwrap();
         let mut encoder = GzEncoder::new(file, Compression::default());
+        // 两个全零块构成 tar 结束标记。
         encoder.write_all(&[0_u8; 1024]).unwrap();
-        encoder.write_all(&[0_u8; 1]).unwrap();
+        // 其后追加非零数据表示归档被拼接过。全零尾部是 GNU tar 记录对齐的
+        // 正常产物（默认补齐到 10240 字节），因此判定依据是非零而非有无数据。
+        let mut trailing = [0_u8; 512];
+        trailing[0] = b'x';
+        encoder.write_all(&trailing).unwrap();
         encoder.finish().unwrap();
 
         let destination = temp_dir.path().join("extracted");
         let result = archive::extract_archive(&archive_path, &destination, BackupFormat::TarGz);
 
-        assert!(
-            matches!(result, Err(BackupError::Validation(message)) if message.contains("归档结束标记后存在数据"))
-        );
+        assert!(matches!(result, Err(BackupError::Archive(_))));
         assert!(!destination.exists());
+    }
+
+    #[test]
+    fn test_tar_gz_accepts_record_alignment_padding() {
+        let temp_dir = tempdir().unwrap();
+        let archive_path = temp_dir.path().join("padded.tar.gz");
+        let file = File::create(&archive_path).unwrap();
+        let mut encoder = GzEncoder::new(file, Compression::default());
+        encoder.write_all(&[0_u8; 1024]).unwrap();
+        // GNU tar 默认 blocking factor 为 20，补齐到 10240 字节。
+        encoder.write_all(&[0_u8; 10240 - 1024]).unwrap();
+        encoder.finish().unwrap();
+
+        let destination = temp_dir.path().join("extracted");
+        archive::extract_archive(&archive_path, &destination, BackupFormat::TarGz).unwrap();
+
+        assert!(destination.is_dir());
     }
 
     #[test]
