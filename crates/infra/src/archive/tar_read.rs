@@ -324,7 +324,15 @@ fn unpack_entries(
         // 目录条目不应携带文件数据：声明 size > 0 说明归档畸形，静默丢弃
         // payload 会掩盖数据丢失。这一检查对应 main 分支手写解析器的
         // 「目录条目包含文件数据」判定，下沉时曾丢失，此处补回。
-        if is_directory && entry.header().size().map_or(true, |size| size > 0) {
+        //
+        // 两个大小来源都查：`entry.size()` 是合并 PAX/GNU 声明后的最终值，
+        // 覆盖 PAX 大文件；`header().size()` 是 ustar 原始字段，覆盖「ustar
+        // 声明非零但 pax 覆盖为 0」的畸形形式。header 解析失败按超限处理。
+        let header_declares_data = match entry.header().size() {
+            Ok(size) => size > 0,
+            Err(_) => true,
+        };
+        if is_directory && (entry.size() > 0 || header_declares_data) {
             return Err(ArchiveError::UnsafeEntry {
                 archive: archive_path.to_path_buf(),
                 entry: entry_name,
@@ -544,6 +552,11 @@ fn validate_symbolic_link_target<R: Read>(
 /// 大小而非实际数据量，静默数据损坏。因此不能依赖 read 报错，必须显式比对：
 /// 实际读取量少于声明值时返回 [`ArchiveError::Tar`]。多读不可能（Data 阶段由
 /// `take(声明大小)` 限制），只查少读。
+///
+/// 声明大小取 [`Entry::size`] 而非 `header().size()`：后者只读 ustar 的 size
+/// 字段，PAX 格式在文件大于 8 GiB 时把真实大小放进扩展头的 `size=` 关键字、
+/// ustar 字段置 0，此时会返回 0 使比对静默失效。`Entry::size()` 是 tar crate
+/// 合并 PAX/GNU 大小声明后的最终值。
 fn copy_entry_with_limits<R: Read>(
     entry: &mut Entry<'_, R>,
     output: &mut cap_std::fs::File,
@@ -553,10 +566,7 @@ fn copy_entry_with_limits<R: Read>(
     stream_limits: &StreamLimits,
     limits: ExtractionLimits,
 ) -> Result<(), ArchiveError> {
-    let declared = entry
-        .header()
-        .size()
-        .map_err(|error| ArchiveError::tar("read entry size from", archive_path, error))?;
+    let declared = entry.size();
     let mut buffer = [0_u8; 64 * 1024];
     let mut entry_bytes = 0_u64;
     loop {
@@ -896,6 +906,45 @@ mod tests {
         encoder.write_all(header.as_bytes()).unwrap();
         encoder.write_all(b"short").unwrap();
         encoder.finish().unwrap();
+
+        assert!(matches!(extract_tar_gz(&archive, &destination), Err(ArchiveError::Tar { .. })));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_truncation_when_the_size_comes_from_a_pax_extension() {
+        let root = crate::fs::test_dir("tar-short-payload-pax");
+        let archive = root.join("short-pax.tar.gz");
+        let destination = root.join("destination");
+        // PAX 格式把真实大小放进扩展头的 size= 关键字，ustar 的 size 字段置 0。
+        // 截断检测必须基于 entry.size()（合并 pax 后的值），否则 declared 读成
+        // 0 会使比对静默失效。
+        let file = File::create(&archive).unwrap();
+        let mut builder = Builder::new(GzEncoder::new(file, Compression::default()));
+        let mut pax = Header::new_gnu();
+        pax.set_entry_type(EntryType::XHeader);
+        // 「十进制长度 + 空格 + 键=值 + 换行」，长度计入自身数字与空格。
+        let pax_payload = b"18 size=1024\n";
+        pax.set_size(pax_payload.len() as u64);
+        pax.set_mode(0o644);
+        pax.set_mtime(0);
+        let pax_name = b"PaxHeader";
+        pax.as_gnu_mut().unwrap().name[..pax_name.len()].copy_from_slice(pax_name);
+        pax.set_cksum();
+        builder.append(&pax, &pax_payload[..]).unwrap();
+        // 下一个条目 ustar size=0（pax 覆盖为 1024），内容不足。
+        let mut header = Header::new_gnu();
+        header.set_entry_type(EntryType::Regular);
+        header.set_size(0);
+        header.set_mode(0o644);
+        header.set_mtime(0);
+        let name = b"payload.bin";
+        header.as_gnu_mut().unwrap().name[..name.len()].copy_from_slice(name);
+        header.set_cksum();
+        builder.append(&header, &b"short"[..]).unwrap();
+        builder.into_inner().unwrap().finish().unwrap();
 
         assert!(matches!(extract_tar_gz(&archive, &destination), Err(ArchiveError::Tar { .. })));
         assert!(!destination.exists());
