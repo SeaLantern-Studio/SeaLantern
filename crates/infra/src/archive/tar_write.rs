@@ -332,7 +332,7 @@ fn portable_name(path: &Path) -> Result<String, ArchiveError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::archive::extract_tar_gz;
+    use crate::archive::{create_zip, extract_tar_gz, extract_zip};
 
     #[test]
     fn archives_and_extracts_directory_contents() {
@@ -490,5 +490,64 @@ mod tests {
         assert!(matches!(result, Err(ArchiveError::InvalidSource { .. })));
 
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn zip_and_tar_gz_produce_identical_extraction_results() {
+        let root = crate::fs::test_dir("cross-format");
+        let source = root.join("source");
+        fs::create_dir_all(source.join("nested/empty")).unwrap();
+        fs::write(source.join("nested/server.properties"), b"motd=Sea Lantern").unwrap();
+        fs::write(source.join("nested/level.dat"), [0x01, 0x02, 0x03]).unwrap();
+
+        let zip_archive = root.join("server.zip");
+        let tar_archive = root.join("server.tar.gz");
+        create_zip(&source, &zip_archive).unwrap();
+        create_tar_gz(&source, &tar_archive).unwrap();
+
+        let zip_extracted = root.join("zip-out");
+        let tar_extracted = root.join("tar-out");
+        let zip_summary = extract_zip(&zip_archive, &zip_extracted).unwrap();
+        let tar_summary = extract_tar_gz(&tar_archive, &tar_extracted).unwrap();
+
+        // 两侧统计一致。
+        assert_eq!(zip_summary.files, tar_summary.files);
+        assert_eq!(zip_summary.directories, tar_summary.directories);
+        assert_eq!(zip_summary.bytes, tar_summary.bytes);
+        // 两侧文件树与内容完全一致。
+        let zip_files = collect_relative_files(&zip_extracted);
+        let tar_files = collect_relative_files(&tar_extracted);
+        assert_eq!(zip_files, tar_files);
+        for relative in &zip_files {
+            assert_eq!(
+                fs::read(zip_extracted.join(relative)).unwrap(),
+                fs::read(tar_extracted.join(relative)).unwrap(),
+                "file content differs for {relative:?}"
+            );
+        }
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    /// 收集目录下所有普通文件的相对路径（排序后便于比较）。
+    fn collect_relative_files(root: &Path) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        let mut stack = vec![PathBuf::new()];
+        while let Some(directory) = stack.pop() {
+            let mut entries: Vec<_> = fs::read_dir(root.join(&directory))
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name())
+                .collect();
+            entries.sort();
+            for name in entries {
+                let relative = directory.join(&name);
+                if root.join(&relative).is_dir() {
+                    stack.push(relative);
+                } else {
+                    files.push(relative);
+                }
+            }
+        }
+        files
     }
 }

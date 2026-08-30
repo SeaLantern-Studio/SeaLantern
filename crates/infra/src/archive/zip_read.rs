@@ -365,6 +365,60 @@ mod tests {
     }
 
     #[test]
+    fn enforces_max_total_bytes_on_declared_sizes() {
+        let root = crate::fs::test_dir("zip-total-limit");
+        let archive_path = root.join("total.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("payload.bin", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&[0; 32]).unwrap();
+        writer.finish().unwrap();
+
+        let limits = ExtractionLimits {
+            max_total_bytes: 16,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_zip_with_limits(&archive_path, &destination, limits),
+            Err(ArchiveError::LimitExceeded { limit: "total uncompressed bytes", .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn enforces_max_entries_before_creating_destination() {
+        let root = crate::fs::test_dir("zip-entry-limit");
+        let archive_path = root.join("entries.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        for index in 0..4 {
+            writer
+                .start_file(format!("f{index}.bin"), SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(&[index]).unwrap();
+        }
+        writer.finish().unwrap();
+
+        let limits = ExtractionLimits {
+            max_entries: 2,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_zip_with_limits(&archive_path, &destination, limits),
+            Err(ArchiveError::LimitExceeded { limit: "entry count", .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn rejects_a_file_entry_that_blocks_a_parent_directory() {
         let root = crate::fs::test_dir("zip-path-conflict");
         let archive_path = root.join("conflict.zip");

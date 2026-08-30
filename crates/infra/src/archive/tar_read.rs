@@ -598,7 +598,8 @@ mod tests {
                 0o644
             });
             header.set_mtime(0);
-            if *entry_type == EntryType::Symlink {
+            // 符号链接与硬链接的链接目标都指向解压根目录之外，验证拒绝逻辑。
+            if matches!(*entry_type, EntryType::Symlink | EntryType::Link) {
                 header.set_size(0);
                 header.set_link_name("../outside").unwrap();
             }
@@ -606,7 +607,7 @@ mod tests {
             assert!(name_bytes.len() <= 100, "test entry name must fit the ustar name field");
             header.as_gnu_mut().unwrap().name[..name_bytes.len()].copy_from_slice(name_bytes);
             header.set_cksum();
-            let payload = if *entry_type == EntryType::Symlink {
+            let payload = if matches!(*entry_type, EntryType::Symlink | EntryType::Link) {
                 &[][..]
             } else {
                 contents
@@ -772,6 +773,105 @@ mod tests {
             std::fs::read(destination.join("config/server.properties")).unwrap(),
             b"motd=Sea Lantern"
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_hard_link_entries() {
+        let root = crate::fs::test_dir("tar-hard-link");
+        let archive = root.join("hard-link.tar.gz");
+        let destination = root.join("destination");
+        // 硬链接会把读取重定向到归档内的另一路径，目标指向归档之外。
+        write_archive(&archive, &[("config", EntryType::Link, b"")]);
+
+        assert!(matches!(
+            extract_tar_gz(&archive, &destination),
+            Err(ArchiveError::UnsupportedEntry { .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_truncated_gzip_stream() {
+        let root = crate::fs::test_dir("tar-truncated");
+        let archive = root.join("truncated.tar.gz");
+        let destination = root.join("destination");
+        // gzip 流在 tar 内容写完后、footer 写出前被截断。tar crate 对「条目
+        // 内容不足声明大小」会静默补零（见其 EntryIo::Pad 用 Repeat 补位），
+        // 因此在 tar 层检测不到截断；但 gzip 的 CRC32 与 ISIZE 校验会在 footer
+        // 缺失时暴露这一点，返回 Tar 错误而非 panic。
+        let file = File::create(&archive).unwrap();
+        let mut encoder = GzEncoder::new(file, Compression::default());
+        let mut builder = Builder::new(&mut encoder);
+        let mut header = Header::new_gnu();
+        header.set_entry_type(EntryType::Regular);
+        header.set_size(1024);
+        header.set_mode(0o644);
+        header.set_mtime(0);
+        let name = b"payload.bin";
+        header.as_gnu_mut().unwrap().name[..name.len()].copy_from_slice(name);
+        header.set_cksum();
+        builder.append(&header, &b"short"[..]).unwrap();
+        builder.into_inner().unwrap();
+        // 不调用 encoder.finish()，gzip footer 缺失，流在此截断。
+
+        assert!(matches!(extract_tar_gz(&archive, &destination), Err(ArchiveError::Tar { .. })));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_tampered_header_checksum() {
+        let root = crate::fs::test_dir("tar-bad-checksum");
+        let archive = root.join("tampered.tar.gz");
+        let destination = root.join("destination");
+        // 先写出合法归档，再篡改第一个 tar header 的 name 字段使校验和失效。
+        write_archive(&archive, &[("server.properties", EntryType::Regular, b"motd=Sea Lantern")]);
+        let mut bytes = std::fs::read(&archive).unwrap();
+        // flate2 的 GzEncoder 写 10 字节固定头（无可选字段），其后紧跟 tar
+        // header；name 字段偏移 0，即 10 + 0。
+        let header_offset = 10;
+        bytes[header_offset] ^= 0x01;
+        std::fs::write(&archive, &bytes).unwrap();
+
+        assert!(matches!(extract_tar_gz(&archive, &destination), Err(ArchiveError::Tar { .. })));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_more_entries_than_the_limit() {
+        let root = crate::fs::test_dir("tar-entry-bomb");
+        let archive = root.join("bomb.tar.gz");
+        let destination = root.join("destination");
+        // 超过默认 max_entries(10000) 的空文件条目。
+        let count = ExtractionLimits::default().max_entries + 1;
+        let file = File::create(&archive).unwrap();
+        let mut builder = Builder::new(GzEncoder::new(file, Compression::default()));
+        for index in 0..count {
+            let mut header = Header::new_gnu();
+            header.set_entry_type(EntryType::Regular);
+            header.set_size(0);
+            header.set_mode(0o644);
+            header.set_mtime(0);
+            let name = format!("f{index:05}.bin");
+            let name_bytes = name.as_bytes();
+            header.as_gnu_mut().unwrap().name[..name_bytes.len()].copy_from_slice(name_bytes);
+            header.set_cksum();
+            builder.append(&header, &[][..]).unwrap();
+        }
+        builder.into_inner().unwrap().finish().unwrap();
+
+        assert!(matches!(
+            extract_tar_gz(&archive, &destination),
+            Err(ArchiveError::LimitExceeded { limit: "entry count", .. })
+        ));
+        assert!(!destination.exists());
 
         std::fs::remove_dir_all(root).unwrap();
     }
