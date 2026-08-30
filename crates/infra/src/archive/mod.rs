@@ -37,7 +37,7 @@ pub use limits::{ArchiveSummary, ExtractionLimits, ExtractionSummary};
 pub use symbol_link::{is_symbolic_link, parse_symbolic_link_target};
 pub use tar_read::{extract_tar_gz, extract_tar_gz_with_limits};
 pub use tar_write::{create_tar_gz, create_tar_gz_with_level};
-pub use zip_read::{extract_zip, extract_zip_with_limits};
+pub use zip_read::{extract_zip, extract_zip_with_limits, zip_entry_count};
 pub use zip_write::{create_zip, create_zip_with_level};
 
 use entry::{

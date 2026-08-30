@@ -14,6 +14,20 @@ use super::{
 
 const MAX_SYMBOLIC_LINK_TARGET_BYTES: u64 = 4 * 1024;
 
+/// 返回 ZIP 归档的中央目录条目数。
+///
+/// 只解析目录结构，不读取任何条目内容。中央目录通常在归档末尾，读取量与条目
+/// 数成正比；对每个条目的校验仍由 [`extract_zip_with_limits`] 在解压时执行。
+/// 用途是让调用方在解压前按实际条目数估算内存等资源。
+pub fn zip_entry_count(archive: impl AsRef<Path>) -> Result<usize, ArchiveError> {
+    let archive_path = archive.as_ref();
+    let file = File::open(archive_path)
+        .map_err(|error| ArchiveError::io("open ZIP archive", archive_path, error))?;
+    ZipArchive::new(file)
+        .map(|archive| archive.len())
+        .map_err(|error| ArchiveError::zip("read", archive_path, error))
+}
+
 /// 使用默认限制将 ZIP 压缩包解压到新的目标目录中。
 ///
 /// 目标目录必须尚未存在。这避免了在压缩包无效或后续

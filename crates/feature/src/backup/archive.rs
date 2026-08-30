@@ -156,15 +156,22 @@ pub(crate) fn extract_archive(
 
 /// 在解压之前检查可用内存是否足以容纳解析开销。
 ///
-/// 解压前无法知道 tar.gz 的条目数与解压后大小——tar 没有中央目录，取得这些
-/// 统计需要完整解压一遍整个 gzip 流，代价是解压两次。因此这里按配置上限取
-/// 悲观值估算，宁可偏保守也不额外付出一倍 CPU。
+/// ZIP 的中央目录可以在解压前廉价读出，因此按实际条目数估算；tar.gz 没有
+/// 中央目录，取得条目数需要完整解压一遍 gzip 流，代价是解压两次。因此 tar.gz
+/// 不做条目数预检，仅保留固定门槛，条目路径集合的累积交由 infra 层已有的
+/// max_entries / max_entry_path_bytes 流式限制在解压过程中约束。
 fn check_memory_budget(
     archive_path: &Path,
     format: ArchiveFormat,
     archive_bytes: u64,
 ) -> BackupResult<()> {
-    let required_memory = required_memory(archive_bytes, format);
+    let entry_count = match format {
+        // 预检时顺便读中央目录，与随后解压时的读取重复但成本低廉（只读目录，
+        // 不解压条目），换取真实条目数。
+        ArchiveFormat::Zip => count_zip_entries(archive_path)?,
+        ArchiveFormat::TarGz => 0,
+    };
+    let required_memory = required_memory(archive_bytes, entry_count, format);
     let available_memory = collect_resource_snapshot().available_memory_bytes;
 
     if available_memory < required_memory {
@@ -175,6 +182,7 @@ fn check_memory_budget(
             format = %format,
             archive = %archive_path.display(),
             archive_bytes = archive_bytes,
+            entries = entry_count,
             available_memory_bytes = available_memory,
             required_memory_bytes = required_memory,
             "backup restore rejected before unpack because available memory is too low"
@@ -192,6 +200,7 @@ fn check_memory_budget(
         format = %format,
         archive = %archive_path.display(),
         archive_bytes = archive_bytes,
+        entries = entry_count,
         available_memory_bytes = available_memory,
         required_memory_bytes = required_memory,
         "backup restore memory preflight passed"
@@ -199,16 +208,28 @@ fn check_memory_budget(
     Ok(())
 }
 
+/// 读取 ZIP 中央目录得到条目数。
+///
+/// 只解析目录结构，不读取任何条目内容；中央目录通常在归档末尾，读取量与条目
+/// 数成正比。条目数超限时这里不拒绝——统一的资源上限由 infra 的
+/// [`ExtractionLimits`] 在解压时施加，这里只关心内存估算。
+fn count_zip_entries(path: &Path) -> BackupResult<usize> {
+    sealantern_infra::archive::zip_entry_count(path).map_err(BackupError::Archive)
+}
+
 /// 估算解压一个归档所需的常驻内存。
 ///
-/// 各项对应解压过程中真实存在的持有量：条目路径去重集合按条目数上限计、ZIP 的
+/// 各项对应解压过程中真实存在的持有量：条目路径去重集合按实际条目数计、ZIP 的
 /// 中央目录需要先整体读入、流式缓冲固定开销。系数为经验值，用于把明显不可行的
 /// 恢复挡在解压之前，而非精确预测。
-fn required_memory(archive_bytes: u64, format: ArchiveFormat) -> u64 {
-    let index_memory = (MAX_ENTRIES as u64)
+///
+/// tar.gz（`entry_count` 为 0）只保留固定门槛：条目路径集合的增长由 infra 的
+/// 流式限制约束，不由预检预估。
+fn required_memory(archive_bytes: u64, entry_count: usize, format: ArchiveFormat) -> u64 {
+    let index_memory = (entry_count as u64)
         .saturating_mul(8 * 1024)
         .min(MAX_INDEX_MEMORY_BYTES);
-    let path_memory = (MAX_ENTRIES as u64)
+    let path_memory = (entry_count as u64)
         .saturating_mul(MAX_ENTRY_PATH_BYTES as u64)
         .min(64 * 1024 * 1024);
     let archive_overhead = match format {
@@ -298,8 +319,8 @@ mod tests {
 
     #[test]
     fn memory_budget_reserves_parser_space_before_unpack() {
-        let small = required_memory(1, ArchiveFormat::TarGz);
-        let large = required_memory(MAX_ARCHIVE_BYTES, ArchiveFormat::Zip);
+        let small = required_memory(1, 0, ArchiveFormat::TarGz);
+        let large = required_memory(MAX_ARCHIVE_BYTES, MAX_ENTRIES, ArchiveFormat::Zip);
 
         assert!(small >= MIN_AVAILABLE_MEMORY_BYTES);
         // ZIP 需要额外容纳中央目录，因此同等条件下要求更高。
@@ -310,9 +331,32 @@ mod tests {
     fn tar_gz_budget_does_not_grow_with_archive_size() {
         // tar.gz 全程流式，内存需求不应随归档增大。
         assert_eq!(
-            required_memory(1, ArchiveFormat::TarGz),
-            required_memory(MAX_ARCHIVE_BYTES, ArchiveFormat::TarGz)
+            required_memory(1, 0, ArchiveFormat::TarGz),
+            required_memory(MAX_ARCHIVE_BYTES, 0, ArchiveFormat::TarGz)
         );
+    }
+
+    #[test]
+    fn small_backup_requires_far_less_memory_than_a_large_one() {
+        // 1 KiB 的小备份按实际条目数估算，显著低于按配置上限取悲观值的估算。
+        let small = required_memory(1024, 2, ArchiveFormat::TarGz);
+        let worst = required_memory(MAX_ARCHIVE_BYTES, MAX_ENTRIES, ArchiveFormat::Zip);
+
+        assert!(small < worst);
+        // 小备份的增量只有固定门槛，不随条目数膨胀。
+        assert!(small < 2 * MIN_AVAILABLE_MEMORY_BYTES);
+    }
+
+    #[test]
+    fn zip_entry_count_reads_the_central_directory() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("source");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(source.join("server.properties"), b"motd=Sea Lantern").unwrap();
+        let archive = root.path().join("count.zip");
+        sealantern_infra::archive::create_zip(&source, &archive).unwrap();
+
+        assert_eq!(count_zip_entries(&archive).unwrap(), 1);
     }
 
     #[test]
