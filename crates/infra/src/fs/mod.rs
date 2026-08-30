@@ -4,7 +4,6 @@
 //! 提供安全的路径处理、有界读取、原子写入、持久化
 //! 格式以及可供上层组合的维护辅助工具。
 
-mod archive;
 mod atomic;
 mod cache;
 mod cleanup;
@@ -17,7 +16,6 @@ mod path;
 mod persist;
 mod read;
 
-pub use archive::{archive_entry_path, parse_symbolic_link_target};
 pub use atomic::{write_atomic, write_atomic_blocking};
 pub use cache::FileCache;
 pub use cleanup::{clear_directory, remove_if_exists};
