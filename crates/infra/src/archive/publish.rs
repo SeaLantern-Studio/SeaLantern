@@ -10,18 +10,19 @@
 //! 返回 `AlreadyExists`（Unix 上是 `EEXIST`），全平台一致，无需任何平台 API。
 //! 因此发布逻辑是：
 //!
-//! - 文件用 `hard_link` + `remove_file`。两个路径此前指向同一份内容，删除临时
-//!   路径不会丢失数据
-//! - 目录无法建立硬链接（Unix 与 Windows 均不允许），只能显式检查后 `rename`
+//! - 文件优先用 `hard_link` + `remove_file`。两个路径此前指向同一份内容，删除
+//!   临时路径不会丢失数据
+//! - 文件系统不支持硬链接（FAT32/exFAT 上 `hard_link` 返回 `Unsupported` 或
+//!   `PermissionDenied`）时，回落到与目录相同的 [`checked_rename`]：先确认目标
+//!   不存在再 `rename`
+//! - 目录无法建立硬链接（Unix 与 Windows 均不允许），直接用 [`checked_rename`]
 //! - Linux 额外优先尝试 `renameat2(RENAME_NOREPLACE)`：单次系统调用，对文件与
-//!   目录一律适用，连目录路径的检查窗口都不存在。经 `rustix` 的安全封装调用，
-//!   本模块不含 `unsafe`
+//!   目录一律适用，连检查窗口都不存在。经 `rustix` 的安全封装调用，本模块不含
+//!   `unsafe`
 //!
-//! 目录路径的残余风险仅限于「检查通过之后、`rename` 之前目标恰好变成空目录」
-//! 这一窄窗口，且覆盖空目录不会丢失数据。
-//!
-//! 硬链接在不支持它的文件系统（FAT32/exFAT）上会失败。这是有意的取舍：宁可
-//! 发布失败并向调用方报错，也不静默覆盖用户的既有备份。
+//! [`checked_rename`] 的残余风险仅限于「检查通过之后、`rename` 之前目标恰好
+//! 变成空目录」这一窄窗口，且覆盖空目录不会丢失数据。文件路径的回落同样只
+//! 有这一窄窗口。
 
 use std::io;
 use std::path::Path;
@@ -47,7 +48,7 @@ fn publish_inner(temporary: &Path, destination: &Path) -> io::Result<()> {
         return result;
     }
     if temporary.symlink_metadata()?.is_dir() {
-        return publish_directory(temporary, destination);
+        return checked_rename(temporary, destination);
     }
     publish_file(temporary, destination)
 }
@@ -84,13 +85,25 @@ fn try_rename_no_replace(_temporary: &Path, _destination: &Path) -> Option<io::R
 /// 语义且全平台一致。链接建立后临时路径与目标指向同一份内容，删除前者不会
 /// 丢失数据。
 ///
+/// `hard_link` 因文件系统不支持硬链接（FAT32/exFAT 上返回 `Unsupported` 或
+/// `PermissionDenied`）而失败时，回落到 [`checked_rename`]——发布失败与
+/// 静默覆盖并非仅有的两条路，在不支持硬链接的文件系统上放弃可用性没有意义，
+/// 回落的残余窗口与目录路径一致（见模块文档）。
+///
 /// `remove_file` 失败（例如杀毒软件短暂占用临时文件）时**不视为发布失败**：
 /// 发布的实质目标——目标文件就位且未覆盖既有内容——此时已达成，临时文件残留
 /// 只是清理问题，交由 observability 记录后照常返回成功。若此处返回 Err，
 /// 调用方会向用户报告备份失败，但目标文件其实已经就位；用户看到失败重试时，
 /// 又因目标已存在而再次失败，形成无法自愈的错误提示。
 fn publish_file(temporary: &Path, destination: &Path) -> io::Result<()> {
-    std::fs::hard_link(temporary, destination)?;
+    match std::fs::hard_link(temporary, destination) {
+        Ok(()) => {}
+        // 目标已存在：create-new 语义的预期失败，原样返回以映射为
+        // DestinationExists。
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => return Err(error),
+        // 文件系统不支持硬链接（FAT32/exFAT 等）：回落到检查 + rename。
+        Err(_) => return checked_rename(temporary, destination),
+    }
     if let Err(error) = std::fs::remove_file(temporary)
         && error.kind() != io::ErrorKind::NotFound
     {
@@ -100,11 +113,12 @@ fn publish_file(temporary: &Path, destination: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// 以近似 create-new 的语义发布目录。
+/// 以近似 create-new 的语义移动文件或目录：先确认目标不存在，再 `rename`。
 ///
-/// 目录不能建立硬链接，只能先确认目标不存在再 `rename`。`rename` 对非空目录
-/// 目标会失败，因此残余窗口仅限于检查之后目标恰好变成空目录的情形。
-fn publish_directory(temporary: &Path, destination: &Path) -> io::Result<()> {
+/// 目录不能建立硬链接（Unix 与 Windows 均不允许），文件在不支持硬链接的文件
+/// 系统上也无法建立，两者共用此回落路径。`rename` 对非空目录目标会失败，因此
+/// 残余窗口仅限于检查之后目标恰好变成空目录（或文件恰好被删除）的情形。
+fn checked_rename(temporary: &Path, destination: &Path) -> io::Result<()> {
     match std::fs::symlink_metadata(destination) {
         Ok(_) => return Err(io::Error::from(io::ErrorKind::AlreadyExists)),
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
@@ -194,6 +208,46 @@ mod tests {
         assert!(!destination.join("config").exists());
         // 临时目录保持原样，留给调用方清理。
         assert!(temporary.join("config").is_dir());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    /// 硬链接回落路径（checked_rename）的直接单测。
+    ///
+    /// 该路径在 FAT32/exFAT 上由 hard_link 失败触发，CI 难以构造这类文件系统，
+    /// 因此直接测回落函数本身：目标不存在时成功移动、目标已存在时拒绝且既有
+    /// 内容完好。
+    #[test]
+    fn checked_rename_publishes_without_replacing() {
+        let root = crate::fs::test_dir("checked-rename");
+        fs::create_dir_all(&root).unwrap();
+
+        // 目标不存在：成功移动。
+        let file_src = root.join("file.tmp");
+        let file_dst = root.join("file.bin");
+        fs::write(&file_src, b"fresh").unwrap();
+        checked_rename(&file_src, &file_dst).unwrap();
+        assert_eq!(fs::read(&file_dst).unwrap(), b"fresh");
+        assert!(!file_src.exists());
+
+        // 目录目标不存在：成功移动。
+        let dir_src = root.join("dir.tmp");
+        let dir_dst = root.join("dir");
+        fs::create_dir_all(dir_src.join("config")).unwrap();
+        checked_rename(&dir_src, &dir_dst).unwrap();
+        assert!(dir_dst.join("config").is_dir());
+
+        // 目标已存在：拒绝且既有内容完好。
+        let conflict_src = root.join("conflict.tmp");
+        let conflict_dst = root.join("conflict.bin");
+        fs::write(&conflict_src, b"new").unwrap();
+        fs::write(&conflict_dst, b"existing").unwrap();
+        assert!(matches!(
+            checked_rename(&conflict_src, &conflict_dst),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists
+        ));
+        assert_eq!(fs::read(&conflict_dst).unwrap(), b"existing");
+        assert!(conflict_src.exists());
 
         fs::remove_dir_all(root).unwrap();
     }
