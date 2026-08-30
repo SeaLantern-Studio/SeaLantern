@@ -527,6 +527,13 @@ fn validate_symbolic_link_target<R: Read>(
 /// header 声明的大小不可信，因此完全依据实际读取量累加。总字节与压缩比由
 /// [`StreamLimits`] 在解码器层统一约束，这里只补充 tar 层面才有的单条目上限，
 /// 并在每块之后重置段计数，使大文件不受 [`MAX_SEGMENT_BYTES`] 影响。
+///
+/// 读取结束后必须比对实际读取量与声明大小：tar crate 对「条目内容不足声明
+/// 大小」会在读取时用 `EntryIo::Pad(io::Take<io::Repeat>)` 静默补零，`read`
+/// 不报错——截断的归档会解压出尾部带一串零的文件，`entry_bytes` 等于声明
+/// 大小而非实际数据量，静默数据损坏。因此不能依赖 read 报错，必须显式比对：
+/// 实际读取量少于声明值时返回 [`ArchiveError::Tar`]。多读不可能（Data 阶段由
+/// `take(声明大小)` 限制），只查少读。
 fn copy_entry_with_limits<R: Read>(
     entry: &mut Entry<'_, R>,
     output: &mut cap_std::fs::File,
@@ -536,6 +543,10 @@ fn copy_entry_with_limits<R: Read>(
     stream_limits: &StreamLimits,
     limits: ExtractionLimits,
 ) -> Result<(), ArchiveError> {
+    let declared = entry
+        .header()
+        .size()
+        .map_err(|error| ArchiveError::tar("read entry size from", archive_path, error))?;
     let mut buffer = [0_u8; 64 * 1024];
     let mut entry_bytes = 0_u64;
     loop {
@@ -543,7 +554,7 @@ fn copy_entry_with_limits<R: Read>(
             .read(&mut buffer)
             .map_err(|error| stream_error(stream_limits, "read entry from", archive_path, error))?;
         if count == 0 {
-            return Ok(());
+            break;
         }
         stream_limits.start_segment();
         entry_bytes = accumulate_bytes(
@@ -570,6 +581,17 @@ fn copy_entry_with_limits<R: Read>(
             .write_all(&buffer[..count])
             .map_err(|error| ArchiveError::io("write tar.gz entry file", output_path, error))?;
     }
+    if entry_bytes < declared {
+        return Err(ArchiveError::tar(
+            "read truncated entry from",
+            archive_path,
+            io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                format!("entry ended after {entry_bytes} bytes, header declares {declared}"),
+            ),
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -817,6 +839,36 @@ mod tests {
         builder.append(&header, &b"short"[..]).unwrap();
         builder.into_inner().unwrap();
         // 不调用 encoder.finish()，gzip footer 缺失，流在此截断。
+
+        assert!(matches!(extract_tar_gz(&archive, &destination), Err(ArchiveError::Tar { .. })));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_an_entry_whose_payload_is_shorter_than_declared() {
+        let root = crate::fs::test_dir("tar-short-payload");
+        let archive = root.join("short.tar.gz");
+        let destination = root.join("destination");
+        // header 声明 1024 字节，实际只有 5 字节内容且流立即结束（无块填充、
+        // 无结束块）。注意不能用 Builder::append 构造：它会自动补零到 512 边界，
+        // 且 finish 写的结束块会被 Data 阶段当作内容吃掉，使读取量恰好等于声明
+        // 大小。这里直接写原始字节。
+        let file = File::create(&archive).unwrap();
+        let mut encoder = GzEncoder::new(file, Compression::default());
+        let mut header = Header::new_gnu();
+        header.set_entry_type(EntryType::Regular);
+        header.set_size(1024);
+        header.set_mode(0o644);
+        header.set_mtime(0);
+        let name = b"payload.bin";
+        header.as_gnu_mut().unwrap().name[..name.len()].copy_from_slice(name);
+        header.set_cksum();
+        use std::io::Write as _;
+        encoder.write_all(header.as_bytes()).unwrap();
+        encoder.write_all(b"short").unwrap();
+        encoder.finish().unwrap();
 
         assert!(matches!(extract_tar_gz(&archive, &destination), Err(ArchiveError::Tar { .. })));
         assert!(!destination.exists());
