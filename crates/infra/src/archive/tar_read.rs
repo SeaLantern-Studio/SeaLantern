@@ -44,6 +44,18 @@ const MAX_SEGMENT_BYTES: u64 = 1024 * 1024;
 /// 上限取 64 KiB，覆盖各实现常用的记录大小，同时避免用无限零字节流拖住解压。
 const MAX_TRAILING_PADDING_BYTES: u64 = 64 * 1024;
 
+/// 开始施加压缩比上限的解压字节数。
+///
+/// tar.gz 有与内容无关的固定开销：tar 结束标记占 1024 字节，GNU tar 默认还会
+/// 把归档补齐到 10240 字节的记录边界，而这些成片零字节压缩后只剩几十字节。
+/// 因此一个近乎为空的合法归档，压缩比可以轻易超过 200——失真来自固定开销，
+/// 而非可疑内容。
+///
+/// 压缩比的意义在于拦下解压后体积失控的归档，这与绝对量有关：几百 KiB 的输出
+/// 无论压缩比多高都不构成威胁。故解压总量低于此阈值时不施加比率判定，1 MiB
+/// 足以覆盖上述固定开销与小型归档，同时远低于任何真正需要拦截的规模。
+const MIN_RATIO_ENFORCEMENT_BYTES: u64 = 1024 * 1024;
+
 /// 被解码器拦下的一次限制越界。
 ///
 /// 解码器只能返回 [`io::Error`]，无法直接携带 [`ArchiveError::LimitExceeded`]
@@ -69,6 +81,8 @@ struct StreamLimits {
     /// 全流解压字节上限。
     max_total: u64,
     /// 由归档文件字节数与最大压缩比推得的解压字节上限。
+    ///
+    /// 仅在解压总量超过 [`MIN_RATIO_ENFORCEMENT_BYTES`] 后生效。
     max_ratio_bytes: u64,
     /// 最近一次越界记录，供调用方还原精确错误。
     breach: Cell<Option<LimitBreach>>,
@@ -100,7 +114,7 @@ impl StreamLimits {
         if total > self.max_total {
             return Err(self.breach("total uncompressed bytes", total, self.max_total));
         }
-        if total > self.max_ratio_bytes {
+        if total > self.max_ratio_bytes && total > MIN_RATIO_ENFORCEMENT_BYTES {
             return Err(self.breach("compression ratio", total, self.max_ratio_bytes));
         }
         Ok(())
@@ -958,8 +972,10 @@ mod tests {
         let root = crate::fs::test_dir("tar-ratio");
         let archive = root.join("bomb.tar.gz");
         let destination = root.join("destination");
-        // 高度可压缩的零字节负载，整体压缩比远超 1。
-        write_archive(&archive, &[("payload.bin", EntryType::Regular, &[0; 512 * 1024])]);
+        // 负载须超过 MIN_RATIO_ENFORCEMENT_BYTES，比率判定才会生效；零字节的
+        // 压缩率极高，因此实际归档文件很小，整体压缩比远超上限。
+        let payload = vec![0_u8; (MIN_RATIO_ENFORCEMENT_BYTES + 512 * 1024) as usize];
+        write_archive(&archive, &[("payload.bin", EntryType::Regular, &payload)]);
 
         let limits = ExtractionLimits {
             max_compression_ratio: 1,
@@ -970,6 +986,26 @@ mod tests {
             Err(ArchiveError::LimitExceeded { limit: "compression ratio", .. })
         ));
         assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn does_not_enforce_the_ratio_on_small_archives() {
+        let root = crate::fs::test_dir("tar-ratio-small");
+        let archive = root.join("small.tar.gz");
+        let destination = root.join("destination");
+        // 小归档的固定开销（结束标记与记录对齐填充）本身就是高压缩比的零字节，
+        // 不应因此被拒。
+        write_archive(&archive, &[("payload.bin", EntryType::Regular, &[0; 4096])]);
+
+        let limits = ExtractionLimits {
+            max_compression_ratio: 1,
+            ..ExtractionLimits::default()
+        };
+        let summary = extract_tar_gz_with_limits(&archive, &destination, limits).unwrap();
+        assert_eq!(summary.files, 1);
+        assert_eq!(summary.bytes, 4096);
 
         std::fs::remove_dir_all(root).unwrap();
     }
