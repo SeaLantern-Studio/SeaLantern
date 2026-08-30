@@ -69,7 +69,6 @@ impl From<sealantern_feature::backup::BackupError> for BackupError {
             FeatureBackupError::AlreadyExists(_)
             | FeatureBackupError::Io(_)
             | FeatureBackupError::FileSystem(_)
-            | FeatureBackupError::Zip(_)
             | FeatureBackupError::Archive(_)
             | FeatureBackupError::Persistence(_)
             | FeatureBackupError::CannotCreateBackupDir(_)
