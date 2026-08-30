@@ -313,14 +313,20 @@ fn unpack_entries(
         check_limit(archive_path, "entry count", entry_count, limits.max_entries as u64)?;
 
         let entry_name = entry_display_name(&entry, archive_path, limits.max_entry_path_bytes)?;
+        // 条目类型校验先于路径规范化：名为 `./` 的符号链接或设备节点也必须被
+        // 拒绝，而不是因规范化后没有输出路径而被静默跳过。
+        reject_unsupported_entry(&mut entry, archive_path, &entry_name)?;
+        // 目录判定同时看 entry 类型与原始名称：声明为 Regular 但带尾部斜杠的
+        // 条目（部分打包器对空目录的写法）仍按目录处理，与 ZIP 侧
+        // `entry.is_dir()` 按尾斜杠判定的行为保持一致。
+        let is_directory =
+            entry.header().entry_type() == EntryType::Directory || entry_name.ends_with('/');
         let Some(normalized) = normalize_entry_name(&entry_name) else {
             // `./` 与 `/` 这类仅指代解压根目录的条目没有对应输出，跳过。
             continue;
         };
         let relative = safe_entry_path(archive_path, &normalized)?;
-        let is_directory = entry.header().entry_type() == EntryType::Directory;
         paths.register(archive_path, &relative, &entry_name, is_directory)?;
-        reject_unsupported_entry(&mut entry, archive_path, &entry_name)?;
 
         if is_directory {
             ensure_directory(root, &relative, destination)?;
@@ -721,6 +727,51 @@ mod tests {
             Err(ArchiveError::UnsafeEntry { .. })
         ));
         assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_symbolic_link_named_after_normalization() {
+        let root = crate::fs::test_dir("tar-dot-symlink");
+        let archive = root.join("link.tar.gz");
+        let destination = root.join("destination");
+        // 名称 `./` 规范化后没有输出路径，但类型是符号链接：必须被拒绝，
+        // 而不是因无路径可写被静默跳过。具体错误取决于链接目标是否合法
+        // （合法目标归 UnsupportedEntry，非法目标归 InvalidSymbolicLinkTargetEntry），
+        // 关键是不能成功。
+        write_archive(&archive, &[("./", EntryType::Symlink, b"")]);
+
+        assert!(extract_tar_gz(&archive, &destination).is_err());
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn treats_a_trailing_slash_regular_entry_as_a_directory() {
+        let root = crate::fs::test_dir("tar-trailing-slash");
+        let archive = root.join("slash.tar.gz");
+        let destination = root.join("destination");
+        // 部分打包器把空目录写成 Regular 类型但带尾部斜杠：应与 ZIP 侧
+        // `entry.is_dir()` 的行为一致，按目录处理而非落成同名文件。
+        write_archive(
+            &archive,
+            &[
+                ("config/", EntryType::Regular, b""),
+                ("config/server.properties", EntryType::Regular, b"motd=Sea Lantern"),
+            ],
+        );
+
+        let summary = extract_tar_gz(&archive, &destination).unwrap();
+
+        assert_eq!(summary.directories, 1);
+        assert_eq!(summary.files, 1);
+        assert!(!destination.join("config").is_file());
+        assert_eq!(
+            std::fs::read(destination.join("config/server.properties")).unwrap(),
+            b"motd=Sea Lantern"
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
