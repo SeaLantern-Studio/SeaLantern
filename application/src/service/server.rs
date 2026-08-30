@@ -383,6 +383,20 @@ impl CoreServerService {
             error_message: None,
         })
     }
+
+    /// 同步查询实例对应服务器是否已停止。
+    ///
+    /// 直接查进程表（`status_for_instance`），不涉及异步 IO，供备份等
+    /// 需要在阻塞上下文（如 `spawn_blocking` 回调）中复核状态的场景使用。
+    /// 实例不存在时按"未运行"处理（返回 `true`），与 `status_for_instance`
+    /// 的语义一致。
+    pub(crate) fn server_stopped(&self, instance: &Instance) -> bool {
+        matches!(
+            self.status_for_instance(instance)
+                .map(|snapshot| snapshot.state),
+            Ok(ServerState::Stopped)
+        )
+    }
 }
 
 #[async_trait]

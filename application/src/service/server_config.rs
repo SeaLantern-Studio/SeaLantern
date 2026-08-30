@@ -151,8 +151,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn parse_source_rejects_invalid_input() {
-        // 空源码可解析为空配置（不是错误）；这里验证服务可正常工作。
+    async fn parse_source_parses_valid_source() {
+        // 解析是宽松的：空行/注释被跳过，`key=value` 收集为键值对；
+        // 任何文本都能解析出结果，不会产生 InvalidInput。
         let service = CoreServerConfigService;
         let properties = service
             .parse_source("server-port=25565\n# comment\n")

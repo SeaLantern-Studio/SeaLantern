@@ -81,7 +81,15 @@ impl BackupService for CoreBackupService {
         let instance = self.require_stopped_instance(&request.server_id).await?;
         let directory = instance.directory.clone();
 
-        sealantern_feature::backup::create_backup(request, directory, |_| true)
+        // 回调在 feature 的阻塞任务内部被再次调用，用于关闭「状态检查后、实际
+        // 落盘前服务器被并发启动」的竞态窗口：此时同步查询一次进程表复核。
+        let check_server_stopped = {
+            let server = self.server_service.clone();
+            let instance = instance.clone();
+            move |_server_id: &str| server.server_stopped(&instance)
+        };
+
+        sealantern_feature::backup::create_backup(request, directory, check_server_stopped)
             .await
             .map_err(BackupError::from)
             .map_err(Into::into)
@@ -98,11 +106,18 @@ impl BackupService for CoreBackupService {
         let instance = self.require_stopped_instance(server_id).await?;
         let directory = instance.directory.clone();
 
+        // 与 create 相同的竞态窗口防护：阻塞任务内部同步复核服务器状态。
+        let check_server_stopped = {
+            let server = self.server_service.clone();
+            let instance = instance.clone();
+            move |_server_id: &str| server.server_stopped(&instance)
+        };
+
         sealantern_feature::backup::restore_backup(
             backup_id.to_owned(),
             server_id.to_owned(),
             directory,
-            |_| true,
+            check_server_stopped,
         )
         .await
         .map_err(BackupError::from)
