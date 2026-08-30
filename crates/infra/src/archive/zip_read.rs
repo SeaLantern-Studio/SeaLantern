@@ -392,6 +392,33 @@ mod tests {
     }
 
     #[test]
+    fn rejects_case_insensitive_path_collisions() {
+        let root = crate::fs::test_dir("zip-case-collision");
+        let archive_path = root.join("collision.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        // Windows/macOS 上两个条目会落在同一文件。
+        writer
+            .start_file("Server.properties", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"first").unwrap();
+        writer
+            .start_file("server.properties", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"second").unwrap();
+        writer.finish().unwrap();
+
+        assert!(matches!(
+            extract_zip(&archive_path, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn enforces_entry_path_length_before_creating_destination() {
         let root = crate::fs::test_dir("zip-path-length");
         let archive_path = root.join("long-name.zip");

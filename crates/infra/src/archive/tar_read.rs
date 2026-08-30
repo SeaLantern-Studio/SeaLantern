@@ -793,6 +793,29 @@ mod tests {
     }
 
     #[test]
+    fn rejects_case_insensitive_path_collisions() {
+        let root = crate::fs::test_dir("tar-case-collision");
+        let archive = root.join("collision.tar.gz");
+        let destination = root.join("destination");
+        // Windows/macOS 上两个条目会落在同一文件。
+        write_archive(
+            &archive,
+            &[
+                ("Server.properties", EntryType::Regular, b"first"),
+                ("server.properties", EntryType::Regular, b"second"),
+            ],
+        );
+
+        assert!(matches!(
+            extract_tar_gz(&archive, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn rejects_entry_paths_above_the_length_limit() {
         let root = crate::fs::test_dir("tar-path-length");
         let archive = root.join("long-name.tar.gz");

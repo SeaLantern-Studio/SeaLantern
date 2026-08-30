@@ -20,9 +20,10 @@ use super::ArchiveError;
 /// 已登记的条目输出路径，用于在写入之前发现路径冲突。
 ///
 /// 单靠 [`SafeRelativePath`] 只能保证每个条目不逃逸解压根目录，无法发现条目
-/// 之间的相互冲突。以下三类都会导致条目覆盖、写入失败或语义歧义：
+/// 之间的相互冲突。以下四类都会导致条目覆盖、写入失败或语义歧义：
 ///
 /// - 两个条目解析到同一输出路径
+/// - 两个条目在大小写不敏感的文件系统（Windows/macOS）上解析到同一路径
 /// - 某个条目的祖先路径已作为普通文件出现，该文件会阻断此条目的父目录
 /// - 同一路径既作普通文件又作目录使用
 ///
@@ -33,6 +34,13 @@ use super::ArchiveError;
 pub(super) struct EntryPathRegistry {
     /// 已出现的显式条目路径，用于重复检测。
     seen: HashSet<PathBuf>,
+    /// 已出现路径的小写折叠形式，用于大小写不敏感冲突检测。
+    ///
+    /// Windows 与 macOS 的默认文件系统大小写不敏感，`A.txt` 与 `a.txt` 会落在
+    /// 同一文件上；精确匹配的 [`Self::seen`] 察觉不到这种冲突，落盘时才退化为
+    /// `create_new` 的 AlreadyExists。这里按 ASCII 小写折叠登记，与
+    /// [`SafeRelativePath`] 的组件校验保持一致的口径。
+    seen_folded: HashSet<String>,
     /// 已作为普通文件出现的路径。
     files: HashSet<PathBuf>,
     /// 已作为目录使用的路径，含由子条目隐式引入的祖先目录。
@@ -43,6 +51,7 @@ impl EntryPathRegistry {
     pub(super) fn with_capacity(capacity: usize) -> Self {
         Self {
             seen: HashSet::with_capacity(capacity),
+            seen_folded: HashSet::with_capacity(capacity),
             files: HashSet::new(),
             directories: HashSet::new(),
         }
@@ -65,6 +74,14 @@ impl EntryPathRegistry {
                 archive_path,
                 entry_name,
                 "archive contains duplicate output paths",
+            ));
+        }
+        let folded = fold_path(path);
+        if !self.seen_folded.insert(folded) {
+            return Err(conflict(
+                archive_path,
+                entry_name,
+                "output path collides case-insensitively with an existing entry",
             ));
         }
         if ancestors(path).any(|ancestor| self.files.contains(ancestor)) {
@@ -99,6 +116,11 @@ impl EntryPathRegistry {
             .extend(ancestors(path).map(Path::to_path_buf));
         Ok(())
     }
+}
+
+/// 把相对路径折叠为 ASCII 小写形式，用于大小写不敏感比较。
+fn fold_path(path: &Path) -> String {
+    path.to_string_lossy().to_ascii_lowercase()
 }
 
 /// 遍历路径的各级祖先，跳过路径自身与空的根。
@@ -321,5 +343,26 @@ mod tests {
             register_all(&[("config", false), ("config", true)]),
             Err(ArchiveError::UnsafeEntry { .. })
         ));
+    }
+
+    #[test]
+    fn rejects_case_insensitive_collisions() {
+        // Windows/macOS 上 A.txt 与 a.txt 落在同一文件。
+        assert!(matches!(
+            register_all(&[("A.txt", false), ("a.txt", false)]),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(matches!(
+            register_all(&[("config/World", true), ("config/world", false)]),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+    }
+
+    #[test]
+    fn accepts_paths_differing_beyond_ascii_case() {
+        // 仅 ASCII 大小写折叠，非 ASCII 字符不参与比较。
+        assert!(register_all(&[("world", true), ("World", false)]).is_err());
+        assert!(register_all(&[("配置", false), ("config", false)]).is_ok());
+        assert!(register_all(&[("a_b", false), ("a-b", false)]).is_ok());
     }
 }
