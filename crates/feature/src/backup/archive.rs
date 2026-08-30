@@ -61,7 +61,7 @@ pub(crate) fn create_archive(
     }
     .map_err(map_create_error)?;
 
-    if let Err(error) = verify_restorable(destination, summary) {
+    if let Err(error) = verify_restorable(destination, format, summary) {
         remove_unrestorable_archive(destination);
         return Err(error);
     }
@@ -74,14 +74,22 @@ pub(crate) fn create_archive(
 /// 校验只用创建过程已经得到的统计与归档文件大小，不重新读取归档内容——对 ZIP
 /// 而言可以省下一次中央目录扫描，对 tar.gz 而言可以省下整整一遍解压。
 ///
-/// 覆盖归档大小、条目数、总解压字节与整体压缩比。压缩比判定与解压侧共用
-/// `ExtractionLimits::min_ratio_enforcement_bytes` 阈值：低于该绝对量的归档
-/// 不施加比率判定（tar.gz 的固定开销会使小归档压缩比天然虚高），确保创建侧
-/// 与解压侧对同一归档给出一致结论。对 ZIP 的比率判定是整体近似，因为解压侧
-/// 按条目比较，逐条目的严格判定仍在恢复时执行；这一层的作用是零成本拦下明显
-/// 不可恢复的归档，例如大段重复内容压出的极高压缩比。
+/// 覆盖归档大小、条目数、总解压字节与整体压缩比，压缩比判定按格式分别处理：
+///
+/// - TarGz 应用 `ExtractionLimits::min_ratio_enforcement_bytes` 豁免。豁免的
+///   理由是 tar 的结束标记与记录对齐这类固定开销，与内容无关的小归档压缩比
+///   天然虚高；解压侧 tar_read 对同一阈值下的归档同样不施加比率判定，两侧一致
+/// - Zip 不应用豁免，保持偏严。ZIP 没有固定开销，解压侧 zip_read 的压缩比
+///   判定按条目进行且完全不引用该阈值；创建侧若放行低于阈值的归档，其中可能
+///   存在单条目压缩比超限（大段重复内容的文件）而恢复侧按条目拒绝——「创建
+///   放行、恢复拒绝」比「创建误拒」严重得多，后者用户立刻知道，前者在最需要
+///   恢复时才发现归档不可用
+///
+/// 这一层的作用是零成本拦下明显不可恢复的归档，例如大段重复内容压出的极高
+/// 压缩比；对 ZIP 的比率判定是整体近似，逐条目的严格判定仍在恢复时执行。
 fn verify_restorable(
     archive_path: &Path,
+    format: BackupFormat,
     summary: sealantern_infra::archive::ArchiveSummary,
 ) -> BackupResult<()> {
     let archive_bytes = archive_size(archive_path)?;
@@ -92,10 +100,13 @@ fn verify_restorable(
     if summary.bytes > MAX_TOTAL_BYTES {
         return Err(unrestorable(archive_path, "解压后总大小超过恢复限制"));
     }
-    let threshold = extraction_limits().min_ratio_enforcement_bytes;
-    if summary.bytes > archive_bytes.saturating_mul(MAX_COMPRESSION_RATIO)
-        && summary.bytes > threshold
-    {
+    let exceeds_ratio = summary.bytes > archive_bytes.saturating_mul(MAX_COMPRESSION_RATIO);
+    let apply_ratio = match format {
+        BackupFormat::Zip => true,
+        // tar.gz 的固定开销豁免，与解压侧 tar_read 的判定保持一致。
+        BackupFormat::TarGz => summary.bytes > extraction_limits().min_ratio_enforcement_bytes,
+    };
+    if exceeds_ratio && apply_ratio {
         return Err(unrestorable(archive_path, "压缩比超过恢复限制"));
     }
     Ok(())
@@ -386,5 +397,36 @@ mod tests {
         assert_eq!(stats.archive_bytes, 1024);
         assert_eq!(stats.entries, 5);
         assert_eq!(stats.unpacked_bytes, 128);
+    }
+
+    /// 小体积高压缩比的归档：总量低于 tar.gz 的比率豁免阈值，创建侧应放行
+    /// tar.gz（与解压侧 tar_read 的判定一致），而同等条件的 ZIP 应拒绝——
+    /// ZIP 无固定开销，解压侧按条目判定且不引用豁免阈值。
+    #[test]
+    fn ratio_exemption_applies_to_tar_gz_but_not_zip() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("source");
+        std::fs::create_dir_all(&source).unwrap();
+        // 高度可压缩的大段重复内容：压缩后约 100 字节，压缩比远超 200；
+        // 总量 60 KiB 严格低于 64 KiB 的豁免阈值，使 tar.gz 分支命中豁免。
+        let payload = vec![0_u8; 60 * 1024];
+        std::fs::write(source.join("repeated.bin"), &payload).unwrap();
+
+        let tar_archive = root.path().join("small.tar.gz");
+        let zip_archive = root.path().join("small.zip");
+        sealantern_infra::archive::create_tar_gz(&source, &tar_archive).unwrap();
+        sealantern_infra::archive::create_zip(&source, &zip_archive).unwrap();
+
+        let summary = sealantern_infra::archive::ArchiveSummary {
+            files: 1,
+            directories: 0,
+            bytes: payload.len() as u64,
+        };
+
+        assert!(verify_restorable(&tar_archive, BackupFormat::TarGz, summary).is_ok());
+        assert!(matches!(
+            verify_restorable(&zip_archive, BackupFormat::Zip, summary),
+            Err(BackupError::Validation(message)) if message.contains("压缩比")
+        ));
     }
 }
