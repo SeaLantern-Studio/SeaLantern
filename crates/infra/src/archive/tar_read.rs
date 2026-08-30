@@ -321,6 +321,16 @@ fn unpack_entries(
         // `entry.is_dir()` 按尾斜杠判定的行为保持一致。
         let is_directory =
             entry.header().entry_type() == EntryType::Directory || entry_name.ends_with('/');
+        // 目录条目不应携带文件数据：声明 size > 0 说明归档畸形，静默丢弃
+        // payload 会掩盖数据丢失。这一检查对应 main 分支手写解析器的
+        // 「目录条目包含文件数据」判定，下沉时曾丢失，此处补回。
+        if is_directory && entry.header().size().map_or(true, |size| size > 0) {
+            return Err(ArchiveError::UnsafeEntry {
+                archive: archive_path.to_path_buf(),
+                entry: entry_name,
+                reason: "directory entry carries file data".to_string(),
+            });
+        }
         let Some(normalized) = normalize_entry_name(&entry_name) else {
             // `./` 与 `/` 这类仅指代解压根目录的条目没有对应输出，跳过。
             continue;
@@ -795,6 +805,23 @@ mod tests {
             std::fs::read(destination.join("config/server.properties")).unwrap(),
             b"motd=Sea Lantern"
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_directory_entry_that_carries_file_data() {
+        let root = crate::fs::test_dir("tar-dir-with-data");
+        let archive = root.join("dir-data.tar.gz");
+        let destination = root.join("destination");
+        // 目录条目声明 size > 0：畸形归档，静默丢弃 payload 会掩盖数据丢失。
+        write_archive(&archive, &[("config/", EntryType::Regular, b"payload")]);
+
+        assert!(matches!(
+            extract_tar_gz(&archive, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(!destination.exists());
 
         std::fs::remove_dir_all(root).unwrap();
     }

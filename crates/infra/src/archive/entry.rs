@@ -119,6 +119,12 @@ impl EntryPathRegistry {
 }
 
 /// 把相对路径折叠为 ASCII 小写形式，用于大小写不敏感比较。
+///
+/// 已知残余：macOS 的 HFS+/APFS 除大小写不敏感外还做 NFD 规范化，
+/// `Ä.txt`（U+00C4 组合形式）与 `A\u{0308}.txt`（分解形式）会落在同一文件，
+/// ASCII 折叠察觉不到这种冲突。当前口径是有意选择——引入 unicode 规范化
+/// 依赖换取对 NFD 冲突的检测，收益不抵复杂度与误判风险；此残余仅在 macOS
+/// 上解压含上述两种写法的归档时出现，且落盘阶段 `create_new` 仍会兜底报错。
 fn fold_path(path: &Path) -> String {
     path.to_string_lossy().to_ascii_lowercase()
 }

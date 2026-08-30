@@ -72,8 +72,8 @@ fn create_zip_inner(
 
 /// 清理未能发布的临时归档。
 ///
-/// 仅在失败路径上调用：成功时临时文件已被 rename 移走，路径不再存在。
-/// 清理失败只记录日志，不覆盖调用方要返回的原始错误。
+/// 仅在失败路径上调用：成功时临时文件已被 [`super::publish_new`] 移走，路径
+/// 不再存在。清理失败只记录日志，不覆盖调用方要返回的原始错误。
 fn remove_temporary_archive(path: &Path) {
     if let Err(error) = fs::remove_file(path)
         && error.kind() != io::ErrorKind::NotFound
@@ -318,7 +318,7 @@ mod tests {
             b"motd=Sea Lantern"
         );
         assert!(extracted.join("nested/empty").is_dir());
-        // rename 发布后临时文件不应残留，输出目录里只有归档本身。
+        // 发布后临时文件不应残留，输出目录里只有归档本身。
         let published: Vec<_> = fs::read_dir(root.join("output"))
             .unwrap()
             .map(|entry| entry.unwrap().file_name())
