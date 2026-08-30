@@ -292,6 +292,13 @@ fn extract_archive(
     match detect_archive_format(archive)? {
         ArchiveFormat::Zip => extract_zip(archive, destination)?,
         ArchiveFormat::TarGz => extract_tar_gz(archive, destination)?,
+        // 未来新增的格式：本调用点尚未实现解压，按不受支持处理。
+        _ => {
+            return Err(sealantern_infra::archive::ArchiveError::InvalidSource {
+                path: archive.to_path_buf(),
+                reason: "archive format is not supported by the modpack importer",
+            });
+        }
     };
     Ok(())
 }
@@ -566,6 +573,8 @@ mod tests {
                 sealantern_infra::archive::create_tar_gz(&staging, destination)
                     .expect("create tar.gz");
             }
+            // 测试只覆盖当前两种格式。
+            _ => panic!("unexpected archive format in test helper"),
         }
         fs::remove_dir_all(&staging).expect("remove staging dir");
     }

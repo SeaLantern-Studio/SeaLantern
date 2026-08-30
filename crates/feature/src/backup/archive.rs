@@ -148,6 +148,15 @@ pub(crate) fn extract_archive(
     let summary = match actual_format {
         ArchiveFormat::Zip => extract_zip_with_limits(archive_path, destination, limits)?,
         ArchiveFormat::TarGz => extract_tar_gz_with_limits(archive_path, destination, limits)?,
+        // 未来新增的格式：本调用点尚未实现解压，按不受支持处理。
+        _ => {
+            return Err(BackupError::Archive(
+                sealantern_infra::archive::ArchiveError::InvalidSource {
+                    path: archive_path.to_path_buf(),
+                    reason: "backup archive format is not supported",
+                },
+            ));
+        }
     };
     let stats = archive_stats(archive_bytes, summary);
 
@@ -178,7 +187,7 @@ fn check_memory_budget(
         // 预检时顺便读中央目录，与随后解压时的读取重复但成本低廉（只读目录，
         // 不解压条目），换取真实条目数。
         ArchiveFormat::Zip => count_zip_entries(archive_path)?,
-        ArchiveFormat::TarGz => 0,
+        ArchiveFormat::TarGz | _ => 0,
     };
     let required_memory = required_memory(archive_bytes, entry_count, format);
     let available_memory = collect_resource_snapshot().available_memory_bytes;
@@ -245,7 +254,7 @@ fn required_memory(archive_bytes: u64, entry_count: usize, format: ArchiveFormat
         // ZIP 解析前需要读入中央目录，其规模随归档增长。
         ArchiveFormat::Zip => (archive_bytes / 4).min(512 * 1024 * 1024),
         // tar.gz 全程流式，除固定窗口外不随归档大小增长。
-        ArchiveFormat::TarGz => 0,
+        ArchiveFormat::TarGz | _ => 0,
     };
     MIN_AVAILABLE_MEMORY_BYTES
         .saturating_add(STREAMING_MEMORY_BYTES)

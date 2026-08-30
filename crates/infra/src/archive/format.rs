@@ -22,7 +22,11 @@ const ZIP_SPANNED: [u8; 4] = [0x50, 0x4B, 0x07, 0x08];
 const GZIP_MEMBER: [u8; 2] = [0x1F, 0x8B];
 
 /// 本模块支持的归档格式。
+///
+/// `#[non_exhaustive]`：新增格式是公开 API 的扩展而非破坏性变更，下游对
+/// 本枚举的 `match` 必须保留兜底分支。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum ArchiveFormat {
     /// ZIP 归档，由 [`super::extract_zip`] 与 [`super::create_zip`] 处理。
     Zip,
@@ -94,7 +98,10 @@ fn detect_format_from_magic(path: &Path, magic: &[u8]) -> Result<ArchiveFormat, 
 ///
 /// 三档而非直接暴露底层数值，因为 ZIP 的 deflate 与 gzip 各有自己的取值范围，
 /// 由本枚举统一映射。
+///
+/// `#[non_exhaustive]`：新增压缩档位是公开 API 的扩展而非破坏性变更。
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum CompressionLevel {
     /// 最快，压缩率最低。
     Low,
