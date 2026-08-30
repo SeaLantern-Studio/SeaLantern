@@ -907,7 +907,16 @@ mod tests {
         encoder.write_all(b"short").unwrap();
         encoder.finish().unwrap();
 
-        assert!(matches!(extract_tar_gz(&archive, &destination), Err(ArchiveError::Tar { .. })));
+        // 断言收紧到 operation 字段：ArchiveError::Tar 是个大口袋，gzip 解析
+        // 失败、checksum 不符、PAX 畸形、条目截断都归它。这里必须证明是
+        // 「条目截断」这一条路径生效，而不是别的错误恰好返回了 Tar。
+        assert!(matches!(
+            extract_tar_gz(&archive, &destination),
+            Err(ArchiveError::Tar {
+                operation: "read truncated entry from",
+                ..
+            })
+        ));
         assert!(!destination.exists());
 
         std::fs::remove_dir_all(root).unwrap();
@@ -921,20 +930,29 @@ mod tests {
         // PAX 格式把真实大小放进扩展头的 size= 关键字，ustar 的 size 字段置 0。
         // 截断检测必须基于 entry.size()（合并 pax 后的值），否则 declared 读成
         // 0 会使比对静默失效。
+        //
+        // 必须直接写原始字节而非 Builder::append：append 会自动补零到 512 块
+        // 边界，且 finish 写的结束块会被 tar 的 Data 阶段当作内容吃掉，使读取
+        // 量恰好等于声明大小、比对不触发（探针实测返回 Ok(bytes=1024)）。
         let file = File::create(&archive).unwrap();
-        let mut builder = Builder::new(GzEncoder::new(file, Compression::default()));
+        let mut encoder = GzEncoder::new(file, Compression::default());
+        use std::io::Write as _;
+        // PAX x 头：声明 size=1024。「十进制长度 + 空格 + 键=值 + 换行」，
+        // 长度计入自身数字与空格："13 size=1024\n" 共 13 字节，前缀必须是 13。
         let mut pax = Header::new_gnu();
         pax.set_entry_type(EntryType::XHeader);
-        // 「十进制长度 + 空格 + 键=值 + 换行」，长度计入自身数字与空格。
-        let pax_payload = b"18 size=1024\n";
-        pax.set_size(pax_payload.len() as u64);
+        pax.set_size(13);
         pax.set_mode(0o644);
         pax.set_mtime(0);
         let pax_name = b"PaxHeader";
         pax.as_gnu_mut().unwrap().name[..pax_name.len()].copy_from_slice(pax_name);
         pax.set_cksum();
-        builder.append(&pax, &pax_payload[..]).unwrap();
-        // 下一个条目 ustar size=0（pax 覆盖为 1024），内容不足。
+        encoder.write_all(pax.as_bytes()).unwrap();
+        encoder.write_all(b"13 size=1024\n").unwrap();
+        // PAX 内容按 512 字节块对齐补齐（tar 按块推进内部位置）。
+        encoder.write_all(&[0_u8; 512 - 13]).unwrap();
+        // 下一个条目 ustar size=0（pax 覆盖为 1024），内容只有 5 字节，
+        // 流立即结束（无块填充、无结束块）。
         let mut header = Header::new_gnu();
         header.set_entry_type(EntryType::Regular);
         header.set_size(0);
@@ -943,10 +961,18 @@ mod tests {
         let name = b"payload.bin";
         header.as_gnu_mut().unwrap().name[..name.len()].copy_from_slice(name);
         header.set_cksum();
-        builder.append(&header, &b"short"[..]).unwrap();
-        builder.into_inner().unwrap().finish().unwrap();
+        encoder.write_all(header.as_bytes()).unwrap();
+        encoder.write_all(b"short").unwrap();
+        encoder.finish().unwrap();
 
-        assert!(matches!(extract_tar_gz(&archive, &destination), Err(ArchiveError::Tar { .. })));
+        // 断言收紧到 operation 字段，证明是「条目截断」这一条路径生效。
+        assert!(matches!(
+            extract_tar_gz(&archive, &destination),
+            Err(ArchiveError::Tar {
+                operation: "read truncated entry from",
+                ..
+            })
+        ));
         assert!(!destination.exists());
 
         std::fs::remove_dir_all(root).unwrap();
