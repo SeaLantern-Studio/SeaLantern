@@ -6,6 +6,8 @@
 
 #![forbid(unsafe_code)]
 
+/// 备份管理相关模型。
+pub mod backup;
 /// 服务器核心下载目录相关模型。
 pub mod catalog;
 /// 服务器控制台日志相关模型。
@@ -24,6 +26,8 @@ pub mod online;
 pub mod proxy;
 /// 服务器进程管理相关模型。
 pub mod server;
+/// 服务器配置（server.properties）相关模型。
+pub mod server_config;
 /// 设置信息相关模型。
 pub mod settings;
 /// 系统资源信息相关模型。
@@ -31,10 +35,17 @@ pub mod system;
 /// 应用更新检查相关模型。
 pub mod update;
 
+/// 备份管理模型。
+pub use backup::{
+    BackupContentType, BackupFormat, BackupItem, BackupSettings, CompressionLevel,
+    CreateBackupRequest,
+};
 /// 服务器核心下载链接模型。
 pub use catalog::DownloadLink;
 /// 服务器控制台日志行模型。
 pub use console::ConsoleLogLine;
+/// 备份管理错误枚举。
+pub use error::BackupServiceError;
 /// 服务器控制台日志错误枚举。
 pub use error::ConsoleServiceError;
 /// 服务器定时任务错误枚举。
@@ -51,6 +62,8 @@ pub use error::OnlineTunnelServiceError;
 pub use error::ProvisioningServiceError;
 /// 服务器核心下载目录错误枚举。
 pub use error::ServerCatalogServiceError;
+/// 服务器配置（server.properties）错误枚举。
+pub use error::ServerConfigServiceError;
 /// 服务器进程管理错误枚举。
 pub use error::ServerServiceError;
 /// 设置信息服务错误枚举。

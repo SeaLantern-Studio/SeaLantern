@@ -6,6 +6,7 @@
 //! [`CoreOnlineTunnelService`]、[`CoreUpdateInstallService`]），实现
 //! `application::port` 的能力端口，由 `services` 装配层组装进应用服务容器。
 
+mod backup;
 mod catalog;
 mod console;
 mod cron;
@@ -18,11 +19,13 @@ mod online_tunnel;
 mod provisioning;
 mod proxy_monitoring;
 mod server;
+mod server_config;
 mod settings;
 mod system;
 mod update;
 mod update_install;
 
+pub use backup::CoreBackupService;
 pub use catalog::CoreServerCatalogService;
 pub use console::CoreConsoleService;
 pub use cron::CoreCronTaskService;
@@ -34,6 +37,7 @@ pub use online_tunnel::CoreOnlineTunnelService;
 pub use provisioning::CoreProvisioningService;
 pub use proxy_monitoring::ProxyMonitoringService;
 pub use server::CoreServerService;
+pub use server_config::CoreServerConfigService;
 pub use settings::CoreSettingsService;
 pub use system::CoreSystemService;
 pub use update::CoreUpdateCheckService;

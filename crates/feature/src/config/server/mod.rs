@@ -7,26 +7,10 @@ use std::fs;
 use std::path::Path;
 
 use sealantern_infra::fs::{FileLock, FsError, write_atomic_blocking};
-use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-/// 配置条目信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigEntry {
-    pub key: String,
-    pub value: String,
-    pub description: String,
-    pub value_type: String,
-    pub default_value: String,
-    pub category: String,
-}
-
-/// 服务器配置文件结构
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServerProperties {
-    pub entries: Vec<ConfigEntry>,
-    pub raw: BTreeMap<String, String>,
-}
+// 配置契约模型统一由 `sealantern-contract` 提供，feature 侧 re-export 保持兼容。
+pub use sealantern_contract::server_config::{ConfigEntry, ServerProperties};
 
 /// server.properties 文件管理器
 pub struct ServerPropertiesManager {
