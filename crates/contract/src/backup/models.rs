@@ -16,7 +16,9 @@ pub enum BackupFormat {
 }
 
 impl BackupFormat {
-    /// 备份文件的扩展名（含点号前缀的格式名）。
+    /// 备份文件的扩展名（不含点号前缀；如 `"zip"` / `"tar.gz"`）。
+    ///
+    /// 需要完整后缀时请自行拼接点号（如 `format!("{id}.{}", format.extension())`）。
     pub fn extension(&self) -> &'static str {
         match self {
             BackupFormat::Zip => "zip",
