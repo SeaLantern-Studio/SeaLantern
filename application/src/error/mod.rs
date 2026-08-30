@@ -4,6 +4,8 @@
 //! source 细节供日志排查），并可向 `contract::error` 的契约错误转换，供
 //! tauri / server 等宿主统一消费。
 
+/// 服务器备份领域错误。
+pub mod backup;
 /// 配置管理领域错误。
 pub mod config;
 /// 服务器控制台日志领域错误。
@@ -18,6 +20,8 @@ pub mod instance;
 pub mod plugin;
 /// 服务器管理领域错误。
 pub mod server;
+/// 服务器配置（server.properties）领域错误。
+pub mod server_config;
 /// 设置信息服务领域错误。
 pub mod settings;
 /// 系统资源信息领域错误。
@@ -25,6 +29,7 @@ pub mod system;
 /// 应用更新检查领域错误。
 pub mod update;
 
+pub use backup::BackupError;
 pub use config::ConfigError;
 pub use console::ConsoleError;
 pub use cron::CronTaskError;
@@ -32,6 +37,7 @@ pub use download::DownloadError;
 pub use instance::InstanceError;
 pub use plugin::PluginError;
 pub use server::ServerError;
+pub use server_config::ServerConfigError;
 pub use settings::SettingsError;
 pub use system::SystemError;
 pub use update::UpdateCheckError;

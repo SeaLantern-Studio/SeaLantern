@@ -273,6 +273,68 @@ impl std::fmt::Display for ConsoleServiceError {
 
 impl std::error::Error for ConsoleServiceError {}
 
+/// 服务器备份操作失败的契约错误类别。
+///
+/// 分类风格与 [`ServerServiceError`] 一致：不携带主机路径、备份内容等
+/// 敏感细节，底层失败详情由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BackupServiceError {
+    /// 指定的备份或服务器实例不存在。
+    NotFound,
+    /// 客户端提供的输入不合法（如无效的备份 ID、服务器 ID）。
+    InvalidInput,
+    /// 服务器正在运行，无法执行冷备份 / 恢复。
+    ServerRunning,
+    /// 底层备份文件操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
+impl std::fmt::Display for BackupServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::NotFound => "backup or server instance not found",
+            Self::InvalidInput => "invalid backup input",
+            Self::ServerRunning => "server is running; stop it before backup or restore",
+            Self::OperationFailed => "backup operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for BackupServiceError {}
+
+/// 服务器配置（server.properties）操作失败的契约错误类别。
+///
+/// 分类风格与 [`ServerServiceError`] 一致：不携带主机路径等敏感细节，
+/// 底层失败详情由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerConfigServiceError {
+    /// 客户端提供的输入不合法（如路径为空、源码无法解析）。
+    InvalidInput,
+    /// 底层配置文件读写失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
+impl std::fmt::Display for ServerConfigServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InvalidInput => "invalid server config input",
+            Self::OperationFailed => "server config operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for ServerConfigServiceError {}
+
 /// 应用更新检查失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -439,6 +501,11 @@ mod tests {
                 "\"operation_failed\"",
             ),
             (serde_json::to_string(&OnlineTunnelServiceError::NotRunning), "\"not_running\""),
+            (serde_json::to_string(&BackupServiceError::ServerRunning), "\"server_running\""),
+            (
+                serde_json::to_string(&ServerConfigServiceError::InvalidInput),
+                "\"invalid_input\"",
+            ),
         ];
 
         for (serialized, expected) in cases {

@@ -13,10 +13,10 @@ use crate::error::InstanceError;
 use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceError};
 use crate::port::OnlineTunnelService;
 use crate::service::{
-    CoreConsoleService, CoreCronTaskService, CoreDownloadService, CoreInstanceService,
-    CoreJavaService, CoreOnlineTunnelService, CoreProvisioningService, CoreServerCatalogService,
-    CoreServerService, CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
-    CoreUpdateInstallService, ProxyMonitoringService,
+    CoreBackupService, CoreConsoleService, CoreCronTaskService, CoreDownloadService,
+    CoreInstanceService, CoreJavaService, CoreOnlineTunnelService, CoreProvisioningService,
+    CoreServerCatalogService, CoreServerConfigService, CoreServerService, CoreSettingsService,
+    CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService, ProxyMonitoringService,
 };
 
 /// 应用服务聚合句柄；由宿主 composition root 创建并显式传递。
@@ -32,6 +32,8 @@ pub struct AppServices {
 /// 中通过 [`AppServices`] 访问，无需引入新的全局访问函数。
 pub struct AppServicesInner {
     background_started: AtomicBool,
+    /// 服务器备份管理服务。
+    pub backup: Arc<CoreBackupService>,
     /// 下载任务管理服务。
     pub download: Arc<CoreDownloadService>,
     /// 服务器实例记录管理服务。
@@ -46,6 +48,8 @@ pub struct AppServicesInner {
     pub provisioning: Arc<CoreProvisioningService>,
     /// 服务器进程管理服务。
     pub server: Arc<CoreServerService>,
+    /// 服务器配置（server.properties）服务。
+    pub server_config: Arc<CoreServerConfigService>,
     /// 服务器控制台日志服务。
     pub console: Arc<CoreConsoleService>,
     /// 服务器定时任务服务。
@@ -75,11 +79,13 @@ impl AppServices {
         Self {
             inner: Arc::new(AppServicesInner {
                 background_started: AtomicBool::new(false),
+                backup: Arc::new(CoreBackupService::new(instance.clone(), server.clone())),
                 download: Arc::new(CoreDownloadService::new()),
                 console: Arc::new(CoreConsoleService::new(instance.clone())),
                 cron: Arc::new(CoreCronTaskService::new(server.clone())),
                 system: Arc::new(CoreSystemService::new(instance.clone(), server.clone())),
                 server,
+                server_config: Arc::new(CoreServerConfigService),
                 instance,
                 java: Arc::new(CoreJavaService),
                 online_tunnel: Arc::new(CoreOnlineTunnelService::default()),
@@ -104,6 +110,11 @@ impl AppServices {
         let services = Self::from_inner(CoreInstanceService::new().await?);
         services.start_background_services().await;
         Ok(services)
+    }
+
+    /// 访问服务器备份管理服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn backup(&self) -> &Arc<CoreBackupService> {
+        &self.inner.backup
     }
 
     /// 访问下载任务管理服务（`Arc` 共享句柄，clone 廉价）。
@@ -139,6 +150,11 @@ impl AppServices {
     /// 访问服务器进程管理服务（`Arc` 共享句柄，clone 廉价）。
     pub fn server(&self) -> &Arc<CoreServerService> {
         &self.inner.server
+    }
+
+    /// 访问服务器配置（server.properties）服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn server_config(&self) -> &Arc<CoreServerConfigService> {
+        &self.inner.server_config
     }
 
     /// 访问服务器控制台日志服务（`Arc` 共享句柄，clone 廉价）。
