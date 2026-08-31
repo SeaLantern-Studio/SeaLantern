@@ -18,9 +18,9 @@ use sealantern_contract::system::{
     ServerResourceUsage, SystemSnapshot,
 };
 use sealantern_infra::platform::{
-    collect_disks, collect_networks, collect_process_usage, collect_resource_snapshot,
-    collect_system_info, cpu_brand_name, directory_size, get_default_run_path, path_disk_capacity,
-    process_count,
+    collect_cpu_info, collect_disks, collect_networks, collect_process_usage,
+    collect_resource_snapshot, collect_system_info, cpu_brand_name, directory_size,
+    get_default_run_path, path_disk_capacity, process_count,
 };
 
 use crate::error::SystemError;
@@ -232,7 +232,11 @@ impl SystemService for CoreSystemService {
                 memory_usage: 0.0,
             },
         };
-        let full = Self::snapshot_inner().await?;
+        // CPU 品牌与核心数是静态信息，轻量采集即可；不再调用整机快照，避免
+        // 每次服务器资源查询都顺带扫一遍整机磁盘/网络/进程。
+        let (cpu_name, cpu_count) = tokio::task::spawn_blocking(collect_cpu_info)
+            .await
+            .map_err(SystemError::from)?;
 
         // 磁盘占用按实例目录统计，而不是整机分区求和：服务器页面的磁盘指标
         // 应反映该实例实际占用的空间与其所在挂载点容量。
@@ -257,8 +261,8 @@ impl SystemService for CoreSystemService {
             status,
             pid: snapshot.pid,
             cpu: CpuInfo {
-                name: full.cpu.name,
-                count: full.cpu.count,
+                name: cpu_name,
+                count: cpu_count,
                 usage: usage.cpu_usage.clamp(0.0, 100.0),
             },
             memory: MemoryInfo {
