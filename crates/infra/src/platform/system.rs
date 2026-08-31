@@ -278,17 +278,28 @@ fn normalize_for_mount_match(path: &Path) -> PathBuf {
     }
 }
 
+/// 采集 CPU 品牌与逻辑核心数。
+///
+/// 只刷新 CPU 信息（`refresh_cpu_all`），不枚举磁盘、网络或进程，适合需要
+/// 轻量获取 CPU 静态信息的场景（如服务器资源占用查询）。返回 `(品牌, 逻辑
+/// 核心数)`，品牌无法获取时为 `"Unknown"`。
+pub fn collect_cpu_info() -> (String, usize) {
+    let mut system = System::new();
+    system.refresh_cpu_all();
+    let brand = system
+        .cpus()
+        .first()
+        .map(|cpu| cpu.brand().to_string())
+        .unwrap_or_else(|| "Unknown".into());
+    let count = system.cpus().len();
+    (brand, count)
+}
+
 /// 获取 CPU 型号名称（如 `Intel(R) Core(TM) i7-9700K`）。
 ///
 /// 无法获取时返回 `"Unknown"`。
 pub fn cpu_brand_name() -> String {
-    let mut system = System::new();
-    system.refresh_cpu_all();
-    system
-        .cpus()
-        .first()
-        .map(|cpu| cpu.brand().to_string())
-        .unwrap_or_else(|| "Unknown".into())
+    collect_cpu_info().0
 }
 
 /// 获取当前运行的进程数。
@@ -309,6 +320,16 @@ mod tests {
         assert!(!info.family.is_empty());
         assert!(info.logical_cpu_count > 0);
         assert!(info.total_memory_bytes >= info.available_memory_bytes);
+    }
+
+    #[test]
+    fn cpu_info_reports_brand_and_logical_count() {
+        let (brand, count) = collect_cpu_info();
+
+        assert!(count > 0, "logical cpu count must be positive");
+        assert!(!brand.is_empty(), "cpu brand must not be empty");
+        // 与既有 cpu_brand_name 保持一致（内部应复用同一采集路径）。
+        assert_eq!(cpu_brand_name(), brand);
     }
 
     #[test]
