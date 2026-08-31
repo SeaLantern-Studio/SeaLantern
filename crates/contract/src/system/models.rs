@@ -153,6 +153,6 @@ pub struct ServerResourceUsage {
     pub cpu: CpuInfo,
     /// 内存资源。
     pub memory: MemoryInfo,
-    /// 磁盘汇总（总量/已用/可用为全部分区求和）。
-    pub disk: DiskSummary,
+    /// 实例目录磁盘占用（目录本身占用 + 所在挂载点容量）。
+    pub disk: DirectoryUsage,
 }
