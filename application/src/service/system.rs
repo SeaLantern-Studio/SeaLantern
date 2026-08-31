@@ -14,12 +14,13 @@ use async_trait::async_trait;
 use sealantern_contract::SystemServiceError;
 use sealantern_contract::server::ServerState;
 use sealantern_contract::system::{
-    CpuInfo, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
+    CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
     ServerResourceUsage, SystemSnapshot,
 };
 use sealantern_infra::platform::{
     collect_disks, collect_networks, collect_process_usage, collect_resource_snapshot,
-    collect_system_info, cpu_brand_name, get_default_run_path, process_count,
+    collect_system_info, cpu_brand_name, directory_size, get_default_run_path, path_disk_capacity,
+    process_count,
 };
 
 use crate::error::SystemError;
@@ -233,6 +234,23 @@ impl SystemService for CoreSystemService {
         };
         let full = Self::snapshot_inner().await?;
 
+        // 磁盘占用按实例目录统计，而不是整机分区求和：服务器页面的磁盘指标
+        // 应反映该实例实际占用的空间与其所在挂载点容量。
+        let directory = instance.directory.clone();
+        let disk = tokio::task::spawn_blocking(move || {
+            let used = directory_size(&directory);
+            let (total, available) = path_disk_capacity(&directory);
+            DirectoryUsage {
+                path: directory,
+                used,
+                total,
+                available,
+                usage: percent(used, total),
+            }
+        })
+        .await
+        .map_err(SystemError::from)?;
+
         Ok(ServerResourceUsage {
             server_id: instance.id.as_str().to_string(),
             server_name: instance.name,
@@ -249,7 +267,7 @@ impl SystemService for CoreSystemService {
                 available: usage.memory_total.saturating_sub(usage.memory_used),
                 usage: usage.memory_usage.clamp(0.0, 100.0),
             },
-            disk: full.disk,
+            disk,
         })
     }
 }
@@ -318,5 +336,75 @@ mod tests {
             .expect("path should have a file name")
             .to_string_lossy();
         assert_eq!(name, "SeaLantern", "unexpected default run dir: {name}");
+    }
+
+    /// 服务器页面的磁盘指标应为实例目录占用，而非整机磁盘汇总。
+    #[tokio::test]
+    async fn server_resource_usage_reports_directory_disk_usage() {
+        use sealantern_core::instance::{InstanceId, LocalLaunch, StartupMode};
+
+        let dir = tempdir().expect("create temp dir");
+        let instance_dir = dir.path().join("server");
+        std::fs::create_dir_all(&instance_dir).expect("create instance dir");
+        // 写入已知大小的文件，验证磁盘占用按目录统计。
+        let payload = vec![0x5A; 4096];
+        std::fs::write(instance_dir.join("level.dat"), &payload).expect("write payload");
+
+        let instance_service = Arc::new(
+            CoreInstanceService::with_path(dir.path().join("instances.json"))
+                .await
+                .expect("create instance service"),
+        );
+        let spec = sealantern_core::instance::InstanceSpec {
+            id: InstanceId::new("disk-test").expect("valid id"),
+            name: "磁盘测试".into(),
+            aliases: Vec::new(),
+            core_type: "paper".into(),
+            core_version: "1.20.4".into(),
+            game_version: "1.20.4".into(),
+            directory: instance_dir.clone(),
+            port: 25565,
+            max_memory_mib: 2048,
+            min_memory_mib: 512,
+            created_at_unix_secs: 0,
+            last_started_at_unix_secs: None,
+            server_metadata: None,
+            launch: LocalLaunch {
+                startup_mode: StartupMode::Jar,
+                startup_target: Some(instance_dir.join("server.jar")),
+                custom_command: None,
+                custom_executable: None,
+                custom_arguments: Vec::new(),
+                java_executable: None,
+                jvm_arguments: Vec::new(),
+            },
+        };
+        let instance = instance_service
+            .create(spec)
+            .await
+            .expect("create instance");
+        let server = Arc::new(CoreServerService::new(
+            instance_service.clone(),
+            Arc::new(crate::service::CoreSettingsService::new()),
+        ));
+        let service = CoreSystemService::new(instance_service, server);
+
+        let usage = service
+            .server_resource_usage(instance.id.as_str())
+            .await
+            .expect("server resource usage");
+
+        // 目录占用应反映写入的文件（≈4096 字节），远小于整机磁盘量级。
+        assert!(
+            usage.disk.used >= payload.len() as u64,
+            "disk used too small: {}",
+            usage.disk.used
+        );
+        assert!(
+            usage.disk.used < 1024 * 1024,
+            "disk used looks like whole-machine usage: {}",
+            usage.disk.used
+        );
+        assert_eq!(usage.disk.path, instance.directory);
     }
 }

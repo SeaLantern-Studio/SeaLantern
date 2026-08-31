@@ -41,6 +41,15 @@ export interface DiskInfo {
   path?: string;
 }
 
+/** 目录磁盘占用：实例目录本身占用 + 所在挂载点容量（对齐后端 DirectoryUsage）。 */
+export interface DirectoryUsage {
+  path: string;
+  used: number;
+  total: number;
+  available: number;
+  usage: number;
+}
+
 export interface NetworkInterface {
   name: string;
   received: number;
@@ -76,7 +85,7 @@ export interface ServerResourceUsage {
   pid: number | null;
   cpu: CpuInfo;
   memory: MemoryInfo;
-  disk: DiskInfo;
+  disk: DirectoryUsage;
 }
 
 export interface IPv6TestTarget {
