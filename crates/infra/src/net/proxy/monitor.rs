@@ -1,5 +1,5 @@
 use super::{
-    read_system_proxy, ProxyController, ProxyUpdate, SystemProxyProvider, SystemProxySnapshot,
+    ProxyController, ProxyUpdate, SystemProxyProvider, SystemProxySnapshot, read_system_proxy,
 };
 
 /// 从平台适配器接收网络变更快照。

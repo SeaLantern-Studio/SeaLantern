@@ -1,0 +1,42 @@
+name: 设置 pnpm 环境
+description: 安装 Node.js、启用固定版本的 pnpm，并恢复 pnpm store 缓存
+
+inputs:
+  node-version:
+    description: 要安装的 Node.js 版本
+    required: false
+    default: "lts/*"
+  pnpm-version:
+    description: 要通过 Corepack 激活的 pnpm 版本
+    required: false
+    default: "9.15.9"
+
+runs:
+  using: composite
+  steps:
+    - name: 安装 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: 准备 pnpm
+      shell: bash
+      env:
+        PNPM_VERSION: ${{ inputs.pnpm-version }}
+      run: |
+        corepack enable
+        corepack prepare "pnpm@${PNPM_VERSION}" --activate
+
+    - name: 获取 pnpm store 路径
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    - name: 缓存 pnpm 依赖
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-${{ runner.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-pnpm-
+          ${{ runner.os }}-pnpm-

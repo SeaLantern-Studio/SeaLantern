@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+// keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理轮询
+import { computed, onActivated, onDeactivated, ref } from "vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import { tunnelApi, type TunnelStatus } from "@api/tunnel";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
+import { handleError } from "@utils/errorHandler";
 import { useToast } from "cmzya-modern-ui";
 import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -79,6 +81,8 @@ const consoleFontFamily = ref("");
 const consoleLetterSpacing = ref(0);
 const maxLogLines = ref(5000);
 let statusPollTimer: ReturnType<typeof setInterval> | null = null;
+// 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
+let isPageVisible = true;
 const syncedLogs = ref<string[]>([]);
 const logsDisplayClearedByUser = ref(false);
 
@@ -162,16 +166,17 @@ async function loadConsoleSettings() {
     consoleFontFamily.value = settings.console_font_family || "";
     consoleLetterSpacing.value = settings.console_letter_spacing || 0;
     maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-  } catch {
-    // keep defaults
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to load console settings:", e);
   }
 }
 
 function startStatusPolling() {
   stopStatusPolling();
   statusPollTimer = setInterval(() => {
+    if (!isPageVisible) return;
     void refreshStatus({ silent: true });
-  }, 2000);
+  }, 5000);
 }
 
 function stopStatusPolling() {
@@ -181,13 +186,25 @@ function stopStatusPolling() {
   }
 }
 
+function handleVisibilityChange() {
+  const visible = document.visibilityState === "visible";
+  if (visible === isPageVisible) return;
+  isPageVisible = visible;
+  if (visible) {
+    void refreshStatus({ silent: true });
+    startStatusPolling();
+  } else {
+    stopStatusPolling();
+  }
+}
+
 async function refreshStatus(options?: { silent?: boolean }) {
   const silent = options?.silent ?? false;
   try {
     const next = await tunnelApi.status();
     applyStatus(next);
   } catch (e) {
-    if (!silent) toast.error(String(e));
+    if (!silent) toast.error(handleError(e));
   }
 }
 
@@ -209,7 +226,7 @@ async function startHost() {
     );
     toast.success(i18n.t("tunnel.host_started"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("host");
   }
@@ -233,7 +250,7 @@ async function startJoin() {
     );
     toast.success(i18n.t("tunnel.join_started"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("join");
   }
@@ -245,7 +262,7 @@ async function stopTunnel() {
     applyStatus(await tunnelApi.stop());
     toast.success(i18n.t("tunnel.tunnel_stopped"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("stop");
   }
@@ -262,7 +279,7 @@ async function copyTicket() {
       toast.error(i18n.t("tunnel.ticket_copy_failed"));
     }
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   }
 }
 
@@ -272,7 +289,7 @@ async function generateTicket() {
     applyStatus(await tunnelApi.generateTicket());
     toast.success(i18n.t("tunnel.ticket_generated"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -284,7 +301,7 @@ async function regenerateTicket() {
     applyStatus(await tunnelApi.regenerateTicket());
     toast.success(i18n.t("tunnel.ticket_regenerated"));
   } catch (e) {
-    toast.error(String(e));
+    toast.error(handleError(e));
   } finally {
     endAction("generate-ticket");
   }
@@ -325,14 +342,17 @@ function handleJoinTicketInput(value: string) {
   joinTicketAutoFillEnabled.value = false;
 }
 
-onMounted(async () => {
-  await loadConsoleSettings();
-  await refreshStatus();
+onActivated(async () => {
+  // 设置加载与状态拉取互不依赖,并行执行
+  isPageVisible = true;
+  await Promise.all([loadConsoleSettings(), refreshStatus()]);
   startStatusPolling();
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 
-onUnmounted(() => {
+onDeactivated(() => {
   stopStatusPolling();
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
   syncedLogs.value = [];
   logsDisplayClearedByUser.value = false;
 });
@@ -598,7 +618,7 @@ onUnmounted(() => {
           :maxLogLines="maxLogLines"
           :readonly="true"
           :userScrolledUp="userScrolledUp"
-          @scroll="(value) => (userScrolledUp = value)"
+          @scroll="(value: boolean) => (userScrolledUp = value)"
           @scrollToBottom="
             userScrolledUp = false;
             tunnelOutputRef?.doScroll();

@@ -4,6 +4,7 @@ import { i18n } from "@language";
 import { searchResources, type ResourceSearchResult } from "@api/resource";
 import { useToast } from "cmzya-modern-ui";
 import { useAsync } from "@composables/useAsync";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 const toast = useToast();
 const keyword = ref("");
@@ -44,9 +45,13 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-function openSourceUrl(item: ResourceSearchResult) {
+async function openSourceUrl(item: ResourceSearchResult) {
   if (!item.sourceUrl) return;
-  window.open(item.sourceUrl, "_blank");
+  try {
+    await openUrl(item.sourceUrl);
+  } catch (error) {
+    console.error("Failed to open resource source URL:", error);
+  }
 }
 
 function selectResult(item: ResourceSearchResult) {

@@ -219,7 +219,9 @@ fn force_terminate_process_tree(child: &mut Child) -> io::Result<()> {
 #[cfg(unix)]
 fn signal_process_group(process_group_id: u32, signal: &str) -> io::Result<()> {
     let status = Command::new("kill")
-        .args([format!("-{signal}"), format!("-{process_group_id}")])
+        .arg(format!("-{signal}"))
+        .arg("--")
+        .arg(format!("-{process_group_id}"))
         .status()
         .map_err(|source| {
             io::Error::new(

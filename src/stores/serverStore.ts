@@ -83,15 +83,32 @@ export const useServerStore = defineStore("server", () => {
     }
   }
 
+  // 进行中的状态请求,同 id 并发调用复用同一 Promise 避免重复请求
+  const pendingStatusRequests = new Map<string, Promise<ServerStatusInfo | undefined>>();
+
   /**
    * 刷新指定服务器的状态
+   * 同一服务器并发的请求会去重,复用同一个 in-flight Promise
    */
-  async function refreshStatus(id: string) {
-    try {
-      statuses.value[id] = await serverApi.getStatus(id);
-    } catch (e) {
-      console.error(`Failed to get status for server ${id}:`, e);
-    }
+  async function refreshStatus(id: string): Promise<ServerStatusInfo | undefined> {
+    const existing = pendingStatusRequests.get(id);
+    if (existing) return existing;
+
+    const promise = (async () => {
+      try {
+        const status = await serverApi.getStatus(id);
+        statuses.value[id] = status;
+        return status;
+      } catch (e) {
+        console.error(`Failed to get status for server ${id}:`, e);
+        return undefined;
+      } finally {
+        pendingStatusRequests.delete(id);
+      }
+    })();
+
+    pendingStatusRequests.set(id, promise);
+    return promise;
   }
 
   /**

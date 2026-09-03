@@ -53,12 +53,19 @@ const emit = defineEmits<{
   display: flex;
   flex-direction: column;
   align-items: center;
+  font-family: var(--sl-font-sans);
   gap: 4px;
   padding: var(--sl-space-xs) var(--sl-space-sm);
   margin-top: var(--sl-space-md);
   border-top: 1px solid var(--sl-border-light);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   border-radius: var(--sl-radius-sm);
   position: relative;
   overflow: hidden;
@@ -73,10 +80,17 @@ const emit = defineEmits<{
 
 .quote-text {
   font-size: 0.875rem;
-  color: var(--sl-text-secondary);
+  color: var(--sl-text-primary);
+  font-family: var(--sl-font-sans);
   font-style: italic;
   text-align: center;
-  transition: all 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   opacity: 1;
 }
 
@@ -87,8 +101,15 @@ const emit = defineEmits<{
 
 .quote-author {
   font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
-  transition: all 0.3s ease;
+  color: var(--sl-text-secondary);
+  font-family: var(--sl-font-sans);
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
   opacity: 1;
 }
 
@@ -103,7 +124,8 @@ const emit = defineEmits<{
 
 .quote-loading {
   font-size: 0.875rem;
-  color: var(--sl-text-tertiary);
+  color: var(--sl-text-secondary);
+  font-family: var(--sl-font-sans);
   font-style: italic;
   animation: quoteLoading 1.5s ease-in-out infinite;
 }

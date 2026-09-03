@@ -1,4 +1,13 @@
+use super::MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE;
 use super::model::{Attributed, Detected, DetectionCandidate, EvidenceId};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DetectionOutcome {
+    Missing,
+    Selected,
+    InsufficientEvidence { minimum_confidence: u8 },
+    Conflict,
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct DetectionClaim<T> {
@@ -19,10 +28,20 @@ struct CandidateState<T> {
 /// 同一候选的独立来源只提供有限加分，避免同一文件中的重复字段淹没冲突证据。
 pub(crate) fn resolve<T>(claims: Vec<DetectionClaim<T>>) -> Detected<T>
 where
-    T: Clone + Eq,
+    T: Eq,
+{
+    resolve_with_minimum_confidence(claims, 0)
+}
+
+pub(crate) fn resolve_with_minimum_confidence<T>(
+    claims: Vec<DetectionClaim<T>>,
+    minimum_confidence: u8,
+) -> Detected<T>
+where
+    T: Eq,
 {
     let candidates = rank_candidates(claims);
-    let Some(winner) = candidates.first().cloned() else {
+    let Some(winner) = candidates.first() else {
         return Detected::default();
     };
     let conflicts = candidates.get(1).is_some_and(|runner_up| {
@@ -40,17 +59,61 @@ where
         };
     }
 
+    if winner.confidence < minimum_confidence.min(100) {
+        return Detected {
+            value: None,
+            confidence: winner.confidence,
+            evidence: winner.evidence.clone(),
+            alternatives: candidates,
+        };
+    }
+
+    let mut candidates = candidates.into_iter();
+    let Some(winner) = candidates.next() else {
+        return Detected::default();
+    };
     Detected {
         value: Some(winner.value),
         confidence: winner.confidence,
         evidence: winner.evidence,
-        alternatives: candidates.into_iter().skip(1).collect(),
+        alternatives: candidates.collect(),
     }
+}
+
+pub(crate) fn resolve_server_implementation<T>(claims: Vec<DetectionClaim<T>>) -> Detected<T>
+where
+    T: Eq,
+{
+    resolve_with_minimum_confidence(claims, MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE)
+}
+
+pub(crate) fn detection_outcome<T>(detected: &Detected<T>) -> DetectionOutcome {
+    detection_outcome_with_minimum_confidence(detected, 0)
+}
+
+pub(crate) fn server_implementation_outcome<T>(detected: &Detected<T>) -> DetectionOutcome {
+    detection_outcome_with_minimum_confidence(detected, MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE)
+}
+
+fn detection_outcome_with_minimum_confidence<T>(
+    detected: &Detected<T>,
+    minimum_confidence: u8,
+) -> DetectionOutcome {
+    if detected.value.is_some() {
+        return DetectionOutcome::Selected;
+    }
+    if detected.alternatives.is_empty() {
+        return DetectionOutcome::Missing;
+    }
+    if detected.confidence < minimum_confidence || detected.alternatives.len() == 1 {
+        return DetectionOutcome::InsufficientEvidence { minimum_confidence };
+    }
+    DetectionOutcome::Conflict
 }
 
 pub(crate) fn resolve_attributed<T>(claims: Vec<DetectionClaim<T>>) -> Vec<Attributed<T>>
 where
-    T: Clone + Eq,
+    T: Eq,
 {
     rank_candidates(claims)
         .into_iter()
@@ -64,7 +127,7 @@ where
 
 fn rank_candidates<T>(claims: Vec<DetectionClaim<T>>) -> Vec<DetectionCandidate<T>>
 where
-    T: Clone + Eq,
+    T: Eq,
 {
     let mut candidates: Vec<CandidateState<T>> = Vec::new();
     for claim in claims {
@@ -132,7 +195,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve, DetectionClaim};
+    use super::{
+        DetectionClaim, DetectionOutcome, resolve, resolve_with_minimum_confidence,
+        server_implementation_outcome,
+    };
     use crate::provisioning::server_inspection::EvidenceId;
 
     fn claim(value: &str, id: u32, weight: u8, group: &str) -> DetectionClaim<String> {
@@ -169,5 +235,33 @@ mod tests {
         assert_eq!(detected.value, None);
         assert_eq!(detected.confidence, 95);
         assert_eq!(detected.alternatives.len(), 2);
+    }
+
+    #[test]
+    fn low_confidence_candidate_remains_available_without_being_selected() {
+        let detected =
+            resolve_with_minimum_confidence(vec![claim("paper", 0, 25, "file-name")], 50);
+
+        assert_eq!(detected.value, None);
+        assert_eq!(detected.confidence, 25);
+        assert_eq!(detected.evidence, vec![EvidenceId(0)]);
+        assert_eq!(detected.alternatives.len(), 1);
+        assert_eq!(detected.alternatives[0].value, "paper");
+    }
+
+    #[test]
+    fn multiple_low_confidence_candidates_remain_insufficient() {
+        let detected = resolve_with_minimum_confidence(
+            vec![claim("paper", 0, 25, "file-name"), claim("purpur", 1, 20, "weak-metadata")],
+            50,
+        );
+
+        assert_eq!(detected.value, None);
+        assert_eq!(detected.confidence, 25);
+        assert_eq!(detected.alternatives.len(), 2);
+        assert_eq!(
+            server_implementation_outcome(&detected),
+            DetectionOutcome::InsufficientEvidence { minimum_confidence: 50 }
+        );
     }
 }

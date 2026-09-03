@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from "vue";
+// keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理刷新定时器
+import { ref, onActivated, onDeactivated, computed, watch } from "vue";
 import { useServerStore } from "@stores/serverStore";
 import { useConsoleStore } from "@stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "@api/player";
@@ -34,6 +35,8 @@ const addBanReason = ref("");
 const addLoading = ref(false);
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+// 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
+let isPageVisible = true;
 
 const selectedServerId = computed(() => store.currentServerId || "");
 
@@ -59,8 +62,13 @@ function getAddLabel(): string {
   }
 }
 
-onMounted(async () => {
-  await store.refreshList();
+onActivated(async () => {
+  isPageVisible = true;
+  try {
+    await store.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   if (!store.currentServerId && store.servers.length > 0) {
     store.setCurrentServer(store.servers[0].id);
   }
@@ -70,21 +78,51 @@ onMounted(async () => {
     parseOnlinePlayers();
   }
   startRefresh();
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 
-onUnmounted(() => {
-  if (refreshTimer) clearInterval(refreshTimer);
+onDeactivated(() => {
+  stopRefresh();
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 
 function startRefresh() {
-  if (refreshTimer) clearInterval(refreshTimer);
+  stopRefresh();
   refreshTimer = setInterval(async () => {
+    if (!isPageVisible) return;
     if (selectedServerId.value) {
       await store.refreshStatus(selectedServerId.value);
       await loadAll();
       parseOnlinePlayers();
     }
   }, 5000);
+}
+
+function stopRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
+async function refreshNow() {
+  if (selectedServerId.value) {
+    await store.refreshStatus(selectedServerId.value);
+    await loadAll();
+    parseOnlinePlayers();
+  }
+}
+
+function handleVisibilityChange() {
+  const visible = document.visibilityState === "visible";
+  if (visible === isPageVisible) return;
+  isPageVisible = visible;
+  if (visible) {
+    void refreshNow();
+    startRefresh();
+  } else {
+    stopRefresh();
+  }
 }
 
 watch(
@@ -98,12 +136,25 @@ watch(
   },
 );
 
+// 加载请求序号:快速切换服务器时丢弃过期响应,避免旧数据覆盖当前服务器
+let loadSeq = 0;
+
 async function loadAll() {
   if (!serverPath.value) return;
+  const seq = ++loadSeq;
+  const sid = selectedServerId.value;
   await withLoading(async () => {
-    whitelist.value = await playerApi.getWhitelist(serverPath.value);
-    bannedPlayers.value = await playerApi.getBannedPlayers(serverPath.value);
-    ops.value = await playerApi.getOps(serverPath.value);
+    // 三个接口互不依赖,并行拉取降低总延迟
+    const [whitelistRes, bannedRes, opsRes] = await Promise.all([
+      playerApi.getWhitelist(serverPath.value),
+      playerApi.getBannedPlayers(serverPath.value),
+      playerApi.getOps(serverPath.value),
+    ]);
+    // 期间已切换服务器,丢弃这次过期结果
+    if (seq !== loadSeq || sid !== selectedServerId.value) return;
+    whitelist.value = whitelistRes;
+    bannedPlayers.value = bannedRes;
+    ops.value = opsRes;
   });
 }
 

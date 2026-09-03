@@ -33,7 +33,6 @@ const {
   sourceType,
   serverDownloadType,
   serverDownloadVersion,
-  isDownloadMode,
   runPath,
   runPathOverwriteRisk,
   coreDetecting,
@@ -70,6 +69,7 @@ const {
 const toast = useToast();
 const router = useRouter();
 let unlistenCreateViewDragDrop: UnlistenFn | null = null;
+
 const isDragging = ref(false);
 const CREATE_SERVER_DEBUG = import.meta.env.DEV;
 

@@ -48,7 +48,10 @@ const progressPercent = computed(() => {
 
 onMounted(async () => {
   unlistenProgress = await onDownloadProgress((progress) => {
-    updateStore.setDownloading(progress.percent);
+    // 事件只带 downloaded/total,按比例换算成 0-100 的进度百分比
+    updateStore.setDownloading(
+      progress.total > 0 ? Math.round((progress.downloaded / progress.total) * 100) : 0,
+    );
   });
 });
 
@@ -112,7 +115,7 @@ async function getRunningServerNames(): Promise<string[]> {
         item,
       ): item is {
         name: string;
-        status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error";
+        status: "Stopped" | "Starting" | "Running" | "Stopping" | "Error" | "Unknown";
       } => item !== null,
     )
     .filter((item) => item.status === "Running")
@@ -166,12 +169,27 @@ async function handleForceAutoUpdate() {
 
   showInstallRiskConfirm.value = false;
   try {
-    await serverApi.forceStopAll();
+    await forceStopAllServers();
   } catch (error) {
     updateStore.setInstallError(String(error));
     return;
   }
   await performInstall();
+}
+
+// 后端没有 forceStopAll,并行查出 Running 的服务器再各自强制停止
+async function forceStopAllServers(): Promise<void> {
+  const servers = await serverApi.getList();
+  const statuses = await Promise.all(servers.map((server) => serverApi.getStatus(server.id)));
+  await Promise.all(
+    servers.map(async (server, i) => {
+      if (statuses[i].status !== "Running") {
+        return;
+      }
+      const prep = await serverApi.prepareForceStop(server.id);
+      await serverApi.forceStop(server.id, prep.token);
+    }),
+  );
 }
 
 function closeInstallRiskConfirm() {

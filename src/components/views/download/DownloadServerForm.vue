@@ -10,6 +10,7 @@ interface Props {
   filename: string;
   saveDir: string;
   threadCount: string;
+  threadCountInvalid: boolean;
   loadingTypes: boolean;
   loadingVersions: boolean;
   isDownloading: boolean;
@@ -26,6 +27,7 @@ const emit = defineEmits<{
   (e: "update:saveDir", value: string): void;
   (e: "update:threadCount", value: string): void;
   (e: "pickFolder"): void;
+  (e: "checkThreadCount"): void;
 }>();
 
 function handlePickFolder() {
@@ -119,11 +121,15 @@ function handlePickFolder() {
       <div class="field">
         <label>{{ i18n.t("downloadServerView.form.threadCount") }}</label>
         <cmz-input
+          class="thread-count-input"
+          :class="{ 'thread-count-input--invalid': threadCountInvalid }"
           :model-value="threadCount"
           type="text"
           :placeholder="i18n.t('downloadServerView.form.threadCountPlaceholder')"
           :disabled="isDownloading"
+          :aria-invalid="threadCountInvalid"
           @update:modelValue="emit('update:threadCount', $event)"
+          @focusout="emit('checkThreadCount')"
         >
           <template #prefix>
             <Cpu :size="16" class="input-icon" />
@@ -177,11 +183,6 @@ function handlePickFolder() {
   font-weight: 500;
 }
 
-.loading-text {
-  font-size: 0.75rem;
-  color: var(--sl-text-tertiary);
-}
-
 .field input,
 .field select {
   width: 100%;
@@ -212,6 +213,15 @@ function handlePickFolder() {
   pointer-events: none;
 }
 
+.thread-count-input--invalid :deep(.cmz-input-container) {
+  border-color: var(--sl-error);
+}
+
+.thread-count-input--invalid :deep(.cmz-input-container:focus-within) {
+  border-color: var(--sl-error);
+  box-shadow: 0 0 0 3px var(--sl-error-bg);
+}
+
 .path-picker {
   display: flex;
   align-items: center;
@@ -220,7 +230,13 @@ function handlePickFolder() {
   border-radius: var(--sl-radius-md);
   padding: 10px 12px;
   background: var(--sl-surface);
-  transition: all 0.18s ease;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    opacity 0.18s ease;
   cursor: pointer;
 }
 

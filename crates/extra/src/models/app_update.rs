@@ -1,5 +1,6 @@
 //! 应用设置的部分更新模型。
 
+use sealantern_infra::net::proxy::ProxySettings;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{AppSettings, JavaInfo, SettingsGroup};
@@ -46,11 +47,16 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for NullablePatch<T> {
 
 /// 部分更新请求，只合并请求中明确包含的字段。
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct PartialAppSettings {
     pub close_servers_on_exit: Option<bool>,
     pub close_servers_on_update: Option<bool>,
     pub auto_accept_eula: Option<bool>,
     pub close_action: Option<String>,
+    #[serde(default, skip_serializing_if = "NullablePatch::is_unchanged")]
+    pub auto_lightweight_minutes: NullablePatch<u32>,
+
+    pub proxy: Option<ProxySettings>,
 
     pub default_max_memory: Option<u32>,
     pub default_min_memory: Option<u32>,
@@ -63,6 +69,7 @@ pub struct PartialAppSettings {
     pub console_font_family: Option<String>,
     pub console_letter_spacing: Option<i32>,
     pub max_log_lines: Option<u32>,
+    pub console_drop_empty_line: Option<bool>,
 
     pub background_image: Option<String>,
     pub background_opacity: Option<f32>,
@@ -70,6 +77,7 @@ pub struct PartialAppSettings {
     pub background_brightness: Option<f32>,
     pub background_size: Option<String>,
     pub acrylic_enabled: Option<bool>,
+    pub acrylic_blur_level: Option<String>,
     pub theme: Option<String>,
     pub color: Option<String>,
     pub font_size: Option<u32>,
@@ -113,6 +121,12 @@ impl PartialAppSettings {
         if let Some(value) = &self.close_action {
             target.close_action.clone_from(value);
         }
+        if let NullablePatch::Set(value) = self.auto_lightweight_minutes {
+            target.auto_lightweight_minutes = value;
+        }
+        if let Some(value) = &self.proxy {
+            target.proxy.clone_from(value);
+        }
         if let Some(value) = self.default_max_memory {
             target.default_max_memory = value;
         }
@@ -143,6 +157,9 @@ impl PartialAppSettings {
         if let Some(value) = self.max_log_lines {
             target.max_log_lines = value;
         }
+        if let Some(value) = self.console_drop_empty_line {
+            target.console_drop_empty_line = value;
+        }
         if let Some(value) = &self.background_image {
             target.background_image.clone_from(value);
         }
@@ -160,6 +177,9 @@ impl PartialAppSettings {
         }
         if let Some(value) = self.acrylic_enabled {
             target.acrylic_enabled = value;
+        }
+        if let Some(value) = &self.acrylic_blur_level {
+            target.acrylic_blur_level.clone_from(value);
         }
         if let Some(value) = &self.theme {
             target.theme.clone_from(value);
@@ -224,6 +244,8 @@ pub struct UpdateResult {
 
 #[cfg(test)]
 mod tests {
+    use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
+
     use super::{AppSettings, NullablePatch, PartialAppSettings};
 
     #[test]
@@ -232,15 +254,18 @@ mod tests {
             serde_json::from_str("{}").expect("empty partial settings should deserialize");
         assert_eq!(missing.window_x, NullablePatch::Unchanged);
         assert_eq!(missing.locales_base_url, NullablePatch::Unchanged);
+        assert_eq!(missing.auto_lightweight_minutes, NullablePatch::Unchanged);
 
-        let clear: PartialAppSettings =
-            serde_json::from_str(r#"{"window_x":null,"locales_base_url":null}"#)
-                .expect("nullable fields should accept null");
+        let clear: PartialAppSettings = serde_json::from_str(
+            r#"{"window_x":null,"locales_base_url":null,"auto_lightweight_minutes":null}"#,
+        )
+        .expect("nullable fields should accept null");
         assert_eq!(clear.window_x, NullablePatch::Set(None));
         assert_eq!(clear.locales_base_url, NullablePatch::Set(None));
+        assert_eq!(clear.auto_lightweight_minutes, NullablePatch::Set(None));
 
         let set: PartialAppSettings = serde_json::from_str(
-            r#"{"window_x":120,"locales_base_url":"https://example.invalid/locales"}"#,
+            r#"{"window_x":120,"locales_base_url":"https://example.invalid/locales","auto_lightweight_minutes":3}"#,
         )
         .expect("nullable fields should accept values");
         assert_eq!(set.window_x, NullablePatch::Set(Some(120)));
@@ -248,6 +273,7 @@ mod tests {
             set.locales_base_url,
             NullablePatch::Set(Some("https://example.invalid/locales".to_string()))
         );
+        assert_eq!(set.auto_lightweight_minutes, NullablePatch::Set(Some(3)));
     }
 
     #[test]
@@ -255,16 +281,19 @@ mod tests {
         let mut settings = AppSettings {
             window_x: Some(120),
             locales_base_url: Some("https://example.invalid/locales".to_string()),
+            auto_lightweight_minutes: Some(3),
             ..AppSettings::default()
         };
-        let partial: PartialAppSettings =
-            serde_json::from_str(r#"{"window_x":null,"locales_base_url":null}"#)
-                .expect("nullable fields should accept null");
+        let partial: PartialAppSettings = serde_json::from_str(
+            r#"{"window_x":null,"locales_base_url":null,"auto_lightweight_minutes":null}"#,
+        )
+        .expect("nullable fields should accept null");
 
         partial.merge_into(&mut settings);
 
         assert_eq!(settings.window_x, None);
         assert_eq!(settings.locales_base_url, None);
+        assert_eq!(settings.auto_lightweight_minutes, None);
     }
 
     #[test]
@@ -274,5 +303,30 @@ mod tests {
 
         assert!(value.get("window_x").is_none());
         assert!(value.get("locales_base_url").is_none());
+        assert!(value.get("auto_lightweight_minutes").is_none());
+    }
+
+    #[test]
+    fn partial_settings_can_replace_proxy_strategy() {
+        let mut settings = AppSettings::default();
+        let partial = PartialAppSettings {
+            proxy: Some(ProxySettings {
+                mode: ProxyMode::Manual {
+                    proxy_url: "http://127.0.0.1:7890".into(),
+                },
+            }),
+            ..PartialAppSettings::default()
+        };
+
+        partial.merge_into(&mut settings);
+
+        assert_eq!(
+            settings.proxy,
+            ProxySettings {
+                mode: ProxyMode::Manual {
+                    proxy_url: "http://127.0.0.1:7890".into()
+                }
+            }
+        );
     }
 }

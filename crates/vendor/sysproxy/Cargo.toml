@@ -1,0 +1,86 @@
+[package]
+name = "sysproxy"
+version = "0.5.1"
+edition.workspace = true
+authors = ["zzzgydi"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/mihomo-party-org/sysproxy-rs-opti.git"
+keywords = ["system-proxy", "proxy", "networksetup", "gsettings"]
+description = "A library for set/get system proxy. Supports Windows, macOS and linux (via gsettings)."
+
+[lib]
+crate-type = ["lib"]
+[dependencies]
+log = "0.4"
+thiserror = "2.0"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+url = "2"
+[target.'cfg(target_os = "linux")'.dependencies]
+xdg = "3.0"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+system-configuration = "0.7"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winreg = { version = "0.55", features = ["transactions"] }
+windows = { version = "0.58", features = [
+    "Win32_Networking_WinInet",
+    "Win32_NetworkManagement_Rras",
+    "Win32_Foundation",
+] }
+
+[lints.clippy]
+# Core categories - most important for code safety and correctness
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+
+# Critical safety lints - warn for now due to extensive existing usage
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "deny"
+unimplemented = "deny"
+
+# Development quality lints
+todo = "warn"
+dbg_macro = "warn"
+#print_stdout = "warn"
+#print_stderr = "warn"
+
+# Performance lints for proxy application
+clone_on_ref_ptr = "warn"
+rc_clone_in_vec_init = "warn"
+large_stack_arrays = "warn"
+large_const_arrays = "warn"
+
+# Security lints
+#integer_division = "warn"
+#lossy_float_literal = "warn"
+#default_numeric_fallback = "warn"
+
+# Mutex and async lints - strict control
+async_yields_async = "deny" # Prevents missing await in async blocks
+mutex_atomic = "deny" # Use atomics instead of Mutex<bool/int>
+mutex_integer = "deny" # Use AtomicInt instead of Mutex<int>
+rc_mutex = "deny" # Single-threaded Rc with Mutex is wrong
+unused_async = "deny" # Too many false positives in Tauri/framework code
+await_holding_lock = "deny"
+large_futures = "deny"
+future_not_send = "deny"
+
+# Common style improvements
+redundant_else = "deny" # Too many in existing code
+needless_continue = "deny" # Too many in existing code
+needless_raw_string_hashes = "deny" # Too many in existing code
+
+# Disable noisy categories for existing codebase but keep them available
+#style = { level = "allow", priority = -1 }
+#complexity = { level = "allow", priority = -1 }
+#perf = { level = "allow", priority = -1 }
+#pedantic = { level = "allow", priority = -1 }
+#nursery = { level = "allow", priority = -1 }
+#restriction = { level = "allow", priority = -1 }
+
+or_fun_call = "deny"
+cognitive_complexity = "deny"

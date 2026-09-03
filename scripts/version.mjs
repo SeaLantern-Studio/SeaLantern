@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const workspaceCargo = path.join(rootDir, "Cargo.toml");
-const EXCLUDED_VERSION_MEMBERS = new Set(["crates/vendor/java-manager"]);
+const EXCLUDED_VERSION_MEMBERS = new Set(["crates/vendor/java-manager", "crates/vendor/sysproxy"]);
 
 // ---------------------------------------------------------------------------
 // 工具函数

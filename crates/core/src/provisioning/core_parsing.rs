@@ -2,12 +2,14 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use super::server_inspection::{
-    inspect_server_artifact, Attributed, Detected, InspectionOptions, ReleaseChannel,
-    ServerEcosystem, ServerInspectionError, ServerInspectionReport,
+    Attributed, Detected, DetectionOutcome, InspectionOptions, ReleaseChannel, ServerEcosystem,
+    ServerInspectionError, ServerInspectionReport, inspect_server_artifact,
+    server_implementation_outcome,
 };
 
 /// 一个可识别的服务端核心系列。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CoreKind {
     ArclightForge,
     ArclightNeoForge,
@@ -157,8 +159,12 @@ impl CoreFileInfo {
         let fallback_kind = fallback.kind;
         let fallback_core_version = fallback.core_version;
         let fallback_minecraft_version = fallback.minecraft_version;
-        let implementation_is_ambiguous = is_ambiguous(&report.identity.implementation);
-        let kind = if has_detection_evidence(&report.identity.implementation) {
+        let implementation_outcome = server_implementation_outcome(&report.identity.implementation);
+        let implementation_is_ambiguous = implementation_outcome == DetectionOutcome::Conflict;
+        let kind = if matches!(
+            implementation_outcome,
+            DetectionOutcome::Selected | DetectionOutcome::Conflict
+        ) {
             legacy_kind_from_report(report, fallback_kind)
         } else {
             fallback_kind
@@ -188,10 +194,6 @@ impl CoreFileInfo {
 
 fn has_detection_evidence<T>(detected: &Detected<T>) -> bool {
     detected.value.is_some() || !detected.alternatives.is_empty()
-}
-
-fn is_ambiguous<T>(detected: &Detected<T>) -> bool {
-    detected.value.is_none() && !detected.alternatives.is_empty()
 }
 
 fn selected_or_fallback<T: Clone>(detected: &Detected<T>, fallback: Option<T>) -> Option<T> {
@@ -396,8 +398,8 @@ mod tests {
     use zip::write::FileOptions;
 
     use super::{
-        arclight_legacy_kind, extract_minecraft_version, inspect_core_file, inspect_core_filename,
-        CoreKind, CoreParseError,
+        CoreKind, CoreParseError, arclight_legacy_kind, extract_minecraft_version,
+        inspect_core_file, inspect_core_filename,
     };
     use crate::provisioning::server_inspection::{Attributed, ServerEcosystem};
 
@@ -478,10 +480,7 @@ mod tests {
                     "META-INF/MANIFEST.MF",
                     "Manifest-Version: 1.0\r\nMain-Class: net.minecraftforge.installer.SimpleInstaller\r\nImplementation-Version: 20.6.119\r\n\r\n",
                 ),
-                (
-                    "metadata.json",
-                    r#"{"neoforge":"20.6.119"}"#,
-                ),
+                ("metadata.json", r#"{"neoforge":"20.6.119"}"#),
             ],
         );
 

@@ -25,6 +25,7 @@ pub trait CronTaskExecutor: Send + Sync {
 
 /// Cron 任务服务错误。
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum CronTaskError {
     Storage(FsError),
     TaskNotFound(String),
@@ -212,7 +213,7 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
             let failed_run = CronTaskRun {
                 task_id: task.id.clone(),
                 server_id: task.server_id.clone(),
-                action: task.action.as_str(),
+                action: task.action.clone(),
                 succeeded: false,
                 error: None,
             };
@@ -253,7 +254,7 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
         let run = CronTaskRun {
             task_id: task.id.clone(),
             server_id: task.server_id.clone(),
-            action,
+            action: task.action.clone(),
             succeeded: execution_error.is_none(),
             error: execution_error.clone(),
         };
@@ -472,9 +473,11 @@ mod tests {
         assert_eq!(runs.len(), 1);
         assert!(runs[0].succeeded);
         assert_eq!(*calls.lock().unwrap(), ["restart:server-a"]);
-        assert!(service.tasks()[0]
-            .next_run_at
-            .is_some_and(|next| next > now));
+        assert!(
+            service.tasks()[0]
+                .next_run_at
+                .is_some_and(|next| next > now)
+        );
         assert_eq!(service.tasks()[0].id, task.id);
     }
 

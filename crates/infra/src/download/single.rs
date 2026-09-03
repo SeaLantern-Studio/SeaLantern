@@ -80,6 +80,7 @@ pub async fn stream_download(
         total_size,
         "stream download completed"
     );
+    status.mark_completed();
 
     Ok(status)
 }

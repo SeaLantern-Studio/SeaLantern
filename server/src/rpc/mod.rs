@@ -15,11 +15,12 @@ mod response;
 pub mod router;
 
 pub mod methods;
+pub mod plugin_auth;
 pub mod service;
 
 pub use access::{RpcAccess, RpcPermission};
 pub use context::{RpcContext, RpcRequest, RpcRequestId, RpcTransport};
-pub use contract::{dispatch, RpcMethod};
+pub use contract::{RpcMethod, dispatch};
 pub use error::{RpcError, RpcErrorCode, RpcResult};
 pub use lifecycle::{RpcCancellationToken, RpcDeadline};
 pub use method_name::RpcMethodName;

@@ -40,13 +40,15 @@ A lightweight Minecraft server management tool
 ## Tech Stack
 
 - **Frontend**: Vue 3 + TypeScript + Vite
-- **Backend**: Rust + Tauri 2
-- **Communication**: Tauri commands via `invoke`
+- **Backend**: Rust + Tauri 2 (Desktop host) + Axum (Web host)
+- **Communication**: Tauri IPC/Event on Desktop, HTTP/WebSocket/SSE on Web, and host bridges for plugins
 - **Docker**: `itzg/minecraft-server`
 
 No Electron. No Node.js backend. No Webpack.
 
 Sea Lantern starts quickly, has a small footprint, and keeps memory usage low.
+
+The host-neutral `application` crate provides shared business orchestration. `src-tauri` and `server` are the Desktop and Web hosts, while `interface` contains only contracts genuinely shared by both. Reusable frontend business code goes through `src/api`; host-specific pages and features may evolve independently. See [Project Architecture and Code Organization](docs/architecture.md).
 
 > The interface is rendered using the operating system's native WebView.
 
@@ -61,11 +63,12 @@ Sea Lantern starts quickly, has a small footprint, and keeps memory usage low.
 
 Make sure the following tools are installed before you begin:
 
-| Dependency | Version |
-| ---------- | ------- |
-| Node.js    | 24 LTS  |
-| Rust       | stable  |
-| pnpm       | 9.15.9  |
+| Dependency      | Version |
+| --------------- | ------- |
+| Node.js         | 24 LTS  |
+| Rust            | stable  |
+| pnpm            | 9.15.9  |
+| Only (optional) | 0.4.0+  |
 
 For help setting up your development environment, see the [environment setup guide](https://docs.ideaflash.cn/en/dev/environment).
 
@@ -89,17 +92,56 @@ To preview the frontend only:
 pnpm dev
 ```
 
-To start only the HTTP/Docker backend:
+Linux developers may need to install additional system dependencies required by Tauri. See the [Tauri prerequisites for Linux](https://tauri.app/start/prerequisites/#linux) for details.
+
+The repository includes an [`Onlyfile`](Onlyfile) that provides consistent commands for common development, build, and check tasks. Install [Only](https://github.com/KercyDing/only) when needed:
 
 ```bash
-pnpm docker:dev
+cargo install only
 ```
 
-Linux developers may need to install additional system dependencies required by Tauri. See the [Tauri prerequisites for Linux](https://tauri.app/start/prerequisites/#linux) for details.
+After installation, list all available tasks from the repository root:
+
+```bash
+only
+```
+
+Common root-level commands include:
+
+| Command      | Purpose                                     |
+| ------------ | ------------------------------------------- |
+| `only dev`   | Start desktop development mode              |
+| `only build` | Build the local application                 |
+| `only check` | Run frontend and backend checks in parallel |
+| `only test`  | Run frontend and backend tests in parallel  |
+| `only ci`    | Run the complete local CI workflow          |
+| `only clean` | Clean frontend and backend outputs          |
+
+You can also run tasks for one side through its group:
+
+```bash
+# Frontend
+only front check
+only front test
+only front ci
+
+# Backend
+only back check
+only back test
+only back ci
+```
+
+`only ci` runs all frontend and backend checks and tests, using parallel execution where appropriate.
 
 ### Code Quality Checks
 
-Before submitting changes, we **recommend** running the following checks:
+Before submitting changes, we **recommend** running the complete local CI suite:
+
+```bash
+only ci
+```
+
+This runs the frontend and backend static checks along with the full test suite. If Only is not installed, run the following commands separately:
 
 <details><summary>Frontend checks</summary>
 
@@ -118,6 +160,9 @@ pnpm fmt
 
 # Check code formatting
 pnpm fmt:check
+
+# Run frontend tests
+pnpm test
 ```
 
 </details>
@@ -133,6 +178,9 @@ cargo check --all-targets --workspace
 
 # Run Clippy and treat warnings as errors
 cargo clippy --all-targets --workspace -- -D warnings
+
+# Run backend tests
+cargo test --all-targets --workspace
 ```
 
 </details>

@@ -5,4 +5,4 @@
 mod manager;
 
 pub use crate::models::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
-pub use manager::LinkManager;
+pub use manager::{LinkError, LinkManager};

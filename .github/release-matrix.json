@@ -1,0 +1,58 @@
+{
+  "include": [
+    {
+      "platform": "macos-latest",
+      "name": "macOS ARM64",
+      "args": "--target aarch64-apple-darwin",
+      "rust_target": "aarch64-apple-darwin",
+      "asset_os": "macos",
+      "asset_arch": "arm64",
+      "asset_key": "macos-arm64"
+    },
+    {
+      "platform": "macos-26-intel",
+      "name": "macOS x64",
+      "args": "--target x86_64-apple-darwin",
+      "rust_target": "x86_64-apple-darwin",
+      "asset_os": "macos",
+      "asset_arch": "x64",
+      "asset_key": "macos-x64"
+    },
+    {
+      "platform": "ubuntu-22.04",
+      "name": "Linux x64",
+      "args": "",
+      "rust_target": "",
+      "asset_os": "linux",
+      "asset_arch": "x64",
+      "asset_key": "linux-x64"
+    },
+    {
+      "platform": "ubuntu-22.04-arm",
+      "name": "Linux ARM64",
+      "args": "",
+      "rust_target": "",
+      "asset_os": "linux",
+      "asset_arch": "arm64",
+      "asset_key": "linux-arm64"
+    },
+    {
+      "platform": "windows-latest",
+      "name": "Windows x64",
+      "args": "",
+      "rust_target": "",
+      "asset_os": "windows",
+      "asset_arch": "x64",
+      "asset_key": "windows-x64"
+    },
+    {
+      "platform": "windows-11-arm",
+      "name": "Windows ARM64",
+      "args": "",
+      "rust_target": "",
+      "asset_os": "windows",
+      "asset_arch": "arm64",
+      "asset_key": "windows-arm64"
+    }
+  ]
+}

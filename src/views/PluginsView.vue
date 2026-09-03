@@ -76,6 +76,8 @@ watch(
   min-height: 0;
 }
 
+/* 竖向选项卡宽度由 app.css 全局统一 */
+
 .tab-content {
   flex: 1;
   align-self: stretch;

@@ -71,7 +71,7 @@ function getStatusClass(s: string | undefined): string {
 </script>
 
 <template>
-  <cmz-card variant="glass" hoverable class="server-card" :data-server-id="server.id">
+  <cmz-card variant="glass" class="server-card" :data-server-id="server.id">
     <div class="status-badge-container">
       <div class="status-indicator" :class="getStatusClass(status)">
         <span class="status-dot"></span>
@@ -120,7 +120,7 @@ function getStatusClass(s: string | undefined): string {
       <div class="server-meta">
         <span class="meta-tag core-type">{{ server.core_type }}</span>
         <span class="meta-tag">{{ i18n.t("home.port") }} {{ server.port }}</span>
-        <span class="meta-tag" @click="handleStartupConfig">{{
+        <span class="meta-tag clickable" @click="handleStartupConfig">{{
           formatMemoryMB(server.max_memory)
         }}</span>
       </div>
@@ -183,6 +183,20 @@ function getStatusClass(s: string | undefined): string {
   position: relative;
   height: 100%;
   min-height: 200px;
+  cursor: pointer;
+  /* 所有交互过渡统一节奏,避免各部件各动各的 */
+  transition:
+    transform var(--sl-transition-normal),
+    box-shadow var(--sl-transition-normal),
+    border-color var(--sl-transition-normal),
+    background-color var(--sl-transition-normal);
+}
+
+/* 整体卡片 hover:克制上浮 + 阴影加强 + 边框高亮,不搞花里胡哨的渐变条 */
+.server-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--sl-shadow-elevated);
+  border-color: var(--sl-primary-light);
 }
 
 .status-badge-container {
@@ -235,39 +249,20 @@ function getStatusClass(s: string | undefined): string {
 .status-indicator.starting .status-dot,
 .status-indicator.stopping .status-dot {
   background: var(--sl-warning);
-  animation: pulse 2s infinite;
+  animation: statusPulse 2s ease-in-out infinite;
   /* 频繁动画元素提升到独立图层,减少重绘开销 */
   will-change: transform, opacity;
 }
 
-@keyframes pulse {
+/* 状态呼吸灯:用透明度变化代替缩放,避免脉冲浮动感 */
+@keyframes statusPulse {
   0%,
   100% {
     opacity: 1;
-    transform: scale(1);
   }
   50% {
-    opacity: 0.5;
-    transform: scale(1.2);
+    opacity: 0.45;
   }
-}
-
-.server-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--sl-primary), var(--sl-secondary));
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s ease;
-  z-index: 1;
-}
-
-.server-card:hover::before {
-  transform: scaleX(1);
 }
 
 .server-card-header {
@@ -299,7 +294,7 @@ function getStatusClass(s: string | undefined): string {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--sl-transition-normal);
   padding: 4px;
   border-radius: var(--sl-radius-sm);
   flex-shrink: 0;
@@ -333,7 +328,7 @@ function getStatusClass(s: string | undefined): string {
   font-size: 1rem;
   font-weight: 600;
   outline: none;
-  transition: all 0.2s ease;
+  transition: var(--sl-transition-normal);
 }
 
 .server-name-input:focus {
@@ -355,7 +350,7 @@ function getStatusClass(s: string | undefined): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: var(--sl-transition-normal);
 }
 
 .inline-edit-btn.save {
@@ -400,11 +395,13 @@ function getStatusClass(s: string | undefined): string {
   border-radius: var(--sl-radius-full);
   white-space: nowrap;
   border: 1px solid var(--sl-border);
-  transition: all 0.2s ease;
+  transition: var(--sl-transition-normal);
 }
 
+/* 带点击事件的 meta-tag(如内存配置入口)给个指针提示 */
 .meta-tag[onclick],
-.meta-tag:hover {
+.meta-tag[style*="cursor"],
+.meta-tag.clickable {
   cursor: pointer;
 }
 
@@ -420,9 +417,10 @@ function getStatusClass(s: string | undefined): string {
   font-weight: 500;
 }
 
+/* core-type hover 保持克制,不突然跳成全主色实心块 */
 .meta-tag.core-type:hover {
-  background: var(--sl-primary);
-  color: white;
+  background: color-mix(in srgb, var(--sl-primary-bg) 65%, var(--sl-primary) 35%);
+  border-color: var(--sl-primary);
 }
 
 .server-card-content {
@@ -444,7 +442,7 @@ function getStatusClass(s: string | undefined): string {
   padding: 8px var(--sl-space-sm);
   border-radius: var(--sl-radius-md);
   border: 1px solid var(--sl-border);
-  transition: all 0.2s ease;
+  transition: var(--sl-transition-normal);
   cursor: pointer;
   user-select: none;
 }
@@ -460,7 +458,7 @@ function getStatusClass(s: string | undefined): string {
 .folder-icon {
   flex-shrink: 0;
   opacity: 0.6;
-  transition: opacity 0.2s ease;
+  transition: var(--sl-transition-normal);
   color: var(--sl-text-secondary);
 }
 
@@ -491,19 +489,20 @@ function getStatusClass(s: string | undefined): string {
   align-items: center;
 }
 
-.primary-actions :deep(.cmz-button) {
-  min-width: 72px;
-  border-radius: var(--sl-radius-md);
-  transition: all 0.2s ease;
-}
-
+.primary-actions :deep(.cmz-button),
 .secondary-actions :deep(.cmz-button) {
   border-radius: var(--sl-radius-md);
-  transition: all 0.2s ease;
+  /* 按钮不再自己上浮,避免和卡片上浮叠加造成分层感 */
+  transition:
+    color var(--sl-transition-normal),
+    background-color var(--sl-transition-normal),
+    border-color var(--sl-transition-normal),
+    box-shadow var(--sl-transition-normal),
+    opacity var(--sl-transition-normal);
 }
 
-.server-card-actions :deep(.cmz-button:hover) {
-  transform: translateY(-1px);
+.primary-actions :deep(.cmz-button) {
+  min-width: 72px;
 }
 
 @media (max-width: 640px) {

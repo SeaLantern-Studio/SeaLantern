@@ -1,6 +1,9 @@
 use std::io;
 use std::process::ExitStatus;
 
+use serde::Serialize;
+use serde::ser::{SerializeStruct, Serializer};
+
 use crate::process::Daemon;
 
 /// 服务器守护进程的一个时间点快照。
@@ -15,6 +18,37 @@ pub struct ServerStatus {
 pub enum ServerProcessState {
     Running,
     Exited(ExitStatus),
+}
+
+/// `ServerProcessState` 的传输表示。
+///
+/// `Exited` 携带 `std::process::ExitStatus`（不可直接序列化），这里抽取退出码：
+/// `None` 表示信号终止（无退出码），`Some(code)` 表示正常/非零退出。
+impl Serialize for ServerProcessState {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Running => {
+                let mut state = serializer.serialize_struct("ServerProcessState", 1)?;
+                state.serialize_field("state", "running")?;
+                state.end()
+            }
+            Self::Exited(exit_status) => {
+                let mut state = serializer.serialize_struct("ServerProcessState", 2)?;
+                state.serialize_field("state", "exited")?;
+                state.serialize_field("code", &exit_status.code())?;
+                state.end()
+            }
+        }
+    }
+}
+
+impl Serialize for ServerStatus {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer.serialize_struct("ServerStatus", 2)?;
+        state.serialize_field("process_id", &self.process_id)?;
+        state.serialize_field("state", &self.state)?;
+        state.end()
+    }
 }
 
 impl ServerStatus {

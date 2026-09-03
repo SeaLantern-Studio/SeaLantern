@@ -41,7 +41,7 @@ const emit = defineEmits<{
             :model-value="maxMemory"
             type="number"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:maxMemory', v);
                 emit('change');
               }
@@ -60,7 +60,7 @@ const emit = defineEmits<{
             :model-value="minMemory"
             type="number"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:minMemory', v);
                 emit('change');
               }
@@ -79,7 +79,7 @@ const emit = defineEmits<{
             :model-value="port"
             type="number"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:port', v);
                 emit('change');
               }
@@ -98,7 +98,7 @@ const emit = defineEmits<{
             :model-value="defaultJavaPath"
             :placeholder="i18n.t('settings.default_java_desc')"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:defaultJavaPath', v);
                 emit('change');
               }
@@ -123,7 +123,7 @@ const emit = defineEmits<{
             :model-value="defaultRunPath"
             :placeholder="i18n.t('settings.default_run_path_desc')"
             @update:model-value="
-              (v) => {
+              (v: string) => {
                 emit('update:defaultRunPath', v);
                 emit('change');
               }
@@ -158,7 +158,7 @@ const emit = defineEmits<{
           rows="4"
           class="sl-input-lg"
           @update:model-value="
-            (v) => {
+            (v: string) => {
               emit('update:defaultJvmArgs', v);
               emit('change');
             }

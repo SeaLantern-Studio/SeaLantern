@@ -1,21 +1,21 @@
 //! Axum HTTP 到 RPC 契约的传输适配器。
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use axum::{
-    http::{header::HeaderName, HeaderMap, HeaderValue, StatusCode},
-    response::{IntoResponse, Response},
     Json,
+    http::{HeaderMap, HeaderValue, StatusCode, header::HeaderName},
+    response::{IntoResponse, Response},
 };
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::observability;
 
 use super::{
-    dispatch, RpcAccess, RpcContext, RpcError, RpcErrorCode, RpcMethod, RpcRequest, RpcRequestId,
-    RpcResult, RpcTransport,
+    RpcAccess, RpcContext, RpcError, RpcErrorCode, RpcMethod, RpcRequest, RpcRequestId, RpcResult,
+    RpcTransport, dispatch,
 };
 
 const REQUEST_ID_HEADER: HeaderName = HeaderName::from_static("x-request-id");
@@ -34,6 +34,13 @@ const HTTP_RPC_PREFIX: &str = "/api/rpc";
 pub trait HttpRpcAccessResolver: Send + Sync + 'static {
     /// 解析当前 HTTP 请求所获授的 RPC 权限。
     fn resolve(&self, headers: &HeaderMap) -> RpcResult<RpcAccess>;
+
+    /// 认证材料缺失或无效时应返回的 HTTP 状态。
+    ///
+    /// 默认保持现有 RPC 授权拒绝语义（403）；bearer 等身份认证边界可覆盖为 401。
+    fn rejection_status(&self) -> StatusCode {
+        StatusCode::FORBIDDEN
+    }
 }
 
 /// Axum RPC 状态。
@@ -175,7 +182,14 @@ where
 
     let access = match state.access_resolver.resolve(headers) {
         Ok(access) => access,
-        Err(error) => return reject(request_id, "authorization_rejected", error),
+        Err(error) => {
+            return reject_with_status(
+                request_id,
+                "authorization_rejected",
+                error,
+                state.access_resolver.rejection_status(),
+            );
+        }
     };
 
     let value = match payload {
@@ -232,6 +246,16 @@ fn generated_request_id() -> RpcRequestId {
 }
 
 fn reject(request_id: RpcRequestId, reason: &'static str, error: RpcError) -> Response {
+    let status = status_for(error.code());
+    reject_with_status(request_id, reason, error, status)
+}
+
+fn reject_with_status(
+    request_id: RpcRequestId,
+    reason: &'static str,
+    error: RpcError,
+    status: StatusCode,
+) -> Response {
     let error = error.with_request_id(request_id);
     observability::rpc_http_request_rejected(
         error
@@ -241,7 +265,11 @@ fn reject(request_id: RpcRequestId, reason: &'static str, error: RpcError) -> Re
         reason,
         error.code().as_str(),
     );
-    rpc_error_response(error)
+    let request_id = error
+        .request_id()
+        .expect("rejection must have a request ID")
+        .clone();
+    respond(status, &request_id, error)
 }
 
 fn rpc_error_response(error: RpcError) -> Response {
@@ -281,19 +309,19 @@ mod tests {
     use std::sync::Mutex;
 
     use axum::{
-        body::{to_bytes, Body},
-        http::Request,
         Router,
+        body::{Body, to_bytes},
+        http::Request,
     };
     use serde_json::Value;
     use tower::ServiceExt;
 
     use super::*;
     use crate::rpc::{
-        methods::server::SendConsoleCommand,
-        methods::PERMISSION_SERVER_CONSOLE_SEND,
-        service::{ConsoleCommandService, ConsoleCommandServiceError},
         RpcMethodName, RpcPermission,
+        methods::PERMISSION_SERVER_CONSOLE_SEND,
+        methods::server::SendConsoleCommand,
+        service::{ConsoleCommandService, ConsoleCommandServiceError},
     };
 
     struct RecordingConsoleService {
@@ -388,11 +416,12 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "permission_denied");
         assert_eq!(body["requestId"], "http-test-42");
-        assert!(svc
-            .commands
-            .lock()
-            .expect("recording service lock")
-            .is_empty());
+        assert!(
+            svc.commands
+                .lock()
+                .expect("recording service lock")
+                .is_empty()
+        );
     }
 
     #[tokio::test]
@@ -416,11 +445,12 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "invalid_argument");
         assert_eq!(body["requestId"], "http-test-42");
-        assert!(svc
-            .commands
-            .lock()
-            .expect("recording service lock")
-            .is_empty());
+        assert!(
+            svc.commands
+                .lock()
+                .expect("recording service lock")
+                .is_empty()
+        );
     }
 
     #[test]
@@ -473,11 +503,12 @@ mod tests {
         let body: Value = serde_json::from_slice(&body).expect("parse response JSON");
         assert_eq!(body["code"], "permission_denied");
         assert_eq!(body["requestId"], "http-test-42");
-        assert!(svc
-            .commands
-            .lock()
-            .expect("recording service lock")
-            .is_empty());
+        assert!(
+            svc.commands
+                .lock()
+                .expect("recording service lock")
+                .is_empty()
+        );
     }
 
     #[tokio::test]

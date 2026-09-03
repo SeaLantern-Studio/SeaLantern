@@ -4,7 +4,7 @@ use java_manager::{SearchError, SearchReport};
 
 use super::error::JavaDiscoveryError;
 use super::index::{
-    from_vendor_search_index, to_vendor_search_index, JavaSearchIndex, JAVA_SEARCH_INDEX_VERSION,
+    JAVA_SEARCH_INDEX_VERSION, JavaSearchIndex, from_vendor_search_index, to_vendor_search_index,
 };
 use super::mapping::push_unique;
 use crate::models::JavaInfo;
@@ -32,7 +32,10 @@ impl JavaSearchSource {
 }
 
 /// Java 自动检测结果；成功安装和非致命错误同时保留。
-#[derive(Debug, Default)]
+///
+/// 可序列化导出给服务接口层，字段使用 snake_case 命名。
+#[derive(Debug, Default, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub struct JavaDetectionReport {
     pub installations: Vec<JavaInfo>,
     pub errors: Vec<JavaDiscoveryError>,

@@ -2,24 +2,15 @@
 import { onMounted, onUnmounted, computed } from "vue";
 import AppSidebar from "@components/layout/AppSidebar.vue";
 import AppHeader from "@components/layout/AppHeader.vue";
-import { settingsApi } from "@api/settings";
-import { useUiStore } from "@stores/uiStore";
 import {
   useSettingsStore,
   SETTINGS_UPDATE_EVENT,
   type SettingsUpdateEvent,
 } from "@stores/settingsStore";
-import {
-  applyTheme,
-  applyFontFamily,
-  applyFontSize,
-  applyColors,
-  applyDeveloperMode,
-  isThemeProviderActive,
-} from "@utils/theme";
+import { applyDeveloperMode } from "@utils/theme";
+import { enqueueAppearanceApply } from "@utils/appearance";
 import { isMacOSPlatform } from "@utils/platform";
 
-const ui = useUiStore();
 const settingsStore = useSettingsStore();
 
 const backgroundImage = computed(() => settingsStore.backgroundImage);
@@ -30,47 +21,11 @@ const backgroundSize = computed(() => settingsStore.backgroundSize);
 const isMacOS = isMacOSPlatform();
 
 let systemThemeQuery: MediaQueryList | null = null;
-let lastNativeAcrylic: boolean | null = null;
-let appearanceApplyQueue: Promise<void> = Promise.resolve();
-
-function applyAcrylicEffect(enabled: boolean): void {
-  document.documentElement.setAttribute("data-acrylic", enabled ? "on" : "off");
-}
 
 function handleSystemThemeChange(): void {
-  const settings = settingsStore.settings;
-  if (settings.theme === "auto") {
-    applyTheme("auto");
-    if (!isThemeProviderActive()) {
-      applyColors(settings);
-    }
+  if (settingsStore.settings.theme === "auto") {
+    void enqueueAppearanceApply(settingsStore.settings);
   }
-}
-
-async function applyAppearanceSettings(): Promise<void> {
-  const settings = settingsStore.settings;
-
-  applyTheme(settings.theme || "auto");
-  applyFontSize(settings.font_size || 14);
-  applyFontFamily(settings.font_family || "");
-
-  applyAcrylicEffect(settings.acrylic_enabled);
-  if (lastNativeAcrylic !== settings.acrylic_enabled) {
-    lastNativeAcrylic = settings.acrylic_enabled;
-    await settingsApi.applyAcrylic(settings.acrylic_enabled);
-  }
-
-  if (!isThemeProviderActive()) {
-    applyColors(settings);
-  }
-}
-
-function enqueueAppearanceApply(): Promise<void> {
-  appearanceApplyQueue = appearanceApplyQueue.then(
-    () => applyAppearanceSettings(),
-    () => applyAppearanceSettings(),
-  );
-  return appearanceApplyQueue;
 }
 
 function applyDeveloperSettings(): void {
@@ -78,7 +33,7 @@ function applyDeveloperSettings(): void {
 }
 
 async function applyAllSettings(): Promise<void> {
-  await enqueueAppearanceApply();
+  await enqueueAppearanceApply(settingsStore.settings);
   applyDeveloperSettings();
 }
 
@@ -87,7 +42,7 @@ function handleSettingsUpdateEvent(e: CustomEvent<SettingsUpdateEvent>): void {
   settingsStore.settings = settings;
 
   if (changedGroups.includes("Appearance")) {
-    void enqueueAppearanceApply();
+    void enqueueAppearanceApply(settings);
   }
   if (changedGroups.includes("Developer")) {
     applyDeveloperSettings();
@@ -112,14 +67,18 @@ onUnmounted(() => {
 
 const backgroundStyle = computed(() => {
   if (!backgroundImage.value) return {};
-  return {
+  const style: Record<string, string | number> = {
     backgroundImage: `url(${backgroundImage.value})`,
     backgroundSize: backgroundSize.value,
     backgroundPosition: "center",
     backgroundRepeat: "no-repeat",
     opacity: backgroundOpacity.value,
-    filter: `blur(${backgroundBlur.value}px) brightness(${backgroundBrightness.value})`,
   };
+  // blur=0 且 brightness=1 时不挂 filter,避免无意义的全屏重采样层
+  if (backgroundBlur.value > 0 || backgroundBrightness.value !== 1) {
+    style.filter = `blur(${backgroundBlur.value}px) brightness(${backgroundBrightness.value})`;
+  }
+  return style;
 });
 </script>
 

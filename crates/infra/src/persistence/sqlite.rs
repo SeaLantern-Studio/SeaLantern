@@ -6,7 +6,7 @@ use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehav
 
 use crate::observability;
 
-use super::{process_lock_registry, PersistenceError, ProcessResourceLock};
+use super::{PersistenceError, ProcessResourceLock, process_lock_registry};
 
 /// 可安全传入 SQLite 参数绑定的动态值。
 pub use rusqlite::types::Value as SqlValue;
@@ -22,6 +22,28 @@ pub struct SqliteOptions {
     pub wal: bool,
     /// 提交事务时的崩溃耐久性策略。
     pub synchronous: SqliteSynchronousMode,
+    /// 数据库文件锁定的粒度和持续时间。
+    pub locking_mode: SqliteLockingMode,
+    /// WAL 自动 checkpoint 的页数阈值；`None` 表示使用 SQLite 默认值。
+    pub wal_autocheckpoint: Option<u32>,
+}
+
+/// SQLite 的数据库锁定模式。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SqliteLockingMode {
+    /// 每次事务结束时释放文件锁，允许其他进程并发访问。
+    Normal,
+    /// 打开连接期间持有文件锁，读写吞吐更高但排斥其他进程。
+    Exclusive,
+}
+
+impl SqliteLockingMode {
+    const fn as_pragma(self) -> &'static str {
+        match self {
+            Self::Normal => "NORMAL",
+            Self::Exclusive => "EXCLUSIVE",
+        }
+    }
 }
 
 /// SQLite 的同步写入策略。
@@ -51,6 +73,8 @@ impl Default for SqliteOptions {
             foreign_keys: true,
             wal: true,
             synchronous: SqliteSynchronousMode::Full,
+            locking_mode: SqliteLockingMode::Normal,
+            wal_autocheckpoint: None,
         }
     }
 }
@@ -109,6 +133,34 @@ impl SqliteDatabase {
         .await;
         report_operation_error("open", &operation_path, &result);
         result
+    }
+
+    /// 使用默认选项打开或创建数据库，并执行初始化 SQL。
+    ///
+    /// 数据库文件不存在时会在目标路径创建（含父目录）；`schema_sql` 在
+    /// 每次打开时执行，调用方应保证其幂等（如使用 `CREATE TABLE IF NOT EXISTS`）。
+    pub async fn open_with_schema(
+        path: impl Into<PathBuf>,
+        schema_sql: impl Into<String>,
+    ) -> Result<Self, PersistenceError> {
+        Self::open_with_options_and_schema(path, SqliteOptions::default(), schema_sql).await
+    }
+
+    /// 使用显式选项打开或创建数据库，并执行初始化 SQL。
+    ///
+    /// 在 [`Self::open_with_options`] 的基础上执行建表等初始化语句：
+    /// 数据库文件不存在时会在目标路径创建（含父目录），随后按选项配置
+    /// pragma 并执行 `schema_sql`。`schema_sql` 在每次打开时执行，
+    /// 调用方应保证其幂等（如使用 `CREATE TABLE IF NOT EXISTS`）。
+    pub async fn open_with_options_and_schema(
+        path: impl Into<PathBuf>,
+        options: SqliteOptions,
+        schema_sql: impl Into<String>,
+    ) -> Result<Self, PersistenceError> {
+        let database = Self::open_with_options(path, options).await?;
+        let schema_sql = schema_sql.into();
+        database.execute_batch(schema_sql).await?;
+        Ok(database)
     }
 
     /// 返回数据库文件路径。
@@ -274,6 +326,96 @@ impl SqliteDatabase {
         result
     }
 
+    /// 执行参数化写入并返回最后插入的行 ID。
+    ///
+    /// 适用于 `INTEGER PRIMARY KEY AUTOINCREMENT` 等自增主键场景，
+    /// 调用方可据此构造单调递增的游标（如日志序号）。
+    pub async fn insert<P>(
+        &self,
+        sql: impl Into<String>,
+        params: P,
+    ) -> Result<i64, PersistenceError>
+    where
+        P: IntoIterator<Item = SqlValue> + Send + 'static,
+    {
+        let sql = sql.into();
+        let result = self
+            .with_mut_connection("insert", move |connection| {
+                connection.execute(&sql, rusqlite::params_from_iter(params))?;
+                Ok(connection.last_insert_rowid())
+            })
+            .await;
+        report_operation_error("insert", &self.path, &result);
+        result
+    }
+
+    /// 查询至多一行，通过调用方提供的闭包映射该行。
+    pub async fn query_one<T, P, F>(
+        &self,
+        sql: impl Into<String>,
+        params: P,
+        map_row: F,
+    ) -> Result<Option<T>, PersistenceError>
+    where
+        T: Send + 'static,
+        P: IntoIterator<Item = SqlValue> + Send + 'static,
+        F: FnMut(&Row<'_>) -> rusqlite::Result<T> + Send + 'static,
+    {
+        self.query_one_with_operation("query one", sql, params, map_row)
+            .await
+    }
+
+    /// 查询至多一行，并为错误追踪指定调用方的稳定操作名称。
+    pub async fn query_one_with_operation<T, P, F>(
+        &self,
+        operation: &'static str,
+        sql: impl Into<String>,
+        params: P,
+        map_row: F,
+    ) -> Result<Option<T>, PersistenceError>
+    where
+        T: Send + 'static,
+        P: IntoIterator<Item = SqlValue> + Send + 'static,
+        F: FnMut(&Row<'_>) -> rusqlite::Result<T> + Send + 'static,
+    {
+        let sql = sql.into();
+        let result = self
+            .with_connection(operation, move |connection| {
+                let mut statement = connection.prepare(&sql)?;
+                let mapped = statement
+                    .query_row(rusqlite::params_from_iter(params), map_row)
+                    .optional()?;
+                Ok(mapped)
+            })
+            .await;
+        report_operation_error(operation, &self.path, &result);
+        result
+    }
+
+    /// 检查指定表是否存在（不区分普通表与视图）。
+    pub async fn table_exists(&self, table: &str) -> Result<bool, PersistenceError> {
+        self.query_one_with_operation(
+            "check table existence",
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?1",
+            std::iter::once(SqlValue::Text(table.to_owned())),
+            |row| row.get::<_, i64>(0),
+        )
+        .await
+        .map(|found| found.is_some())
+    }
+
+    /// 检查指定表是否包含指定列（通过 `pragma_table_info` 表值函数）。
+    pub async fn column_exists(&self, table: &str, column: &str) -> Result<bool, PersistenceError> {
+        self.query_one_with_operation(
+            "check column existence",
+            "SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2",
+            [SqlValue::Text(table.to_owned()), SqlValue::Text(column.to_owned())],
+            |row| row.get::<_, i64>(0),
+        )
+        .await
+        .map(|found| found.is_some())
+    }
+
     async fn with_connection<T, F>(
         &self,
         operation: &'static str,
@@ -286,7 +428,8 @@ impl SqliteDatabase {
         let path = self.path.clone();
         let process_guard = self.coordination.read().await;
         let connection = Arc::clone(&self.connection);
-        let result = tokio::task::spawn_blocking(move || {
+
+        tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
             let connection = connection
                 .lock()
@@ -301,8 +444,7 @@ impl SqliteDatabase {
             })
         })
         .await
-        .map_err(|error| PersistenceError::Task { operation, source: error })?;
-        result
+        .map_err(|error| PersistenceError::Task { operation, source: error })?
     }
 
     async fn with_mut_connection<T, F>(
@@ -317,7 +459,8 @@ impl SqliteDatabase {
         let path = self.path.clone();
         let process_guard = self.coordination.write().await;
         let connection = Arc::clone(&self.connection);
-        let result = tokio::task::spawn_blocking(move || {
+
+        tokio::task::spawn_blocking(move || {
             let _process_guard = process_guard;
             let mut connection =
                 connection
@@ -333,8 +476,7 @@ impl SqliteDatabase {
             })
         })
         .await
-        .map_err(|error| PersistenceError::Task { operation, source: error })?;
-        result
+        .map_err(|error| PersistenceError::Task { operation, source: error })?
     }
 }
 
@@ -380,6 +522,22 @@ fn open_connection(path: &Path, options: &SqliteOptions) -> Result<Connection, P
             path: path.to_path_buf(),
             source: error,
         })?;
+    connection
+        .pragma_update(None, "locking_mode", options.locking_mode.as_pragma())
+        .map_err(|error| PersistenceError::Sqlite {
+            operation: "configure locking mode",
+            path: path.to_path_buf(),
+            source: error,
+        })?;
+    if let Some(checkpoint) = options.wal_autocheckpoint {
+        connection
+            .pragma_update(None, "wal_autocheckpoint", checkpoint)
+            .map_err(|error| PersistenceError::Sqlite {
+                operation: "configure WAL autocheckpoint",
+                path: path.to_path_buf(),
+                source: error,
+            })?;
+    }
     Ok(connection)
 }
 
@@ -429,6 +587,134 @@ mod tests {
             .unwrap();
         assert_eq!(names, ["O'Reilly"]);
         drop(database);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn insert_returns_increasing_row_ids() {
+        let path = database_path("sqlite-insert-rowid");
+        let database = SqliteDatabase::open(&path).await.unwrap();
+        database
+            .execute_batch(
+                "CREATE TABLE records (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)",
+            )
+            .await
+            .unwrap();
+
+        let first = database
+            .insert("INSERT INTO records (name) VALUES (?1)", [SqlValue::Text("first".to_owned())])
+            .await
+            .unwrap();
+        let second = database
+            .insert("INSERT INTO records (name) VALUES (?1)", [SqlValue::Text("second".to_owned())])
+            .await
+            .unwrap();
+
+        assert!(first > 0);
+        assert!(second > first);
+        drop(database);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn query_one_returns_optional_single_row() {
+        let path = database_path("sqlite-query-one");
+        let database = SqliteDatabase::open(&path).await.unwrap();
+        database
+            .execute_batch("CREATE TABLE records (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
+            .await
+            .unwrap();
+        database
+            .execute(
+                "INSERT INTO records (id, name) VALUES (?1, ?2)",
+                [SqlValue::Integer(1), SqlValue::Text("only".to_owned())],
+            )
+            .await
+            .unwrap();
+
+        let found = database
+            .query_one("SELECT name FROM records WHERE id = ?1", [SqlValue::Integer(1)], |row| {
+                row.get::<_, String>(0)
+            })
+            .await
+            .unwrap();
+        let missing = database
+            .query_one("SELECT name FROM records WHERE id = ?1", [SqlValue::Integer(999)], |row| {
+                row.get::<_, String>(0)
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(found.as_deref(), Some("only"));
+        assert!(missing.is_none());
+        drop(database);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn detects_table_and_column_existence() {
+        let path = database_path("sqlite-schema-introspection");
+        let database = SqliteDatabase::open(&path).await.unwrap();
+        database
+            .execute_batch("CREATE TABLE records (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
+            .await
+            .unwrap();
+
+        assert!(database.table_exists("records").await.unwrap());
+        assert!(!database.table_exists("missing").await.unwrap());
+        assert!(database.column_exists("records", "name").await.unwrap());
+        assert!(!database.column_exists("records", "missing").await.unwrap());
+        assert!(!database.column_exists("missing", "id").await.unwrap());
+        drop(database);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn open_with_schema_creates_database_and_initializes_schema() {
+        let path = database_path("sqlite-open-with-schema");
+        let schema = "CREATE TABLE IF NOT EXISTS records (\
+             id INTEGER PRIMARY KEY AUTOINCREMENT,\
+             name TEXT NOT NULL\
+         )";
+        let database = SqliteDatabase::open_with_schema(&path, schema)
+            .await
+            .unwrap();
+        assert!(path.exists(), "数据库文件应在目标路径创建");
+
+        let inserted = database
+            .insert("INSERT INTO records (name) VALUES (?1)", [SqlValue::Text("first".to_owned())])
+            .await
+            .unwrap();
+        assert!(inserted > 0);
+        drop(database);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn open_with_schema_is_idempotent_across_reopens() {
+        let path = database_path("sqlite-open-with-schema-idempotent");
+        let schema = "CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY)";
+        let first = SqliteDatabase::open_with_schema(&path, schema)
+            .await
+            .unwrap();
+        first
+            .execute("INSERT INTO records (id) VALUES (?1)", [SqlValue::Integer(1)])
+            .await
+            .unwrap();
+        drop(first);
+
+        // 幂等 schema 允许重复打开且不丢数据。
+        let second = SqliteDatabase::open_with_schema(&path, schema)
+            .await
+            .unwrap();
+        let count = second
+            .query_one("SELECT COUNT(*) FROM records", std::iter::empty(), |row| {
+                row.get::<_, i64>(0)
+            })
+            .await
+            .unwrap();
+        assert_eq!(count, Some(1));
+        drop(second);
         std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
 
@@ -556,9 +842,11 @@ mod tests {
                 .execute("INSERT INTO records (id) VALUES (?1)", vec![SqlValue::Integer(2)])
                 .await
         });
-        assert!(tokio::time::timeout(Duration::from_millis(10), &mut second_write)
-            .await
-            .is_err());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(10), &mut second_write)
+                .await
+                .is_err()
+        );
         first_write.await.unwrap().unwrap();
         second_write.await.unwrap().unwrap();
 

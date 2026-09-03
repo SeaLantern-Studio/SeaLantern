@@ -1,19 +1,47 @@
 [package]
 name = "sealantern-server"
-version = "1.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 license = "GPL-3.0-only"
+
+[[bin]]
+name = "sealantern-server"
+path = "src/main.rs"
 
 [lib]
 path = "src/lib.rs"
 
 [dependencies]
 axum = "0.8"
+sealantern-application = { path = "../application" }
 sealantern-core = { path = "../crates/core" }
+sealantern-extra = { path = "../crates/extra" }
+sealantern-interface = { path = "../crates/interface" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros", "net", "signal"] }
+axum-vite = "0.3.4"
+include_dir = "0.7"
+
+[build-dependencies]
+winres = "0.1.12"
 
 [dev-dependencies]
+tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt"] }
 tower = { version = "0.5", features = ["util"] }
+
+[package.metadata.packager]
+product-name = "Sea Lantern Server"
+identifier = "com.dragonhtdev.sea-lantern-server"
+description = "Sea Lantern 服务端"
+authors = ["DragonHTDev"]
+copyright = "Copyright (c) 2026 SeaLantern Studio"
+category = "Game"
+before-packaging-command = "cargo build --release -p sealantern-server"
+icons = ["icons/server.ico", "icons/server.icns", "icons/server.png"]
+
+[package.metadata.packager.wix]
+languages = ["zh-CN"]

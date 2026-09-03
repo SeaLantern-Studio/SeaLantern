@@ -3,9 +3,8 @@
 //! 本模块只负责 API v2 插件的清单校验、Lua 脚本执行、生命周期与私有存储。
 //! 它不依赖 Tauri、前端事件或全局宿主服务。
 //!
-//! 当前仅提供 \`log\` 与 \`storage\` 权限。文件系统、网络、进程、服务器、控制台、
-//! 国际化、UI、元素和 API bridge 将在后续任务中通过显式宿主 trait 接入；在此之前，
-//! 清单请求这些能力会被拒绝，而不是静默降级。
+//! 除测试专用的序列化存储构造器外，生产能力统一经宿主 dispatcher 调用。私有存储在
+//! SQLite dispatcher adapter 完成前不会暴露直连文件 API，避免绕过会话授权和审计。
 
 mod engine;
 pub mod error;
@@ -15,5 +14,7 @@ pub mod manifest;
 
 pub use error::AppPluginError;
 pub use loader::PluginLoader;
-pub use manager::{PluginInfo, PluginManager, PluginManagerConfig, PluginState};
-pub use manifest::{PluginManifest, PluginPermission, PLUGIN_API_VERSION};
+pub use manager::{
+    AsyncPluginManager, PluginInfo, PluginManager, PluginManagerConfig, PluginState,
+};
+pub use manifest::{PLUGIN_API_VERSION, PluginCapability, PluginManifest};

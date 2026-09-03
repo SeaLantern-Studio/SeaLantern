@@ -91,8 +91,8 @@ async function loadSettings() {
     selectedFormat.value = s.defaultFormat;
     selectedCompression.value = s.compressionLevel;
     selectedContents.value = [...s.autoBackupContents];
-  } catch {
-    // 使用默认值
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to load backup settings:", e);
   }
 }
 
@@ -124,7 +124,7 @@ async function createBackup() {
 async function restoreBackup(backup: BackupItem) {
   restoringId.value = backup.id;
   try {
-    await backupApi.restore(backup.id);
+    await backupApi.restore(backup.id, backup.serverId);
     toast.success(i18n.t("backup.restore_success"));
   } catch {
     toast.error(i18n.t("backup.restore_failed"));
@@ -170,13 +170,17 @@ function toggleContent(value: BackupContentType, enabled: boolean) {
 }
 
 onMounted(async () => {
-  await serverStore.refreshList();
+  try {
+    await serverStore.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   if (!serverStore.currentServerId && serverStore.servers.length > 0) {
     serverStore.setCurrentServer(serverStore.servers[0].id);
   }
   if (serverStore.currentServerId) {
-    await loadBackups();
-    await loadSettings();
+    // 两个接口互不依赖,并行拉取
+    await Promise.all([loadBackups(), loadSettings()]);
   }
 });
 
@@ -184,8 +188,7 @@ watch(
   () => serverStore.currentServerId,
   async () => {
     if (serverStore.currentServerId) {
-      await loadBackups();
-      await loadSettings();
+      await Promise.all([loadBackups(), loadSettings()]);
     }
   },
 );
@@ -274,7 +277,7 @@ watch(
             size="sm"
             class="backup-select"
             @update:modelValue="
-              (v) => {
+              (v: string) => {
                 selectedFormat = v as BackupFormat;
                 updateSettings();
               }
@@ -292,7 +295,7 @@ watch(
             size="sm"
             class="backup-select"
             @update:modelValue="
-              (v) => {
+              (v: string) => {
                 selectedCompression = v as CompressionLevel;
                 updateSettings();
               }

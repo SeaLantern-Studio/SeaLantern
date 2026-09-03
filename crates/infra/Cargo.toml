@@ -1,7 +1,7 @@
 [package]
 name = "sealantern-infra"
-version = "1.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 license = "GPL-3.0-only"
 
 [lib]
@@ -13,16 +13,20 @@ blocking = ["reqwest/blocking"]
 
 [dependencies]
 atomicwrites = "0.4"
+bytes = "1"
 cap-std = "4"
+ipnet = "2"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 tracing = "0.1"
 tokio = { version = "1", features = [
     "fs",
     "io-util",
+    "net",
     "rt",
     "rt-multi-thread",
     "macros",
+    "net",
     "sync",
     "time",
 ] }
@@ -37,3 +41,6 @@ uuid = { version = "1", features = ["v4"] }
 zip = { version = "2.0", default-features = false, features = ["deflate"] }
 sysinfo = "0.32"
 dirs = "5"
+dirs-next = "2"
+sysproxy = { path = "../vendor/sysproxy" }
+url = "2"

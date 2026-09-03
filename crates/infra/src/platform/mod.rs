@@ -8,13 +8,19 @@ mod elevation;
 mod environment;
 mod error;
 mod locations;
+mod proxy;
 mod system;
 
 pub use certificate::{
-    load_ca_certificate_bundle, parse_ca_certificate_bundle, CaCertificateBundle,
+    CaCertificateBundle, load_ca_certificate_bundle, parse_ca_certificate_bundle,
 };
-pub use elevation::{is_elevated, request_elevation, ElevationLaunch};
+pub use elevation::{ElevationLaunch, is_elevated, request_elevation};
 pub use environment::{Environment, EnvironmentError};
 pub use error::PlatformError;
-pub use locations::{get_app_data_dir, get_or_create_app_data_dir};
-pub use system::{collect_system_info, SystemInfo};
+pub use locations::{get_app_data_dir, get_default_run_path, get_or_create_app_data_dir};
+pub use proxy::{PlatformSystemProxyProvider, SystemProxyReadError, current_system_proxy};
+pub use system::{
+    DiskUsage, NetworkUsage, ProcessUsage, ResourceSnapshot, SystemInfo, collect_disks,
+    collect_networks, collect_process_usage, collect_resource_snapshot, collect_system_info,
+    cpu_brand_name, directory_size, path_disk_capacity, process_count,
+};

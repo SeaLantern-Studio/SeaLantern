@@ -12,19 +12,31 @@
 
 use std::path::{Path, PathBuf};
 
-use sealantern_infra::fs::{read_string_limited, write_atomic, DataLimit, FileLock, FsError};
+use sealantern_infra::fs::{DataLimit, FileLock, FsError, read_string_limited, write_atomic};
 use sealantern_infra::persistence::config::ConfigFile;
+use sealantern_infra::persistence::config::UpdatePersistedError;
 use sealantern_infra::persistence::process_lock_registry;
+use sealantern_infra::platform::get_app_data_dir;
 use serde::Deserialize;
 use tokio::sync::OwnedRwLockWriteGuard;
 
+use super::SettingsError;
 use super::types::{
-    AppSettings, JavaInfo, PartialAppSettings, UpdateResult, CURRENT_CONFIG_VERSION,
+    AppSettings, CURRENT_CONFIG_VERSION, JavaInfo, PartialAppSettings, UpdateResult,
 };
+use crate::models::SettingsValidationError;
 use crate::observability;
 
 /// 配置文件读取上限：最大 10 MiB。
 const CONFIG_READ_LIMIT: DataLimit = DataLimit::new(10 * 1024 * 1024);
+
+/// SeaLantern 应用设置文件名。
+const SETTINGS_FILE_NAME: &str = "sea_lantern_settings.json";
+
+/// 解析 SeaLantern 应用设置文件的默认路径。
+fn default_settings_path() -> PathBuf {
+    get_app_data_dir().join(SETTINGS_FILE_NAME)
+}
 
 /// 旧版嵌套配置格式（v1：`{ version, preferences: {...} }`）。
 ///
@@ -61,6 +73,14 @@ pub struct SettingsManager {
 }
 
 impl SettingsManager {
+    /// 从 SeaLantern 默认配置位置加载或创建设置文件。
+    ///
+    /// 默认路径、文件名和持久化策略均由配置模块统一管理；调用方无需了解
+    /// 配置文件在不同运行环境中的具体位置。
+    pub async fn load_default() -> Result<Self, SettingsError> {
+        Self::load(default_settings_path()).await
+    }
+
     /// 加载或创建设置文件，检测版本号并执行迁移。
     ///
     /// 处理顺序：
@@ -68,7 +88,7 @@ impl SettingsManager {
     /// 2. 文件不存在 → 创建默认配置；
     /// 3. 文件损坏 → 备份隔离原文件，恢复默认配置并告警；
     /// 4. 版本落后 → 备份后分步升级。
-    pub async fn load(path: impl Into<PathBuf>) -> Result<Self, sealantern_infra::fs::FsError> {
+    pub async fn load(path: impl Into<PathBuf>) -> Result<Self, SettingsError> {
         let path = path.into();
 
         // 旧版嵌套格式检测与迁移（锁内执行，迁移前自动备份旧文件）
@@ -88,7 +108,7 @@ impl SettingsManager {
             }
             Err(e) => {
                 // 锁冲突、IO 错误等：直接传播，不能把用户配置当损坏隔离
-                return Err(e);
+                return Err(e.into());
             }
         };
 
@@ -127,7 +147,7 @@ impl SettingsManager {
     pub async fn update_java_cache(
         &mut self,
         installations: Vec<JavaInfo>,
-    ) -> Result<UpdateResult, sealantern_infra::fs::FsError> {
+    ) -> Result<UpdateResult, SettingsError> {
         let partial = PartialAppSettings {
             cached_java_list: Some(installations),
             ..PartialAppSettings::default()
@@ -137,10 +157,8 @@ impl SettingsManager {
 
     /// 全量替换设置并持久化
     /// 持久化失败时回滚内存状态
-    pub async fn update(
-        &mut self,
-        new: AppSettings,
-    ) -> Result<UpdateResult, sealantern_infra::fs::FsError> {
+    pub async fn update(&mut self, new: AppSettings) -> Result<UpdateResult, SettingsError> {
+        new.validate()?;
         let old = self.inner.get().clone();
         let changed_groups = old.changed_groups(&new);
         self.inner.set(new);
@@ -155,45 +173,55 @@ impl SettingsManager {
             Err(e) => {
                 self.inner.set(old);
                 observability::config_settings_persist_failed(&self.path, "update", &e);
-                Err(e)
+                Err(e.into())
             }
         }
     }
 
-    /// 部分更新（只传需要改的字段）
-    /// 持久化失败时回滚内存状态
+    /// 部分更新（只传需要改的字段）。
+    ///
+    /// 在单个持久化锁内重新加载磁盘最新值、合并请求并按需写回，避免多个
+    /// 管理器基于过期内存快照覆盖彼此修改。成功后同步内存快照；失败时内存
+    /// 保持调用前状态。
     pub async fn update_partial(
         &mut self,
         partial: PartialAppSettings,
-    ) -> Result<UpdateResult, sealantern_infra::fs::FsError> {
-        let old = self.inner.get().clone();
-        self.inner.update(|s| partial.merge_into(s));
-        let changed_groups = old.changed_groups(self.inner.get());
-        if changed_groups.is_empty() {
-            return Ok(UpdateResult {
-                settings: self.inner.get().clone(),
-                changed_groups,
-            });
-        }
-        match self.inner.save(false).await {
-            Ok(()) => {
-                observability::config_settings_partial_updated(&self.path, &changed_groups);
-                Ok(UpdateResult {
-                    settings: self.inner.get().clone(),
-                    changed_groups,
-                })
+    ) -> Result<UpdateResult, SettingsError> {
+        let mut changed_groups = Vec::new();
+        let updated: Result<_, UpdatePersistedError<SettingsValidationError>> =
+            ConfigFile::try_update_persisted_if_changed(
+                &self.path,
+                AppSettings::default(),
+                false,
+                |settings| {
+                    let previous = settings.clone();
+                    partial.merge_into(settings);
+                    settings.validate()?;
+                    changed_groups = previous.changed_groups(settings);
+                    Ok::<bool, SettingsValidationError>(!changed_groups.is_empty())
+                },
+            )
+            .await;
+
+        match updated {
+            Ok(settings) => {
+                self.inner.set(settings.clone());
+                if !changed_groups.is_empty() {
+                    observability::config_settings_partial_updated(&self.path, &changed_groups);
+                }
+                Ok(UpdateResult { settings, changed_groups })
             }
-            Err(e) => {
-                self.inner.set(old);
-                observability::config_settings_persist_failed(&self.path, "update_partial", &e);
-                Err(e)
+            Err(UpdatePersistedError::Storage(error)) => {
+                observability::config_settings_persist_failed(&self.path, "update_partial", &error);
+                Err(error.into())
             }
+            Err(UpdatePersistedError::Update(error)) => Err(error.into()),
         }
     }
 
     /// 重置为默认设置
     /// 持久化失败时回滚内存状态，与 `update`/`update_partial` 语义一致
-    pub async fn reset(&mut self) -> Result<AppSettings, sealantern_infra::fs::FsError> {
+    pub async fn reset(&mut self) -> Result<AppSettings, SettingsError> {
         let old = self.inner.get().clone();
         let default = AppSettings::default();
         self.inner.set(default.clone());
@@ -205,38 +233,29 @@ impl SettingsManager {
             Err(e) => {
                 self.inner.set(old);
                 observability::config_settings_persist_failed(&self.path, "reset", &e);
-                Err(e)
+                Err(e.into())
             }
         }
     }
 
     /// 导出设置为 JSON 字符串
-    pub fn export_json(&self) -> Result<String, sealantern_infra::fs::FsError> {
-        let json = serde_json::to_string_pretty(self.inner.get()).map_err(|e| {
-            sealantern_infra::fs::FsError::Serialization {
+    pub fn export_json(&self) -> Result<String, SettingsError> {
+        let json = serde_json::to_string_pretty(self.inner.get())
+            .map_err(|e| sealantern_infra::fs::FsError::Serialization {
                 format: "json",
                 operation: "serialize settings",
                 path: self.path.clone(),
                 message: e.to_string(),
-            }
-        })?;
+            })
+            .map_err(SettingsError::from)?;
         observability::config_settings_exported(&self.path);
         Ok(json)
     }
 
     /// 从 JSON 字符串导入设置
-    pub async fn import_json(
-        &mut self,
-        json: &str,
-    ) -> Result<UpdateResult, sealantern_infra::fs::FsError> {
-        let imported: AppSettings = serde_json::from_str(json).map_err(|e| {
-            sealantern_infra::fs::FsError::Serialization {
-                format: "json",
-                operation: "deserialize settings",
-                path: self.path.clone(),
-                message: e.to_string(),
-            }
-        })?;
+    pub async fn import_json(&mut self, json: &str) -> Result<UpdateResult, SettingsError> {
+        let imported: AppSettings = serde_json::from_str(json)
+            .map_err(|error| SettingsError::invalid_input("json", error.to_string()))?;
         let result = self.update(imported).await?;
         observability::config_settings_imported(&self.path, &result.changed_groups);
         Ok(result)
@@ -430,6 +449,9 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
     while version < CURRENT_CONFIG_VERSION {
         // v0 → v1：扁平结构首次引入，此前旧版数据由 legacy 迁移处理。
         // v1 → v2：Java 缓存新增置信度字段，缺失值由 serde 默认补齐。
+        // v2 → v3：新增全局代理设置，缺失值由 serde 默认补为 Adaptive。
+        // v3 → v4：服务器日志是否丢弃空行的配置。
+        // v4 → v5：新增自动进入轻量模式的延时配置，缺失值默认关闭。
         version += 1;
     }
     settings.config_version = CURRENT_CONFIG_VERSION;
@@ -437,8 +459,23 @@ fn upgrade_settings(settings: &mut AppSettings, from_version: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::SettingsManager;
+    use super::{SETTINGS_FILE_NAME, SettingsManager, default_settings_path};
     use crate::config::{AppSettings, JavaInfo, PartialAppSettings};
+    use crate::models::CURRENT_CONFIG_VERSION;
+    use sealantern_infra::fs::{FileLock, FsError};
+    use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
+
+    use super::SettingsError;
+
+    #[test]
+    fn default_path_uses_owned_settings_file_name() {
+        assert_eq!(
+            default_settings_path()
+                .file_name()
+                .and_then(|name| name.to_str()),
+            Some(SETTINGS_FILE_NAME)
+        );
+    }
 
     #[tokio::test]
     async fn empty_partial_update_does_not_rewrite_settings() {
@@ -489,5 +526,227 @@ mod tests {
             .await
             .expect("persisted settings should reload");
         assert_eq!(reloaded.get().cached_java_list[0].confidence, 87);
+    }
+
+    #[tokio::test]
+    async fn partial_updates_merge_with_the_latest_persisted_settings() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut first = SettingsManager::load(&path)
+            .await
+            .expect("first settings manager should load");
+        let mut second = SettingsManager::load(&path)
+            .await
+            .expect("second settings manager should load");
+
+        first
+            .update_partial(PartialAppSettings {
+                theme: Some("dark".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("first partial update should persist");
+
+        let second_result = second
+            .update_partial(PartialAppSettings {
+                default_port: Some(25566),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("second partial update should merge with persisted state");
+
+        assert_eq!(second_result.settings.theme, "dark");
+        assert_eq!(second_result.settings.default_port, 25566);
+        assert_eq!(second.get().theme, "dark");
+        assert_eq!(second.get().default_port, 25566);
+
+        let reloaded = SettingsManager::load(&path)
+            .await
+            .expect("merged settings should reload");
+        assert_eq!(reloaded.get().theme, "dark");
+        assert_eq!(reloaded.get().default_port, 25566);
+    }
+
+    #[tokio::test]
+    async fn partial_updates_keep_last_writer_semantics_for_the_same_field() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut first = SettingsManager::load(&path)
+            .await
+            .expect("first settings manager should load");
+        let mut second = SettingsManager::load(&path)
+            .await
+            .expect("second settings manager should load");
+
+        first
+            .update_partial(PartialAppSettings {
+                theme: Some("dark".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("first theme update should persist");
+        second
+            .update_partial(PartialAppSettings {
+                theme: Some("light".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("second theme update should persist");
+
+        let reloaded = SettingsManager::load(&path)
+            .await
+            .expect("latest settings should reload");
+        assert_eq!(reloaded.get().theme, "light");
+    }
+
+    #[tokio::test]
+    async fn failed_partial_update_keeps_memory_and_disk_unchanged() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings manager should load");
+        let before = tokio::fs::read_to_string(&path)
+            .await
+            .expect("settings fixture should be readable");
+        let file_lock = FileLock::try_acquire(&path).expect("test should acquire settings lock");
+
+        let result = manager
+            .update_partial(PartialAppSettings {
+                theme: Some("dark".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(SettingsError::Storage { source: FsError::AlreadyLocked(_) })
+        ));
+        assert_eq!(manager.get().theme, "auto");
+        assert_eq!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("settings should remain readable"),
+            before
+        );
+        drop(file_lock);
+    }
+
+    #[tokio::test]
+    async fn invalid_full_update_keeps_memory_and_disk_unchanged() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings manager should load");
+        let before = tokio::fs::read_to_string(&path)
+            .await
+            .expect("settings fixture should be readable");
+        let mut invalid = manager.get().clone();
+        invalid.default_min_memory = invalid.default_max_memory + 1;
+
+        let result = manager.update(invalid).await;
+
+        assert!(matches!(
+            result,
+            Err(SettingsError::InvalidInput { field: "default_min_memory", .. })
+        ));
+        assert_eq!(manager.get().default_min_memory, 512);
+        assert_eq!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("settings should remain readable"),
+            before
+        );
+    }
+
+    #[tokio::test]
+    async fn invalid_partial_update_keeps_memory_and_disk_unchanged() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings manager should load");
+        let before = tokio::fs::read_to_string(&path)
+            .await
+            .expect("settings fixture should be readable");
+
+        let result = manager
+            .update_partial(PartialAppSettings {
+                default_port: Some(0),
+                ..PartialAppSettings::default()
+            })
+            .await;
+
+        assert!(matches!(result, Err(SettingsError::InvalidInput { field: "default_port", .. })));
+        assert_eq!(manager.get().default_port, 25565);
+        assert_eq!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("settings should remain readable"),
+            before
+        );
+    }
+
+    #[tokio::test]
+    async fn invalid_import_is_classified_without_mutating_settings() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings manager should load");
+        let before = tokio::fs::read_to_string(&path)
+            .await
+            .expect("settings fixture should be readable");
+
+        let malformed = manager.import_json("not-json").await;
+        assert!(matches!(malformed, Err(SettingsError::InvalidInput { field: "json", .. })));
+
+        let invalid = manager.import_json(r#"{"default_port":0}"#).await;
+        assert!(matches!(
+            invalid,
+            Err(SettingsError::InvalidInput { field: "default_port", .. })
+        ));
+        assert_eq!(manager.get().default_port, 25565);
+        assert_eq!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("settings should remain readable"),
+            before
+        );
+    }
+
+    #[tokio::test]
+    async fn version_two_settings_upgrade_with_adaptive_proxy() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut version_two = serde_json::to_value(AppSettings::default())
+            .expect("settings fixture should serialize");
+        version_two["config_version"] = 2.into();
+        version_two
+            .as_object_mut()
+            .expect("settings fixture should be an object")
+            .remove("proxy");
+        tokio::fs::write(
+            &path,
+            serde_json::to_vec_pretty(&version_two).expect("settings fixture should encode"),
+        )
+        .await
+        .expect("version two fixture should be written");
+
+        let manager = SettingsManager::load(&path)
+            .await
+            .expect("version two settings should upgrade");
+
+        assert_eq!(manager.get().config_version, CURRENT_CONFIG_VERSION);
+        assert_eq!(manager.get().proxy, ProxySettings::default());
+        let persisted: AppSettings = serde_json::from_slice(
+            &tokio::fs::read(&path)
+                .await
+                .expect("upgraded settings should be readable"),
+        )
+        .expect("upgraded settings should decode");
+        assert_eq!(persisted.config_version, CURRENT_CONFIG_VERSION);
+        assert_eq!(persisted.proxy.mode, ProxyMode::Adaptive);
     }
 }

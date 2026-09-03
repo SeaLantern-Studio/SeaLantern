@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 /// 主机检查运行目录后传入 core 的目录状态。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RunDirectoryState {
     Missing,
     EmptyDirectory,
@@ -17,6 +18,12 @@ pub fn resolve_run_directory(
     state: RunDirectoryState,
 ) -> Result<PathBuf, RunDirectoryError> {
     let requested = requested.into();
+    tracing::debug!(
+        target: "sealantern.core.provisioning.run_directory",
+        path = %requested.display(),
+        state = ?state,
+        "resolving modpack run directory"
+    );
     if requested.as_os_str().is_empty() {
         return Err(RunDirectoryError::Empty);
     }
@@ -57,7 +64,7 @@ impl std::error::Error for RunDirectoryError {}
 mod tests {
     use std::path::PathBuf;
 
-    use super::{resolve_run_directory, RunDirectoryError, RunDirectoryState};
+    use super::{RunDirectoryError, RunDirectoryState, resolve_run_directory};
 
     #[test]
     fn explicit_missing_directory_is_preserved_without_appending_a_name() {

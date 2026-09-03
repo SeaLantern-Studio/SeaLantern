@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, type Component } from "vue";
 import SLMenuBase from "./SLMenuBase.vue";
 import { useContextMenuStore, type ContextMenuItem } from "@stores/contextMenuStore";
 
@@ -46,9 +46,10 @@ const menuItems = computed(() => {
   }));
 });
 
-function handleItemClick(item: { id: string; label: string; icon?: string }) {
+// select 事件回传的是 SLMenuBase 的 MenuItem,id 可能是 number,用 String 归一化后再匹配
+function handleItemClick(item: { id: string | number; label: string; icon?: Component | string }) {
   const originalItem = contextMenuStore.items.find(
-    (i: ContextMenuItem) => `${i.pluginId}-${i.id}` === item.id,
+    (i: ContextMenuItem) => `${i.pluginId}-${i.id}` === String(item.id),
   );
   if (originalItem) {
     contextMenuStore.handleItemClick(originalItem);

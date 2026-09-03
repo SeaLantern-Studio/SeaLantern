@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useUiStore } from "@stores/uiStore";
 import { useServerStore } from "@stores/serverStore";
 import { usePluginStore } from "@stores/pluginStore";
+import { useSettingsStore } from "@stores/settingsStore";
 import { i18n } from "@language";
 import { useElasticLogo } from "@composables/useElasticLogo";
 import {
@@ -25,6 +25,7 @@ import {
   DownloadIcon,
   Archive,
   BookOpen,
+  Beaker,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
@@ -49,6 +50,7 @@ const iconMap: Record<string, LucideIcon> = {
   download: DownloadIcon,
   archive: Archive,
   book: BookOpen,
+  beaker: Beaker,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -57,9 +59,9 @@ function getNavIcon(name: string): LucideIcon {
 
 const router = useRouter();
 const route = useRoute();
-const ui = useUiStore();
 const serverStore = useServerStore();
 const pluginStore = usePluginStore();
+const settingsStore = useSettingsStore();
 const navIndicator = ref<HTMLElement | null>(null);
 const isMacOS = isMacOSPlatform();
 
@@ -152,14 +154,6 @@ const staticNavItems: NavItem[] = [
     group: "server",
   },
   {
-    name: "paint",
-    path: "/paint",
-    icon: "paint",
-    labelKey: "common.personalize",
-    label: i18n.t("common.personalize"),
-    group: "system",
-  },
-  {
     name: "plugins",
     path: "/plugins",
     icon: "blocks",
@@ -220,7 +214,7 @@ function sidebarItemToNavItem(item: import("@type/plugin").SidebarItem): NavItem
 }
 
 const navItems = computed<NavItem[]>(() => {
-  // 顺序：main(4项) → server组 → 插件注册项 → system组(个性化、插件管理、设置)
+  // 顺序：main(4项) → server组 → 插件注册项 → system组(插件管理、设置)
   const result: NavItem[] = [];
 
   // 1. main 组：首页、创建服务器、下载、联机
@@ -254,9 +248,21 @@ const navItems = computed<NavItem[]>(() => {
   const pluginRegisteredItems = [...unpositioned, ...defaultItems, ...remainingPluginItems];
   result.push(...pluginRegisteredItems);
 
-  // 4. system 组：个性化、插件管理、设置
+  // 4. system 组：插件管理、设置
   for (const item of staticNavItems) {
     if (item.group === "system") result.push(item);
+  }
+
+  // 5. 开发者模式：仅当设置开启时展示测试工具入口
+  if (settingsStore.settings.developer_mode) {
+    result.push({
+      name: "dev-test",
+      path: "/dev-test",
+      icon: "beaker",
+      labelKey: "common.dev_test",
+      label: i18n.t("common.dev_test"),
+      group: "dev",
+    });
   }
 
   // 处理有 after 定位的插件项
@@ -317,7 +323,11 @@ watch(
 );
 
 onMounted(async () => {
-  await serverStore.refreshList();
+  try {
+    await serverStore.refreshList();
+  } catch (e) {
+    console.warn("Failed to load servers:", e);
+  }
   updateNavIndicator();
 });
 

@@ -7,6 +7,9 @@
   }
 }
 
+/* 入场动画终点统一用 transform: none 而非 translateY(0) 等恒等矩阵
+   Chromium 中带 transform 的祖先会形成渲染表面,截断后代 backdrop-filter 采样,
+   导致磨玻璃卡片/文档块在动画填充后仍永久失效 */
 @keyframes sl-fade-in-up {
   from {
     opacity: 0;
@@ -14,7 +17,7 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -25,7 +28,7 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -36,7 +39,7 @@
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: none;
   }
 }
 
@@ -45,7 +48,7 @@
     transform: translateX(-100%);
   }
   to {
-    transform: translateX(0);
+    transform: none;
   }
 }
 
@@ -54,7 +57,7 @@
     transform: translateX(100%);
   }
   to {
-    transform: translateX(0);
+    transform: none;
   }
 }
 
@@ -77,7 +80,7 @@
   }
 }
 
-/* 交错进入动画：子元素逐个滑入 */
+/* 交错进入动画：子元素逐个滑入,终点 transform:none 避免截断后代磨玻璃 */
 @keyframes sl-stagger-item {
   from {
     opacity: 0;
@@ -85,7 +88,7 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -207,7 +210,9 @@
 /* 滑入滑出过渡（上下） */
 .sl-slide-up-enter-active,
 .sl-slide-up-leave-active {
-  transition: all var(--sl-transition-normal);
+  transition:
+    opacity,
+    transform var(--sl-transition-normal);
 }
 
 .sl-slide-up-enter-from,
@@ -219,7 +224,9 @@
 /* 滑入滑出过渡（缩放） */
 .sl-scale-enter-active,
 .sl-scale-leave-active {
-  transition: all var(--sl-transition-normal);
+  transition:
+    opacity,
+    transform var(--sl-transition-normal);
 }
 
 .sl-scale-enter-from,

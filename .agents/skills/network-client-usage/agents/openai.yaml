@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust 全局网络客户端与下载管理器使用规范"
+  short_description: "Rust 代码中统一使用全局客户端（global_client / ClientProvider）与下载管理器（DownloadManager）的规范"
+  default_prompt: "使用 $network-client-usage 规范来编写或审查 Rust 代码中涉及全局网络客户端、代理跟随与下载任务的部分。"

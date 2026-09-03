@@ -9,12 +9,13 @@
 
 use std::path::PathBuf;
 
+use super::error::PlatformError;
 use crate::observability;
 
 const APP_DATA_DIR_ENV: &str = "SEALANTERN_DATA_DIR";
 
 /// 标准安装的应用目录名（macOS 和 Windows MSI 安装使用）。
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 const APP_DIR_NAME: &str = "SeaLantern";
 
 /// Linux 平台的应用目录名（遵循 XDG 规范使用小写）。
@@ -22,6 +23,7 @@ const APP_DIR_NAME: &str = "SeaLantern";
 const APP_DIR_NAME_LOWERCASE: &str = "sea-lantern";
 
 /// 回退方案使用的隐藏目录名（Linux `$HOME` 回退、Windows 非 MSI 最终回退）。
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 const APP_DIR_HIDDEN: &str = ".sea-lantern";
 
 /// Docker 容器内的数据目录。
@@ -30,12 +32,12 @@ const APP_DOCKER_DATA_DIR: &str = "./data";
 /// 检查是否为 MSI 安装（程序安装在 Program Files 目录）。
 #[cfg(target_os = "windows")]
 fn is_msi_installation() -> bool {
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(parent) = exe_path.parent() {
-            let exe_str = parent.to_string_lossy().to_lowercase();
-            if exe_str.contains(r"\program files\") {
-                return true;
-            }
+    if let Ok(exe_path) = std::env::current_exe()
+        && let Some(parent) = exe_path.parent()
+    {
+        let exe_str = parent.to_string_lossy().to_lowercase();
+        if exe_str.contains(r"\program files\") {
+            return true;
         }
     }
     false
@@ -60,13 +62,12 @@ pub fn get_app_data_dir() -> PathBuf {
 
     #[cfg(target_os = "windows")]
     {
-        if is_msi_installation() {
-            if let Some(dir) = dirs::data_dir()
+        if is_msi_installation()
+            && let Some(dir) = dirs::data_dir()
                 .map(|d| d.join(APP_DIR_NAME))
                 .or_else(|| dirs::home_dir().map(|h| h.join(APP_DIR_HIDDEN)))
-            {
-                return dir;
-            }
+        {
+            return dir;
         }
         std::env::current_exe()
             .ok()
@@ -131,6 +132,22 @@ pub fn get_or_create_app_data_dir() -> String {
     data_dir.to_string_lossy().to_string()
 }
 
+/// 获取默认运行路径。
+///
+/// 路径优先级：标准数据目录 → 文档目录 → 当前工作目录。
+///
+/// 返回原始 `PathBuf` 而非字符串；目录全部不可用时以
+/// [`PlatformError::ResolveDefaultRunPath`] 返回原始错误。
+pub fn get_default_run_path() -> Result<PathBuf, PlatformError> {
+    if let Some(base) = dirs_next::data_dir().or_else(dirs_next::document_dir) {
+        return Ok(base.join("SeaLantern"));
+    }
+
+    std::env::current_dir()
+        .map(|cwd| cwd.join("SeaLantern"))
+        .map_err(|source| PlatformError::ResolveDefaultRunPath { source })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,5 +178,22 @@ mod tests {
     fn test_get_or_create_app_data_dir_returns_non_empty() {
         let dir_str = get_or_create_app_data_dir();
         assert!(!dir_str.is_empty());
+    }
+
+    #[test]
+    fn test_get_default_run_path_returns_non_empty() {
+        let path = get_default_run_path().expect("default run path should resolve");
+        assert!(!path.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_get_default_run_path_ends_with_app_name() {
+        let path = get_default_run_path().expect("default run path should resolve");
+        let name = path
+            .file_name()
+            .expect("path should have a file name")
+            .to_string_lossy();
+
+        assert_eq!(name, "SeaLantern", "expected SeaLantern directory name, got: {name}");
     }
 }

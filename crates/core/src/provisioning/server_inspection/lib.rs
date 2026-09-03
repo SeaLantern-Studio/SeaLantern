@@ -22,15 +22,20 @@ pub use model::*;
 use evidence::{EvidenceCollector, NewEvidence};
 use formats::manifest::ParsedManifest;
 use formats::mojang_version::MojangVersionDocument;
-use resolver::{resolve, DetectionClaim};
+use resolver::{DetectionClaim, resolve};
+pub(crate) use resolver::{DetectionOutcome, detection_outcome, server_implementation_outcome};
 
 const MANIFEST_ENTRY: &str = "META-INF/MANIFEST.MF";
 const MOJANG_VERSION_ENTRY: &str = "version.json";
+const SERVER_INSPECTION_TARGET: &str = "sealantern.core.provisioning.server_inspection";
+const MINIMUM_SERVER_IMPLEMENTATION_CONFIDENCE: u8 = 50;
 
 /// 控制静态检查的资源预算；检查过程不会执行 JAR、脚本或 shell 展开。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InspectionOptions {
     pub max_archive_entries: usize,
+    /// 根目录中最多接受的服务端 JAR 数量，避免无界纳入普通库文件。
+    pub max_root_archives: usize,
     pub max_metadata_entry_bytes: u64,
     pub max_total_metadata_bytes: u64,
     /// 后续嵌套归档检测的单归档上限；设为 0 可禁用嵌套归档读取。
@@ -44,6 +49,7 @@ impl Default for InspectionOptions {
     fn default() -> Self {
         Self {
             max_archive_entries: 50_000,
+            max_root_archives: 64,
             max_metadata_entry_bytes: 4 * 1024 * 1024,
             max_total_metadata_bytes: 32 * 1024 * 1024,
             max_nested_archive_bytes: 128 * 1024 * 1024,
@@ -55,6 +61,48 @@ impl Default for InspectionOptions {
 
 /// 检查单个服务端文件或安装目录，不执行其中的任何内容。
 pub fn inspect_server_artifact(
+    path: &Path,
+    options: &InspectionOptions,
+) -> Result<ServerInspectionReport, ServerInspectionError> {
+    tracing::debug!(
+        target: SERVER_INSPECTION_TARGET,
+        path = %path.display(),
+        compute_sha256 = options.compute_sha256,
+        max_archive_entries = options.max_archive_entries,
+        max_archive_depth = options.max_archive_depth,
+        "starting server artifact inspection"
+    );
+    let result = inspect_server_artifact_inner(path, options);
+    match &result {
+        Ok(report) => {
+            let implementation = report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str())
+                .unwrap_or("unknown");
+            tracing::debug!(
+                target: SERVER_INSPECTION_TARGET,
+                path = %path.display(),
+                subject_kind = ?report.subject.kind,
+                implementation,
+                diagnostics = report.diagnostics.len(),
+                launches = report.launches.len(),
+                "server artifact inspection completed"
+            );
+        }
+        Err(error) => tracing::warn!(
+            target: SERVER_INSPECTION_TARGET,
+            path = %path.display(),
+            error = %error,
+            "server artifact inspection failed"
+        ),
+    }
+    result
+}
+
+fn inspect_server_artifact_inner(
     path: &Path,
     options: &InspectionOptions,
 ) -> Result<ServerInspectionReport, ServerInspectionError> {
@@ -135,7 +183,60 @@ pub fn inspect_server_artifact(
 
         let mut directory_metadata = directory::read_metadata(path, options)?;
         diagnostics.append(&mut directory_metadata.diagnostics);
-        let detector_output = detectors::detect_directory(path, &directory_metadata, &mut evidence);
+        let mut root_version_seen = false;
+        for root_archive in &directory_metadata.root_archives {
+            let archive_path = path.join(&root_archive.relative_path);
+            let Some(bytes) = root_archive.metadata.mojang_version.as_deref() else {
+                continue;
+            };
+            match formats::mojang_version::parse(bytes) {
+                Ok(Some(document)) => {
+                    let (root_minecraft, root_java, mut version_diagnostics) =
+                        apply_mojang_version(&archive_path, document, &mut evidence);
+                    diagnostics.append(&mut version_diagnostics);
+                    if !root_version_seen {
+                        minecraft = Some(root_minecraft);
+                        java = root_java;
+                        root_version_seen = true;
+                    } else {
+                        diagnostics.push(InspectionDiagnostic {
+                            severity: DiagnosticSeverity::Warning,
+                            code: "multiple_root_version_json".to_string(),
+                            message: format!(
+                                "multiple root archives in {} provide version.json; the first recognized document was selected",
+                                path.display()
+                            ),
+                            evidence: Vec::new(),
+                        });
+                    }
+                }
+                Ok(None) => diagnostics.push(InspectionDiagnostic {
+                    severity: DiagnosticSeverity::Info,
+                    code: "unrecognized_root_version_json".to_string(),
+                    message: format!(
+                        "version.json in {} does not match the Mojang version metadata shape",
+                        archive_path.display()
+                    ),
+                    evidence: Vec::new(),
+                }),
+                Err(source) => diagnostics.push(InspectionDiagnostic {
+                    severity: DiagnosticSeverity::Warning,
+                    code: "invalid_root_version_json".to_string(),
+                    message: format!(
+                        "could not parse version.json in {}: {source}",
+                        archive_path.display()
+                    ),
+                    evidence: Vec::new(),
+                }),
+            }
+        }
+        let detector_output = detectors::detect_directory(
+            path,
+            &directory_metadata,
+            minecraft.as_ref(),
+            Some(&java.required_major),
+            &mut evidence,
+        );
         apply_detector_output(
             detector_output,
             &mut identity,
@@ -316,6 +417,11 @@ fn validate_options(options: &InspectionOptions) -> Result<(), ServerInspectionE
     if options.max_archive_entries == 0 {
         return Err(ServerInspectionError::InvalidOptions {
             detail: "max_archive_entries must be greater than zero",
+        });
+    }
+    if options.max_root_archives == 0 {
+        return Err(ServerInspectionError::InvalidOptions {
+            detail: "max_root_archives must be greater than zero",
         });
     }
     if options.max_metadata_entry_bytes == 0 {
@@ -696,9 +802,9 @@ mod tests {
     use zip::write::FileOptions;
 
     use super::{
-        inspect_server_artifact, ArtifactFormat, ArtifactRole, DetectionTarget, InspectionOptions,
-        InspectionSubjectKind, LaunchPlatform, LaunchTarget, ReleaseChannel, ServerCategory,
-        ServerComponentKind, ServerEcosystem,
+        ArtifactFormat, ArtifactRole, DetectionTarget, InspectionOptions, InspectionSubjectKind,
+        LaunchPlatform, LaunchTarget, ReleaseChannel, ServerCategory, ServerComponentKind,
+        ServerEcosystem, ServerInspectionError, inspect_server_artifact,
     };
 
     fn temporary_path(suffix: &str) -> PathBuf {
@@ -797,11 +903,13 @@ mod tests {
             assert_eq!(report.identity.category.value, Some(ServerCategory::Proxy));
             assert_eq!(report.identity.version.value.as_deref(), Some(version));
             assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::Snapshot));
-            assert!(report
-                .identity
-                .ecosystems
-                .iter()
-                .any(|candidate| candidate.value == ecosystem));
+            assert!(
+                report
+                    .identity
+                    .ecosystems
+                    .iter()
+                    .any(|candidate| candidate.value == ecosystem)
+            );
             assert_eq!(report.java.required_major.value, Some(11));
             assert!(report.evidence.iter().any(|evidence| {
                 evidence.detector == "proxy-manifest-product"
@@ -862,11 +970,13 @@ mod tests {
                 .and_then(|minecraft| minecraft.version.value.as_deref()),
             Some("1.21.1")
         );
-        assert!(report
-            .identity
-            .ecosystems
-            .iter()
-            .any(|candidate| candidate.value == ServerEcosystem::Forge));
+        assert!(
+            report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ServerEcosystem::Forge)
+        );
         let forge_component = report
             .components
             .iter()
@@ -879,11 +989,13 @@ mod tests {
                 .find(|evidence| evidence.id == *evidence_id)
                 .is_some_and(|evidence| evidence.detector == "arclight-launch-properties")
         }));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Launcher));
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Launcher)
+        );
     }
 
     #[test]
@@ -910,16 +1022,20 @@ mod tests {
                 .and_then(|minecraft| minecraft.version.value.as_deref()),
             Some("1.20.2")
         );
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "forge"
-                && component.value.version.as_deref() == Some("48.1.0")));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "mcp"
-                && component.value.version.as_deref() == Some("20230921.100330")));
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "forge"
+                    && component.value.version.as_deref() == Some("48.1.0"))
+        );
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "mcp"
+                    && component.value.version.as_deref() == Some("20230921.100330"))
+        );
     }
 
     #[test]
@@ -936,11 +1052,13 @@ mod tests {
             .expect("inspect Youer fixture");
         fs::remove_file(&youer_path).expect("remove Youer fixture");
         assert_eq!(product_key(&youer), Some("youer"));
-        assert!(youer
-            .identity
-            .ecosystems
-            .iter()
-            .any(|candidate| candidate.value == ServerEcosystem::NeoForge));
+        assert!(
+            youer
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ServerEcosystem::NeoForge)
+        );
 
         let magma_path = temporary_path("server.jar");
         write_test_jar_entries(
@@ -956,11 +1074,13 @@ mod tests {
         assert_eq!(product_key(&magma), Some("magma"));
         assert_eq!(magma.identity.version.value.as_deref(), Some("21.1.70-beta"));
         assert_eq!(magma.identity.release_channel.value, Some(ReleaseChannel::Beta));
-        assert!(magma
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Wrapper));
+        assert!(
+            magma
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Wrapper)
+        );
     }
 
     #[test]
@@ -990,16 +1110,20 @@ mod tests {
             .launches
             .iter()
             .any(|launch| matches!(launch.value.target, LaunchTarget::Jar { ref path } if path.ends_with("server.jar"))));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::InstallationDirectory));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Wrapper));
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::InstallationDirectory)
+        );
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Wrapper)
+        );
     }
 
     #[test]
@@ -1020,16 +1144,20 @@ mod tests {
         assert_eq!(product_key(&report), Some("spongevanilla"));
         assert_eq!(report.identity.category.value, Some(ServerCategory::JavaGameServer));
         assert_eq!(report.identity.release_channel.value, Some(ReleaseChannel::ReleaseCandidate));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Installer));
-        assert!(report
-            .identity
-            .ecosystems
-            .iter()
-            .any(|candidate| candidate.value == ServerEcosystem::Sponge));
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Installer)
+        );
+        assert!(
+            report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ServerEcosystem::Sponge)
+        );
     }
 
     #[test]
@@ -1085,11 +1213,13 @@ mod tests {
                 .and_then(|minecraft| minecraft.version.value.as_deref()),
             Some("26.2")
         );
-        assert!(report
-            .identity
-            .ecosystems
-            .iter()
-            .any(|candidate| candidate.value == ServerEcosystem::Bukkit));
+        assert!(
+            report
+                .identity
+                .ecosystems
+                .iter()
+                .any(|candidate| candidate.value == ServerEcosystem::Bukkit)
+        );
         let implementation_detectors = report
             .identity
             .implementation
@@ -1149,16 +1279,20 @@ mod tests {
                     .and_then(|minecraft| minecraft.version.value.as_deref()),
                 Some(minecraft_version)
             );
-            assert!(report
-                .artifact
-                .roles
-                .iter()
-                .any(|role| role.value == ArtifactRole::Installer));
-            assert!(report
-                .artifact
-                .roles
-                .iter()
-                .any(|role| role.value == ArtifactRole::Launcher));
+            assert!(
+                report
+                    .artifact
+                    .roles
+                    .iter()
+                    .any(|role| role.value == ArtifactRole::Installer)
+            );
+            assert!(
+                report
+                    .artifact
+                    .roles
+                    .iter()
+                    .any(|role| role.value == ArtifactRole::Launcher)
+            );
             assert!(report.components.iter().any(|component| {
                 component.value.kind == ServerComponentKind::ModLoader
                     && component.value.version.as_deref() == Some("0.19.3")
@@ -1181,10 +1315,7 @@ mod tests {
                     "META-INF/MANIFEST.MF",
                     "Implementation-Title: FabricInstaller\r\nImplementation-Version: 1.1.1\r\nMain-Class: net.fabricmc.installer.ServerLauncher\r\n\r\n",
                 ),
-                (
-                    "install.properties",
-                    "fabric-loader-version=0.19.3\ngame-version=26.2\n",
-                ),
+                ("install.properties", "fabric-loader-version=0.19.3\ngame-version=26.2\n"),
             ],
         );
 
@@ -1282,30 +1413,42 @@ mod tests {
             Some("26.2")
         );
         assert_eq!(report.java.required_major.value, Some(25));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "forge"));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "mcp"));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "forge-bootstrap-shim"));
-        assert!(report
-            .launches
-            .iter()
-            .any(|launch| launch.value.platform == LaunchPlatform::Windows));
-        assert!(report
-            .launches
-            .iter()
-            .any(|launch| launch.value.platform == LaunchPlatform::Unix));
-        assert!(report
-            .launches
-            .iter()
-            .any(|launch| matches!(launch.value.target, LaunchTarget::Script { .. })));
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "forge")
+        );
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "mcp")
+        );
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "forge-bootstrap-shim")
+        );
+        assert!(
+            report
+                .launches
+                .iter()
+                .any(|launch| launch.value.platform == LaunchPlatform::Windows)
+        );
+        assert!(
+            report
+                .launches
+                .iter()
+                .any(|launch| launch.value.platform == LaunchPlatform::Unix)
+        );
+        assert!(
+            report
+                .launches
+                .iter()
+                .any(|launch| matches!(launch.value.target, LaunchTarget::Script { .. }))
+        );
     }
 
     #[test]
@@ -1343,10 +1486,12 @@ mod tests {
                 .count(),
             2
         );
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "conflicting_server_versions"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "conflicting_server_versions")
+        );
     }
 
     #[test]
@@ -1360,10 +1505,7 @@ mod tests {
                     "META-INF/MANIFEST.MF",
                     "Manifest-Version: 1.0\r\nMain-Class: app.mcjars.serverstarter.ServerStarter\r\n\r\n",
                 ),
-                (
-                    "metadata.json",
-                    r#"{"version":"26.2","neoforge":"26.2.0.41-beta"}"#,
-                ),
+                ("metadata.json", r#"{"version":"26.2","neoforge":"26.2.0.41-beta"}"#),
             ],
         );
         let version_directory = root.join("libraries/net/neoforged/neoforge/26.2.0.41-beta");
@@ -1409,19 +1551,25 @@ mod tests {
                 .and_then(|minecraft| minecraft.version.value.as_deref()),
             Some("26.2")
         );
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "neoforge"));
-        assert!(report
-            .components
-            .iter()
-            .any(|component| component.value.key == "neoform"));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Wrapper));
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "neoforge")
+        );
+        assert!(
+            report
+                .components
+                .iter()
+                .any(|component| component.value.key == "neoform")
+        );
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Wrapper)
+        );
         assert!(report.launches.iter().any(|launch| {
             matches!(launch.value.target, LaunchTarget::Jar { .. })
                 && launch.value.id == "neoforge-wrapper-jar"
@@ -1580,21 +1728,27 @@ mod tests {
             assert_eq!(report.identity.version.value.as_deref(), Some(case.version));
             assert_eq!(report.identity.release_channel.value, Some(case.channel));
             assert_eq!(report.identity.category.value, Some(ServerCategory::JavaGameServer));
-            assert!(report
-                .identity
-                .ecosystems
-                .iter()
-                .any(|ecosystem| ecosystem.value == ServerEcosystem::Paper));
-            assert!(report
-                .identity
-                .ecosystems
-                .iter()
-                .any(|ecosystem| ecosystem.value == ServerEcosystem::Bukkit));
-            assert!(report
-                .artifact
-                .roles
-                .iter()
-                .any(|role| role.value == ArtifactRole::Bootstrapper));
+            assert!(
+                report
+                    .identity
+                    .ecosystems
+                    .iter()
+                    .any(|ecosystem| ecosystem.value == ServerEcosystem::Paper)
+            );
+            assert!(
+                report
+                    .identity
+                    .ecosystems
+                    .iter()
+                    .any(|ecosystem| ecosystem.value == ServerEcosystem::Bukkit)
+            );
+            assert!(
+                report
+                    .artifact
+                    .roles
+                    .iter()
+                    .any(|role| role.value == ArtifactRole::Bootstrapper)
+            );
             assert_eq!(report.components.len(), 1);
             assert_eq!(
                 report.components[0]
@@ -1612,11 +1766,13 @@ mod tests {
                 Some(case.minecraft)
             );
             let minecraft = report.minecraft.as_ref().expect("Minecraft metadata");
-            assert!(minecraft
-                .version
-                .evidence
-                .iter()
-                .all(|evidence_id| minecraft.evidence.contains(evidence_id)));
+            assert!(
+                minecraft
+                    .version
+                    .evidence
+                    .iter()
+                    .all(|evidence_id| minecraft.evidence.contains(evidence_id))
+            );
         }
     }
 
@@ -1666,10 +1822,7 @@ mod tests {
                     "META-INF/patches.list",
                     "versions\tinput\tpatch\toutput\t26.2/server-26.2.jar\t26.2/server.patch\t26.2/spigot-26.2.jar\n",
                 ),
-                (
-                    "META-INF/libraries.list",
-                    "hash\t*\tspigot-api-26.2-R0.1-SNAPSHOT.jar\n",
-                ),
+                ("META-INF/libraries.list", "hash\t*\tspigot-api-26.2-R0.1-SNAPSHOT.jar\n"),
             ],
         );
 
@@ -1699,14 +1852,8 @@ mod tests {
         write_test_jar_entries(
             &path,
             &[
-                (
-                    "META-INF/MANIFEST.MF",
-                    "Main-Class: io.papermc.paperclip.Main\r\n\r\n",
-                ),
-                (
-                    "META-INF/versions.list",
-                    "hash\t26.2\t26.2/custom-fork-26.2.jar\n",
-                ),
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/custom-fork-26.2.jar\n"),
                 (
                     "META-INF/libraries.list",
                     "hash\texample.server:custom-fork-api:26.2.build.1-stable\tcustom-fork-api.jar\n",
@@ -1751,10 +1898,12 @@ mod tests {
         assert!(report.identity.implementation.value.is_none());
         assert_eq!(report.identity.implementation.alternatives.len(), 2);
         assert!(report.identity.ecosystems.is_empty());
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "conflicting_server_implementations"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "conflicting_server_implementations")
+        );
     }
 
     #[test]
@@ -1773,11 +1922,13 @@ mod tests {
         assert_eq!(report.artifact.format.value, Some(ArtifactFormat::Jar));
         assert_eq!(report.artifact.format.confidence, 100);
         assert_eq!(report.artifact.main_class.value.as_deref(), Some("net.minecraft.bundler.Main"));
-        assert!(report
-            .artifact
-            .roles
-            .iter()
-            .any(|role| role.value == ArtifactRole::Runnable));
+        assert!(
+            report
+                .artifact
+                .roles
+                .iter()
+                .any(|role| role.value == ArtifactRole::Runnable)
+        );
         assert_eq!(
             report
                 .artifact
@@ -1831,10 +1982,36 @@ mod tests {
 
         assert_eq!(report.artifact.main_class.value.as_deref(), Some("example.Main"));
         assert!(report.minecraft.is_none());
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "metadata_entry_too_large"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "metadata_entry_too_large")
+        );
+    }
+
+    #[test]
+    fn filename_only_product_remains_an_unselected_candidate() {
+        let path = temporary_path("paper.jar");
+        write_test_jar_entries(&path, &[("empty", "")]);
+
+        let report = inspect_server_artifact(&path, &InspectionOptions::default())
+            .expect("inspect metadata-free JAR");
+        fs::remove_file(&path).expect("remove metadata-free JAR");
+
+        assert!(report.identity.implementation.value.is_none());
+        assert_eq!(report.identity.implementation.confidence, 25);
+        assert_eq!(report.identity.implementation.alternatives.len(), 1);
+        assert_eq!(report.identity.implementation.alternatives[0].value.key, "paper");
+        assert!(report.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "insufficient_server_implementation_evidence"
+        }));
+        assert!(
+            !report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.code == "conflicting_server_implementations" })
+        );
     }
 
     #[test]
@@ -1866,6 +2043,246 @@ mod tests {
         assert_eq!(
             report.subject.fingerprint.expect("fingerprint").value,
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn discovers_a_paperclip_root_archive_without_a_server_filename() {
+        let root = temporary_path("paperclip-root");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar_entries(
+            &root.join("paper-26.2.jar"),
+            &[
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/paper-26.2.jar\n"),
+                (
+                    "META-INF/libraries.list",
+                    "hash\tio.papermc.paper:paper-api:26.2.build.87-stable\tpaper-api.jar\n",
+                ),
+            ],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect Paperclip root archive");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("paper"));
+        assert!(report
+            .launches
+            .iter()
+            .any(|launch| matches!(&launch.value.target, LaunchTarget::Jar { path } if path.ends_with("paper-26.2.jar"))));
+    }
+
+    #[test]
+    fn skips_an_unrelated_root_library_jar() {
+        let root = temporary_path("root-library-filter");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar(
+            &root.join("server.jar"),
+            "Main-Class: net.minecraft.bundler.Main\r\n\r\n",
+            r#"{"id":"26.2","world_version":4903}"#,
+        );
+        write_test_jar_entries(
+            &root.join("a-library.jar"),
+            &[("META-INF/MANIFEST.MF", "Main-Class: com.example.Library\r\n\r\n")],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect root with unrelated library");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("vanilla"));
+        assert_eq!(
+            report
+                .launches
+                .iter()
+                .filter(|launch| matches!(&launch.value.target, LaunchTarget::Jar { .. }))
+                .count(),
+            1
+        );
+        assert!(!report
+            .launches
+            .iter()
+            .any(|launch| matches!(&launch.value.target, LaunchTarget::Jar { path } if path.ends_with("a-library.jar"))));
+    }
+
+    #[test]
+    fn accepts_an_unknown_root_name_when_server_metadata_is_present() {
+        let root = temporary_path("unknown-root-filter");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar_entries(
+            &root.join("custom-runtime.jar"),
+            &[
+                ("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n"),
+                ("META-INF/versions.list", "hash\t26.2\t26.2/custom-runtime-26.2.jar\n"),
+            ],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect unknown server root");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("custom-runtime"));
+    }
+
+    #[test]
+    fn discovers_a_proxy_root_archive_without_a_server_filename() {
+        let root = temporary_path("velocity-root");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar_entries(
+            &root.join("velocity.jar"),
+            &[(
+                "META-INF/MANIFEST.MF",
+                "Main-Class: com.velocitypowered.proxy.Velocity\r\nImplementation-Title: Velocity\r\nImplementation-Version: 4.1.0\r\n\r\n",
+            )],
+        );
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("inspect Velocity root archive");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("velocity"));
+        assert!(report
+            .launches
+            .iter()
+            .any(|launch| matches!(&launch.value.target, LaunchTarget::Jar { path } if path.ends_with("velocity.jar"))));
+    }
+
+    #[test]
+    fn root_archives_are_checked_when_nested_depth_is_zero() {
+        let root = temporary_path("root-depth-zero");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar(
+            &root.join("server.jar"),
+            "Main-Class: net.minecraft.bundler.Main\r\n\r\n",
+            r#"{"id":"26.2","world_version":4903,"java_version":25}"#,
+        );
+        let options = InspectionOptions {
+            max_archive_depth: 0,
+            ..InspectionOptions::default()
+        };
+
+        let report = inspect_server_artifact(&root, &options).expect("inspect root archive");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("vanilla"));
+        assert_eq!(
+            report
+                .minecraft
+                .as_ref()
+                .and_then(|minecraft| minecraft.version.value.as_deref()),
+            Some("26.2")
+        );
+    }
+
+    #[test]
+    fn corrupt_optional_root_archives_do_not_abort_directory_inspection() {
+        let root = temporary_path("corrupt-root");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar(
+            &root.join("server.jar"),
+            "Main-Class: net.minecraft.bundler.Main\r\n\r\n",
+            r#"{"id":"26.2","world_version":4903}"#,
+        );
+        fs::write(root.join("other.jar"), b"not a zip archive")
+            .expect("write corrupt root archive");
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("corrupt optional root should be skipped");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("vanilla"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "root_archive_unreadable")
+        );
+    }
+
+    #[test]
+    fn root_archive_limit_is_reported_without_losing_the_first_candidate() {
+        let root = temporary_path("root-limit");
+        fs::create_dir(&root).expect("create root directory");
+        write_test_jar(
+            &root.join("server.jar"),
+            "Main-Class: net.minecraft.bundler.Main\r\n\r\n",
+            r#"{"id":"26.2","world_version":4903}"#,
+        );
+        write_test_jar_entries(
+            &root.join("paper.jar"),
+            &[("META-INF/MANIFEST.MF", "Main-Class: io.papermc.paperclip.Main\r\n\r\n")],
+        );
+        let options = InspectionOptions {
+            max_root_archives: 1,
+            ..InspectionOptions::default()
+        };
+
+        let report =
+            inspect_server_artifact(&root, &options).expect("inspect capped root directory");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert_eq!(product_key(&report), Some("vanilla"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "root_archive_limit_reached")
+        );
+    }
+
+    #[test]
+    fn rejects_an_empty_root_archive_budget() {
+        let root = temporary_path("invalid-root-budget");
+        fs::create_dir(&root).expect("create root directory");
+        let options = InspectionOptions {
+            max_root_archives: 0,
+            ..InspectionOptions::default()
+        };
+
+        let error =
+            inspect_server_artifact(&root, &options).expect_err("zero root budget must fail");
+        fs::remove_dir_all(&root).expect("remove root directory");
+
+        assert!(matches!(error, ServerInspectionError::InvalidOptions { .. }));
+    }
+
+    #[test]
+    fn skips_a_corrupt_optional_modloader_archive() {
+        let root = temporary_path("corrupt-nested-loader");
+        let version = "1.20.1-47.2.0";
+        let args_directory = root
+            .join("libraries/net/minecraftforge/forge")
+            .join(version);
+        fs::create_dir_all(&args_directory).expect("create Forge args directory");
+        fs::write(args_directory.join("win_args.txt"), "-jar forge-shim.jar\n")
+            .expect("write Forge args");
+        let nested_path = root
+            .join("libraries/net/minecraftforge/fmlloader")
+            .join(version)
+            .join(format!("fmlloader-{version}.jar"));
+        fs::create_dir_all(nested_path.parent().expect("nested archive parent"))
+            .expect("create nested archive directory");
+        fs::write(&nested_path, b"not a ZIP archive").expect("write corrupt nested archive");
+
+        let report = inspect_server_artifact(&root, &InspectionOptions::default())
+            .expect("corrupt optional nested archive should not abort inspection");
+        fs::remove_dir_all(&root).expect("remove corrupt nested fixture");
+
+        assert_eq!(
+            report
+                .identity
+                .implementation
+                .value
+                .as_ref()
+                .map(|product| product.key.as_str()),
+            Some("forge")
+        );
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "optional_metadata_unreadable")
         );
     }
 }

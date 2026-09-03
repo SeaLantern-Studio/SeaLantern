@@ -149,7 +149,13 @@ async function pickJavaFile() {
   background: var(--sl-primary-bg);
   border-radius: var(--sl-radius-sm);
   cursor: pointer;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 .rescan-btn:hover:not(:disabled) {
   background: var(--sl-primary);

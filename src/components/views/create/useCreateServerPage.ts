@@ -14,11 +14,12 @@ import { javaApi } from "@api/java";
 import { serverApi } from "@api/server";
 import { settingsApi } from "@api/settings";
 import { systemApi } from "@api/system";
-import { downloadServerApi, downloadApi } from "@api/downloader";
+import { downloadServerApi } from "@api/downloader";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
 import { i18n } from "@language";
 import { useServerStore } from "@stores/serverStore";
+import { useDownloadStore } from "@stores/downloadStore";
 import { useCreateServerDraftStore } from "@stores/createServerDraft.ts";
 import { isBrowserEnv } from "@api/tauri";
 
@@ -67,6 +68,7 @@ function logCreateServerDnd(message: string, payload?: unknown) {
 export function useCreateServerPage() {
   const router = useRouter();
   const serverstore = useServerStore();
+  const downloadStore = useDownloadStore();
   const toast = useToast();
   const { loading: javaLoading, start: startJavaLoading, stop: stopJavaLoading } = useLoading();
   const { loading: creating, start: startCreating, stop: stopCreating } = useLoading();
@@ -106,6 +108,23 @@ export function useCreateServerPage() {
   let runPathConflictTimer: ReturnType<typeof setTimeout> | null = null;
   let runPathConflictRequestId = 0;
 
+  // 下载等待轮询句柄与取消回调:离开页面时中止等待
+  let downloadWaitTimer: ReturnType<typeof setInterval> | null = null;
+  let downloadWaitReject: ((reason: Error) => void) | null = null;
+
+  // 中止下载等待:清理定时器并 reject Promise,避免组件卸载后定时器残留
+  function downloadWaitResolved() {
+    if (downloadWaitTimer) {
+      clearInterval(downloadWaitTimer);
+      downloadWaitTimer = null;
+    }
+    if (downloadWaitReject) {
+      const reject = downloadWaitReject;
+      downloadWaitReject = null;
+      reject(new Error(i18n.t("downloadServerView.status.cancelled")));
+    }
+  }
+
   const serverName = ref("My Server");
   const maxMemory = ref("2048");
   const minMemory = ref("512");
@@ -116,7 +135,7 @@ export function useCreateServerPage() {
 
   const hasSource = computed(() => {
     if (sourceType.value === "download")
-      return serverDownloadType.value && serverDownloadVersion.value;
+      return !!(serverDownloadType.value && serverDownloadVersion.value);
     return sourcePath.value.trim().length > 0 && sourceType.value !== "";
   });
 
@@ -260,6 +279,8 @@ export function useCreateServerPage() {
       unlistenSourceDropEvent();
       unlistenSourceDropEvent = null;
     }
+    // 下载等待轮询:离开页面时中止,避免定时器残留直到下载结束
+    downloadWaitResolved();
   });
 
   function scheduleRunPathConflictCheck() {
@@ -536,10 +557,13 @@ export function useCreateServerPage() {
       detectedCoreMainClass.value = discovered.parsedCore.mainClass ?? "";
       const previousDetectedCoreKey = detectedCoreTypeKey.value;
       const previousDetectedMcVersion = detectedMcVersion.value;
-      detectedCoreTypeKey.value = discovered.detectedCoreTypeKey ?? "";
-      coreTypeOptions.value = discovered.coreTypeOptions;
-      detectedMcVersion.value = discovered.detectedMcVersion ?? "";
-      mcVersionOptions.value = discovered.mcVersionOptions;
+      // 后端可能返回嵌套对象而非纯字符串，统一归一化为字符串避免污染后续状态
+      detectedCoreTypeKey.value =
+        discovered.detectedCoreTypeKey == null ? "" : String(discovered.detectedCoreTypeKey);
+      coreTypeOptions.value = discovered.coreTypeOptions.map((opt) => String(opt));
+      detectedMcVersion.value =
+        discovered.detectedMcVersion == null ? "" : String(discovered.detectedMcVersion);
+      mcVersionOptions.value = discovered.mcVersionOptions.map((ver) => String(ver));
       mcVersionDetectionFailed.value = discovered.mcVersionDetectionFailed;
       startupCandidates.value = list;
 
@@ -651,8 +675,9 @@ export function useCreateServerPage() {
     // 临时下载文件路径（下载模式下使用）
     let tempDownloadPath: string | null = null;
     let scannedStartup = selectedStartup.value;
-    let scannedStartupMode = mapStartupModeForModpack(selectedStartup?.mode ?? "jar");
-    let scannedCoreType = selectedCoreType.value.trim() || detectedCoreTypeKey.value.trim();
+    let scannedStartupMode = mapStartupModeForModpack(selectedStartup.value?.mode ?? "jar");
+    let scannedCoreType =
+      String(selectedCoreType.value ?? "").trim() || String(detectedCoreTypeKey.value ?? "").trim();
     let scannedMcVersion =
       scannedStartupMode === "starter"
         ? selectedMcVersion.value.trim() || detectedMcVersion.value.trim()
@@ -671,32 +696,36 @@ export function useCreateServerPage() {
           const fileName = info.fileName || "server.jar";
           tempDownloadPath = `${tempDir}/${fileName}`;
 
-          // 使用 downloadApi 下载
-          const { taskInfo: dlTask, start: dlStart } = downloadApi.useDownload();
-          await dlStart({
-            url: info.url,
-            savePath: tempDownloadPath,
-            threadCount: 32,
-          });
+          // 走全局下载 store，顶栏任务球才能显示下载进度
+          await downloadStore.startTask(
+            {
+              url: info.url,
+              save_path: tempDownloadPath,
+              thread_count: 32,
+            },
+            { filename: fileName, savePath: tempDownloadPath, origin: "server" },
+          );
 
           // 等待下载完成
           await new Promise<void>((resolve, reject) => {
+            downloadWaitReject = reject;
             const checkInterval = setInterval(() => {
-              if (dlTask.isFinished) {
+              if (downloadStore.isFinished) {
                 clearInterval(checkInterval);
-                if (dlTask.status.kind === "simple" && dlTask.status.message === "Completed") {
-                  resolve();
-                } else {
+                downloadWaitTimer = null;
+                downloadWaitReject = null;
+                if (downloadStore.isError) {
                   reject(
                     new Error(
-                      typeof dlTask.status === "object" && dlTask.status.kind === "error"
-                        ? dlTask.status.message
-                        : i18n.t("downloadServerView.status.failed"),
+                      String(downloadStore.taskError || i18n.t("downloadServerView.status.failed")),
                     ),
                   );
+                } else {
+                  resolve();
                 }
               }
             }, 300);
+            downloadWaitTimer = checkInterval;
           });
 
           // 下载完成，扫描启动项
@@ -763,8 +792,9 @@ export function useCreateServerPage() {
       if (tempDownloadPath) {
         try {
           await systemApi.removeFile(tempDownloadPath);
-        } catch {
-          // 清理失败不影响主流程
+        } catch (e) {
+          // 清理失败不影响主流程,仅 DEV 环境记录
+          if (import.meta.env.DEV) console.warn("Failed to clean temp download:", e);
         }
       }
 

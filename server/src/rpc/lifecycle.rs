@@ -1,7 +1,7 @@
 //! RPC 调用的协作式取消与截止时间控制。
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 /// 可由传输适配器或任务协调器取消的调用令牌。

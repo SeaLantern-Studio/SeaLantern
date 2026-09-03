@@ -1,8 +1,7 @@
-use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 
 /// 由主机为受管实例分配的稳定标识符。
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -79,9 +78,9 @@ pub struct LocalLaunch {
     pub startup_target: Option<PathBuf>,
     pub custom_command: Option<String>,
     pub custom_executable: Option<PathBuf>,
-    pub custom_arguments: Vec<OsString>,
+    pub custom_arguments: Vec<String>,
     pub java_executable: Option<PathBuf>,
-    pub jvm_arguments: Vec<OsString>,
+    pub jvm_arguments: Vec<String>,
 }
 
 impl LocalLaunch {
@@ -145,6 +144,8 @@ pub struct InstanceSpec {
     pub min_memory_mib: u32,
     pub created_at_unix_secs: u64,
     pub last_started_at_unix_secs: Option<u64>,
+    #[serde(default)]
+    pub server_metadata: Option<super::server_metadata::ServerMetadataSnapshot>,
     pub launch: LocalLaunch,
 }
 
@@ -163,30 +164,21 @@ pub struct Instance {
     pub min_memory_mib: u32,
     pub created_at_unix_secs: u64,
     pub last_started_at_unix_secs: Option<u64>,
+    #[serde(default)]
+    pub server_metadata: Option<super::server_metadata::ServerMetadataSnapshot>,
     pub launch: LocalLaunch,
 }
 
 impl Instance {
     pub fn new(mut spec: InstanceSpec) -> Result<Self, InstanceError> {
         spec.name = spec.name.trim().to_string();
-        if spec.name.is_empty() {
-            return Err(InstanceError::EmptyName);
-        }
-        if spec.directory.as_os_str().is_empty() {
-            return Err(InstanceError::EmptyDirectory);
-        }
-        if spec.port == 0 {
-            return Err(InstanceError::UnsupportedPortZero);
-        }
-        if spec.max_memory_mib != 0
-            && spec.min_memory_mib != 0
-            && spec.min_memory_mib > spec.max_memory_mib
-        {
-            return Err(InstanceError::InvalidMemoryRange {
-                min_memory_mib: spec.min_memory_mib,
-                max_memory_mib: spec.max_memory_mib,
-            });
-        }
+        validate_instance_fields(
+            &spec.name,
+            &spec.directory,
+            spec.port,
+            spec.max_memory_mib,
+            spec.min_memory_mib,
+        )?;
 
         spec.aliases = normalize_aliases(&spec.name, spec.aliases);
         spec.launch.normalize_and_validate()?;
@@ -204,9 +196,73 @@ impl Instance {
             min_memory_mib: spec.min_memory_mib,
             created_at_unix_secs: spec.created_at_unix_secs,
             last_started_at_unix_secs: spec.last_started_at_unix_secs,
+            server_metadata: spec.server_metadata,
             launch: spec.launch,
         })
     }
+
+    /// 校验已存在的实例当前字段是否仍有效。
+    ///
+    /// 供部分编辑（重命名、改路径）在写回前复用 core 的字段级校验规则，
+    /// 避免绕过 [`Instance::new`] 把非法数据持久化。只做纯校验，不规范化。
+    pub fn validate(&self) -> Result<(), InstanceError> {
+        validate_instance_fields(
+            &self.name,
+            &self.directory,
+            self.port,
+            self.max_memory_mib,
+            self.min_memory_mib,
+        )
+    }
+
+    /// 由已验证实例复制出等价的 [`InstanceSpec`]。
+    ///
+    /// 供需要规格而非实例的接口复用（如实例创建服务 [`InstanceService::create`]），
+    /// 避免调用方反向手工拼装字段。
+    pub fn spec(&self) -> InstanceSpec {
+        InstanceSpec {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            aliases: self.aliases.clone(),
+            core_type: self.core_type.clone(),
+            core_version: self.core_version.clone(),
+            game_version: self.game_version.clone(),
+            directory: self.directory.clone(),
+            port: self.port,
+            max_memory_mib: self.max_memory_mib,
+            min_memory_mib: self.min_memory_mib,
+            created_at_unix_secs: self.created_at_unix_secs,
+            last_started_at_unix_secs: self.last_started_at_unix_secs,
+            server_metadata: self.server_metadata.clone(),
+            launch: self.launch.clone(),
+        }
+    }
+}
+
+/// 实例字段级校验（名称、目录、端口、内存范围）。
+///
+/// 名称按「空或纯空白视为无效」判定；目录为空视为无效；端口与内存范围沿用
+/// [`Instance::new`] 的规则。供构造与部分编辑两条路径复用。
+fn validate_instance_fields(
+    name: &str,
+    directory: &std::path::Path,
+    port: u16,
+    max_memory_mib: u32,
+    min_memory_mib: u32,
+) -> Result<(), InstanceError> {
+    if name.trim().is_empty() {
+        return Err(InstanceError::EmptyName);
+    }
+    if directory.as_os_str().is_empty() {
+        return Err(InstanceError::EmptyDirectory);
+    }
+    if port == 0 {
+        return Err(InstanceError::UnsupportedPortZero);
+    }
+    if max_memory_mib != 0 && min_memory_mib != 0 && min_memory_mib > max_memory_mib {
+        return Err(InstanceError::InvalidMemoryRange { min_memory_mib, max_memory_mib });
+    }
+    Ok(())
 }
 
 /// 标识无效或内部不一致的实例数据。
@@ -293,7 +349,6 @@ fn normalize_aliases(instance_name: &str, aliases: Vec<String>) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::OsString;
     use std::path::{Path, PathBuf};
 
     use super::{Instance, InstanceError, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
@@ -312,6 +367,7 @@ mod tests {
             min_memory_mib: 1024,
             created_at_unix_secs: 100,
             last_started_at_unix_secs: None,
+            server_metadata: None,
             launch: LocalLaunch {
                 startup_mode: StartupMode::Jar,
                 startup_target: Some(Path::new("servers/instance-a/server.jar").to_path_buf()),
@@ -319,7 +375,7 @@ mod tests {
                 custom_executable: None,
                 custom_arguments: Vec::new(),
                 java_executable: Some(Path::new("java").to_path_buf()),
-                jvm_arguments: vec![OsString::from("-Xmx4G")],
+                jvm_arguments: vec!["-Xmx4G".to_string()],
             },
         }
     }
@@ -375,12 +431,12 @@ mod tests {
         spec.launch.startup_mode = StartupMode::Custom;
         spec.launch.startup_target = None;
         spec.launch.custom_executable = Some(PathBuf::from("launch-server.exe"));
-        spec.launch.custom_arguments = vec![OsString::from("--nogui")];
+        spec.launch.custom_arguments = vec!["--nogui".to_string()];
 
         let instance = Instance::new(spec).expect("custom launch should be valid");
 
         assert_eq!(instance.launch.custom_executable, Some(PathBuf::from("launch-server.exe")));
-        assert_eq!(instance.launch.custom_arguments, vec![OsString::from("--nogui")]);
+        assert_eq!(instance.launch.custom_arguments, vec!["--nogui".to_string()]);
     }
 
     #[test]
@@ -418,5 +474,20 @@ mod tests {
         let error = StartupMode::parse("docker").expect_err("unknown mode should fail");
 
         assert_eq!(error, InstanceError::UnsupportedStartupMode { value: "docker".to_string() });
+    }
+
+    #[test]
+    fn legacy_instance_json_without_server_metadata_still_deserializes() {
+        let instance = Instance::new(base_spec()).expect("base instance should be valid");
+        let mut value = serde_json::to_value(instance).expect("serialize instance");
+        value
+            .as_object_mut()
+            .expect("instance JSON object")
+            .remove("server_metadata");
+
+        let restored: Instance =
+            serde_json::from_value(value).expect("deserialize legacy instance");
+
+        assert!(restored.server_metadata.is_none());
     }
 }

@@ -25,6 +25,12 @@
   -webkit-backdrop-filter: none !important;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
 .header-right {
   -webkit-app-region: no-drag;
 }
@@ -34,6 +40,11 @@
   font-weight: 700;
   color: var(--sl-text-primary);
   letter-spacing: -0.01em;
+  line-height: 1;
+  margin: 0;
+  /* 中文字形在 em-box 中视觉重心偏上,下移 2px 让文字在顶栏里视觉居中 */
+  position: relative;
+  top: 2px;
 }
 
 .header-center {
@@ -97,7 +108,13 @@
   height: 28px;
   border-radius: var(--sl-radius-sm);
   color: var(--sl-text-secondary);
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
   -webkit-app-region: no-drag;
   cursor: pointer;
   z-index: 10;
@@ -123,7 +140,13 @@
   width: 32px;
   height: 32px;
   border-radius: var(--sl-radius-full);
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;

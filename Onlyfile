@@ -1,0 +1,144 @@
+# 执行 `only` 来查看所有命令
+# 详情请见：https://github.com/KercyDing/only
+#
+# 安装：`cargo install only`
+# VSCode 插件：kercyding.onlyfile
+
+!version 0.4
+
+[help] 启动开发模式
+[pass] 开发模式已启动！
+[fail] 开发模式启动失败！
+dev() & _prepare:
+    pnpm tauri dev
+
+[help] 构建本地应用
+[pass] 构建完成！
+[fail] 构建失败！
+build() & _prepare:
+    pnpm tauri build
+
+[help] 执行全量检查
+[pass] 格式化和检查完成！
+check() & (front.check, back.check)
+
+[help] 执行全量测试
+[pass] 测试成功！
+test() & (front.test, back.test)
+
+[help] 运行全量 CI
+[desc] 并行执行前后端 CI。
+[pass] 本地 CI 成功！🎉
+ci() & (front.ci, back.ci)
+
+[help] 清理全部构建产物
+[pass] 构建产物已全部清除！
+clean() & (front.clean, back.clean)
+
+[help] 环境检测
+[pass] 环境检测成功！
+_prepare() & (front._prepare, back._prepare)
+
+# =============== 前端 ===============
+[help] 前端任务
+group front {
+
+    [help] 准备前端环境
+    _prepare() ? @has("pnpm"):
+        pnpm install
+
+    [fail] 你的 pnpm 呢？
+    _prepare():
+        exit 1
+
+    [help] 格式化并检查前端
+    [pass] 前端检查完成！
+    [fail] 前端检查失败！
+    check() & _prepare:
+        pnpm fmt:check
+        pnpm lint
+        pnpm build:check
+
+    [help] 运行前端集成测试
+    [pass] 前端测试成功！
+    [fail] 前端测试失败！
+    test() & _prepare:
+        pnpm test
+
+    [help] 报告前端未使用代码
+    [pass] 前端未使用代码检查通过！
+    [fail] 前端未使用代码检查失败！
+    knip() & _prepare:
+        pnpm knip
+
+    [help] 执行前端 CI
+    [pass] 前端 CI 成功！
+    ci() & (check, test)
+
+    [help] 清理前端构建产物
+    [pass] 前端已清除！
+    [fail] 前端清理失败！
+    clean():
+        rm -rf node_modules dist
+}
+
+# =============== 后端 ===============
+[help] 后端任务
+group back {
+
+    [help] 准备后端环境
+    [pass] 后端环境检查通过！
+    _prepare() ? @has("cargo")
+
+    [fail] 你的 cargo 呢？
+    _prepare():
+        exit 1
+
+    [help] 格式化并检查后端
+    [pass] 后端检查完成！
+    [fail] 后端检查失败！
+    check() & _prepare:
+        cargo fmt --all -- --check
+        cargo check --workspace --all-targets
+        cargo clippy --workspace --all-targets -- -D warnings
+
+    [help] 运行后端测试
+    [pass] 后端测试成功！
+    [fail] 后端测试失败！
+    test() ? @has("cargo-nextest") & _prepare:
+        cargo nextest run --no-fail-fast
+
+    test() & _prepare:
+        cargo test --all-targets --workspace
+
+    [help] 执行后端 CI
+    [pass] 后端 CI 成功！
+    ci() & check & test
+
+    [help] 清理后端构建产物
+    [pass] 后端已清除！
+    [fail] 后端清理失败！
+    clean():
+        cargo clean
+}
+
+# =============== 版本相关 ===============
+[help] 版本相关命令
+group version {
+
+    [help] 查看项目版本号
+    show():
+        pnpm sv
+
+    [help] 发布新版本
+    [desc] 仅 Repo Admin 有权限
+    [pass] 成功发布！
+    [fail] 版本号不对哦~
+    publish(version):
+        pnpm cv {{version}}
+        pnpm notice
+        only ci
+        git commit -am "chore: 升级到 {{version}}"
+        git tag {{version}}
+        git push --atomic origin HEAD {{version}}
+}

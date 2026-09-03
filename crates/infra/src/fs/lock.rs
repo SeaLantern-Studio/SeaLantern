@@ -77,12 +77,11 @@ impl FileLock {
 
 impl Drop for FileLock {
     fn drop(&mut self) {
-        if !self.released {
-            if let Err(error) = std::fs::remove_file(&self.path) {
-                if error.kind() != std::io::ErrorKind::NotFound {
-                    observability::lock_release_failed(&self.path, &error);
-                }
-            }
+        if !self.released
+            && let Err(error) = std::fs::remove_file(&self.path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            observability::lock_release_failed(&self.path, &error);
         }
     }
 }

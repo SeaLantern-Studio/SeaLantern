@@ -23,6 +23,10 @@ const serverStatsError = ref(false);
 const themeVersion = ref(0);
 
 let themeObserver: MutationObserver | null = null;
+// 高频 style 变化(如彩虹主题每帧写 CSS 变量)的刷新节流,
+// 避免每帧重建图表;真正的主题切换(data-theme/data-senior)仍立即刷新
+let styleRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+const STYLE_REFRESH_THROTTLE_MS = 300;
 
 let cssVarCache: Map<string, { value: string; timestamp: number }> = new Map();
 const CSS_VAR_CACHE_TTL = 100;
@@ -76,7 +80,7 @@ const baseChartConfig: EChartsOption = {
 const createGaugeOption = (rawValue: number, colorVar: string, label: string): EChartsOption => {
   const value = Number.isFinite(rawValue) ? Math.min(100, Math.max(0, rawValue)) : 0;
   const fontSize = parseFontSize("--sl-font-size-sm", 13);
-  const fontFamily = getCssVar("--sl-font-mono", "monospace");
+  const fontFamily = getCssVar("--sl-font-sans", "sans-serif");
   const color = getCssVar(colorVar, "#3b82f6");
   const textColor = getCssVar("--sl-text-primary", "#1f2937");
   const borderColor = getCssVar("--sl-border", "#e5e7eb");
@@ -264,20 +268,40 @@ function startThemeObserver() {
   stopThemeObserver();
 
   themeObserver = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (
-        mutation.type === "attributes" &&
-        (mutation.attributeName === "data-theme" || mutation.attributeName === "data-senior")
-      ) {
-        invalidateCssVarCache();
-        themeVersion.value++;
+    let hasThemeChange = false;
+    let hasStyleChange = false;
+    for (const mutation of mutations) {
+      if (mutation.type !== "attributes") continue;
+      if (mutation.attributeName === "data-theme" || mutation.attributeName === "data-senior") {
+        hasThemeChange = true;
+      } else if (mutation.attributeName === "style") {
+        hasStyleChange = true;
       }
-    });
+    }
+
+    // 真正的主题切换:立即刷新并清掉待处理的 style 节流
+    if (hasThemeChange) {
+      if (styleRefreshTimer) {
+        clearTimeout(styleRefreshTimer);
+        styleRefreshTimer = null;
+      }
+      invalidateCssVarCache();
+      themeVersion.value++;
+      return;
+    }
+
+    // 高频 style 变化(彩虹主题每帧写 CSS 变量):节流刷新,避免每帧重建图表
+    if (!hasStyleChange || styleRefreshTimer) return;
+    styleRefreshTimer = setTimeout(() => {
+      styleRefreshTimer = null;
+      invalidateCssVarCache();
+      themeVersion.value++;
+    }, STYLE_REFRESH_THROTTLE_MS);
   });
 
   themeObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-theme", "data-senior"],
+    attributeFilter: ["data-theme", "data-senior", "style"],
   });
 }
 
@@ -285,6 +309,10 @@ function stopThemeObserver() {
   if (themeObserver) {
     themeObserver.disconnect();
     themeObserver = null;
+  }
+  if (styleRefreshTimer) {
+    clearTimeout(styleRefreshTimer);
+    styleRefreshTimer = null;
   }
 }
 

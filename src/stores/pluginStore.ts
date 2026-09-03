@@ -7,7 +7,6 @@ import { useComponentRegistry } from "@composables/useComponentRegistry";
 import { useToast } from "cmzya-modern-ui";
 import DOMPurify from "dompurify";
 import * as pluginApi from "@api/plugin";
-import type { BufferedComponentEvent } from "@api/plugin";
 import { setThemeProviderOverrides } from "@utils/theme";
 import { useContextMenuStore } from "@stores/contextMenuStore";
 import type {
@@ -18,7 +17,6 @@ import type {
   MissingDependency,
   BatchInstallResult,
   SidebarItem,
-  PluginDependency,
   SidebarMode,
   PluginUiAction,
   PluginPermissionLog,
@@ -221,6 +219,11 @@ export const usePluginStore = defineStore("plugin", () => {
     return deletes;
   }
 
+  // 供渲染器探测是否有待处理组件,无待处理时跳过全量遍历,避免空转
+  function hasPendingComponents(): boolean {
+    return pendingComponentCreates.size > 0 || pendingComponentDeletes.size > 0;
+  }
+
   function removePluginComponents(pluginId: string) {
     const creates = pendingComponentCreates.get(pluginId) || [];
     const componentIds = creates.map((c) => c.component_id);
@@ -308,8 +311,6 @@ export const usePluginStore = defineStore("plugin", () => {
         );
         await loadNavItems();
 
-        const currentPath = window.location.hash.replace(/^#/, "") || "/";
-        await pluginApi.onPageChanged(currentPath);
         await replayUiSnapshot();
         setTimeout(() => replayUiSnapshot(), 300);
 
@@ -1947,6 +1948,7 @@ export const usePluginStore = defineStore("plugin", () => {
     removePluginComponents,
     consumePendingComponentCreates,
     consumePendingComponentDeletes,
+    hasPendingComponents,
 
     initI18nEventListener,
     cleanupI18nEventListener,

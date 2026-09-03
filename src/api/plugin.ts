@@ -27,6 +27,7 @@ export interface MarketPluginInfo {
   tags?: string[];
   dependencies?: string[];
   optional_dependencies?: string[];
+  changelog?: string;
   _path?: string;
 }
 
@@ -169,10 +170,6 @@ export async function installFromMarket(
 
 export async function onLocaleChanged(locale: string): Promise<void> {
   return tauriInvoke("on_locale_changed", { locale });
-}
-
-export async function onPageChanged(path: string): Promise<void> {
-  return tauriInvoke("on_page_changed", { path });
 }
 
 export async function componentMirrorClear(): Promise<void> {

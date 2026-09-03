@@ -1,15 +1,20 @@
 [workspace]
 members = [
+    "application",
     "crates/core",
     "crates/infra",
     "crates/extra",
     "crates/interface",
     "server",
     "src-tauri",
-    "docker-entry",
     "crates/vendor/java-manager",
+    "crates/vendor/sysproxy",
 ]
 resolver = "2"
+
+[workspace.package]
+version = "1.3.1"
+edition = "2024"
 
 # 优化配置（从 src-tauri/Cargo.toml 移到这里统一管理）
 [profile.release]

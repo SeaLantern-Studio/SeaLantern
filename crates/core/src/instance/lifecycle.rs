@@ -1,6 +1,8 @@
 use std::fmt;
 use std::time::Duration;
 
+use async_trait::async_trait;
+
 use super::Instance;
 use crate::observability;
 
@@ -108,24 +110,25 @@ impl Default for RestartPolicy {
 /// 运行时驱动完成重启所需的最小能力。
 ///
 /// 具体轮询、进程控制、Docker 调用和异步实现均由上层运行时提供。
-pub trait InstanceRestartDriver {
+#[async_trait]
+pub trait InstanceRestartDriver: Send + Sync {
     type Error: std::error::Error + Send + Sync + 'static;
 
-    fn state(&self, instance: &Instance) -> Result<InstanceLifecycleState, Self::Error>;
+    async fn state(&self, instance: &Instance) -> Result<InstanceLifecycleState, Self::Error>;
 
-    fn request_stop(&self, instance: &Instance) -> Result<(), Self::Error>;
+    async fn request_stop(&self, instance: &Instance) -> Result<(), Self::Error>;
 
     /// 等待停止请求完成。
     ///
     /// 只有返回 [`InstanceLifecycleState::Stopped`] 才表示运行时已确认旧实例退出；
     /// 其他状态会被重启流程作为失败处理，绝不会继续启动新实例。
-    fn await_terminal(
+    async fn await_terminal(
         &self,
         instance: &Instance,
         timeout: Duration,
     ) -> Result<InstanceLifecycleState, Self::Error>;
 
-    fn start(&self, instance: &Instance) -> Result<(), Self::Error>;
+    async fn start(&self, instance: &Instance) -> Result<(), Self::Error>;
 }
 
 /// 重启完成后的领域结果。
@@ -177,7 +180,7 @@ impl<E: std::error::Error + 'static> std::error::Error for RestartError<E> {
 }
 
 /// 执行一次由运行时驱动提供具体能力的重启。
-pub fn restart_instance<D: InstanceRestartDriver>(
+pub async fn restart_instance<D: InstanceRestartDriver>(
     driver: &D,
     instance: &Instance,
     policy: RestartPolicy,
@@ -186,7 +189,7 @@ pub fn restart_instance<D: InstanceRestartDriver>(
         instance.id.as_str(),
         observability::INSTANCE_PREVIOUS_STATE_UNAVAILABLE,
     );
-    let previous_state = match driver.state(instance) {
+    let previous_state = match driver.state(instance).await {
         Ok(state) => state,
         Err(error) => {
             let error = RestartError::State(error);
@@ -203,7 +206,7 @@ pub fn restart_instance<D: InstanceRestartDriver>(
 
     let stop_requested = previous_state.requires_stop_before_restart();
     if stop_requested {
-        if let Err(error) = driver.request_stop(instance) {
+        if let Err(error) = driver.request_stop(instance).await {
             let error = RestartError::Stop(error);
             observability::instance_restart_failed(
                 instance.id.as_str(),
@@ -215,7 +218,7 @@ pub fn restart_instance<D: InstanceRestartDriver>(
             return Err(error);
         }
 
-        let terminal_state = match driver.await_terminal(instance, policy.stop_timeout) {
+        let terminal_state = match driver.await_terminal(instance, policy.stop_timeout).await {
             Ok(state) => state,
             Err(error) => {
                 let error = RestartError::AwaitTerminal(error);
@@ -242,7 +245,7 @@ pub fn restart_instance<D: InstanceRestartDriver>(
         }
     }
 
-    if let Err(error) = driver.start(instance) {
+    if let Err(error) = driver.start(instance).await {
         let error = RestartError::Start(error);
         observability::instance_restart_failed(
             instance.id.as_str(),
@@ -260,21 +263,22 @@ pub fn restart_instance<D: InstanceRestartDriver>(
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
     use std::io;
     use std::path::PathBuf;
+    use std::sync::Mutex;
 
     use super::{
-        restart_instance, transition, InstanceLifecycleAction, InstanceLifecycleState,
-        InstanceRestartDriver, RestartPolicy,
+        InstanceLifecycleAction, InstanceLifecycleState, InstanceRestartDriver, RestartPolicy,
+        restart_instance, transition,
     };
     use crate::instance::{Instance, InstanceId, InstanceSpec, LocalLaunch, StartupMode};
+    use async_trait::async_trait;
 
     struct Driver {
         state: InstanceLifecycleState,
         terminal: InstanceLifecycleState,
         fail_at: Option<DriverFailure>,
-        calls: RefCell<Vec<&'static str>>,
+        calls: Mutex<Vec<&'static str>>,
     }
 
     #[derive(Clone, Copy)]
@@ -285,39 +289,40 @@ mod tests {
         Start,
     }
 
+    #[async_trait]
     impl InstanceRestartDriver for Driver {
         type Error = io::Error;
 
-        fn state(&self, _: &Instance) -> Result<InstanceLifecycleState, Self::Error> {
-            self.calls.borrow_mut().push("state");
+        async fn state(&self, _: &Instance) -> Result<InstanceLifecycleState, Self::Error> {
+            self.calls.lock().expect("lock").push("state");
             if matches!(self.fail_at, Some(DriverFailure::State)) {
                 return Err(io::Error::other("state unavailable"));
             }
             Ok(self.state)
         }
 
-        fn request_stop(&self, _: &Instance) -> Result<(), Self::Error> {
-            self.calls.borrow_mut().push("stop");
+        async fn request_stop(&self, _: &Instance) -> Result<(), Self::Error> {
+            self.calls.lock().expect("lock").push("stop");
             if matches!(self.fail_at, Some(DriverFailure::Stop)) {
                 return Err(io::Error::other("stop unavailable"));
             }
             Ok(())
         }
 
-        fn await_terminal(
+        async fn await_terminal(
             &self,
             _: &Instance,
             _: std::time::Duration,
         ) -> Result<InstanceLifecycleState, Self::Error> {
-            self.calls.borrow_mut().push("wait");
+            self.calls.lock().expect("lock").push("wait");
             if matches!(self.fail_at, Some(DriverFailure::AwaitTerminal)) {
                 return Err(io::Error::other("wait unavailable"));
             }
             Ok(self.terminal)
         }
 
-        fn start(&self, _: &Instance) -> Result<(), Self::Error> {
-            self.calls.borrow_mut().push("start");
+        async fn start(&self, _: &Instance) -> Result<(), Self::Error> {
+            self.calls.lock().expect("lock").push("start");
             if matches!(self.fail_at, Some(DriverFailure::Start)) {
                 return Err(io::Error::other("start unavailable"));
             }
@@ -339,6 +344,7 @@ mod tests {
             min_memory_mib: 0,
             created_at_unix_secs: 0,
             last_started_at_unix_secs: None,
+            server_metadata: None,
             launch: LocalLaunch {
                 startup_mode: StartupMode::Jar,
                 startup_target: Some(PathBuf::from("servers/restartable/server.jar")),
@@ -352,100 +358,107 @@ mod tests {
         .unwrap()
     }
 
-    #[test]
-    fn restart_stops_waits_and_starts_an_active_instance() {
+    #[tokio::test]
+    async fn restart_stops_waits_and_starts_an_active_instance() {
         let driver = Driver {
             state: InstanceLifecycleState::Running,
             terminal: InstanceLifecycleState::Stopped,
             fail_at: None,
-            calls: RefCell::new(Vec::new()),
+            calls: Mutex::new(Vec::new()),
         };
 
-        let result = restart_instance(&driver, &instance(), RestartPolicy::default()).unwrap();
+        let result = restart_instance(&driver, &instance(), RestartPolicy::default())
+            .await
+            .unwrap();
 
         assert!(result.stop_requested);
-        assert_eq!(*driver.calls.borrow(), ["state", "stop", "wait", "start"]);
+        assert_eq!(*driver.calls.lock().expect("lock"), ["state", "stop", "wait", "start"]);
     }
 
-    #[test]
-    fn restart_starts_a_stopped_instance_without_a_stop_request() {
+    #[tokio::test]
+    async fn restart_starts_a_stopped_instance_without_a_stop_request() {
         let driver = Driver {
             state: InstanceLifecycleState::Stopped,
             terminal: InstanceLifecycleState::Stopped,
             fail_at: None,
-            calls: RefCell::new(Vec::new()),
+            calls: Mutex::new(Vec::new()),
         };
 
-        let result = restart_instance(&driver, &instance(), RestartPolicy::default()).unwrap();
+        let result = restart_instance(&driver, &instance(), RestartPolicy::default())
+            .await
+            .unwrap();
 
         assert!(!result.stop_requested);
-        assert_eq!(*driver.calls.borrow(), ["state", "start"]);
+        assert_eq!(*driver.calls.lock().expect("lock"), ["state", "start"]);
     }
 
-    #[test]
-    fn restart_does_not_start_when_stop_ends_in_error() {
+    #[tokio::test]
+    async fn restart_does_not_start_when_stop_ends_in_error() {
         let driver = Driver {
             state: InstanceLifecycleState::Running,
             terminal: InstanceLifecycleState::Error,
             fail_at: None,
-            calls: RefCell::new(Vec::new()),
+            calls: Mutex::new(Vec::new()),
         };
 
-        let result = restart_instance(&driver, &instance(), RestartPolicy::default());
+        let result = restart_instance(&driver, &instance(), RestartPolicy::default()).await;
 
         assert!(matches!(
             result,
             Err(super::RestartError::TerminalState { state: InstanceLifecycleState::Error })
         ));
-        assert_eq!(*driver.calls.borrow(), ["state", "stop", "wait"]);
+        assert_eq!(*driver.calls.lock().expect("lock"), ["state", "stop", "wait"]);
     }
 
-    #[test]
-    fn restart_returns_a_state_read_failure_without_calling_the_driver_again() {
+    #[tokio::test]
+    async fn restart_returns_a_state_read_failure_without_calling_the_driver_again() {
         let driver = Driver {
             state: InstanceLifecycleState::Stopped,
             terminal: InstanceLifecycleState::Stopped,
             fail_at: Some(DriverFailure::State),
-            calls: RefCell::new(Vec::new()),
+            calls: Mutex::new(Vec::new()),
         };
 
-        let result = restart_instance(&driver, &instance(), RestartPolicy::default());
+        let result = restart_instance(&driver, &instance(), RestartPolicy::default()).await;
 
         assert!(matches!(result, Err(super::RestartError::State(_))));
-        assert_eq!(*driver.calls.borrow(), ["state"]);
+        assert_eq!(*driver.calls.lock().expect("lock"), ["state"]);
     }
 
-    #[test]
-    fn restart_propagates_each_runtime_failure_without_continuing() {
+    #[tokio::test]
+    async fn restart_propagates_each_runtime_failure_without_continuing() {
         let stop_driver = Driver {
             state: InstanceLifecycleState::Running,
             terminal: InstanceLifecycleState::Stopped,
             fail_at: Some(DriverFailure::Stop),
-            calls: RefCell::new(Vec::new()),
+            calls: Mutex::new(Vec::new()),
         };
-        let stop_result = restart_instance(&stop_driver, &instance(), RestartPolicy::default());
+        let stop_result =
+            restart_instance(&stop_driver, &instance(), RestartPolicy::default()).await;
         assert!(matches!(stop_result, Err(super::RestartError::Stop(_))));
-        assert_eq!(*stop_driver.calls.borrow(), ["state", "stop"]);
+        assert_eq!(*stop_driver.calls.lock().expect("lock"), ["state", "stop"]);
 
         let wait_driver = Driver {
             state: InstanceLifecycleState::Running,
             terminal: InstanceLifecycleState::Stopped,
             fail_at: Some(DriverFailure::AwaitTerminal),
-            calls: RefCell::new(Vec::new()),
+            calls: Mutex::new(Vec::new()),
         };
-        let wait_result = restart_instance(&wait_driver, &instance(), RestartPolicy::default());
+        let wait_result =
+            restart_instance(&wait_driver, &instance(), RestartPolicy::default()).await;
         assert!(matches!(wait_result, Err(super::RestartError::AwaitTerminal(_))));
-        assert_eq!(*wait_driver.calls.borrow(), ["state", "stop", "wait"]);
+        assert_eq!(*wait_driver.calls.lock().expect("lock"), ["state", "stop", "wait"]);
 
         let start_driver = Driver {
             state: InstanceLifecycleState::Stopped,
             terminal: InstanceLifecycleState::Stopped,
             fail_at: Some(DriverFailure::Start),
-            calls: RefCell::new(Vec::new()),
+            calls: Mutex::new(Vec::new()),
         };
-        let start_result = restart_instance(&start_driver, &instance(), RestartPolicy::default());
+        let start_result =
+            restart_instance(&start_driver, &instance(), RestartPolicy::default()).await;
         assert!(matches!(start_result, Err(super::RestartError::Start(_))));
-        assert_eq!(*start_driver.calls.borrow(), ["state", "start"]);
+        assert_eq!(*start_driver.calls.lock().expect("lock"), ["state", "start"]);
     }
 
     #[test]

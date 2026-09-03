@@ -566,7 +566,13 @@ onMounted(() => {
   color: var(--sl-text-primary);
   font-size: 13px;
   width: 180px;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .market-search:focus {
@@ -584,7 +590,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .action-btn:hover {
@@ -676,7 +688,13 @@ onMounted(() => {
 
 .market-card {
   cursor: pointer;
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
   display: flex;
   gap: var(--sl-space-lg);
   box-sizing: border-box;

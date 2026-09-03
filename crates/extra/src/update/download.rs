@@ -12,7 +12,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
-use super::constants::UPDATE_HTTP_USER_AGENT;
 use super::types::DownloadProgress;
 use crate::observability;
 
@@ -45,20 +44,27 @@ pub async fn download_update_file_without_events(
     let file_name = file_name_from_url(&url);
     let file_path = cache_dir.join(file_name);
 
-    let client = reqwest::Client::builder()
-        .user_agent(UPDATE_HTTP_USER_AGENT)
-        .build()
+    // 获取当前全局客户端，与全局代理设置保持一致。
+    let client = sealantern_infra::net::global_client().map_err(|e| {
+        let msg = format!("HTTP client init failed: {}", e);
+        observability::update_download_failed(&url, &msg);
+        msg
+    })?;
+
+    let response = client
+        .get(&url)
         .map_err(|e| {
             let msg = format!("HTTP client init failed: {}", e);
             observability::update_download_failed(&url, &msg);
             msg
+        })?
+        .send()
+        .await
+        .map_err(|e| {
+            let msg = format!("Download request failed: {}", e);
+            observability::update_download_failed(&url, &msg);
+            msg
         })?;
-
-    let response = client.get(&url).send().await.map_err(|e| {
-        let msg = format!("Download request failed: {}", e);
-        observability::update_download_failed(&url, &msg);
-        msg
-    })?;
 
     if !response.status().is_success() {
         let msg = format!("Download failed with status: {}", response.status());

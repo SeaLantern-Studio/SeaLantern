@@ -2,10 +2,11 @@ use std::path::PathBuf;
 
 use crate::instance::{Instance, InstanceError, InstanceSpec};
 
-use super::{resolve_run_directory, RunDirectoryError, RunDirectoryState};
+use super::{RunDirectoryError, RunDirectoryState, resolve_run_directory};
 
 /// 整合包导入的无副作用输入。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ModpackProvisionRequest {
     pub archive_path: PathBuf,
     pub requested_run_directory: PathBuf,
@@ -14,7 +15,8 @@ pub struct ModpackProvisionRequest {
 }
 
 /// 整合包导入计划。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ModpackProvisionPlan {
     pub archive_path: PathBuf,
     pub run_directory: PathBuf,
@@ -25,6 +27,12 @@ pub struct ModpackProvisionPlan {
 pub fn plan_modpack(
     request: ModpackProvisionRequest,
 ) -> Result<ModpackProvisionPlan, ModpackProvisionError> {
+    tracing::debug!(
+        target: "sealantern.core.provisioning.modpack",
+        archive_path = %request.archive_path.display(),
+        requested_run_directory = %request.requested_run_directory.display(),
+        "planning modpack provision"
+    );
     if request.archive_path.as_os_str().is_empty() {
         return Err(ModpackProvisionError::EmptyArchivePath);
     }
@@ -40,11 +48,19 @@ pub fn plan_modpack(
     }
 
     let instance = Instance::new(request.instance).map_err(ModpackProvisionError::Instance)?;
-    Ok(ModpackProvisionPlan {
+    let plan = ModpackProvisionPlan {
         archive_path: request.archive_path,
         run_directory,
         instance,
-    })
+    };
+    tracing::debug!(
+        target: "sealantern.core.provisioning.modpack",
+        archive_path = %plan.archive_path.display(),
+        run_directory = %plan.run_directory.display(),
+        instance_id = %plan.instance.id.as_str(),
+        "modpack provision plan ready"
+    );
+    Ok(plan)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,15 +92,24 @@ impl std::fmt::Display for ModpackProvisionError {
     }
 }
 
-impl std::error::Error for ModpackProvisionError {}
+impl std::error::Error for ModpackProvisionError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::RunDirectory(error) => Some(error),
+            Self::Instance(error) => Some(error),
+            Self::EmptyArchivePath | Self::InstanceDirectoryMismatch { .. } => None,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
+    use std::error::Error;
     use std::path::PathBuf;
 
-    use super::{plan_modpack, ModpackProvisionError, ModpackProvisionRequest};
+    use super::{ModpackProvisionError, ModpackProvisionRequest, plan_modpack};
     use crate::instance::{InstanceId, InstanceSpec, LocalLaunch, StartupMode};
-    use crate::provisioning::RunDirectoryState;
+    use crate::provisioning::{RunDirectoryError, RunDirectoryState};
 
     fn instance_spec(directory: PathBuf) -> InstanceSpec {
         InstanceSpec {
@@ -100,6 +125,7 @@ mod tests {
             min_memory_mib: 0,
             created_at_unix_secs: 0,
             last_started_at_unix_secs: None,
+            server_metadata: None,
             launch: LocalLaunch {
                 startup_mode: StartupMode::Jar,
                 startup_target: Some(directory.join("server.jar")),
@@ -138,5 +164,14 @@ mod tests {
         .unwrap_err();
 
         assert!(matches!(error, ModpackProvisionError::InstanceDirectoryMismatch { .. }));
+    }
+
+    #[test]
+    fn modpack_error_exposes_the_run_directory_source() {
+        let error = ModpackProvisionError::RunDirectory(RunDirectoryError::NonEmpty {
+            path: PathBuf::from("E:/servers/existing"),
+        });
+
+        assert!(error.source().is_some());
     }
 }

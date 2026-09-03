@@ -16,14 +16,18 @@ function getThemeCache(): { theme: string; fontSize: number } | null {
     if (cached) {
       return JSON.parse(cached);
     }
-  } catch (e) {}
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to read theme cache:", e);
+  }
   return null;
 }
 
 function saveThemeCache(theme: string, fontSize: number): void {
   try {
     localStorage.setItem(THEME_CACHE_KEY, JSON.stringify({ theme, fontSize }));
-  } catch (e) {}
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to save theme cache:", e);
+  }
 }
 
 export function getInitialTheme(): string {
@@ -44,7 +48,9 @@ export function getInitialFontSize(): number {
 
 const defaultSettings: AppSettings = {
   close_servers_on_exit: true,
+  close_servers_on_update: true,
   auto_accept_eula: false,
+  auto_lightweight_minutes: null,
   default_max_memory: 4096,
   default_min_memory: 1024,
   default_port: 25565,
@@ -53,7 +59,7 @@ const defaultSettings: AppSettings = {
   console_font_size: 12,
   console_font_family: "",
   console_letter_spacing: 0,
-  max_log_lines: 1000,
+  max_log_lines: 5000,
   cached_java_list: [],
   background_image: "",
   background_opacity: 0.3,
@@ -68,6 +74,7 @@ const defaultSettings: AppSettings = {
   language: "zh-CN",
   developer_mode: false,
   close_action: "ask",
+  proxy: { mode: "adaptive" },
   last_run_path: "",
   minimal_mode: false,
   agreed_to_terms: false,

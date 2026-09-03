@@ -1,5 +1,5 @@
 import { reactive, onUnmounted, computed } from "vue";
-import { tauriInvoke } from "./tauri";
+import { invoke } from "./invoke";
 import { i18n } from "@language";
 
 export type TaskStatus =
@@ -8,17 +8,17 @@ export type TaskStatus =
 
 export interface DownloadTaskInfo {
   id: string;
-  totalSize: number;
+  total_size: number;
   downloaded: number;
   progress: number;
   status: TaskStatus;
-  isFinished: boolean;
+  is_finished: boolean;
 }
 
 export interface DownloadOptions {
   url: string;
-  savePath: string;
-  threadCount?: number;
+  save_path: string;
+  thread_count?: number;
 }
 
 export interface DownloadLink {
@@ -45,27 +45,29 @@ export const downloadApi = {
    * 基础 API：创建下载任务
    */
   async downloadFile(options: DownloadOptions): Promise<string> {
-    return tauriInvoke<string>("download_file", {
-      url: options.url,
-      savePath: options.savePath,
-      threadCount: options.threadCount || 32,
+    // 后端 download_create 接收 request 结构体参数（snake_case 字段）
+    const task = await invoke<DownloadTaskInfo>("download_create", {
+      request: {
+        url: options.url,
+        save_path: options.save_path,
+        thread_count: options.thread_count || 32,
+      },
     });
+    return task.id;
   },
 
   /**
    * 基础 API：单次查询
    */
   async pollTask(id: string): Promise<DownloadTaskInfo> {
-    return tauriInvoke<DownloadTaskInfo>("poll_task", { idStr: id });
+    return invoke<DownloadTaskInfo>("download_query", { id });
   },
 
   /**
    * 删除/取消下载任务
    */
   async cancelDownloadTask(id: string): Promise<void> {
-    return tauriInvoke<void>("cancel_download_task", {
-      idStr: id,
-    });
+    return invoke<void>("download_cancel", { id });
   },
 
   /**
@@ -74,11 +76,11 @@ export const downloadApi = {
   useDownload() {
     const taskInfo = reactive<DownloadTaskInfo>({
       id: "",
-      totalSize: 0,
+      total_size: 0,
       downloaded: 0,
       progress: 0,
       status: { kind: "simple", message: "Pending" },
-      isFinished: false,
+      is_finished: false,
     });
 
     const errorMessage = computed(() => {
@@ -99,7 +101,7 @@ export const downloadApi = {
       stop();
 
       const session = ++activeSession;
-      taskInfo.isFinished = false;
+      taskInfo.is_finished = false;
       taskInfo.progress = 0;
       taskInfo.status = { kind: "simple", message: "Pending" };
 
@@ -117,8 +119,8 @@ export const downloadApi = {
             return;
           }
 
-          if (pollingInFlight || taskInfo.id !== id || taskInfo.isFinished) {
-            if (taskInfo.id !== id || taskInfo.isFinished) {
+          if (pollingInFlight || taskInfo.id !== id || taskInfo.is_finished) {
+            if (taskInfo.id !== id || taskInfo.is_finished) {
               clearInterval(intervalId);
               if (timer === intervalId) timer = null;
             }
@@ -133,13 +135,13 @@ export const downloadApi = {
             }
 
             Object.assign(taskInfo, data);
-            if (data.isFinished) {
+            if (data.is_finished) {
               taskInfo.progress = 100;
               clearInterval(intervalId);
               if (timer === intervalId) timer = null;
             }
           } catch (err) {
-            if (session === activeSession && taskInfo.id === id && !taskInfo.isFinished) {
+            if (session === activeSession && taskInfo.id === id && !taskInfo.is_finished) {
               taskInfo.status = {
                 kind: "error",
                 message: i18n.t("downloader.connection_lost"),
@@ -154,7 +156,7 @@ export const downloadApi = {
         timer = intervalId;
       } catch (err: any) {
         taskInfo.status = { kind: "error", message: err.toString() };
-        taskInfo.isFinished = true;
+        taskInfo.is_finished = true;
       }
     };
 
@@ -169,11 +171,11 @@ export const downloadApi = {
     const reset = () => {
       stop();
       taskInfo.id = "";
-      taskInfo.totalSize = 0;
+      taskInfo.total_size = 0;
       taskInfo.downloaded = 0;
       taskInfo.progress = 0;
       taskInfo.status = { kind: "simple", message: "Pending" };
-      taskInfo.isFinished = false;
+      taskInfo.is_finished = false;
     };
 
     onUnmounted(stop);
@@ -184,17 +186,17 @@ export const downloadApi = {
 
 export const downloadServerApi = {
   async getServerTypes(): Promise<string[]> {
-    return tauriInvoke<string[]>("get_server_types");
+    return invoke<string[]>("catalog_server_types");
   },
 
   async getVersionsByType(serverType: string): Promise<string[]> {
-    return tauriInvoke<string[]>("get_versions_by_type", { serverType });
+    return invoke<string[]>("catalog_versions", { server_type: serverType });
   },
 
   async getDownloadInfo(serverType: string, version: string): Promise<DownloadLink> {
-    return tauriInvoke<DownloadLink>("get_download_info", {
-      serverType,
-      version,
+    return invoke<DownloadLink>("catalog_details", {
+      server_type: serverType,
+      server_version: version,
     });
   },
 };

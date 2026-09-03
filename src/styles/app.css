@@ -12,3 +12,48 @@
 .splash-fade-leave-to {
   opacity: 0;
 }
+
+/* ===== 竖向 Tab 栏统一规范 =====
+   各页面竖直 tab 栏(设置/配置/插件/玩家/帮助)统一规格:
+   固定 220px 宽、按钮占满整行左对齐、与右侧内容固定间距 */
+.cmz-tab-bar--vertical {
+  width: 220px;
+  min-width: 220px;
+}
+
+.cmz-tab-bar--vertical .cmz-tab-bar__tab {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* ===== 主题切换圆形扩散 =====
+   以切换点为圆心,新主题圆形展开覆盖旧主题(View Transition API);
+   起点坐标由 themeRevealTransition 通过 --sl-theme-origin-x/y 下发 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+  animation: sl-theme-fade-out 0.18s ease-in forwards;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+  clip-path: circle(0% at var(--sl-theme-origin-x, 50%) var(--sl-theme-origin-y, 50%));
+  animation: sl-theme-circle-reveal 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes sl-theme-circle-reveal {
+  to {
+    clip-path: circle(150% at var(--sl-theme-origin-x, 50%) var(--sl-theme-origin-y, 50%));
+  }
+}
+
+@keyframes sl-theme-fade-out {
+  to {
+    opacity: 0;
+  }
+}

@@ -7,19 +7,21 @@
     "dev": "vite",
     "build": "vite build",
     "build:check": "vue-tsc --noEmit && vite build",
+    "test": "node --test tests/*.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
+    "axum": "node ./scripts/axum.mjs",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "fmt:rust": "cargo fmt",
     "notice": "node ./scripts/notice.mjs",
     "commitlint": "commitlint",
     "prepare": "husky",
     "sv": "node ./scripts/version.mjs show",
     "cv": "node ./scripts/version.mjs change",
-    "docker:dev": "cargo run -p docker-entry",
-    "docker:build": "docker build -t sealantern:docker ."
+    "knip": "knip"
   },
   "dependencies": {
     "@codemirror/language": "^6.12.3",
@@ -37,11 +39,7 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.0",
     "@vueuse/core": "^14.2.1",
-    "@xterm/addon-clipboard": "^0.2.0",
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/addon-serialize": "^0.14.0",
-    "@xterm/xterm": "^6.0.0",
-    "cmzya-modern-ui": "^0.5.5",
+    "cmzya-modern-ui": "^0.6.2",
     "dompurify": "^3.3.3",
     "echarts": "^6.0.0",
     "lucide-vue-next": "^0.574.0",
@@ -60,6 +58,7 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "glob": "^13.0.0",
     "husky": "^9.1.7",
+    "knip": "^6.32.2",
     "license-checker-rseidelsohn": "^4.0.0",
     "lint-staged": "^16.4.0",
     "oxfmt": "^0.35.0",
@@ -72,8 +71,11 @@
     "vue-tsc": "^3.2.5"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md}": [
+    "*.{js,jsx,ts,tsx,vue,cjs,mjs,json,css,scss,md,toml}": [
       "pnpm exec oxfmt"
+    ],
+    "*.rs": [
+      "node ./scripts/backend-fmt.mjs"
     ]
   },
   "packageManager": "pnpm@9.15.9"

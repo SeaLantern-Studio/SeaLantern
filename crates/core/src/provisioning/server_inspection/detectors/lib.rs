@@ -14,13 +14,15 @@ use std::path::{Path, PathBuf};
 use super::archive::ArchiveMetadata;
 use super::directory::DirectoryMetadata;
 use super::evidence::{EvidenceCollector, NewEvidence};
+use super::formats::manifest;
 use super::model::{
     ArtifactInfo, ArtifactRole, Attributed, Detected, DetectionTarget, DiagnosticSeverity,
     EvidenceLocation, EvidenceSource, InspectionDiagnostic, LaunchProfile, MavenCoordinate,
     MinecraftVersionInfo, ReleaseChannel, ServerCategory, ServerComponent, ServerComponentKind,
     ServerEcosystem, ServerIdentityInfo, ServerProduct,
 };
-use super::resolver::{resolve, resolve_attributed, DetectionClaim};
+use super::resolver::{DetectionClaim, resolve, resolve_attributed, resolve_server_implementation};
+use super::{DetectionOutcome, detection_outcome, server_implementation_outcome};
 
 const PAPER_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Paper, ServerEcosystem::Bukkit];
 const VANILLA_ECOSYSTEMS: &[ServerEcosystem] = &[ServerEcosystem::Vanilla];
@@ -374,12 +376,16 @@ pub(super) fn detect_jar(
 pub(super) fn detect_directory(
     path: &Path,
     directory: &DirectoryMetadata,
+    minecraft: Option<&MinecraftVersionInfo>,
+    existing_java_major: Option<&Detected<u16>>,
     evidence: &mut EvidenceCollector,
 ) -> DetectorOutput {
     let mut findings = Findings::default();
     detect_filename(path, &mut findings);
     for root_archive in &directory.root_archives {
         let archive_path = path.join(&root_archive.relative_path);
+        let artifact = root_artifact(&root_archive.metadata);
+        let root_minecraft = root_minecraft_metadata(&root_archive.metadata);
         fabric::detect(
             &archive_path,
             &root_archive.metadata,
@@ -402,6 +408,20 @@ pub(super) fn detect_directory(
             Some((path, &root_archive.relative_path)),
             &mut findings,
         );
+        paperclip::detect(&archive_path, &artifact, &root_archive.metadata, &mut findings);
+        if artifact
+            .main_class
+            .value
+            .as_deref()
+            .is_some_and(|main_class| {
+                matches!(
+                    main_class,
+                    "net.minecraft.bundler.Main" | "net.minecraft.server.MinecraftServer"
+                )
+            })
+        {
+            vanilla::detect(&archive_path, &artifact, root_minecraft.as_ref(), &mut findings);
+        }
     }
     for installation in &directory.installations {
         forge::detect_installation(path, installation, &mut findings);
@@ -409,7 +429,60 @@ pub(super) fn detect_directory(
     for script in &directory.scripts {
         forge::detect_script(path, script, &mut findings);
     }
-    finalize(path, findings, None, None, evidence)
+    finalize(path, findings, minecraft, existing_java_major, evidence)
+}
+
+fn root_minecraft_metadata(archive: &ArchiveMetadata) -> Option<MinecraftVersionInfo> {
+    let bytes = archive.mojang_version.as_deref()?;
+    let document = super::formats::mojang_version::parse(bytes).ok()??;
+    let id = document.id?;
+    Some(MinecraftVersionInfo {
+        version: Detected {
+            value: Some(id.clone()),
+            confidence: 95,
+            evidence: Vec::new(),
+            alternatives: Vec::new(),
+        },
+        id: Some(id),
+        name: document.name,
+        world_version: document.world_version,
+        series_id: document.series_id,
+        protocol_version: document.protocol_version,
+        pack_version: document.pack_version,
+        build_time: document.build_time,
+        java_component: document.java_component,
+        java_version: document.java_version,
+        stable: document.stable,
+        use_editor: document.use_editor,
+        extra: document.extra,
+        evidence: Vec::new(),
+    })
+}
+
+fn root_artifact(archive: &ArchiveMetadata) -> ArtifactInfo {
+    let mut artifact = ArtifactInfo {
+        format: Detected::default(),
+        roles: Vec::new(),
+        main_class: Detected::default(),
+        premain_class: Detected::default(),
+        agent_class: Detected::default(),
+        automatic_module_name: Detected::default(),
+        manifest: None,
+    };
+    let Some(bytes) = archive.manifest.as_deref() else {
+        return artifact;
+    };
+    let parsed = manifest::parse(bytes);
+    if let Some(value) = parsed.main_value("Main-Class") {
+        artifact.main_class = Detected {
+            value: Some(value.to_string()),
+            confidence: 100,
+            evidence: Vec::new(),
+            alternatives: Vec::new(),
+        };
+    }
+    artifact.manifest = Some(parsed.summary);
+    artifact
 }
 
 fn finalize(
@@ -419,7 +492,7 @@ fn finalize(
     existing_java_major: Option<&Detected<u16>>,
     evidence: &mut EvidenceCollector,
 ) -> DetectorOutput {
-    let implementation = resolve(
+    let implementation = resolve_server_implementation(
         findings
             .products
             .iter()
@@ -581,9 +654,10 @@ fn finalize(
     let java_major = resolve(java_claims);
 
     let mut diagnostics = Vec::new();
-    add_conflict_diagnostic(
+    add_thresholded_resolution_diagnostic(
         path,
         "conflicting_server_implementations",
+        "insufficient_server_implementation_evidence",
         "server implementation",
         &implementation,
         &mut diagnostics,
@@ -717,7 +791,7 @@ fn add_conflict_diagnostic<T>(
     detected: &Detected<T>,
     diagnostics: &mut Vec<InspectionDiagnostic>,
 ) {
-    if detected.value.is_some() || detected.alternatives.len() < 2 {
+    if detection_outcome(detected) != DetectionOutcome::Conflict {
         return;
     }
     diagnostics.push(InspectionDiagnostic {
@@ -730,6 +804,34 @@ fn add_conflict_diagnostic<T>(
             .flat_map(|candidate| candidate.evidence.iter().copied())
             .collect(),
     });
+}
+
+fn add_thresholded_resolution_diagnostic<T>(
+    path: &Path,
+    conflict_code: &str,
+    insufficient_code: &str,
+    label: &str,
+    detected: &Detected<T>,
+    diagnostics: &mut Vec<InspectionDiagnostic>,
+) {
+    match server_implementation_outcome(detected) {
+        DetectionOutcome::Conflict => {
+            add_conflict_diagnostic(path, conflict_code, label, detected, diagnostics);
+        }
+        DetectionOutcome::InsufficientEvidence { minimum_confidence } => {
+            diagnostics.push(InspectionDiagnostic {
+                severity: DiagnosticSeverity::Info,
+                code: insufficient_code.to_string(),
+                message: format!(
+                "{label} evidence in {} has confidence {}, below the required {minimum_confidence}",
+                path.display(),
+                detected.confidence
+            ),
+                evidence: detected.evidence.clone(),
+            })
+        }
+        DetectionOutcome::Missing | DetectionOutcome::Selected => {}
+    }
 }
 
 fn detect_filename(path: &Path, findings: &mut Findings) {

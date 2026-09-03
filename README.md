@@ -39,11 +39,13 @@
 ## 技术栈
 
 - **前端**: Vue 3 + TypeScript + Vite
-- **后端**: Rust + Tauri 2
-- **通信**: Tauri invoke
+- **后端**: Rust + Tauri 2（Desktop 宿主）+ Axum（Web 宿主）
+- **通信**: Desktop 使用 Tauri IPC/Event，Web 使用 HTTP/WebSocket/SSE，插件使用宿主 Bridge
 - **Docker**: itzg/minecraft-server
 
 没有 Electron，没有 Node 后端，没有 Webpack。启动快，体积小，内存省。
+
+`application` 提供宿主无关的公共业务编排，`src-tauri` 与 `server` 分别作为 Desktop、Web 宿主，`interface` 只定义两端真正共用的契约。可复用的前端业务通过 `src/api` 接入，宿主专用页面和功能可以独立演进。详见[项目架构与代码组织](docs/architecture.md)。
 
 > 使用系统 Webview 渲染。
 
@@ -58,11 +60,12 @@
 
 开发前需要准备：
 
-| 依赖    | 版本   |
-| ------- | ------ |
-| Node.js | 24 LTS |
-| Rust    | stable |
-| pnpm    | 9.15.9 |
+| 依赖         | 版本   |
+| ------------ | ------ |
+| Node.js      | 24 LTS |
+| Rust         | stable |
+| pnpm         | 9.15.9 |
+| Only（可选） | 0.4.0+ |
 
 如果你还没有配置开发环境，可以先查看 [环境配置](https://docs.ideaflash.cn/zh/dev/environment)。
 
@@ -86,17 +89,56 @@ pnpm tauri dev
 pnpm dev
 ```
 
-只启动 HTTP / Docker 后端：
+如果你在 Linux 上开发，可能需要先安装 Tauri 相关系统依赖。具体请看 [Tauri Linux 前置要求](https://tauri.app/zh-cn/start/prerequisites/#linux)。
+
+仓库根目录提供了 [`Onlyfile`](Onlyfile)，用于统一常用的开发、构建和检查命令。可以按需安装 [Only](https://github.com/KercyDing/only)：
 
 ```bash
-pnpm docker:dev
+cargo install only
 ```
 
-如果你在 Linux 上开发，可能需要先安装 Tauri 相关系统依赖。具体请看 [Tauri Linux 前置要求](https://tauri.app/zh-cn/start/prerequisites/#linux)。
+安装后，在项目根目录运行以下命令查看所有可用任务：
+
+```bash
+only
+```
+
+常用的根级命令包括：
+
+| 命令         | 用途               |
+| ------------ | ------------------ |
+| `only dev`   | 启动桌面开发模式   |
+| `only build` | 构建本地应用       |
+| `only check` | 并行执行前后端检查 |
+| `only test`  | 并行执行前后端测试 |
+| `only ci`    | 执行完整本地 CI    |
+| `only clean` | 清理前后端产物     |
+
+也可以通过 group 单独运行某一侧的任务：
+
+```bash
+# 前端
+only front check
+only front test
+only front ci
+
+# 后端
+only back check
+only back test
+only back ci
+```
+
+`only ci` 会执行完整的前后端检查与测试，并在适合的位置并行运行。
 
 ### 代码检查
 
-提交代码前，我们**建议**运行以下命令来检查代码质量：
+提交代码前，我们**建议**运行完整的本地 CI：
+
+```bash
+only ci
+```
+
+该命令会执行前后端静态检查和全部测试；如果没有安装 Only，也可以分别运行以下命令：
 
 <details><summary>前端检查</summary>
 
@@ -115,6 +157,9 @@ pnpm fmt
 
 # 检查代码格式
 pnpm fmt:check
+
+# 运行前端测试
+pnpm test
 ```
 
 </details>
@@ -130,6 +175,9 @@ cargo check --all-targets --workspace
 
 # 运行 Clippy 检查
 cargo clippy --all-targets --workspace -- -D warnings
+
+# 运行后端测试
+cargo test --all-targets --workspace
 ```
 
 </details>

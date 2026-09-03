@@ -1,20 +1,16 @@
 [package]
 name = "sealantern"
-version = "1.2.0"
+version.workspace = true
 description = "Minecraft Server Manager"
 authors = ["FPS_Z"]
-edition = "2021"
+edition.workspace = true
 default-run = "sealantern"
-
-[lib]
-name = "sealantern_lib"
-crate-type = ["lib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2.9", features = ["macos-private-api", "protocol-asset"] }
+tauri = { version = "2.9", features = ["macos-private-api", "protocol-asset", "tray-icon"] }
 tauri-plugin-dialog = "2.6"
 tauri-plugin-fs = "2.4"
 tauri-plugin-http = "2.5"
@@ -29,6 +25,10 @@ tokio = { version = "1", features = ["time"] }
 sealantern-extra = { path = "../crates/extra" }
 sealantern-core = { path = "../crates/core" }
 sealantern-infra = { path = "../crates/infra" }
+sealantern-application = { path = "../application" }
+sealantern-interface = { path = "../crates/interface" }
+async-trait = "0.1.91"
+serde_json = "1"
 
-[features]
-docker = []
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_System_Registry"] }

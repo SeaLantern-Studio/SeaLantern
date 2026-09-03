@@ -15,15 +15,11 @@
   gap: 0;
 }
 
+/* 配置页垂直 Tab 栏:宽度由 app.css 全局统一 */
 .config-tabbar-sticky {
   position: sticky;
   top: var(--sl-space-md);
   flex-shrink: 0;
-}
-
-/* 配置页垂直 Tab 栏宽度 */
-.config-tabbar-sticky .cmz-tab-bar--vertical {
-  min-width: 140px;
 }
 
 .config-main {
@@ -456,7 +452,13 @@
   background: var(--sl-surface);
   border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
-  transition: all var(--sl-transition-fast);
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
 }
 
 .config-entry:hover {

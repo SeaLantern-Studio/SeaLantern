@@ -16,12 +16,12 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde::Deserialize;
 
-use sealantern_infra::net::NetClient;
+use sealantern_infra::net::{ClientProvider, NetClient};
 
 use crate::market::error::MarketError;
 use crate::market::fetcher;
-use crate::market::fetcher::models::VersionFile;
 use crate::market::fetcher::Fetcher;
+use crate::market::fetcher::models::VersionFile;
 use crate::market::models::*;
 use crate::observability;
 
@@ -91,15 +91,30 @@ struct ModrinthVersionFile {
 
 /// 基于 Modrinth API 的资源获取器。
 ///
-/// 通过 `NetClient` 向 Modrinth API 发送 HTTP 请求（均携带 `User-Agent`），
-/// 解析返回的 JSON 数据，映射为内部统一的 `MarketResource`、`ResourceInfo`、
-/// `Version` 等模型。
+/// 持有客户端获取器（provider），每次请求前获取当前全局客户端，
+/// 避免缓存固定客户端导致代理更新不生效。
 pub struct ModrinthFetcher {
-    client: NetClient,
+    client_provider: ClientProvider,
 }
 
 impl ModrinthFetcher {
-    /// 创建一个新的 `ModrinthFetcher`。
+    /// 使用全局客户端获取器构造获取器（生产装配推荐）。
+    pub fn global() -> Self {
+        Self::with_provider(sealantern_infra::net::global_client_provider())
+    }
+
+    /// 使用客户端获取器构造获取器，每次请求前调用以获取当前全局客户端。
+    ///
+    /// # Parameters
+    /// - `client_provider`: 返回当前 `NetClient` 的获取器。
+    ///
+    /// # Returns
+    /// 返回初始化完成的 `ModrinthFetcher`。
+    pub fn with_provider(client_provider: ClientProvider) -> Self {
+        Self { client_provider }
+    }
+
+    /// 创建一个新的 `ModrinthFetcher`（兼容旧调用与测试注入）。
     ///
     /// # Parameters
     /// - `client`: 用于发送 HTTP 请求的 `NetClient` 实例。
@@ -107,7 +122,7 @@ impl ModrinthFetcher {
     /// # Returns
     /// 返回初始化完成的 `ModrinthFetcher`。
     pub fn new(client: NetClient) -> Self {
-        Self { client }
+        Self::with_provider(Box::new(move || Ok(client.clone())))
     }
 }
 
@@ -145,8 +160,8 @@ impl Fetcher for ModrinthFetcher {
             offset
         );
 
-        let resp = self
-            .client
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
             .header("User-Agent", super::USER_AGENT)
@@ -199,8 +214,8 @@ impl Fetcher for ModrinthFetcher {
     async fn get_resource(&self, id: &str) -> Result<ResourceInfo, MarketError> {
         let url = format!("{}/project/{}", MODRINTH_BASE, id);
 
-        let resp = self
-            .client
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
             .header("User-Agent", super::USER_AGENT)
@@ -247,8 +262,8 @@ impl Fetcher for ModrinthFetcher {
     async fn get_resource_versions(&self, id: &str) -> Result<Vec<Version>, MarketError> {
         let url = format!("{}/project/{}/version", MODRINTH_BASE, id);
 
-        let resp = self
-            .client
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
             .header("User-Agent", super::USER_AGENT)
@@ -314,8 +329,8 @@ impl Fetcher for ModrinthFetcher {
     async fn get_random_resources(&self, count: u32) -> Result<Vec<MarketResource>, MarketError> {
         let limit = count.min(10);
         let url = format!("{}/projects_random?count={}", MODRINTH_BASE, limit);
-        let resp = self
-            .client
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = client
             .get(&url)
             .map_err(|e| MarketError::config(e.to_string()))?
             .header("User-Agent", super::USER_AGENT)
@@ -395,5 +410,15 @@ mod tests {
             assert_eq!(r.source, MarketSource::Modrinth);
             assert!(!r.name.is_empty());
         }
+    }
+
+    #[tokio::test]
+    async fn provider_failure_propagates_without_network() {
+        // 假 provider：每次请求前被调用并返回失败，验证请求不会发出网络调用。
+        let fetcher = ModrinthFetcher::with_provider(Box::new(|| {
+            Err(sealantern_infra::net::NetError::Config("模拟获取客户端失败".into()))
+        }));
+        let error = fetcher.search("sodium", 1, 5).await.unwrap_err();
+        assert!(matches!(error, MarketError::Config(_)));
     }
 }

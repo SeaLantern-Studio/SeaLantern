@@ -49,17 +49,22 @@ impl Environment {
     ///
     /// 该操作影响整个进程。调用方必须在启动线程或加载不受控库之前完成写入，
     /// 避免与并发环境读取产生未定义的外部行为。
+    #[allow(unsafe_code)]
     pub fn set(key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> Result<(), EnvironmentError> {
         validate_key(key.as_ref())?;
         validate_value(value.as_ref())?;
-        env::set_var(key, value);
+        // SAFETY: 调用方已通过文档约定保证在启动线程或加载不受控库之前完成写入，
+        // 且键和值已通过 validate_key/validate_value 验证。
+        unsafe { env::set_var(key, value) };
         Ok(())
     }
 
     /// 删除进程环境变量。与 [`Self::set`] 一样，必须由调用方保证没有并发访问。
+    #[allow(unsafe_code)]
     pub fn remove(key: impl AsRef<OsStr>) -> Result<(), EnvironmentError> {
         validate_key(key.as_ref())?;
-        env::remove_var(key);
+        // SAFETY: 调用方已通过文档约定保证没有并发访问，且键已通过 validate_key 验证。
+        unsafe { env::remove_var(key) };
         Ok(())
     }
 
