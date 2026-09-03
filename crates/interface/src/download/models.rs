@@ -4,9 +4,7 @@
 
 /// 下载任务状态（对齐前端 `TaskStatus` 形状）。
 ///
-/// 手写序列化以匹配前端期望：unit 变体输出为字符串
-/// （`"Pending"`/`"Downloading"`/`"Completed"`），错误变体输出为
-/// `{ "Error": "..." }` 对象。
+/// 使用稳定的判别联合，避免让展示文本同时承担协议字段的职责。
 #[derive(Debug, Clone, PartialEq)]
 pub enum DownloadTaskStatus {
     /// 排队中（尚未开始）。
@@ -24,15 +22,31 @@ impl serde::Serialize for DownloadTaskStatus {
     where
         S: serde::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde::ser::SerializeStruct;
         match self {
-            Self::Pending => serializer.serialize_str("Pending"),
-            Self::Downloading => serializer.serialize_str("Downloading"),
-            Self::Completed => serializer.serialize_str("Completed"),
+            Self::Pending => {
+                let mut state = serializer.serialize_struct("TaskStatus", 2)?;
+                state.serialize_field("kind", "simple")?;
+                state.serialize_field("message", "Pending")?;
+                state.end()
+            }
+            Self::Downloading => {
+                let mut state = serializer.serialize_struct("TaskStatus", 2)?;
+                state.serialize_field("kind", "simple")?;
+                state.serialize_field("message", "Downloading")?;
+                state.end()
+            }
+            Self::Completed => {
+                let mut state = serializer.serialize_struct("TaskStatus", 2)?;
+                state.serialize_field("kind", "simple")?;
+                state.serialize_field("message", "Completed")?;
+                state.end()
+            }
             Self::Error(message) => {
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry("Error", message)?;
-                map.end()
+                let mut state = serializer.serialize_struct("TaskStatus", 2)?;
+                state.serialize_field("kind", "error")?;
+                state.serialize_field("message", message)?;
+                state.end()
             }
         }
     }
@@ -77,17 +91,23 @@ mod tests {
 
     #[test]
     fn task_status_serializes_as_frontend_shape() {
-        // unit 变体输出为字符串（前端期望 "Pending"/"Downloading"/"Completed"）。
-        assert_eq!(serde_json::to_string(&DownloadTaskStatus::Pending).unwrap(), "\"Pending\"");
+        // 状态使用稳定的 kind/message 判别联合。
+        assert_eq!(
+            serde_json::to_string(&DownloadTaskStatus::Pending).unwrap(),
+            r#"{"kind":"simple","message":"Pending"}"#
+        );
         assert_eq!(
             serde_json::to_string(&DownloadTaskStatus::Downloading).unwrap(),
-            "\"Downloading\""
+            r#"{"kind":"simple","message":"Downloading"}"#
         );
-        assert_eq!(serde_json::to_string(&DownloadTaskStatus::Completed).unwrap(), "\"Completed\"");
-        // 错误变体输出为 { "Error": "..." } 对象（前端 errorMessage 判定 "Error" in status）。
+        assert_eq!(
+            serde_json::to_string(&DownloadTaskStatus::Completed).unwrap(),
+            r#"{"kind":"simple","message":"Completed"}"#
+        );
+        // 错误状态同样保持 kind/message 结构。
         assert_eq!(
             serde_json::to_string(&DownloadTaskStatus::Error("boom".into())).unwrap(),
-            r#"{"Error":"boom"}"#
+            r#"{"kind":"error","message":"boom"}"#
         );
     }
 
