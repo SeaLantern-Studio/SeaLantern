@@ -906,8 +906,8 @@ function goToMarket() {
             <label v-if="batchMode" class="plugin-checkbox" @click.stop>
               <cmz-toggle
                 variant="checkbox"
-                :modelValue="selectedPlugins.has(plugin.manifest.id)"
-                @update:modelValue="togglePluginSelection(plugin.manifest.id)"
+                :model-value="selectedPlugins.has(plugin.manifest.id)"
+                @update:model-value="togglePluginSelection(plugin.manifest.id)"
               />
             </label>
 
@@ -1022,7 +1022,7 @@ function goToMarket() {
                 <cmz-toggle
                   v-if="!safeMode"
                   variant="switch"
-                  :modelValue="isPluginEnabled(plugin.state)"
+                  :model-value="isPluginEnabled(plugin.state)"
                   :disabled="
                     getDependencyInfo(plugin.manifest.id)?.hasMissingRequired &&
                     !isPluginEnabled(plugin.state)
@@ -1033,7 +1033,7 @@ function goToMarket() {
                       ? i18n.t('plugins.missing_required_deps')
                       : ''
                   "
-                  @update:modelValue="
+                  @update:model-value="
                     handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))
                   "
                   size="sm"
@@ -1086,8 +1086,8 @@ function goToMarket() {
               <label v-else-if="field.type === 'boolean'" class="setting-toggle">
                 <cmz-toggle
                   variant="switch"
-                  :modelValue="Boolean(settingsForm[field.key])"
-                  @update:modelValue="settingsForm[field.key] = $event"
+                  :model-value="Boolean(settingsForm[field.key])"
+                  @update:model-value="settingsForm[field.key] = $event"
                   size="sm"
                 />
               </label>

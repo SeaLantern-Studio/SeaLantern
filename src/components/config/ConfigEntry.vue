@@ -40,12 +40,12 @@ function isBooleanType(entry: ConfigEntry): boolean {
     </div>
     <div class="entry-value">
       <template v-if="isBooleanType(entry)">
-        <cmz-switch :modelValue="value === 'true'" @update:modelValue="handleSwitchChange" />
+        <cmz-switch :model-value="value === 'true'" @update:model-value="handleSwitchChange" />
       </template>
       <template v-else>
         <cmz-input
-          :modelValue="value"
-          @update:modelValue="handleValueChange"
+          :model-value="value"
+          @update:model-value="handleValueChange"
           :placeholder="entry.default_value"
           style="width: 280px"
         />

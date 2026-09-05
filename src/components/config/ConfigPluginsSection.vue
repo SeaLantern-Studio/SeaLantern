@@ -160,8 +160,8 @@ function setPluginRowRef(pluginFileName: string) {
         </div>
         <div class="plugin-list-actions">
           <cmz-switch
-            :modelValue="plugin.enabled"
-            @update:modelValue="emit('togglePlugin', plugin)"
+            :model-value="plugin.enabled"
+            @update:model-value="emit('togglePlugin', plugin)"
             :title="plugin.enabled ? i18n.t('config.disable') : i18n.t('config.enable')"
           />
           <button

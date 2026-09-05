@@ -153,7 +153,7 @@ function toggleViewMode() {
           </span>
           <span class="stat-value">{{ diskUsage }}%</span>
         </div>
-        <cmz-progress :value="diskUsage" color="#f59e0b" :showPercent="false" />
+        <cmz-progress :value="diskUsage" color="#f59e0b" :show-percent="false" />
       </div>
     </div>
   </cmz-card>

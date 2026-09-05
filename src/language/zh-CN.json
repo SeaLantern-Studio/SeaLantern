@@ -726,6 +726,7 @@
       "acrylic_desc": "启用软高斯模糊毛玻璃效果，支持所有平台，与背景图片兼容",
       "advanced_material": "高级材质",
       "advanced_material_desc": "开启半透明材质和窗口融合效果，兼容原来的亚克力设置",
+      "advanced_material_desc_linux": "Linux 下仅对窗口内组件应用半透明与模糊效果",
       "background": "背景图片",
       "background_desc": "上传一张图片作为软件背景，支持 PNG、JPG、WEBP 等格式",
       "opacity": "不透明度",

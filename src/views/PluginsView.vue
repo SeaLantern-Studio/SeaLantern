@@ -51,7 +51,7 @@ watch(
         :tabs="tabs"
         :level="1"
         vertical
-        @update:modelValue="handleTabChange"
+        @update:model-value="handleTabChange"
       />
       <div class="tab-content">
         <PluginsView v-if="activeTab === 'plugins'" />

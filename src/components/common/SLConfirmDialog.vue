@@ -8,7 +8,6 @@ interface Props {
   message?: string;
   confirmText?: string;
   cancelText?: string;
-  confirmVariant?: "primary" | "danger" | "secondary";
   requireInput?: boolean;
   inputPlaceholder?: string;
   expectedInput?: string;
@@ -21,7 +20,6 @@ const props = withDefaults(defineProps<Props>(), {
   message: "",
   confirmText: () => i18n.t("common.confirm"),
   cancelText: () => i18n.t("common.cancel"),
-  confirmVariant: "primary",
   requireInput: false,
   inputPlaceholder: "",
   expectedInput: "",
@@ -48,14 +46,8 @@ const isConfirmDisabled = computed(() => {
   return false;
 });
 
-// 映射 SL 的 confirmVariant 到 CmzYa 属性
-const confirmBtnVariant = computed(() => {
-  if (props.confirmVariant === "secondary") return "outline";
-  return "solid";
-});
-
 const confirmBtnColor = computed(() => {
-  if (props.confirmVariant === "danger") return "#ef4444";
+  if (props.dangerous) return "#ef4444";
   return undefined;
 });
 
@@ -119,7 +111,7 @@ function handleKeydown(event: KeyboardEvent): void {
         {{ cancelText }}
       </cmz-button>
       <cmz-button
-        :variant="confirmBtnVariant"
+        variant="solid"
         :color="confirmBtnColor"
         :loading="loading"
         :disabled="isConfirmDisabled"

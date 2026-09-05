@@ -612,12 +612,12 @@ onDeactivated(() => {
       <div class="tunnel-log-console">
         <ConsoleOutput
           ref="tunnelOutputRef"
-          :consoleFontSize="consoleFontSize"
-          :consoleFontFamily="consoleFontFamily"
-          :consoleLetterSpacing="consoleLetterSpacing"
-          :maxLogLines="maxLogLines"
+          :console-font-size="consoleFontSize"
+          :console-font-family="consoleFontFamily"
+          :console-letter-spacing="consoleLetterSpacing"
+          :max-log-lines="maxLogLines"
           :readonly="true"
-          :userScrolledUp="userScrolledUp"
+          :user-scrolled-up="userScrolledUp"
           @scroll="(value: boolean) => (userScrolledUp = value)"
           @scrollToBottom="
             userScrolledUp = false;

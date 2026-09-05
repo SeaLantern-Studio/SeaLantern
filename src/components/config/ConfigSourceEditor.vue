@@ -253,7 +253,7 @@ onBeforeUnmount(() => {
           <cmz-button
             variant="outline"
             size="sm"
-            iconOnly
+            icon-only
             :disabled="!canNavigate"
             :aria-label="i18n.t('config.source_search_prev')"
             @click="navigateToPrevious"
@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
           <cmz-button
             variant="outline"
             size="sm"
-            iconOnly
+            icon-only
             :disabled="!canNavigate"
             :aria-label="i18n.t('config.source_search_next')"
             @click="navigateToNext"

@@ -33,34 +33,34 @@ function isBooleanControl(valueType: string | undefined, value: string | undefin
   <div class="config-property-editor-control">
     <template v-if="isBooleanControl(valueType, modelValue)">
       <cmz-switch
-        :modelValue="modelValue === 'true'"
-        @update:modelValue="emit('update:modelValue', $event)"
+        :model-value="modelValue === 'true'"
+        @update:model-value="emit('update:modelValue', $event)"
       />
     </template>
     <template v-else-if="propertyKey === 'gamemode'">
       <cmz-select
-        :modelValue="modelValue"
+        :model-value="modelValue"
         :options="gamemodeOptions"
         class="config-property-control-input"
-        @update:modelValue="emit('update:modelValue', $event)"
+        @update:model-value="emit('update:modelValue', $event)"
       />
     </template>
     <template v-else-if="propertyKey === 'difficulty'">
       <cmz-select
-        :modelValue="modelValue"
+        :model-value="modelValue"
         :options="difficultyOptions"
         class="config-property-control-input"
-        @update:modelValue="emit('update:modelValue', $event)"
+        @update:model-value="emit('update:modelValue', $event)"
       />
     </template>
     <template v-else>
       <cmz-input
-        :modelValue="modelValue"
+        :model-value="modelValue"
         :placeholder="defaultValue"
         :type="valueType === 'number' ? 'number' : 'text'"
         :step="valueType === 'number' ? 1 : undefined"
         class="config-property-control-input"
-        @update:modelValue="emit('update:modelValue', $event)"
+        @update:model-value="emit('update:modelValue', $event)"
       />
       <p v-if="numericError" class="entry-desc text-caption">
         {{ numericError }}
