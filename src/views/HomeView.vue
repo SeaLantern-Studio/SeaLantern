@@ -130,7 +130,6 @@ function handleCreate() {
       @confirm="confirmDelete"
       @cancel="cancelDelete"
       @close="closeDeleteConfirm"
-      dangerous
     />
   </div>
 </template>
