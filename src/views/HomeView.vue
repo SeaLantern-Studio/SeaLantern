@@ -121,12 +121,11 @@ function handleCreate() {
           server: '<strong>' + deleteServerName + '</strong>',
         })
       "
-      :confirmText="i18n.t('home.delete_confirm')"
-      :cancelText="i18n.t('home.delete_cancel')"
-      confirmVariant="danger"
-      :requireInput="true"
-      :inputPlaceholder="i18n.t('home.delete_input_placeholder')"
-      :expectedInput="deleteServerName"
+      :confirm-text="i18n.t('home.delete_confirm')"
+      :cancel-text="i18n.t('home.delete_cancel')"
+      :require-input="true"
+      :input-placeholder="i18n.t('home.delete_input_placeholder')"
+      :expected-input="deleteServerName"
       @confirm="confirmDelete"
       @cancel="cancelDelete"
       @close="closeDeleteConfirm"

@@ -219,8 +219,8 @@ watch(
         <div class="backup-auto-toggle">
           <span>{{ i18n.t("backup.auto_backup") }}</span>
           <cmz-switch
-            :modelValue="settings.autoBackupEnabled"
-            @update:modelValue="
+            :model-value="settings.autoBackupEnabled"
+            @update:model-value="
               (v: boolean) => {
                 settings.autoBackupEnabled = v;
                 updateSettings();
@@ -272,11 +272,11 @@ watch(
             {{ i18n.t("backup.format") }}
           </label>
           <cmz-select
-            :modelValue="selectedFormat"
+            :model-value="selectedFormat"
             :options="formatOptions"
             size="sm"
             class="backup-select"
-            @update:modelValue="
+            @update:model-value="
               (v: string) => {
                 selectedFormat = v as BackupFormat;
                 updateSettings();
@@ -290,11 +290,11 @@ watch(
             {{ i18n.t("backup.compression") }}
           </label>
           <cmz-select
-            :modelValue="selectedCompression"
+            :model-value="selectedCompression"
             :options="compressionOptions"
             size="sm"
             class="backup-select"
-            @update:modelValue="
+            @update:model-value="
               (v: string) => {
                 selectedCompression = v as CompressionLevel;
                 updateSettings();
@@ -310,8 +310,8 @@ watch(
         <div class="backup-checkbox-row">
           <label v-for="opt in contentOptions" :key="opt.value" class="backup-checkbox-item">
             <cmz-checkbox
-              :modelValue="selectedContents.includes(opt.value)"
-              @update:modelValue="(v: boolean) => toggleContent(opt.value, v)"
+              :model-value="selectedContents.includes(opt.value)"
+              @update:model-value="(v: boolean) => toggleContent(opt.value, v)"
             />
             <span>{{ i18n.t(opt.labelKey) }}</span>
           </label>
@@ -351,7 +351,7 @@ watch(
               <cmz-button
                 variant="outline"
                 size="sm"
-                iconOnly
+                icon-only
                 :loading="restoringId === backup.id"
                 :disabled="restoringId !== null || deletingId !== null"
                 @click="restoreBackup(backup)"
@@ -363,7 +363,7 @@ watch(
               <cmz-button
                 variant="outline"
                 size="sm"
-                iconOnly
+                icon-only
                 :loading="deletingId === backup.id"
                 :disabled="restoringId !== null || deletingId !== null"
                 class="backup-delete-btn"

@@ -92,7 +92,7 @@ async function pickJavaFile() {
         :options="javaOptions"
         :placeholder="i18n.t('create.select_java')"
         searchable
-        maxHeight="240px"
+        max-height="240px"
       />
     </div>
     <div class="java-manual">

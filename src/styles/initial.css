@@ -10,6 +10,17 @@ html[data-acrylic="on"],
 html[data-acrylic]:not([data-acrylic="off"]) {
   background-color: transparent;
 }
+/* 无原生材质平台(如 Linux):仅组件层做 CSS 半透明模糊 */
+html[data-material-fallback="css-glass"][data-acrylic="on"],
+html[data-material-fallback="css-glass"][data-acrylic]:not([data-acrylic="off"]) {
+  background-color: #f8fafc;
+}
+html[data-material-fallback="css-glass"][data-theme="dark"][data-acrylic="on"],
+html[data-material-fallback="css-glass"][data-theme="dark"][data-acrylic]:not(
+    [data-acrylic="off"]
+  ) {
+  background-color: #0f1117;
+}
 body {
   margin: 0;
   padding: 0;

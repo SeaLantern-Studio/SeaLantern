@@ -217,8 +217,8 @@ onMounted(async () => {
               :disabled="loadingTypes"
               :loading="loadingTypes"
               searchable
-              maxHeight="240px"
-              @update:modelValue="selectedType = $event"
+              max-height="240px"
+              @update:model-value="selectedType = $event"
             />
           </div>
           <div class="server-download-field">
@@ -230,8 +230,8 @@ onMounted(async () => {
               :disabled="loadingVersions || !selectedType"
               :loading="loadingVersions"
               searchable
-              maxHeight="240px"
-              @update:modelValue="selectedVersion = $event"
+              max-height="240px"
+              @update:model-value="selectedVersion = $event"
             />
           </div>
         </div>

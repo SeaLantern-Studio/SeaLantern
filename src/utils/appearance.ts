@@ -1,7 +1,7 @@
 import { desktopApi, type WindowMaterial, type WindowTheme } from "@api/desktop";
 import type { AppSettings } from "@api/settings";
 import { applyAcrylicEffect } from "@utils/acrylic";
-import { isMacOSPlatform, isWindowsPlatform, supportsNativeWindowMaterial } from "@utils/platform";
+import { isMacOSPlatform, isWindowsPlatform } from "@utils/platform";
 import {
   applyColors,
   applyFontFamily,
@@ -12,7 +12,6 @@ import {
 
 const isMacOS = isMacOSPlatform();
 const isWindows = isWindowsPlatform();
-const nativeMaterialSupported = supportsNativeWindowMaterial();
 
 let lastNativeAppearance = "";
 let appearanceApplyQueue: Promise<void> = Promise.resolve();
@@ -30,7 +29,7 @@ function getWindowTheme(theme: string): WindowTheme {
 
 async function applyAppearance(settings: AppSettings): Promise<void> {
   const root = document.documentElement;
-  const nativeMaterialEnabled = nativeMaterialSupported && settings.acrylic_enabled;
+  const nativeMaterialEnabled = settings.acrylic_enabled;
   const acrylicEnabled = root.getAttribute("data-acrylic") === "on";
   const enablingMaterial = !acrylicEnabled && nativeMaterialEnabled;
   const effectiveTheme =
@@ -55,11 +54,7 @@ async function applyAppearance(settings: AppSettings): Promise<void> {
   applyFontFamily(settings.font_family || "");
   applyAcrylicEffect(nativeMaterialEnabled);
   if (!isThemeProviderActive()) {
-    applyColors(
-      nativeMaterialEnabled === settings.acrylic_enabled
-        ? settings
-        : { ...settings, acrylic_enabled: nativeMaterialEnabled },
-    );
+    applyColors(settings);
   }
 
   // 关闭时先恢复 CSS 实色遮罩，再移除原生材质；主题切换也在 DOM 提交后同步。

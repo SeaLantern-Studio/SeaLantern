@@ -37,15 +37,15 @@ const tabs = computed(() =>
 
 <template>
   <cmz-tab-bar
-    :modelValue="activeCategory"
+    :model-value="activeCategory"
     :tabs="tabs"
     :level="2"
     class="config-categories-bar"
-    @update:modelValue="emit('updateCategory', $event ?? 'all')"
+    @update:model-value="emit('updateCategory', $event ?? 'all')"
   >
     <template #extra>
       <cmz-input
-        :modelValue="searchQuery"
+        :model-value="searchQuery"
         :placeholder="i18n.t('config.search')"
         @input="emit('updateSearch', $event.target.value)"
         style="min-width: 120px; max-width: 200px"

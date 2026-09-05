@@ -233,8 +233,8 @@ watch(
               </template>
               <template v-else-if="field.type === 'boolean'">
                 <cmz-switch
-                  :modelValue="Boolean(settingsForm[field.key])"
-                  @update:modelValue="settingsForm[field.key] = $event"
+                  :model-value="Boolean(settingsForm[field.key])"
+                  @update:model-value="settingsForm[field.key] = $event"
                   size="sm"
                 />
               </template>
@@ -276,8 +276,8 @@ watch(
               </template>
               <template v-else-if="field.type === 'boolean'">
                 <cmz-switch
-                  :modelValue="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])"
-                  @update:modelValue="
+                  :model-value="Boolean(dependentSettingsForms[depPlugin.manifest.id][field.key])"
+                  @update:model-value="
                     dependentSettingsForms[depPlugin.manifest.id][field.key] = $event
                   "
                   size="sm"
