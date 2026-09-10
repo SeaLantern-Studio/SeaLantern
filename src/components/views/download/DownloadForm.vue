@@ -37,7 +37,7 @@ function handlePickFolder() {
         type="text"
         :placeholder="i18n.t('download-file.url_placeholder')"
         :disabled="isDownloading"
-        @update:modelValue="emit('update:url', $event)"
+        @update:model-value="emit('update:url', $event)"
       >
         <template #prefix>
           <Link :size="16" class="input-icon" />
@@ -80,7 +80,7 @@ function handlePickFolder() {
         type="text"
         :placeholder="i18n.t('download-file.filename_placeholder')"
         :disabled="isDownloading"
-        @update:modelValue="emit('update:filename', $event)"
+        @update:model-value="emit('update:filename', $event)"
       >
         <template #prefix>
           <FileText :size="16" class="input-icon" />
@@ -98,7 +98,7 @@ function handlePickFolder() {
         placeholder="32"
         :disabled="isDownloading"
         :aria-invalid="threadCountInvalid"
-        @update:modelValue="emit('update:threadCount', $event)"
+        @update:model-value="emit('update:threadCount', $event)"
         @focusout="emit('checkThreadCount')"
       >
         <template #prefix>

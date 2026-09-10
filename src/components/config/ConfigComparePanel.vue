@@ -162,11 +162,11 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
         <div class="compare-header-control">
           <span class="text-caption compare-target-label">{{ inlineLabel }}</span>
           <cmz-select
-            :modelValue="compareTargetServerId"
+            :model-value="compareTargetServerId"
             :options="compareServerOptions"
             :disabled="!hasCompareTargets || compareLoading"
             class="compare-target-select"
-            @update:modelValue="emit('updateCompareTargetServer', $event)"
+            @update:model-value="emit('updateCompareTargetServer', $event)"
           />
         </div>
       </div>
@@ -245,14 +245,14 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
             <div :key="`${activeSide}-${row.key}`" class="compare-transition-pane">
               <ConfigPropertyEditorControl
                 v-if="activeSide === 'source' && row.hasSourceValue"
-                :propertyKey="row.source.key"
-                :modelValue="row.source.value"
-                :valueType="row.source.valueType"
-                :defaultValue="row.source.defaultValue"
-                :numericError="row.source.numericError"
-                :gamemodeOptions="gamemodeOptions"
-                :difficultyOptions="difficultyOptions"
-                @update:modelValue="emit('updateSourceValue', { key: row.key, value: $event })"
+                :property-key="row.source.key"
+                :model-value="row.source.value"
+                :value-type="row.source.valueType"
+                :default-value="row.source.defaultValue"
+                :numeric-error="row.source.numericError"
+                :gamemode-options="gamemodeOptions"
+                :difficulty-options="difficultyOptions"
+                @update:model-value="emit('updateSourceValue', { key: row.key, value: $event })"
               />
               <cmz-button
                 v-else-if="activeSide === 'source'"
@@ -265,14 +265,14 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
               </cmz-button>
               <ConfigPropertyEditorControl
                 v-else-if="row.hasTargetValue"
-                :propertyKey="row.target.key"
-                :modelValue="row.target.value"
-                :valueType="row.target.valueType"
-                :defaultValue="row.target.defaultValue"
-                :numericError="row.target.numericError"
-                :gamemodeOptions="gamemodeOptions"
-                :difficultyOptions="difficultyOptions"
-                @update:modelValue="emit('updateTargetValue', { key: row.key, value: $event })"
+                :property-key="row.target.key"
+                :model-value="row.target.value"
+                :value-type="row.target.valueType"
+                :default-value="row.target.defaultValue"
+                :numeric-error="row.target.numericError"
+                :gamemode-options="gamemodeOptions"
+                :difficulty-options="difficultyOptions"
+                @update:model-value="emit('updateTargetValue', { key: row.key, value: $event })"
               />
               <cmz-button
                 v-else
@@ -291,14 +291,14 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
         <div class="entry-control compare-entry-control">
           <ConfigPropertyEditorControl
             v-if="row.hasSourceValue"
-            :propertyKey="row.source.key"
-            :modelValue="row.source.value"
-            :valueType="row.source.valueType"
-            :defaultValue="row.source.defaultValue"
-            :numericError="row.source.numericError"
-            :gamemodeOptions="gamemodeOptions"
-            :difficultyOptions="difficultyOptions"
-            @update:modelValue="emit('updateSourceValue', { key: row.key, value: $event })"
+            :property-key="row.source.key"
+            :model-value="row.source.value"
+            :value-type="row.source.valueType"
+            :default-value="row.source.defaultValue"
+            :numeric-error="row.source.numericError"
+            :gamemode-options="gamemodeOptions"
+            :difficulty-options="difficultyOptions"
+            @update:model-value="emit('updateSourceValue', { key: row.key, value: $event })"
           />
           <cmz-button
             v-else
@@ -315,14 +315,14 @@ function handleAddMissingProperty(row: ComparePanelRow, side: "source" | "target
         <div class="entry-control compare-entry-control">
           <ConfigPropertyEditorControl
             v-if="row.hasTargetValue"
-            :propertyKey="row.target.key"
-            :modelValue="row.target.value"
-            :valueType="row.target.valueType"
-            :defaultValue="row.target.defaultValue"
-            :numericError="row.target.numericError"
-            :gamemodeOptions="gamemodeOptions"
-            :difficultyOptions="difficultyOptions"
-            @update:modelValue="emit('updateTargetValue', { key: row.key, value: $event })"
+            :property-key="row.target.key"
+            :model-value="row.target.value"
+            :value-type="row.target.valueType"
+            :default-value="row.target.defaultValue"
+            :numeric-error="row.target.numericError"
+            :gamemode-options="gamemodeOptions"
+            :difficulty-options="difficultyOptions"
+            @update:model-value="emit('updateTargetValue', { key: row.key, value: $event })"
           />
           <cmz-button
             v-else

@@ -239,10 +239,10 @@ onActivated(async () => {
             </cmz-button>
             <cmz-tab-bar
               class="config-editor-mode-bar"
-              :modelValue="propertiesEditor.editorMode.value"
+              :model-value="propertiesEditor.editorMode.value"
               :tabs="editorModeTabs"
               :level="2"
-              @update:modelValue="propertiesEditor.handleEditorModeChange"
+              @update:model-value="propertiesEditor.handleEditorModeChange"
             />
           </div>
         </div>
@@ -262,31 +262,31 @@ onActivated(async () => {
 
           <template v-if="activeTab === 'properties'">
             <ConfigPropertiesSection
-              :editorMode="propertiesEditor.editorMode.value"
+              :editor-mode="propertiesEditor.editorMode.value"
               :loading="propertiesEditor.loading.value"
-              :compareLoading="compare.compareLoading.value"
-              :compareMode="compare.compareMode.value"
-              :hasCompareTargets="compare.hasCompareTargets.value"
-              :compareTargetServerId="compare.compareTargetServerId.value"
-              :compareServerOptions="compare.compareServerOptions.value"
-              :compareDifferenceBadgeText="compare.compareDifferenceBadgeText.value"
-              :comparePanelRows="compare.comparePanelRows.value"
-              :sourceServerName="currentServer?.name || i18n.t('config.compare.source_server')"
-              :targetServerName="
+              :compare-loading="compare.compareLoading.value"
+              :compare-mode="compare.compareMode.value"
+              :has-compare-targets="compare.hasCompareTargets.value"
+              :compare-target-server-id="compare.compareTargetServerId.value"
+              :compare-server-options="compare.compareServerOptions.value"
+              :compare-difference-badge-text="compare.compareDifferenceBadgeText.value"
+              :compare-panel-rows="compare.comparePanelRows.value"
+              :source-server-name="currentServer?.name || i18n.t('config.compare.source_server')"
+              :target-server-name="
                 compare.compareTargetServer.value?.name || i18n.t('config.compare.target_server')
               "
               :categories="propertiesEditor.categories.value"
-              :activeCategory="propertiesEditor.activeCategory.value"
-              :searchQuery="propertiesEditor.searchQuery.value"
-              :filteredEntries="propertiesEditor.filteredEntries.value"
-              :translatedDescriptionByKey="translatedDescriptionByKey"
-              :editValues="propertiesEditor.editValues.value"
-              :numericFieldErrors="propertiesEditor.numericFieldErrors.value"
-              :gamemodeOptions="gamemodeOptions"
-              :difficultyOptions="difficultyOptions"
-              :sourceDraftText="propertiesEditor.sourceDraftText.value"
-              :compareTargetSourceDraftText="compare.compareTargetSourceDraftText.value"
-              :sourceParseError="propertiesEditor.sourceParseError.value"
+              :active-category="propertiesEditor.activeCategory.value"
+              :search-query="propertiesEditor.searchQuery.value"
+              :filtered-entries="propertiesEditor.filteredEntries.value"
+              :translated-description-by-key="translatedDescriptionByKey"
+              :edit-values="propertiesEditor.editValues.value"
+              :numeric-field-errors="propertiesEditor.numericFieldErrors.value"
+              :gamemode-options="gamemodeOptions"
+              :difficulty-options="difficultyOptions"
+              :source-draft-text="propertiesEditor.sourceDraftText.value"
+              :compare-target-source-draft-text="compare.compareTargetSourceDraftText.value"
+              :source-parse-error="propertiesEditor.sourceParseError.value"
               @updateCategory="propertiesEditor.handleCategoryChange"
               @updateSearch="propertiesEditor.handleSearchUpdate"
               @updateSourceDraft="propertiesEditor.updateSourceDraft"
@@ -301,9 +301,9 @@ onActivated(async () => {
 
           <template v-if="activeTab === 'startup'">
             <ConfigStartupSection
-              :serverPath="serverPath"
-              :defaultMaxMemory="currentServer?.max_memory ?? 2048"
-              :defaultMinMemory="currentServer?.min_memory ?? 512"
+              :server-path="serverPath"
+              :default-max-memory="currentServer?.max_memory ?? 2048"
+              :default-min-memory="currentServer?.min_memory ?? 512"
               @saved="handleStartupConfigSaved"
             />
           </template>
@@ -311,8 +311,8 @@ onActivated(async () => {
           <template v-if="activeTab === 'plugins'">
             <ConfigPluginsSection
               :plugins="pluginsState.plugins.value"
-              :pluginsLoading="pluginsState.pluginsLoading.value"
-              :selectedPlugin="pluginsState.selectedPlugin.value"
+              :plugins-loading="pluginsState.pluginsLoading.value"
+              :selected-plugin="pluginsState.selectedPlugin.value"
               @refreshList="pluginsState.loadPlugins"
               @reloadPlugins="pluginsState.reloadPlugins"
               @pluginClick="pluginsState.handlePluginClick"
@@ -328,9 +328,9 @@ onActivated(async () => {
             :visible="propertiesEditor.showDiscardConfirm.value"
             :title="propertiesEditor.discardConfirmTitle.value"
             :message="propertiesEditor.discardConfirmMessage.value"
-            :confirmText="i18n.t('config.discard_confirm')"
-            :cancelText="i18n.t('common.cancel')"
-            confirmVariant="danger"
+            :confirm-text="i18n.t('config.discard_confirm')"
+            :cancel-text="i18n.t('common.cancel')"
+            :dangerous="true"
             @confirm="propertiesEditor.confirmReloadDiscard"
             @close="
               propertiesEditor.showDiscardConfirm.value = false;
@@ -402,7 +402,7 @@ onActivated(async () => {
               <cmz-button
                 variant="outline"
                 size="sm"
-                iconOnly
+                icon-only
                 class="config-floating-icon-btn"
                 @click="propertiesEditor.reloadPropertiesWithGuard"
               >
@@ -416,7 +416,7 @@ onActivated(async () => {
               <cmz-button
                 variant="outline"
                 size="sm"
-                iconOnly
+                icon-only
                 class="config-floating-icon-btn"
                 :loading="compare.compareLoading.value"
                 :disabled="!compare.compareTargetServerId.value"
@@ -427,7 +427,7 @@ onActivated(async () => {
             </cmz-tooltip>
             <cmz-button
               size="sm"
-              iconOnly
+              icon-only
               class="config-floating-icon-btn"
               :class="
                 propertiesEditor.hasUnsavedChanges.value

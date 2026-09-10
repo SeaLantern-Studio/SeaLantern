@@ -1216,12 +1216,12 @@ function deleteCommand() {}
       <div class="console-terminal-shell">
         <ConsoleOutput
           ref="consoleOutputRef"
-          :consoleFontSize="consoleFontSize"
-          :consoleFontFamily="consoleFontFamily"
-          :consoleLetterSpacing="consoleLetterSpacing"
-          :maxLogLines="maxLogLines"
+          :console-font-size="consoleFontSize"
+          :console-font-family="consoleFontFamily"
+          :console-letter-spacing="consoleLetterSpacing"
+          :max-log-lines="maxLogLines"
           :history="commandHistory"
-          :completionMd="commandCompletionsMd"
+          :completion-md="commandCompletionsMd"
           @command="sendCommand"
         />
 
@@ -1245,9 +1245,9 @@ function deleteCommand() {}
       <CommandModal
         :visible="showCommandModal"
         :title="commandModalTitle"
-        :editingCommand="editingCommand"
-        :commandName="commandName"
-        :commandText="commandText"
+        :editing-command="editingCommand"
+        :command-name="commandName"
+        :command-text="commandText"
         :loading="commandLoading"
         @close="showCommandModal = false"
         @save="saveCommand"
@@ -1262,7 +1262,6 @@ function deleteCommand() {}
         :message="i18n.t('console.force_stop_confirm')"
         :confirm-text="i18n.t('common.confirm')"
         :cancel-text="i18n.t('common.cancel')"
-        confirm-variant="danger"
         :dangerous="true"
         :loading="forceStopLoading"
         @confirm="confirmForceStop"

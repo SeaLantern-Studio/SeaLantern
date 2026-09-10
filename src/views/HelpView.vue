@@ -347,8 +347,8 @@ onDeactivated(() => {
           <h2 class="section-heading">{{ category.title }}</h2>
           <Cmz_Accordion
             class="faq-accordion"
-            :modelValue="getFaqModel(category.title)"
-            @update:modelValue="(v: string[]) => updateFaqModel(category.title, v)"
+            :model-value="getFaqModel(category.title)"
+            @update:model-value="(v: string[]) => updateFaqModel(category.title, v)"
           >
             <Cmz_AccordionPanel
               v-for="item in category.items"

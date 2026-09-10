@@ -107,8 +107,8 @@ watch([maxMemory, minMemory], () => {
           </div>
           <div class="entry-control">
             <cmz-input
-              :modelValue="String(maxMemory)"
-              @update:modelValue="maxMemory = Number($event)"
+              :model-value="String(maxMemory)"
+              @update:model-value="maxMemory = Number($event)"
               type="number"
               :placeholder="'2048'"
               :min="128"
@@ -125,8 +125,8 @@ watch([maxMemory, minMemory], () => {
           </div>
           <div class="entry-control">
             <cmz-input
-              :modelValue="String(minMemory)"
-              @update:modelValue="minMemory = Number($event)"
+              :model-value="String(minMemory)"
+              @update:model-value="minMemory = Number($event)"
               type="number"
               :placeholder="'512'"
               :min="128"

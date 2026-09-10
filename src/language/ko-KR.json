@@ -771,6 +771,7 @@
     "browse": "Browse",
     "advanced_material": "Advanced Material",
     "advanced_material_desc": "Enable translucent materials and window blending while keeping compatibility with existing acrylic settings",
+    "advanced_material_desc_linux": "On Linux, only in-app components get translucency and blur",
     "java_version_select": "Select Version",
     "java_installing": "Downloading...",
     "java_install_success": "Installation Complete: ",

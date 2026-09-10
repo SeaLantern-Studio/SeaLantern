@@ -66,8 +66,8 @@ const emit = defineEmits<{
   <div v-show="editorMode === 'visual'">
     <ConfigCategories
       :categories="categories"
-      :activeCategory="activeCategory"
-      :searchQuery="searchQuery"
+      :active-category="activeCategory"
+      :search-query="searchQuery"
       @updateCategory="emit('updateCategory', $event)"
       @updateSearch="emit('updateSearch', $event)"
     />
@@ -83,19 +83,19 @@ const emit = defineEmits<{
 
     <ConfigComparePanel
       v-else-if="compareMode && compareTargetServerId"
-      :compareTargetServerId="compareTargetServerId"
-      :compareServerOptions="compareServerOptions"
-      :hasCompareTargets="hasCompareTargets"
-      :compareLoading="compareLoading"
-      :inlineLabel="i18n.t('config.compare.inline_label')"
-      :sourceServerName="sourceServerName"
-      :targetServerName="targetServerName"
-      :differenceBadgeText="compareDifferenceBadgeText"
-      :differentLabel="i18n.t('config.compare.different')"
-      :noDifferencesText="i18n.t('config.compare.no_differences')"
+      :compare-target-server-id="compareTargetServerId"
+      :compare-server-options="compareServerOptions"
+      :has-compare-targets="hasCompareTargets"
+      :compare-loading="compareLoading"
+      :inline-label="i18n.t('config.compare.inline_label')"
+      :source-server-name="sourceServerName"
+      :target-server-name="targetServerName"
+      :difference-badge-text="compareDifferenceBadgeText"
+      :different-label="i18n.t('config.compare.different')"
+      :no-differences-text="i18n.t('config.compare.no_differences')"
       :rows="comparePanelRows"
-      :gamemodeOptions="gamemodeOptions"
-      :difficultyOptions="difficultyOptions"
+      :gamemode-options="gamemodeOptions"
+      :difficulty-options="difficultyOptions"
       @updateCompareTargetServer="emit('updateCompareTargetServer', $event)"
       @updateSourceValue="emit('updateValue', $event)"
       @updateTargetValue="emit('updateCompareTargetValue', $event)"
@@ -115,14 +115,14 @@ const emit = defineEmits<{
         </div>
         <div class="entry-control">
           <ConfigPropertyEditorControl
-            :propertyKey="entry.key"
-            :modelValue="editValues[entry.key]"
-            :valueType="entry.value_type"
-            :defaultValue="entry.default_value"
-            :numericError="numericFieldErrors[entry.key]"
-            :gamemodeOptions="gamemodeOptions"
-            :difficultyOptions="difficultyOptions"
-            @update:modelValue="emit('updateValue', { key: entry.key, value: $event })"
+            :property-key="entry.key"
+            :model-value="editValues[entry.key]"
+            :value-type="entry.value_type"
+            :default-value="entry.default_value"
+            :numeric-error="numericFieldErrors[entry.key]"
+            :gamemode-options="gamemodeOptions"
+            :difficulty-options="difficultyOptions"
+            @update:model-value="emit('updateValue', { key: entry.key, value: $event })"
           />
         </div>
       </div>
@@ -138,26 +138,26 @@ const emit = defineEmits<{
         <div class="source-compare-grid">
           <div class="source-compare-column">
             <ConfigSourceEditor
-              :modelValue="sourceDraftText"
+              :model-value="sourceDraftText"
               :title="sourceServerName"
-              iconNavOnly
-              @update:modelValue="emit('updateSourceDraft', $event)"
+              icon-nav-only
+              @update:model-value="emit('updateSourceDraft', $event)"
             />
           </div>
           <div class="source-compare-column">
             <ConfigSourceEditor
-              :modelValue="compareTargetSourceDraftText"
+              :model-value="compareTargetSourceDraftText"
               :title="targetServerName"
-              iconNavOnly
-              @update:modelValue="emit('updateCompareTargetSourceDraft', $event)"
+              icon-nav-only
+              @update:model-value="emit('updateCompareTargetSourceDraft', $event)"
             />
           </div>
         </div>
       </template>
       <ConfigSourceEditor
         v-else
-        :modelValue="sourceDraftText"
-        @update:modelValue="emit('updateSourceDraft', $event)"
+        :model-value="sourceDraftText"
+        @update:model-value="emit('updateSourceDraft', $event)"
       />
       <p v-if="sourceParseError" class="source-parse-error">
         {{ sourceParseError }}

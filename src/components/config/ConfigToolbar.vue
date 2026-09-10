@@ -17,7 +17,7 @@ const emit = defineEmits<{
   <div class="config-toolbar">
     <div class="toolbar-left">
       <cmz-input
-        :modelValue="searchQuery"
+        :model-value="searchQuery"
         :placeholder="i18n.t('config.search')"
         @input="emit('updateSearch', $event.target.value)"
         style="width: 200px"

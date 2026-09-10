@@ -26,10 +26,10 @@ const tabs = computed(() => [
 
 <template>
   <cmz-tab-bar
-    :modelValue="modelValue"
+    :model-value="modelValue"
     :tabs="tabs"
     :level="1"
     vertical
-    @update:modelValue="emit('update:modelValue', $event as PlayerTab)"
+    @update:model-value="emit('update:modelValue', $event as PlayerTab)"
   />
 </template>

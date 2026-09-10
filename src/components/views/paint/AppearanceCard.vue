@@ -3,6 +3,7 @@ import BackgroundSettings from "./BackgroundSettings.vue";
 import { i18n } from "@language";
 import { computed, ref } from "vue";
 import { getAllThemes } from "@themes";
+import { isLinuxPlatform } from "@utils/platform";
 
 const props = defineProps<{
   color: string;
@@ -12,7 +13,6 @@ const props = defineProps<{
   fontFamilyOptions: { label: string; value: string }[];
   fontsLoading: boolean;
   acrylicEnabled: boolean;
-  nativeMaterialSupported: boolean;
   isThemeProxied: boolean;
   themeProxyPluginName: string;
   backgroundImage: string;
@@ -52,6 +52,13 @@ const allThemes = computed(() => {
   const list = Object.values(getAllThemes());
   return [...list.filter((t) => t.id !== "rainbow"), ...list.filter((t) => t.id === "rainbow")];
 });
+
+// 高级材质描述:Linux 仅组件层做半透明模糊,需向用户说明差异
+const advancedMaterialDesc = computed(() =>
+  isLinuxPlatform()
+    ? i18n.t("settings.advanced_material_desc_linux")
+    : i18n.t("settings.advanced_material_desc"),
+);
 
 // 色块默认用亮色方案的 primary→secondary 对角渐变,明暗模式下都足够醒目;
 // rainbow 主题特殊处理,显示完整彩虹圆环
@@ -198,7 +205,7 @@ function handleMinimalModeChange(value: boolean) {
             :options="fontFamilyOptions"
             :searchable="true"
             :loading="fontsLoading"
-            :previewFont="true"
+            :preview-font="true"
             :placeholder="i18n.t('settings.search_font')"
             @update:model-value="handleFontFamilyChange"
           />
@@ -207,10 +214,10 @@ function handleMinimalModeChange(value: boolean) {
 
       <div class="settings-group-title">{{ i18n.t("settings.group_effect") }}</div>
 
-      <div v-if="nativeMaterialSupported" class="settings-entry">
+      <div class="settings-entry">
         <div class="settings-entry-info">
           <span class="settings-entry-title">{{ i18n.t("settings.advanced_material") }}</span>
-          <span class="settings-entry-desc">{{ i18n.t("settings.advanced_material_desc") }}</span>
+          <span class="settings-entry-desc">{{ advancedMaterialDesc }}</span>
         </div>
         <cmz-switch :model-value="acrylicEnabled" @update:model-value="handleAcrylicChange" />
       </div>
