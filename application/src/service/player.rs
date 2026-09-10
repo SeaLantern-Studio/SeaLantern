@@ -1,16 +1,15 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::port::{InstanceService, PlayerListService, PlayerLookupService};
 use async_trait::async_trait;
-use sealantern_core::instance::InstanceId;
-use sealantern_interface::{
-    BanEntryDto, InstanceService, OpEntryDto, PlayerEntryDto, PlayerListError, PlayerListService,
-    PlayerLookupError, PlayerLookupService, PlayerProfile,
+use sealantern_contract::{
+    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerListError, PlayerLookupError, PlayerProfile,
 };
+use sealantern_core::instance::InstanceId;
 use std::path::Path;
 
-use crate::service::CoreInstanceService;
-use crate::service::capture_command_output;
+use crate::service::{CoreInstanceService, CoreServerService, capture_command_output};
 
 /// usercache.json 里每条记录的格式。
 #[derive(serde::Deserialize)]
@@ -24,11 +23,13 @@ pub struct CorePlayerService {
     /// 而非信任前端传入的 server_path（见 code review：server_id 与
     /// server_path 分开信任）。
     instance_svc: Arc<CoreInstanceService>,
+    /// 服务器进程管理服务：用于向运行中的服务器发送控制台命令。
+    server_svc: Arc<CoreServerService>,
 }
 
 impl CorePlayerService {
-    pub fn new(instance_svc: Arc<CoreInstanceService>) -> Self {
-        Self { instance_svc }
+    pub fn new(instance_svc: Arc<CoreInstanceService>, server_svc: Arc<CoreServerService>) -> Self {
+        Self { instance_svc, server_svc }
     }
 
     /// 由 server_id 经实例注册表解析出唯一可信的服务器目录。
@@ -105,7 +106,9 @@ impl PlayerLookupService for CorePlayerService {
 #[async_trait]
 impl PlayerListService for CorePlayerService {
     async fn get_online_players(&self, server_id: String) -> Result<Vec<String>, PlayerListError> {
-        let lines = capture_command_output(&server_id, "list", Duration::from_secs(6)).await?;
+        let lines =
+            capture_command_output(&self.server_svc, &server_id, "list", Duration::from_secs(6))
+                .await?;
         Ok(parse_online_names(&lines))
     }
 
@@ -113,8 +116,13 @@ impl PlayerListService for CorePlayerService {
         &self,
         server_id: String,
     ) -> Result<Vec<PlayerEntryDto>, PlayerListError> {
-        let lines =
-            capture_command_output(&server_id, "whitelist list", Duration::from_secs(6)).await?;
+        let lines = capture_command_output(
+            &self.server_svc,
+            &server_id,
+            "whitelist list",
+            Duration::from_secs(6),
+        )
+        .await?;
         let server_path = self.resolve_directory(&server_id).await?;
         let names = parse_whitelist_names(&lines);
         let mut out = Vec::with_capacity(names.len());
@@ -133,7 +141,9 @@ impl PlayerListService for CorePlayerService {
         &self,
         server_id: String,
     ) -> Result<Vec<BanEntryDto>, PlayerListError> {
-        let lines = capture_command_output(&server_id, "banlist", Duration::from_secs(6)).await?;
+        let lines =
+            capture_command_output(&self.server_svc, &server_id, "banlist", Duration::from_secs(6))
+                .await?;
         let server_path = self.resolve_directory(&server_id).await?;
         let bans = parse_ban_entries(&lines);
         let mut out = Vec::with_capacity(bans.len());
@@ -149,7 +159,9 @@ impl PlayerListService for CorePlayerService {
     }
 
     async fn get_ops(&self, server_id: String) -> Result<Vec<OpEntryDto>, PlayerListError> {
-        let lines = capture_command_output(&server_id, "list", Duration::from_secs(6)).await?;
+        let lines =
+            capture_command_output(&self.server_svc, &server_id, "list", Duration::from_secs(6))
+                .await?;
         let server_path = self.resolve_directory(&server_id).await?;
         let names = parse_online_op_names(&lines);
         let mut out = Vec::with_capacity(names.len());

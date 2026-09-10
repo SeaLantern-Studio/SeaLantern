@@ -7,9 +7,9 @@
 use axum::Json;
 use axum::extract::State;
 
-use sealantern_extra::models::AppSettings;
-use sealantern_interface::SettingsService;
-use sealantern_interface::settings::SettingsOverview;
+use sealantern_application::port::SettingsService;
+use sealantern_contract::settings::AppSettings;
+use sealantern_contract::settings::SettingsOverview;
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

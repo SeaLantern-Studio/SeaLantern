@@ -7,8 +7,8 @@
 use axum::Json;
 use axum::extract::{Path, State};
 
-use sealantern_interface::SystemService;
-use sealantern_interface::system::{ServerResourceUsage, SystemSnapshot};
+use sealantern_application::port::SystemService;
+use sealantern_contract::system::{ServerResourceUsage, SystemSnapshot};
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

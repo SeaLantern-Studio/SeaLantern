@@ -7,8 +7,8 @@
 use axum::Json;
 use axum::extract::{Path, State};
 
-use sealantern_interface::DownloadService;
-use sealantern_interface::download::{DownloadRequest, DownloadTaskInfo};
+use sealantern_application::port::DownloadService;
+use sealantern_contract::download::{DownloadRequest, DownloadTaskInfo};
 
 use super::super::error::HttpError;
 use super::super::state::AppState;
@@ -45,7 +45,7 @@ pub async fn create_download(
         .download()
         .poll(&id)
         .await?
-        .ok_or(HttpError::from(sealantern_interface::DownloadServiceError::TaskNotFound))
+        .ok_or(HttpError::from(sealantern_contract::DownloadServiceError::TaskNotFound))
         .map(Json)
 }
 
@@ -58,7 +58,7 @@ pub async fn query_download(
         .download()
         .poll(&id)
         .await?
-        .ok_or(HttpError::from(sealantern_interface::DownloadServiceError::TaskNotFound))
+        .ok_or(HttpError::from(sealantern_contract::DownloadServiceError::TaskNotFound))
         .map(Json)
 }
 

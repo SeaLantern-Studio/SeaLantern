@@ -1,19 +1,20 @@
 //! 下载任务管理服务实现。
 //!
-//! 实现 [`sealantern_interface::DownloadService`] 能力端口，显式持有
+//! 实现 [`crate::port::DownloadService`] 能力端口，显式持有
 //! `infra` 的 [`DownloadManager`]（而非被其全局单例反向绑定），管理
 //! 下载任务的创建、进度查询与取消。
 //!
 //! 错误分层：内部以应用层主错误 [`DownloadError`] 为源头，暴露
-//! [`DownloadService`] 时统一转为接口契约错误 [`DownloadServiceError`]。
+//! [`DownloadService`] 时统一转为公共契约错误 [`DownloadServiceError`]。
 
 use async_trait::async_trait;
+use sealantern_contract::DownloadServiceError;
+use sealantern_contract::download::{DownloadRequest, DownloadTaskInfo, DownloadTaskStatus};
 use sealantern_infra::download::DownloadManager;
 use sealantern_infra::net::{ClientProvider, global_client_provider};
-use sealantern_interface::DownloadServiceError;
-use sealantern_interface::download::{DownloadRequest, DownloadTaskInfo, DownloadTaskStatus};
 
 use crate::error::DownloadError;
+use crate::port::DownloadService;
 
 /// 下载线程数上限（防止资源滥用）。
 const MAX_DOWNLOAD_THREAD_COUNT: usize = 64;
@@ -55,7 +56,7 @@ impl Default for CoreDownloadService {
 }
 
 #[async_trait]
-impl sealantern_interface::DownloadService for CoreDownloadService {
+impl DownloadService for CoreDownloadService {
     async fn create(&self, request: DownloadRequest) -> Result<String, DownloadServiceError> {
         if request.url.trim().is_empty() || request.save_path.trim().is_empty() {
             return Err(DownloadError::InvalidInput.into());
@@ -118,7 +119,7 @@ fn to_frontend_status(
 
 #[cfg(test)]
 mod tests {
-    use sealantern_interface::DownloadService;
+    use crate::port::DownloadService;
 
     use super::*;
 

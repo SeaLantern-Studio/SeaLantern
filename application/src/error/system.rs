@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use sealantern_interface::error::SystemServiceError;
+use sealantern_contract::error::SystemServiceError;
 
 /// 系统资源信息操作失败的应用层主错误。
 ///

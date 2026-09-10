@@ -9,17 +9,23 @@
 //! 选中返回路径字符串，取消返回 `null`。
 
 use std::path::Path;
-use std::sync::mpsc;
 
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
+use tokio::sync::oneshot;
+
+async fn await_dialog<T>(receiver: oneshot::Receiver<T>) -> Result<T, String> {
+    receiver
+        .await
+        .map_err(|_| "Dialog error: dialog callback was dropped".to_owned())
+}
 
 /// 打开系统文件选择器选择 JAR 文件。
 ///
 /// 返回选中文件的路径，取消则返回 `null`。
 #[tauri::command(rename_all = "snake_case")]
-pub fn desktop_pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = mpsc::channel();
+pub async fn desktop_pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = oneshot::channel();
 
     app.dialog()
         .file()
@@ -30,15 +36,15 @@ pub fn desktop_pick_jar_file(app: tauri::AppHandle) -> Result<Option<String>, St
             let _ = tx.send(path.map(|p| p.to_string()));
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    await_dialog(rx).await
 }
 
 /// 打开系统文件选择器选择压缩包文件（.zip/.tar/.tar.gz/.tgz/.jar）。
 ///
 /// 返回选中文件的路径，取消则返回 `null`。
 #[tauri::command(rename_all = "snake_case")]
-pub fn desktop_pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = mpsc::channel();
+pub async fn desktop_pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = oneshot::channel();
 
     app.dialog()
         .file()
@@ -53,7 +59,7 @@ pub fn desktop_pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>
             let _ = tx.send(path.map(|p| p.to_string()));
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    await_dialog(rx).await
 }
 
 /// 打开系统文件选择器选择启动文件。
@@ -61,11 +67,11 @@ pub fn desktop_pick_archive_file(app: tauri::AppHandle) -> Result<Option<String>
 /// `mode` 决定过滤器：`"jar"` / `"bat"` / `"sh"`，未知模式按 JAR 处理。
 /// 返回选中文件的路径，取消则返回 `null`。
 #[tauri::command(rename_all = "snake_case")]
-pub fn desktop_pick_startup_file(
+pub async fn desktop_pick_startup_file(
     app: tauri::AppHandle,
     mode: String,
 ) -> Result<Option<String>, String> {
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = oneshot::channel();
     let mode = mode.to_ascii_lowercase();
 
     let mut dialog = app.dialog().file();
@@ -93,17 +99,17 @@ pub fn desktop_pick_startup_file(
             let _ = tx.send(path.map(|p| p.to_string()));
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    await_dialog(rx).await
 }
 
 /// 打开系统文件选择器选择服务端可执行文件，同时返回启动模式。
 ///
 /// 返回 `[路径, 启动模式]`，模式为 `"jar" | "bat" | "sh"`；取消则返回 `null`。
 #[tauri::command(rename_all = "snake_case")]
-pub fn desktop_pick_server_executable(
+pub async fn desktop_pick_server_executable(
     app: tauri::AppHandle,
 ) -> Result<Option<(String, String)>, String> {
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = oneshot::channel();
 
     app.dialog()
         .file()
@@ -131,7 +137,7 @@ pub fn desktop_pick_server_executable(
             let _ = tx.send(result);
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    await_dialog(rx).await
 }
 
 /// 打开系统文件选择器选择 Java 可执行文件。
@@ -139,8 +145,8 @@ pub fn desktop_pick_server_executable(
 /// Windows 上按 `.exe` 过滤，其他平台不设扩展名过滤器（Java 二进制无扩展名）。
 /// 返回选中文件的路径，取消则返回 `null`。
 #[tauri::command(rename_all = "snake_case")]
-pub fn desktop_pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = mpsc::channel();
+pub async fn desktop_pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = oneshot::channel();
 
     #[cfg(target_os = "windows")]
     let dialog = app.dialog().file().add_filter("Java Executable", &["exe"]);
@@ -153,15 +159,15 @@ pub fn desktop_pick_java_file(app: tauri::AppHandle) -> Result<Option<String>, S
             let _ = tx.send(path.map(|p| p.to_string()));
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    await_dialog(rx).await
 }
 
 /// 打开系统文件保存对话框。
 ///
 /// 返回保存路径，取消则返回 `null`。
 #[tauri::command(rename_all = "snake_case")]
-pub fn desktop_pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = mpsc::channel();
+pub async fn desktop_pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = oneshot::channel();
 
     app.dialog()
         .file()
@@ -170,15 +176,15 @@ pub fn desktop_pick_save_file(app: tauri::AppHandle) -> Result<Option<String>, S
             let _ = tx.send(path.map(|p| p.to_string()));
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    await_dialog(rx).await
 }
 
 /// 打开系统文件夹选择器。
 ///
 /// 返回选中的文件夹路径，取消则返回 `null`。
 #[tauri::command(rename_all = "snake_case")]
-pub fn desktop_pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = mpsc::channel();
+pub async fn desktop_pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = oneshot::channel();
 
     app.dialog()
         .file()
@@ -187,15 +193,15 @@ pub fn desktop_pick_folder(app: tauri::AppHandle) -> Result<Option<String>, Stri
             let _ = tx.send(path.map(|p| p.to_string()));
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    await_dialog(rx).await
 }
 
 /// 打开系统文件选择器选择图片文件。
 ///
 /// 返回选中文件的路径，取消则返回 `null`。
 #[tauri::command(rename_all = "snake_case")]
-pub fn desktop_pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = mpsc::channel();
+pub async fn desktop_pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = oneshot::channel();
 
     app.dialog()
         .file()
@@ -206,7 +212,7 @@ pub fn desktop_pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, 
             let _ = tx.send(path.map(|p| p.to_string()));
         });
 
-    rx.recv().map_err(|e| format!("Dialog error: {}", e))
+    await_dialog(rx).await
 }
 
 /// 在系统文件管理器中打开指定文件夹路径。

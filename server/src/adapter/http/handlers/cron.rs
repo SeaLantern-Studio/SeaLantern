@@ -4,8 +4,8 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 
-use sealantern_interface::CronTaskService;
-use sealantern_interface::cron::{CronTask, CronTaskDraft, CronTaskRun};
+use sealantern_application::port::CronTaskService;
+use sealantern_contract::cron::{CronTask, CronTaskDraft, CronTaskRun};
 
 use super::super::error::HttpError;
 use super::super::state::AppState;

@@ -8,6 +8,7 @@ use sealantern_infra::net::{NetworkUpdate, SystemProxySnapshot, apply_system_pro
 use sealantern_infra::platform::current_system_proxy;
 
 const SYSTEM_PROXY_POLL_INTERVAL: Duration = Duration::from_secs(3);
+const SYSTEM_PROXY_STOP_TIMEOUT: Duration = Duration::from_secs(5);
 
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -60,12 +61,28 @@ impl ProxyMonitoringService {
             return false;
         };
         let _ = handle.shutdown.send(true);
-        if let Err(error) = handle.task.await {
-            tracing::warn!(
-                target: "sealantern.application.proxy_monitoring",
-                error = %error,
-                "system proxy monitoring task did not stop cleanly"
-            );
+        let mut task = handle.task;
+        match tokio::time::timeout(SYSTEM_PROXY_STOP_TIMEOUT, &mut task).await {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                tracing::warn!(
+                    target: "sealantern.application.proxy_monitoring",
+                    error = %error,
+                    "system proxy monitoring task did not stop cleanly"
+                );
+            }
+            Err(_) => {
+                // spawn_blocking cannot cancel an already-running OS call. Cancel the
+                // monitor task so it no longer retains service state, and let the
+                // blocking worker finish independently.
+                task.abort();
+                let _ = task.await;
+                tracing::warn!(
+                    target: "sealantern.application.proxy_monitoring",
+                    timeout_seconds = SYSTEM_PROXY_STOP_TIMEOUT.as_secs(),
+                    "system proxy monitoring task stop timed out"
+                );
+            }
         }
         true
     }
@@ -77,12 +94,15 @@ impl ProxyMonitoringService {
         }
 
         let (shutdown, mut shutdown_rx) = tokio::sync::watch::channel(false);
-        let service = self.clone();
+        let service = Arc::downgrade(self);
         let task = tokio::spawn(async move {
             let mut previous = None;
             loop {
                 tokio::select! {
                     _ = tokio::time::sleep(interval) => {
+                        let Some(service) = service.upgrade() else {
+                            break;
+                        };
                         let runtime = service.runtime.clone();
                         let refresh = tokio::task::spawn_blocking(move || {
                             let mut previous = previous;
@@ -323,5 +343,15 @@ mod tests {
         assert!(service.stop().await);
         assert!(!service.stop().await);
         assert!(runtime.read_count.load(Ordering::Relaxed) > 0);
+    }
+
+    #[tokio::test]
+    async fn monitor_task_does_not_hold_service_alive() {
+        let runtime = Arc::new(FakeRuntime::with_reads([]));
+        let service = Arc::new(ProxyMonitoringService::with_runtime(runtime));
+
+        assert!(service.start_with_interval(Duration::from_secs(60)).await);
+        assert_eq!(Arc::strong_count(&service), 1);
+        assert!(service.stop().await);
     }
 }

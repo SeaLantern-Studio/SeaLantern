@@ -3,13 +3,14 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use sealantern_extra::update::{
-    ReleaseUpdateChecker, UpdateChecker as ExtraUpdateChecker, UpdateInfo as ExtraUpdateInfo,
+use sealantern_contract::UpdateCheckServiceError;
+use sealantern_contract::update::{UpdateInfo, UpdateSource};
+use sealantern_feature::update::{
+    ReleaseUpdateChecker, UpdateChecker as FeatureUpdateChecker, UpdateInfo as FeatureUpdateInfo,
 };
-use sealantern_interface::update::{UpdateInfo, UpdateSource};
-use sealantern_interface::{UpdateCheckService, UpdateCheckServiceError};
 
 use crate::error::UpdateCheckError;
+use crate::port::UpdateCheckService;
 
 /// 单次更新检查在应用层允许占用的总时长。
 const UPDATE_CHECK_TIMEOUT: Duration = Duration::from_secs(30);
@@ -83,7 +84,7 @@ async fn cached_check_with<C>(
     timeout: Duration,
 ) -> Result<UpdateInfo, UpdateCheckServiceError>
 where
-    C: ExtraUpdateChecker + ?Sized,
+    C: FeatureUpdateChecker + ?Sized,
 {
     // 持锁覆盖远程检查，使并发调用共享同一次 provider 请求。
     let mut cache = cache.lock().await;
@@ -107,7 +108,7 @@ async fn check_with<C>(
     current_version: &str,
 ) -> Result<UpdateInfo, UpdateCheckServiceError>
 where
-    C: ExtraUpdateChecker + ?Sized,
+    C: FeatureUpdateChecker + ?Sized,
 {
     let info = checker
         .check(current_version)
@@ -116,7 +117,7 @@ where
     update_to_contract(info).map_err(contract_error)
 }
 
-fn update_to_contract(info: ExtraUpdateInfo) -> Result<UpdateInfo, UpdateCheckError> {
+fn update_to_contract(info: FeatureUpdateInfo) -> Result<UpdateInfo, UpdateCheckError> {
     Ok(UpdateInfo {
         has_update: info.has_update,
         latest_version: info.latest_version,
@@ -154,27 +155,27 @@ fn contract_error(error: impl Into<UpdateCheckError>) -> UpdateCheckServiceError
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use sealantern_extra::update::UpdateCheckError as ExtraUpdateCheckError;
+    use sealantern_feature::update::UpdateCheckError as FeatureUpdateCheckError;
 
     use super::*;
 
     struct FakeChecker {
-        info: Option<ExtraUpdateInfo>,
+        info: Option<FeatureUpdateInfo>,
         delay: Duration,
         calls: AtomicUsize,
     }
 
     #[async_trait]
-    impl ExtraUpdateChecker for FakeChecker {
+    impl FeatureUpdateChecker for FakeChecker {
         async fn check(
             &self,
             _current_version: &str,
-        ) -> Result<ExtraUpdateInfo, ExtraUpdateCheckError> {
+        ) -> Result<FeatureUpdateInfo, FeatureUpdateCheckError> {
             self.calls.fetch_add(1, Ordering::Relaxed);
             tokio::time::sleep(self.delay).await;
             self.info
                 .clone()
-                .ok_or_else(|| ExtraUpdateCheckError::ProviderFailed {
+                .ok_or_else(|| FeatureUpdateCheckError::ProviderFailed {
                     provider: "github",
                     message: "offline".to_owned(),
                 })
@@ -182,7 +183,7 @@ mod tests {
     }
 
     impl FakeChecker {
-        fn with_info(info: ExtraUpdateInfo) -> Self {
+        fn with_info(info: FeatureUpdateInfo) -> Self {
             Self {
                 info: Some(info),
                 delay: Duration::ZERO,
@@ -199,8 +200,8 @@ mod tests {
         }
     }
 
-    fn update(source: Option<&str>) -> ExtraUpdateInfo {
-        ExtraUpdateInfo {
+    fn update(source: Option<&str>) -> FeatureUpdateInfo {
+        FeatureUpdateInfo {
             has_update: true,
             latest_version: "2.0.0".to_owned(),
             current_version: "1.0.0".to_owned(),

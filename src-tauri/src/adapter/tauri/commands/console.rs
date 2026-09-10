@@ -6,10 +6,12 @@
 //! 错误统一为接口契约错误 [`ConsoleServiceError`]，可序列化回前端，
 //! 不携带底层敏感细节。
 
+use sealantern_application::port::ConsoleService;
 use sealantern_application::services::AppServices;
+use sealantern_contract::ConsoleServiceError;
+use sealantern_contract::console::ConsoleLogLine;
 use sealantern_core::instance::InstanceId;
-use sealantern_interface::console::ConsoleLogLine;
-use sealantern_interface::{ConsoleService, ConsoleServiceError};
+use tauri::State;
 
 /// 解析 Tauri 命令传入的实例 ID 字符串。
 ///
@@ -21,13 +23,12 @@ fn parse_id_for_tauri(id: String) -> Result<InstanceId, ConsoleServiceError> {
 /// 读取服务器控制台日志（增量游标 + 最近 N 行窗口）。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn get_server_logs(
+    services: State<'_, AppServices>,
     id: String,
     since: i64,
     recent_limit: Option<i64>,
 ) -> Result<Vec<ConsoleLogLine>, ConsoleServiceError> {
-    let service = AppServices::console_service()
-        .await
-        .map_err(|_| ConsoleServiceError::OperationFailed)?;
+    let service = services.console().clone();
     let id = parse_id_for_tauri(id)?;
     service.logs(&id, since, recent_limit).await
 }

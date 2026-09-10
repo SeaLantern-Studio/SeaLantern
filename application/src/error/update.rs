@@ -3,14 +3,14 @@
 use std::fmt;
 use std::time::Duration;
 
-use sealantern_extra::update::UpdateCheckError as ExtraUpdateCheckError;
-use sealantern_interface::UpdateCheckServiceError;
+use sealantern_contract::UpdateCheckServiceError;
+use sealantern_feature::update::UpdateCheckError as FeatureUpdateCheckError;
 
 /// 应用更新检查失败的内部错误。
 #[derive(Debug)]
 pub enum UpdateCheckError {
     /// 更新源客户端初始化或远程检查失败。
-    CheckFailed { source: ExtraUpdateCheckError },
+    CheckFailed { source: FeatureUpdateCheckError },
     /// 更新源返回了应用层无法识别的数据。
     InvalidResponse { detail: String },
     /// 更新检查超过应用层允许的总时长。
@@ -43,8 +43,8 @@ impl std::error::Error for UpdateCheckError {
     }
 }
 
-impl From<ExtraUpdateCheckError> for UpdateCheckError {
-    fn from(source: ExtraUpdateCheckError) -> Self {
+impl From<FeatureUpdateCheckError> for UpdateCheckError {
+    fn from(source: FeatureUpdateCheckError) -> Self {
         Self::CheckFailed { source }
     }
 }

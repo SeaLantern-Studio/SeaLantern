@@ -1,7 +1,7 @@
 //! 应用更新安装服务实现。
 //!
-//! 实现 [`sealantern_interface::UpdateInstallService`] 能力端口，组合
-//! `extra` 的更新落盘能力（[`download_update_file_without_events`]、
+//! 实现 [`crate::port::UpdateInstallService`] 能力端口，组合
+//! `feature` 的更新落盘能力（[`download_update_file_without_events`]、
 //! [`write_pending_update`]、[`check_pending_update`] 等），向宿主提供
 //! 更新文件下载、待安装记录查询 / 清理与安装进程拉起。
 //!
@@ -12,13 +12,16 @@
 //! [`UpdateInstallServiceError::Unsupported`]。
 
 use async_trait::async_trait;
-use sealantern_extra::update::{
-    PendingUpdate, check_pending_update, clear_pending_update, download_update_file_without_events,
+use sealantern_contract::UpdateInstallServiceError;
+use sealantern_contract::update::PendingUpdate;
+use sealantern_feature::update::{
+    check_pending_update, clear_pending_update, download_update_file_without_events,
     get_pending_update_file, get_update_cache_dir, write_pending_update,
 };
-use sealantern_interface::{UpdateInstallService, UpdateInstallServiceError};
 
-/// 基于 `extra` 更新落盘能力的更新安装服务实现。
+use crate::port::UpdateInstallService;
+
+/// 基于 `feature` 更新落盘能力的更新安装服务实现。
 #[derive(Debug, Default)]
 pub struct CoreUpdateInstallService;
 
@@ -101,7 +104,7 @@ impl UpdateInstallService for CoreUpdateInstallService {
             let refs = arguments.iter().map(String::as_str).collect::<Vec<_>>();
             // 提权启动安装器，并把安装文件与待安装记录路径交给底层监视进程，
             // 使其在安装完成后执行清理并重启主应用。
-            sealantern_extra::update::spawn_elevated_windows_process(
+            sealantern_feature::update::spawn_elevated_windows_process(
                 &file_path,
                 &refs,
                 Some(&file_path),

@@ -1,6 +1,6 @@
 //! Java 环境检测与校验服务实现。
 //!
-//! 实现 [`sealantern_interface::JavaService`] 能力端口，组合 `extra` 的
+//! 实现 [`crate::port::JavaService`] 能力端口，组合 `feature` 的
 //! Java 探测能力（[`detect_java_installations_with_diagnostics`]、
 //! [`validate_java`]），向宿主提供本机 Java 安装检测与指定可执行文件校验。
 //!
@@ -12,13 +12,13 @@
 //! [`JavaServiceError::InvalidInput`]。
 
 use async_trait::async_trait;
-use sealantern_extra::java::{
-    JavaDetectionReport, detect_java_installations_with_diagnostics, validate_java,
-};
-use sealantern_extra::models::JavaInfo;
-use sealantern_interface::{JavaService, JavaServiceError};
+use sealantern_contract::JavaServiceError;
+use sealantern_contract::java::{JavaDetectionReport, JavaInfo};
+use sealantern_feature::java::{detect_java_installations_with_diagnostics, validate_java};
 
-/// 基于 `extra` Java 探测能力的 Java 环境服务实现。
+use crate::port::JavaService;
+
+/// 基于 `feature` Java 探测能力的 Java 环境服务实现。
 #[derive(Debug, Default)]
 pub struct CoreJavaService;
 

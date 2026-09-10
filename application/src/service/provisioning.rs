@@ -1,6 +1,6 @@
 //! 服务端检查与供给计划服务实现。
 //!
-//! 实现 [`sealantern_interface::ProvisioningService`] 能力端口，组合
+//! 实现 [`crate::port::ProvisioningService`] 能力端口，组合
 //! `core` 的供给规划能力（[`inspect_server_artifact`]、
 //! [`parse_startup_script_file`]、[`plan_existing_instance`]、
 //! [`plan_copy`]、[`plan_modpack`]），向宿主提供服务器文件检查、
@@ -16,6 +16,7 @@
 use std::path::Path;
 
 use async_trait::async_trait;
+use sealantern_contract::ProvisioningServiceError;
 use sealantern_core::instance::{InstanceImportPlan, InstanceImportRequest};
 use sealantern_core::provisioning::{
     CopyInstancePlan, CopyInstanceRequest, InspectionOptions, ModpackProvisionPlan,
@@ -23,7 +24,8 @@ use sealantern_core::provisioning::{
     inspect_server_artifact, parse_startup_script_file, plan_copy, plan_existing_instance,
     plan_modpack,
 };
-use sealantern_interface::{ProvisioningService, ProvisioningServiceError};
+
+use crate::port::ProvisioningService;
 
 /// 基于 `core` 供给规划能力的检查与计划服务实现。
 ///

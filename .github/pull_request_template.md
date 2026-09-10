@@ -2,7 +2,7 @@
 
 ## Checklist
 
-- [ ] 已阅读 `docs/CONTRIBUTING.md`
+- [ ] 已阅读 `docs/rules/contributing.md`
 - [ ] 已执行与本次变更相关的测试或检查
 
 ## 影响范围

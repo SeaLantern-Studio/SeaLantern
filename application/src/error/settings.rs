@@ -2,10 +2,10 @@
 
 use std::fmt;
 
-use sealantern_extra::config::SettingsError as ExtraSettingsError;
+use sealantern_contract::error::SettingsServiceError;
+use sealantern_feature::config::SettingsError as FeatureSettingsError;
 use sealantern_infra::net::{NetError, NetworkCommitError};
 use sealantern_infra::platform::SystemProxyReadError;
-use sealantern_interface::error::SettingsServiceError;
 
 /// 设置服务主错误类型。
 ///
@@ -15,13 +15,13 @@ use sealantern_interface::error::SettingsServiceError;
 pub enum SettingsError {
     /// 设置内容不符合业务约束或导入内容不合法。
     InvalidInput {
-        /// extra 配置层提供的原始分类与诊断信息。
-        source: ExtraSettingsError,
+        /// feature 配置层提供的原始分类与诊断信息。
+        source: FeatureSettingsError,
     },
     /// 配置加载、锁定、读取或持久化失败。
     StorageFailed {
-        /// extra 配置层提供的原始分类与诊断信息。
-        source: ExtraSettingsError,
+        /// feature 配置层提供的原始分类与诊断信息。
+        source: FeatureSettingsError,
     },
     /// 未分类的配置操作失败。
     OperationFailed {
@@ -84,11 +84,11 @@ impl From<SystemProxyReadError> for SettingsError {
     }
 }
 
-impl From<ExtraSettingsError> for SettingsError {
-    fn from(source: ExtraSettingsError) -> Self {
+impl From<FeatureSettingsError> for SettingsError {
+    fn from(source: FeatureSettingsError) -> Self {
         match source {
-            ExtraSettingsError::InvalidInput { .. } => Self::InvalidInput { source },
-            ExtraSettingsError::Storage { .. } => Self::StorageFailed { source },
+            FeatureSettingsError::InvalidInput { .. } => Self::InvalidInput { source },
+            FeatureSettingsError::Storage { .. } => Self::StorageFailed { source },
         }
     }
 }
@@ -111,20 +111,20 @@ impl From<SettingsError> for SettingsServiceError {
 mod tests {
     use std::path::PathBuf;
 
-    use sealantern_extra::config::SettingsError as ExtraSettingsError;
+    use sealantern_feature::config::SettingsError as FeatureSettingsError;
     use sealantern_infra::fs::FsError;
 
     use super::*;
 
     #[test]
-    fn extra_settings_errors_map_to_stable_contract_categories() {
-        let invalid = SettingsError::from(ExtraSettingsError::invalid_input(
+    fn feature_settings_errors_map_to_stable_contract_categories() {
+        let invalid = SettingsError::from(FeatureSettingsError::invalid_input(
             "default_port",
             "must be greater than zero",
         ));
         assert_eq!(SettingsServiceError::from(invalid), SettingsServiceError::InvalidInput);
 
-        let storage = SettingsError::from(ExtraSettingsError::Storage {
+        let storage = SettingsError::from(FeatureSettingsError::Storage {
             source: FsError::AlreadyLocked(PathBuf::from("settings.json")),
         });
         assert_eq!(SettingsServiceError::from(storage), SettingsServiceError::StorageFailed);

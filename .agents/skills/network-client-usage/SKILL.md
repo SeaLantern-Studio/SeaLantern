@@ -158,7 +158,7 @@ let service = CoreDownloadService::with_provider(provider);
 let service = CoreDownloadService::with_manager(manager);
 ```
 
-It implements the `sealantern_interface::DownloadService` contract:
+It implements the `sealantern_application::port::DownloadService` contract:
 
 ```rust
 let id = service.create(DownloadRequest {

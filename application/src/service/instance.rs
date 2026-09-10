@@ -1,36 +1,39 @@
 //! 服务器实例记录管理服务实现。
 //!
-//! 实现 [`sealantern_interface::InstanceService`] 能力端口，用 `extra` 的
-//! [`InstanceRegistry`](sealantern_extra::config::InstanceRegistry)（持久化到
+//! 实现 [`crate::port::InstanceService`] 能力端口，用 `feature` 的
+//! [`InstanceRegistry`](sealantern_feature::config::InstanceRegistry)（持久化到
 //! `sea_lantern_servers.json`）驱动实例记录的查询与 CRUD。服务器进程生命周期
-//! 由 [`sealantern_interface::ServerService`] 负责（见 `service/server.rs`）。
+//! 由 [`crate::port::ServerService`] 负责（见 `service/server.rs`）。
 //!
 //! 错误分层：内部以应用层主错误 [`InstanceError`] 为源头，沿
-//! `core/extra/infra` → `application::error::instance` → `interface::error`
+//! `core/feature/infra` → `application::error::instance` → `contract::error`
 //! 收敛；暴露 [`InstanceService`] 时统一转为接口契约错误 [`InstanceServiceError`]。
 
 use async_trait::async_trait;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use sealantern_contract::InstanceServiceError;
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
     ImportExistingServerRequest, ImportModpackError as CoreModpackError, ImportModpackRequest,
     SourceType, build_import_spec, infer_source_type, plan_existing_instance, plan_import_modpack,
     source_directories_equal, validate_source_directory,
 };
-use sealantern_extra::config::InstanceRegistry;
-use sealantern_infra::archive::extract_zip;
+use sealantern_feature::config::InstanceRegistry;
+use sealantern_infra::archive::{
+    ArchiveFormat, detect_archive_format, extract_tar_gz, extract_zip,
+};
 use sealantern_infra::platform::get_app_data_dir;
-use sealantern_interface::{InstanceService, InstanceServiceError};
 
 use crate::error::InstanceError;
+use crate::port::InstanceService;
 
 /// 实例列表数据文件名，置于应用数据根目录。
 ///
 /// 沿用历史版本使用的文件名，以保证旧数据文件可被读取迁移。
 const INSTANCES_FILE: &str = "sea_lantern_servers.json";
 
-/// 基于 `core` + `extra` 的实例管理宿主能力实现。
+/// 基于 `core` + `feature` 的实例管理宿主能力实现。
 pub struct CoreInstanceService {
     registry: tokio::sync::Mutex<InstanceRegistry>,
 }
@@ -227,7 +230,7 @@ impl InstanceService for CoreInstanceService {
                 // 解压是耗时同步 IO，放到 blocking 线程执行。
                 let archive = request.modpack_path.clone();
                 let destination = result.directory.clone();
-                tokio::task::spawn_blocking(move || extract_zip(archive, destination))
+                tokio::task::spawn_blocking(move || extract_archive(&archive, destination))
                     .await
                     .map_err(|join_error| {
                         tracing::error!(
@@ -277,6 +280,29 @@ impl InstanceService for CoreInstanceService {
     }
 }
 
+/// 按归档实际格式解压整合包。
+///
+/// 格式由文件魔数判定而非扩展名：`infer_source_type` 已按扩展名把 `.zip`、
+/// `.tar.gz`、`.tgz` 都归为归档，但用户提供的文件扩展名可能与内容不符，
+/// 按内容分派才能避免用错误的解析器读取。
+fn extract_archive(
+    archive: &Path,
+    destination: PathBuf,
+) -> Result<(), sealantern_infra::archive::ArchiveError> {
+    match detect_archive_format(archive)? {
+        ArchiveFormat::Zip => extract_zip(archive, destination)?,
+        ArchiveFormat::TarGz => extract_tar_gz(archive, destination)?,
+        // 未来新增的格式：本调用点尚未实现解压，按不受支持处理。
+        _ => {
+            return Err(sealantern_infra::archive::ArchiveError::InvalidSource {
+                path: archive.to_path_buf(),
+                reason: "archive format is not supported by the modpack importer",
+            });
+        }
+    };
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs::{self, File};
@@ -286,7 +312,7 @@ mod tests {
     use sealantern_core::instance::{LocalLaunch, StartupMode};
     use sealantern_core::provisioning::ImportExistingServerRequest;
 
-    use sealantern_interface::InstanceServiceError;
+    use sealantern_contract::InstanceServiceError;
 
     use super::*;
 
@@ -529,5 +555,79 @@ mod tests {
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
         let _ = std::fs::remove_dir_all(&source);
         let _ = std::fs::remove_dir_all(std::env::temp_dir().join("sealantern-modpack-run"));
+    }
+
+    /// 用 infra 的写入侧构造一个含 `server.jar` 的整合包归档。
+    fn write_test_modpack(destination: &Path, format: ArchiveFormat) {
+        let staging = destination
+            .parent()
+            .expect("archive has a parent")
+            .join(format!("staging-{}", format.extension().replace('.', "-")));
+        fs::create_dir_all(&staging).expect("create staging dir");
+        fs::write(staging.join("server.jar"), b"fake jar").expect("write jar");
+        match format {
+            ArchiveFormat::Zip => {
+                sealantern_infra::archive::create_zip(&staging, destination).expect("create zip");
+            }
+            ArchiveFormat::TarGz => {
+                sealantern_infra::archive::create_tar_gz(&staging, destination)
+                    .expect("create tar.gz");
+            }
+            // 测试只覆盖当前两种格式。
+            _ => panic!("unexpected archive format in test helper"),
+        }
+        fs::remove_dir_all(&staging).expect("remove staging dir");
+    }
+
+    /// 归档来源的导入应把内容解压到运行目录，且格式按内容而非扩展名判定。
+    async fn assert_modpack_archive_import(label: &str, filename: &str, format: ArchiveFormat) {
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = CoreInstanceService::with_path(root.path().join("servers.json"))
+            .await
+            .expect("load service");
+
+        let archive = root.path().join(filename);
+        write_test_modpack(&archive, format);
+        let run_path = root.path().join("run");
+
+        let request = ImportModpackRequest {
+            name: format!("整合包-{label}"),
+            modpack_path: archive,
+            java_path: PathBuf::from("java"),
+            max_memory: 2048,
+            min_memory: 1024,
+            port: 25565,
+            startup_mode: "jar".into(),
+            startup_file_path: Some(PathBuf::from("server.jar")),
+            core_type: Some("paper".into()),
+            mc_version: Some("1.20.4".into()),
+            custom_command: None,
+            run_path,
+        };
+
+        let instance = service
+            .import_modpack(request)
+            .await
+            .expect("import modpack should succeed");
+        assert_eq!(
+            fs::read(instance.directory.join("server.jar")).expect("extracted jar"),
+            b"fake jar"
+        );
+    }
+
+    #[tokio::test]
+    async fn import_modpack_from_zip_extracts_contents() {
+        assert_modpack_archive_import("zip", "modpack.zip", ArchiveFormat::Zip).await;
+    }
+
+    #[tokio::test]
+    async fn import_modpack_from_tar_gz_extracts_contents() {
+        assert_modpack_archive_import("tar-gz", "modpack.tar.gz", ArchiveFormat::TarGz).await;
+    }
+
+    #[tokio::test]
+    async fn import_modpack_detects_format_from_content_not_extension() {
+        // 扩展名声称是 ZIP，内容实际是 tar.gz：分派须按内容进行。
+        assert_modpack_archive_import("mislabeled", "modpack.zip", ArchiveFormat::TarGz).await;
     }
 }

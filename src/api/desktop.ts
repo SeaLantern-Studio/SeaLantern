@@ -10,6 +10,11 @@ export const desktopApi = {
     await tauriInvoke("frontend_ready");
   },
 
+  async setCloseRequestListenerReady(ready: boolean): Promise<void> {
+    if (isBrowserEnv()) return;
+    await tauriInvoke("set_close_request_listener_ready", { ready });
+  },
+
   async setWindowMaterial(material: WindowMaterial, theme: WindowTheme): Promise<void> {
     if (isBrowserEnv()) return;
     await tauriInvoke("set_window_material", { material, theme });

@@ -18,11 +18,12 @@ jobs:
       backend-application: ${{ steps.filter.outputs['backend-application'] }}
       backend-core: ${{ steps.filter.outputs['backend-core'] }}
       backend-infra: ${{ steps.filter.outputs['backend-infra'] }}
-      backend-extra: ${{ steps.filter.outputs['backend-extra'] }}
-      backend-interface: ${{ steps.filter.outputs['backend-interface'] }}
+      backend-feature: ${{ steps.filter.outputs['backend-feature'] }}
+      backend-contract: ${{ steps.filter.outputs['backend-contract'] }}
       backend-server: ${{ steps.filter.outputs['backend-server'] }}
       backend-tauri: ${{ steps.filter.outputs['backend-tauri'] }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
 
@@ -65,16 +66,16 @@ jobs:
               - 'rustfmt.toml'
               - '.github/actions/**'
               - '.github/workflows/check.yml'
-            backend-extra:
-              - 'crates/extra/**'
+            backend-feature:
+              - 'crates/feature/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'rustfmt.toml'
               - '.github/actions/**'
               - '.github/workflows/check.yml'
-            backend-interface:
-              - 'crates/interface/**'
+            backend-contract:
+              - 'crates/contract/**'
               - '.cargo/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -110,6 +111,12 @@ jobs:
               - '.oxlintrc.json'
               - '.oxfmtrc.json'
               - '.github/actions/**'
+              - '.github/workflows/check.yml'
+            docs:
+              - 'docs/**'
+              - 'scripts/check-docs-tmp.mjs'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
               - '.github/workflows/check.yml'
 
   backend-lint:
@@ -172,10 +179,10 @@ jobs:
         env:
           RUSTFLAGS: "--cfg ci_skip_validation"
 
-  backend-test-extra:
-    name: 后端测试 (extra)
+  backend-test-feature:
+    name: 后端测试 (feature)
     needs: [changes, backend-lint]
-    if: ${{ needs.changes.outputs['backend-extra'] == 'true' }}
+    if: ${{ needs.changes.outputs['backend-feature'] == 'true' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -186,7 +193,7 @@ jobs:
         uses: ./.github/actions/setup-rust
 
       - name: 运行测试
-        run: cargo test -p sealantern-extra
+        run: cargo test -p sealantern-feature
 
   backend-test-infra:
     name: 后端测试 (infra)
@@ -204,10 +211,10 @@ jobs:
       - name: 运行测试
         run: cargo test -p sealantern-infra --all-features
 
-  backend-test-interface:
-    name: 后端测试 (interface)
+  backend-test-contract:
+    name: 后端测试 (contract)
     needs: [changes, backend-lint]
-    if: ${{ needs.changes.outputs['backend-interface'] == 'true' }}
+    if: ${{ needs.changes.outputs['backend-contract'] == 'true' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -218,7 +225,7 @@ jobs:
         uses: ./.github/actions/setup-rust
 
       - name: 运行测试
-        run: cargo test -p sealantern-interface
+        run: cargo test -p sealantern-contract
 
   backend-test-server:
     name: 后端测试 (server)
@@ -266,9 +273,9 @@ jobs:
         backend-test-application,
         backend-test-core,
         backend-test-infra,
-        backend-test-interface,
+        backend-test-contract,
         backend-test-server,
-        backend-test-extra,
+        backend-test-feature,
         backend-test-tauri,
       ]
     if: always()
@@ -310,3 +317,21 @@ jobs:
 
       - name: 运行前端测试
         run: pnpm test
+
+  docs-check:
+    name: 文档临时文件检查
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 pnpm 环境
+        uses: ./.github/actions/setup-pnpm
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 校验临时文档
+        run: pnpm docs:check

@@ -1,6 +1,6 @@
 //! HTTP 层错误响应。
 //!
-//! 将 `interface` 契约错误收敛为展平的 HTTP 错误响应：
+//! 将 `contract` 契约错误收敛为展平的 HTTP 错误响应：
 //! `{ "code": "...", "message": "..." }`。状态码只做粗略分类，能告知前端
 //! 请求失败即可，不追求细粒度映射。
 
@@ -9,7 +9,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
 
-use sealantern_interface::{
+use sealantern_contract::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
     ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
     UpdateCheckServiceError,
@@ -26,7 +26,7 @@ pub struct HttpErrorBody {
 
 /// HTTP 传输层的统一错误类型。
 ///
-/// 当前直接封装接口契约错误 [`InstanceServiceError`]；后续接入认证/校验后
+/// 当前直接封装公共契约错误 [`InstanceServiceError`]；后续接入认证/校验后
 /// 可在此扩展为携带更多类别的枚举。
 #[derive(Debug)]
 pub struct HttpError {

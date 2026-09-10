@@ -1,6 +1,6 @@
 //! `sealantern-server` 服务器二进制 crate。
 //!
-//! 启动 HTTP 服务：装配全局服务 → 组合路由 → 绑定监听 → 提供服务，
+//! 启动 HTTP 服务：装配应用服务 → 组合路由 → 绑定监听 → 提供服务，
 //! 并在收到终止信号时优雅关闭。
 
 use std::net::SocketAddr;
@@ -57,7 +57,7 @@ fn default_addr() -> SocketAddr {
 pub async fn main() {
     observability::init();
 
-    let services = match AppServices::get().await {
+    let services = match AppServices::build().await {
         Ok(services) => services,
         Err(error) => {
             tracing::error!(error = %error, "failed to assemble application services");
@@ -76,9 +76,9 @@ pub async fn main() {
     // 构建 Vite 配置并（在 dev 模式下）拉起 dev server。
     // 手柄必须在此持有，drop 时会终止 vite 子进程。
     let vite_config = vite_config();
-    let _vite_dev_server = vite_config.maybe_spawn_dev_server();
+    let vite_dev_server = vite_config.maybe_spawn_dev_server();
 
-    let app = build_router(services, vite_config);
+    let app = build_router(services.clone(), vite_config);
 
     let addr = listen_addr();
 
@@ -86,16 +86,29 @@ pub async fn main() {
         Ok(listener) => listener,
         Err(error) => {
             tracing::error!(%addr, error = %error, "failed to bind TCP listener");
+            if let Err(shutdown_error) = services.shutdown().await {
+                tracing::error!(
+                    error = %shutdown_error,
+                    "failed to shut down application services after bind failure"
+                );
+            }
+            drop(vite_dev_server);
             std::process::exit(1);
         }
     };
     tracing::info!(%addr, "server listening");
 
-    if let Err(error) = axum::serve(listener, app)
+    let serve_result = axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
-        .await
-    {
+        .await;
+    if let Err(error) = &serve_result {
         tracing::error!(error = %error, "server terminated with error");
+    }
+    if let Err(error) = services.shutdown().await {
+        tracing::error!(error = %error, "failed to shut down application services");
+    }
+    drop(vite_dev_server);
+    if serve_result.is_err() {
         std::process::exit(1);
     }
     tracing::info!("server shut down gracefully");

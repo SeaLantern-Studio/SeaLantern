@@ -2,13 +2,15 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 pub mod adapter;
 pub mod desktop;
 pub mod observability;
 
+use sealantern_application::port::SettingsService;
 use sealantern_application::services::AppServices;
-use sealantern_interface::{OnlineTunnelService, SettingsService};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 use adapter::tauri::commands::backup::{
     create_backup, delete_backup, get_backup_list, get_backup_settings, restore_backup,
@@ -79,9 +81,33 @@ fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
     StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED
 }
 
+#[derive(Default)]
+struct CloseRequestState {
+    frontend_listener_ready: AtomicBool,
+}
+
+impl CloseRequestState {
+    fn is_frontend_listener_ready(&self) -> bool {
+        self.frontend_listener_ready.load(Ordering::Acquire)
+    }
+}
+
 #[tauri::command]
 fn frontend_ready(app: AppHandle) {
     desktop::tray::show_when_ready(&app);
+}
+
+#[tauri::command]
+fn set_close_request_listener_ready(state: State<'_, CloseRequestState>, ready: bool) {
+    state
+        .frontend_listener_ready
+        .store(ready, Ordering::Release);
+}
+
+fn app_handle_has_close_listener(app_handle: &AppHandle) -> bool {
+    app_handle
+        .try_state::<CloseRequestState>()
+        .is_some_and(|state| state.is_frontend_listener_ready())
 }
 
 /// 启动桌面应用。
@@ -90,7 +116,73 @@ fn main() {
     observability::init();
 
     let app = tauri::Builder::default()
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                let listener_ready = app_handle_has_close_listener(window.app_handle());
+                if !listener_ready {
+                    tracing::warn!(
+                        "close request listener is unavailable; allowing the native close"
+                    );
+                    return;
+                }
+
+                api.prevent_close();
+                let app_handle = window.app_handle().clone();
+                let window = window.clone();
+                let settings = app_handle
+                    .try_state::<AppServices>()
+                    .map(|services| services.settings().clone());
+
+                tauri::async_runtime::spawn(async move {
+                    let close_action = match settings {
+                        Some(settings) => match settings.get().await {
+                            Ok(settings) => settings.close_action,
+                            Err(error) => {
+                                tracing::error!(
+                                    error = %error,
+                                    "failed to read close action; asking before exit"
+                                );
+                                "ask".to_owned()
+                            }
+                        },
+                        None => {
+                            tracing::error!(
+                                "application services are unavailable; asking before exit"
+                            );
+                            "ask".to_owned()
+                        }
+                    };
+
+                    match close_action.as_str() {
+                        "minimize" => {
+                            if let Err(error) = window.hide() {
+                                tracing::error!(
+                                    error = %error,
+                                    "failed to minimize main window to tray"
+                                );
+                                app_handle.exit(0);
+                            }
+                        }
+                        "close" => app_handle.exit(0),
+                        _ => {
+                            if let Err(error) = window.emit("close-requested", ()) {
+                                tracing::error!(
+                                    error = %error,
+                                    "failed to notify frontend about main window close request"
+                                );
+                                app_handle.exit(0);
+                            }
+                        }
+                    }
+                });
+            }
+        })
         .manage(MainWindowState::new())
+        .manage(CloseRequestState::default())
         .manage(AutoLightweightState::new())
         .manage(DesktopAppearanceState::new())
         .plugin(tauri_plugin_opener::init())
@@ -125,6 +217,7 @@ fn main() {
             restore_main_window,
             toggle_light_weight,
             frontend_ready,
+            set_close_request_listener_ready,
             //服务器备份管理契约命令
             create_backup,
             delete_backup,
@@ -234,7 +327,7 @@ fn main() {
         .expect("error while building Sea Lantern");
 
     // 全局退出钩子：覆盖窗口销毁、`app.exit`、操作系统关闭等所有退出路径，
-    // 保证异步服务（日志转发、在线隧道）在进程退出前统一清理。
+    // 保证异步服务（应用服务、事件转发、日志转发）在进程退出前统一清理。
     app.run(|app_handle, event| match event {
         // 销毁最后一个 WebView 是轻量模式的正常路径，不能退出后台进程。
         tauri::RunEvent::ExitRequested { api, code: None, .. } => api.prevent_exit(),
@@ -247,8 +340,8 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     //这里提供app_handle，便于使用时直接clone
     let app_handle = app.handle().clone();
 
-    tauri::async_runtime::block_on(async {
-        let services = AppServices::get().await.map_err(|error| {
+    let services = tauri::async_runtime::block_on(async {
+        let services = AppServices::build().await.map_err(|error| {
             std::io::Error::other(format!("failed to assemble application services: {error}"))
         })?;
         if let Err(error) = services.initialize_network_settings().await {
@@ -268,16 +361,24 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 "failed to initialize automatic lightweight mode setting"
             ),
         }
-        Ok::<(), std::io::Error>(())
+        Ok::<AppServices, std::io::Error>(services)
     })?;
 
     // 前端提供自定义标题栏；macOS 仍使用 Overlay 承载系统交通灯。
     #[cfg(not(target_os = "macos"))]
-    if let Some(window) = app.get_webview_window("main") {
-        window.set_decorations(false)?;
+    if let Some(window) = app.get_webview_window("main")
+        && let Err(error) = window.set_decorations(false)
+    {
+        shutdown_services(&services);
+        return Err(error.into());
     }
 
-    desktop::tray::setup(app)?;
+    if let Err(error) = desktop::tray::setup(app) {
+        shutdown_services(&services);
+        return Err(error);
+    }
+
+    app.manage(services);
 
     let handle_for_server_log = app_handle.clone();
     let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
@@ -286,21 +387,25 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// 应用退出时关闭后台异步服务（当前为在线隧道和日志提交器）。
+/// 应用退出时关闭后台异步服务。
 fn on_shutdown(app_handle: AppHandle) {
     let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
     tauri::async_runtime::block_on(async { log_sender.stop().await });
 
-    let Some(services) = AppServices::try_get() else {
-        return;
-    };
+    let forwarder: tauri::State<'_, OnlineTunnelEventForwarder> = app_handle.state();
+    tauri::async_runtime::block_on(async { forwarder.clear().await });
 
-    tauri::async_runtime::block_on(async move {
-        if let Err(error) = services.online_tunnel().shutdown().await {
+    let services = app_handle.state::<AppServices>().inner().clone();
+    shutdown_services(&services);
+}
+
+fn shutdown_services(services: &AppServices) {
+    tauri::async_runtime::block_on(async {
+        if let Err(error) = services.shutdown().await {
             tracing::error!(
-                target: "sealantern.tauri.online_tunnel",
+                target: "sealantern.tauri.services",
                 error = %error,
-                "failed to shut down online tunnel"
+                "failed to shut down application services"
             );
         }
     });

@@ -2,22 +2,22 @@
 
 use std::fmt;
 
-use sealantern_extra::server::cron_task::CronTaskError as ExtraCronTaskError;
-use sealantern_interface::CronTaskServiceError;
+use sealantern_contract::CronTaskServiceError;
+use sealantern_feature::server::cron_task::CronTaskError as FeatureCronTaskError;
 
 /// 服务器定时任务操作失败的应用层主错误。
 #[derive(Debug)]
 pub enum CronTaskError {
     /// 指定任务不存在。
-    TaskNotFound { source: ExtraCronTaskError },
+    TaskNotFound { source: FeatureCronTaskError },
     /// 任务输入或 Cron 表达式不合法。
-    InvalidInput { source: ExtraCronTaskError },
+    InvalidInput { source: FeatureCronTaskError },
     /// JSON 持久化失败。
-    StorageFailed { source: ExtraCronTaskError },
+    StorageFailed { source: FeatureCronTaskError },
     /// 服务器动作执行失败。
-    ExecutionFailed { source: ExtraCronTaskError },
+    ExecutionFailed { source: FeatureCronTaskError },
     /// 上游新增且尚未显式分类的错误。
-    Unexpected { source: ExtraCronTaskError },
+    Unexpected { source: FeatureCronTaskError },
     /// 该能力尚未实现。
     Unsupported,
 }
@@ -54,17 +54,17 @@ impl std::error::Error for CronTaskError {
     }
 }
 
-impl From<ExtraCronTaskError> for CronTaskError {
-    fn from(source: ExtraCronTaskError) -> Self {
+impl From<FeatureCronTaskError> for CronTaskError {
+    fn from(source: FeatureCronTaskError) -> Self {
         match source {
-            ExtraCronTaskError::TaskNotFound(_) => Self::TaskNotFound { source },
-            ExtraCronTaskError::InvalidTask(_) | ExtraCronTaskError::InvalidCron { .. } => {
+            FeatureCronTaskError::TaskNotFound(_) => Self::TaskNotFound { source },
+            FeatureCronTaskError::InvalidTask(_) | FeatureCronTaskError::InvalidCron { .. } => {
                 Self::InvalidInput { source }
             }
-            ExtraCronTaskError::Storage(_) => Self::StorageFailed { source },
-            ExtraCronTaskError::Execution { .. } => Self::ExecutionFailed { source },
+            FeatureCronTaskError::Storage(_) => Self::StorageFailed { source },
+            FeatureCronTaskError::Execution { .. } => Self::ExecutionFailed { source },
             other => {
-                debug_assert!(false, "unmapped extra cron task error: {:?}", other);
+                debug_assert!(false, "unmapped feature cron task error: {:?}", other);
                 Self::Unexpected { source: other }
             }
         }

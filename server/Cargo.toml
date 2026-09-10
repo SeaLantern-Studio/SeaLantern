@@ -15,8 +15,7 @@ path = "src/lib.rs"
 axum = "0.8"
 sealantern-application = { path = "../application" }
 sealantern-core = { path = "../crates/core" }
-sealantern-extra = { path = "../crates/extra" }
-sealantern-interface = { path = "../crates/interface" }
+sealantern-contract = { path = "../crates/contract" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"

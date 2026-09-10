@@ -10,7 +10,11 @@ pub mod error;
 pub mod observability;
 /// 插件安全策略和运行状态服务。
 pub mod plugin;
-/// 应用层服务接口。
+/// 应用层业务能力端口。
+pub mod port;
+/// 应用层服务实现。
 pub mod service;
 /// 服务实现与注册集合。
 pub mod services;
+
+pub use port::*;

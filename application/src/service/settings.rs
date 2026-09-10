@@ -1,6 +1,6 @@
 //! 设置信息服务实现。
 //!
-//! 实现 [`sealantern_interface::SettingsService`] 能力端口，统一提供设置概览、
+//! 实现 [`crate::port::SettingsService`] 能力端口，统一提供设置概览、
 //! 读取、更新、重置与导入导出能力。
 //!
 //! 错误分层：内部以应用层主错误 [`SettingsError`] 为源头，暴露
@@ -10,22 +10,21 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use sealantern_extra::config::SettingsManager;
-use sealantern_extra::models::{
-    AppSettings, DEFAULT_ACRYLIC_BLUR_LEVEL, PartialAppSettings, UpdateResult,
+use sealantern_contract::SettingsServiceError;
+use sealantern_contract::settings::{
+    AppSettings, DEFAULT_ACRYLIC_BLUR_LEVEL, PartialAppSettings, SettingsEntry, SettingsEntryType,
+    SettingsGroupInfo, SettingsOption, SettingsOverview, UpdateResult,
 };
-use sealantern_interface::settings::{
-    SettingsEntry, SettingsEntryType, SettingsGroupInfo, SettingsOption, SettingsOverview,
-};
-use sealantern_interface::{SettingsService, SettingsServiceError};
+use sealantern_feature::config::SettingsManager;
 
 use crate::error::SettingsError;
+use crate::port::SettingsService;
 use crate::service::network_settings::{
     GlobalNetworkSettingsRuntime, NetworkSettingsRuntime, PreparedProxyUpdate,
     commit_persisted_proxy,
 };
 
-/// 基于 `extra` 配置管理的设置服务实现。
+/// 基于 `feature` 配置管理的设置服务实现。
 pub struct CoreSettingsService {
     /// 惰性加载的唯一设置管理器；首次真实配置操作时初始化。
     manager: tokio::sync::OnceCell<tokio::sync::Mutex<SettingsManager>>,
@@ -226,7 +225,7 @@ impl SettingsService for CoreSettingsService {
     async fn update(&self, settings: AppSettings) -> Result<UpdateResult, SettingsServiceError> {
         settings
             .validate()
-            .map_err(sealantern_extra::config::SettingsError::from)
+            .map_err(sealantern_feature::config::SettingsError::from)
             .map_err(SettingsError::from)
             .map_err(Self::contract_error)?;
         let mut manager = self
@@ -317,7 +316,7 @@ impl SettingsService for CoreSettingsService {
     async fn import_json(&self, json: &str) -> Result<UpdateResult, SettingsServiceError> {
         let candidate: AppSettings = serde_json::from_str(json).map_err(|error| {
             Self::contract_error(SettingsError::InvalidInput {
-                source: sealantern_extra::config::SettingsError::invalid_input(
+                source: sealantern_feature::config::SettingsError::invalid_input(
                     "json",
                     error.to_string(),
                 ),
@@ -325,7 +324,7 @@ impl SettingsService for CoreSettingsService {
         })?;
         candidate
             .validate()
-            .map_err(sealantern_extra::config::SettingsError::from)
+            .map_err(sealantern_feature::config::SettingsError::from)
             .map_err(SettingsError::from)
             .map_err(Self::contract_error)?;
         let mut manager = self
@@ -790,7 +789,7 @@ mod tests {
     use std::sync::Mutex as StdMutex;
 
     use super::*;
-    use sealantern_extra::models::SettingsGroup;
+    use sealantern_contract::settings::SettingsGroup;
     use sealantern_infra::net::NetworkCommitError;
     use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
 

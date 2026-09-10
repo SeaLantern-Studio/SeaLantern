@@ -1,0 +1,554 @@
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::Path;
+
+use cap_std::fs::OpenOptions;
+use zip::ZipArchive;
+
+use super::limits::{ExtractionLimits, ExtractionSummary, accumulate_bytes, check_limit};
+use super::{
+    ArchiveError, EntryPathRegistry, check_entry_path_length, create_new_directory,
+    ensure_directory, ensure_parent_dirs, is_symbolic_link, parse_symbolic_link_target,
+    safe_entry_path,
+};
+
+const MAX_SYMBOLIC_LINK_TARGET_BYTES: u64 = 4 * 1024;
+
+/// 返回 ZIP 归档的中央目录条目数。
+///
+/// 只解析目录结构，不读取任何条目内容。中央目录通常在归档末尾，读取量与条目
+/// 数成正比；对每个条目的校验仍由 [`extract_zip_with_limits`] 在解压时执行。
+/// 用途是让调用方在解压前按实际条目数估算内存等资源。
+pub fn zip_entry_count(archive: impl AsRef<Path>) -> Result<usize, ArchiveError> {
+    let archive_path = archive.as_ref();
+    let file = File::open(archive_path)
+        .map_err(|error| ArchiveError::io("open ZIP archive", archive_path, error))?;
+    ZipArchive::new(file)
+        .map(|archive| archive.len())
+        .map_err(|error| ArchiveError::zip("read", archive_path, error))
+}
+
+/// 使用默认限制将 ZIP 压缩包解压到新的目标目录中。
+///
+/// 目标目录必须尚未存在。这避免了在压缩包无效或后续
+/// I/O 操作失败时覆盖之前的解压结果。
+pub fn extract_zip(
+    archive: impl AsRef<Path>,
+    destination: impl AsRef<Path>,
+) -> Result<ExtractionSummary, ArchiveError> {
+    extract_zip_with_limits(archive, destination, ExtractionLimits::default())
+}
+
+/// 使用显式限制将 ZIP 压缩包解压到新的目标目录中。
+///
+/// 所有条目名称、重复路径、符号链接和元数据限制都在
+/// 创建目标目录之前进行验证。目标目录在打开时不会追踪
+/// 其最终路径组件，并且每个输出文件都是独占创建的。
+pub fn extract_zip_with_limits(
+    archive: impl AsRef<Path>,
+    destination: impl AsRef<Path>,
+    limits: ExtractionLimits,
+) -> Result<ExtractionSummary, ArchiveError> {
+    let archive = archive.as_ref();
+    let destination = destination.as_ref();
+    let result = extract_zip_inner(archive, destination, limits);
+    if let Err(error) = &result {
+        crate::observability::archive_operation_failed_with_context(
+            "extract ZIP",
+            archive,
+            Some(destination),
+            error.entry(),
+            error,
+        );
+    }
+    result
+}
+
+fn extract_zip_inner(
+    archive_path: &Path,
+    destination: &Path,
+    limits: ExtractionLimits,
+) -> Result<ExtractionSummary, ArchiveError> {
+    let archive_size = std::fs::metadata(archive_path)
+        .map_err(|error| ArchiveError::io("read ZIP archive metadata", archive_path, error))?
+        .len();
+    check_limit(archive_path, "compressed archive bytes", archive_size, limits.max_archive_bytes)?;
+
+    let file = File::open(archive_path)
+        .map_err(|error| ArchiveError::io("open ZIP archive", archive_path, error))?;
+    let mut archive =
+        ZipArchive::new(file).map_err(|error| ArchiveError::zip("read", archive_path, error))?;
+    validate_archive(&mut archive, archive_path, limits)?;
+
+    let root = create_new_directory(destination)?;
+    let mut summary = ExtractionSummary::default();
+
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|error| ArchiveError::zip("read entry from", archive_path, error))?;
+        let entry_name = entry.name().to_owned();
+        let relative = safe_entry_path(archive_path, &entry_name)?;
+
+        if entry.is_dir() {
+            ensure_directory(&root, &relative, destination)?;
+            summary.directories += 1;
+            continue;
+        }
+
+        ensure_parent_dirs(&root, &relative, destination)?;
+        let output_path = destination.join(&relative);
+        let mut output = root
+            .open_with(&relative, OpenOptions::new().write(true).create_new(true))
+            .map_err(|error| ArchiveError::io("create ZIP entry file", &output_path, error))?;
+        let copied = copy_entry_with_limits(
+            &mut entry,
+            &mut output,
+            &output_path,
+            archive_path,
+            &mut summary.bytes,
+            limits,
+        )?;
+        summary.files += 1;
+        debug_assert_eq!(copied, entry.size());
+    }
+
+    Ok(summary)
+}
+
+/// 在创建目标目录之前完成全量预检。
+///
+/// ZIP 拥有中央目录，条目数、输出路径去重、符号链接与各项字节上限都能在
+/// 写入任何文件之前判定，因此校验失败时目标目录不会被创建。
+fn validate_archive(
+    archive: &mut ZipArchive<File>,
+    archive_path: &Path,
+    limits: ExtractionLimits,
+) -> Result<(), ArchiveError> {
+    check_limit(archive_path, "entry count", archive.len() as u64, limits.max_entries as u64)?;
+
+    let mut paths = EntryPathRegistry::with_capacity(archive.len());
+    let mut total_bytes = 0_u64;
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|error| ArchiveError::zip("read entry from", archive_path, error))?;
+        check_entry_path_length(archive_path, entry.name_raw(), limits.max_entry_path_bytes)?;
+        let entry_name = entry.name().to_owned();
+        let relative = safe_entry_path(archive_path, &entry_name)?;
+        let is_directory = entry.is_dir();
+        paths.register(archive_path, &relative, &entry_name, is_directory)?;
+        if is_symbolic_link(entry.unix_mode()) {
+            validate_symbolic_link_target(&mut entry, archive_path, &entry_name)?;
+            return Err(ArchiveError::UnsupportedEntry {
+                archive: archive_path.to_path_buf(),
+                entry: entry_name,
+                kind: "symbolic link",
+            });
+        }
+        if is_directory {
+            continue;
+        }
+
+        let entry_size = entry.size();
+        check_limit(
+            archive_path,
+            "per-entry uncompressed bytes",
+            entry_size,
+            limits.max_entry_bytes,
+        )?;
+        total_bytes = accumulate_bytes(
+            total_bytes,
+            entry_size,
+            archive_path,
+            "total uncompressed bytes",
+            limits.max_total_bytes,
+        )?;
+        check_limit(archive_path, "total uncompressed bytes", total_bytes, limits.max_total_bytes)?;
+        // ZIP 每个条目独立压缩，可按条目比较压缩比；声明为非空却压缩到 0
+        // 字节的条目同样按超限拒绝。
+        let compressed_size = entry.compressed_size();
+        if entry_size > 0
+            && (compressed_size == 0
+                || entry_size > compressed_size.saturating_mul(limits.max_compression_ratio))
+        {
+            return Err(ArchiveError::LimitExceeded {
+                archive: archive_path.to_path_buf(),
+                limit: "compression ratio",
+                observed: entry_size,
+                maximum: compressed_size.saturating_mul(limits.max_compression_ratio),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// 流式拷贝条目内容，并按实际读取的字节数复核上限。
+///
+/// 中央目录声明的大小不可信，因此写入过程中重新累加单条目字节与总字节，
+/// 任一超限立即中止。
+fn copy_entry_with_limits(
+    entry: &mut zip::read::ZipFile<'_>,
+    output: &mut cap_std::fs::File,
+    output_path: &Path,
+    archive_path: &Path,
+    total_bytes: &mut u64,
+    limits: ExtractionLimits,
+) -> Result<u64, ArchiveError> {
+    let mut buffer = [0_u8; 64 * 1024];
+    let mut entry_bytes = 0_u64;
+    loop {
+        let count = entry.read(&mut buffer).map_err(|error| ArchiveError::Io {
+            operation: "read ZIP entry",
+            path: archive_path.to_path_buf(),
+            source: error,
+        })?;
+        if count == 0 {
+            return Ok(entry_bytes);
+        }
+        entry_bytes = accumulate_bytes(
+            entry_bytes,
+            count as u64,
+            archive_path,
+            "per-entry uncompressed bytes",
+            limits.max_entry_bytes,
+        )?;
+        check_limit(
+            archive_path,
+            "per-entry uncompressed bytes",
+            entry_bytes,
+            limits.max_entry_bytes,
+        )?;
+        *total_bytes = accumulate_bytes(
+            *total_bytes,
+            count as u64,
+            archive_path,
+            "total uncompressed bytes",
+            limits.max_total_bytes,
+        )?;
+        check_limit(
+            archive_path,
+            "total uncompressed bytes",
+            *total_bytes,
+            limits.max_total_bytes,
+        )?;
+        output
+            .write_all(&buffer[..count])
+            .map_err(|error| ArchiveError::Io {
+                operation: "write ZIP entry file",
+                path: output_path.to_path_buf(),
+                source: error,
+            })?;
+    }
+}
+
+/// 读取并校验符号链接载荷，用于在拒绝条目前给出精确原因。
+///
+/// ZIP 把符号链接目标存放在条目内容中，需要读取后才能判定其是否可移植。
+fn validate_symbolic_link_target(
+    entry: &mut zip::read::ZipFile<'_>,
+    archive_path: &Path,
+    entry_name: &str,
+) -> Result<(), ArchiveError> {
+    let mut target = Vec::new();
+    entry
+        .take(MAX_SYMBOLIC_LINK_TARGET_BYTES + 1)
+        .read_to_end(&mut target)
+        .map_err(|source| ArchiveError::SymbolicLinkTargetRead {
+            archive: archive_path.to_path_buf(),
+            entry: entry_name.to_string(),
+            source,
+        })?;
+    if target.len() as u64 > MAX_SYMBOLIC_LINK_TARGET_BYTES {
+        return Err(ArchiveError::InvalidSymbolicLinkTargetEntry {
+            archive: archive_path.to_path_buf(),
+            entry: entry_name.to_string(),
+            reason: "target exceeds the 4096-byte limit",
+        });
+    }
+    match parse_symbolic_link_target(&target) {
+        Ok(_) => Ok(()),
+        Err(ArchiveError::InvalidSymbolicLinkTarget { reason }) => {
+            Err(ArchiveError::InvalidSymbolicLinkTargetEntry {
+                archive: archive_path.to_path_buf(),
+                entry: entry_name.to_string(),
+                reason,
+            })
+        }
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+
+    use zip::ZipWriter;
+    use zip::write::SimpleFileOptions;
+
+    use super::*;
+
+    #[test]
+    fn rejects_path_traversal_before_creating_destination() {
+        let root = crate::fs::test_dir("unzip");
+        let archive_path = root.join("unsafe.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("../outside.txt", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"unsafe").unwrap();
+        writer.finish().unwrap();
+
+        assert!(matches!(
+            extract_zip(&archive_path, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(!root.join("outside.txt").exists());
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn refuses_to_overwrite_existing_destination() {
+        let root = crate::fs::test_dir("existing-destination");
+        let archive_path = root.join("archive.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("server.properties", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"from archive").unwrap();
+        writer.finish().unwrap();
+        std::fs::create_dir_all(&destination).unwrap();
+        std::fs::write(destination.join("server.properties"), b"existing").unwrap();
+
+        assert!(matches!(
+            extract_zip(&archive_path, &destination),
+            Err(ArchiveError::DestinationExists { .. })
+        ));
+        assert_eq!(std::fs::read(destination.join("server.properties")).unwrap(), b"existing");
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn enforces_declared_entry_limit_before_writing() {
+        let root = crate::fs::test_dir("limits");
+        let archive_path = root.join("large.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("payload.bin", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&[0; 32]).unwrap();
+        writer.finish().unwrap();
+
+        let limits = ExtractionLimits {
+            max_entry_bytes: 16,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_zip_with_limits(&archive_path, &destination, limits),
+            Err(ArchiveError::LimitExceeded {
+                limit: "per-entry uncompressed bytes",
+                ..
+            })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn enforces_max_total_bytes_on_declared_sizes() {
+        let root = crate::fs::test_dir("zip-total-limit");
+        let archive_path = root.join("total.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("payload.bin", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&[0; 32]).unwrap();
+        writer.finish().unwrap();
+
+        let limits = ExtractionLimits {
+            max_total_bytes: 16,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_zip_with_limits(&archive_path, &destination, limits),
+            Err(ArchiveError::LimitExceeded { limit: "total uncompressed bytes", .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn enforces_max_entries_before_creating_destination() {
+        let root = crate::fs::test_dir("zip-entry-limit");
+        let archive_path = root.join("entries.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        for index in 0..4 {
+            writer
+                .start_file(format!("f{index}.bin"), SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(&[index]).unwrap();
+        }
+        writer.finish().unwrap();
+
+        let limits = ExtractionLimits {
+            max_entries: 2,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_zip_with_limits(&archive_path, &destination, limits),
+            Err(ArchiveError::LimitExceeded { limit: "entry count", .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_file_entry_that_blocks_a_parent_directory() {
+        let root = crate::fs::test_dir("zip-path-conflict");
+        let archive_path = root.join("conflict.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        // `config` 先作为普通文件出现，随后的条目却要用它当父目录。
+        writer
+            .start_file("config", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"not a directory").unwrap();
+        writer
+            .start_file("config/server.properties", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"motd=Sea Lantern").unwrap();
+        writer.finish().unwrap();
+
+        assert!(matches!(
+            extract_zip(&archive_path, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_case_insensitive_path_collisions() {
+        let root = crate::fs::test_dir("zip-case-collision");
+        let archive_path = root.join("collision.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        // Windows/macOS 上两个条目会落在同一文件。
+        writer
+            .start_file("Server.properties", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"first").unwrap();
+        writer
+            .start_file("server.properties", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"second").unwrap();
+        writer.finish().unwrap();
+
+        assert!(matches!(
+            extract_zip(&archive_path, &destination),
+            Err(ArchiveError::UnsafeEntry { .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn enforces_entry_path_length_before_creating_destination() {
+        let root = crate::fs::test_dir("zip-path-length");
+        let archive_path = root.join("long-name.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        let long_name = "a".repeat(64);
+        writer
+            .start_file(&long_name, SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"payload").unwrap();
+        writer.finish().unwrap();
+
+        let limits = ExtractionLimits {
+            max_entry_path_bytes: 32,
+            ..ExtractionLimits::default()
+        };
+        assert!(matches!(
+            extract_zip_with_limits(&archive_path, &destination, limits),
+            Err(ArchiveError::LimitExceeded {
+                limit: "entry path bytes",
+                observed: 64,
+                maximum: 32,
+                ..
+            })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn accepts_explicit_directory_after_an_implicit_parent() {
+        let root = crate::fs::test_dir("directory-order");
+        let archive_path = root.join("ordered.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("config/server.properties", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"motd=Sea Lantern").unwrap();
+        writer
+            .add_directory("config", SimpleFileOptions::default())
+            .unwrap();
+        writer.finish().unwrap();
+
+        let summary = extract_zip(&archive_path, &destination).unwrap();
+        assert_eq!(summary.files, 1);
+        assert_eq!(summary.directories, 1);
+        assert_eq!(
+            std::fs::read(destination.join("config/server.properties")).unwrap(),
+            b"motd=Sea Lantern"
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_symbolic_link_entries_before_creating_destination() {
+        let root = crate::fs::test_dir("symbolic-link");
+        let archive_path = root.join("link.zip");
+        let destination = root.join("destination");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .add_symlink("config", "../outside", SimpleFileOptions::default())
+            .unwrap();
+        writer.finish().unwrap();
+
+        assert!(matches!(
+            extract_zip(&archive_path, &destination),
+            Err(ArchiveError::InvalidSymbolicLinkTargetEntry { .. })
+        ));
+        assert!(!destination.exists());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}

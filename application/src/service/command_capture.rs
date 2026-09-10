@@ -9,15 +9,15 @@
 //! 接收端，直到一段时间没有新行（响应稳定）或超过超时上限。每条捕获持有独立
 //! 通道，不再订阅全局广播、也不再持每实例锁（见 code review：A-专用响应通道）。
 
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use sealantern_contract::console::ConsoleLogLine;
 use sealantern_core::instance::InstanceId;
-use sealantern_interface::console::ConsoleLogLine;
-use sealantern_interface::ServerService;
 use tokio::sync::mpsc;
 
-use crate::service::{deregister_capture_sender, register_capture_sender};
-use crate::services::AppServices;
+use crate::port::ServerService;
+use crate::service::{CoreServerService, deregister_capture_sender, register_capture_sender};
 
 /// 捕获过程中的错误。
 #[derive(Debug)]
@@ -59,14 +59,12 @@ impl std::fmt::Display for CaptureError {
 /// 注：超时是从发命令那一刻开始计的，包含 Java 端处理、回显落库、
 /// writer 批量 flush（默认 100ms 窗口）再到 broadcast 的端到端延迟。
 pub async fn capture_command_output(
+    server_svc: &Arc<CoreServerService>,
     server_id: &str,
     command: &str,
     timeout: Duration,
 ) -> Result<Vec<String>, CaptureError> {
     let id = InstanceId::new(server_id).map_err(|_| CaptureError::InvalidInput)?;
-    let server_svc = AppServices::server_service()
-        .await
-        .map_err(|_| CaptureError::Unavailable)?;
 
     // 建专用响应通道并注册（必须在 send_command 之前，避免漏掉响应首行）。
     // 每条捕获持有独立通道，不再订阅全局广播、也不再持每实例锁。

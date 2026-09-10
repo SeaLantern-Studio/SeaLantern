@@ -122,6 +122,30 @@ function toggleMoreLanguages() {
 
 onMounted(async () => {
   isUnmounted = false;
+
+  try {
+    // 先注册关闭请求监听器，避免后续设置加载期间丢失原生窗口关闭事件。
+    const unlisten = await listen("close-requested", () => {
+      showCloseModal.value = true;
+    });
+    if (isUnmounted) {
+      unlisten();
+      return;
+    }
+    unlistenCloseRequested = unlisten;
+    await desktopApi.setCloseRequestListenerReady(true);
+    if (isUnmounted) {
+      unlisten();
+      unlistenCloseRequested = null;
+      void desktopApi.setCloseRequestListenerReady(false).catch((error) => {
+        console.error("Failed to clear close request listener state:", error);
+      });
+      return;
+    }
+  } catch (error) {
+    console.error("Failed to register close request listener:", error);
+  }
+
   await loadSettings();
 
   // 初始化最大化状态
@@ -132,20 +156,14 @@ onMounted(async () => {
     isMaximized.value = await appWindow.isMaximized();
   });
 
-  const unlisten = await listen("close-requested", () => {
-    showCloseModal.value = true;
-  });
-  if (isUnmounted) {
-    unlisten();
-  } else {
-    unlistenCloseRequested = unlisten;
-  }
-
   window.addEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
 });
 
 onUnmounted(() => {
   isUnmounted = true;
+  void desktopApi.setCloseRequestListenerReady(false).catch((error) => {
+    console.error("Failed to clear close request listener state:", error);
+  });
   window.removeEventListener(SETTINGS_UPDATE_EVENT, handleSettingsUpdateEvent as EventListener);
   if (unlistenResize) {
     unlistenResize();

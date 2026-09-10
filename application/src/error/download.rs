@@ -2,8 +2,8 @@
 
 use std::fmt;
 
+use sealantern_contract::error::DownloadServiceError;
 use sealantern_infra::download::DownloadError as InfraDownloadError;
-use sealantern_interface::error::DownloadServiceError;
 
 /// 下载任务管理操作失败的应用层主错误。
 ///

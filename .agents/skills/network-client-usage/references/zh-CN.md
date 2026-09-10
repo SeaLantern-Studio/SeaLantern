@@ -148,7 +148,7 @@ let service = CoreDownloadService::with_provider(provider);
 let service = CoreDownloadService::with_manager(manager);
 ```
 
-它实现 `sealantern_interface::DownloadService` 契约：
+它实现 `sealantern_application::port::DownloadService` 契约：
 
 ```rust
 let id = service.create(DownloadRequest {

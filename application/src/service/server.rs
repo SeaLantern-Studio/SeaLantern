@@ -1,6 +1,6 @@
 //! 服务器进程管理服务实现。
 //!
-//! 实现 [`sealantern_interface::ServerService`] 能力端口，管理实例对应的
+//! 实现 [`crate::port::ServerService`] 能力端口，管理实例对应的
 //! 服务器进程生命周期（启动/停止/强制停止/状态/控制台命令）。
 //!
 //! 进程管理基于 `core` 的 `process` 原语（[`Daemon`]、[`Terminal`]、
@@ -16,6 +16,9 @@ use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
+use sealantern_contract::ServerServiceError;
+use sealantern_contract::java::JavaInfo;
+use sealantern_contract::server::{ServerSnapshot, ServerState};
 use sealantern_core::instance::{
     Instance, InstanceId, InstanceLifecycleState, InstanceRestartDriver, RestartPolicy,
     StartupMode, restart_instance,
@@ -24,12 +27,11 @@ use sealantern_core::process::{
     CommandBuildMode, CommandBuildRequest, Daemon, JavaEnvironment, Terminal, TerminalStream,
     WindowsConsoleEncoding, build_command,
 };
-use sealantern_extra::java::{JavaInfo, detect_java_installations};
-use sealantern_interface::server::{ServerSnapshot, ServerState};
-use sealantern_interface::{InstanceService, ServerService, ServerServiceError, SettingsService};
+use sealantern_feature::java::detect_java_installations;
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
 
 use crate::error::ServerError;
+use crate::port::{InstanceService, ServerService, SettingsService};
 
 use super::{CoreInstanceService, CoreSettingsService, LogRecorder};
 
@@ -380,6 +382,20 @@ impl CoreServerService {
             uptime_secs: None,
             error_message: None,
         })
+    }
+
+    /// 同步查询实例对应服务器是否已停止。
+    ///
+    /// 直接查进程表（`status_for_instance`），不涉及异步 IO，供备份等
+    /// 需要在阻塞上下文（如 `spawn_blocking` 回调）中复核状态的场景使用。
+    /// 实例不存在时按"未运行"处理（返回 `true`），与 `status_for_instance`
+    /// 的语义一致。
+    pub(crate) fn server_stopped(&self, instance: &Instance) -> bool {
+        matches!(
+            self.status_for_instance(instance)
+                .map(|snapshot| snapshot.state),
+            Ok(ServerState::Stopped)
+        )
     }
 }
 

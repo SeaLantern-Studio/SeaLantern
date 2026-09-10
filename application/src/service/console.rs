@@ -1,8 +1,9 @@
 //! 服务器控制台日志服务实现。
 //!
-//! 实现 [`sealantern_interface::ConsoleService`] 能力端口，组合
+//! 实现 [`crate::port::ConsoleService`] 能力端口，组合
 //! [`CoreInstanceService`]（按实例定位日志目录）与日志存储能力
-//! （`extra::server::log`），向宿主提供服务器控制台日志的增量读取。
+//! （`feature::server::log`）向宿主提供控制台日志的增量读取，并组合
+//! `feature::mclogs` 提供日志分享能力。
 //!
 //! 错误分层：内部以应用层主错误 [`ConsoleError`] 为源头，暴露
 //! [`ConsoleService`] 时统一转为接口契约错误 [`ConsoleServiceError`]。
@@ -10,13 +11,14 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use sealantern_contract::ConsoleServiceError;
+use sealantern_contract::console::ConsoleLogLine;
 use sealantern_core::instance::InstanceId;
-use sealantern_extra::server::log::{open_log_database, read_logs};
-use sealantern_interface::console::ConsoleLogLine;
-use sealantern_interface::{ConsoleService, ConsoleServiceError, InstanceService};
+use sealantern_feature::server::log::{open_log_database, read_logs};
 
 use super::CoreInstanceService;
 use crate::error::ConsoleError;
+use crate::port::{ConsoleService, InstanceService};
 
 /// 基于实例目录日志存储的控制台日志服务实现。
 pub struct CoreConsoleService {
@@ -68,6 +70,19 @@ impl ConsoleService for CoreConsoleService {
             })
             .collect())
     }
+
+    async fn share_logs(&self, content: &str) -> Result<String, ConsoleServiceError> {
+        // 空内容直接拒绝，避免向远端发送无意义的请求。
+        if content.trim().is_empty() {
+            return Err(ConsoleError::InvalidInput.into());
+        }
+
+        // 委托 feature 的 mclo.gs 分享能力；底层网络 / 服务端错误
+        // 统一收敛为 OperationFailed，不向宿主泄漏远端细节。
+        sealantern_feature::mclogs::share_logs(content.to_owned())
+            .await
+            .map_err(|_| ConsoleServiceError::OperationFailed)
+    }
 }
 
 #[cfg(test)]
@@ -75,7 +90,7 @@ mod tests {
     use std::path::PathBuf;
 
     use sealantern_core::instance::{InstanceSpec, LocalLaunch, StartupMode};
-    use sealantern_extra::server::log::{LogSource, open_log_database};
+    use sealantern_feature::server::log::{LogSource, open_log_database};
     use sealantern_infra::persistence::SqlValue;
 
     use super::*;
