@@ -20,9 +20,6 @@ pub enum BackupError {
     #[error("文件系统错误: {0}")]
     FileSystem(#[from] sealantern_infra::fs::FsError),
 
-    #[error("ZIP写入错误: {0}")]
-    Zip(#[from] zip::result::ZipError),
-
     #[error("压缩错误: {0}")]
     Archive(#[from] sealantern_infra::archive::ArchiveError),
 

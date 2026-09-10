@@ -1,19 +1,19 @@
-use std::collections::HashSet;
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read, Write};
-use std::path::{Component, Path, PathBuf};
+//! 备份归档的创建与解压。
+//!
+//! 归档的读写、路径安全、资源上限等全部由 `sealantern_infra::archive` 承担。
+//! 本模块只负责备份业务特有的两件事：把 [`BackupFormat`] 分派到对应的 infra
+//! 入口，以及在解压前依据可用内存决定是否放行。
 
-use flate2::Compression;
-use flate2::read::GzDecoder;
-use flate2::write::GzEncoder;
-use sealantern_infra::archive::{ExtractionLimits, extract_zip_with_limits, is_symbolic_link};
-use sealantern_infra::fs::SafeRelativePath;
+use std::fs;
+use std::path::Path;
+
+use sealantern_infra::archive::{
+    ArchiveFormat, CompressionLevel as ArchiveCompressionLevel, ExtractionLimits,
+    ExtractionSummary, create_tar_gz_with_level, create_zip_with_level, detect_archive_format,
+    extract_tar_gz_with_limits, extract_zip_with_limits,
+};
 use sealantern_infra::platform::collect_resource_snapshot;
-use tar::Builder as TarBuilder;
 use tracing::{debug, warn};
-use uuid::Uuid;
-use zip::write::SimpleFileOptions;
-use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use super::error::{BackupError, BackupResult};
 use super::models::{BackupFormat, CompressionLevel};
@@ -22,16 +22,21 @@ const MAX_ARCHIVE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 const MAX_ENTRIES: usize = 10_000;
 const MAX_ENTRY_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 16 * 1024 * 1024 * 1024;
-const MAX_COMPRESSION_RATIO: u64 = 200;
 const MAX_ENTRY_PATH_BYTES: usize = 4096;
+const MAX_COMPRESSION_RATIO: u64 = 200;
 
 const MIN_AVAILABLE_MEMORY_BYTES: u64 = 128 * 1024 * 1024;
 const STREAMING_MEMORY_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_INDEX_MEMORY_BYTES: u64 = 128 * 1024 * 1024;
 
+/// 开始施加压缩比上限的解压字节数，与 infra 的
+/// [`ExtractionLimits::min_ratio_enforcement_bytes`] 默认值一致。
+const MIN_RATIO_ENFORCEMENT_BYTES: u64 = 64 * 1024;
+
 const BACKUP_TARGET: &str = "sealantern.feature.backup";
 const EVENT_MEMORY_PREFLIGHT: &str = "backup_restore_memory_preflight";
 
+/// 归档解压后的统计信息。
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct ArchiveStats {
     pub archive_bytes: u64,
@@ -39,56 +44,132 @@ pub(crate) struct ArchiveStats {
     pub unpacked_bytes: u64,
 }
 
+/// 按备份格式创建归档。
+///
+/// 创建后立即按恢复时的上限校验一遍，避免产出「备份成功但永远恢复不了」的
+/// 归档，见 [`verify_restorable`]。
 pub(crate) fn create_archive(
     source: &Path,
     destination: &Path,
     format: BackupFormat,
     compression_level: CompressionLevel,
 ) -> BackupResult<()> {
-    ensure_source_directory(source)?;
-    reject_existing_destination(destination)?;
+    let level = archive_compression_level(compression_level);
+    let summary = match format {
+        BackupFormat::Zip => create_zip_with_level(source, destination, level),
+        BackupFormat::TarGz => create_tar_gz_with_level(source, destination, level),
+    }
+    .map_err(map_create_error)?;
 
-    let temporary = temporary_path(destination);
-    let result = match format {
-        BackupFormat::Zip => create_zip_archive(source, &temporary, compression_level),
-        BackupFormat::TarGz => create_tar_archive(source, &temporary, compression_level),
+    if let Err(error) = verify_restorable(destination, format, summary) {
+        remove_unrestorable_archive(destination);
+        return Err(error);
+    }
+    Ok(())
+}
+
+/// 校验刚创建的归档在恢复时不会撞上资源上限。
+///
+/// 备份写出后若无法恢复，故障只会在用户真正需要它时才暴露，因此这里提前拦下。
+/// 校验只用创建过程已经得到的统计与归档文件大小，不重新读取归档内容——对 ZIP
+/// 而言可以省下一次中央目录扫描，对 tar.gz 而言可以省下整整一遍解压。
+///
+/// 覆盖归档大小、条目数、总解压字节与整体压缩比，压缩比判定按格式分别处理：
+///
+/// - TarGz 应用 `ExtractionLimits::min_ratio_enforcement_bytes` 豁免。豁免的
+///   理由是 tar 的结束标记与记录对齐这类固定开销，与内容无关的小归档压缩比
+///   天然虚高；解压侧 tar_read 对同一阈值下的归档同样不施加比率判定，两侧一致
+/// - Zip 不应用豁免，保持偏严。ZIP 没有固定开销，解压侧 zip_read 的压缩比
+///   判定按条目进行且完全不引用该阈值；创建侧若放行低于阈值的归档，其中可能
+///   存在单条目压缩比超限（大段重复内容的文件）而恢复侧按条目拒绝——「创建
+///   放行、恢复拒绝」比「创建误拒」严重得多，后者用户立刻知道，前者在最需要
+///   恢复时才发现归档不可用
+///
+/// 这一层的作用是零成本拦下明显不可恢复的归档，例如大段重复内容压出的极高
+/// 压缩比；对 ZIP 的比率判定是整体近似，逐条目的严格判定仍在恢复时执行。
+fn verify_restorable(
+    archive_path: &Path,
+    format: BackupFormat,
+    summary: sealantern_infra::archive::ArchiveSummary,
+) -> BackupResult<()> {
+    let archive_bytes = archive_size(archive_path)?;
+    let entries = summary.files.saturating_add(summary.directories);
+    if entries > MAX_ENTRIES as u64 {
+        return Err(unrestorable(archive_path, "条目数量超过恢复限制"));
+    }
+    if summary.bytes > MAX_TOTAL_BYTES {
+        return Err(unrestorable(archive_path, "解压后总大小超过恢复限制"));
+    }
+    let exceeds_ratio = summary.bytes > archive_bytes.saturating_mul(MAX_COMPRESSION_RATIO);
+    let apply_ratio = match format {
+        BackupFormat::Zip => true,
+        // tar.gz 的固定开销豁免，与解压侧 tar_read 的判定保持一致。
+        BackupFormat::TarGz => summary.bytes > extraction_limits().min_ratio_enforcement_bytes,
     };
+    if exceeds_ratio && apply_ratio {
+        return Err(unrestorable(archive_path, "压缩比超过恢复限制"));
+    }
+    Ok(())
+}
 
-    match result {
-        Ok(()) => {
-            let validation = validate_created_archive(&temporary, format);
-            if let Err(error) = validation {
-                remove_temporary_file(&temporary);
-                Err(error)
-            } else {
-                publish_archive(&temporary, destination)
-            }
-        }
-        Err(error) => {
-            remove_temporary_file(&temporary);
-            Err(error)
-        }
+fn unrestorable(archive_path: &Path, reason: &str) -> BackupError {
+    BackupError::Validation(format!("归档 {:?} 无法恢复: {reason}", archive_path))
+}
+
+/// 删除无法恢复的归档，使失败的备份不留下产物。
+fn remove_unrestorable_archive(path: &Path) {
+    if let Err(error) = fs::remove_file(path)
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        warn!(
+            target: BACKUP_TARGET,
+            event_name = "backup_archive_cleanup_failed",
+            path = %path.display(),
+            error = %error,
+            "failed to remove an archive that cannot be restored"
+        );
     }
 }
 
+/// 解压备份归档到一个尚不存在的目标目录。
+///
+/// `format` 只是元数据中记录的期望格式，实际使用的解析器由文件魔数决定：备份
+/// 元数据可能与磁盘内容不符（历史上存在过用 ZIP 内容写出 `.tar.gz` 文件的缺陷），
+/// 按内容判定才能正确读出这些归档。
 pub(crate) fn extract_archive(
     archive_path: &Path,
     destination: &Path,
     format: BackupFormat,
 ) -> BackupResult<ArchiveStats> {
-    let effective_format = resolve_archive_format(archive_path, format)?;
-    let stats = preflight_archive(archive_path, effective_format)?;
-    reject_existing_destination(destination)?;
-    fs::create_dir_all(destination.parent().unwrap_or_else(|| Path::new(".")))?;
-
-    match effective_format {
-        BackupFormat::Zip => {
-            extract_zip_with_limits(archive_path, destination, zip_extraction_limits())?;
-        }
-        BackupFormat::TarGz => {
-            extract_tar_archive(archive_path, destination, stats.archive_bytes)?;
-        }
+    let archive_bytes = archive_size(archive_path)?;
+    let actual_format = detect_archive_format(archive_path)?;
+    if expected_format(format) != actual_format {
+        warn!(
+            target: BACKUP_TARGET,
+            event_name = "backup_archive_format_mismatch",
+            archive = %archive_path.display(),
+            recorded_format = %format,
+            detected_format = %actual_format,
+            "backup metadata format disagrees with archive contents; using detected format"
+        );
     }
+    check_memory_budget(archive_path, actual_format, archive_bytes)?;
+
+    let limits = extraction_limits();
+    let summary = match actual_format {
+        ArchiveFormat::Zip => extract_zip_with_limits(archive_path, destination, limits)?,
+        ArchiveFormat::TarGz => extract_tar_gz_with_limits(archive_path, destination, limits)?,
+        // 未来新增的格式：本调用点尚未实现解压，按不受支持处理。
+        _ => {
+            return Err(BackupError::Archive(
+                sealantern_infra::archive::ArchiveError::InvalidSource {
+                    path: archive_path.to_path_buf(),
+                    reason: "backup archive format is not supported",
+                },
+            ));
+        }
+    };
+    let stats = archive_stats(archive_bytes, summary);
 
     debug!(
         target: BACKUP_TARGET,
@@ -102,54 +183,35 @@ pub(crate) fn extract_archive(
     Ok(stats)
 }
 
-fn validate_created_archive(path: &Path, format: BackupFormat) -> BackupResult<()> {
-    let archive_bytes = archive_size(path)?;
-    match format {
-        BackupFormat::Zip => {
-            inspect_zip_archive(path, archive_bytes)?;
-        }
-        BackupFormat::TarGz => {
-            inspect_tar_archive(path, archive_bytes)?;
-        }
-    }
-    Ok(())
-}
-
-fn preflight_archive(archive_path: &Path, format: BackupFormat) -> BackupResult<ArchiveStats> {
-    let archive_bytes = archive_size(archive_path)?;
-    let initial_stats = ArchiveStats {
-        archive_bytes,
-        entries: MAX_ENTRIES,
-        ..ArchiveStats::default()
-    };
-    check_memory_budget(archive_path, format, initial_stats)?;
-
-    let stats = match format {
-        BackupFormat::Zip => inspect_zip_archive(archive_path, archive_bytes)?,
-        BackupFormat::TarGz => inspect_tar_archive(archive_path, archive_bytes)?,
-    };
-    check_memory_budget(archive_path, format, stats)?;
-    Ok(stats)
-}
-
+/// 在解压之前检查可用内存是否足以容纳解析开销。
+///
+/// ZIP 的中央目录可以在解压前廉价读出，因此按实际条目数估算；tar.gz 没有
+/// 中央目录，取得条目数需要完整解压一遍 gzip 流，代价是解压两次。因此 tar.gz
+/// 不做条目数预检，仅保留固定门槛，条目路径集合的累积交由 infra 层已有的
+/// max_entries / max_entry_path_bytes 流式限制在解压过程中约束。
 fn check_memory_budget(
     archive_path: &Path,
-    format: BackupFormat,
-    stats: ArchiveStats,
+    format: ArchiveFormat,
+    archive_bytes: u64,
 ) -> BackupResult<()> {
-    let required_memory = required_memory(stats, format);
+    let entry_count = match format {
+        // 预检时顺便读中央目录，与随后解压时的读取重复但成本低廉（只读目录，
+        // 不解压条目），换取真实条目数。
+        ArchiveFormat::Zip => count_zip_entries(archive_path)?,
+        ArchiveFormat::TarGz | _ => 0,
+    };
+    let required_memory = required_memory(archive_bytes, entry_count, format);
     let available_memory = collect_resource_snapshot().available_memory_bytes;
 
-    if !has_memory_budget(available_memory, required_memory) {
+    if available_memory < required_memory {
         warn!(
             target: BACKUP_TARGET,
             event_name = EVENT_MEMORY_PREFLIGHT,
             status = "rejected",
             format = %format,
             archive = %archive_path.display(),
-            archive_bytes = stats.archive_bytes,
-            entries = stats.entries,
-            estimated_unpacked_bytes = stats.unpacked_bytes,
+            archive_bytes = archive_bytes,
+            entries = entry_count,
             available_memory_bytes = available_memory,
             required_memory_bytes = required_memory,
             "backup restore rejected before unpack because available memory is too low"
@@ -166,9 +228,8 @@ fn check_memory_budget(
         status = "passed",
         format = %format,
         archive = %archive_path.display(),
-        archive_bytes = stats.archive_bytes,
-        entries = stats.entries,
-        estimated_unpacked_bytes = stats.unpacked_bytes,
+        archive_bytes = archive_bytes,
+        entries = entry_count,
         available_memory_bytes = available_memory,
         required_memory_bytes = required_memory,
         "backup restore memory preflight passed"
@@ -176,666 +237,110 @@ fn check_memory_budget(
     Ok(())
 }
 
-fn has_memory_budget(available: u64, required: u64) -> bool {
-    available >= required
+/// 读取 ZIP 中央目录得到条目数。
+///
+/// 只解析目录结构，不读取任何条目内容；中央目录通常在归档末尾，读取量与条目
+/// 数成正比。条目数超限时这里不拒绝——统一的资源上限由 infra 的
+/// [`ExtractionLimits`] 在解压时施加，这里只关心内存估算。
+fn count_zip_entries(path: &Path) -> BackupResult<usize> {
+    sealantern_infra::archive::zip_entry_count(path).map_err(BackupError::Archive)
 }
 
-fn required_memory(stats: ArchiveStats, format: BackupFormat) -> u64 {
-    let index_memory = (stats.entries as u64)
+/// 估算解压一个归档所需的常驻内存。
+///
+/// 各项对应解压过程中真实存在的持有量：条目路径去重集合按实际条目数计、ZIP 的
+/// 中央目录需要先整体读入、流式缓冲固定开销。系数为经验值，用于把明显不可行的
+/// 恢复挡在解压之前，而非精确预测。
+///
+/// tar.gz（`entry_count` 为 0）只保留固定门槛：条目路径集合的增长由 infra 的
+/// 流式限制约束，不由预检预估。
+fn required_memory(archive_bytes: u64, entry_count: usize, format: ArchiveFormat) -> u64 {
+    let index_memory = (entry_count as u64)
         .saturating_mul(8 * 1024)
         .min(MAX_INDEX_MEMORY_BYTES);
-    let path_memory = (stats.entries as u64)
+    let path_memory = (entry_count as u64)
         .saturating_mul(MAX_ENTRY_PATH_BYTES as u64)
         .min(64 * 1024 * 1024);
     let archive_overhead = match format {
-        BackupFormat::Zip => (stats.archive_bytes / 4).min(512 * 1024 * 1024),
-        BackupFormat::TarGz => 0,
+        // ZIP 解析前需要读入中央目录，其规模随归档增长。
+        ArchiveFormat::Zip => (archive_bytes / 4).min(512 * 1024 * 1024),
+        // tar.gz 全程流式，除固定窗口外不随归档大小增长。
+        ArchiveFormat::TarGz | _ => 0,
     };
-    let output_overhead = (stats.unpacked_bytes / 256).min(64 * 1024 * 1024);
     MIN_AVAILABLE_MEMORY_BYTES
         .saturating_add(STREAMING_MEMORY_BYTES)
         .saturating_add(index_memory)
         .saturating_add(path_memory)
         .saturating_add(archive_overhead)
-        .saturating_add(output_overhead)
 }
 
-fn zip_extraction_limits() -> ExtractionLimits {
+/// 备份解压统一使用的资源上限。
+fn extraction_limits() -> ExtractionLimits {
     ExtractionLimits {
         max_archive_bytes: MAX_ARCHIVE_BYTES,
         max_entries: MAX_ENTRIES,
         max_entry_bytes: MAX_ENTRY_BYTES,
         max_total_bytes: MAX_TOTAL_BYTES,
+        max_entry_path_bytes: MAX_ENTRY_PATH_BYTES,
         max_compression_ratio: MAX_COMPRESSION_RATIO,
+        min_ratio_enforcement_bytes: MIN_RATIO_ENFORCEMENT_BYTES,
     }
 }
 
-fn create_zip_archive(
-    source: &Path,
-    destination: &Path,
-    compression_level: CompressionLevel,
-) -> BackupResult<()> {
-    let file = create_temporary_archive(destination)?;
-    let mut writer = ZipWriter::new(file);
-    let file_options = zip_file_options(compression_level);
-    let directory_options = SimpleFileOptions::default()
-        .compression_method(CompressionMethod::Stored)
-        .large_file(true);
-    let mut directories = vec![PathBuf::new()];
-
-    while let Some(directory) = directories.pop() {
-        let directory_path = source.join(&directory);
-        for entry in fs::read_dir(&directory_path)? {
-            let entry = entry?;
-            let relative = directory.join(entry.file_name());
-            let source_path = source.join(&relative);
-            let metadata = validate_source_entry(&source_path)?;
-            let name = portable_name(&relative)?;
-
-            if metadata.is_dir() {
-                writer.add_directory(name, directory_options)?;
-                directories.push(relative);
-            } else {
-                writer.start_file(name, file_options)?;
-                let mut input = File::open(&source_path)?;
-                io::copy(&mut input, &mut writer)?;
-            }
-        }
-    }
-
-    writer.finish()?;
-    Ok(())
-}
-
-fn create_tar_archive(
-    source: &Path,
-    destination: &Path,
-    compression_level: CompressionLevel,
-) -> BackupResult<()> {
-    let file = create_temporary_archive(destination)?;
-    let encoder = GzEncoder::new(file, flate2_compression(compression_level));
-    let mut builder = TarBuilder::new(encoder);
-    let mut directories = vec![PathBuf::new()];
-
-    while let Some(directory) = directories.pop() {
-        let directory_path = source.join(&directory);
-        for entry in fs::read_dir(&directory_path)? {
-            let entry = entry?;
-            let relative = directory.join(entry.file_name());
-            let source_path = source.join(&relative);
-            let metadata = validate_source_entry(&source_path)?;
-            let name = portable_name(&relative)?;
-            ensure_tar_path(&name)?;
-
-            if metadata.is_dir() {
-                builder.append_dir(&name, &source_path)?;
-                directories.push(relative);
-            } else {
-                let mut header = tar::Header::new_gnu();
-                header.set_mode(0o644);
-                header.set_size(metadata.len());
-                let mut input = File::open(&source_path)?;
-                builder.append_data(&mut header, &name, &mut input)?;
-            }
-        }
-    }
-
-    let encoder = builder.into_inner()?;
-    encoder.finish()?;
-    Ok(())
-}
-
-fn extract_tar_archive(
-    archive_path: &Path,
-    destination: &Path,
-    archive_bytes: u64,
-) -> BackupResult<()> {
-    fs::create_dir(destination)?;
-    let file = File::open(archive_path)?;
-    let mut decoder = GzDecoder::new(file);
-    let mut unpacked_bytes = 0_u64;
-
-    while let Some(entry) = next_tar_entry(&mut decoder, archive_path)? {
-        let output_path = destination.join(&entry.path);
-        if entry.is_directory {
-            ensure_parent_directory(&output_path)?;
-            match fs::create_dir(&output_path) {
-                Ok(()) => {}
-                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-                    if !is_normal_directory(&output_path)? {
-                        return Err(invalid_archive(archive_path, "目录路径与文件路径冲突"));
-                    }
-                }
-                Err(error) => return Err(BackupError::Io(error)),
-            }
-            skip_tar_payload(&mut decoder, entry.size, archive_path)?;
-        } else {
-            check_entry_size(archive_path, entry.size)?;
-            unpacked_bytes = checked_total_size(archive_path, unpacked_bytes, entry.size)?;
-            ensure_parent_directory(&output_path)?;
-            let mut output = OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&output_path)?;
-            copy_tar_payload(&mut decoder, &mut output, entry.size, archive_path)?;
-        }
-    }
-    finish_tar_stream(&mut decoder, archive_path, unpacked_bytes, archive_bytes)?;
-    Ok(())
-}
-
-fn inspect_zip_archive(archive_path: &Path, archive_bytes: u64) -> BackupResult<ArchiveStats> {
-    let file = File::open(archive_path)?;
-    let mut archive = ZipArchive::new(file)?;
-    if archive.len() > MAX_ENTRIES {
-        return Err(invalid_archive(archive_path, format!("条目数量超过限制 {}", MAX_ENTRIES)));
-    }
-
-    let mut paths = HashSet::with_capacity(archive.len());
-    let mut files = HashSet::new();
-    let mut unpacked_bytes = 0_u64;
-
-    for index in 0..archive.len() {
-        let entry = archive.by_index(index)?;
-        let entry_name = entry.name();
-        if entry_name.len() > MAX_ENTRY_PATH_BYTES {
-            return Err(invalid_archive(archive_path, "条目路径过长"));
-        }
-        let relative = safe_entry_path(archive_path, entry_name)?;
-        let is_directory = entry.is_dir();
-        validate_entry_path_conflict(archive_path, &relative, is_directory, &paths, &files)?;
-        if !paths.insert(relative.clone()) {
-            return Err(invalid_archive(archive_path, "归档包含重复条目路径"));
-        }
-        if is_symbolic_link(entry.unix_mode()) {
-            return Err(invalid_archive(archive_path, "归档包含符号链接"));
-        }
-        if is_directory {
-            continue;
-        }
-
-        let entry_bytes = entry.size();
-        check_entry_size(archive_path, entry_bytes)?;
-        unpacked_bytes = checked_total_size(archive_path, unpacked_bytes, entry_bytes)?;
-        let compressed_bytes = entry.compressed_size();
-        if entry_bytes > 0
-            && (compressed_bytes == 0
-                || entry_bytes > compressed_bytes.saturating_mul(MAX_COMPRESSION_RATIO))
-        {
-            return Err(invalid_archive(archive_path, "压缩比超过限制"));
-        }
-        files.insert(relative);
-    }
-
-    Ok(ArchiveStats {
+fn archive_stats(archive_bytes: u64, summary: ExtractionSummary) -> ArchiveStats {
+    ArchiveStats {
         archive_bytes,
-        entries: archive.len(),
-        unpacked_bytes,
-    })
-}
-
-fn inspect_tar_archive(archive_path: &Path, archive_bytes: u64) -> BackupResult<ArchiveStats> {
-    let file = File::open(archive_path)?;
-    let mut decoder = GzDecoder::new(file);
-    let mut entries = 0_usize;
-    let mut paths = HashSet::new();
-    let mut files = HashSet::new();
-    let mut unpacked_bytes = 0_u64;
-
-    while let Some(entry) = next_tar_entry(&mut decoder, archive_path)? {
-        entries += 1;
-        if entries > MAX_ENTRIES {
-            return Err(invalid_archive(archive_path, format!("条目数量超过限制 {}", MAX_ENTRIES)));
-        }
-
-        validate_entry_path_conflict(
-            archive_path,
-            &entry.path,
-            entry.is_directory,
-            &paths,
-            &files,
-        )?;
-        if !paths.insert(entry.path.clone()) {
-            return Err(invalid_archive(archive_path, "归档包含重复条目路径"));
-        }
-        if entry.is_directory {
-            skip_tar_payload(&mut decoder, entry.size, archive_path)?;
-            continue;
-        }
-
-        check_entry_size(archive_path, entry.size)?;
-        unpacked_bytes = checked_total_size(archive_path, unpacked_bytes, entry.size)?;
-        files.insert(entry.path);
-        skip_tar_payload(&mut decoder, entry.size, archive_path)?;
-    }
-
-    finish_tar_stream(&mut decoder, archive_path, unpacked_bytes, archive_bytes)?;
-
-    Ok(ArchiveStats { archive_bytes, entries, unpacked_bytes })
-}
-
-struct TarEntryHeader {
-    path: PathBuf,
-    is_directory: bool,
-    size: u64,
-}
-
-fn next_tar_entry<R: Read>(
-    reader: &mut R,
-    archive_path: &Path,
-) -> BackupResult<Option<TarEntryHeader>> {
-    let mut header = [0_u8; 512];
-    read_tar_block(reader, &mut header, archive_path)?;
-    if header.iter().all(|byte| *byte == 0) {
-        let mut end_block = [0_u8; 512];
-        read_tar_block(reader, &mut end_block, archive_path)?;
-        if !end_block.iter().all(|byte| *byte == 0) {
-            return Err(invalid_archive(archive_path, "归档结束标记不完整"));
-        }
-        return Ok(None);
-    }
-
-    validate_tar_checksum(&header, archive_path)?;
-    let type_flag = header[156];
-    let is_directory = type_flag == b'5';
-    if type_flag != 0 && type_flag != b'0' && !is_directory {
-        return Err(invalid_archive(archive_path, "归档包含不支持的特殊或扩展条目"));
-    }
-
-    let path = tar_entry_path(&header, archive_path)?;
-    let size = parse_tar_number(&header[124..136], archive_path, "条目大小")?;
-    if is_directory && size != 0 {
-        return Err(invalid_archive(archive_path, "目录条目包含文件数据"));
-    }
-    if path.to_string_lossy().len() > MAX_ENTRY_PATH_BYTES {
-        return Err(invalid_archive(archive_path, "条目路径过长"));
-    }
-    let path = safe_entry_path(archive_path, &path.to_string_lossy())?;
-
-    Ok(Some(TarEntryHeader { path, is_directory, size }))
-}
-
-fn read_tar_block<R: Read>(
-    reader: &mut R,
-    block: &mut [u8; 512],
-    archive_path: &Path,
-) -> BackupResult<()> {
-    reader.read_exact(block).map_err(|error| {
-        if error.kind() == io::ErrorKind::UnexpectedEof {
-            invalid_archive(archive_path, "归档在完整结束前截断")
-        } else {
-            BackupError::Io(error)
-        }
-    })
-}
-
-fn validate_tar_checksum(header: &[u8; 512], archive_path: &Path) -> BackupResult<()> {
-    let expected = parse_tar_number(&header[148..156], archive_path, "header校验和")?;
-    let actual = header
-        .iter()
-        .enumerate()
-        .map(|(index, byte)| {
-            if (148..156).contains(&index) {
-                b' ' as u64
-            } else {
-                *byte as u64
-            }
-        })
-        .sum::<u64>();
-    if actual != expected {
-        return Err(invalid_archive(
-            archive_path,
-            format!("header校验和不匹配: 声明值 {expected}，计算值 {actual}"),
-        ));
-    }
-    Ok(())
-}
-
-fn parse_tar_number(field: &[u8], archive_path: &Path, field_name: &str) -> BackupResult<u64> {
-    if field.first().is_some_and(|byte| byte & 0x80 != 0) {
-        let mut value = (field[0] & 0x7f) as u64;
-        for byte in &field[1..] {
-            value = value
-                .checked_shl(8)
-                .and_then(|value| value.checked_add(*byte as u64))
-                .ok_or_else(|| invalid_archive(archive_path, format!("{field_name}溢出")))?;
-        }
-        return Ok(value);
-    }
-
-    let start = field
-        .iter()
-        .position(|byte| *byte != 0 && *byte != b' ')
-        .unwrap_or(field.len());
-    let end = start
-        + field[start..]
-            .iter()
-            .position(|byte| *byte == 0 || *byte == b' ')
-            .unwrap_or(field.len() - start);
-    let digits = &field[start..end];
-    if digits.is_empty() {
-        return Ok(0);
-    }
-    let mut value = 0_u64;
-    for digit in digits {
-        if !(b'0'..=b'7').contains(digit) {
-            return Err(invalid_archive(archive_path, format!("{field_name}不是八进制数字")));
-        }
-        value = value
-            .checked_mul(8)
-            .and_then(|value| value.checked_add((digit - b'0') as u64))
-            .ok_or_else(|| invalid_archive(archive_path, format!("{field_name}溢出")))?;
-    }
-    Ok(value)
-}
-
-fn tar_entry_path(header: &[u8; 512], archive_path: &Path) -> BackupResult<PathBuf> {
-    let name = tar_text_field(&header[..100], archive_path, "条目名称")?;
-    let prefix = tar_text_field(&header[345..500], archive_path, "条目前缀")?;
-    let path = if prefix.is_empty() {
-        name
-    } else if name.is_empty() {
-        return Err(invalid_archive(archive_path, "条目名称为空"));
-    } else {
-        format!("{prefix}/{name}")
-    };
-    if path.is_empty() {
-        return Err(invalid_archive(archive_path, "条目名称为空"));
-    }
-    Ok(PathBuf::from(path))
-}
-
-fn tar_text_field(field: &[u8], archive_path: &Path, field_name: &str) -> BackupResult<String> {
-    let end = field
-        .iter()
-        .position(|byte| *byte == 0)
-        .unwrap_or(field.len());
-    std::str::from_utf8(&field[..end])
-        .map(str::to_owned)
-        .map_err(|_| invalid_archive(archive_path, format!("{field_name}不是UTF-8")))
-}
-
-fn skip_tar_payload<R: Read>(reader: &mut R, size: u64, archive_path: &Path) -> BackupResult<()> {
-    let padded_size = size
-        .checked_add(511)
-        .map(|size| size / 512 * 512)
-        .ok_or_else(|| invalid_archive(archive_path, "条目大小溢出"))?;
-    skip_tar_bytes(reader, padded_size, archive_path)
-}
-
-fn skip_tar_bytes<R: Read>(reader: &mut R, bytes: u64, archive_path: &Path) -> BackupResult<()> {
-    let mut remaining = bytes;
-    let mut buffer = [0_u8; 64 * 1024];
-    while remaining > 0 {
-        let requested = remaining.min(buffer.len() as u64) as usize;
-        let count = reader.read(&mut buffer[..requested])?;
-        if count == 0 {
-            return Err(invalid_archive(archive_path, "条目数据不完整"));
-        }
-        remaining -= count as u64;
-    }
-    Ok(())
-}
-
-fn copy_tar_payload<R: Read, W: Write>(
-    reader: &mut R,
-    output: &mut W,
-    size: u64,
-    archive_path: &Path,
-) -> BackupResult<()> {
-    let copied = {
-        let mut limited = reader.take(size);
-        io::copy(&mut limited, output)?
-    };
-    if copied != size {
-        return Err(invalid_archive(archive_path, "条目数据不完整"));
-    }
-    let padding = (512 - size % 512) % 512;
-    skip_tar_bytes(reader, padding, archive_path)
-}
-
-fn finish_tar_stream<R: Read>(
-    reader: &mut R,
-    archive_path: &Path,
-    unpacked_bytes: u64,
-    archive_bytes: u64,
-) -> BackupResult<()> {
-    let mut byte = [0_u8; 1];
-    if reader.read(&mut byte)? != 0 {
-        return Err(invalid_archive(archive_path, "归档结束标记后存在数据"));
-    }
-    if unpacked_bytes > 0
-        && (archive_bytes == 0
-            || unpacked_bytes > archive_bytes.saturating_mul(MAX_COMPRESSION_RATIO))
-    {
-        return Err(invalid_archive(archive_path, "总压缩比超过限制"));
-    }
-    Ok(())
-}
-
-fn ensure_parent_directory(path: &Path) -> BackupResult<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    Ok(())
-}
-
-fn is_normal_directory(path: &Path) -> BackupResult<bool> {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) => Ok(!metadata.file_type().is_symlink() && metadata.is_dir()),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
-        Err(error) => Err(BackupError::Io(error)),
+        entries: summary.files.saturating_add(summary.directories) as usize,
+        unpacked_bytes: summary.bytes,
     }
 }
 
-fn validate_entry_path_conflict(
-    archive_path: &Path,
-    path: &Path,
-    is_directory: bool,
-    paths: &HashSet<PathBuf>,
-    files: &HashSet<PathBuf>,
-) -> BackupResult<()> {
-    if path
-        .ancestors()
-        .skip(1)
-        .any(|ancestor| files.contains(ancestor))
-    {
-        return Err(invalid_archive(archive_path, "文件条目阻断了目录路径"));
-    }
-    if !is_directory && paths.iter().any(|existing| existing.starts_with(path)) {
-        return Err(invalid_archive(archive_path, "文件和目录路径发生冲突"));
-    }
-    Ok(())
-}
-
-fn safe_entry_path(archive_path: &Path, path: &str) -> BackupResult<PathBuf> {
-    SafeRelativePath::parse(path)
-        .map(|path| path.as_path().to_path_buf())
-        .map_err(|error| invalid_archive(archive_path, error.to_string()))
-}
-
-fn check_entry_size(archive_path: &Path, size: u64) -> BackupResult<()> {
-    if size > MAX_ENTRY_BYTES {
-        return Err(invalid_archive(archive_path, "单个条目大小超过限制"));
-    }
-    Ok(())
-}
-
-fn checked_total_size(archive_path: &Path, current: u64, added: u64) -> BackupResult<u64> {
-    let total = current
-        .checked_add(added)
-        .ok_or_else(|| invalid_archive(archive_path, "条目总大小溢出"))?;
-    if total > MAX_TOTAL_BYTES {
-        return Err(invalid_archive(archive_path, "条目总大小超过限制"));
-    }
-    Ok(total)
-}
-
-fn ensure_source_directory(path: &Path) -> BackupResult<()> {
-    let metadata = fs::symlink_metadata(path)?;
-    if metadata.file_type().is_symlink() || !metadata.is_dir() {
-        return Err(BackupError::Validation(format!("归档源不是普通目录: {:?}", path)));
-    }
-    Ok(())
-}
-
-fn validate_source_entry(path: &Path) -> BackupResult<std::fs::Metadata> {
-    let metadata = fs::symlink_metadata(path)?;
-    if metadata.file_type().is_symlink() {
-        return Err(BackupError::Validation(format!("归档源包含符号链接: {:?}", path)));
-    }
-    if !metadata.is_dir() && !metadata.is_file() {
-        return Err(BackupError::Validation(format!("归档源包含不支持的特殊文件: {:?}", path)));
-    }
-    Ok(metadata)
-}
-
-fn portable_name(path: &Path) -> BackupResult<String> {
-    let mut name = String::new();
-    for component in path.components() {
-        if !matches!(component, Component::Normal(_)) {
-            return Err(BackupError::Validation(format!("归档路径包含非法组件: {:?}", path)));
-        }
-        let component = component
-            .as_os_str()
-            .to_str()
-            .ok_or_else(|| BackupError::Validation("归档路径包含非UTF-8文件名".to_string()))?;
-        if !name.is_empty() {
-            name.push('/');
-        }
-        name.push_str(component);
-    }
-    SafeRelativePath::parse(&name)
-        .map_err(|error| BackupError::Validation(format!("归档路径无效: {}", error)))?;
-    Ok(name)
-}
-
-fn ensure_tar_path(path: &str) -> BackupResult<()> {
-    let bytes = path.as_bytes();
-    if bytes.len() <= 100 {
-        return Ok(());
-    }
-
-    let Some(separator) = path.rfind('/') else {
-        return Err(BackupError::Validation(format!(
-            "TarGz条目路径无法用固定header表示: {}",
-            path
-        )));
-    };
-    let prefix_bytes = path[..separator].len();
-    let name_bytes = path[separator + 1..].len();
-    if prefix_bytes <= 155 && name_bytes <= 100 {
-        Ok(())
-    } else {
-        Err(BackupError::Validation(format!("TarGz条目路径无法用固定header表示: {}", path)))
+fn expected_format(format: BackupFormat) -> ArchiveFormat {
+    match format {
+        BackupFormat::Zip => ArchiveFormat::Zip,
+        BackupFormat::TarGz => ArchiveFormat::TarGz,
     }
 }
 
-fn resolve_archive_format(path: &Path, requested: BackupFormat) -> BackupResult<BackupFormat> {
-    if requested == BackupFormat::TarGz && has_zip_magic(path)? {
-        return Ok(BackupFormat::Zip);
+fn archive_compression_level(level: CompressionLevel) -> ArchiveCompressionLevel {
+    match level {
+        CompressionLevel::Low => ArchiveCompressionLevel::Low,
+        CompressionLevel::Medium => ArchiveCompressionLevel::Medium,
+        CompressionLevel::High => ArchiveCompressionLevel::High,
     }
-    Ok(requested)
 }
 
-fn has_zip_magic(path: &Path) -> BackupResult<bool> {
-    let mut file = File::open(path)?;
-    let mut magic = [0_u8; 4];
-    if file.read(&mut magic)? != magic.len() {
-        return Ok(false);
-    }
-    Ok(magic[0] == b'P'
-        && magic[1] == b'K'
-        && matches!((magic[2], magic[3]), (3, 4) | (5, 6) | (7, 8)))
-}
-
+/// 校验归档是一个普通文件并返回其大小。
+///
+/// 文件缺失、是符号链接或不是普通文件都归为备份损坏：备份文件由本模块写出，
+/// 出现这些情况说明存储被外部改动过。
 fn archive_size(path: &Path) -> BackupResult<u64> {
-    let metadata = fs::symlink_metadata(path)?;
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Err(BackupError::CorruptedBackup(path.to_path_buf()));
+        }
+        Err(error) => return Err(BackupError::Io(error)),
+    };
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(BackupError::CorruptedBackup(path.to_path_buf()));
     }
     if metadata.len() > MAX_ARCHIVE_BYTES {
-        return Err(invalid_archive(path, "归档大小超过限制"));
+        return Err(BackupError::Validation(format!("归档 {:?} 无效: 归档大小超过限制", path)));
     }
     Ok(metadata.len())
 }
 
-fn reject_existing_destination(path: &Path) -> BackupResult<()> {
-    match fs::symlink_metadata(path) {
-        Ok(_) => Err(BackupError::AlreadyExists(path.to_path_buf())),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(BackupError::Io(error)),
-    }
-}
-
-fn create_temporary_archive(path: &Path) -> BackupResult<File> {
-    fs::create_dir_all(path.parent().unwrap_or_else(|| Path::new(".")))?;
-    let temporary = path.to_path_buf();
-    OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(temporary)
-        .map_err(BackupError::Io)
-}
-
-fn publish_archive(temporary: &Path, destination: &Path) -> BackupResult<()> {
-    let result = fs::hard_link(temporary, destination);
-    remove_temporary_file(temporary);
-    match result {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-            Err(BackupError::AlreadyExists(destination.to_path_buf()))
+/// 把归档创建失败中的「目标已存在」映射到备份自己的错误变体。
+///
+/// 其余错误按 `#[from]` 转为 [`BackupError::Archive`]。
+fn map_create_error(error: sealantern_infra::archive::ArchiveError) -> BackupError {
+    match error {
+        sealantern_infra::archive::ArchiveError::DestinationExists { path } => {
+            BackupError::AlreadyExists(path)
         }
-        Err(error) => Err(BackupError::Io(error)),
+        error => BackupError::Archive(error),
     }
-}
-
-fn remove_temporary_file(path: &Path) {
-    if let Err(error) = fs::remove_file(path)
-        && error.kind() != io::ErrorKind::NotFound
-    {
-        warn!(
-            target: BACKUP_TARGET,
-            event_name = "backup_archive_cleanup_failed",
-            path = %path.display(),
-            error = %error,
-            "temporary backup archive cleanup failed"
-        );
-    }
-}
-
-fn temporary_path(destination: &Path) -> PathBuf {
-    let name = destination
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("backup.archive");
-    destination
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .join(format!(".{name}.{}.tmp", Uuid::new_v4()))
-}
-
-fn zip_file_options(compression_level: CompressionLevel) -> SimpleFileOptions {
-    SimpleFileOptions::default()
-        .compression_method(CompressionMethod::Deflated)
-        .compression_level(Some(compression_level_value(compression_level)))
-        .large_file(true)
-}
-
-fn compression_level_value(level: CompressionLevel) -> i64 {
-    match level {
-        CompressionLevel::Low => 1,
-        CompressionLevel::Medium => 6,
-        CompressionLevel::High => 9,
-    }
-}
-
-fn flate2_compression(level: CompressionLevel) -> Compression {
-    Compression::new(compression_level_value(level) as u32)
-}
-
-fn invalid_archive(path: &Path, reason: impl Into<String>) -> BackupError {
-    BackupError::Validation(format!("归档 {:?} 无效: {}", path, reason.into()))
 }
 
 #[cfg(test)]
@@ -844,46 +349,84 @@ mod tests {
 
     #[test]
     fn memory_budget_reserves_parser_space_before_unpack() {
-        let small_archive = ArchiveStats {
-            archive_bytes: 1,
-            entries: 1,
-            unpacked_bytes: 1,
-        };
-        let worst_case = ArchiveStats {
-            archive_bytes: MAX_ARCHIVE_BYTES,
-            entries: MAX_ENTRIES,
-            unpacked_bytes: MAX_TOTAL_BYTES,
-        };
-        let small_required = required_memory(small_archive, BackupFormat::TarGz);
-        let worst_required = required_memory(worst_case, BackupFormat::Zip);
+        let small = required_memory(1, 0, ArchiveFormat::TarGz);
+        let large = required_memory(MAX_ARCHIVE_BYTES, MAX_ENTRIES, ArchiveFormat::Zip);
 
-        assert!(small_required >= MIN_AVAILABLE_MEMORY_BYTES);
-        assert!(worst_required > small_required);
-        assert!(!has_memory_budget(worst_required - 1, worst_required));
-        assert!(has_memory_budget(worst_required, worst_required));
+        assert!(small >= MIN_AVAILABLE_MEMORY_BYTES);
+        // ZIP 需要额外容纳中央目录，因此同等条件下要求更高。
+        assert!(large > small);
     }
 
     #[test]
-    fn archive_entry_paths_use_the_shared_safe_path_parser() {
-        let archive_path = Path::new("backup.zip");
-        let valid_prefixes = ["", "config/", "config/world/"];
-        let valid_names = ["server.properties", "level.dat", "中文.dat"];
-        for prefix in valid_prefixes {
-            for name in valid_names {
-                assert!(safe_entry_path(archive_path, &format!("{prefix}{name}")).is_ok());
-            }
-        }
+    fn tar_gz_budget_does_not_grow_with_archive_size() {
+        // tar.gz 全程流式，内存需求不应随归档增大。
+        assert_eq!(
+            required_memory(1, 0, ArchiveFormat::TarGz),
+            required_memory(MAX_ARCHIVE_BYTES, 0, ArchiveFormat::TarGz)
+        );
+    }
 
-        for invalid in [
-            "",
-            ".",
-            "..",
-            "../outside",
-            "config/../../outside",
-            r"config\server.properties",
-            "/absolute/path",
-        ] {
-            assert!(safe_entry_path(archive_path, invalid).is_err(), "{invalid} should fail");
-        }
+    #[test]
+    fn small_backup_requires_far_less_memory_than_a_large_one() {
+        // 1 KiB 的小备份按实际条目数估算，显著低于按配置上限取悲观值的估算。
+        let small = required_memory(1024, 2, ArchiveFormat::TarGz);
+        let worst = required_memory(MAX_ARCHIVE_BYTES, MAX_ENTRIES, ArchiveFormat::Zip);
+
+        assert!(small < worst);
+        // 小备份的增量只有固定门槛，不随条目数膨胀。
+        assert!(small < 2 * MIN_AVAILABLE_MEMORY_BYTES);
+    }
+
+    #[test]
+    fn zip_entry_count_reads_the_central_directory() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("source");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(source.join("server.properties"), b"motd=Sea Lantern").unwrap();
+        let archive = root.path().join("count.zip");
+        sealantern_infra::archive::create_zip(&source, &archive).unwrap();
+
+        assert_eq!(count_zip_entries(&archive).unwrap(), 1);
+    }
+
+    #[test]
+    fn stats_count_files_and_directories_as_entries() {
+        let summary = ExtractionSummary { files: 3, directories: 2, bytes: 128 };
+        let stats = archive_stats(1024, summary);
+
+        assert_eq!(stats.archive_bytes, 1024);
+        assert_eq!(stats.entries, 5);
+        assert_eq!(stats.unpacked_bytes, 128);
+    }
+
+    /// 小体积高压缩比的归档：总量低于 tar.gz 的比率豁免阈值，创建侧应放行
+    /// tar.gz（与解压侧 tar_read 的判定一致），而同等条件的 ZIP 应拒绝——
+    /// ZIP 无固定开销，解压侧按条目判定且不引用豁免阈值。
+    #[test]
+    fn ratio_exemption_applies_to_tar_gz_but_not_zip() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("source");
+        std::fs::create_dir_all(&source).unwrap();
+        // 高度可压缩的大段重复内容：压缩后约 100 字节，压缩比远超 200；
+        // 总量 60 KiB 严格低于 64 KiB 的豁免阈值，使 tar.gz 分支命中豁免。
+        let payload = vec![0_u8; 60 * 1024];
+        std::fs::write(source.join("repeated.bin"), &payload).unwrap();
+
+        let tar_archive = root.path().join("small.tar.gz");
+        let zip_archive = root.path().join("small.zip");
+        sealantern_infra::archive::create_tar_gz(&source, &tar_archive).unwrap();
+        sealantern_infra::archive::create_zip(&source, &zip_archive).unwrap();
+
+        let summary = sealantern_infra::archive::ArchiveSummary {
+            files: 1,
+            directories: 0,
+            bytes: payload.len() as u64,
+        };
+
+        assert!(verify_restorable(&tar_archive, BackupFormat::TarGz, summary).is_ok());
+        assert!(matches!(
+            verify_restorable(&zip_archive, BackupFormat::Zip, summary),
+            Err(BackupError::Validation(message)) if message.contains("压缩比")
+        ));
     }
 }
