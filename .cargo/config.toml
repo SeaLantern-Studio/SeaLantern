@@ -1,2 +1,5 @@
 [target.x86_64-pc-windows-gnu]
 rustflags = ["-C", "link-arg=-Wl,--exclude-libs,ALL"]
+
+[env]
+CFLAGS = "-Wno-incompatible-pointer-types -Wno-error=incompatible-pointer-types -DUNICODE -D_UNICODE"
