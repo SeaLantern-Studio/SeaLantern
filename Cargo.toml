@@ -16,6 +16,15 @@ resolver = "2"
 version = "1.3.1"
 edition = "2024"
 
+# axctl 开发工具配置（dev：vite + 后端 + 统一代理入口；见 docs）
+# 注意：不配 frontend_dev_url，让 axctl 自动拉起 vite（5173）；
+# 若改为由用户自管 vite，再配置该字段进入"复用"模式。
+[workspace.metadata.axctl.dev]
+backend_package = "sealantern-server"
+frontend_root = "."
+backend_port = 3001
+proxy_addr = "127.0.0.1:3000"
+
 # 优化配置（从 src-tauri/Cargo.toml 移到这里统一管理）
 [profile.release]
 opt-level = "z" # 优化二进制大小

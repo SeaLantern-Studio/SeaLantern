@@ -4,6 +4,11 @@
 //! 版本号从 `CARGO_PKG_VERSION` 动态读取，避免与 Cargo.toml 双份维护。
 
 fn main() {
+    // dist 哨兵契约：axctl build 在 vite build 后写 ../dist/.axctl-sentinel，
+    // 声明监控它使 cargo 感知前端变化 → 重编主 crate → frontend! 重读 dist。
+    println!("cargo:rerun-if-changed=../dist/.axctl-sentinel");
+    println!("cargo:rerun-if-changed=../dist");
+
     #[cfg(target_os = "windows")]
     embed_windows_resources();
 }
