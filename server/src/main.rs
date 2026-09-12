@@ -9,8 +9,7 @@ use sealantern_application::services::AppServices;
 use sealantern_server::adapter::http::build_router;
 use sealantern_server::observability;
 
-/// axctl dev 注入的后端监听地址。设置后进入"托管模式"：本进程只提供 API，
-/// 前端由 vite 提供、axctl 统一代理入口。
+/// axctl dev 注入的后端监听地址（托管模式：本进程只提供 API）。
 const AXCTL_BACKEND_ADDR_ENV: &str = "AXCTL_BACKEND_ADDR";
 /// 监听地址环境变量；设置后完全覆盖默认地址选择。
 const SERVER_ADDR_ENV: &str = "SEALANTERN_SERVER_ADDR";
@@ -21,14 +20,10 @@ const DEFAULT_ADDR: &str = "127.0.0.1:3000";
 /// 公网绑定时的默认监听地址。
 const DEFAULT_PUBLIC_ADDR: &str = "0.0.0.0:3000";
 
-/// 解析监听地址：优先 axctl 注入的 `AXCTL_BACKEND_ADDR`（托管模式），
-/// 其次 `SEALANTERN_SERVER_ADDR`，再按是否开启公网绑定选择默认地址，
-/// 最后回退到仅本机监听。
+/// 解析监听地址：axctl 注入 > SEALANTERN_SERVER_ADDR > 默认（公网/本机）。
 fn listen_addr() -> SocketAddr {
     if let Ok(value) = std::env::var(AXCTL_BACKEND_ADDR_ENV) {
-        // axctl 注入的地址无效属于致命配置错误：绝不回退到默认地址——
-        // 默认通常是代理监听地址（3000），回退会让本进程与代理抢端口，
-        // 报出与真实原因无关的 bind 错误。
+        // 注入地址无效视为致命错误，不回退（默认地址通常是代理端口）
         return match value.parse() {
             Ok(addr) => addr,
             Err(error) => {
