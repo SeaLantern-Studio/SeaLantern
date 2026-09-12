@@ -1195,7 +1195,21 @@
     "tunnel_stopped": "隧道已停止",
     "info_title": "關於連線功能",
     "info_desc": "此連線功能基於 Sculk 專案實現，目前仍處於早期開發階段。P2P 連線對網路環境要求較高，可能出現連線不穩定的情況。如需更穩定的體驗，建議使用 FRP 方案。",
-    "info_github": "GitHub - 歡迎貢獻 PR"
+    "info_github": "GitHub - 歡迎貢獻 PR",
+    "ev_player_joined": "玩家已加入：{{remote_id}}",
+    "ev_player_left": "玩家已離開：{{remote_id}}（{{reason}}）",
+    "ev_connected": "隧道已連通",
+    "ev_disconnected": "隧道已斷開：{{reason}}",
+    "ev_path_changed": "對端 {{remote_id}} 路徑變化：{{relay}}，RTT {{rtt}} ms",
+    "ev_reconnecting": "正在重新連線（第 {{attempt}} 次）",
+    "ev_reconnected": "重新連線成功",
+    "ev_auth_failed": "對端驗證失敗：{{remote_id}}",
+    "ev_rejected": "對端被拒絕接入：{{remote_id}}（{{reason}}）",
+    "ev_error": "隧道錯誤：{{message}}",
+    "ev_provider_message": "中繼訊息：{{message}}",
+    "ev_started": "隧道已啟動：{{mode}}",
+    "ev_stopped": "隧道已停止：{{mode}}",
+    "ev_unknown": "隧道事件：{{kind}}"
   },
   "terms": {
     "title": "隐私与服务协议",

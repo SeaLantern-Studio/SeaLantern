@@ -1195,7 +1195,21 @@
     "tunnel_stopped": "Tunnel đã dừng",
     "info_title": "Về tính năng kết nối",
     "info_desc": "Tính năng này dựa trên dự án Sculk và vẫn đang trong giai đoạn phát triển sớm. Kết nối P2P phụ thuộc vào môi trường mạng và có thể không ổn định. Để có trải nghiệm ổn định hơn, khuyến nghị sử dụng FRP.",
-    "info_github": "GitHub - Hoan nghênh PR"
+    "info_github": "GitHub - Hoan nghênh PR",
+    "ev_player_joined": "Người chơi đã tham gia: {{remote_id}}",
+    "ev_player_left": "Người chơi đã rời đi: {{remote_id}} ({{reason}})",
+    "ev_connected": "Đường hầm đã kết nối",
+    "ev_disconnected": "Đường hầm đã ngắt kết nối: {{reason}}",
+    "ev_path_changed": "Đầu đối diện {{remote_id}} thay đổi đường dẫn: {{relay}}, RTT {{rtt}} ms",
+    "ev_reconnecting": "Đang kết nối lại (lần {{attempt}})",
+    "ev_reconnected": "Đã kết nối lại",
+    "ev_auth_failed": "Xác thực đầu đối diện thất bại: {{remote_id}}",
+    "ev_rejected": "Đầu đối diện bị từ chối: {{remote_id}} ({{reason}})",
+    "ev_error": "Lỗi đường hầm: {{message}}",
+    "ev_provider_message": "Tin nhắn từ relay: {{message}}",
+    "ev_started": "Đường hầm đã khởi động: {{mode}}",
+    "ev_stopped": "Đường hầm đã dừng: {{mode}}",
+    "ev_unknown": "Sự kiện đường hầm: {{kind}}"
   },
   "terms": {
     "title": "隐私与服务协议",

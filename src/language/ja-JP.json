@@ -1195,7 +1195,21 @@
     "tunnel_stopped": "トンネルが停止されました",
     "info_title": "オンライン機能について",
     "info_desc": "この機能は Sculk プロジェクトを基盤としており、現在まだ初期開発段階です。P2P 接続はネットワーク環境に依存するため、不安定になる場合があります。より安定した体験には FRP の利用をお勧めします。",
-    "info_github": "GitHub - PR 歓迎"
+    "info_github": "GitHub - PR 歓迎",
+    "ev_player_joined": "プレイヤーが参加しました：{{remote_id}}",
+    "ev_player_left": "プレイヤーが退出しました：{{remote_id}}（{{reason}}）",
+    "ev_connected": "トンネルが接続されました",
+    "ev_disconnected": "トンネルが切断されました：{{reason}}",
+    "ev_path_changed": "対端 {{remote_id}} の経路が変化：{{relay}}、RTT {{rtt}} ms",
+    "ev_reconnecting": "再接続中（{{attempt}} 回目）",
+    "ev_reconnected": "再接続に成功しました",
+    "ev_auth_failed": "対端の認証に失敗しました：{{remote_id}}",
+    "ev_rejected": "対端が拒否されました：{{remote_id}}（{{reason}}）",
+    "ev_error": "トンネルエラー：{{message}}",
+    "ev_provider_message": "リレーメッセージ：{{message}}",
+    "ev_started": "トンネルが起動しました：{{mode}}",
+    "ev_stopped": "トンネルが停止しました：{{mode}}",
+    "ev_unknown": "トンネルイベント：{{kind}}"
   },
   "terms": {
     "title": "隐私与服务协议",

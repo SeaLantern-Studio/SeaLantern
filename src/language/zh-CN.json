@@ -260,7 +260,21 @@
       "tunnel_stopped": "隧道已停止",
       "info_title": "关于联机功能",
       "info_desc": "此联机功能基于 Sculk 项目实现，目前仍处于早期开发阶段。P2P 联机对网络环境要求较高，可能出现连接不稳定的情况。如需更稳定的体验，建议使用 FRP 方案。",
-      "info_github": "GitHub - 欢迎贡献 PR"
+      "info_github": "GitHub - 欢迎贡献 PR",
+      "ev_player_joined": "玩家已加入：{{remote_id}}",
+      "ev_player_left": "玩家已离开：{{remote_id}}（{{reason}}）",
+      "ev_connected": "隧道已连通",
+      "ev_disconnected": "隧道已断开：{{reason}}",
+      "ev_path_changed": "对端 {{remote_id}} 路径变化：{{relay}}，RTT {{rtt}} ms",
+      "ev_reconnecting": "正在重连（第 {{attempt}} 次）",
+      "ev_reconnected": "重连成功",
+      "ev_auth_failed": "对端认证失败：{{remote_id}}",
+      "ev_rejected": "对端被拒绝接入：{{remote_id}}（{{reason}}）",
+      "ev_error": "隧道错误：{{message}}",
+      "ev_provider_message": "中继消息：{{message}}",
+      "ev_started": "隧道已启动：{{mode}}",
+      "ev_stopped": "隧道已停止：{{mode}}",
+      "ev_unknown": "隧道事件：{{kind}}"
     },
     "add_existing": {
       "title": "添加已有服务器",

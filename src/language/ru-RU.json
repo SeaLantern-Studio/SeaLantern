@@ -1195,7 +1195,21 @@
     "tunnel_stopped": "Туннель остановлен",
     "info_title": "Об онлайн-туннеле",
     "info_desc": "Эта функция основана на проекте Sculk и находится на ранней стадии разработки. P2P-соединение зависит от сетевого окружения и может быть нестабильным. Для более стабильного подключения рекомендуем использовать FRP.",
-    "info_github": "GitHub - PR приветствуются"
+    "info_github": "GitHub - PR приветствуются",
+    "ev_player_joined": "Игрок присоединился: {{remote_id}}",
+    "ev_player_left": "Игрок вышел: {{remote_id}} ({{reason}})",
+    "ev_connected": "Туннель подключён",
+    "ev_disconnected": "Туннель отключён: {{reason}}",
+    "ev_path_changed": "Узел {{remote_id}} путь изменён: {{relay}}, RTT {{rtt}} мс",
+    "ev_reconnecting": "Переподключение (попытка {{attempt}})",
+    "ev_reconnected": "Переподключено",
+    "ev_auth_failed": "Ошибка аутентификации узла: {{remote_id}}",
+    "ev_rejected": "Узел отклонён: {{remote_id}} ({{reason}})",
+    "ev_error": "Ошибка туннеля: {{message}}",
+    "ev_provider_message": "Сообщение ретранслятора: {{message}}",
+    "ev_started": "Туннель запущен: {{mode}}",
+    "ev_stopped": "Туннель остановлен: {{mode}}",
+    "ev_unknown": "Событие туннеля: {{kind}}"
   },
   "terms": {
     "title": "隐私与服务协议",

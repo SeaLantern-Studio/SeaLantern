@@ -1195,7 +1195,21 @@
     "tunnel_stopped": "Tunnel gestoppt",
     "info_title": "Über Online-Tunnel",
     "info_desc": "Diese Funktion basiert auf dem Sculk-Projekt und befindet sich noch in der frühen Entwicklung. P2P-Verbindungen sind netzwerkabhängig und können instabil sein. Für eine stabilere Verbindung empfehlen wir FRP.",
-    "info_github": "GitHub - PRs willkommen"
+    "info_github": "GitHub - PRs willkommen",
+    "ev_player_joined": "Spieler beigetreten: {{remote_id}}",
+    "ev_player_left": "Spieler verlassen: {{remote_id}} ({{reason}})",
+    "ev_connected": "Tunnel verbunden",
+    "ev_disconnected": "Tunnel getrennt: {{reason}}",
+    "ev_path_changed": "Peer {{remote_id}} Pfad geändert: {{relay}}, RTT {{rtt}} ms",
+    "ev_reconnecting": "Neuverbindung (Versuch {{attempt}})",
+    "ev_reconnected": "Neuverbunden",
+    "ev_auth_failed": "Peer-Authentifizierung fehlgeschlagen: {{remote_id}}",
+    "ev_rejected": "Peer abgelehnt: {{remote_id}} ({{reason}})",
+    "ev_error": "Tunnelfehler: {{message}}",
+    "ev_provider_message": "Relay-Nachricht: {{message}}",
+    "ev_started": "Tunnel gestartet: {{mode}}",
+    "ev_stopped": "Tunnel gestoppt: {{mode}}",
+    "ev_unknown": "Tunnelereignis: {{kind}}"
   },
   "terms": {
     "title": "隐私与服务协议",

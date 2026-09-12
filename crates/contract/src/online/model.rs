@@ -83,6 +83,16 @@ pub struct OnlineTunnelStatus {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum OnlineTunnelEvent {
+    /// 隧道已启动（由宿主在 host / join 成功后发出）。
+    Started {
+        /// 启动后的运行角色。
+        mode: OnlineTunnelMode,
+    },
+    /// 隧道已停止（由宿主在 stop 成功后、停止事件转发前发出）。
+    Stopped {
+        /// 停止前的运行角色。
+        mode: OnlineTunnelMode,
+    },
     /// 有玩家加入隧道。
     PlayerJoined {
         /// 加入玩家的标识。
@@ -140,4 +150,24 @@ pub enum OnlineTunnelEvent {
         /// 提供方消息内容。
         message: String,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lifecycle_events_use_snake_case_kind_and_mode() {
+        let started =
+            serde_json::to_value(OnlineTunnelEvent::Started { mode: OnlineTunnelMode::Host })
+                .expect("started event must serialize");
+        assert_eq!(started["kind"], "started");
+        assert_eq!(started["mode"], "host");
+
+        let stopped =
+            serde_json::to_value(OnlineTunnelEvent::Stopped { mode: OnlineTunnelMode::Join })
+                .expect("stopped event must serialize");
+        assert_eq!(stopped["kind"], "stopped");
+        assert_eq!(stopped["mode"], "join");
+    }
 }

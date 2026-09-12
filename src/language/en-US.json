@@ -260,7 +260,21 @@
       "tunnel_stopped": "Tunnel stopped",
       "info_title": "About Online Tunnel",
       "info_desc": "This feature is powered by the Sculk project and is still in early development. P2P connectivity is sensitive to network conditions and may be unstable. For a more reliable experience, consider using FRP.",
-      "info_github": "GitHub - PRs Welcome"
+      "info_github": "GitHub - PRs Welcome",
+      "ev_player_joined": "Player joined: {{remote_id}}",
+      "ev_player_left": "Player left: {{remote_id}} ({{reason}})",
+      "ev_connected": "Tunnel connected",
+      "ev_disconnected": "Tunnel disconnected: {{reason}}",
+      "ev_path_changed": "Peer {{remote_id}} path changed: {{relay}}, RTT {{rtt}} ms",
+      "ev_reconnecting": "Reconnecting (attempt {{attempt}})",
+      "ev_reconnected": "Reconnected",
+      "ev_auth_failed": "Peer authentication failed: {{remote_id}}",
+      "ev_rejected": "Peer rejected: {{remote_id}} ({{reason}})",
+      "ev_error": "Tunnel error: {{message}}",
+      "ev_provider_message": "Relay message: {{message}}",
+      "ev_started": "Tunnel started: {{mode}}",
+      "ev_stopped": "Tunnel stopped: {{mode}}",
+      "ev_unknown": "Tunnel event: {{kind}}"
     },
     "add_existing": {
       "title": "Add Existing Server",

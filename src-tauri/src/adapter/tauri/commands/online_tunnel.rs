@@ -13,7 +13,8 @@ use sealantern_application::port::OnlineTunnelService;
 use sealantern_application::services::AppServices;
 use sealantern_contract::OnlineTunnelServiceError;
 use sealantern_contract::online::{
-    OnlineTunnelHostRequest, OnlineTunnelJoinRequest, OnlineTunnelStatus,
+    OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest, OnlineTunnelMode,
+    OnlineTunnelStatus,
 };
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::broadcast::error::RecvError;
@@ -97,6 +98,26 @@ impl OnlineTunnelEventForwarder {
     }
 }
 
+/// 向前端推送一个隧道生命周期事件。
+///
+/// 生命周期事件由命令层发出而非事件流内部：`Started` 要等事件转发订阅就绪
+/// 后再发，`Stopped` 要在停止转发前发出，否则会因 `broadcast` 当前无接收者
+/// 而丢失。
+fn emit_lifecycle_event(app: &AppHandle, event: OnlineTunnelEvent) {
+    tracing::debug!(
+        target: "sealantern.tauri.online_tunnel",
+        event = ?event,
+        "emitting online tunnel lifecycle event"
+    );
+    if let Err(error) = app.emit("online_tunnel_event", &event) {
+        tracing::error!(
+            target: "sealantern.tauri.online_tunnel",
+            error = %error,
+            "failed to emit online tunnel lifecycle event"
+        );
+    }
+}
+
 /// 以主机模式开启在线隧道，把本地 Minecraft 端口转发到公网。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn online_tunnel_host(
@@ -107,7 +128,9 @@ pub async fn online_tunnel_host(
 ) -> Result<OnlineTunnelStatus, OnlineTunnelServiceError> {
     let services = services.inner().clone();
     let status = services.online_tunnel().host(request).await?;
-    forwarder.replace(app, services).await?;
+    forwarder.replace(app.clone(), services).await?;
+    // 转发订阅就绪后再发 Started，保证该事件能落达前端。
+    emit_lifecycle_event(&app, OnlineTunnelEvent::Started { mode: OnlineTunnelMode::Host });
     Ok(status)
 }
 
@@ -121,17 +144,31 @@ pub async fn online_tunnel_join(
 ) -> Result<OnlineTunnelStatus, OnlineTunnelServiceError> {
     let services = services.inner().clone();
     let status = services.online_tunnel().join(request).await?;
-    forwarder.replace(app, services).await?;
+    forwarder.replace(app.clone(), services).await?;
+    // 转发订阅就绪后再发 Started，保证该事件能落达前端。
+    emit_lifecycle_event(&app, OnlineTunnelEvent::Started { mode: OnlineTunnelMode::Join });
     Ok(status)
 }
 
 /// 停止当前在线隧道。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn online_tunnel_stop(
+    app: AppHandle,
     forwarder: State<'_, OnlineTunnelEventForwarder>,
     services: State<'_, AppServices>,
 ) -> Result<OnlineTunnelStatus, OnlineTunnelServiceError> {
+    // 停止后状态归 idle、mode 为空，需在停止前记录运行角色。
+    let mode = services
+        .online_tunnel()
+        .status()
+        .await
+        .ok()
+        .and_then(|status| status.mode);
     let status = services.online_tunnel().stop().await?;
+    if let Some(mode) = mode {
+        // 先发 Stopped 再停止转发，保证该事件能落达前端。
+        emit_lifecycle_event(&app, OnlineTunnelEvent::Stopped { mode });
+    }
     forwarder.clear().await;
     Ok(status)
 }

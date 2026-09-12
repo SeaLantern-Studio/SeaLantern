@@ -2,7 +2,8 @@
 // keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理轮询
 import { computed, onActivated, onDeactivated, ref } from "vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
-import { tunnelApi, type TunnelStatus } from "@api/tunnel";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+import { onTunnelEvent, tunnelApi, type OnlineTunnelEvent, type TunnelStatus } from "@api/tunnel";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
@@ -18,16 +19,15 @@ type PendingAction = "host" | "join" | "stop" | "generate-ticket";
 const pendingAction = ref<PendingAction | null>(null);
 const status = ref<TunnelStatus | null>(null);
 
-const hostPort = ref("");
+const hostPort = ref(String(DEFAULT_HOST_PORT));
 const hostPassword = ref("");
 const hostRelayUrl = ref("");
 const showHostPassword = ref(false);
 
 const joinTicket = ref("");
-const joinLocalPort = ref("");
+const joinLocalPort = ref(String(DEFAULT_JOIN_LOCAL_PORT));
 const joinPassword = ref("");
 const showJoinPassword = ref(false);
-const joinTicketAutoFillEnabled = ref(true);
 const showInfoModal = ref(false);
 
 const running = computed(() => status.value?.running ?? false);
@@ -45,8 +45,11 @@ const runningStatusClass = computed<"running" | "stopped">(() =>
 const hasTicket = computed(() => Boolean(status.value?.ticket));
 const isIdle = computed(() => !running.value);
 const isBusy = computed(() => pendingAction.value !== null);
-const canCopyTicket = computed(() => hasTicket.value && !isBusy.value);
-const canGenerateTicket = computed(() => isIdle.value && !isBusy.value);
+// TODO(backend): tunnel_copy_ticket / tunnel_generate_ticket / tunnel_regenerate_ticket
+// 后端尚未实现，暂时禁用票据复制/生成入口，避免点击后调用报错。ticket 目前仅由
+// host 成功后的 status.ticket 返回。
+const canCopyTicket = computed(() => false);
+const canGenerateTicket = computed(() => false);
 const canStartHost = computed(() => isIdle.value && !isBusy.value);
 const canStartJoin = computed(() => isIdle.value && !isBusy.value);
 const canStopTunnel = computed(() => running.value && !isBusy.value);
@@ -83,8 +86,6 @@ const maxLogLines = ref(5000);
 let statusPollTimer: ReturnType<typeof setInterval> | null = null;
 // 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
 let isPageVisible = true;
-const syncedLogs = ref<string[]>([]);
-const logsDisplayClearedByUser = ref(false);
 
 function beginAction(action: PendingAction): boolean {
   if (pendingAction.value !== null) return false;
@@ -119,44 +120,78 @@ function validatePort(value: string, fieldName: string): string | null {
   return null;
 }
 
-function syncLogOutput(logs: string[]) {
-  const output = tunnelOutputRef.value;
-  if (!output) {
-    syncedLogs.value = logs.slice();
-    return;
-  }
-
-  const prev = syncedLogs.value;
-  const canAppend = logs.length >= prev.length && prev.every((line, idx) => logs[idx] === line);
-
-  const missedInitialWrite =
-    logs.length > 0 && !output.getAllPlainText().trim() && !logsDisplayClearedByUser.value;
-
-  if (!canAppend || missedInitialWrite) {
-    logsDisplayClearedByUser.value = false;
-    output.clear();
-    if (logs.length > 0) {
-      output.appendLines(logs.filter((l) => !l.includes("host loop ended")));
-    }
-  } else {
-    const delta = logs.slice(prev.length);
-    if (delta.length > 0) {
-      output.appendLines(delta.filter((l) => !l.includes("host loop ended")));
-    }
-  }
-
-  syncedLogs.value = logs.slice();
-}
-
 function applyStatus(next: TunnelStatus) {
   status.value = next;
-  syncLogOutput(next.logs);
-  if (!hostPort.value.trim()) hostPort.value = String(next.host_port);
-  if (!joinLocalPort.value.trim()) joinLocalPort.value = String(next.join_port);
-  if (!hostRelayUrl.value.trim() && next.relay_url) hostRelayUrl.value = next.relay_url;
-  if (joinTicketAutoFillEnabled.value && !joinTicket.value.trim() && next.last_ticket) {
-    joinTicket.value = next.last_ticket;
+}
+
+/** 隧道运行角色文案（复用 host_title / join_title） */
+function formatTunnelMode(mode: "host" | "join"): string {
+  return i18n.t(mode === "host" ? "tunnel.host_title" : "tunnel.join_title");
+}
+
+/** 把隧道事件映射为一行可读文本（reason / message 为后端原文，直接展示不翻译） */
+function formatTunnelEvent(event: OnlineTunnelEvent): string {
+  switch (event.kind) {
+    case "started":
+      return i18n.t("tunnel.ev_started", { mode: formatTunnelMode(event.mode) });
+    case "stopped":
+      return i18n.t("tunnel.ev_stopped", { mode: formatTunnelMode(event.mode) });
+    case "player_joined":
+      return i18n.t("tunnel.ev_player_joined", { remote_id: event.remote_id });
+    case "player_left":
+      return i18n.t("tunnel.ev_player_left", { remote_id: event.remote_id, reason: event.reason });
+    case "connected":
+      return i18n.t("tunnel.ev_connected");
+    case "disconnected":
+      return i18n.t("tunnel.ev_disconnected", { reason: event.reason });
+    case "path_changed":
+      return i18n.t("tunnel.ev_path_changed", {
+        remote_id: event.remote_id,
+        relay: i18n.t(event.is_relay ? "tunnel.route_relay" : "tunnel.route_direct"),
+        rtt: event.rtt_ms,
+      });
+    case "reconnecting":
+      return i18n.t("tunnel.ev_reconnecting", { attempt: event.attempt });
+    case "reconnected":
+      return i18n.t("tunnel.ev_reconnected");
+    case "authentication_failed":
+      return i18n.t("tunnel.ev_auth_failed", { remote_id: event.remote_id });
+    case "player_rejected":
+      return i18n.t("tunnel.ev_rejected", { remote_id: event.remote_id, reason: event.reason });
+    case "error":
+      return i18n.t("tunnel.ev_error", { message: event.message });
+    case "provider_message":
+      return i18n.t("tunnel.ev_provider_message", { message: event.message });
+    default:
+      // 后端新增事件类型时的兜底，避免静默变成 undefined
+      return i18n.t("tunnel.ev_unknown", { kind: (event as { kind: string }).kind });
   }
+}
+
+function handleTunnelEvent(event: OnlineTunnelEvent) {
+  tunnelOutputRef.value?.appendLines([formatTunnelEvent(event)]);
+}
+
+// 事件订阅与 keep-alive 的 activated/deactivated 成对建立与清理。
+// token 用于处理"listen 尚未 resolve 页面就切走"的竞态,避免监听泄漏。
+let tunnelEventUnlisten: UnlistenFn | null = null;
+let tunnelEventToken = 0;
+
+async function subscribeTunnelEvents() {
+  if (tunnelEventUnlisten) return;
+  const token = ++tunnelEventToken;
+  const unlisten = await onTunnelEvent(handleTunnelEvent);
+  if (token !== tunnelEventToken) {
+    unlisten();
+    return;
+  }
+  tunnelEventUnlisten = unlisten;
+}
+
+function unsubscribeTunnelEvents() {
+  tunnelEventToken++;
+  tunnelEventUnlisten?.();
+  tunnelEventUnlisten = null;
 }
 
 async function loadConsoleSettings() {
@@ -217,6 +252,8 @@ async function startHost() {
     return;
   }
   try {
+    // 保证监听先于 host 命令注册,避免漏掉 started 事件
+    await subscribeTunnelEvents();
     applyStatus(
       await tunnelApi.host({
         port: parsePort(hostPort.value, DEFAULT_HOST_PORT),
@@ -241,6 +278,8 @@ async function startJoin() {
     return;
   }
   try {
+    // 保证监听先于 join 命令注册,避免漏掉 started 事件
+    await subscribeTunnelEvents();
     applyStatus(
       await tunnelApi.join({
         ticket: joinTicket.value,
@@ -323,7 +362,6 @@ async function copyLogs() {
 function clearLogs() {
   tunnelOutputRef.value?.clear();
   userScrolledUp.value = false;
-  logsDisplayClearedByUser.value = true;
 }
 
 function clearHostRelay() {
@@ -334,18 +372,17 @@ function clearHostRelay() {
 function clearJoinTicket() {
   if (!canClearJoinTicket.value) return;
   joinTicket.value = "";
-  joinTicketAutoFillEnabled.value = false;
 }
 
 function handleJoinTicketInput(value: string) {
   joinTicket.value = value;
-  joinTicketAutoFillEnabled.value = false;
 }
 
 onActivated(async () => {
   // 设置加载与状态拉取互不依赖,并行执行
   isPageVisible = true;
   await Promise.all([loadConsoleSettings(), refreshStatus()]);
+  await subscribeTunnelEvents();
   startStatusPolling();
   document.addEventListener("visibilitychange", handleVisibilityChange);
 });
@@ -353,8 +390,7 @@ onActivated(async () => {
 onDeactivated(() => {
   stopStatusPolling();
   document.removeEventListener("visibilitychange", handleVisibilityChange);
-  syncedLogs.value = [];
-  logsDisplayClearedByUser.value = false;
+  unsubscribeTunnelEvents();
 });
 </script>
 

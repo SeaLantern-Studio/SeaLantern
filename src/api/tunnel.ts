@@ -1,4 +1,5 @@
-import { tauriInvoke } from "@api/tauri";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { isBrowserEnv, tauriInvoke } from "@api/tauri";
 import { invoke } from "@api/invoke";
 
 export interface TunnelConnection {
@@ -16,12 +17,23 @@ export interface TunnelStatus {
   mode: "host" | "join" | null;
   ticket: string | null;
   connections: TunnelConnection[];
-  logs: string[];
-  host_port: number;
-  join_port: number;
-  last_ticket: string | null;
-  relay_url: string | null;
 }
+
+/** 后端 online_tunnel_event 的事件负载（serde tag = "kind"） */
+export type OnlineTunnelEvent =
+  | { kind: "started"; mode: "host" | "join" }
+  | { kind: "stopped"; mode: "host" | "join" }
+  | { kind: "player_joined"; remote_id: string }
+  | { kind: "player_left"; remote_id: string; reason: string }
+  | { kind: "connected" }
+  | { kind: "disconnected"; reason: string }
+  | { kind: "path_changed"; remote_id: string; is_relay: boolean; rtt_ms: number }
+  | { kind: "reconnecting"; attempt: number }
+  | { kind: "reconnected" }
+  | { kind: "authentication_failed"; remote_id: string }
+  | { kind: "player_rejected"; remote_id: string; reason: string }
+  | { kind: "error"; message: string }
+  | { kind: "provider_message"; message: string };
 
 export interface TunnelHostParams {
   port: number;
@@ -55,7 +67,7 @@ interface TunnelConnectionRaw {
   elapsed_ms: number;
 }
 
-/** 后端状态转前端，后端不支持的字段给默认值 */
+/** 后端状态转前端（后端只返回 OnlineTunnelStatus 的字段） */
 function toTunnelStatus(raw: TunnelStatusRaw): TunnelStatus {
   return {
     running: raw.active,
@@ -71,11 +83,6 @@ function toTunnelStatus(raw: TunnelStatusRaw): TunnelStatus {
       // 后端毫秒，前端秒
       elapsed_secs: c.elapsed_ms / 1000,
     })),
-    logs: [],
-    host_port: 0,
-    join_port: 0,
-    last_ticket: null,
-    relay_url: null,
   };
 }
 
@@ -114,6 +121,9 @@ export const tunnelApi = {
     return toTunnelStatus(raw);
   },
 
+  // TODO(backend): 以下票据命令后端均未实现（tunnel_copy_ticket / tunnel_regenerate_ticket /
+  // tunnel_generate_ticket 没有对应 Tauri 命令）。ticket 目前只在 host 成功后由
+  // status.ticket 返回，UI 侧已禁用这些入口，待后端补齐票据能力后再接通。
   async copyTicket(): Promise<boolean> {
     return tauriInvoke("tunnel_copy_ticket");
   },
@@ -126,3 +136,20 @@ export const tunnelApi = {
     return tauriInvoke("tunnel_generate_ticket");
   },
 };
+
+/**
+ * 订阅在线隧道运行事件。
+ *
+ * Tauri 模式下监听后端 `online_tunnel_event`；浏览器/Docker 模式后端没有该事件的
+ * 转发通道（也没有可用的 SSE 端点），优雅降级为"不订阅"。
+ *
+ * 调用方需成对调用返回的 unlisten，避免重复订阅导致日志重复。
+ */
+export function onTunnelEvent(callback: (event: OnlineTunnelEvent) => void): Promise<UnlistenFn> {
+  if (isBrowserEnv()) {
+    return Promise.resolve(() => {});
+  }
+  return listen<OnlineTunnelEvent>("online_tunnel_event", (event) => {
+    callback(event.payload);
+  });
+}
