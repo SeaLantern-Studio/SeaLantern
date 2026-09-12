@@ -38,6 +38,9 @@ use super::model::{
 /// 应用事件广播的缓冲区容量。
 const EVENT_CHANNEL_CAPACITY: usize = 256;
 
+/// Host 节点身份密钥文件名；与 `host.state` 同目录。
+const HOST_KEY_FILE: &str = "secret.key";
+
 /// 探测 Minecraft 服务端的超时。
 const MINECRAFT_PROBE_TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -124,7 +127,7 @@ impl OnlineTunnelService {
         }
 
         let node = SculkNode::bind(NodeOptions {
-            secret_key: request.identity.as_ref().map(identity_to_secret_key),
+            secret_key: Some(self.host_secret_key(request.identity.as_ref())?),
             relay_url: parse_relay_url(request.relay_url.as_deref())?,
             ..NodeOptions::default()
         })
@@ -183,6 +186,21 @@ impl OnlineTunnelService {
         let status = host_status(&session).await?;
         *slot = Some(session);
         Ok(status)
+    }
+
+    /// Host 节点身份密钥：调用方显式提供时优先，否则使用持久化密钥。
+    ///
+    /// 密钥决定端点 ID，而端点 ID 参与分享链接；不持久化的话每次重启都会换链接，
+    /// `never` / 定时轮换策略复用的 service_id 与令牌就失去意义。
+    fn host_secret_key(
+        &self,
+        identity: Option<&TunnelIdentity>,
+    ) -> Result<SecretKey, OnlineTunnelError> {
+        if let Some(identity) = identity {
+            return Ok(identity_to_secret_key(identity));
+        }
+        persist::load_or_generate_key(&identity_key_path(&self.state_path))
+            .map_err(|error| OnlineTunnelError::provider("load tunnel identity", error))
     }
 
     /// 以 Join 角色加入票据指定的隧道。
@@ -364,6 +382,11 @@ fn default_host_state_path() -> PathBuf {
         .join("host.state")
 }
 
+/// Host 节点身份密钥位置：与 `host.state` 同目录。
+fn identity_key_path(state_path: &Path) -> PathBuf {
+    state_path.with_file_name(HOST_KEY_FILE)
+}
+
 /// 在创建隧道前确认本机 Minecraft 世界已经开放到 LAN。
 async fn ensure_minecraft_port(port: u16) -> Result<(), OnlineTunnelError> {
     if port == 0 {
@@ -393,9 +416,10 @@ fn build_join_options(request: &JoinTunnelRequest) -> Result<JoinOptions, Online
         .map_err(|error| OnlineTunnelError::provider("parse tunnel ticket", error))?;
     let local_port = NonZeroU16::new(request.local_port).map_or(LocalPort::Auto, LocalPort::Fixed);
 
-    Ok(JoinOptions::new(join_uri)
-        .local_port(local_port)
-        .config(JoinConfig::default()))
+    Ok(JoinOptions::new(join_uri).local_port(local_port).config(
+        // `reconnect_timeout` 保持 `None`：断线后无限重连，只有用户主动停止才结束。
+        JoinConfig::default().reconnect_timeout(None),
+    ))
 }
 
 /// 把应用层的有效期策略翻译为 sculk 的令牌刷新策略。
@@ -701,6 +725,31 @@ mod tests {
 
         assert!(matches!(result, Err(OnlineTunnelError::PortUnavailable { .. })));
         assert_eq!(service.status().await.expect("idle status"), TunnelStatus::idle());
+    }
+
+    #[test]
+    fn host_secret_key_is_stable_across_calls() {
+        let service = OnlineTunnelService::with_state_path(temp_state_path("identity"));
+
+        // 端点身份必须落盘：否则每次重启换 endpoint_id，复用的分享链接就失效。
+        let first = service.host_secret_key(None).expect("generated identity");
+        let second = service
+            .host_secret_key(None)
+            .expect("persisted identity must reload");
+
+        assert_eq!(first.to_bytes(), second.to_bytes());
+    }
+
+    #[test]
+    fn host_secret_key_prefers_an_explicit_identity() {
+        let service = OnlineTunnelService::with_state_path(temp_state_path("identity-explicit"));
+        let identity = TunnelIdentity::from_bytes([0x11; 32]);
+
+        let key = service
+            .host_secret_key(Some(&identity))
+            .expect("explicit identity");
+
+        assert_eq!(key.to_bytes(), [0x11; 32]);
     }
 
     #[test]

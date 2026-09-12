@@ -14,6 +14,7 @@ import {
   type TunnelStatus,
 } from "@api/tunnel";
 import { setLiveRtt, getLiveRtt } from "@api/tunnelLatency";
+import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
 import { useToast } from "cmzya-modern-ui";
@@ -43,6 +44,46 @@ const hostLinkLifetime = ref<TunnelLinkLifetime>("always");
 const joinTicket = ref("");
 const joinLocalPort = ref(String(DEFAULT_JOIN_LOCAL_PORT));
 const showInfoModal = ref(false);
+
+/** 联机偏好只回填一次，避免切页回来覆盖用户正在编辑的内容。 */
+let tunnelPreferencesLoaded = false;
+
+function isLinkLifetime(value: string | undefined): value is TunnelLinkLifetime {
+  return value != null && (TUNNEL_LINK_LIFETIMES as readonly string[]).includes(value);
+}
+
+/** 从应用设置回填联机表单，省去每次重启重新填写。 */
+async function loadTunnelPreferences() {
+  if (tunnelPreferencesLoaded) return;
+  try {
+    const settings = await settingsApi.get();
+    hostRelayUrl.value = settings.tunnel_relay_url ?? hostRelayUrl.value;
+    if (isLinkLifetime(settings.tunnel_host_link_lifetime)) {
+      hostLinkLifetime.value = settings.tunnel_host_link_lifetime;
+    }
+    if (settings.tunnel_join_port) {
+      joinLocalPort.value = String(settings.tunnel_join_port);
+    }
+    if (settings.tunnel_host_max_players) {
+      hostMaxPlayers.value = String(settings.tunnel_host_max_players);
+    }
+    joinTicket.value = settings.tunnel_join_uri ?? joinTicket.value;
+    tunnelPreferencesLoaded = true;
+  } catch {
+    // 设置不可用时保留默认值，下次进入页面再试。
+  }
+}
+
+/** 写入联机偏好；偏好落盘失败不应影响联机本身。 */
+function saveTunnelPreferences(partial: {
+  tunnel_relay_url?: string;
+  tunnel_join_port?: number;
+  tunnel_join_uri?: string;
+  tunnel_host_link_lifetime?: TunnelLinkLifetime;
+  tunnel_host_max_players?: number | null;
+}) {
+  void settingsApi.updatePartial(partial).catch(() => {});
+}
 
 /** 后端错误是 snake_case 的短标识，这里翻译成可操作的提示。 */
 function tunnelError(error: unknown): string {
@@ -297,14 +338,22 @@ async function startHost() {
   stopRequested = false;
   pendingPhase.value = "starting";
   try {
+    const relayUrl = hostRelayUrl.value.trim();
+    const maxPlayers = parseMaxPlayers(hostMaxPlayers.value);
     applyStatus(
       await tunnelApi.host({
         port: parsePort(hostPort.value, DEFAULT_HOST_PORT),
-        maxPlayers: parseMaxPlayers(hostMaxPlayers.value),
-        relayUrl: hostRelayUrl.value.trim() || undefined,
+        maxPlayers,
+        relayUrl: relayUrl || undefined,
         linkLifetime: hostLinkLifetime.value,
       }),
     );
+    saveTunnelPreferences({
+      tunnel_relay_url: relayUrl,
+      tunnel_host_link_lifetime: hostLinkLifetime.value,
+      // 清空输入框时写入 null，才能真正取消人数上限。
+      tunnel_host_max_players: maxPlayers ?? null,
+    });
     toast.success(i18n.t("tunnel.host_started"));
   } catch (e) {
     toast.error(tunnelError(e));
@@ -341,6 +390,9 @@ async function startJoin() {
       return;
     }
     applyStatus(snapshot);
+    saveTunnelPreferences({
+      tunnel_join_port: parsePort(joinLocalPort.value, DEFAULT_JOIN_LOCAL_PORT),
+    });
     toast.success(i18n.t("tunnel.join_started"));
   } catch (e) {
     // 用户主动取消时后端会让 join 以错误结束，不必提示。
@@ -387,10 +439,20 @@ watch(joined, (value) => {
   if (value && isPageVisible) void refreshStatus({ silent: true });
 });
 
+// 只有真正连上才记住邀请链接：填错的票据不值得回填。
+watch(
+  () => running.value && status.value?.mode === "join",
+  (connected) => {
+    const ticket = joinTicket.value.trim();
+    if (connected && ticket) saveTunnelPreferences({ tunnel_join_uri: ticket });
+  },
+);
+
 onActivated(async () => {
   isPageVisible = true;
   await refreshStatus();
   await subscribeTunnelEvents();
+  await loadTunnelPreferences();
   startStatusPolling();
   document.addEventListener("visibilitychange", handleVisibilityChange);
 });

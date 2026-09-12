@@ -93,9 +93,10 @@ pub use player::{BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerProfile};
 pub use proxy::{ProxyConfigError, ProxyMode, ProxySettings};
 /// 设置模型。
 pub use settings::{
-    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, NullablePatch,
-    PartialAppSettings, SettingsEntry, SettingsEntryType, SettingsGroup, SettingsGroupInfo,
-    SettingsOption, SettingsOverview, SettingsValidationError, UpdateResult,
+    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, DEFAULT_TUNNEL_JOIN_PORT,
+    DEFAULT_TUNNEL_LINK_LIFETIME, NullablePatch, PartialAppSettings, SettingsEntry,
+    SettingsEntryType, SettingsGroup, SettingsGroupInfo, SettingsOption, SettingsOverview,
+    SettingsValidationError, TUNNEL_LINK_LIFETIMES, UpdateResult,
 };
 /// 更新模型。
 pub use update::{PendingUpdate, UpdateInfo, UpdateSource};
