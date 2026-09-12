@@ -4,7 +4,6 @@
 //! 因而 server、桌面宿主和后续调用方不会依赖 `sculk` 的公开类型。
 
 mod model;
-mod sculk;
 mod service;
 
 pub use model::{

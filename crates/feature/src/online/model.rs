@@ -61,6 +61,9 @@ impl fmt::Debug for JoinTunnelRequest {
 }
 
 /// 由用户分享的隧道票据。
+///
+/// sculk 0.6 起票据形态为 `JoinUri`（`sculk://join/v1/...`），校验由
+/// [`sculk::tunnel::JoinUri`] 完成。
 #[derive(Clone, PartialEq, Eq)]
 pub struct TunnelTicket(String);
 
@@ -71,7 +74,7 @@ impl TunnelTicket {
             return Err(OnlineTunnelError::invalid_request("tunnel ticket must not be empty"));
         }
         value
-            .parse::<sculk::tunnel::Ticket>()
+            .parse::<sculk::tunnel::JoinUri>()
             .map_err(|error| OnlineTunnelError::provider("parse tunnel ticket", error))?;
         Ok(Self(value))
     }
