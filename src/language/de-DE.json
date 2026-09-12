@@ -1209,6 +1209,7 @@
     "ev_provider_message": "Relay-Nachricht: {{message}}",
     "ev_token_rotated": "Ticket aktualisiert (Zugriffstoken rotiert)",
     "ev_started": "Tunnel gestartet: {{mode}}",
+    "ev_share_ticket": "Ticket teilen: {{ticket}}",
     "ev_stopped": "Tunnel gestoppt: {{mode}}",
     "ev_unknown": "Tunnelereignis: {{kind}}"
   },

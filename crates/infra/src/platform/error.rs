@@ -24,6 +24,8 @@ pub enum PlatformError {
     ResolveDefaultRunPath { source: std::io::Error },
     /// 无法枚举系统字体族。
     FontEnumerationFailed { message: String },
+    /// 无法访问系统剪贴板。
+    ClipboardFailed { message: String },
 }
 
 impl fmt::Display for PlatformError {
@@ -49,6 +51,9 @@ impl fmt::Display for PlatformError {
             }
             Self::FontEnumerationFailed { message } => {
                 write!(formatter, "failed to enumerate system fonts: {message}")
+            }
+            Self::ClipboardFailed { message } => {
+                write!(formatter, "failed to access system clipboard: {message}")
             }
         }
     }

@@ -274,6 +274,7 @@
       "ev_provider_message": "Relay message: {{message}}",
       "ev_token_rotated": "Ticket refreshed (access token rotated)",
       "ev_started": "Tunnel started: {{mode}}",
+      "ev_share_ticket": "Share ticket: {{ticket}}",
       "ev_stopped": "Tunnel stopped: {{mode}}",
       "ev_unknown": "Tunnel event: {{kind}}"
     },

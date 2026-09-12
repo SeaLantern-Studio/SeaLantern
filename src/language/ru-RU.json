@@ -1209,6 +1209,7 @@
     "ev_provider_message": "Сообщение ретранслятора: {{message}}",
     "ev_token_rotated": "Билет обновлён (токен доступа обновлён)",
     "ev_started": "Туннель запущен: {{mode}}",
+    "ev_share_ticket": "Поделиться билетом: {{ticket}}",
     "ev_stopped": "Туннель остановлен: {{mode}}",
     "ev_unknown": "Событие туннеля: {{kind}}"
   },

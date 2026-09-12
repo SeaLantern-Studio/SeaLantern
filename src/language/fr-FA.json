@@ -1209,6 +1209,7 @@
     "ev_provider_message": "Message du relais : {{message}}",
     "ev_token_rotated": "Ticket actualisé (jeton d'accès renouvelé)",
     "ev_started": "Tunnel démarré : {{mode}}",
+    "ev_share_ticket": "Partager le ticket : {{ticket}}",
     "ev_stopped": "Tunnel arrêté : {{mode}}",
     "ev_unknown": "Événement du tunnel : {{kind}}"
   },

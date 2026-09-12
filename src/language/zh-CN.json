@@ -274,6 +274,7 @@
       "ev_provider_message": "中继消息：{{message}}",
       "ev_token_rotated": "票据已更新（访问令牌已轮换）",
       "ev_started": "隧道已启动：{{mode}}",
+      "ev_share_ticket": "分享票据：{{ticket}}",
       "ev_stopped": "隧道已停止：{{mode}}",
       "ev_unknown": "隧道事件：{{kind}}"
     },

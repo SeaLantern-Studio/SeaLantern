@@ -1209,6 +1209,7 @@
     "ev_provider_message": "リレーメッセージ：{{message}}",
     "ev_token_rotated": "チケットを更新しました（アクセストークンをローテーション）",
     "ev_started": "トンネルが起動しました：{{mode}}",
+    "ev_share_ticket": "チケットを共有：{{ticket}}",
     "ev_stopped": "トンネルが停止しました：{{mode}}",
     "ev_unknown": "トンネルイベント：{{kind}}"
   },

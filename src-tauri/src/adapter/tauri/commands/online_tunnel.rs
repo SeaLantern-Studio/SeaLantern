@@ -118,6 +118,17 @@ fn emit_lifecycle_event(app: &AppHandle, event: OnlineTunnelEvent) {
     }
 }
 
+/// 把票据写入系统剪贴板；失败只记录日志，不影响隧道建立。
+fn copy_ticket_to_clipboard(ticket: &str) {
+    if let Err(error) = sealantern_infra::platform::copy_text(ticket) {
+        tracing::warn!(
+            target: "sealantern.tauri.online_tunnel",
+            error = %error,
+            "failed to copy tunnel ticket to clipboard"
+        );
+    }
+}
+
 /// 以主机模式开启在线隧道，把本地 Minecraft 端口转发到公网。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn online_tunnel_host(
@@ -129,8 +140,18 @@ pub async fn online_tunnel_host(
     let services = services.inner().clone();
     let status = services.online_tunnel().host(request).await?;
     forwarder.replace(app.clone(), services).await?;
+    // 对齐 v1.2.0：host 成功后立即把票据复制到剪贴板，方便直接分享。
+    if let Some(ticket) = status.ticket.as_deref() {
+        copy_ticket_to_clipboard(ticket);
+    }
     // 转发订阅就绪后再发 Started，保证该事件能落达前端。
-    emit_lifecycle_event(&app, OnlineTunnelEvent::Started { mode: OnlineTunnelMode::Host });
+    emit_lifecycle_event(
+        &app,
+        OnlineTunnelEvent::Started {
+            mode: OnlineTunnelMode::Host,
+            ticket: status.ticket.clone(),
+        },
+    );
     Ok(status)
 }
 
@@ -146,7 +167,13 @@ pub async fn online_tunnel_join(
     let status = services.online_tunnel().join(request).await?;
     forwarder.replace(app.clone(), services).await?;
     // 转发订阅就绪后再发 Started，保证该事件能落达前端。
-    emit_lifecycle_event(&app, OnlineTunnelEvent::Started { mode: OnlineTunnelMode::Join });
+    emit_lifecycle_event(
+        &app,
+        OnlineTunnelEvent::Started {
+            mode: OnlineTunnelMode::Join,
+            ticket: None,
+        },
+    );
     Ok(status)
 }
 

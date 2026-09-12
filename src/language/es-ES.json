@@ -1209,6 +1209,7 @@
     "ev_provider_message": "Mensaje del relé: {{message}}",
     "ev_token_rotated": "Ticket actualizado (token de acceso rotado)",
     "ev_started": "Túnel iniciado: {{mode}}",
+    "ev_share_ticket": "Compartir ticket: {{ticket}}",
     "ev_stopped": "Túnel detenido: {{mode}}",
     "ev_unknown": "Evento del túnel: {{kind}}"
   },

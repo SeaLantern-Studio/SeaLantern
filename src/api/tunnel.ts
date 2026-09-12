@@ -40,7 +40,7 @@ export interface TunnelStatus {
 
 /** 后端 online_tunnel_event 的事件负载（serde tag = "kind"） */
 export type OnlineTunnelEvent =
-  | { kind: "started"; mode: "host" | "join" }
+  | { kind: "started"; mode: "host" | "join"; ticket: string | null }
   | { kind: "stopped"; mode: "host" | "join" }
   | { kind: "player_joined"; remote_id: string }
   | { kind: "player_left"; remote_id: string; reason: string }

@@ -129,49 +129,58 @@ function formatTunnelMode(mode: "host" | "join"): string {
   return i18n.t(mode === "host" ? "tunnel.host_title" : "tunnel.join_title");
 }
 
-/** 把隧道事件映射为一行可读文本（reason / message 为后端原文，直接展示不翻译） */
-function formatTunnelEvent(event: OnlineTunnelEvent): string {
+/** 把隧道事件映射为可读文本行（reason / message 为后端原文，直接展示不翻译） */
+function formatTunnelEvent(event: OnlineTunnelEvent): string[] {
   switch (event.kind) {
-    case "started":
-      return i18n.t("tunnel.ev_started", { mode: formatTunnelMode(event.mode) });
+    case "started": {
+      const lines = [i18n.t("tunnel.ev_started", { mode: formatTunnelMode(event.mode) })];
+      if (event.ticket) {
+        lines.push(i18n.t("tunnel.ev_share_ticket", { ticket: event.ticket }));
+      }
+      return lines;
+    }
     case "stopped":
-      return i18n.t("tunnel.ev_stopped", { mode: formatTunnelMode(event.mode) });
+      return [i18n.t("tunnel.ev_stopped", { mode: formatTunnelMode(event.mode) })];
     case "player_joined":
-      return i18n.t("tunnel.ev_player_joined", { remote_id: event.remote_id });
+      return [i18n.t("tunnel.ev_player_joined", { remote_id: event.remote_id })];
     case "player_left":
-      return i18n.t("tunnel.ev_player_left", { remote_id: event.remote_id, reason: event.reason });
+      return [
+        i18n.t("tunnel.ev_player_left", { remote_id: event.remote_id, reason: event.reason }),
+      ];
     case "connected":
-      return i18n.t("tunnel.ev_connected");
+      return [i18n.t("tunnel.ev_connected")];
     case "disconnected":
-      return i18n.t("tunnel.ev_disconnected", { reason: event.reason });
+      return [i18n.t("tunnel.ev_disconnected", { reason: event.reason })];
     case "path_changed":
-      return i18n.t("tunnel.ev_path_changed", {
-        remote_id: event.remote_id,
-        relay: i18n.t(event.is_relay ? "tunnel.route_relay" : "tunnel.route_direct"),
-        rtt: event.rtt_ms,
-      });
+      return [
+        i18n.t("tunnel.ev_path_changed", {
+          remote_id: event.remote_id,
+          relay: i18n.t(event.is_relay ? "tunnel.route_relay" : "tunnel.route_direct"),
+          rtt: event.rtt_ms,
+        }),
+      ];
     case "reconnecting":
-      return i18n.t("tunnel.ev_reconnecting", { attempt: event.attempt });
+      return [i18n.t("tunnel.ev_reconnecting", { attempt: event.attempt })];
     case "reconnected":
-      return i18n.t("tunnel.ev_reconnected");
+      return [i18n.t("tunnel.ev_reconnected")];
     case "authentication_failed":
-      return i18n.t("tunnel.ev_auth_failed", { remote_id: event.remote_id });
+      return [i18n.t("tunnel.ev_auth_failed", { remote_id: event.remote_id })];
     case "player_rejected":
-      return i18n.t("tunnel.ev_rejected", { remote_id: event.remote_id, reason: event.reason });
-    case "error":
-      return i18n.t("tunnel.ev_error", { message: event.message });
+      return [i18n.t("tunnel.ev_rejected", { remote_id: event.remote_id, reason: event.reason })];
     case "token_rotated":
-      return i18n.t("tunnel.ev_token_rotated");
+      return [i18n.t("tunnel.ev_token_rotated")];
+    case "error":
+      return [i18n.t("tunnel.ev_error", { message: event.message })];
     case "provider_message":
-      return i18n.t("tunnel.ev_provider_message", { message: event.message });
+      return [i18n.t("tunnel.ev_provider_message", { message: event.message })];
     default:
       // 后端新增事件类型时的兜底，避免静默变成 undefined
-      return i18n.t("tunnel.ev_unknown", { kind: (event as { kind: string }).kind });
+      return [i18n.t("tunnel.ev_unknown", { kind: (event as { kind: string }).kind })];
   }
 }
 
 function handleTunnelEvent(event: OnlineTunnelEvent) {
-  tunnelOutputRef.value?.appendLines([formatTunnelEvent(event)]);
+  tunnelOutputRef.value?.appendLines(formatTunnelEvent(event));
 }
 
 // 事件订阅与 keep-alive 的 activated/deactivated 成对建立与清理。

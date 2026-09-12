@@ -1209,6 +1209,7 @@
     "ev_provider_message": "中繼訊息：{{message}}",
     "ev_token_rotated": "票證已更新（存取權杖已輪換）",
     "ev_started": "隧道已啟動：{{mode}}",
+    "ev_share_ticket": "分享票證：{{ticket}}",
     "ev_stopped": "隧道已停止：{{mode}}",
     "ev_unknown": "隧道事件：{{kind}}"
   },

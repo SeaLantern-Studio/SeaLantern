@@ -135,6 +135,8 @@ pub enum OnlineTunnelEvent {
     Started {
         /// 启动后的运行角色。
         mode: OnlineTunnelMode,
+        /// Host 隧道启动时随事件给出、便于立即分享的票据；Join 或不可用时为空。
+        ticket: Option<String>,
     },
     /// 隧道已停止（由宿主在 stop 成功后、停止事件转发前发出）。
     Stopped {
@@ -210,11 +212,14 @@ mod tests {
 
     #[test]
     fn lifecycle_events_use_snake_case_kind_and_mode() {
-        let started =
-            serde_json::to_value(OnlineTunnelEvent::Started { mode: OnlineTunnelMode::Host })
-                .expect("started event must serialize");
+        let started = serde_json::to_value(OnlineTunnelEvent::Started {
+            mode: OnlineTunnelMode::Host,
+            ticket: Some("sculk://join/v1/example".to_owned()),
+        })
+        .expect("started event must serialize");
         assert_eq!(started["kind"], "started");
         assert_eq!(started["mode"], "host");
+        assert_eq!(started["ticket"], "sculk://join/v1/example");
 
         let stopped =
             serde_json::to_value(OnlineTunnelEvent::Stopped { mode: OnlineTunnelMode::Join })
