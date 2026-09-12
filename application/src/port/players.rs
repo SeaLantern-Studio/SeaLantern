@@ -23,13 +23,17 @@ pub trait PlayerLookupService: Send + Sync {
 
 /// 玩家列表查询宿主能力端口。
 ///
-/// 在线玩家、白名单、封禁、OP 列表等通过控制台命令捕获的服务契约。
+/// 数据来源分两类：
+/// - **在线玩家**：向运行中的服务器发 `list` 命令并捕获回显，要求服务器运行中。
+/// - **白名单 / 封禁 / OP**：直接读取服务器目录下的配置文件
+///   （`whitelist.json` / `banned-players.json` / `ops.json`），
+///   **不要求服务器运行**，且能拿到离线玩家与真实等级。
 #[async_trait]
 pub trait PlayerListService: Send + Sync {
-    /// 获取在线玩家名列表（发 `list` 命令）。
+    /// 获取在线玩家名列表（发 `list` 命令，要求服务器运行中）。
     async fn get_online_players(&self, server_id: String) -> Result<Vec<String>, PlayerListError>;
 
-    /// 获取白名单（发 `whitelist list`，UUID 由 usercache 反查）。
+    /// 获取白名单（读取服务器目录下的 `whitelist.json`）。
     ///
     /// 只收 `server_id`；内部经实例注册表解析出唯一可信目录，不信任前端传入
     /// 的 `server_path`（见 code review：server_id 与 server_path 分开信任）。
@@ -38,7 +42,7 @@ pub trait PlayerListService: Send + Sync {
         server_id: String,
     ) -> Result<Vec<PlayerEntryDto>, PlayerListError>;
 
-    /// 获取封禁列表（发 `banlist`，UUID 由 usercache 反查）。
+    /// 获取封禁列表（读取服务器目录下的 `banned-players.json`）。
     ///
     /// 只收 `server_id`；内部经实例注册表解析出唯一可信目录。
     async fn get_banned_players(
@@ -46,7 +50,7 @@ pub trait PlayerListService: Send + Sync {
         server_id: String,
     ) -> Result<Vec<BanEntryDto>, PlayerListError>;
 
-    /// 获取在线 OP 列表（从 `list` 输出里 `*` 前缀的玩家）。
+    /// 获取 OP 列表（读取服务器目录下的 `ops.json`，含离线 OP 与真实等级）。
     ///
     /// 只收 `server_id`；内部经实例注册表解析出唯一可信目录。
     async fn get_ops(&self, server_id: String) -> Result<Vec<OpEntryDto>, PlayerListError>;

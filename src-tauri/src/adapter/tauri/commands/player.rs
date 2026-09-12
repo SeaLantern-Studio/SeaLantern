@@ -8,7 +8,8 @@
  */
 //! 玩家查询 Tauri 命令。
 //!
-//! 解析逻辑、UUID 反查等业务逻辑在 `application::service::player`。
+//! 读取/解析逻辑在 `application::service::player`：白名单、封禁、OP 直接读
+//! 服务器目录下的配置文件（不要求服务器运行），在线玩家发 `list` 命令捕获。
 
 use sealantern_application::port::{InstanceService, PlayerListService, PlayerLookupService};
 use sealantern_application::services::AppServices;
@@ -48,7 +49,7 @@ pub async fn lookup_player(
     services.player().lookup(server_path, username).await
 }
 
-/// 在线玩家：发 `list` 命令，捕获回显解析玩家名。
+/// 在线玩家：发 `list` 命令，捕获回显解析玩家名（要求服务器运行中）。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn get_online_players(
     services: State<'_, AppServices>,
@@ -57,7 +58,7 @@ pub async fn get_online_players(
     services.player().get_online_players(server_id).await
 }
 
-/// 白名单：发 `whitelist list`，解析名字后用 usercache 反查 UUID。
+/// 白名单：读取服务器目录下的 `whitelist.json`（不要求服务器运行）。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn get_whitelist(
     services: State<'_, AppServices>,
@@ -66,7 +67,7 @@ pub async fn get_whitelist(
     services.player().get_whitelist(server_id).await
 }
 
-/// 封禁列表：发 `banlist`，解析名字+原因，UUID 用 usercache 反查。
+/// 封禁列表：读取服务器目录下的 `banned-players.json`（不要求服务器运行）。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn get_banned_players(
     services: State<'_, AppServices>,
@@ -75,7 +76,7 @@ pub async fn get_banned_players(
     services.player().get_banned_players(server_id).await
 }
 
-/// OP 列表：发 `list` 命令，解析带 `*` 前缀的在线玩家。
+/// OP 列表：读取服务器目录下的 `ops.json`（不要求服务器运行，含离线 OP）。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn get_ops(
     services: State<'_, AppServices>,
