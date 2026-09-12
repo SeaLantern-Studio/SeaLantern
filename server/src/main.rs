@@ -26,15 +26,19 @@ const DEFAULT_PUBLIC_ADDR: &str = "0.0.0.0:3000";
 /// 最后回退到仅本机监听。
 fn listen_addr() -> SocketAddr {
     if let Ok(value) = std::env::var(AXCTL_BACKEND_ADDR_ENV) {
+        // axctl 注入的地址无效属于致命配置错误：绝不回退到默认地址——
+        // 默认通常是代理监听地址（3000），回退会让本进程与代理抢端口，
+        // 报出与真实原因无关的 bind 错误。
         return match value.parse() {
             Ok(addr) => addr,
-            Err(_) => {
+            Err(error) => {
                 tracing::error!(
                     env = AXCTL_BACKEND_ADDR_ENV,
                     value = %value,
-                    "invalid axctl backend address, falling back to default"
+                    error = %error,
+                    "invalid axctl backend address"
                 );
-                default_addr()
+                std::process::exit(1);
             }
         };
     }
