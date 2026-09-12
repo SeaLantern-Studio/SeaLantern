@@ -35,6 +35,8 @@ export interface TunnelStatus {
   mode: "host" | "join" | null;
   /** 后端已转换为用户侧分享链接（`https://ideaflash.cn/#v1/...`） */
   ticket: string | null;
+  /** 加入方实际绑定的本地监听地址；房主或未运行时为 null */
+  localAddress: string | null;
   connections: TunnelConnection[];
   lastError: OnlineTunnelErrorCategory | null;
 }
@@ -86,6 +88,7 @@ interface TunnelStatusRaw {
   phase: OnlineTunnelPhase;
   mode: "host" | "join" | null;
   ticket: string | null;
+  local_address: string | null;
   connections: TunnelConnectionRaw[];
   last_error: OnlineTunnelErrorCategory | null;
 }
@@ -108,6 +111,8 @@ function toTunnelStatus(raw: TunnelStatusRaw): TunnelStatus {
     phase: raw.phase,
     mode: raw.mode,
     ticket: raw.ticket,
+    /** 后端未返回该字段（旧版本）时按无地址处理 */
+    localAddress: raw.local_address ?? null,
     lastError: raw.last_error,
     connections: raw.connections.map((c) => ({
       remote_id: c.remote_id,

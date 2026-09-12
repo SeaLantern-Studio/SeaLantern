@@ -26,13 +26,24 @@
   min-width: 0;
 }
 
+/* 卡片体已由库设为 flex:1，操作按钮贴卡片底部，两张卡片的按钮落在同一基线。 */
+.setup-grid :deep(.cmz-card-body) {
+  display: flex;
+  flex-direction: column;
+}
+
+.setup-grid :deep(.cmz-card-body) .card-actions {
+  margin-top: auto;
+  padding-top: var(--sl-space-md);
+}
+
 .active-stack {
   display: flex;
   flex-direction: column;
   gap: var(--sl-space-md);
 }
 
-.active-stack .connection-panel :deep(.sl-card-body) {
+.active-stack .connection-panel :deep(.cmz-card-body) {
   display: flex;
   flex-direction: column;
 }
@@ -77,6 +88,77 @@
   border-radius: var(--sl-radius-sm);
   background: var(--sl-bg-secondary);
   white-space: nowrap;
+}
+
+.join-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sl-space-sm);
+}
+
+.join-step h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+}
+
+.address-block {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  flex-wrap: wrap;
+}
+
+.address-block span {
+  color: var(--sl-text-tertiary);
+}
+
+.address-block code {
+  flex: 1;
+  min-width: 180px;
+  overflow: auto;
+  padding: 7px 10px;
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-secondary);
+  white-space: nowrap;
+}
+
+.address-block code.pending {
+  color: var(--sl-text-tertiary);
+}
+
+.join-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sl-space-sm);
+}
+
+.join-metrics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sl-space-sm);
+  border: 1px solid var(--sl-border-light);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-bg-secondary);
+}
+
+.join-metrics span {
+  font-size: 0.78rem;
+  color: var(--sl-text-tertiary);
+}
+
+.join-metrics strong {
+  font-size: 0.95rem;
+  color: var(--sl-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.join-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--sl-text-tertiary);
 }
 
 .ticket-icon-btn {
@@ -157,6 +239,12 @@
 @media (max-width: 980px) {
   .setup-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .join-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

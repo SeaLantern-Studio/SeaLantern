@@ -253,6 +253,8 @@ pub struct TunnelStatus {
     pub phase: TunnelPhase,
     pub mode: Option<TunnelMode>,
     pub ticket: Option<TunnelTicket>,
+    /// Join 隧道实际绑定的本地监听地址；Host 或空闲时为空。
+    pub local_address: Option<String>,
     pub connections: Vec<TunnelConnection>,
     pub last_error: Option<TunnelErrorCategory>,
 }
@@ -264,6 +266,7 @@ impl TunnelStatus {
             phase: TunnelPhase::Idle,
             mode: None,
             ticket: None,
+            local_address: None,
             connections: Vec::new(),
             last_error: None,
         }

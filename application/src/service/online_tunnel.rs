@@ -215,6 +215,7 @@ fn map_status(value: TunnelStatus) -> OnlineTunnelStatus {
         phase: map_phase(value.phase),
         mode: value.mode.map(map_mode),
         ticket: value.ticket.map(|ticket| ticket.as_str().to_owned()),
+        local_address: value.local_address,
         connections: value.connections.into_iter().map(map_connection).collect(),
         last_error: value.last_error.map(map_error_category),
     }

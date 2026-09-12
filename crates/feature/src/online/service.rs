@@ -38,9 +38,6 @@ use super::model::{
 /// 应用事件广播的缓冲区容量。
 const EVENT_CHANNEL_CAPACITY: usize = 256;
 
-/// 等待隧道进入 `Active` 的上限；超过则判定启动失败。
-const START_TIMEOUT: Duration = Duration::from_secs(30);
-
 /// 探测 Minecraft 服务端的超时。
 const MINECRAFT_PROBE_TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -188,10 +185,10 @@ impl OnlineTunnelService {
         Ok(status)
     }
 
-    /// 以 Join 角色加入票据指定的隧道，返回隧道就绪后的状态快照。
+    /// 以 Join 角色加入票据指定的隧道。
     ///
-    /// sculk 的 `start_join` 只保证「启动任务已被接受」，隧道就绪是异步完成的；
-    /// 这里等状态进入 `Active` 再返回，避免调用方拿到尚未就绪的快照。
+    /// sculk 的 `start_join` 只负责「接受启动任务」并立即返回，隧道就绪是异步的；
+    /// 这里同步返回启动后的状态（通常为 `starting`），前端轮询观察就绪。
     pub async fn join(
         &self,
         request: JoinTunnelRequest,
@@ -204,10 +201,7 @@ impl OnlineTunnelService {
             .map_err(map_service_error)?;
         // 先建立事件扇出，避免就绪过程中产生的事件丢失。
         self.restart_join_fanout();
-        match self.wait_until_active().await {
-            Ok(status) => Ok(status),
-            Err(error) => Err(self.cleanup_failed_join(error).await),
-        }
+        Ok(map_join_status(&self.join.status()))
     }
 
     /// 同一时刻只允许一条隧道；Host 与 Join 底层实现不同，需显式互斥。
@@ -219,76 +213,10 @@ impl OnlineTunnelService {
         Ok(())
     }
 
-    /// 等待 Join 隧道进入 `Active` 并返回就绪状态。
+    /// 停止当前活动隧道，空闲时幂等返回空闲快照。
     ///
-    /// 订阅 sculk 的状态流而非轮询；超时或提前回到 `Idle` 都视为启动失败。
-    async fn wait_until_active(&self) -> Result<TunnelStatus, OnlineTunnelError> {
-        let mut updates = self.join.subscribe();
-        let deadline = tokio::time::Instant::now() + START_TIMEOUT;
-
-        loop {
-            let current = self.join.status();
-            match current.state.phase {
-                SculkPhase::Active => return Ok(map_join_status(&current)),
-                SculkPhase::Idle => {
-                    return Err(OnlineTunnelError::provider(
-                        "start tunnel",
-                        "tunnel became idle before becoming active",
-                    ));
-                }
-                SculkPhase::Starting | SculkPhase::Stopping => {}
-            }
-
-            let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
-            if remaining.is_zero() {
-                return Err(OnlineTunnelError::provider(
-                    "start tunnel",
-                    "timed out waiting for the tunnel to become active",
-                ));
-            }
-
-            match tokio::time::timeout(remaining, updates.recv()).await {
-                Ok(Some(SculkUpdate::Status(status))) => {
-                    if status.state.phase == SculkPhase::Active {
-                        return Ok(map_join_status(&status));
-                    }
-                }
-                // 过程事件（以及 `non_exhaustive` 后续新增的变体）：继续等待就绪。
-                Ok(Some(_)) => {}
-                Ok(None) => {
-                    return Err(OnlineTunnelError::provider(
-                        "start tunnel",
-                        "tunnel status stream closed",
-                    ));
-                }
-                Err(_) => {
-                    return Err(OnlineTunnelError::provider(
-                        "start tunnel",
-                        "timed out waiting for the tunnel to become active",
-                    ));
-                }
-            }
-        }
-    }
-
-    /// Join 启动失败后的清理。
-    ///
-    /// sculk 的 `start_join` 是异步的：超时或失败时它可能仍停留在 `Starting`。
-    /// 若不显式 `stop` 取消，残留的启动任务会挤占状态机，让后续的启动/停止
-    /// 一直被 `Busy` 拒绝。清理失败只记录日志，保留原始错误。
-    async fn cleanup_failed_join(&self, error: OnlineTunnelError) -> OnlineTunnelError {
-        self.stop_fanout();
-        if let Err(stop_error) = self.join.stop().await {
-            tracing::warn!(
-                target: "sealantern.feature.online",
-                error = %stop_error,
-                "failed to clean up tunnel after a failed join"
-            );
-        }
-        error
-    }
-
-    /// 停止当前活动隧道；无活动隧道时返回 [`OnlineTunnelError::NotRunning`]。
+    /// sculk 的 `stop` 会打断正在启动的任务（`Starting` → abort 后台任务），
+    /// 因此「取消连接」就是一次普通的 `stop`。
     pub async fn stop(&self) -> Result<TunnelStatus, OnlineTunnelError> {
         let session = self.host.lock().await.take();
         if let Some(session) = session {
@@ -296,6 +224,10 @@ impl OnlineTunnelService {
             let stop_result = session.handle.stop().await;
             session.node.close().await;
             stop_result.map_err(|error| OnlineTunnelError::provider("stop host service", error))?;
+            return Ok(TunnelStatus::idle());
+        }
+
+        if self.join.status().state.phase == SculkPhase::Idle {
             return Ok(TunnelStatus::idle());
         }
 
@@ -335,9 +267,10 @@ impl OnlineTunnelService {
         }
 
         match self.join.status().state.phase {
-            SculkPhase::Active => Ok(self.events.sender.subscribe()),
+            // join 命令现在立即返回 `starting`，就绪过程的事件（如 path_changed）也要能订阅。
+            SculkPhase::Active | SculkPhase::Starting => Ok(self.events.sender.subscribe()),
             SculkPhase::Idle => Err(OnlineTunnelError::NotRunning),
-            SculkPhase::Starting | SculkPhase::Stopping => Err(OnlineTunnelError::Busy),
+            SculkPhase::Stopping => Err(OnlineTunnelError::Busy),
         }
     }
 
@@ -594,6 +527,7 @@ async fn host_status(session: &HostSession) -> Result<TunnelStatus, OnlineTunnel
         phase: map_host_phase(status.phase),
         mode: Some(TunnelMode::Host),
         ticket: Some(read_ticket(&session.handle).await?),
+        local_address: None,
         connections,
         last_error: status.last_error.map(map_error_category),
     })
@@ -623,6 +557,7 @@ fn map_join_status(status: &SculkStatus) -> TunnelStatus {
         phase: map_phase(status.state.phase),
         mode,
         ticket,
+        local_address: status.state.local_addr.map(|addr| addr.to_string()),
         connections,
         last_error: status.last_error.map(map_error_category),
     }
@@ -721,6 +656,7 @@ fn map_service_error(error: SculkServiceError) -> OnlineTunnelError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sculk::tunnel::{AccessToken, JoinUri, ServiceId};
 
     #[tokio::test]
     async fn a_new_service_is_idle() {
@@ -730,10 +666,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn idle_service_rejects_stop_and_subscription() {
+    async fn idle_service_stops_idempotently_and_rejects_subscription() {
         let service = OnlineTunnelService::with_state_path(temp_state_path("idle-reject"));
 
-        assert_eq!(service.stop().await, Err(OnlineTunnelError::NotRunning));
+        // 空闲时停止等价于「没有隧道可停」，不再报错，方便前端取消建链。
+        assert_eq!(service.stop().await.expect("idle stop"), TunnelStatus::idle());
         assert!(matches!(service.subscribe().await, Err(OnlineTunnelError::NotRunning)));
     }
 
@@ -775,6 +712,27 @@ mod tests {
         };
 
         assert!(build_join_options(&request).is_err());
+    }
+
+    #[tokio::test]
+    async fn join_returns_immediately_and_stop_cancels() {
+        let service = OnlineTunnelService::with_state_path(temp_state_path("cancel-join"));
+        let request = JoinTunnelRequest {
+            ticket: unreachable_ticket("cancel-join"),
+            local_port: 30000,
+            max_retries: None,
+        };
+
+        // join 只接受启动任务并立即返回，不阻塞等待就绪。
+        let started = service.join(request).await.expect("join must start");
+        assert_eq!(started.phase, TunnelPhase::Starting);
+
+        // 「取消连接」就是一次 stop：sculk 会 abort 正在启动的后台任务。
+        let stopped = service.stop().await;
+        assert!(stopped.is_ok(), "取消连接必须成功: {stopped:?}");
+
+        // 取消后状态机回到空闲，后续仍可再次加入。
+        assert_eq!(service.status().await.expect("idle status"), TunnelStatus::idle());
     }
 
     #[test]
@@ -825,5 +783,15 @@ mod tests {
         std::env::temp_dir()
             .join(format!("sealantern_online_{name}_{}", std::process::id()))
             .join("host.state")
+    }
+
+    /// 格式合法但指向不存在对端的票据：隧道会一直停在启动阶段。
+    fn unreachable_ticket(name: &str) -> TunnelTicket {
+        let endpoint = SecretKey::from_bytes(&[0x42; 32]).public();
+        let uri = JoinUri::new(endpoint, ServiceId::generate(), AccessToken::generate(), None)
+            .expose_secret_uri()
+            .unwrap_or_else(|error| panic!("{name}: must build a valid join uri: {error}"));
+
+        TunnelTicket::from_provider(uri)
     }
 }

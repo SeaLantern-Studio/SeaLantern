@@ -141,6 +141,8 @@ pub struct OnlineTunnelStatus {
     pub mode: Option<OnlineTunnelMode>,
     /// 仅 Host 隧道存在，供主机分享给对端使用。
     pub ticket: Option<String>,
+    /// 仅 Join 隧道存在：实际绑定的本地监听地址（`host:port`）。
+    pub local_address: Option<String>,
     /// 当前已建立的对端连接列表。
     pub connections: Vec<OnlineTunnelConnection>,
     /// 当前生命周期内最近一次结构化错误分类。
