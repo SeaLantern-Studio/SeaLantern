@@ -1196,7 +1196,7 @@
     "address_copied": "位址已複製到剪貼簿",
     "join_ready": "隧道已就緒",
     "join_starting": "正在建立隧道",
-    "join_hint": "開啟 Minecraft，在多人遊戲中新增此位址即可進入房主的世界。",
+    "join_hint": "開啟 Minecraft Java 版多人遊戲，房間會自動出現在區域網路列表中。",
     "join_route": "連線路徑",
     "detecting": "偵測中…",
     "sent": "傳送",

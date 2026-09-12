@@ -1196,7 +1196,7 @@
     "address_copied": "Đã sao chép địa chỉ vào clipboard",
     "join_ready": "Tunnel đã sẵn sàng",
     "join_starting": "Đang thiết lập tunnel",
-    "join_hint": "Mở Minecraft, thêm địa chỉ này trong mục nhiều người chơi để vào thế giới của chủ nhà.",
+    "join_hint": "Mở chế độ nhiều người chơi của Minecraft Java Edition, thế giới sẽ tự động xuất hiện trong danh sách LAN.",
     "join_route": "Đường dẫn",
     "detecting": "Đang phát hiện…",
     "sent": "Đã gửi",

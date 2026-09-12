@@ -1196,7 +1196,7 @@
     "address_copied": "Adresse in die Zwischenablage kopiert",
     "join_ready": "Der Tunnel ist bereit",
     "join_starting": "Tunnel wird aufgebaut",
-    "join_hint": "Öffne Minecraft, füge diese Adresse unter Mehrspieler hinzu und die Welt des Hosts ist erreichbar.",
+    "join_hint": "Öffne den Mehrspieler-Modus von Minecraft Java Edition – die Welt erscheint automatisch in der LAN-Liste.",
     "join_route": "Route",
     "detecting": "Wird ermittelt…",
     "sent": "Gesendet",

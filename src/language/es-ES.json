@@ -1196,7 +1196,7 @@
     "address_copied": "Dirección copiada al portapapeles",
     "join_ready": "El túnel está listo",
     "join_starting": "Estableciendo el túnel",
-    "join_hint": "Abre Minecraft, añade esta dirección en multijugador y podrás entrar al mundo del anfitrión.",
+    "join_hint": "Abre el multijugador de Minecraft Java Edition y el mundo aparecerá automáticamente en la lista de LAN.",
     "join_route": "Ruta",
     "detecting": "Detectando…",
     "sent": "Enviado",

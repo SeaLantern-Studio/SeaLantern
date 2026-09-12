@@ -15,6 +15,7 @@ use std::sync::Mutex as StdMutex;
 use std::time::{Duration, Instant};
 
 use sculk::ErrorCategory as SculkErrorCategory;
+use sculk::minecraft::lan::LanBroadcaster;
 use sculk::minecraft::probe_server;
 use sculk::persist::{self, HostState as PersistedHostState};
 use sculk::tunnel::{
@@ -47,6 +48,9 @@ const MINECRAFT_PROBE_TIMEOUT: Duration = Duration::from_secs(1);
 /// `PathChanged` 事件的发送节流；与 SeaLantern Connect 保持一致。
 const TUNNEL_EVENT_DELAY: Duration = Duration::from_secs(1);
 
+/// 局域网公告里的世界名称；本机 Minecraft 多人列表直接显示它。
+const LAN_BROADCAST_NAME: &str = "Sea Lantern";
+
 /// 用户侧分享链接前缀；内部 `JoinUri` 只在进入 sculk 前使用。
 const SHARE_URL_PREFIX: &str = "https://ideaflash.cn/#v1/";
 const JOIN_URI_PREFIX: &str = "sculk://join/v1/";
@@ -57,6 +61,8 @@ pub struct OnlineTunnelService {
     join: SculkService,
     host: Arc<AsyncMutex<Option<HostSession>>>,
     events: Arc<EventFanout>,
+    /// 加入方就绪后的局域网公告；本机 Minecraft 无需手动输入地址即可发现房间。
+    lan_broadcast: Arc<StdMutex<Option<LanBroadcaster>>>,
     /// Host 令牌状态与稳定 `ServiceId` 的持久化路径。
     state_path: PathBuf,
 }
@@ -107,6 +113,7 @@ impl OnlineTunnelService {
             join: SculkService::new(),
             host: Arc::new(AsyncMutex::new(None)),
             events: Arc::new(EventFanout { sender, task: StdMutex::new(None) }),
+            lan_broadcast: Arc::new(StdMutex::new(None)),
             state_path,
         }
     }
@@ -239,6 +246,7 @@ impl OnlineTunnelService {
         let session = self.host.lock().await.take();
         if let Some(session) = session {
             self.stop_fanout();
+            self.stop_lan_broadcast();
             let stop_result = session.handle.stop().await;
             session.node.close().await;
             stop_result.map_err(|error| OnlineTunnelError::provider("stop host service", error))?;
@@ -251,7 +259,19 @@ impl OnlineTunnelService {
 
         self.join.stop().await.map_err(map_service_error)?;
         self.stop_fanout();
+        // 扇出任务可能没来得及处理最后一条 Idle 状态就被中止，这里兜底。
+        self.stop_lan_broadcast();
         Ok(TunnelStatus::idle())
+    }
+
+    /// 停止局域网公告；没有公告时是空操作。
+    fn stop_lan_broadcast(&self) {
+        let Ok(mut current) = self.lan_broadcast.lock() else {
+            return;
+        };
+        if let Some(broadcaster) = current.take() {
+            let _ = broadcaster.stop();
+        }
     }
 
     /// 查询当前隧道状态。
@@ -295,6 +315,7 @@ impl OnlineTunnelService {
     /// 幂等关闭服务持有的隧道与事件转发任务。
     pub async fn shutdown(&self) -> Result<(), OnlineTunnelError> {
         self.stop_fanout();
+        self.stop_lan_broadcast();
         if let Some(session) = self.host.lock().await.take() {
             let stop_result = session.handle.stop().await;
             session.node.close().await;
@@ -308,10 +329,16 @@ impl OnlineTunnelService {
         self.stop_fanout();
         let mut updates = self.join.subscribe();
         let sender = self.events.sender.clone();
+        let broadcast = Arc::clone(&self.lan_broadcast);
         let task = tokio::spawn(async move {
             while let Some(update) = updates.recv().await {
-                if let SculkUpdate::Event(event) = update {
-                    let _ = sender.send(map_event(event));
+                match update {
+                    // 就绪时把房间公告到本机局域网，Minecraft 多人列表会直接列出它。
+                    SculkUpdate::Status(status) => sync_lan_broadcast(&broadcast, &status),
+                    SculkUpdate::Event(event) => {
+                        let _ = sender.send(map_event(event));
+                    }
+                    _ => {}
                 }
             }
         });
@@ -479,6 +506,47 @@ async fn save_host_state(
         },
     )
     .map_err(|error| OnlineTunnelError::provider("save host state", error))
+}
+
+/// 按 Join 状态同步局域网公告：就绪时公告本地端口，其他阶段一律停止。
+fn sync_lan_broadcast(broadcast: &StdMutex<Option<LanBroadcaster>>, status: &SculkStatus) {
+    let desired_port = if status.state.phase == SculkPhase::Active
+        && status.state.mode == Some(sculk::tunnel::TunnelMode::Join)
+    {
+        status
+            .state
+            .local_addr
+            .and_then(|addr| NonZeroU16::new(addr.port()))
+    } else {
+        None
+    };
+
+    let Ok(mut current) = broadcast.lock() else {
+        return;
+    };
+
+    let Some(port) = desired_port else {
+        if let Some(broadcaster) = current.take() {
+            let _ = broadcaster.stop();
+        }
+        return;
+    };
+
+    // 后台线程会自行探测端口可用性；仍在运行就不重建。
+    if current.as_ref().is_some_and(|item| !item.is_finished()) {
+        return;
+    }
+    if let Some(broadcaster) = current.take() {
+        let _ = broadcaster.stop();
+    }
+    match LanBroadcaster::start(LAN_BROADCAST_NAME, port) {
+        Ok(broadcaster) => *current = Some(broadcaster),
+        Err(error) => tracing::warn!(
+            target: "sealantern.feature.online",
+            %error,
+            "failed to announce the joined world on the local network"
+        ),
+    }
 }
 
 fn apply_peer_event(peers: &StdMutex<BTreeMap<String, PeerState>>, event: &SculkEvent) {
@@ -725,6 +793,14 @@ mod tests {
 
         assert!(matches!(result, Err(OnlineTunnelError::PortUnavailable { .. })));
         assert_eq!(service.status().await.expect("idle status"), TunnelStatus::idle());
+    }
+
+    #[test]
+    fn stopping_lan_broadcast_without_one_is_a_no_op() {
+        let service = OnlineTunnelService::with_state_path(temp_state_path("lan-idle"));
+
+        service.stop_lan_broadcast();
+        service.stop_lan_broadcast();
     }
 
     #[test]

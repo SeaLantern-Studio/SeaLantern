@@ -261,7 +261,7 @@
       "address_copied": "地址已复制到剪贴板",
       "join_ready": "隧道已就绪",
       "join_starting": "正在建立隧道",
-      "join_hint": "打开 Minecraft，在多人游戏中添加该地址即可进入房主的世界。",
+      "join_hint": "打开 Minecraft Java 版多人游戏，房间会自动出现在局域网列表中。",
       "join_route": "连接路径",
       "detecting": "检测中…",
       "sent": "发送",

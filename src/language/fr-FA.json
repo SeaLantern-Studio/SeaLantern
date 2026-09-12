@@ -1196,7 +1196,7 @@
     "address_copied": "Adresse copiée dans le presse-papiers",
     "join_ready": "Le tunnel est prêt",
     "join_starting": "Établissement du tunnel",
-    "join_hint": "Ouvrez Minecraft, ajoutez cette adresse en multijoueur et le monde de l'hôte sera accessible.",
+    "join_hint": "Ouvrez le multijoueur de Minecraft Java Edition : le monde apparaîtra automatiquement dans la liste LAN.",
     "join_route": "Route",
     "detecting": "Détection…",
     "sent": "Envoyé",

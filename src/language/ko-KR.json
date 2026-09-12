@@ -1196,7 +1196,7 @@
     "address_copied": "주소가 클립보드에 복사되었습니다",
     "join_ready": "터널이 준비되었습니다",
     "join_starting": "터널을 설정하는 중",
-    "join_hint": "Minecraft를 열고 멀티플레이에 이 주소를 추가하면 호스트의 세계에 접속할 수 있습니다.",
+    "join_hint": "Minecraft Java Edition 멀티플레이를 열면 LAN 목록에 자동으로 표시됩니다.",
     "join_route": "연결 경로",
     "detecting": "감지 중…",
     "sent": "보냄",

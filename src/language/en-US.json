@@ -261,7 +261,7 @@
       "address_copied": "Address copied to clipboard",
       "join_ready": "The tunnel is ready",
       "join_starting": "Setting up the tunnel",
-      "join_hint": "Open Minecraft, add this address under Multiplayer, and the host's world will be reachable.",
+      "join_hint": "Open Minecraft Java Edition multiplayer and the room appears in the LAN list automatically.",
       "join_route": "Route",
       "detecting": "Detecting…",
       "sent": "Sent",

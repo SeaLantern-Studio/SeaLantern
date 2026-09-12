@@ -1196,7 +1196,7 @@
     "address_copied": "アドレスをクリップボードにコピーしました",
     "join_ready": "トンネルの準備が完了しました",
     "join_starting": "トンネルを確立しています",
-    "join_hint": "Minecraft を開き、マルチプレイにこのアドレスを追加するとホストのワールドに入れます。",
+    "join_hint": "Minecraft Java 版のマルチプレイを開くと、LAN リストに自動で表示されます。",
     "join_route": "接続経路",
     "detecting": "検出中…",
     "sent": "送信",
