@@ -11,8 +11,6 @@ use serde::{Deserialize, Serialize};
 pub struct OnlineTunnelHostRequest {
     /// 对外暴露给对端的 Minecraft 端口。
     pub minecraft_port: u16,
-    /// 可选的对端访问密码。
-    pub password: Option<String>,
     /// 可选的并发玩家数上限。
     pub max_players: Option<u32>,
     /// 可选的中继服务器地址；为空时使用默认中继。
@@ -53,8 +51,6 @@ pub struct OnlineTunnelJoinRequest {
     pub ticket: String,
     /// 本地需要暴露到隧道内的端口。
     pub local_port: u16,
-    /// 可选的对端访问密码。
-    pub password: Option<String>,
     /// 可选的连接失败最大重试次数。
     pub max_retries: Option<u32>,
 }

@@ -5614,13 +5614,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f6dbd50d201d0360f82105ef70382048e2ab96febe53c6b5a497852632ebaae"
 dependencies = [
  "base64 0.23.1",
+ "dirs 6.0.0",
  "futures-util",
  "iroh",
  "rand 0.10.2",
+ "serde",
  "socket2",
  "subtle",
  "thiserror 2.0.20",
  "tokio",
+ "toml 1.1.4+spec-1.1.0",
  "tracing",
  "url",
 ]

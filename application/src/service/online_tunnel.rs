@@ -11,16 +11,20 @@
 //! [`OnlineTunnelServiceError`]：非法请求 → `InvalidInput`，隧道忙碌 →
 //! `Busy`，未运行 → `NotRunning`，其余 provider 失败 → `OperationFailed`。
 
+use std::time::Duration;
+
 use async_trait::async_trait;
 use sealantern_contract::OnlineTunnelServiceError;
 use sealantern_contract::online::{
     OnlineTunnelConnection, OnlineTunnelErrorCategory, OnlineTunnelEvent, OnlineTunnelHostRequest,
-    OnlineTunnelJoinRequest, OnlineTunnelMode, OnlineTunnelPhase, OnlineTunnelStatus,
+    OnlineTunnelJoinRequest, OnlineTunnelLinkLifetime, OnlineTunnelMode, OnlineTunnelPhase,
+    OnlineTunnelStatus,
 };
 use sealantern_feature::online::{
     HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError,
     OnlineTunnelService as FeatureOnlineTunnelService, TunnelConnection, TunnelErrorCategory,
-    TunnelEvent, TunnelIdentity, TunnelMode, TunnelPhase, TunnelStatus, TunnelTicket,
+    TunnelEvent, TunnelIdentity, TunnelLinkLifetime, TunnelMode, TunnelPhase, TunnelStatus,
+    TunnelTicket,
 };
 use tokio::sync::broadcast;
 
@@ -57,9 +61,9 @@ impl OnlineTunnelService for CoreOnlineTunnelService {
         self.inner
             .host(HostTunnelRequest {
                 minecraft_port: request.minecraft_port,
-                password: request.password,
                 max_players: request.max_players,
                 relay_url: request.relay_url,
+                link_lifetime: map_link_lifetime(request.link_lifetime),
                 identity,
             })
             .await
@@ -80,7 +84,6 @@ impl OnlineTunnelService for CoreOnlineTunnelService {
             .join(JoinTunnelRequest {
                 ticket,
                 local_port: request.local_port,
-                password: request.password,
                 max_retries: request.max_retries,
             })
             .await
@@ -125,9 +128,31 @@ impl OnlineTunnelService for CoreOnlineTunnelService {
 fn map_error(error: OnlineTunnelError) -> OnlineTunnelServiceError {
     match error {
         OnlineTunnelError::InvalidRequest { .. } => OnlineTunnelServiceError::InvalidInput,
+        OnlineTunnelError::PortUnavailable { .. } => OnlineTunnelServiceError::PortUnavailable,
         OnlineTunnelError::Busy => OnlineTunnelServiceError::Busy,
         OnlineTunnelError::NotRunning => OnlineTunnelServiceError::NotRunning,
         OnlineTunnelError::Provider { .. } => OnlineTunnelServiceError::OperationFailed,
+    }
+}
+
+/// 将接口层的分享链接有效期映射为能力层策略。
+fn map_link_lifetime(value: OnlineTunnelLinkLifetime) -> TunnelLinkLifetime {
+    match value {
+        OnlineTunnelLinkLifetime::Always => TunnelLinkLifetime::UntilStopped,
+        OnlineTunnelLinkLifetime::Never => TunnelLinkLifetime::Permanent,
+        OnlineTunnelLinkLifetime::Hours1 => TunnelLinkLifetime::After(Duration::from_secs(60 * 60)),
+        OnlineTunnelLinkLifetime::Hours3 => {
+            TunnelLinkLifetime::After(Duration::from_secs(3 * 60 * 60))
+        }
+        OnlineTunnelLinkLifetime::Hours6 => {
+            TunnelLinkLifetime::After(Duration::from_secs(6 * 60 * 60))
+        }
+        OnlineTunnelLinkLifetime::Hours12 => {
+            TunnelLinkLifetime::After(Duration::from_secs(12 * 60 * 60))
+        }
+        OnlineTunnelLinkLifetime::Hours24 => {
+            TunnelLinkLifetime::After(Duration::from_secs(24 * 60 * 60))
+        }
     }
 }
 

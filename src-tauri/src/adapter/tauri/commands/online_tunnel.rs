@@ -119,6 +119,8 @@ fn emit_lifecycle_event(app: &AppHandle, event: OnlineTunnelEvent) {
 }
 
 /// 把票据写入系统剪贴板；失败只记录日志，不影响隧道建立。
+///
+/// 能力层已经把内部 Join URI 转成用户侧分享链接，这里直接写入。
 fn copy_ticket_to_clipboard(ticket: &str) {
     if let Err(error) = sealantern_infra::platform::copy_text(ticket) {
         tracing::warn!(
