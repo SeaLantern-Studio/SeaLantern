@@ -7,6 +7,7 @@ mod certificate;
 mod elevation;
 mod environment;
 mod error;
+mod fonts;
 mod locations;
 mod proxy;
 mod system;
@@ -17,6 +18,7 @@ pub use certificate::{
 pub use elevation::{ElevationLaunch, is_elevated, request_elevation};
 pub use environment::{Environment, EnvironmentError};
 pub use error::PlatformError;
+pub use fonts::collect_system_fonts;
 pub use locations::{get_app_data_dir, get_default_run_path, get_or_create_app_data_dir};
 pub use proxy::{PlatformSystemProxyProvider, SystemProxyReadError, current_system_proxy};
 pub use system::{

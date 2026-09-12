@@ -16,6 +16,7 @@ use sealantern_contract::settings::{
     SettingsGroupInfo, SettingsOption, SettingsOverview, UpdateResult,
 };
 use sealantern_feature::config::SettingsManager;
+use sealantern_infra::platform::collect_system_fonts;
 
 use crate::error::SettingsError;
 use crate::port::SettingsService;
@@ -212,6 +213,14 @@ impl Default for CoreSettingsService {
 impl SettingsService for CoreSettingsService {
     async fn settings_overview(&self) -> Result<SettingsOverview, SettingsServiceError> {
         Ok(Self::build_overview_inner())
+    }
+
+    async fn system_fonts(&self) -> Result<Vec<String>, SettingsServiceError> {
+        // font-kit 枚举会遍历系统字体目录，属阻塞 IO，放到阻塞线程池执行。
+        tokio::task::spawn_blocking(collect_system_fonts)
+            .await
+            .map_err(|_| SettingsServiceError::OperationFailed)?
+            .map_err(|_| SettingsServiceError::OperationFailed)
     }
 
     async fn get(&self) -> Result<AppSettings, SettingsServiceError> {

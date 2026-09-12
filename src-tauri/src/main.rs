@@ -56,8 +56,8 @@ use adapter::tauri::commands::server_config::{
     read_server_properties_source, write_server_properties, write_server_properties_source,
 };
 use adapter::tauri::commands::settings::{
-    export_settings, get_settings, import_settings, reset_settings, settings_overview,
-    update_settings, update_settings_partial,
+    export_settings, get_settings, get_system_fonts, import_settings, reset_settings,
+    settings_overview, update_settings, update_settings_partial,
 };
 use adapter::tauri::commands::system::{
     get_default_run_path, get_server_resource_usage, get_system_snapshot,
@@ -281,6 +281,7 @@ fn main() {
             download_query,
             export_settings,
             get_settings,
+            get_system_fonts,
             import_settings,
             reset_settings,
             settings_overview,
@@ -446,6 +447,7 @@ mod tests {
         "download_query",
         "export_settings",
         "get_settings",
+        "get_system_fonts",
         "import_settings",
         "reset_settings",
         "settings_overview",

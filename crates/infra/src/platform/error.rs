@@ -22,6 +22,8 @@ pub enum PlatformError {
     InvalidCommandOutput { operation: &'static str },
     /// 无法确定默认运行路径（标准数据目录、文档目录与当前目录均不可用）。
     ResolveDefaultRunPath { source: std::io::Error },
+    /// 无法枚举系统字体族。
+    FontEnumerationFailed { message: String },
 }
 
 impl fmt::Display for PlatformError {
@@ -44,6 +46,9 @@ impl fmt::Display for PlatformError {
             }
             Self::ResolveDefaultRunPath { source } => {
                 write!(formatter, "failed to resolve default run path: {source}")
+            }
+            Self::FontEnumerationFailed { message } => {
+                write!(formatter, "failed to enumerate system fonts: {message}")
             }
         }
     }
