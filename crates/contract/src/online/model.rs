@@ -45,6 +45,50 @@ pub enum OnlineTunnelMode {
     Join,
 }
 
+/// 在线隧道的生命周期阶段。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OnlineTunnelPhase {
+    /// 空闲，未持有隧道。
+    Idle,
+    /// 正在建立隧道。
+    Starting,
+    /// 隧道已建立并运行。
+    Active,
+    /// 正在关闭隧道。
+    Stopping,
+}
+
+/// 在线隧道错误的产品级分类。
+///
+/// 分类稳定且可序列化，供前端按类别给出可操作的提示；底层细节不跨传输面。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OnlineTunnelErrorCategory {
+    /// 票据格式非法或协议版本不受支持。
+    InvalidJoinUri,
+    /// 端点或中继配置不可用。
+    InvalidEndpoint,
+    /// Host 拒绝了访问凭证。
+    AuthorizationDenied,
+    /// 无法连通远端 Host 或其中继路径。
+    HostUnreachable,
+    /// 本地目标服务（Minecraft 服务端）不可达。
+    TargetUnavailable,
+    /// 本地监听地址无法绑定。
+    LocalPortUnavailable,
+    /// 持久化身份无法安全读写。
+    IdentityUnavailable,
+    /// 生命周期操作与当前状态冲突。
+    OperationConflict,
+    /// 触达连接数或工作上限。
+    ResourceLimit,
+    /// 调用方提供的配置非法。
+    InvalidConfiguration,
+    /// 无明确产品动作可恢复的内部错误。
+    Internal,
+}
+
 /// 已建立隧道中单个对端的运行时快照。
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -69,14 +113,18 @@ pub struct OnlineTunnelConnection {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct OnlineTunnelStatus {
-    /// 隧道是否处于活动状态。
+    /// 隧道是否处于活动状态（等价于 `phase == active`）。
     pub active: bool,
+    /// 当前生命周期阶段。
+    pub phase: OnlineTunnelPhase,
     /// 当前运行角色；隧道未启动时为空。
     pub mode: Option<OnlineTunnelMode>,
     /// 仅 Host 隧道存在，供主机分享给对端使用。
     pub ticket: Option<String>,
     /// 当前已建立的对端连接列表。
     pub connections: Vec<OnlineTunnelConnection>,
+    /// 当前生命周期内最近一次结构化错误分类。
+    pub last_error: Option<OnlineTunnelErrorCategory>,
 }
 
 /// 应用层的在线隧道事件。
@@ -140,8 +188,12 @@ pub enum OnlineTunnelEvent {
         /// 拒绝原因。
         reason: String,
     },
+    /// 访问令牌已轮换，Host 应重新获取 Join URI。
+    TokenRotated,
     /// 隧道操作失败。
     Error {
+        /// 错误分类。
+        category: OnlineTunnelErrorCategory,
         /// 错误描述。
         message: String,
     },

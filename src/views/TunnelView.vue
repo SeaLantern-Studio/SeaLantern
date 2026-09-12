@@ -160,6 +160,8 @@ function formatTunnelEvent(event: OnlineTunnelEvent): string {
       return i18n.t("tunnel.ev_rejected", { remote_id: event.remote_id, reason: event.reason });
     case "error":
       return i18n.t("tunnel.ev_error", { message: event.message });
+    case "token_rotated":
+      return i18n.t("tunnel.ev_token_rotated");
     case "provider_message":
       return i18n.t("tunnel.ev_provider_message", { message: event.message });
     default:

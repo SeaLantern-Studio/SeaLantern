@@ -14,13 +14,13 @@
 use async_trait::async_trait;
 use sealantern_contract::OnlineTunnelServiceError;
 use sealantern_contract::online::{
-    OnlineTunnelConnection, OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest,
-    OnlineTunnelMode, OnlineTunnelStatus,
+    OnlineTunnelConnection, OnlineTunnelErrorCategory, OnlineTunnelEvent, OnlineTunnelHostRequest,
+    OnlineTunnelJoinRequest, OnlineTunnelMode, OnlineTunnelPhase, OnlineTunnelStatus,
 };
 use sealantern_feature::online::{
     HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError,
-    OnlineTunnelService as FeatureOnlineTunnelService, TunnelConnection, TunnelEvent,
-    TunnelIdentity, TunnelMode, TunnelStatus, TunnelTicket,
+    OnlineTunnelService as FeatureOnlineTunnelService, TunnelConnection, TunnelErrorCategory,
+    TunnelEvent, TunnelIdentity, TunnelMode, TunnelPhase, TunnelStatus, TunnelTicket,
 };
 use tokio::sync::broadcast;
 
@@ -139,6 +139,37 @@ fn map_mode(value: TunnelMode) -> OnlineTunnelMode {
     }
 }
 
+/// 将底层生命周期阶段映射为接口阶段。
+fn map_phase(value: TunnelPhase) -> OnlineTunnelPhase {
+    match value {
+        TunnelPhase::Idle => OnlineTunnelPhase::Idle,
+        TunnelPhase::Starting => OnlineTunnelPhase::Starting,
+        TunnelPhase::Active => OnlineTunnelPhase::Active,
+        TunnelPhase::Stopping => OnlineTunnelPhase::Stopping,
+    }
+}
+
+/// 将底层错误分类映射为接口错误分类。
+fn map_error_category(value: TunnelErrorCategory) -> OnlineTunnelErrorCategory {
+    match value {
+        TunnelErrorCategory::InvalidJoinUri => OnlineTunnelErrorCategory::InvalidJoinUri,
+        TunnelErrorCategory::InvalidEndpoint => OnlineTunnelErrorCategory::InvalidEndpoint,
+        TunnelErrorCategory::AuthorizationDenied => OnlineTunnelErrorCategory::AuthorizationDenied,
+        TunnelErrorCategory::HostUnreachable => OnlineTunnelErrorCategory::HostUnreachable,
+        TunnelErrorCategory::TargetUnavailable => OnlineTunnelErrorCategory::TargetUnavailable,
+        TunnelErrorCategory::LocalPortUnavailable => {
+            OnlineTunnelErrorCategory::LocalPortUnavailable
+        }
+        TunnelErrorCategory::IdentityUnavailable => OnlineTunnelErrorCategory::IdentityUnavailable,
+        TunnelErrorCategory::OperationConflict => OnlineTunnelErrorCategory::OperationConflict,
+        TunnelErrorCategory::ResourceLimit => OnlineTunnelErrorCategory::ResourceLimit,
+        TunnelErrorCategory::InvalidConfiguration => {
+            OnlineTunnelErrorCategory::InvalidConfiguration
+        }
+        TunnelErrorCategory::Internal => OnlineTunnelErrorCategory::Internal,
+    }
+}
+
 /// 将底层对端连接快照映射为接口连接快照。
 fn map_connection(value: TunnelConnection) -> OnlineTunnelConnection {
     OnlineTunnelConnection {
@@ -156,9 +187,11 @@ fn map_connection(value: TunnelConnection) -> OnlineTunnelConnection {
 fn map_status(value: TunnelStatus) -> OnlineTunnelStatus {
     OnlineTunnelStatus {
         active: value.active,
+        phase: map_phase(value.phase),
         mode: value.mode.map(map_mode),
         ticket: value.ticket.map(|ticket| ticket.as_str().to_owned()),
         connections: value.connections.into_iter().map(map_connection).collect(),
+        last_error: value.last_error.map(map_error_category),
     }
 }
 
@@ -182,7 +215,11 @@ fn map_event(value: TunnelEvent) -> OnlineTunnelEvent {
         TunnelEvent::PlayerRejected { remote_id, reason } => {
             OnlineTunnelEvent::PlayerRejected { remote_id, reason }
         }
-        TunnelEvent::Error { message } => OnlineTunnelEvent::Error { message },
+        TunnelEvent::TokenRotated => OnlineTunnelEvent::TokenRotated,
+        TunnelEvent::Error { category, message } => OnlineTunnelEvent::Error {
+            category: map_error_category(category),
+            message,
+        },
         TunnelEvent::ProviderMessage { message } => OnlineTunnelEvent::ProviderMessage { message },
     }
 }

@@ -1207,6 +1207,7 @@
     "ev_rejected": "Pair refusé : {{remote_id}} ({{reason}})",
     "ev_error": "Erreur du tunnel : {{message}}",
     "ev_provider_message": "Message du relais : {{message}}",
+    "ev_token_rotated": "Ticket actualisé (jeton d'accès renouvelé)",
     "ev_started": "Tunnel démarré : {{mode}}",
     "ev_stopped": "Tunnel arrêté : {{mode}}",
     "ev_unknown": "Événement du tunnel : {{kind}}"

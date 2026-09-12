@@ -16,6 +16,31 @@ impl TunnelMode {
     }
 }
 
+/// 隧道生命周期阶段。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TunnelPhase {
+    Idle,
+    Starting,
+    Active,
+    Stopping,
+}
+
+/// 隧道错误的产品级分类。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TunnelErrorCategory {
+    InvalidJoinUri,
+    InvalidEndpoint,
+    AuthorizationDenied,
+    HostUnreachable,
+    TargetUnavailable,
+    LocalPortUnavailable,
+    IdentityUnavailable,
+    OperationConflict,
+    ResourceLimit,
+    InvalidConfiguration,
+    Internal,
+}
+
 /// Host 隧道启动请求。
 #[derive(Clone)]
 pub struct HostTunnelRequest {
@@ -156,7 +181,10 @@ pub enum TunnelEvent {
         remote_id: String,
         reason: String,
     },
+    /// 访问令牌已轮换，Host 应重新获取票据。
+    TokenRotated,
     Error {
+        category: TunnelErrorCategory,
         message: String,
     },
     ProviderMessage {
@@ -168,18 +196,22 @@ pub enum TunnelEvent {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TunnelStatus {
     pub active: bool,
+    pub phase: TunnelPhase,
     pub mode: Option<TunnelMode>,
     pub ticket: Option<TunnelTicket>,
     pub connections: Vec<TunnelConnection>,
+    pub last_error: Option<TunnelErrorCategory>,
 }
 
 impl TunnelStatus {
     pub(crate) fn idle() -> Self {
         Self {
             active: false,
+            phase: TunnelPhase::Idle,
             mode: None,
             ticket: None,
             connections: Vec::new(),
+            last_error: None,
         }
     }
 }

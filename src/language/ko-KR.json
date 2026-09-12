@@ -1207,6 +1207,7 @@
     "ev_rejected": "상대가 거부되었습니다: {{remote_id}} ({{reason}})",
     "ev_error": "터널 오류: {{message}}",
     "ev_provider_message": "릴레이 메시지: {{message}}",
+    "ev_token_rotated": "티켓이 갱신되었습니다 (액세스 토큰 회전)",
     "ev_started": "터널이 시작되었습니다: {{mode}}",
     "ev_stopped": "터널이 중지되었습니다: {{mode}}",
     "ev_unknown": "터널 이벤트: {{kind}}"

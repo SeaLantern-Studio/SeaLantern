@@ -14,6 +14,7 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 
+use sculk::ErrorCategory as SculkErrorCategory;
 use sculk::tunnel::{
     AccessToken, ConnectionSnapshot, HostConfig, HostOptions, JoinConfig, JoinOptions, JoinUri,
     LocalPort, RelayUrl, SecretKey, ServiceId, TunnelEvent as SculkEvent,
@@ -25,8 +26,8 @@ use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 use super::model::{
-    HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError, TunnelConnection, TunnelEvent,
-    TunnelIdentity, TunnelMode, TunnelStatus, TunnelTicket,
+    HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError, TunnelConnection, TunnelErrorCategory,
+    TunnelEvent, TunnelIdentity, TunnelMode, TunnelPhase, TunnelStatus, TunnelTicket,
 };
 
 /// 应用事件广播的缓冲区容量。
@@ -200,7 +201,41 @@ fn map_status(status: &SculkStatus) -> TunnelStatus {
         .and_then(|uri| uri.expose_secret_uri().ok())
         .map(TunnelTicket::from_provider);
     let connections = status.connections.iter().map(map_connection).collect();
-    TunnelStatus { active, mode, ticket, connections }
+    TunnelStatus {
+        active,
+        phase: map_phase(status.state.phase),
+        mode,
+        ticket,
+        connections,
+        last_error: status.last_error.map(map_error_category),
+    }
+}
+
+fn map_phase(phase: SculkPhase) -> TunnelPhase {
+    match phase {
+        SculkPhase::Idle => TunnelPhase::Idle,
+        SculkPhase::Starting => TunnelPhase::Starting,
+        SculkPhase::Active => TunnelPhase::Active,
+        SculkPhase::Stopping => TunnelPhase::Stopping,
+    }
+}
+
+fn map_error_category(category: SculkErrorCategory) -> TunnelErrorCategory {
+    match category {
+        SculkErrorCategory::InvalidJoinUri => TunnelErrorCategory::InvalidJoinUri,
+        SculkErrorCategory::InvalidEndpoint => TunnelErrorCategory::InvalidEndpoint,
+        SculkErrorCategory::AuthorizationDenied => TunnelErrorCategory::AuthorizationDenied,
+        SculkErrorCategory::HostUnreachable => TunnelErrorCategory::HostUnreachable,
+        SculkErrorCategory::TargetUnavailable => TunnelErrorCategory::TargetUnavailable,
+        SculkErrorCategory::LocalPortUnavailable => TunnelErrorCategory::LocalPortUnavailable,
+        SculkErrorCategory::IdentityUnavailable => TunnelErrorCategory::IdentityUnavailable,
+        SculkErrorCategory::OperationConflict => TunnelErrorCategory::OperationConflict,
+        SculkErrorCategory::ResourceLimit => TunnelErrorCategory::ResourceLimit,
+        SculkErrorCategory::InvalidConfiguration => TunnelErrorCategory::InvalidConfiguration,
+        SculkErrorCategory::Internal => TunnelErrorCategory::Internal,
+        // sculk 的分类标记为 non_exhaustive：新增分类在产品层按 Internal 兜底。
+        _ => TunnelErrorCategory::Internal,
+    }
 }
 
 fn map_mode(mode: sculk::tunnel::TunnelMode) -> TunnelMode {
@@ -244,7 +279,11 @@ fn map_event(event: SculkEvent) -> TunnelEvent {
         SculkEvent::PlayerRejected { id, reason } => {
             TunnelEvent::PlayerRejected { remote_id: id.to_string(), reason }
         }
-        SculkEvent::Error { message, .. } => TunnelEvent::Error { message },
+        SculkEvent::TokenRotated => TunnelEvent::TokenRotated,
+        SculkEvent::Error { category, message } => TunnelEvent::Error {
+            category: map_error_category(category),
+            message,
+        },
         other => TunnelEvent::ProviderMessage { message: format!("{other:?}") },
     }
 }

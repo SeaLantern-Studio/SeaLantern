@@ -1207,6 +1207,7 @@
     "ev_rejected": "Đầu đối diện bị từ chối: {{remote_id}} ({{reason}})",
     "ev_error": "Lỗi đường hầm: {{message}}",
     "ev_provider_message": "Tin nhắn từ relay: {{message}}",
+    "ev_token_rotated": "Vé đã được làm mới (mã truy cập đã xoay)",
     "ev_started": "Đường hầm đã khởi động: {{mode}}",
     "ev_stopped": "Đường hầm đã dừng: {{mode}}",
     "ev_unknown": "Sự kiện đường hầm: {{kind}}"

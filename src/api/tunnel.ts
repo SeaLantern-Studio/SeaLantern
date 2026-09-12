@@ -12,11 +12,30 @@ export interface TunnelConnection {
   elapsed_secs: number;
 }
 
+/** 隧道生命周期阶段（与后端 snake_case 对齐） */
+export type OnlineTunnelPhase = "idle" | "starting" | "active" | "stopping";
+
+/** 隧道错误的产品级分类（与后端 snake_case 对齐） */
+export type OnlineTunnelErrorCategory =
+  | "invalid_join_uri"
+  | "invalid_endpoint"
+  | "authorization_denied"
+  | "host_unreachable"
+  | "target_unavailable"
+  | "local_port_unavailable"
+  | "identity_unavailable"
+  | "operation_conflict"
+  | "resource_limit"
+  | "invalid_configuration"
+  | "internal";
+
 export interface TunnelStatus {
   running: boolean;
+  phase: OnlineTunnelPhase;
   mode: "host" | "join" | null;
   ticket: string | null;
   connections: TunnelConnection[];
+  lastError: OnlineTunnelErrorCategory | null;
 }
 
 /** 后端 online_tunnel_event 的事件负载（serde tag = "kind"） */
@@ -32,7 +51,8 @@ export type OnlineTunnelEvent =
   | { kind: "reconnected" }
   | { kind: "authentication_failed"; remote_id: string }
   | { kind: "player_rejected"; remote_id: string; reason: string }
-  | { kind: "error"; message: string }
+  | { kind: "token_rotated" }
+  | { kind: "error"; category: OnlineTunnelErrorCategory; message: string }
   | { kind: "provider_message"; message: string };
 
 export interface TunnelHostParams {
@@ -51,9 +71,11 @@ export interface TunnelJoinParams {
 /** 后端 OnlineTunnelStatus 原始结构，字段和前端 TunnelStatus 差异较大 */
 interface TunnelStatusRaw {
   active: boolean;
+  phase: OnlineTunnelPhase;
   mode: "host" | "join" | null;
   ticket: string | null;
   connections: TunnelConnectionRaw[];
+  last_error: OnlineTunnelErrorCategory | null;
 }
 
 /** 后端连接信息用 elapsed_ms，前端用 elapsed_secs */
@@ -71,8 +93,10 @@ interface TunnelConnectionRaw {
 function toTunnelStatus(raw: TunnelStatusRaw): TunnelStatus {
   return {
     running: raw.active,
+    phase: raw.phase,
     mode: raw.mode,
     ticket: raw.ticket,
+    lastError: raw.last_error,
     connections: raw.connections.map((c) => ({
       remote_id: c.remote_id,
       is_relay: c.is_relay,

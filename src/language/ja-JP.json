@@ -1207,6 +1207,7 @@
     "ev_rejected": "対端が拒否されました：{{remote_id}}（{{reason}}）",
     "ev_error": "トンネルエラー：{{message}}",
     "ev_provider_message": "リレーメッセージ：{{message}}",
+    "ev_token_rotated": "チケットを更新しました（アクセストークンをローテーション）",
     "ev_started": "トンネルが起動しました：{{mode}}",
     "ev_stopped": "トンネルが停止しました：{{mode}}",
     "ev_unknown": "トンネルイベント：{{kind}}"

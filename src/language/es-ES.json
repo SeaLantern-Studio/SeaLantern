@@ -1207,6 +1207,7 @@
     "ev_rejected": "Par rechazado: {{remote_id}} ({{reason}})",
     "ev_error": "Error del túnel: {{message}}",
     "ev_provider_message": "Mensaje del relé: {{message}}",
+    "ev_token_rotated": "Ticket actualizado (token de acceso rotado)",
     "ev_started": "Túnel iniciado: {{mode}}",
     "ev_stopped": "Túnel detenido: {{mode}}",
     "ev_unknown": "Evento del túnel: {{kind}}"

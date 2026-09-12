@@ -1207,6 +1207,7 @@
     "ev_rejected": "Узел отклонён: {{remote_id}} ({{reason}})",
     "ev_error": "Ошибка туннеля: {{message}}",
     "ev_provider_message": "Сообщение ретранслятора: {{message}}",
+    "ev_token_rotated": "Билет обновлён (токен доступа обновлён)",
     "ev_started": "Туннель запущен: {{mode}}",
     "ev_stopped": "Туннель остановлен: {{mode}}",
     "ev_unknown": "Событие туннеля: {{kind}}"

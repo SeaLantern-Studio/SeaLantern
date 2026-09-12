@@ -7,7 +7,7 @@ mod model;
 mod service;
 
 pub use model::{
-    HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError, TunnelConnection, TunnelEvent,
-    TunnelIdentity, TunnelMode, TunnelStatus, TunnelTicket,
+    HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError, TunnelConnection, TunnelErrorCategory,
+    TunnelEvent, TunnelIdentity, TunnelMode, TunnelPhase, TunnelStatus, TunnelTicket,
 };
 pub use service::OnlineTunnelService;

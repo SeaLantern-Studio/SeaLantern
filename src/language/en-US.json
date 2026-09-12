@@ -272,6 +272,7 @@
       "ev_rejected": "Peer rejected: {{remote_id}} ({{reason}})",
       "ev_error": "Tunnel error: {{message}}",
       "ev_provider_message": "Relay message: {{message}}",
+      "ev_token_rotated": "Ticket refreshed (access token rotated)",
       "ev_started": "Tunnel started: {{mode}}",
       "ev_stopped": "Tunnel stopped: {{mode}}",
       "ev_unknown": "Tunnel event: {{kind}}"

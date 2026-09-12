@@ -5,6 +5,6 @@
 mod model;
 
 pub use model::{
-    OnlineTunnelConnection, OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest,
-    OnlineTunnelMode, OnlineTunnelStatus,
+    OnlineTunnelConnection, OnlineTunnelErrorCategory, OnlineTunnelEvent, OnlineTunnelHostRequest,
+    OnlineTunnelJoinRequest, OnlineTunnelMode, OnlineTunnelPhase, OnlineTunnelStatus,
 };
