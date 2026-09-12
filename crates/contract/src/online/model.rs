@@ -17,8 +17,32 @@ pub struct OnlineTunnelHostRequest {
     pub max_players: Option<u32>,
     /// 可选的中继服务器地址；为空时使用默认中继。
     pub relay_url: Option<String>,
+    /// 分享链接有效期；省略时表示「关闭隧道前一直有效」。
+    #[serde(default)]
+    pub link_lifetime: OnlineTunnelLinkLifetime,
     /// 可选的稳定 32 字节主机身份密钥，永远不会包含在响应中。
     pub identity: Option<Vec<u8>>,
+}
+
+/// 分享链接（访问令牌）的有效期；令牌轮换后旧链接立即失效。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OnlineTunnelLinkLifetime {
+    /// 关闭隧道前有效；每次发布都生成新链接。
+    #[default]
+    Always,
+    /// 复用同一条链接，直到手动轮换。
+    Never,
+    #[serde(rename = "1h")]
+    Hours1,
+    #[serde(rename = "3h")]
+    Hours3,
+    #[serde(rename = "6h")]
+    Hours6,
+    #[serde(rename = "12h")]
+    Hours12,
+    #[serde(rename = "24h")]
+    Hours24,
 }
 
 /// 以 Join 角色加入已有隧道的请求。
@@ -226,5 +250,41 @@ mod tests {
                 .expect("stopped event must serialize");
         assert_eq!(stopped["kind"], "stopped");
         assert_eq!(stopped["mode"], "join");
+    }
+
+    #[test]
+    fn host_request_accepts_every_lifetime_option() {
+        for option in ["always", "never", "1h", "3h", "6h", "12h", "24h"] {
+            let request: OnlineTunnelHostRequest = serde_json::from_value(serde_json::json!({
+                "minecraft_port": 25_565,
+                "max_players": null,
+                "relay_url": null,
+                "link_lifetime": option,
+                "identity": null,
+            }))
+            .unwrap_or_else(|error| panic!("{option} must deserialize: {error}"));
+            assert!(request.identity.is_none());
+        }
+    }
+
+    #[test]
+    fn host_request_defaults_to_always_and_rejects_unknown_lifetime() {
+        let request: OnlineTunnelHostRequest = serde_json::from_value(serde_json::json!({
+            "minecraft_port": 25_565,
+            "max_players": null,
+            "relay_url": null,
+            "identity": null,
+        }))
+        .expect("link_lifetime is optional");
+        assert_eq!(request.link_lifetime, OnlineTunnelLinkLifetime::Always);
+
+        let invalid = serde_json::from_value::<OnlineTunnelHostRequest>(serde_json::json!({
+            "minecraft_port": 25_565,
+            "max_players": null,
+            "relay_url": null,
+            "link_lifetime": "2h",
+            "identity": null,
+        }));
+        assert!(invalid.is_err());
     }
 }
