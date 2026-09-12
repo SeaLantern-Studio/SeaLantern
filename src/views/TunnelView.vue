@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理轮询
-import { computed, onActivated, onDeactivated, ref } from "vue";
+import { computed, onActivated, onDeactivated, onUnmounted, ref } from "vue";
 import ConsoleOutput from "@components/console/ConsoleOutput.vue";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { onTunnelEvent, tunnelApi, type OnlineTunnelEvent, type TunnelStatus } from "@api/tunnel";
@@ -43,7 +43,7 @@ const runningStatusClass = computed<"running" | "stopped">(() =>
   running.value ? "running" : "stopped",
 );
 const hasTicket = computed(() => Boolean(status.value?.ticket));
-const isIdle = computed(() => !running.value);
+const isIdle = computed(() => status.value?.phase === "idle");
 const isBusy = computed(() => pendingAction.value !== null);
 // TODO(backend): tunnel_copy_ticket / tunnel_generate_ticket / tunnel_regenerate_ticket
 // 后端尚未实现，暂时禁用票据复制/生成入口，避免点击后调用报错。ticket 目前仅由
@@ -179,12 +179,36 @@ function formatTunnelEvent(event: OnlineTunnelEvent): string[] {
   }
 }
 
+/** 停用期间缓存的最大日志行数，避免长时间后台运行时无限增长。 */
+const PENDING_LOG_LINES_MAX = 500;
+
+/** 视图是否处于激活态；停用期间事件进入缓存而非直接写入输出区。 */
+const isViewActive = ref(false);
+const pendingLogLines: string[] = [];
+
 function handleTunnelEvent(event: OnlineTunnelEvent) {
-  tunnelOutputRef.value?.appendLines(formatTunnelEvent(event));
+  const lines = formatTunnelEvent(event);
+  if (isViewActive.value) {
+    tunnelOutputRef.value?.appendLines(lines);
+    return;
+  }
+  // 停用期间（keep-alive 缓存）仍保持订阅：先把日志行缓存起来，
+  // 激活时回放，避免这段时间的事件永久丢失。
+  pendingLogLines.push(...lines);
+  if (pendingLogLines.length > PENDING_LOG_LINES_MAX) {
+    pendingLogLines.splice(0, pendingLogLines.length - PENDING_LOG_LINES_MAX);
+  }
 }
 
-// 事件订阅与 keep-alive 的 activated/deactivated 成对建立与清理。
-// token 用于处理"listen 尚未 resolve 页面就切走"的竞态,避免监听泄漏。
+/** 把停用期间缓存的日志行回放到输出区。 */
+function flushPendingLogLines() {
+  if (pendingLogLines.length === 0) return;
+  tunnelOutputRef.value?.appendLines(pendingLogLines.splice(0));
+}
+
+// 事件订阅在组件生命周期内保持：keep-alive 停用期间不注销，
+// 否则停用期事件会无来源可重放地永久丢失。
+// token 用于处理"listen 尚未 resolve 组件就卸载"的竞态,避免监听泄漏。
 let tunnelEventUnlisten: UnlistenFn | null = null;
 let tunnelEventToken = 0;
 
@@ -390,17 +414,25 @@ function handleJoinTicketInput(value: string) {
 }
 
 onActivated(async () => {
+  isViewActive.value = true;
   // 设置加载与状态拉取互不依赖,并行执行
   isPageVisible = true;
   await Promise.all([loadConsoleSettings(), refreshStatus()]);
   await subscribeTunnelEvents();
+  flushPendingLogLines();
   startStatusPolling();
   document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 
 onDeactivated(() => {
+  isViewActive.value = false;
   stopStatusPolling();
   document.removeEventListener("visibilitychange", handleVisibilityChange);
+  // 保持事件订阅：停用期间事件进入缓存，激活时回放，避免永久丢失。
+});
+
+// keep-alive 下组件常驻，真正卸载时才注销监听。
+onUnmounted(() => {
   unsubscribeTunnelEvents();
 });
 </script>

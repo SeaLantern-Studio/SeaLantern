@@ -84,10 +84,7 @@ impl OnlineTunnelService {
         self.restart_fanout();
         match self.wait_until_active().await {
             Ok(status) => Ok(status),
-            Err(error) => {
-                self.stop_fanout();
-                Err(error)
-            }
+            Err(error) => Err(self.cleanup_failed_start(error).await),
         }
     }
 
@@ -104,10 +101,7 @@ impl OnlineTunnelService {
         self.restart_fanout();
         match self.wait_until_active().await {
             Ok(status) => Ok(status),
-            Err(error) => {
-                self.stop_fanout();
-                Err(error)
-            }
+            Err(error) => Err(self.cleanup_failed_start(error).await),
         }
     }
 
@@ -163,6 +157,23 @@ impl OnlineTunnelService {
         }
     }
 
+    /// 启动失败后的清理：停止事件扇出，并取消可能仍在进行的隧道启动。
+    ///
+    /// sculk 的 `start_host` / `start_join` 是异步的：超时或失败时它可能仍停留在
+    /// `Starting`。若不显式 `stop` 取消，残留的启动任务会挤占状态机，让后续的
+    /// 启动/停止一直被 `Busy` 拒绝。清理失败只记录日志，保留原始错误。
+    async fn cleanup_failed_start(&self, error: OnlineTunnelError) -> OnlineTunnelError {
+        self.stop_fanout();
+        if let Err(stop_error) = self.inner.stop().await {
+            tracing::warn!(
+                target: "sealantern.feature.online",
+                error = %stop_error,
+                "failed to clean up tunnel after a failed start"
+            );
+        }
+        error
+    }
+
     /// 停止当前活动隧道；无活动隧道时返回 [`OnlineTunnelError::NotRunning`]。
     pub async fn stop(&self) -> Result<TunnelStatus, OnlineTunnelError> {
         self.inner.stop().await.map_err(map_service_error)?;
@@ -175,12 +186,17 @@ impl OnlineTunnelService {
         Ok(map_status(&self.inner.status()))
     }
 
-    /// 订阅隧道事件；无活动隧道时返回 [`OnlineTunnelError::NotRunning`]。
+    /// 订阅隧道事件。
+    ///
+    /// 仅在隧道 `Active` 时可用：`Idle` 返回 [`OnlineTunnelError::NotRunning`]，
+    /// 启动/停止等过渡阶段返回 [`OnlineTunnelError::Busy`]，避免调用方拿到
+    /// 尚未就绪或已不再活动的事件流。
     pub async fn subscribe(&self) -> Result<broadcast::Receiver<TunnelEvent>, OnlineTunnelError> {
-        if self.inner.status().state.phase == SculkPhase::Idle {
-            return Err(OnlineTunnelError::NotRunning);
+        match self.inner.status().state.phase {
+            SculkPhase::Active => Ok(self.events.sender.subscribe()),
+            SculkPhase::Idle => Err(OnlineTunnelError::NotRunning),
+            SculkPhase::Starting | SculkPhase::Stopping => Err(OnlineTunnelError::Busy),
         }
-        Ok(self.events.sender.subscribe())
     }
 
     /// 幂等关闭服务持有的隧道与事件转发任务。
