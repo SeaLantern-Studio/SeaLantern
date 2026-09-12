@@ -1179,7 +1179,7 @@
     "err_port_invalid": "{{field}} が無効です：{{value}}",
     "err_port_out_of_range": "{{field}} は {{min}} から {{max}} の間である必要があります",
     "err_ticket_empty": "共有リンクを入力してください",
-    "invalid_input": "入力が無効です。共有リンクと、Minecraft が LAN に公開されているかを確認してください",
+    "invalid_input": "入力が無効です。共有リンクとポート設定を確認してください",
     "port_unavailable": "Minecraft のサーバーポートが利用できません。ポート設定を確認してください",
     "busy": "トンネルが処理中です。しばらくお待ちください",
     "not_running": "実行中のトンネルはありません",

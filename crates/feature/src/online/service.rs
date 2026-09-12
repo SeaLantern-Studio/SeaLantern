@@ -16,7 +16,6 @@ use std::time::{Duration, Instant};
 
 use sculk::ErrorCategory as SculkErrorCategory;
 use sculk::minecraft::lan::LanBroadcaster;
-use sculk::minecraft::probe_server;
 use sculk::persist::{self, HostState as PersistedHostState};
 use sculk::tunnel::{
     ConnectionSnapshot, HostConfig, HostedServiceHandle, HostedServiceOptions, HostedServicePhase,
@@ -41,9 +40,6 @@ const EVENT_CHANNEL_CAPACITY: usize = 256;
 
 /// Host 节点身份密钥文件名；与 `host.state` 同目录。
 const HOST_KEY_FILE: &str = "secret.key";
-
-/// 探测 Minecraft 服务端的超时。
-const MINECRAFT_PROBE_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// `PathChanged` 事件的发送节流；与 SeaLantern Connect 保持一致。
 const TUNNEL_EVENT_DELAY: Duration = Duration::from_secs(1);
@@ -120,13 +116,18 @@ impl OnlineTunnelService {
 
     /// 以 Host 角色开启隧道，返回隧道就绪后的状态快照。
     ///
-    /// `start_service` 返回即表示服务已发布，因此无需等待 `Active`。
+    /// 不预检本机是否已有 Minecraft 世界监听到该端口：建房与开世界是两件事，
+    /// 世界稍后再开也应该允许先发布隧道。
     pub async fn host(
         &self,
         request: HostTunnelRequest,
     ) -> Result<TunnelStatus, OnlineTunnelError> {
         self.ensure_idle().await?;
-        ensure_minecraft_port(request.minecraft_port).await?;
+        if request.minecraft_port == 0 {
+            return Err(OnlineTunnelError::port_unavailable(
+                "Minecraft port must be between 1 and 65535",
+            ));
+        }
 
         let mut slot = self.host.lock().await;
         if slot.is_some() {
@@ -412,26 +413,6 @@ fn default_host_state_path() -> PathBuf {
 /// Host 节点身份密钥位置：与 `host.state` 同目录。
 fn identity_key_path(state_path: &Path) -> PathBuf {
     state_path.with_file_name(HOST_KEY_FILE)
-}
-
-/// 在创建隧道前确认本机 Minecraft 世界已经开放到 LAN。
-async fn ensure_minecraft_port(port: u16) -> Result<(), OnlineTunnelError> {
-    if port == 0 {
-        return Err(OnlineTunnelError::port_unavailable(
-            "Minecraft port must be between 1 and 65535",
-        ));
-    }
-    let address = SocketAddr::from(([127, 0, 0, 1], port));
-    let reachable =
-        tokio::task::spawn_blocking(move || probe_server(address, MINECRAFT_PROBE_TIMEOUT).is_ok())
-            .await
-            .unwrap_or(false);
-    if !reachable {
-        return Err(OnlineTunnelError::port_unavailable(format!(
-            "no Minecraft world is available on port {port}; make sure the world is open to LAN"
-        )));
-    }
-    Ok(())
 }
 
 /// 把应用请求翻译为 sculk 的 Join 启动参数。
@@ -777,13 +758,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn host_rejects_a_closed_minecraft_port() {
+    async fn host_rejects_an_out_of_range_port() {
         let service = OnlineTunnelService::with_state_path(temp_state_path("port"));
 
         let result = service
             .host(HostTunnelRequest {
-                // 保留端口几乎不可能有 Minecraft 世界监听。
-                minecraft_port: 1,
+                minecraft_port: 0,
                 max_players: None,
                 relay_url: None,
                 link_lifetime: TunnelLinkLifetime::default(),

@@ -244,7 +244,7 @@
       "err_port_invalid": "{{field}} 无效：{{value}}",
       "err_port_out_of_range": "{{field}} 必须在 {{min}} 到 {{max}} 之间",
       "err_ticket_empty": "分享链接不能为空",
-      "invalid_input": "输入无效，请检查分享链接和 Minecraft 端口是否已开放",
+      "invalid_input": "输入无效，请检查分享链接和端口设置",
       "port_unavailable": "Minecraft 服务端口不可用，请检查端口配置",
       "busy": "隧道正在处理中，请稍候",
       "not_running": "当前没有运行中的隧道",

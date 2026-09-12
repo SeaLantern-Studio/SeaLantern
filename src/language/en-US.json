@@ -244,7 +244,7 @@
       "err_port_invalid": "{{field}} is invalid: {{value}}",
       "err_port_out_of_range": "{{field}} must be between {{min}} and {{max}}",
       "err_ticket_empty": "The share link cannot be empty",
-      "invalid_input": "Invalid input. Check the share link and that Minecraft is open to LAN",
+      "invalid_input": "Invalid input. Check the share link and port settings",
       "port_unavailable": "The Minecraft server port is unavailable. Check the port configuration",
       "busy": "The tunnel is busy. Please wait a moment",
       "not_running": "No tunnel is running",

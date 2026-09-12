@@ -1179,7 +1179,7 @@
     "err_port_invalid": "{{field}} không hợp lệ: {{value}}",
     "err_port_out_of_range": "{{field}} phải nằm trong khoảng {{min}} đến {{max}}",
     "err_ticket_empty": "Liên kết chia sẻ không được để trống",
-    "invalid_input": "Dữ liệu nhập không hợp lệ. Hãy kiểm tra liên kết chia sẻ và việc Minecraft đã mở LAN chưa",
+    "invalid_input": "Dữ liệu nhập không hợp lệ. Hãy kiểm tra liên kết chia sẻ và cấu hình cổng",
     "port_unavailable": "Cổng máy chủ Minecraft không khả dụng. Hãy kiểm tra cấu hình cổng",
     "busy": "Tunnel đang bận. Vui lòng đợi một lát",
     "not_running": "Không có Tunnel nào đang chạy",

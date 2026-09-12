@@ -1179,7 +1179,7 @@
     "err_port_invalid": "{{field}} ist ungültig: {{value}}",
     "err_port_out_of_range": "{{field}} muss zwischen {{min}} und {{max}} liegen",
     "err_ticket_empty": "Der Freigabelink darf nicht leer sein",
-    "invalid_input": "Ungültige Eingabe. Prüfe den Freigabelink und ob Minecraft im LAN geöffnet ist",
+    "invalid_input": "Ungültige Eingabe. Prüfe den Freigabelink und die Porteinstellungen",
     "port_unavailable": "Der Minecraft-Serverport ist nicht verfügbar. Prüfe die Portkonfiguration",
     "busy": "Der Tunnel ist beschäftigt. Bitte warte einen Moment",
     "not_running": "Es läuft kein Tunnel",

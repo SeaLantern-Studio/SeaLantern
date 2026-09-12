@@ -1179,7 +1179,7 @@
     "err_port_invalid": "{{field}} no es válido: {{value}}",
     "err_port_out_of_range": "{{field}} debe estar entre {{min}} y {{max}}",
     "err_ticket_empty": "El enlace para compartir no puede estar vacío",
-    "invalid_input": "Entrada no válida. Comprueba el enlace para compartir y que Minecraft esté abierto en LAN",
+    "invalid_input": "Entrada no válida. Comprueba el enlace y la configuración del puerto",
     "port_unavailable": "El puerto del servidor de Minecraft no está disponible. Comprueba la configuración del puerto",
     "busy": "El túnel está ocupado. Espera un momento",
     "not_running": "No hay ningún túnel en ejecución",

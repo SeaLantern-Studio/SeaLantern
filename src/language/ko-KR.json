@@ -1179,7 +1179,7 @@
     "err_port_invalid": "{{field}}이(가) 유효하지 않습니다: {{value}}",
     "err_port_out_of_range": "{{field}}은(는) {{min}}에서 {{max}} 사이여야 합니다",
     "err_ticket_empty": "공유 링크를 입력해야 합니다",
-    "invalid_input": "입력이 올바르지 않습니다. 공유 링크와 Minecraft의 LAN 공개 여부를 확인하세요",
+    "invalid_input": "입력이 올바르지 않습니다. 공유 링크와 포트 설정을 확인하세요",
     "port_unavailable": "Minecraft 서버 포트를 사용할 수 없습니다. 포트 설정을 확인하세요",
     "busy": "터널이 처리 중입니다. 잠시 기다려 주세요",
     "not_running": "실행 중인 터널이 없습니다",

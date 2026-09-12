@@ -1179,7 +1179,7 @@
     "err_port_invalid": "{{field}} est invalide : {{value}}",
     "err_port_out_of_range": "{{field}} doit être entre {{min}} et {{max}}",
     "err_ticket_empty": "Le lien de partage ne peut pas être vide",
-    "invalid_input": "Saisie invalide. Vérifiez le lien de partage et que Minecraft est ouvert au LAN",
+    "invalid_input": "Saisie invalide. Vérifiez le lien de partage et les paramètres de port",
     "port_unavailable": "Le port du serveur Minecraft est indisponible. Vérifiez la configuration du port",
     "busy": "Le tunnel est occupé. Veuillez patienter un instant",
     "not_running": "Aucun tunnel n'est en cours",
