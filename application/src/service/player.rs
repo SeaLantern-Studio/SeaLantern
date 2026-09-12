@@ -4,11 +4,12 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use sealantern_contract::{
-    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerListError, PlayerLookupError, PlayerProfile,
+    BanEntryDto, OpEntryDto, PlayerAdminError, PlayerEntryDto, PlayerListError, PlayerLookupError,
+    PlayerProfile,
 };
 use sealantern_core::instance::InstanceId;
 
-use crate::port::{InstanceService, PlayerListService, PlayerLookupService};
+use crate::port::{InstanceService, PlayerAdminService, PlayerListService, PlayerLookupService};
 use crate::service::{CoreInstanceService, CoreServerService, capture_command_output};
 
 /// usercache.json 里每条记录的格式。
@@ -81,6 +82,24 @@ impl CorePlayerService {
         }
         serde_json::from_str(trimmed).map_err(|_| PlayerListError::ServiceUnavailable)
     }
+
+    /// 向运行中的服务器发送一条玩家管理命令，并捕获回显确认其已送达。
+    ///
+    /// 只确认"收到回显"、不解析成功与否：Minecraft 的命令回执文案随语言与
+    /// 版本变化，解析成功标志并不可靠；而收到回显已足以证明命令确实被执行
+    /// （而非写进了一个已经关闭的 stdin）。
+    ///
+    /// 命令生效后服务端会立即把结果写回配置文件，因此调用方随后读取列表即可
+    /// 看到变更，无需 `whitelist reload`，也无需手动改写文件。
+    async fn run_admin_command(
+        &self,
+        server_id: &str,
+        command: &str,
+    ) -> Result<String, PlayerAdminError> {
+        capture_command_output(&self.server_svc, server_id, command, Duration::from_secs(6))
+            .await?;
+        Ok(command.to_string())
+    }
 }
 
 impl From<crate::service::CaptureError> for PlayerListError {
@@ -92,6 +111,41 @@ impl From<crate::service::CaptureError> for PlayerListError {
             crate::service::CaptureError::NoResponse => PlayerListError::CaptureFailed,
         }
     }
+}
+
+impl From<crate::service::CaptureError> for PlayerAdminError {
+    fn from(err: crate::service::CaptureError) -> Self {
+        match err {
+            crate::service::CaptureError::InvalidInput => PlayerAdminError::InvalidInput,
+            crate::service::CaptureError::ServerNotRunning => PlayerAdminError::ServerNotRunning,
+            crate::service::CaptureError::Unavailable => PlayerAdminError::ServiceUnavailable,
+            crate::service::CaptureError::NoResponse => PlayerAdminError::CaptureFailed,
+        }
+    }
+}
+
+/// Minecraft 玩家名校验：3-16 字符，仅允许 ASCII 字母、数字与下划线。
+///
+/// 与 `server.properties` 的 `enforce-whitelist` / Mojang 账户命名规则一致；
+/// 同时因为只允许 ASCII，也顺带杜绝了把命令分隔符 / 空格注入命令名的可能。
+fn validate_player_name(name: &str) -> Result<&str, PlayerAdminError> {
+    let name = name.trim();
+    if !(3..=16).contains(&name.len()) {
+        return Err(PlayerAdminError::InvalidInput);
+    }
+    if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err(PlayerAdminError::InvalidInput);
+    }
+    Ok(name)
+}
+
+/// 清理封禁 / 踢出原因里的多余空白（含换行符）。
+///
+/// 原因会作为命令参数拼进控制台命令行；若允许 `\n` / `\r` 存在，就可能把
+/// 一条命令拆成多条写进服务器 stdin，因此统一把所有空白折叠为单个空格，
+/// 并去掉首尾空白。
+fn sanitize_reason(reason: &str) -> String {
+    reason.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// 把 Minecraft 配置文件里的 UUID 规范化为无连字符形式（契约约定）。
@@ -195,6 +249,83 @@ impl PlayerListService for CorePlayerService {
             normalize_uuid(&mut entry.uuid);
         }
         Ok(entries)
+    }
+}
+
+#[async_trait]
+impl PlayerAdminService for CorePlayerService {
+    async fn add_to_whitelist(
+        &self,
+        server_id: String,
+        name: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        self.run_admin_command(&server_id, &format!("whitelist add {name}"))
+            .await
+    }
+
+    async fn remove_from_whitelist(
+        &self,
+        server_id: String,
+        name: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        self.run_admin_command(&server_id, &format!("whitelist remove {name}"))
+            .await
+    }
+
+    async fn ban_player(
+        &self,
+        server_id: String,
+        name: String,
+        reason: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let reason = sanitize_reason(&reason);
+        let command = if reason.is_empty() {
+            format!("ban {name}")
+        } else {
+            format!("ban {name} {reason}")
+        };
+        self.run_admin_command(&server_id, &command).await
+    }
+
+    async fn unban_player(
+        &self,
+        server_id: String,
+        name: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        self.run_admin_command(&server_id, &format!("pardon {name}"))
+            .await
+    }
+
+    async fn add_op(&self, server_id: String, name: String) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        self.run_admin_command(&server_id, &format!("op {name}"))
+            .await
+    }
+
+    async fn remove_op(&self, server_id: String, name: String) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        self.run_admin_command(&server_id, &format!("deop {name}"))
+            .await
+    }
+
+    async fn kick_player(
+        &self,
+        server_id: String,
+        name: String,
+        reason: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let reason = sanitize_reason(&reason);
+        let command = if reason.is_empty() {
+            format!("kick {name}")
+        } else {
+            format!("kick {name} {reason}")
+        };
+        self.run_admin_command(&server_id, &command).await
     }
 }
 
@@ -352,5 +483,41 @@ mod tests {
     fn parse_online_names_returns_empty_when_no_matching_line() {
         let lines = vec!["[Server] something unrelated".to_string()];
         assert_eq!(parse_online_names(&lines), Vec::<String>::new());
+    }
+
+    // ── 写入操作的玩家名校验 ──────────────────────────────────
+
+    #[test]
+    fn validate_player_name_accepts_valid_names() {
+        assert_eq!(validate_player_name("Notch").unwrap(), "Notch");
+        // 前后空白会被裁剪。
+        assert_eq!(validate_player_name("  jeb_  ").unwrap(), "jeb_");
+        // 长度边界：3 与 16。
+        assert_eq!(validate_player_name("abc").unwrap(), "abc");
+        assert_eq!(validate_player_name("a123456789012345").unwrap(), "a123456789012345");
+    }
+
+    #[test]
+    fn validate_player_name_rejects_invalid_names() {
+        // 空与超短。
+        assert!(validate_player_name("").is_err());
+        assert!(validate_player_name("ab").is_err());
+        // 超长（17 字符）。
+        assert!(validate_player_name("a1234567890123456").is_err());
+        // 非法字符：空格、连字符、命令分隔符、非 ASCII。
+        assert!(validate_player_name("has space").is_err());
+        assert!(validate_player_name("bad-name").is_err());
+        assert!(validate_player_name("inject;stop").is_err());
+        assert!(validate_player_name("中文名").is_err());
+    }
+
+    #[test]
+    fn sanitize_reason_collapses_newlines_into_spaces() {
+        assert_eq!(sanitize_reason("griefing"), "griefing");
+        assert_eq!(sanitize_reason("  spam  "), "spam");
+        // 换行不能穿透成第二条控制台命令。
+        assert_eq!(sanitize_reason("griefing\nstop"), "griefing stop");
+        assert_eq!(sanitize_reason("a\r\nb"), "a b");
+        assert_eq!(sanitize_reason(""), "");
     }
 }
