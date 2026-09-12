@@ -1,5 +1,5 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { isBrowserEnv, tauriInvoke } from "@api/tauri";
+import { isBrowserEnv } from "@api/tauri";
 import { invoke } from "@api/invoke";
 
 export interface TunnelConnection {
@@ -33,6 +33,7 @@ export interface TunnelStatus {
   running: boolean;
   phase: OnlineTunnelPhase;
   mode: "host" | "join" | null;
+  /** 后端已转换为用户侧分享链接（`https://ideaflash.cn/#v1/...`） */
   ticket: string | null;
   connections: TunnelConnection[];
   lastError: OnlineTunnelErrorCategory | null;
@@ -55,17 +56,28 @@ export type OnlineTunnelEvent =
   | { kind: "error"; category: OnlineTunnelErrorCategory; message: string }
   | { kind: "provider_message"; message: string };
 
+export type TunnelLinkLifetime = "always" | "never" | "1h" | "3h" | "6h" | "12h" | "24h";
+
+export const TUNNEL_LINK_LIFETIMES: readonly TunnelLinkLifetime[] = [
+  "always",
+  "never",
+  "1h",
+  "3h",
+  "6h",
+  "12h",
+  "24h",
+];
+
 export interface TunnelHostParams {
   port: number;
-  password?: string;
   maxPlayers?: number;
   relayUrl?: string;
+  linkLifetime: TunnelLinkLifetime;
 }
 
 export interface TunnelJoinParams {
   ticket: string;
   localPort: number;
-  password?: string;
 }
 
 /** 后端 OnlineTunnelStatus 原始结构，字段和前端 TunnelStatus 差异较大 */
@@ -116,9 +128,9 @@ export const tunnelApi = {
     const raw = await invoke<TunnelStatusRaw>("online_tunnel_host", {
       request: {
         minecraft_port: params.port,
-        password: params.password,
         max_players: params.maxPlayers,
         relay_url: params.relayUrl,
+        link_lifetime: params.linkLifetime,
       },
     });
     return toTunnelStatus(raw);
@@ -129,7 +141,6 @@ export const tunnelApi = {
       request: {
         ticket: params.ticket,
         local_port: params.localPort,
-        password: params.password,
       },
     });
     return toTunnelStatus(raw);
@@ -143,21 +154,6 @@ export const tunnelApi = {
   async status(): Promise<TunnelStatus> {
     const raw = await invoke<TunnelStatusRaw>("online_tunnel_status");
     return toTunnelStatus(raw);
-  },
-
-  // TODO(backend): 以下票据命令后端均未实现（tunnel_copy_ticket / tunnel_regenerate_ticket /
-  // tunnel_generate_ticket 没有对应 Tauri 命令）。ticket 目前只在 host 成功后由
-  // status.ticket 返回，UI 侧已禁用这些入口，待后端补齐票据能力后再接通。
-  async copyTicket(): Promise<boolean> {
-    return tauriInvoke("tunnel_copy_ticket");
-  },
-
-  async regenerateTicket(): Promise<TunnelStatus> {
-    return tauriInvoke("tunnel_regenerate_ticket");
-  },
-
-  async generateTicket(): Promise<TunnelStatus> {
-    return tauriInvoke("tunnel_generate_ticket");
   },
 };
 
