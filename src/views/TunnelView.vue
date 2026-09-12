@@ -354,7 +354,6 @@ async function startHost() {
       // 清空输入框时写入 null，才能真正取消人数上限。
       tunnel_host_max_players: maxPlayers ?? null,
     });
-    toast.success(i18n.t("tunnel.host_started"));
   } catch (e) {
     toast.error(tunnelError(e));
   } finally {
@@ -393,7 +392,6 @@ async function startJoin() {
     saveTunnelPreferences({
       tunnel_join_port: parsePort(joinLocalPort.value, DEFAULT_JOIN_LOCAL_PORT),
     });
-    toast.success(i18n.t("tunnel.join_started"));
   } catch (e) {
     // 用户主动取消时后端会让 join 以错误结束，不必提示。
     if (!stopRequested) toast.error(tunnelError(e));
@@ -408,7 +406,6 @@ async function stopTunnel() {
   stopRequested = true;
   try {
     applyStatus(await tunnelApi.stop());
-    toast.success(i18n.t("tunnel.tunnel_stopped"));
   } catch (e) {
     toast.error(tunnelError(e));
   } finally {
@@ -416,22 +413,31 @@ async function stopTunnel() {
   }
 }
 
-async function copyText(value: string, successMessage: string) {
+/** 复制成功的反馈由按钮自身给出（短暂显示「已复制」），联机页只弹失败提示。 */
+const copiedKind = ref<"link" | "address" | null>(null);
+let copiedTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function copyText(value: string, kind: "link" | "address") {
   if (!value) return;
   try {
     await navigator.clipboard.writeText(value);
-    toast.success(successMessage);
+    copiedKind.value = kind;
+    if (copiedTimer) clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => {
+      copiedKind.value = null;
+      copiedTimer = null;
+    }, 1600);
   } catch (e) {
     toast.error(tunnelError(e));
   }
 }
 
 async function copyShareLink() {
-  await copyText(shareLink.value, i18n.t("tunnel.ticket_copied"));
+  await copyText(shareLink.value, "link");
 }
 
 async function copyLocalAddress() {
-  await copyText(localAddress.value, i18n.t("tunnel.address_copied"));
+  await copyText(localAddress.value, "address");
 }
 
 // 建立连接后立即补一次快照，不等下一个轮询周期。
@@ -465,6 +471,7 @@ onDeactivated(() => {
 onUnmounted(() => {
   unsubscribeTunnelEvents();
   setLiveRtt(null);
+  if (copiedTimer) clearTimeout(copiedTimer);
 });
 </script>
 
@@ -542,7 +549,7 @@ onUnmounted(() => {
           <span>{{ i18n.t("tunnel.share_link") }}</span>
           <code>{{ shareLink }}</code>
           <cmz-button variant="outline" size="sm" @click="copyShareLink">
-            {{ i18n.t("tunnel.copy_link") }}
+            {{ copiedKind === "link" ? i18n.t("tunnel.copied") : i18n.t("tunnel.copy_link") }}
           </cmz-button>
         </div>
 
@@ -558,7 +565,9 @@ onUnmounted(() => {
               :disabled="!hasLocalAddress"
               @click="copyLocalAddress"
             >
-              {{ i18n.t("tunnel.copy_address") }}
+              {{
+                copiedKind === "address" ? i18n.t("tunnel.copied") : i18n.t("tunnel.copy_address")
+              }}
             </cmz-button>
           </div>
           <div class="join-metrics">

@@ -52,7 +52,7 @@ test("联机页新增文案都带占位符或非空内容", async () => {
     "tunnel.minecraft_address",
     "tunnel.allocating_port",
     "tunnel.copy_address",
-    "tunnel.address_copied",
+    "tunnel.copied",
     "tunnel.join_ready",
     "tunnel.join_hint",
     "tunnel.join_route",
