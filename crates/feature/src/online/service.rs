@@ -12,6 +12,7 @@ use std::num::NonZeroU16;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use sculk::ErrorCategory as SculkErrorCategory;
@@ -57,6 +58,10 @@ pub struct OnlineTunnelService {
     join: SculkService,
     host: Arc<AsyncMutex<Option<HostSession>>>,
     events: Arc<EventFanout>,
+    /// Host 启动的取消标记：`stop` 置位后，正在 bind 的 `host` 会在检查点放弃启动。
+    host_cancel: Arc<AtomicBool>,
+    /// Host 启动互斥：并发的 host 请求只有一个能走到发布。
+    host_start: Arc<AsyncMutex<()>>,
     /// 加入方就绪后的局域网公告；本机 Minecraft 无需手动输入地址即可发现房间。
     lan_broadcast: Arc<StdMutex<Option<LanBroadcaster>>>,
     /// Host 令牌状态与稳定 `ServiceId` 的持久化路径。
@@ -109,6 +114,8 @@ impl OnlineTunnelService {
             join: SculkService::new(),
             host: Arc::new(AsyncMutex::new(None)),
             events: Arc::new(EventFanout { sender, task: StdMutex::new(None) }),
+            host_cancel: Arc::new(AtomicBool::new(false)),
+            host_start: Arc::new(AsyncMutex::new(())),
             lan_broadcast: Arc::new(StdMutex::new(None)),
             state_path,
         }
@@ -118,6 +125,9 @@ impl OnlineTunnelService {
     ///
     /// 不预检本机是否已有 Minecraft 世界监听到该端口：建房与开世界是两件事，
     /// 世界稍后再开也应该允许先发布隧道。
+    ///
+    /// 启动期间**不持有 `host` 锁**：`stop` 需要能立刻置位取消标记并返回，
+    /// 否则「取消连接」只能等整个建房流程跑完才生效。
     pub async fn host(
         &self,
         request: HostTunnelRequest,
@@ -129,10 +139,12 @@ impl OnlineTunnelService {
             ));
         }
 
-        let mut slot = self.host.lock().await;
-        if slot.is_some() {
-            return Err(OnlineTunnelError::Busy);
-        }
+        // 同一时刻只允许一次 Host 启动；guard 在函数结束时释放。
+        let _starting = self
+            .host_start
+            .try_lock()
+            .map_err(|_| OnlineTunnelError::Busy)?;
+        self.host_cancel.store(false, Ordering::SeqCst);
 
         let node = SculkNode::bind(NodeOptions {
             secret_key: Some(self.host_secret_key(request.identity.as_ref())?),
@@ -141,6 +153,11 @@ impl OnlineTunnelService {
         })
         .await
         .map_err(|error| OnlineTunnelError::provider("bind tunnel node", error))?;
+
+        if self.host_cancel.load(Ordering::SeqCst) {
+            node.close().await;
+            return Err(cancelled_host());
+        }
 
         // 复用上次的 ServiceId 与令牌，使 `never` / 定时轮换策略能跨重启生效。
         let saved = match persist::load_host_state(&self.state_path) {
@@ -177,6 +194,12 @@ impl OnlineTunnelService {
             }
         };
 
+        if self.host_cancel.load(Ordering::SeqCst) {
+            let _ = handle.stop().await;
+            node.close().await;
+            return Err(cancelled_host());
+        }
+
         if let Err(error) = save_host_state(&self.state_path, &handle).await {
             let _ = handle.stop().await;
             node.close().await;
@@ -192,6 +215,16 @@ impl OnlineTunnelService {
         }
         let session = HostSession { node, handle, peers };
         let status = host_status(&session).await?;
+
+        // 抢到锁后再确认一次取消：避免「取消」与「发布」擦身而过，
+        // 让用户以为取消了、隧道却挂在那里。
+        let mut slot = self.host.lock().await;
+        if self.host_cancel.load(Ordering::SeqCst) {
+            drop(slot);
+            let _ = session.handle.stop().await;
+            session.node.close().await;
+            return Err(cancelled_host());
+        }
         *slot = Some(session);
         Ok(status)
     }
@@ -233,7 +266,9 @@ impl OnlineTunnelService {
     /// 同一时刻只允许一条隧道；Host 与 Join 底层实现不同，需显式互斥。
     async fn ensure_idle(&self) -> Result<(), OnlineTunnelError> {
         let host_active = self.host.lock().await.is_some();
-        if host_active || self.join.status().state.phase != SculkPhase::Idle {
+        // Host 启动期间还没写入会话槽，靠启动锁判断，避免 Join 插进来。
+        let host_starting = self.host_start.try_lock().is_err();
+        if host_active || host_starting || self.join.status().state.phase != SculkPhase::Idle {
             return Err(OnlineTunnelError::Busy);
         }
         Ok(())
@@ -244,6 +279,9 @@ impl OnlineTunnelService {
     /// sculk 的 `stop` 会打断正在启动的任务（`Starting` → abort 后台任务），
     /// 因此「取消连接」就是一次普通的 `stop`。
     pub async fn stop(&self) -> Result<TunnelStatus, OnlineTunnelError> {
+        // 先置位：Host 可能仍在 bind，它会在下一个检查点放弃启动。
+        self.host_cancel.store(true, Ordering::SeqCst);
+
         let session = self.host.lock().await.take();
         if let Some(session) = session {
             self.stop_fanout();
@@ -315,6 +353,8 @@ impl OnlineTunnelService {
 
     /// 幂等关闭服务持有的隧道与事件转发任务。
     pub async fn shutdown(&self) -> Result<(), OnlineTunnelError> {
+        // 正在 bind 的 Host 启动也要一并取消。
+        self.host_cancel.store(true, Ordering::SeqCst);
         self.stop_fanout();
         self.stop_lan_broadcast();
         if let Some(session) = self.host.lock().await.take() {
@@ -413,6 +453,13 @@ fn default_host_state_path() -> PathBuf {
 /// Host 节点身份密钥位置：与 `host.state` 同目录。
 fn identity_key_path(state_path: &Path) -> PathBuf {
     state_path.with_file_name(HOST_KEY_FILE)
+}
+
+/// Host 启动被 [`OnlineTunnelService::stop`] 取消时的错误。
+///
+/// 复用 `Provider` 分类：对调用方而言这与「启动失败」同样是操作未完成。
+fn cancelled_host() -> OnlineTunnelError {
+    OnlineTunnelError::provider("start host service", "host start was cancelled")
 }
 
 /// 把应用请求翻译为 sculk 的 Join 启动参数。
@@ -773,6 +820,26 @@ mod tests {
 
         assert!(matches!(result, Err(OnlineTunnelError::PortUnavailable { .. })));
         assert_eq!(service.status().await.expect("idle status"), TunnelStatus::idle());
+    }
+
+    #[tokio::test]
+    async fn stop_marks_a_pending_host_start_as_cancelled() {
+        let service = OnlineTunnelService::with_state_path(temp_state_path("host-cancel"));
+
+        // 空闲时 stop 本身是空操作，但必须置位取消标记：
+        // 正在 bind 的 host 靠它在下个检查点放弃，否则「取消连接」是假的。
+        service.stop().await.expect("idle stop");
+
+        assert!(service.host_cancel.load(Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn a_pending_host_start_blocks_other_tunnels() {
+        let service = OnlineTunnelService::with_state_path(temp_state_path("host-starting"));
+        // 模拟 host 已进入启动流程（持启动锁、但还没写入会话槽）。
+        let _guard = service.host_start.lock().await;
+
+        assert!(matches!(service.ensure_idle().await, Err(OnlineTunnelError::Busy)));
     }
 
     #[test]

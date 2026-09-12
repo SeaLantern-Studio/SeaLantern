@@ -32,6 +32,14 @@ const STARTING_POLL_INTERVAL_MS = 1000;
 const toast = useToast();
 type PendingAction = "host" | "join" | "stop";
 const pendingAction = ref<PendingAction | null>(null);
+/**
+ * 仍在等待后端返回的命令数。
+ *
+ * 取消只让界面退出过渡态，旧命令还会在后台收尾（例如 host 仍在 bind），
+ * 此间后端照样会拒绝新请求——所以期间要禁用建房/加入，而不是让用户点了才报 Busy。
+ */
+const commandsInFlight = ref(0);
+const hasPendingCommand = computed(() => commandsInFlight.value > 0);
 const status = ref<TunnelStatus | null>(null);
 /** 用户在 `join` 命令返回前点了停止：后端会让 `join` 以错误结束，那不是故障。 */
 let stopRequested = false;
@@ -151,15 +159,12 @@ const joinStepTitle = computed(() =>
 
 const isIdle = computed(() => currentPhase.value === "idle");
 const isBusy = computed(() => pendingAction.value !== null);
-const canStartHost = computed(() => isIdle.value && !isBusy.value);
-const canStartJoin = computed(() => isIdle.value && !isBusy.value);
+const canStartHost = computed(() => isIdle.value && !isBusy.value && !hasPendingCommand.value);
+const canStartJoin = computed(() => isIdle.value && !isBusy.value && !hasPendingCommand.value);
 // 建链过程中也允许停止（即「取消连接」），否则用户无路可退。
-// join 仍在收尾时按停止没有意义，避免重复触发。
+// 已经发过取消、命令仍在收尾时不再重复触发（host 与 join 同理）。
 const canStopTunnel = computed(
-  () =>
-    hasSession.value &&
-    pendingAction.value !== "stop" &&
-    !(stopRequested && pendingAction.value === "join"),
+  () => hasSession.value && pendingAction.value !== "stop" && !stopRequested,
 );
 const isCancellable = computed(() => isStarting.value);
 const canEditHostForm = computed(() => isIdle.value && !isBusy.value);
@@ -192,7 +197,8 @@ let statusPollTimer: ReturnType<typeof setTimeout> | null = null;
 let isPageVisible = true;
 
 function beginAction(action: PendingAction): boolean {
-  if (pendingAction.value !== null) return false;
+  // 旧命令仍在收尾时不接新动作：后端此刻仍是 Busy，接了只会弹错误。
+  if (pendingAction.value !== null || hasPendingCommand.value) return false;
   pendingAction.value = action;
   return true;
 }
@@ -337,6 +343,7 @@ async function startHost() {
   }
   stopRequested = false;
   pendingPhase.value = "starting";
+  commandsInFlight.value += 1;
   try {
     const relayUrl = hostRelayUrl.value.trim();
     const maxPlayers = parseMaxPlayers(hostMaxPlayers.value);
@@ -355,8 +362,10 @@ async function startHost() {
       tunnel_host_max_players: maxPlayers ?? null,
     });
   } catch (e) {
-    toast.error(tunnelError(e));
+    // 用户主动取消时后端会让 host 以错误结束，不必提示。
+    if (!stopRequested) toast.error(tunnelError(e));
   } finally {
+    commandsInFlight.value -= 1;
     clearPendingPhase();
     endAction("host");
   }
@@ -377,6 +386,7 @@ async function startJoin() {
   }
   stopRequested = false;
   pendingPhase.value = "starting";
+  commandsInFlight.value += 1;
   try {
     const snapshot = await tunnelApi.join({
       // 分享链接→Join URI 的归一化由后端完成,前端只做去空格。
@@ -396,19 +406,27 @@ async function startJoin() {
     // 用户主动取消时后端会让 join 以错误结束，不必提示。
     if (!stopRequested) toast.error(tunnelError(e));
   } finally {
+    commandsInFlight.value -= 1;
     clearPendingPhase();
     endAction("join");
   }
 }
 
 async function stopTunnel() {
-  if (!beginAction("stop")) return;
+  // 停止/取消是打断动作：host/join 仍在进行时也必须能发起，
+  // 所以不能走 beginAction——它会因为已经有 pending 动作而直接拒绝。
+  if (!canStopTunnel.value) return;
+  pendingAction.value = "stop";
   stopRequested = true;
+  commandsInFlight.value += 1;
   try {
     applyStatus(await tunnelApi.stop());
+    // 后端已确认空闲，立即退出过渡状态，不必等 host/join 命令收尾。
+    clearPendingPhase();
   } catch (e) {
     toast.error(tunnelError(e));
   } finally {
+    commandsInFlight.value -= 1;
     endAction("stop");
   }
 }
@@ -443,6 +461,11 @@ async function copyLocalAddress() {
 // 建立连接后立即补一次快照，不等下一个轮询周期。
 watch(joined, (value) => {
   if (value && isPageVisible) void refreshStatus({ silent: true });
+});
+
+// 隧道终究起来了，说明这次取消没拦住，恢复停止按钮可用。
+watch(running, (value) => {
+  if (value) stopRequested = false;
 });
 
 // 只有真正连上才记住邀请链接：填错的票据不值得回填。
@@ -516,7 +539,11 @@ onUnmounted(() => {
           />
         </div>
         <div class="card-actions">
-          <cmz-button :disabled="!canStartHost" :loading="hostActionLoading" @click="startHost">
+          <cmz-button
+            :disabled="!canStartHost"
+            :loading="hostActionLoading || hasPendingCommand"
+            @click="startHost"
+          >
             {{ i18n.t("tunnel.start_host") }}
           </cmz-button>
         </div>
@@ -536,7 +563,11 @@ onUnmounted(() => {
           />
         </div>
         <div class="card-actions">
-          <cmz-button :disabled="!canStartJoin" :loading="joinActionLoading" @click="startJoin">
+          <cmz-button
+            :disabled="!canStartJoin"
+            :loading="joinActionLoading || hasPendingCommand"
+            @click="startJoin"
+          >
             {{ i18n.t("tunnel.start_join") }}
           </cmz-button>
         </div>
