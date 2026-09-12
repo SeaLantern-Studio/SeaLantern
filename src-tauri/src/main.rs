@@ -46,6 +46,11 @@ use adapter::tauri::commands::provisioning::{
     inspect_server, parse_startup_script, plan_existing_instance, plan_instance_copy,
     plan_modpack_provision,
 };
+use adapter::tauri::commands::resource::{
+    instance_resources_install, instance_resources_list, instance_resources_remove,
+    instance_resources_set_enabled, instance_resources_sync, resource_market_resolve_download,
+    resource_market_resource, resource_market_search, resource_market_versions,
+};
 use adapter::tauri::commands::server::{
     force_stop_server, restart_server, send_server_command, server_status, start_server,
     stop_server,
@@ -321,7 +326,17 @@ fn main() {
             plugin_v2_plugins,
             plugin_v2_revoke_persistent,
             plugin_v2_set_trust,
-            plugin_v2_unload
+            plugin_v2_unload,
+            //资源管理服务：实例资源 + 市场查询
+            instance_resources_list,
+            instance_resources_install,
+            instance_resources_remove,
+            instance_resources_set_enabled,
+            instance_resources_sync,
+            resource_market_resource,
+            resource_market_resolve_download,
+            resource_market_search,
+            resource_market_versions,
         ])
         .setup(setup)
         .build(tauri::generate_context!())

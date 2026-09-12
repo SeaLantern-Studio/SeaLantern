@@ -66,6 +66,8 @@ pub use error::PlayerListError;
 pub use error::PlayerLookupError;
 /// 服务端检查与实例供给计划失败类别。
 pub use error::ProvisioningServiceError;
+/// 资源管理服务错误枚举。
+pub use error::ResourceServiceError;
 /// 服务器核心下载目录错误枚举。
 pub use error::ServerCatalogServiceError;
 /// 服务器配置（server.properties）错误枚举。

@@ -1,4 +1,3 @@
-pub mod extension;
 pub mod identity;
 pub mod import;
 pub mod lifecycle;
@@ -7,7 +6,6 @@ pub mod player;
 pub mod repository;
 pub mod server_metadata;
 
-pub use extension::{InstanceExtension, InstanceExtensionError, InstanceExtensionKind};
 pub use identity::InstanceIdentity;
 pub use import::{InstanceImportError, InstanceImportPlan, InstanceImportRequest, plan_import};
 pub use lifecycle::{

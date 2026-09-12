@@ -334,6 +334,46 @@ impl std::fmt::Display for BackupServiceError {
 
 impl std::error::Error for BackupServiceError {}
 
+/// 资源管理服务操作失败的契约错误类别。
+///
+/// 分类风格与 [`BackupServiceError`] 一致：不携带主机路径等敏感细节，
+/// 底层失败详情由应用层写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourceServiceError {
+    /// 指定的服务器实例不存在。
+    InstanceNotFound,
+    /// 市场资源 / 版本未找到。
+    NotFound,
+    /// 客户端提供的输入不合法（如非法文件名、非资源文件类型）。
+    InvalidInput,
+    /// 实例没有可管理的资源目录（如纯原版服务端）。
+    NoResourceDirs,
+    /// 底层文件系统 / 清单操作失败。
+    OperationFailed,
+    /// 市场查询或下载解析失败。
+    Market,
+    /// 该能力尚未支持（如不可识别的资源类型）。
+    Unsupported,
+}
+
+impl std::fmt::Display for ResourceServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InstanceNotFound => "server instance not found",
+            Self::NotFound => "market resource or version not found",
+            Self::InvalidInput => "invalid resource input",
+            Self::NoResourceDirs => "instance has no resource directories",
+            Self::OperationFailed => "resource operation failed",
+            Self::Market => "market request failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for ResourceServiceError {}
+
 /// 服务器配置（server.properties）操作失败的契约错误类别。
 ///
 /// 分类风格与 [`ServerServiceError`] 一致：不携带主机路径等敏感细节，

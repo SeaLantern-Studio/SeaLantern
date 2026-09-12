@@ -16,25 +16,20 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde::Deserialize;
 
+use sealantern_infra::download::{DownloadManager, DownloadStatus};
 use sealantern_infra::net::{ClientProvider, NetClient};
 
-use crate::market::error::MarketError;
-use crate::market::fetcher;
-use crate::market::fetcher::Fetcher;
-use crate::market::fetcher::models::VersionFile;
-use crate::market::models::*;
 use crate::observability;
+
+use super::error::MarketError;
+use super::models::*;
+use super::traits::Fetcher;
+use super::{download_file, send_get};
 
 /// Modrinth API 的基础 URL。
 const MODRINTH_BASE: &str = "https://api.modrinth.com/v2";
 
 // ─── Modrinth API 响应结构体 ─────────────────────────────────────────────
-//
-// 以下结构体用于通过 `#[derive(Deserialize)]` 自动反序列化 Modrinth API
-// 的 JSON 响应，替代原先的手动 `body["field"]` 方式。
-//
-// Modrinth API v2 使用 snake_case 命名，而 Rust 结构体字段惯例也是
-// snake_case，因此字段名直接一一对应，无需 rename 配置。
 
 /// 搜索 API (`GET /search`) 的顶层响应。
 #[derive(Deserialize)]
@@ -91,36 +86,38 @@ struct ModrinthVersionFile {
 
 /// 基于 Modrinth API 的资源获取器。
 ///
-/// 持有客户端获取器（provider），每次请求前获取当前全局客户端，
-/// 避免缓存固定客户端导致代理更新不生效。
+/// 持有客户端获取器（provider）与显式注入的下载管理器，避免全局单例：
+/// 每次请求前获取当前全局客户端，保证代理更新即时生效。
 pub struct ModrinthFetcher {
     client_provider: ClientProvider,
+    download: DownloadManager,
 }
 
 impl ModrinthFetcher {
-    /// 使用全局客户端获取器构造获取器（生产装配推荐）。
+    /// 使用全局客户端获取器与全局下载器构造（生产装配推荐）。
     pub fn global() -> Self {
-        Self::with_provider(sealantern_infra::net::global_client_provider())
+        Self {
+            client_provider: sealantern_infra::net::global_client_provider(),
+            download: DownloadManager::with_provider(
+                sealantern_infra::net::global_client_provider(),
+            ),
+        }
     }
 
-    /// 使用客户端获取器构造获取器，每次请求前调用以获取当前全局客户端。
+    /// 使用自定义客户端获取器构造（测试注入）；下载器使用全局配置。
     ///
     /// # Parameters
     /// - `client_provider`: 返回当前 `NetClient` 的获取器。
-    ///
-    /// # Returns
-    /// 返回初始化完成的 `ModrinthFetcher`。
     pub fn with_provider(client_provider: ClientProvider) -> Self {
-        Self { client_provider }
+        Self {
+            client_provider,
+            download: DownloadManager::with_provider(
+                sealantern_infra::net::global_client_provider(),
+            ),
+        }
     }
 
-    /// 创建一个新的 `ModrinthFetcher`（兼容旧调用与测试注入）。
-    ///
-    /// # Parameters
-    /// - `client`: 用于发送 HTTP 请求的 `NetClient` 实例。
-    ///
-    /// # Returns
-    /// 返回初始化完成的 `ModrinthFetcher`。
+    /// 使用具体客户端构造（兼容旧调用与测试注入）。
     pub fn new(client: NetClient) -> Self {
         Self::with_provider(Box::new(move || Ok(client.clone())))
     }
@@ -130,17 +127,7 @@ impl ModrinthFetcher {
 impl Fetcher for ModrinthFetcher {
     /// 在 Modrinth 市场中搜索资源。
     ///
-    /// 调用 `GET /search?query={query}&limit={page_size}&offset={offset}`，
-    /// 通过 `ModrinthSearchResponse` 自动反序列化响应，提取 `hits` 列表和
-    /// 分页元数据。
-    ///
-    /// # Parameters
-    /// - `query`: 搜索关键词。
-    /// - `page`: 页码，从 1 开始；传入 0 会返回错误。
-    /// - `page_size`: 每页结果数，对应 `limit` 参数。
-    ///
-    /// # Returns
-    /// 包含分页信息和资源列表的 `SearchResult`。
+    /// 调用 `GET /search?query={query}&limit={page_size}&offset={offset}`。
     async fn search(
         &self,
         query: &str,
@@ -151,6 +138,7 @@ impl Fetcher for ModrinthFetcher {
             return Err(MarketError::config("page must be 1 or greater"));
         }
         observability::market_search_started(query, page, page_size, "modrinth");
+
         let offset = (page - 1) * page_size;
         let url = format!(
             "{}/search?query={}&limit={}&offset={}",
@@ -161,21 +149,12 @@ impl Fetcher for ModrinthFetcher {
         );
 
         let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
-        let resp = client
-            .get(&url)
-            .map_err(|e| MarketError::config(e.to_string()))?
-            .header("User-Agent", super::USER_AGENT)
-            .send()
-            .await
-            .map_err(|e| MarketError::http("search resources", "modrinth", e.to_string()))?;
-
-        // 自动反序列化为 ModrinthSearchResponse
+        let resp = send_get(client, &url, "search resources", "modrinth").await?;
         let search_resp: ModrinthSearchResponse = resp
             .json()
             .await
             .map_err(|e| MarketError::json("parse search results", "modrinth", e.to_string()))?;
 
-        // 将 Modrinth 的搜索命中转换为内部的 MarketResource
         let resources: Vec<MarketResource> = search_resp
             .hits
             .into_iter()
@@ -184,7 +163,6 @@ impl Fetcher for ModrinthFetcher {
                 name: hit.title,
                 description: hit.description,
                 download_count: hit.downloads,
-                version_count: 0,
                 source: MarketSource::Modrinth,
             })
             .collect();
@@ -194,7 +172,6 @@ impl Fetcher for ModrinthFetcher {
         Ok(SearchResult {
             total: search_resp.total_hits,
             offset: search_resp.offset,
-            // 使用请求时传入的 page_size，而非响应中的 limit（二者一致）
             limit: page_size as u64,
             resources,
         })
@@ -202,28 +179,14 @@ impl Fetcher for ModrinthFetcher {
 
     /// 获取 Modrinth 上指定项目的详细信息。
     ///
-    /// 调用 `GET /project/{id}`，通过 `ModrinthProject` 自动反序列化响应。
-    /// `game_versions` 和 `loaders` 为数组字段，分别记录支持的游戏版本和
-    /// 加载器；`project_type` 标识资源类型（如 `mod`、`plugin`）。
-    ///
-    /// # Parameters
-    /// - `id`: 项目的 ID（格式为字符串，如 `"A1b2C3d4"`）。
-    ///
-    /// # Returns
-    /// 包含项目详细元数据的 `ResourceInfo`。
+    /// 调用 `GET /project/{id}`。注意 Modrinth 详情接口**不返回文件下载 URL**，
+    /// 因此 [`ResourceInfo::download_url`] 保持为空，下载请走版本列表
+    /// （[`Fetcher::get_resource_versions`] 的 `files[].url`）。
     async fn get_resource(&self, id: &str) -> Result<ResourceInfo, MarketError> {
         let url = format!("{}/project/{}", MODRINTH_BASE, id);
 
         let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
-        let resp = client
-            .get(&url)
-            .map_err(|e| MarketError::config(e.to_string()))?
-            .header("User-Agent", super::USER_AGENT)
-            .send()
-            .await
-            .map_err(|e| MarketError::http("get resource details", "modrinth", e.to_string()))?;
-
-        // 自动反序列化为 ModrinthProject
+        let resp = send_get(client, &url, "get resource details", "modrinth").await?;
         let project: ModrinthProject = resp
             .json()
             .await
@@ -238,7 +201,7 @@ impl Fetcher for ModrinthFetcher {
             icon_url: project.icon_url,
             game_versions: project.game_versions,
             loaders: project.loaders,
-            resource_type: project.project_type,
+            resource_type: ResourceType::from_platform_value(&project.project_type),
             external: false,
             download_url: String::new(),
         };
@@ -249,35 +212,17 @@ impl Fetcher for ModrinthFetcher {
 
     /// 获取指定项目的所有版本列表。
     ///
-    /// 调用 `GET /project/{id}/version`，通过 `Vec<ModrinthVersion>` 自动
-    /// 反序列化响应。每个版本包含 `files`（文件列表，含 URL、文件名、大小、
-    /// 主文件标记）、`game_versions`（支持的游戏版本）和 `loaders`（支持的
-    /// 加载器）。
-    ///
-    /// # Parameters
-    /// - `id`: 项目的 ID。
-    ///
-    /// # Returns
-    /// 版本对象列表，每个版本包含文件信息和兼容性元数据。
+    /// 调用 `GET /project/{id}/version`。
     async fn get_resource_versions(&self, id: &str) -> Result<Vec<Version>, MarketError> {
         let url = format!("{}/project/{}/version", MODRINTH_BASE, id);
 
         let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
-        let resp = client
-            .get(&url)
-            .map_err(|e| MarketError::config(e.to_string()))?
-            .header("User-Agent", super::USER_AGENT)
-            .send()
-            .await
-            .map_err(|e| MarketError::http("get resource versions", "modrinth", e.to_string()))?;
-
-        // 自动反序列化为 Vec<ModrinthVersion>
+        let resp = send_get(client, &url, "get resource versions", "modrinth").await?;
         let versions: Vec<ModrinthVersion> = resp
             .json()
             .await
             .map_err(|e| MarketError::json("parse version list", "modrinth", e.to_string()))?;
 
-        // 将 Modrinth 版本转换为内部的 Version
         let result: Vec<Version> = versions
             .into_iter()
             .map(|v| {
@@ -309,38 +254,28 @@ impl Fetcher for ModrinthFetcher {
 
     /// 下载资源文件。
     ///
-    /// 委托给 `fetcher::download_file` 执行实际下载，不涉及 Modrinth API 调用。
-    ///
-    /// # Parameters
-    /// - `url`: 文件的直接下载链接。
-    /// - `destination`: 保存路径。
-    ///
-    /// # Returns
-    /// 下载任务的状态信息。
+    /// 委托给显式注入的下载管理器执行，不使用全局单例。
     async fn download_resource(
         &self,
         url: &str,
         destination: &str,
-    ) -> Result<Arc<sealantern_infra::download::DownloadStatus>, MarketError> {
-        let status = fetcher::download_file(url, destination).await?;
-        Ok(status)
+    ) -> Result<Arc<DownloadStatus>, MarketError> {
+        observability::market_download_started(url, "modrinth");
+        download_file(&self.download, url, destination).await
     }
 
+    /// 获取随机资源列表（Modrinth 原生支持该接口）。
     async fn get_random_resources(&self, count: u32) -> Result<Vec<MarketResource>, MarketError> {
         let limit = count.min(10);
         let url = format!("{}/projects_random?count={}", MODRINTH_BASE, limit);
+
         let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
-        let resp = client
-            .get(&url)
-            .map_err(|e| MarketError::config(e.to_string()))?
-            .header("User-Agent", super::USER_AGENT)
-            .send()
-            .await
-            .map_err(|e| MarketError::http("get random resources", "modrinth", e.to_string()))?;
+        let resp = send_get(client, &url, "get random resources", "modrinth").await?;
         let projects: Vec<ModrinthProject> = resp
             .json()
             .await
             .map_err(|e| MarketError::json("parse random resources", "modrinth", e.to_string()))?;
+
         Ok(projects
             .into_iter()
             .map(|p| MarketResource {
@@ -348,7 +283,6 @@ impl Fetcher for ModrinthFetcher {
                 name: p.title,
                 description: p.description,
                 download_count: p.downloads,
-                version_count: 0,
                 source: MarketSource::Modrinth,
             })
             .collect())
@@ -357,8 +291,7 @@ impl Fetcher for ModrinthFetcher {
 
 #[cfg(test)]
 mod tests {
-    use crate::market::fetcher::Fetcher;
-    use crate::market::models::MarketSource;
+    use crate::resource::market::models::MarketSource;
 
     use super::*;
 
@@ -367,7 +300,9 @@ mod tests {
         ModrinthFetcher::new(client)
     }
 
+    /// 需要真实网络与第三方 API 可用性。CI / 离线环境请用 `--ignored` 显式运行。
     #[tokio::test]
+    #[ignore = "依赖真实 Modrinth API 与网络"]
     async fn test_search_returns_results() {
         let fetcher = test_fetcher();
         let result = fetcher.search("sodium", 1, 5).await.unwrap();
@@ -379,6 +314,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "依赖真实 Modrinth API 与网络"]
     async fn test_get_resource_sodium() {
         let fetcher = test_fetcher();
         let info = fetcher.get_resource("sodium").await.unwrap();
@@ -390,6 +326,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "依赖真实 Modrinth API 与网络"]
     async fn test_get_resource_versions_returns_list() {
         let fetcher = test_fetcher();
         let versions = fetcher.get_resource_versions("sodium").await.unwrap();
@@ -401,6 +338,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "依赖真实 Modrinth API 与网络"]
     async fn test_get_random_resources() {
         let fetcher = test_fetcher();
         let resources = fetcher.get_random_resources(3).await.unwrap();
