@@ -13,6 +13,7 @@
 use std::num::NonZeroU16;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
+use std::time::Duration;
 
 use sculk::ErrorCategory as SculkErrorCategory;
 use sculk::tunnel::{
@@ -32,6 +33,9 @@ use super::model::{
 
 /// 应用事件广播的缓冲区容量。
 const EVENT_CHANNEL_CAPACITY: usize = 256;
+
+/// 等待隧道进入 `Active` 的上限；超过则判定启动失败。
+const START_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// SeaLantern 在线隧道服务。
 #[derive(Clone)]
@@ -62,7 +66,11 @@ impl OnlineTunnelService {
         }
     }
 
-    /// 以 Host 角色开启隧道。
+    /// 以 Host 角色开启隧道，返回隧道就绪后的状态快照。
+    ///
+    /// sculk 的 `start_host` 只保证「启动任务已被接受」，隧道就绪（含 Join URI）
+    /// 是异步完成的；这里等状态进入 `Active` 再返回，避免调用方拿到尚未就绪的
+    /// 快照（例如票据仍为空）。
     pub async fn host(
         &self,
         request: HostTunnelRequest,
@@ -72,11 +80,18 @@ impl OnlineTunnelService {
             .start_host(options)
             .await
             .map_err(map_service_error)?;
+        // 先建立事件扇出，避免就绪过程中产生的事件丢失。
         self.restart_fanout();
-        Ok(map_status(&self.inner.status()))
+        match self.wait_until_active().await {
+            Ok(status) => Ok(status),
+            Err(error) => {
+                self.stop_fanout();
+                Err(error)
+            }
+        }
     }
 
-    /// 以 Join 角色加入票据指定的隧道。
+    /// 以 Join 角色加入票据指定的隧道，返回隧道就绪后的状态快照。
     pub async fn join(
         &self,
         request: JoinTunnelRequest,
@@ -87,7 +102,65 @@ impl OnlineTunnelService {
             .await
             .map_err(map_service_error)?;
         self.restart_fanout();
-        Ok(map_status(&self.inner.status()))
+        match self.wait_until_active().await {
+            Ok(status) => Ok(status),
+            Err(error) => {
+                self.stop_fanout();
+                Err(error)
+            }
+        }
+    }
+
+    /// 等待隧道进入 `Active` 并返回就绪状态。
+    ///
+    /// 订阅 sculk 的状态流而非轮询；超时或提前回到 `Idle` 都视为启动失败。
+    async fn wait_until_active(&self) -> Result<TunnelStatus, OnlineTunnelError> {
+        let mut updates = self.inner.subscribe();
+        let deadline = tokio::time::Instant::now() + START_TIMEOUT;
+
+        loop {
+            let current = self.inner.status();
+            match current.state.phase {
+                SculkPhase::Active => return Ok(map_status(&current)),
+                SculkPhase::Idle => {
+                    return Err(OnlineTunnelError::provider(
+                        "start tunnel",
+                        "tunnel became idle before becoming active",
+                    ));
+                }
+                SculkPhase::Starting | SculkPhase::Stopping => {}
+            }
+
+            let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+            if remaining.is_zero() {
+                return Err(OnlineTunnelError::provider(
+                    "start tunnel",
+                    "timed out waiting for the tunnel to become active",
+                ));
+            }
+
+            match tokio::time::timeout(remaining, updates.recv()).await {
+                Ok(Some(SculkUpdate::Status(status))) => {
+                    if status.state.phase == SculkPhase::Active {
+                        return Ok(map_status(&status));
+                    }
+                }
+                // 过程事件（以及 `non_exhaustive` 后续新增的变体）：继续等待就绪。
+                Ok(Some(_)) => {}
+                Ok(None) => {
+                    return Err(OnlineTunnelError::provider(
+                        "start tunnel",
+                        "tunnel status stream closed",
+                    ));
+                }
+                Err(_) => {
+                    return Err(OnlineTunnelError::provider(
+                        "start tunnel",
+                        "timed out waiting for the tunnel to become active",
+                    ));
+                }
+            }
+        }
     }
 
     /// 停止当前活动隧道；无活动隧道时返回 [`OnlineTunnelError::NotRunning`]。
