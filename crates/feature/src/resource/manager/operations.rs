@@ -14,8 +14,8 @@ use sealantern_infra::fs::sha256_file;
 use super::ResourceManagerError;
 use super::layout::ResourceTarget;
 use super::models::{
-    InstanceExtension, MANIFEST_SCHEMA_VERSION, ManagedResource, ReconcileReport,
-    ResourceProvenance, ResourceState,
+    InstanceExtension, InstanceExtensionKind, MANIFEST_SCHEMA_VERSION, ManagedResource,
+    ReconcileReport, ResourceProvenance, ResourceState,
 };
 use super::{manifest, naming, path, reconcile, scan};
 
@@ -73,9 +73,9 @@ pub async fn install(
     };
 
     manifest::update(instance_dir, |stored| {
-        stored
-            .resources
-            .retain(|resource| resource.file_name != managed.file_name);
+        stored.resources.retain(|resource| {
+            !(resource.kind == managed.kind && resource.file_name == managed.file_name)
+        });
         stored.resources.push(managed.clone());
         Ok(None::<()>)
     })
@@ -86,15 +86,19 @@ pub async fn install(
 
 /// 卸载资源：删除目标文件（若仍存在）并从清单移除对应账目。
 ///
+/// `kind` 与 `file_name` 共同定位账目：`mods/` 与 `plugins/` 下的同名文件
+/// 是两条独立账目，互不影响。
+///
 /// 文件已丢失时仍然清理账目，以支持修复"账目在、文件缺"的缺失状态。
 pub async fn remove(
     instance_dir: &Path,
     targets: &[ResourceTarget],
+    kind: InstanceExtensionKind,
     file_name: &str,
 ) -> Result<(), ResourceManagerError> {
     ensure_instance_dir(instance_dir)?;
 
-    match locate(instance_dir, targets, file_name).await {
+    match locate(instance_dir, targets, kind, file_name).await {
         Ok((located, _target)) => {
             if tokio::fs::try_exists(&located).await.unwrap_or(false) {
                 tokio::fs::remove_file(&located).await?;
@@ -108,7 +112,7 @@ pub async fn remove(
     manifest::update(instance_dir, |stored| {
         stored
             .resources
-            .retain(|resource| resource.file_name != file_name);
+            .retain(|resource| !(resource.kind == kind && resource.file_name == file_name));
         Ok(None::<()>)
     })
     .await?;
@@ -117,15 +121,18 @@ pub async fn remove(
 }
 
 /// 启用或禁用资源：重命名文件并同步清单中的文件名与状态。
+///
+/// `kind` 与 `file_name` 共同定位账目，避免同名文件跨目录互相顶替。
 pub async fn set_enabled(
     instance_dir: &Path,
     targets: &[ResourceTarget],
+    kind: InstanceExtensionKind,
     file_name: &str,
     enabled: bool,
 ) -> Result<InstanceExtension, ResourceManagerError> {
     ensure_instance_dir(instance_dir)?;
 
-    let (located, target) = locate(instance_dir, targets, file_name).await?;
+    let (located, target) = locate(instance_dir, targets, kind, file_name).await?;
     let desired_name = if enabled {
         naming::enabled_name(file_name).to_string()
     } else {
@@ -142,7 +149,7 @@ pub async fn set_enabled(
 
     manifest::update(instance_dir, |stored| {
         for resource in &mut stored.resources {
-            if resource.file_name == file_name {
+            if resource.kind == kind && resource.file_name == file_name {
                 resource.file_name = desired_name.clone();
                 resource.enabled = enabled;
             }
@@ -208,16 +215,21 @@ pub async fn sync(
 
 /// 定位资源文件并返回其所在目标目录。
 ///
-/// `file_name` 必须为单一普通路径组件，否则返回
+/// `kind` 限定在对应种类的目标目录内查找（`mods/` 与 `plugins/` 下的同名
+/// 文件互不干扰）；`file_name` 必须为单一普通路径组件，否则返回
 /// [`ResourceManagerError::InvalidFileName`] 且不触碰文件系统。
 async fn locate(
     instance_dir: &Path,
     targets: &[ResourceTarget],
+    kind: InstanceExtensionKind,
     file_name: &str,
 ) -> Result<(PathBuf, ResourceTarget), ResourceManagerError> {
     validate_file_name(file_name)?;
 
     for target in targets {
+        if target.kind != kind {
+            continue;
+        }
         let candidate = instance_dir.join(&target.relative).join(file_name);
         // 只认普通文件：同名目录顶替文件时不得命中，否则 remove 会误删目录、
         // set_enabled 会把目录改名成 `.disabled`。
@@ -344,16 +356,28 @@ mod tests {
         fs::create_dir_all(instance.join("mods")).unwrap();
         fs::write(instance.join("mods/sodium.jar"), b"jar").unwrap();
 
-        let disabled = set_enabled(&instance, &[mod_target()], "sodium.jar", false)
-            .await
-            .unwrap();
+        let disabled = set_enabled(
+            &instance,
+            &[mod_target()],
+            InstanceExtensionKind::Mod,
+            "sodium.jar",
+            false,
+        )
+        .await
+        .unwrap();
         assert_eq!(disabled.file_name, "sodium.jar.disabled");
         assert!(!disabled.enabled);
         assert!(instance.join("mods/sodium.jar.disabled").exists());
 
-        let enabled = set_enabled(&instance, &[mod_target()], "sodium.jar.disabled", true)
-            .await
-            .unwrap();
+        let enabled = set_enabled(
+            &instance,
+            &[mod_target()],
+            InstanceExtensionKind::Mod,
+            "sodium.jar.disabled",
+            true,
+        )
+        .await
+        .unwrap();
         assert_eq!(enabled.file_name, "sodium.jar");
         assert!(enabled.enabled);
 
@@ -367,7 +391,7 @@ mod tests {
         fs::create_dir_all(instance.join("mods")).unwrap();
         fs::write(instance.join("mods/sodium.jar"), b"jar").unwrap();
 
-        remove(&instance, &[mod_target()], "sodium.jar")
+        remove(&instance, &[mod_target()], InstanceExtensionKind::Mod, "sodium.jar")
             .await
             .unwrap();
         assert!(!instance.join("mods/sodium.jar").exists());
@@ -395,7 +419,7 @@ mod tests {
             1
         );
 
-        remove(&instance, &[mod_target()], "gone.jar")
+        remove(&instance, &[mod_target()], InstanceExtensionKind::Mod, "gone.jar")
             .await
             .unwrap();
         assert_eq!(
@@ -418,7 +442,7 @@ mod tests {
         fs::write(&outside, b"must stay").unwrap();
 
         for file_name in ["..", "../outside.jar", "/etc/passwd", "a/b.jar", ""] {
-            let error = remove(&instance, &[mod_target()], file_name)
+            let error = remove(&instance, &[mod_target()], InstanceExtensionKind::Mod, file_name)
                 .await
                 .unwrap_err();
             assert!(
@@ -426,9 +450,15 @@ mod tests {
                 "remove must reject `{file_name}`"
             );
 
-            let error = set_enabled(&instance, &[mod_target()], file_name, false)
-                .await
-                .unwrap_err();
+            let error = set_enabled(
+                &instance,
+                &[mod_target()],
+                InstanceExtensionKind::Mod,
+                file_name,
+                false,
+            )
+            .await
+            .unwrap_err();
             assert!(
                 matches!(error, ResourceManagerError::InvalidFileName(_)),
                 "set_enabled must reject `{file_name}`"
@@ -465,13 +495,16 @@ mod tests {
         let report = list(&instance, &[mod_target()]).await.unwrap();
         assert_eq!(report.missing_count(), 1);
 
-        let error = set_enabled(&instance, &[mod_target()], "foo.jar", false)
-            .await
-            .unwrap_err();
+        let error =
+            set_enabled(&instance, &[mod_target()], InstanceExtensionKind::Mod, "foo.jar", false)
+                .await
+                .unwrap_err();
         assert!(matches!(error, ResourceManagerError::NotFound(_)));
 
         // remove 只清理账目，不得删除同名目录。
-        remove(&instance, &[mod_target()], "foo.jar").await.unwrap();
+        remove(&instance, &[mod_target()], InstanceExtensionKind::Mod, "foo.jar")
+            .await
+            .unwrap();
         assert!(instance.join("mods/foo.jar").is_dir(), "directory must not be deleted");
         assert_eq!(
             list(&instance, &[mod_target()])
@@ -512,6 +545,54 @@ mod tests {
 
         let report = list(&instance, &[mod_target()]).await.unwrap();
         assert_eq!(report.missing_count(), 1);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn same_file_name_in_mods_and_plugins_are_independent_entries() {
+        let root = temp_dir("same-name");
+        let instance = root.join("instance");
+        fs::create_dir_all(instance.join("mods")).unwrap();
+        fs::create_dir_all(instance.join("plugins")).unwrap();
+
+        // 同名 jar 分别作为模组与插件安装。
+        let source = root.join("test-mod.jar");
+        fs::write(&source, b"jar").unwrap();
+        let mod_target = ResourceTarget::new(InstanceExtensionKind::Mod, "mods");
+        let plugin_target = ResourceTarget::new(InstanceExtensionKind::Plugin, "plugins");
+        install(&instance, &mod_target, &source, None)
+            .await
+            .unwrap();
+        install(&instance, &plugin_target, &source, None)
+            .await
+            .unwrap();
+
+        let targets = vec![mod_target, plugin_target];
+
+        // 两条独立账目，均对账正常。
+        let report = list(&instance, &targets).await.unwrap();
+        assert_eq!(report.total(), 2);
+        assert_eq!(report.normal_count(), 2);
+
+        // 卸载模组侧，插件侧账目与文件不受影响。
+        remove(&instance, &targets, InstanceExtensionKind::Mod, "test-mod.jar")
+            .await
+            .unwrap();
+        assert!(!instance.join("mods/test-mod.jar").exists());
+        assert!(instance.join("plugins/test-mod.jar").exists());
+
+        let stored = manifest::load(&instance).await.unwrap();
+        assert_eq!(stored.resources.len(), 1);
+        assert_eq!(stored.resources[0].kind, InstanceExtensionKind::Plugin);
+
+        // 禁用插件侧，同样只影响自身。
+        let disabled =
+            set_enabled(&instance, &targets, InstanceExtensionKind::Plugin, "test-mod.jar", false)
+                .await
+                .unwrap();
+        assert_eq!(disabled.file_name, "test-mod.jar.disabled");
+        assert!(instance.join("plugins/test-mod.jar.disabled").exists());
 
         fs::remove_dir_all(root).unwrap();
     }

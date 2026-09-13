@@ -2,31 +2,42 @@
 //!
 //! 扫描是"事实来源"：文件系统中存在而清单缺失的条目视为未知来源，
 //! 清单存在而文件已消失的条目视为缺失。
+//!
+//! # 账目键
+//!
+//! 对账以 **`(资源种类, 文件名)`** 为复合键。`mods/` 与 `plugins/` 下允许
+//! 出现同名文件（同名 jar 分别作为模组与插件），仅以文件名对账会让二者互相顶替。
 
 use std::collections::HashMap;
 
 use crate::observability;
 
 use super::models::{
-    InstanceExtension, ManagedResource, ReconcileReport, ReconciledResource, ResourceManifest,
-    ResourceState,
+    InstanceExtension, InstanceExtensionKind, ManagedResource, ReconcileReport, ReconciledResource,
+    ResourceManifest, ResourceState,
 };
+
+/// 对账用的复合账目键：资源种类 + 文件名。
+pub(crate) type LedgerKey<'a> = (InstanceExtensionKind, &'a str);
+
+/// 构造账目键（借用文件名字符串）。
+pub(crate) fn ledger_key<'a>(kind: InstanceExtensionKind, file_name: &'a str) -> LedgerKey<'a> {
+    (kind, file_name)
+}
 
 /// 对账扫描事实与持久化清单。
 ///
 /// 返回的报告按资源种类、再按文件名排序，保证输出稳定可测。
 ///
-/// 清单中若存在重复文件名，只保留最后一条账目，并把重复项记入
-/// [`ReconcileReport::duplicate_entries`] 并发出告警（不静默丢弃）。
+/// 清单中若存在重复的 `(种类, 文件名)` 键，只保留最后一条账目，并把重复项
+/// 记入 [`ReconcileReport::duplicate_entries`] 并发出告警（不静默丢弃）。
 pub fn reconcile(scanned: &[InstanceExtension], manifest: &ResourceManifest) -> ReconcileReport {
-    let mut ledger: HashMap<&str, &ManagedResource> = HashMap::new();
+    let mut ledger: HashMap<LedgerKey<'_>, &ManagedResource> = HashMap::new();
     let mut duplicate_entries = Vec::new();
 
     for resource in &manifest.resources {
-        if ledger
-            .insert(resource.file_name.as_str(), resource)
-            .is_some()
-        {
+        let key = ledger_key(resource.kind, resource.file_name.as_str());
+        if ledger.insert(key, resource).is_some() {
             duplicate_entries.push(resource.file_name.clone());
         }
     }
@@ -38,7 +49,7 @@ pub fn reconcile(scanned: &[InstanceExtension], manifest: &ResourceManifest) -> 
     let mut items = Vec::with_capacity(scanned.len().max(manifest.resources.len()));
 
     for extension in scanned {
-        let managed = ledger.remove(extension.file_name.as_str());
+        let managed = ledger.remove(&ledger_key(extension.kind, extension.file_name.as_str()));
         let state = if managed.is_some() {
             ResourceState::Normal
         } else {
@@ -83,10 +94,18 @@ mod tests {
     };
 
     fn extension(file_name: &str, enabled: bool) -> InstanceExtension {
+        extension_of(InstanceExtensionKind::Mod, file_name, enabled)
+    }
+
+    fn extension_of(
+        kind: InstanceExtensionKind,
+        file_name: &str,
+        enabled: bool,
+    ) -> InstanceExtension {
         InstanceExtension::new(
-            InstanceExtensionKind::Mod,
+            kind,
             file_name,
-            PathBuf::from("mods").join(file_name),
+            PathBuf::from(kind.as_str()).join(file_name),
             enabled,
             1024,
         )
@@ -94,9 +113,13 @@ mod tests {
     }
 
     fn managed(file_name: &str) -> ManagedResource {
+        managed_of(InstanceExtensionKind::Mod, file_name)
+    }
+
+    fn managed_of(kind: InstanceExtensionKind, file_name: &str) -> ManagedResource {
         ManagedResource {
             file_name: file_name.to_string(),
-            kind: InstanceExtensionKind::Mod,
+            kind,
             enabled: true,
             hash: None,
             size_bytes: Some(1024),
@@ -173,5 +196,42 @@ mod tests {
             .map(|item| item.file_name.as_str())
             .collect();
         assert_eq!(names, vec!["a.jar", "b.jar"]);
+    }
+
+    #[test]
+    fn same_name_across_kinds_are_distinct_entries() {
+        // 同名文件分别作为模组与插件：两条独立账目，均对账正常。
+        let scanned = vec![
+            extension_of(InstanceExtensionKind::Mod, "shared.jar", true),
+            extension_of(InstanceExtensionKind::Plugin, "shared.jar", true),
+        ];
+        let manifest = ResourceManifest {
+            schema_version: 1,
+            resources: vec![
+                managed_of(InstanceExtensionKind::Mod, "shared.jar"),
+                managed_of(InstanceExtensionKind::Plugin, "shared.jar"),
+            ],
+        };
+
+        let report = reconcile(&scanned, &manifest);
+
+        assert_eq!(report.total(), 2);
+        assert_eq!(report.normal_count(), 2);
+        assert!(report.duplicate_entries.is_empty(), "跨种类的同名文件不是重复账目");
+    }
+
+    #[test]
+    fn kind_mismatch_is_reported_as_unknown_source() {
+        // 文件是插件、账目却是模组：不能按文件名误匹配，应判未知来源。
+        let scanned = vec![extension_of(InstanceExtensionKind::Plugin, "shared.jar", true)];
+        let manifest = ResourceManifest {
+            schema_version: 1,
+            resources: vec![managed_of(InstanceExtensionKind::Mod, "shared.jar")],
+        };
+
+        let report = reconcile(&scanned, &manifest);
+
+        assert_eq!(report.unknown_count(), 1);
+        assert_eq!(report.missing_count(), 1);
     }
 }

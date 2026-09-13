@@ -46,11 +46,12 @@ pub async fn instance_resources_install(
 pub async fn instance_resources_remove(
     services: State<'_, AppServices>,
     instance_id: String,
+    kind: ResourceType,
     file_name: String,
 ) -> Result<(), String> {
     services
         .resource()
-        .remove(&instance_id, &file_name)
+        .remove(&instance_id, kind, &file_name)
         .await
         .map_err(map_error)
 }
@@ -59,12 +60,13 @@ pub async fn instance_resources_remove(
 pub async fn instance_resources_set_enabled(
     services: State<'_, AppServices>,
     instance_id: String,
+    kind: ResourceType,
     file_name: String,
     enabled: bool,
 ) -> Result<InstanceExtension, String> {
     services
         .resource()
-        .set_enabled(&instance_id, &file_name, enabled)
+        .set_enabled(&instance_id, kind, &file_name, enabled)
         .await
         .map_err(map_error)
 }

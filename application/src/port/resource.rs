@@ -52,14 +52,22 @@ pub trait ResourceService: Send + Sync {
         kind: ResourceType,
         provenance: Option<ResourceProvenance>,
     ) -> Result<ManagedResource, ResourceServiceError>;
-
     /// 卸载实例资源（文件缺失时也清理账目）。
-    async fn remove(&self, instance_id: &str, file_name: &str) -> Result<(), ResourceServiceError>;
+    ///
+    /// `kind` 与 `file_name` 共同定位账目：`mods/` 与 `plugins/` 下的同名文件
+    /// 是两条独立账目。
+    async fn remove(
+        &self,
+        instance_id: &str,
+        kind: ResourceType,
+        file_name: &str,
+    ) -> Result<(), ResourceServiceError>;
 
-    /// 启用 / 禁用实例资源。
+    /// 启用 / 禁用实例资源（`kind` 与 `file_name` 共同定位账目）。
     async fn set_enabled(
         &self,
         instance_id: &str,
+        kind: ResourceType,
         file_name: &str,
         enabled: bool,
     ) -> Result<InstanceExtension, ResourceServiceError>;

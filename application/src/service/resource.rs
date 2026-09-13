@@ -117,9 +117,15 @@ impl ResourceService for CoreResourceService {
         Ok(installed)
     }
 
-    async fn remove(&self, instance_id: &str, file_name: &str) -> Result<(), ResourceServiceError> {
+    async fn remove(
+        &self,
+        instance_id: &str,
+        kind: ResourceType,
+        file_name: &str,
+    ) -> Result<(), ResourceServiceError> {
         let (directory, targets) = self.resolve_targets(instance_id).await?;
-        remove(&directory, &targets, file_name)
+        let kind = extension_kind(kind)?;
+        remove(&directory, &targets, kind, file_name)
             .await
             .map_err(map_manager_error)
     }
@@ -127,11 +133,13 @@ impl ResourceService for CoreResourceService {
     async fn set_enabled(
         &self,
         instance_id: &str,
+        kind: ResourceType,
         file_name: &str,
         enabled: bool,
     ) -> Result<InstanceExtension, ResourceServiceError> {
         let (directory, targets) = self.resolve_targets(instance_id).await?;
-        set_enabled(&directory, &targets, file_name, enabled)
+        let kind = extension_kind(kind)?;
+        set_enabled(&directory, &targets, kind, file_name, enabled)
             .await
             .map_err(map_manager_error)
     }
@@ -229,15 +237,20 @@ fn select_target(
     targets: &[ResourceTarget],
     kind: ResourceType,
 ) -> Result<&ResourceTarget, ResourceServiceError> {
-    let kind = match kind {
-        ResourceType::Plugin => InstanceExtensionKind::Plugin,
-        ResourceType::Mod => InstanceExtensionKind::Mod,
-        _ => return Err(ResourceServiceError::Unsupported),
-    };
+    let kind = extension_kind(kind)?;
     targets
         .iter()
         .find(|target| target.kind == kind)
         .ok_or(ResourceServiceError::NoResourceDirs)
+}
+
+/// 资源类型 → 实例扩展种类；仅插件 / 模组可作为实例资源管理。
+fn extension_kind(kind: ResourceType) -> Result<InstanceExtensionKind, ResourceServiceError> {
+    match kind {
+        ResourceType::Plugin => Ok(InstanceExtensionKind::Plugin),
+        ResourceType::Mod => Ok(InstanceExtensionKind::Mod),
+        _ => Err(ResourceServiceError::Unsupported),
+    }
 }
 
 /// 资源类型是否可作为实例资源管理（仅插件 / 模组；数据包等暂不支持）。
