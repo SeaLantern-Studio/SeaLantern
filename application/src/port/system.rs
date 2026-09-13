@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use sealantern_contract::SystemServiceError;
-use sealantern_contract::system::{ServerResourceUsage, SystemSnapshot};
+use sealantern_contract::system::{Ipv6TestResult, ServerResourceUsage, SystemSnapshot};
 
 /// 系统资源信息宿主能力端口。
 ///
@@ -27,4 +27,10 @@ pub trait SystemService: Send + Sync {
         &self,
         instance_id: &str,
     ) -> Result<ServerResourceUsage, SystemServiceError>;
+
+    /// 测试本机是否具备 IPv6 连通性。
+    ///
+    /// 向若干公网 IPv6 字面地址发起短超时 TCP 连接，任一成功即视为支持；
+    /// 全部失败时返回各目标的失败明细，便于用户排查。
+    async fn test_ipv6_connectivity(&self) -> Result<Ipv6TestResult, SystemServiceError>;
 }

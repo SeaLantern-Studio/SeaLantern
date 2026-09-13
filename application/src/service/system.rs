@@ -14,8 +14,8 @@ use async_trait::async_trait;
 use sealantern_contract::SystemServiceError;
 use sealantern_contract::server::ServerState;
 use sealantern_contract::system::{
-    CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
-    ServerResourceUsage, SystemSnapshot,
+    CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, Ipv6TestResult, Ipv6TestTarget, MemoryInfo,
+    NetworkInfo, ProcessResourceUsage, ServerResourceUsage, SystemSnapshot,
 };
 use sealantern_infra::platform::{
     collect_cpu_info, collect_disks, collect_networks, collect_process_usage,
@@ -187,6 +187,156 @@ impl CoreSystemService {
                 _ => SystemError::Unsupported,
             })
     }
+
+    /// 测试 IPv6 连通性，返回应用层主错误。
+    ///
+    /// 并发向若干公网 IPv6 字面地址发起短超时 TCP 连接，任一成功即视为支持；
+    /// 全部失败时收集每个目标的失败明细，便于前端展示与排查。
+    async fn test_ipv6_connectivity_inner() -> Result<Ipv6TestResult, SystemError> {
+        let targets = ipv6_test_targets();
+        let timeout = Duration::from_secs(IPV6_TEST_TIMEOUT_SECS);
+
+        // 并发测试：每个目标一个短超时 TCP 连接，最先成功者即可短路返回。
+        let mut joinset = tokio::task::JoinSet::new();
+        for endpoint in targets {
+            joinset.spawn(async move {
+                let result = tokio::time::timeout(
+                    timeout,
+                    tokio::net::TcpStream::connect(endpoint.socket_addr),
+                )
+                .await;
+                (endpoint.as_target(), result)
+            });
+        }
+
+        let mut failures: Vec<Ipv6TestTarget> = Vec::new();
+        let mut any_success = false;
+        while let Some(join_result) = joinset.join_next().await {
+            let (target, outcome) = join_result.map_err(SystemError::from)?;
+            let Some(failure) = classify_outcome(target, outcome) else {
+                // 成功：记录即可，无需继续收集其余目标的失败明细。
+                any_success = true;
+                continue;
+            };
+            failures.push(failure);
+        }
+
+        if any_success {
+            return Ok(Ipv6TestResult {
+                supported: true,
+                message: "IPv6 connectivity is available".into(),
+                detail: None,
+                error_kind: None,
+                targets: None,
+            });
+        }
+
+        // 全部失败：返回首个失败的分类作为整体 error_kind，并提供每个目标的明细。
+        let primary = failures.first().cloned();
+        Ok(Ipv6TestResult {
+            supported: false,
+            message: "IPv6 connectivity is not available".into(),
+            detail: primary.as_ref().map(|f| f.error.clone()),
+            error_kind: primary.as_ref().map(|f| f.kind.clone()),
+            targets: Some(failures),
+        })
+    }
+}
+
+/// IPv6 连通性测试单目标超时秒数。
+///
+/// 取较短值：测试仅为判定本机是否具备公网 IPv6 路由，无需等待完整 TCP 重传。
+const IPV6_TEST_TIMEOUT_SECS: u64 = 5;
+
+/// IPv6 连通性测试目标。
+#[derive(Clone)]
+struct Ipv6TestEndpoint {
+    /// 面向用户的目标名称（如 `cloudflare-dns`）。
+    name: &'static str,
+    /// IPv6 字面地址。
+    address: &'static str,
+    /// 已解析的 IPv6 套接字地址。
+    socket_addr: std::net::SocketAddr,
+}
+
+impl Ipv6TestEndpoint {
+    /// 解析目标；地址非法时返回 `None`（编程错误，静默跳过）。
+    fn new(name: &'static str, address: &'static str, port: u16) -> Option<Self> {
+        let ip: std::net::Ipv6Addr = address.parse().ok()?;
+        Some(Self {
+            name,
+            address,
+            socket_addr: std::net::SocketAddr::new(std::net::IpAddr::V6(ip), port),
+        })
+    }
+
+    /// 转换为契约层的目标占位（不含失败明细）。
+    fn as_target(&self) -> Ipv6TestTarget {
+        Ipv6TestTarget {
+            target: self.name.into(),
+            address: self.address.into(),
+            error: String::new(),
+            kind: String::new(),
+        }
+    }
+}
+
+/// 返回 IPv6 连通性测试使用的公网字面地址集合。
+///
+/// 选择稳定且双栈可达的知名服务（Cloudflare / Google / Quad9），
+/// 使用字面地址以避免 DNS 解析返回 IPv4 时误判本机 IPv6 能力。
+fn ipv6_test_targets() -> Vec<Ipv6TestEndpoint> {
+    [
+        Ipv6TestEndpoint::new("cloudflare-dns", "2606:4700:4700::1111", 443),
+        Ipv6TestEndpoint::new("google-dns", "2001:4860:4860::8888", 443),
+        Ipv6TestEndpoint::new("quad9-dns", "2620:fe::fe", 443),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+/// 将单目标测试结果归类为失败明细；成功返回 `None`。
+fn classify_outcome(
+    target: Ipv6TestTarget,
+    outcome: Result<Result<tokio::net::TcpStream, std::io::Error>, tokio::time::error::Elapsed>,
+) -> Option<Ipv6TestTarget> {
+    match outcome {
+        Ok(Ok(_stream)) => None,
+        Ok(Err(error)) => {
+            let kind = error_kind(&error);
+            let message = error.to_string();
+            Some(Ipv6TestTarget {
+                target: target.target,
+                address: target.address,
+                error: message,
+                kind,
+            })
+        }
+        Err(_) => Some(Ipv6TestTarget {
+            target: target.target,
+            address: target.address,
+            error: format!("connection timed out after {IPV6_TEST_TIMEOUT_SECS}s"),
+            kind: "timeout".into(),
+        }),
+    }
+}
+
+/// 将底层 IO 错误映射为简短分类标签。
+fn error_kind(error: &std::io::Error) -> String {
+    use std::io::ErrorKind;
+    match error.kind() {
+        ErrorKind::TimedOut => "timeout",
+        ErrorKind::ConnectionRefused => "connect_refused",
+        ErrorKind::ConnectionReset => "connect_reset",
+        ErrorKind::ConnectionAborted => "connect_aborted",
+        ErrorKind::PermissionDenied => "permission_denied",
+        ErrorKind::AddrNotAvailable => "addr_not_available",
+        ErrorKind::NetworkUnreachable => "network_unreachable",
+        ErrorKind::HostUnreachable => "host_unreachable",
+        _ => "connect",
+    }
+    .into()
 }
 
 #[async_trait]
@@ -197,6 +347,12 @@ impl SystemService for CoreSystemService {
 
     async fn default_run_path(&self) -> Result<String, SystemServiceError> {
         Self::default_run_path_inner().await.map_err(Into::into)
+    }
+
+    async fn test_ipv6_connectivity(&self) -> Result<Ipv6TestResult, SystemServiceError> {
+        Self::test_ipv6_connectivity_inner()
+            .await
+            .map_err(Into::into)
     }
 
     async fn server_resource_usage(
