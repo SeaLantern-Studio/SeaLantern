@@ -513,6 +513,8 @@ impl std::error::Error for UpdateInstallServiceError {}
 pub enum OnlineTunnelServiceError {
     /// 客户端提供的隧道请求不合法（如票据为空）。
     InvalidInput,
+    /// Minecraft 本地端口未开放或没有可用世界。
+    PortUnavailable,
     /// 已有隧道正在启动、运行或停止，无法响应新操作。
     Busy,
     /// 当前没有运行中的隧道。
@@ -525,6 +527,7 @@ impl std::fmt::Display for OnlineTunnelServiceError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(match self {
             Self::InvalidInput => "invalid online tunnel input",
+            Self::PortUnavailable => "minecraft port is unavailable",
             Self::Busy => "online tunnel is busy",
             Self::NotRunning => "online tunnel is not running",
             Self::OperationFailed => "online tunnel operation failed",

@@ -9,7 +9,8 @@ export type SettingsGroup =
   | "Console"
   | "Appearance"
   | "Window"
-  | "Developer";
+  | "Developer"
+  | "Tunnel";
 
 export type ProxySettings =
   | { mode: "adaptive" }
@@ -55,6 +56,16 @@ export interface AppSettings {
   last_run_path: string;
   minimal_mode: boolean;
   agreed_to_terms: boolean;
+  /** 联机页：自定义 Relay 地址，空表示默认中继 */
+  tunnel_relay_url: string;
+  /** 联机页：加入方本地监听端口 */
+  tunnel_join_port: number;
+  /** 联机页：上次成功加入使用的邀请链接 */
+  tunnel_join_uri: string;
+  /** 联机页：房主分享链接有效期 */
+  tunnel_host_link_lifetime: string;
+  /** 联机页：房主允许的最大玩家数，null 表示不限制 */
+  tunnel_host_max_players: number | null;
 }
 
 export interface PartialSettings {
@@ -94,6 +105,12 @@ export interface PartialSettings {
   last_run_path?: string;
   minimal_mode?: boolean;
   agreed_to_terms?: boolean;
+  tunnel_relay_url?: string;
+  tunnel_join_port?: number;
+  tunnel_join_uri?: string;
+  tunnel_host_link_lifetime?: string;
+  /** null 表示清空（不限制人数） */
+  tunnel_host_max_players?: number | null;
 }
 
 export interface UpdateSettingsResult {

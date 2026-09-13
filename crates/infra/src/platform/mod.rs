@@ -4,6 +4,7 @@
 //! 由上层负责；尤其是 CA 证书仅供 HTTP 客户端使用，不会修改操作系统信任库。
 
 mod certificate;
+mod clipboard;
 mod elevation;
 mod environment;
 mod error;
@@ -15,6 +16,7 @@ mod system;
 pub use certificate::{
     CaCertificateBundle, load_ca_certificate_bundle, parse_ca_certificate_bundle,
 };
+pub use clipboard::copy_text;
 pub use elevation::{ElevationLaunch, is_elevated, request_elevation};
 pub use environment::{Environment, EnvironmentError};
 pub use error::PlatformError;

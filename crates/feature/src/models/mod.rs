@@ -10,8 +10,8 @@ mod task;
 pub use download_link::{BaseDownloadLinks, DownloadLink, TypeDownloadLinks};
 pub use sealantern_contract::java::JavaInfo;
 pub use sealantern_contract::settings::{
-    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, SettingsGroup,
-    SettingsValidationError,
+    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, DEFAULT_TUNNEL_JOIN_PORT,
+    DEFAULT_TUNNEL_LINK_LIFETIME, SettingsGroup, SettingsValidationError, TUNNEL_LINK_LIFETIMES,
 };
 pub use sealantern_contract::settings::{NullablePatch, PartialAppSettings, UpdateResult};
 pub use server::InstanceList;

@@ -45,6 +45,7 @@ dirs = "5"
 dirs-next = "2"
 flate2 = "1.0"
 font-kit = "0.14"
+arboard = "3"
 sysproxy = { path = "../vendor/sysproxy" }
 tar = { version = "0.4", default-features = false }
 url = "2"
