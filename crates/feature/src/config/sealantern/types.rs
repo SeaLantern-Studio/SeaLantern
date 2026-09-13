@@ -3,8 +3,9 @@
 //! 模型定义由 `crate::models` 统一拥有；此模块保留既有配置访问路径。
 
 pub use crate::models::{
-    AppSettings, CURRENT_CONFIG_VERSION, InstanceList, JavaInfo, NullablePatch, PartialAppSettings,
-    SettingsGroup, UpdateResult,
+    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_TUNNEL_JOIN_PORT, DEFAULT_TUNNEL_LINK_LIFETIME,
+    InstanceList, JavaInfo, NullablePatch, PartialAppSettings, SettingsGroup,
+    TUNNEL_LINK_LIFETIMES, UpdateResult,
 };
 
 #[allow(deprecated)]

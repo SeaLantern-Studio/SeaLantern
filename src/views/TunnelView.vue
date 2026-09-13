@@ -1,93 +1,204 @@
 <script setup lang="ts">
 // keep-alive 缓存时 onUnmounted 不触发,改用 onActivated/onDeactivated 管理轮询
-import { computed, onActivated, onDeactivated, ref } from "vue";
-import ConsoleOutput from "@components/console/ConsoleOutput.vue";
-import { tunnelApi, type TunnelStatus } from "@api/tunnel";
+import { computed, onActivated, onDeactivated, onUnmounted, ref, watch } from "vue";
+import LatencyChart from "@components/views/tunnel/LatencyChart.vue";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+import {
+  onTunnelEvent,
+  tunnelApi,
+  TUNNEL_LINK_LIFETIMES,
+  type OnlineTunnelEvent,
+  type OnlineTunnelPhase,
+  type TunnelConnection,
+  type TunnelLinkLifetime,
+  type TunnelStatus,
+} from "@api/tunnel";
+import { setLiveRtt, getLiveRtt } from "@api/tunnelLatency";
 import { settingsApi } from "@api/settings";
 import { i18n } from "@language";
 import { handleError } from "@utils/errorHandler";
 import { useToast } from "cmzya-modern-ui";
-import { Copy, Eye, EyeOff, Github, Info, RefreshCw, X } from "lucide-vue-next";
+import { Github, Info } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 const DEFAULT_HOST_PORT = 25565;
 const DEFAULT_JOIN_LOCAL_PORT = 30000;
 
-const toast = useToast();
-type PendingAction = "host" | "join" | "stop" | "generate-ticket";
-const pendingAction = ref<PendingAction | null>(null);
-const status = ref<TunnelStatus | null>(null);
+/** 快照轮询只兜底字节数、连接列表等低频指标；延迟趋势由 `path_changed` 事件驱动。 */
+const STATUS_POLL_INTERVAL_MS = 5000;
+/** 建链期间用更短的间隔跟进真实阶段。 */
+const STARTING_POLL_INTERVAL_MS = 1000;
 
-const hostPort = ref("");
-const hostPassword = ref("");
+const toast = useToast();
+type PendingAction = "host" | "join" | "stop";
+const pendingAction = ref<PendingAction | null>(null);
+/**
+ * 仍在等待后端返回的命令数。
+ *
+ * 取消只让界面退出过渡态，旧命令还会在后台收尾（例如 host 仍在 bind），
+ * 此间后端照样会拒绝新请求——所以期间要禁用建房/加入，而不是让用户点了才报 Busy。
+ */
+const commandsInFlight = ref(0);
+const hasPendingCommand = computed(() => commandsInFlight.value > 0);
+const status = ref<TunnelStatus | null>(null);
+/** 用户在 `join` 命令返回前点了停止：后端会让 `join` 以错误结束，那不是故障。 */
+let stopRequested = false;
+
+const hostPort = ref(String(DEFAULT_HOST_PORT));
+const hostMaxPlayers = ref("");
 const hostRelayUrl = ref("");
-const showHostPassword = ref(false);
+const hostLinkLifetime = ref<TunnelLinkLifetime>("always");
 
 const joinTicket = ref("");
-const joinLocalPort = ref("");
-const joinPassword = ref("");
-const showJoinPassword = ref(false);
-const joinTicketAutoFillEnabled = ref(true);
+const joinLocalPort = ref(String(DEFAULT_JOIN_LOCAL_PORT));
 const showInfoModal = ref(false);
 
+/** 联机偏好只回填一次，避免切页回来覆盖用户正在编辑的内容。 */
+let tunnelPreferencesLoaded = false;
+
+function isLinkLifetime(value: string | undefined): value is TunnelLinkLifetime {
+  return value != null && (TUNNEL_LINK_LIFETIMES as readonly string[]).includes(value);
+}
+
+/** 从应用设置回填联机表单，省去每次重启重新填写。 */
+async function loadTunnelPreferences() {
+  if (tunnelPreferencesLoaded) return;
+  try {
+    const settings = await settingsApi.get();
+    hostRelayUrl.value = settings.tunnel_relay_url ?? hostRelayUrl.value;
+    if (isLinkLifetime(settings.tunnel_host_link_lifetime)) {
+      hostLinkLifetime.value = settings.tunnel_host_link_lifetime;
+    }
+    if (settings.tunnel_join_port) {
+      joinLocalPort.value = String(settings.tunnel_join_port);
+    }
+    if (settings.tunnel_host_max_players) {
+      hostMaxPlayers.value = String(settings.tunnel_host_max_players);
+    }
+    joinTicket.value = settings.tunnel_join_uri ?? joinTicket.value;
+    tunnelPreferencesLoaded = true;
+  } catch {
+    // 设置不可用时保留默认值，下次进入页面再试。
+  }
+}
+
+/** 写入联机偏好；偏好落盘失败不应影响联机本身。 */
+function saveTunnelPreferences(partial: {
+  tunnel_relay_url?: string;
+  tunnel_join_port?: number;
+  tunnel_join_uri?: string;
+  tunnel_host_link_lifetime?: TunnelLinkLifetime;
+  tunnel_host_max_players?: number | null;
+}) {
+  void settingsApi.updatePartial(partial).catch(() => {});
+}
+
+/** 后端错误是 snake_case 的短标识，这里翻译成可操作的提示。 */
+function tunnelError(error: unknown): string {
+  const message = handleError(error);
+  switch (message) {
+    case "invalid_input":
+      return i18n.t("tunnel.invalid_input");
+    case "port_unavailable":
+      return i18n.t("tunnel.port_unavailable");
+    case "busy":
+      return i18n.t("tunnel.busy");
+    case "not_running":
+      return i18n.t("tunnel.not_running");
+    case "operation_failed":
+      return i18n.t("tunnel.operation_failed");
+    default:
+      return message;
+  }
+}
+
+/**
+ * 本地乐观阶段。
+ *
+ * `tunnelApi.join/host` 要等隧道就绪才返回（join 最长 30s），期间后端拿不到中间
+ * 状态；这里先本地进入过渡阶段，让页面立即切换并允许取消，命令返回后再以真实
+ * 快照覆盖。
+ */
+const pendingPhase = ref<OnlineTunnelPhase | null>(null);
+
 const running = computed(() => status.value?.running ?? false);
+const currentPhase = computed(() => pendingPhase.value ?? status.value?.phase ?? "idle");
+const isStarting = computed(() => currentPhase.value === "starting");
+const joined = computed(() => status.value?.mode === "join" && (running.value || isStarting.value));
+const hasSession = computed(() => isStarting.value || status.value?.mode != null);
 const modeLabel = computed(() => {
   if (status.value?.mode === "host") return i18n.t("tunnel.mode_host");
   if (status.value?.mode === "join") return i18n.t("tunnel.mode_join");
   return "-";
 });
-const runningStatusText = computed(() =>
-  running.value ? i18n.t("tunnel.yes") : i18n.t("tunnel.no"),
+const shareLink = computed(() =>
+  status.value?.mode === "host" ? (status.value.ticket ?? "") : "",
 );
-const runningStatusClass = computed<"running" | "stopped">(() =>
-  running.value ? "running" : "stopped",
+const hasShareLink = computed(() => shareLink.value.length > 0);
+
+/** 加入方要填进 Minecraft 多人游戏的地址。 */
+const localAddress = computed(() => status.value?.localAddress ?? "");
+const hasLocalAddress = computed(() => localAddress.value.length > 0);
+const joinConnection = computed<TunnelConnection | null>(
+  () => status.value?.connections?.[0] ?? null,
 );
-const hasTicket = computed(() => Boolean(status.value?.ticket));
-const isIdle = computed(() => !running.value);
+const joinRoute = computed(() => {
+  const connection = joinConnection.value;
+  if (!connection) return "";
+  return connection.is_relay ? i18n.t("tunnel.route_relay") : i18n.t("tunnel.route_direct");
+});
+const joinLatency = computed(() => {
+  const value = joinConnection.value?.rtt_ms;
+  return value == null ? "--" : `${value} ms`;
+});
+const joinSent = computed(() => formatBytes(joinConnection.value?.tx_bytes ?? 0));
+const joinReceived = computed(() => formatBytes(joinConnection.value?.rx_bytes ?? 0));
+const joinStepTitle = computed(() =>
+  currentPhase.value === "active" ? i18n.t("tunnel.join_ready") : i18n.t("tunnel.join_starting"),
+);
+
+const isIdle = computed(() => currentPhase.value === "idle");
 const isBusy = computed(() => pendingAction.value !== null);
-const canCopyTicket = computed(() => hasTicket.value && !isBusy.value);
-const canGenerateTicket = computed(() => isIdle.value && !isBusy.value);
-const canStartHost = computed(() => isIdle.value && !isBusy.value);
-const canStartJoin = computed(() => isIdle.value && !isBusy.value);
-const canStopTunnel = computed(() => running.value && !isBusy.value);
+const canStartHost = computed(() => isIdle.value && !isBusy.value && !hasPendingCommand.value);
+const canStartJoin = computed(() => isIdle.value && !isBusy.value && !hasPendingCommand.value);
+// 建链过程中也允许停止（即「取消连接」），否则用户无路可退。
+// 已经发过取消、命令仍在收尾时不再重复触发（host 与 join 同理）。
+const canStopTunnel = computed(
+  () => hasSession.value && pendingAction.value !== "stop" && !stopRequested,
+);
+const isCancellable = computed(() => isStarting.value);
 const canEditHostForm = computed(() => isIdle.value && !isBusy.value);
 const canEditJoinForm = computed(() => isIdle.value && !isBusy.value);
-const hostPasswordInputType = computed(() => (showHostPassword.value ? "text" : "password"));
-const joinPasswordInputType = computed(() => (showJoinPassword.value ? "text" : "password"));
 
 const hostActionLoading = computed(() => pendingAction.value === "host");
 const joinActionLoading = computed(() => pendingAction.value === "join");
 const stopActionLoading = computed(() => pendingAction.value === "stop");
-const generateTicketLoading = computed(() => pendingAction.value === "generate-ticket");
 
-const canClearHostRelay = computed(() => canEditHostForm.value && hostRelayUrl.value.length > 0);
-const canClearJoinTicket = computed(() => canEditJoinForm.value && joinTicket.value.length > 0);
+// 房主展示玩家连接列表，加入方展示延迟趋势。
+const showConnections = computed(() => running.value && status.value?.mode === "host");
+const showLatencyChart = computed(() => joined.value);
 
-const showConnections = computed(
-  () => running.value && (status.value?.mode === "host" || status.value?.mode === "join"),
+const linkLifetimeOptions = computed(() =>
+  TUNNEL_LINK_LIFETIMES.map((value) => ({
+    value,
+    label: i18n.t(`tunnel.lifetime_${value}`),
+  })),
 );
 
-interface ConsoleOutputExpose {
-  doScroll: () => void;
-  appendLines: (lines: string[]) => void;
-  clear: () => void;
-  getAllPlainText: () => string;
-}
+/** 分档色块文案，阈值与 LatencyChart 内的常量保持一致。 */
+const latencyThresholds = computed(() => ({
+  low: i18n.t("tunnel.latency_low", { threshold: 80 }),
+  medium: i18n.t("tunnel.latency_medium", { low: 80, high: 180 }),
+  high: i18n.t("tunnel.latency_high", { threshold: 180 }),
+}));
 
-const tunnelOutputRef = ref<ConsoleOutputExpose | null>(null);
-const userScrolledUp = ref(false);
-const consoleFontSize = ref(13);
-const consoleFontFamily = ref("");
-const consoleLetterSpacing = ref(0);
-const maxLogLines = ref(5000);
-let statusPollTimer: ReturnType<typeof setInterval> | null = null;
+let statusPollTimer: ReturnType<typeof setTimeout> | null = null;
 // 页面隐藏时暂停轮询,避免后台无意义 IPC 开销
 let isPageVisible = true;
-const syncedLogs = ref<string[]>([]);
-const logsDisplayClearedByUser = ref(false);
 
 function beginAction(action: PendingAction): boolean {
-  if (pendingAction.value !== null) return false;
+  // 旧命令仍在收尾时不接新动作：后端此刻仍是 Busy，接了只会弹错误。
+  if (pendingAction.value !== null || hasPendingCommand.value) return false;
   pendingAction.value = action;
   return true;
 }
@@ -119,69 +230,84 @@ function validatePort(value: string, fieldName: string): string | null {
   return null;
 }
 
-function syncLogOutput(logs: string[]) {
-  const output = tunnelOutputRef.value;
-  if (!output) {
-    syncedLogs.value = logs.slice();
-    return;
-  }
+function parseMaxPlayers(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) return undefined;
+  return parsed;
+}
 
-  const prev = syncedLogs.value;
-  const canAppend = logs.length >= prev.length && prev.every((line, idx) => logs[idx] === line);
-
-  const missedInitialWrite =
-    logs.length > 0 && !output.getAllPlainText().trim() && !logsDisplayClearedByUser.value;
-
-  if (!canAppend || missedInitialWrite) {
-    logsDisplayClearedByUser.value = false;
-    output.clear();
-    if (logs.length > 0) {
-      output.appendLines(logs.filter((l) => !l.includes("host loop ended")));
-    }
-  } else {
-    const delta = logs.slice(prev.length);
-    if (delta.length > 0) {
-      output.appendLines(delta.filter((l) => !l.includes("host loop ended")));
-    }
-  }
-
-  syncedLogs.value = logs.slice();
+/** 流量按 1024 进制折算，保留一位小数直到两位数以上。 */
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** index;
+  return `${index === 0 || value >= 10 ? Math.round(value) : value.toFixed(1)} ${units[index]}`;
 }
 
 function applyStatus(next: TunnelStatus) {
   status.value = next;
-  syncLogOutput(next.logs);
-  if (!hostPort.value.trim()) hostPort.value = String(next.host_port);
-  if (!joinLocalPort.value.trim()) joinLocalPort.value = String(next.join_port);
-  if (!hostRelayUrl.value.trim() && next.relay_url) hostRelayUrl.value = next.relay_url;
-  if (joinTicketAutoFillEnabled.value && !joinTicket.value.trim() && next.last_ticket) {
-    joinTicket.value = next.last_ticket;
+  // 实时延迟以事件为准，首个快照只用来给趋势图播种。
+  setLiveRtt(next.mode === "join" ? (next.connections?.[0]?.rtt_ms ?? null) : null);
+}
+
+/** 命令返回（成功或失败）后退出本地过渡阶段，改用真实快照。 */
+function clearPendingPhase() {
+  pendingPhase.value = null;
+}
+
+function handleTunnelEvent(event: OnlineTunnelEvent) {
+  switch (event.kind) {
+    case "token_rotated":
+      void refreshStatus({ silent: true });
+      break;
+    case "path_changed":
+      setLiveRtt(event.rtt_ms);
+      break;
+    default:
+      break;
   }
 }
 
-async function loadConsoleSettings() {
-  try {
-    const settings = await settingsApi.get();
-    consoleFontSize.value = settings.console_font_size;
-    consoleFontFamily.value = settings.console_font_family || "";
-    consoleLetterSpacing.value = settings.console_letter_spacing || 0;
-    maxLogLines.value = Math.max(100, settings.max_log_lines || 5000);
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn("Failed to load console settings:", e);
+// token 用于处理"listen 尚未 resolve 组件就卸载"的竞态,避免监听泄漏。
+let tunnelEventUnlisten: UnlistenFn | null = null;
+let tunnelEventToken = 0;
+
+async function subscribeTunnelEvents() {
+  if (tunnelEventUnlisten) return;
+  const token = ++tunnelEventToken;
+  const unlisten = await onTunnelEvent(handleTunnelEvent);
+  if (token !== tunnelEventToken) {
+    unlisten();
+    return;
   }
+  tunnelEventUnlisten = unlisten;
+}
+
+function unsubscribeTunnelEvents() {
+  tunnelEventToken++;
+  tunnelEventUnlisten?.();
+  tunnelEventUnlisten = null;
 }
 
 function startStatusPolling() {
   stopStatusPolling();
-  statusPollTimer = setInterval(() => {
-    if (!isPageVisible) return;
-    void refreshStatus({ silent: true });
-  }, 5000);
+  const schedule = () => {
+    // 建链期间加速轮询，好让后端真实阶段尽快取代本地过渡状态。
+    const interval = isStarting.value ? STARTING_POLL_INTERVAL_MS : STATUS_POLL_INTERVAL_MS;
+    statusPollTimer = setTimeout(() => {
+      if (isPageVisible) void refreshStatus({ silent: true });
+      schedule();
+    }, interval);
+  };
+  schedule();
 }
 
 function stopStatusPolling() {
   if (statusPollTimer) {
-    clearInterval(statusPollTimer);
+    clearTimeout(statusPollTimer);
     statusPollTimer = null;
   }
 }
@@ -201,10 +327,9 @@ function handleVisibilityChange() {
 async function refreshStatus(options?: { silent?: boolean }) {
   const silent = options?.silent ?? false;
   try {
-    const next = await tunnelApi.status();
-    applyStatus(next);
+    applyStatus(await tunnelApi.status());
   } catch (e) {
-    if (!silent) toast.error(handleError(e));
+    if (!silent) toast.error(tunnelError(e));
   }
 }
 
@@ -216,18 +341,32 @@ async function startHost() {
     endAction("host");
     return;
   }
+  stopRequested = false;
+  pendingPhase.value = "starting";
+  commandsInFlight.value += 1;
   try {
+    const relayUrl = hostRelayUrl.value.trim();
+    const maxPlayers = parseMaxPlayers(hostMaxPlayers.value);
     applyStatus(
       await tunnelApi.host({
         port: parsePort(hostPort.value, DEFAULT_HOST_PORT),
-        password: hostPassword.value.trim() || undefined,
-        relayUrl: hostRelayUrl.value.trim() || undefined,
+        maxPlayers,
+        relayUrl: relayUrl || undefined,
+        linkLifetime: hostLinkLifetime.value,
       }),
     );
-    toast.success(i18n.t("tunnel.host_started"));
+    saveTunnelPreferences({
+      tunnel_relay_url: relayUrl,
+      tunnel_host_link_lifetime: hostLinkLifetime.value,
+      // 清空输入框时写入 null，才能真正取消人数上限。
+      tunnel_host_max_players: maxPlayers ?? null,
+    });
   } catch (e) {
-    toast.error(handleError(e));
+    // 用户主动取消时后端会让 host 以错误结束，不必提示。
+    if (!stopRequested) toast.error(tunnelError(e));
   } finally {
+    commandsInFlight.value -= 1;
+    clearPendingPhase();
     endAction("host");
   }
 }
@@ -240,112 +379,109 @@ async function startJoin() {
     endAction("join");
     return;
   }
+  if (!joinTicket.value.trim()) {
+    toast.error(i18n.t("tunnel.err_ticket_empty"));
+    endAction("join");
+    return;
+  }
+  stopRequested = false;
+  pendingPhase.value = "starting";
+  commandsInFlight.value += 1;
   try {
-    applyStatus(
-      await tunnelApi.join({
-        ticket: joinTicket.value,
-        localPort: parsePort(joinLocalPort.value, DEFAULT_JOIN_LOCAL_PORT),
-        password: joinPassword.value.trim() || undefined,
-      }),
-    );
-    toast.success(i18n.t("tunnel.join_started"));
+    const snapshot = await tunnelApi.join({
+      // 分享链接→Join URI 的归一化由后端完成,前端只做去空格。
+      ticket: joinTicket.value.trim(),
+      localPort: parsePort(joinLocalPort.value, DEFAULT_JOIN_LOCAL_PORT),
+    });
+    // 取消与就绪可能同时到达，以取消为准，避免又把隧道显示成已连接。
+    if (stopRequested) {
+      void refreshStatus({ silent: true });
+      return;
+    }
+    applyStatus(snapshot);
+    saveTunnelPreferences({
+      tunnel_join_port: parsePort(joinLocalPort.value, DEFAULT_JOIN_LOCAL_PORT),
+    });
   } catch (e) {
-    toast.error(handleError(e));
+    // 用户主动取消时后端会让 join 以错误结束，不必提示。
+    if (!stopRequested) toast.error(tunnelError(e));
   } finally {
+    commandsInFlight.value -= 1;
+    clearPendingPhase();
     endAction("join");
   }
 }
 
 async function stopTunnel() {
-  if (!beginAction("stop")) return;
+  // 停止/取消是打断动作：host/join 仍在进行时也必须能发起，
+  // 所以不能走 beginAction——它会因为已经有 pending 动作而直接拒绝。
+  if (!canStopTunnel.value) return;
+  pendingAction.value = "stop";
+  stopRequested = true;
+  commandsInFlight.value += 1;
   try {
     applyStatus(await tunnelApi.stop());
-    toast.success(i18n.t("tunnel.tunnel_stopped"));
+    // 后端已确认空闲，立即退出过渡状态，不必等 host/join 命令收尾。
+    clearPendingPhase();
   } catch (e) {
-    toast.error(handleError(e));
+    toast.error(tunnelError(e));
   } finally {
+    commandsInFlight.value -= 1;
     endAction("stop");
   }
 }
 
-async function copyTicket() {
-  if (!canCopyTicket.value) return;
+/** 复制成功的反馈由按钮自身给出（短暂显示「已复制」），联机页只弹失败提示。 */
+const copiedKind = ref<"link" | "address" | null>(null);
+let copiedTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function copyText(value: string, kind: "link" | "address") {
+  if (!value) return;
   try {
-    const copied = await tunnelApi.copyTicket();
-    if (copied) {
-      toast.success(i18n.t("tunnel.ticket_copied"));
-      applyStatus(await tunnelApi.status());
-    } else {
-      toast.error(i18n.t("tunnel.ticket_copy_failed"));
-    }
+    await navigator.clipboard.writeText(value);
+    copiedKind.value = kind;
+    if (copiedTimer) clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => {
+      copiedKind.value = null;
+      copiedTimer = null;
+    }, 1600);
   } catch (e) {
-    toast.error(handleError(e));
+    toast.error(tunnelError(e));
   }
 }
 
-async function generateTicket() {
-  if (!beginAction("generate-ticket")) return;
-  try {
-    applyStatus(await tunnelApi.generateTicket());
-    toast.success(i18n.t("tunnel.ticket_generated"));
-  } catch (e) {
-    toast.error(handleError(e));
-  } finally {
-    endAction("generate-ticket");
-  }
+async function copyShareLink() {
+  await copyText(shareLink.value, "link");
 }
 
-async function regenerateTicket() {
-  if (!beginAction("generate-ticket")) return;
-  try {
-    applyStatus(await tunnelApi.regenerateTicket());
-    toast.success(i18n.t("tunnel.ticket_regenerated"));
-  } catch (e) {
-    toast.error(handleError(e));
-  } finally {
-    endAction("generate-ticket");
-  }
+async function copyLocalAddress() {
+  await copyText(localAddress.value, "address");
 }
 
-async function copyLogs() {
-  const text = tunnelOutputRef.value?.getAllPlainText() || "";
-  if (!text.trim()) return;
+// 建立连接后立即补一次快照，不等下一个轮询周期。
+watch(joined, (value) => {
+  if (value && isPageVisible) void refreshStatus({ silent: true });
+});
 
-  const lineCount = text.split("\n").length;
-  try {
-    await navigator.clipboard.writeText(text);
-    tunnelOutputRef.value?.appendLines([i18n.t("tunnel.log_copied", { count: lineCount })]);
-  } catch {
-    tunnelOutputRef.value?.appendLines([i18n.t("tunnel.log_copy_failed")]);
-  }
-}
+// 隧道终究起来了，说明这次取消没拦住，恢复停止按钮可用。
+watch(running, (value) => {
+  if (value) stopRequested = false;
+});
 
-function clearLogs() {
-  tunnelOutputRef.value?.clear();
-  userScrolledUp.value = false;
-  logsDisplayClearedByUser.value = true;
-}
-
-function clearHostRelay() {
-  if (!canClearHostRelay.value) return;
-  hostRelayUrl.value = "";
-}
-
-function clearJoinTicket() {
-  if (!canClearJoinTicket.value) return;
-  joinTicket.value = "";
-  joinTicketAutoFillEnabled.value = false;
-}
-
-function handleJoinTicketInput(value: string) {
-  joinTicket.value = value;
-  joinTicketAutoFillEnabled.value = false;
-}
+// 只有真正连上才记住邀请链接：填错的票据不值得回填。
+watch(
+  () => running.value && status.value?.mode === "join",
+  (connected) => {
+    const ticket = joinTicket.value.trim();
+    if (connected && ticket) saveTunnelPreferences({ tunnel_join_uri: ticket });
+  },
+);
 
 onActivated(async () => {
-  // 设置加载与状态拉取互不依赖,并行执行
   isPageVisible = true;
-  await Promise.all([loadConsoleSettings(), refreshStatus()]);
+  await refreshStatus();
+  await subscribeTunnelEvents();
+  await loadTunnelPreferences();
   startStatusPolling();
   document.addEventListener("visibilitychange", handleVisibilityChange);
 });
@@ -353,89 +489,29 @@ onActivated(async () => {
 onDeactivated(() => {
   stopStatusPolling();
   document.removeEventListener("visibilitychange", handleVisibilityChange);
-  syncedLogs.value = [];
-  logsDisplayClearedByUser.value = false;
+});
+
+onUnmounted(() => {
+  unsubscribeTunnelEvents();
+  setLiveRtt(null);
+  if (copiedTimer) clearTimeout(copiedTimer);
 });
 </script>
 
 <template>
-  <div class="tunnel-view animate-stagger-in">
-    <cmz-card :title="i18n.t('tunnel.status_title')" padding="md">
-      <template #actions>
-        <button
-          class="ticket-icon-btn"
-          :title="i18n.t('tunnel.info_title')"
-          :aria-label="i18n.t('tunnel.info_title')"
-          @click="showInfoModal = true"
-        >
-          <Info :size="16" />
-        </button>
-      </template>
-      <div class="status-line">
-        <span class="status-pill">
-          <span class="status-pill-label">{{ i18n.t("tunnel.running") }}:</span>
-          <cmz-badge
-            dot
-            :color="runningStatusClass === 'running' ? '#22c55e' : '#9ca3af'"
-            :text="runningStatusText"
-          />
-        </span>
-        <span class="status-pill">
-          <span class="status-pill-label">{{ i18n.t("tunnel.mode") }}:</span>
-          <span class="mode-text">{{ modeLabel }}</span>
-        </span>
-      </div>
-      <div class="status-line status-line--ticket">
-        <span class="ticket-label">{{ i18n.t("tunnel.ticket") }}:</span>
-        <span class="ticket-scroll">
-          <span class="ticket-text">{{ status?.ticket || i18n.t("tunnel.no_ticket") }}</span>
-        </span>
-        <span v-if="hasTicket" class="ticket-actions">
-          <button
-            class="ticket-icon-btn"
-            :title="i18n.t('tunnel.copy_ticket')"
-            :aria-label="i18n.t('tunnel.copy_ticket')"
-            :disabled="!canCopyTicket"
-            @click="copyTicket"
-          >
-            <Copy :size="16" />
-          </button>
-          <button
-            class="ticket-icon-btn"
-            :title="i18n.t('tunnel.regenerate_ticket')"
-            :aria-label="i18n.t('tunnel.regenerate_ticket')"
-            :disabled="!canGenerateTicket"
-            @click="regenerateTicket"
-          >
-            <RefreshCw :size="16" />
-          </button>
-        </span>
-        <cmz-button
-          v-if="!hasTicket"
-          variant="outline"
-          size="sm"
-          :disabled="!canGenerateTicket"
-          :loading="generateTicketLoading"
-          @click="generateTicket"
-        >
-          {{ i18n.t("tunnel.generate_ticket") }}
-        </cmz-button>
-      </div>
-      <div v-if="running" class="status-actions">
-        <cmz-button
-          variant="solid"
-          color="#ef4444"
-          :disabled="!canStopTunnel"
-          :loading="stopActionLoading"
-          @click="stopTunnel"
-        >
-          {{ i18n.t("tunnel.stop") }}
-        </cmz-button>
-      </div>
-    </cmz-card>
+  <div class="tunnel-view online-workspace animate-stagger-in">
+    <button
+      v-if="isIdle"
+      class="ticket-icon-btn setup-info"
+      :title="i18n.t('tunnel.info_title')"
+      :aria-label="i18n.t('tunnel.info_title')"
+      @click="showInfoModal = true"
+    >
+      <Info :size="16" />
+    </button>
 
-    <div class="tunnel-form-cards">
-      <cmz-card :title="i18n.t('tunnel.host_title')" padding="md">
+    <section v-if="isIdle" class="setup-grid">
+      <cmz-card class="mode-card" :title="i18n.t('tunnel.host_title')" padding="md">
         <div class="form-grid">
           <cmz-input
             v-model="hostPort"
@@ -443,189 +519,177 @@ onDeactivated(() => {
             :disabled="!canEditHostForm"
           />
           <cmz-input
-            v-model="hostPassword"
-            :type="hostPasswordInputType"
-            :label="i18n.t('tunnel.host_password')"
+            v-model="hostMaxPlayers"
+            :label="i18n.t('tunnel.host_max_players')"
             :disabled="!canEditHostForm"
-          >
-            <template #suffix>
-              <button
-                type="button"
-                class="ticket-icon-btn tunnel-input-icon-btn"
-                :title="
-                  showHostPassword ? i18n.t('tunnel.hide_password') : i18n.t('tunnel.show_password')
-                "
-                :aria-label="
-                  showHostPassword ? i18n.t('tunnel.hide_password') : i18n.t('tunnel.show_password')
-                "
-                :disabled="!canEditHostForm"
-                @click="showHostPassword = !showHostPassword"
-              >
-                <EyeOff v-if="showHostPassword" :size="14" />
-                <Eye v-else :size="14" />
-              </button>
-            </template>
-          </cmz-input>
+          />
           <cmz-input
             v-model="hostRelayUrl"
             :label="i18n.t('tunnel.host_relay_url')"
             :disabled="!canEditHostForm"
-          >
-            <template v-if="hostRelayUrl.length > 0" #suffix>
-              <button
-                type="button"
-                class="ticket-icon-btn tunnel-input-icon-btn"
-                :title="i18n.t('tunnel.clear_field')"
-                :aria-label="i18n.t('tunnel.clear_field')"
-                :disabled="!canClearHostRelay"
-                @click="clearHostRelay"
-              >
-                <X :size="14" />
-              </button>
-            </template>
-          </cmz-input>
+          />
+          <cmz-select
+            :model-value="hostLinkLifetime"
+            :options="linkLifetimeOptions"
+            :label="i18n.t('tunnel.host_link_lifetime')"
+            :disabled="!canEditHostForm"
+            @update:model-value="
+              (value: string | number) => (hostLinkLifetime = value as TunnelLinkLifetime)
+            "
+          />
         </div>
         <div class="card-actions">
-          <cmz-button :disabled="!canStartHost" :loading="hostActionLoading" @click="startHost">
+          <cmz-button
+            :disabled="!canStartHost"
+            :loading="hostActionLoading || hasPendingCommand"
+            @click="startHost"
+          >
             {{ i18n.t("tunnel.start_host") }}
           </cmz-button>
         </div>
       </cmz-card>
 
-      <cmz-card :title="i18n.t('tunnel.join_title')" variant="solid" padding="md">
+      <cmz-card class="mode-card" :title="i18n.t('tunnel.join_title')" variant="solid" padding="md">
         <div class="form-grid">
           <cmz-input
-            :model-value="joinTicket"
-            :label="i18n.t('tunnel.join_ticket')"
+            v-model="joinTicket"
+            :label="i18n.t('tunnel.share_link')"
             :disabled="!canEditJoinForm"
-            @update:model-value="handleJoinTicketInput"
-          >
-            <template v-if="joinTicket.length > 0" #suffix>
-              <button
-                type="button"
-                class="ticket-icon-btn tunnel-input-icon-btn"
-                :title="i18n.t('tunnel.clear_field')"
-                :aria-label="i18n.t('tunnel.clear_field')"
-                :disabled="!canClearJoinTicket"
-                @click="clearJoinTicket"
-              >
-                <X :size="14" />
-              </button>
-            </template>
-          </cmz-input>
+          />
           <cmz-input
             v-model="joinLocalPort"
             :label="i18n.t('tunnel.join_local_port')"
             :disabled="!canEditJoinForm"
           />
-          <cmz-input
-            v-model="joinPassword"
-            :type="joinPasswordInputType"
-            :label="i18n.t('tunnel.join_password')"
-            :disabled="!canEditJoinForm"
-          >
-            <template #suffix>
-              <button
-                type="button"
-                class="ticket-icon-btn tunnel-input-icon-btn"
-                :title="
-                  showJoinPassword ? i18n.t('tunnel.hide_password') : i18n.t('tunnel.show_password')
-                "
-                :aria-label="
-                  showJoinPassword ? i18n.t('tunnel.hide_password') : i18n.t('tunnel.show_password')
-                "
-                :disabled="!canEditJoinForm"
-                @click="showJoinPassword = !showJoinPassword"
-              >
-                <EyeOff v-if="showJoinPassword" :size="14" />
-                <Eye v-else :size="14" />
-              </button>
-            </template>
-          </cmz-input>
         </div>
         <div class="card-actions">
           <cmz-button
-            variant="primary"
             :disabled="!canStartJoin"
-            :loading="joinActionLoading"
+            :loading="joinActionLoading || hasPendingCommand"
             @click="startJoin"
           >
             {{ i18n.t("tunnel.start_join") }}
           </cmz-button>
         </div>
       </cmz-card>
-    </div>
+    </section>
 
-    <cmz-card
-      v-if="showConnections"
-      :title="i18n.t('tunnel.connections_title')"
-      variant="solid"
-      padding="md"
-    >
-      <div v-if="!status?.connections?.length" class="empty-text">
-        {{ i18n.t("tunnel.no_connections") }}
-      </div>
-      <div v-else class="table-wrap">
-        <table class="conn-table">
-          <thead>
-            <tr>
-              <th>{{ i18n.t("tunnel.table_remote") }}</th>
-              <th>{{ i18n.t("tunnel.table_route") }}</th>
-              <th>{{ i18n.t("tunnel.table_rtt") }}</th>
-              <th>{{ i18n.t("tunnel.table_tx") }}</th>
-              <th>{{ i18n.t("tunnel.table_rx") }}</th>
-              <th>{{ i18n.t("tunnel.table_alive") }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in status?.connections" :key="item.remote_id">
-              <td>{{ item.remote_id }}</td>
-              <td>
-                {{ item.is_relay ? i18n.t("tunnel.route_relay") : i18n.t("tunnel.route_direct") }}
-              </td>
-              <td>{{ item.rtt_ms }} ms</td>
-              <td>{{ item.tx_bytes }}</td>
-              <td>{{ item.rx_bytes }}</td>
-              <td>{{ item.alive ? i18n.t("tunnel.yes") : i18n.t("tunnel.no") }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </cmz-card>
-
-    <cmz-card
-      class="tunnel-logs-card"
-      :title="i18n.t('tunnel.logs_title')"
-      variant="solid"
-      padding="sm"
-    >
-      <template #actions>
-        <div class="log-actions">
-          <cmz-button variant="outline" size="sm" @click="copyLogs">
-            {{ i18n.t("console.copy_log") }}
-          </cmz-button>
-          <cmz-button variant="ghost" size="sm" @click="clearLogs">
-            {{ i18n.t("console.clear_log") }}
+    <section v-else class="active-stack">
+      <cmz-card class="connection-panel" :title="modeLabel" padding="md">
+        <div v-if="hasShareLink" class="share-block">
+          <span>{{ i18n.t("tunnel.share_link") }}</span>
+          <code>{{ shareLink }}</code>
+          <cmz-button variant="outline" size="sm" @click="copyShareLink">
+            {{ copiedKind === "link" ? i18n.t("tunnel.copied") : i18n.t("tunnel.copy_link") }}
           </cmz-button>
         </div>
-      </template>
-      <div class="tunnel-log-console">
-        <ConsoleOutput
-          ref="tunnelOutputRef"
-          :consoleFontSize="consoleFontSize"
-          :consoleFontFamily="consoleFontFamily"
-          :consoleLetterSpacing="consoleLetterSpacing"
-          :maxLogLines="maxLogLines"
-          :readonly="true"
-          :userScrolledUp="userScrolledUp"
-          @scroll="(value: boolean) => (userScrolledUp = value)"
-          @scrollToBottom="
-            userScrolledUp = false;
-            tunnelOutputRef?.doScroll();
-          "
+
+        <div v-else class="join-step">
+          <h4>{{ joinStepTitle }}</h4>
+          <div class="address-block">
+            <span>{{ i18n.t("tunnel.minecraft_address") }}</span>
+            <code v-if="hasLocalAddress">{{ localAddress }}</code>
+            <code v-else class="pending">{{ i18n.t("tunnel.allocating_port") }}</code>
+            <cmz-button
+              variant="outline"
+              size="sm"
+              :disabled="!hasLocalAddress"
+              @click="copyLocalAddress"
+            >
+              {{
+                copiedKind === "address" ? i18n.t("tunnel.copied") : i18n.t("tunnel.copy_address")
+              }}
+            </cmz-button>
+          </div>
+          <div class="join-metrics">
+            <div>
+              <span>{{ i18n.t("tunnel.join_route") }}</span>
+              <strong>{{ joinRoute || i18n.t("tunnel.detecting") }}</strong>
+            </div>
+            <div>
+              <span>{{ i18n.t("tunnel.table_rtt") }}</span>
+              <strong>{{ joinLatency }}</strong>
+            </div>
+            <div>
+              <span>{{ i18n.t("tunnel.sent") }}</span>
+              <strong>{{ joinSent }}</strong>
+            </div>
+            <div>
+              <span>{{ i18n.t("tunnel.received") }}</span>
+              <strong>{{ joinReceived }}</strong>
+            </div>
+          </div>
+          <p class="join-hint">
+            {{
+              isCancellable
+                ? i18n.t("tunnel.cancel_hint")
+                : currentPhase === "active"
+                  ? i18n.t("tunnel.join_hint")
+                  : i18n.t("tunnel.syncing")
+            }}
+          </p>
+        </div>
+
+        <div class="card-actions">
+          <cmz-button
+            color="#ef4444"
+            :disabled="!canStopTunnel"
+            :loading="stopActionLoading"
+            @click="stopTunnel"
+          >
+            {{ isCancellable ? i18n.t("tunnel.cancel_join") : i18n.t("tunnel.stop") }}
+          </cmz-button>
+        </div>
+      </cmz-card>
+
+      <cmz-card
+        v-if="showConnections"
+        class="connections-card"
+        :title="i18n.t('tunnel.connections_title')"
+        variant="solid"
+        padding="md"
+      >
+        <div v-if="!status?.connections?.length" class="empty-text">
+          {{ i18n.t("tunnel.no_connections") }}
+        </div>
+        <div v-else class="table-wrap">
+          <table class="conn-table">
+            <thead>
+              <tr>
+                <th>{{ i18n.t("tunnel.table_remote") }}</th>
+                <th>{{ i18n.t("tunnel.table_route") }}</th>
+                <th>{{ i18n.t("tunnel.table_rtt") }}</th>
+                <th>{{ i18n.t("tunnel.table_alive") }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in status.connections" :key="item.remote_id">
+                <td>{{ item.remote_id }}</td>
+                <td>
+                  {{ item.is_relay ? i18n.t("tunnel.route_relay") : i18n.t("tunnel.route_direct") }}
+                </td>
+                <td>{{ item.rtt_ms }} ms</td>
+                <td>{{ item.alive ? i18n.t("tunnel.yes") : i18n.t("tunnel.no") }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </cmz-card>
+
+      <cmz-card
+        v-if="showLatencyChart"
+        :title="i18n.t('tunnel.latency_history')"
+        variant="solid"
+        padding="md"
+      >
+        <LatencyChart
+          :value="joinConnection?.rtt_ms ?? null"
+          :label="i18n.t('tunnel.latency_history')"
+          :thresholds="latencyThresholds"
+          :sample="getLiveRtt"
         />
-      </div>
-    </cmz-card>
+      </cmz-card>
+    </section>
 
     <cmz-modal
       :visible="showInfoModal"
@@ -643,5 +707,4 @@ onDeactivated(() => {
     </cmz-modal>
   </div>
 </template>
-
 <style src="@styles/views/TunnelView.css" scoped></style>
