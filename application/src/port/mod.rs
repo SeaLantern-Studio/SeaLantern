@@ -27,7 +27,7 @@ pub use download::DownloadService;
 pub use instance::InstanceService;
 pub use java::JavaService;
 pub use online::OnlineTunnelService;
-pub use players::{PlayerListService, PlayerLookupService};
+pub use players::{PlayerAdminService, PlayerListService, PlayerLookupService};
 pub use provisioning::ProvisioningService;
 pub use server::ServerService;
 pub use server_config::ServerConfigService;
