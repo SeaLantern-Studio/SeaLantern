@@ -156,3 +156,35 @@ pub struct ServerResourceUsage {
     /// 实例目录磁盘占用（目录本身占用 + 所在挂载点容量）。
     pub disk: DirectoryUsage,
 }
+
+/// IPv6 连通性测试单个目标的失败明细。
+///
+/// 仅在测试整体失败时填充；成功的目标不会出现在列表中。
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct Ipv6TestTarget {
+    /// 测试目标名称（如 `cloudflare-dns`）。
+    pub target: String,
+    /// 测试使用的 IPv6 字面地址（如 `2606:4700:4700::1111`）。
+    pub address: String,
+    /// 失败时的简短错误描述（成功时为空字符串）。
+    pub error: String,
+    /// 错误分类标签（如 `timeout` / `connect` / `other`）。
+    pub kind: String,
+}
+
+/// IPv6 连通性测试结果。
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct Ipv6TestResult {
+    /// 是否检测到 IPv6 连通性（任一目标连通即为 true）。
+    pub supported: bool,
+    /// 面向用户的总结信息。
+    pub message: String,
+    /// 失败时的底层错误原始描述，供详情面板展示。
+    pub detail: Option<String>,
+    /// 失败时的错误分类标签，供详情面板展示。
+    pub error_kind: Option<String>,
+    /// 各测试目标的失败明细（成功时为空或包含未通过的目标）。
+    pub targets: Option<Vec<Ipv6TestTarget>>,
+}

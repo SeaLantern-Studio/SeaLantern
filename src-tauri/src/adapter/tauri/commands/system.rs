@@ -13,7 +13,7 @@ use sealantern_application::port::SystemService;
 use sealantern_application::service::CoreSystemService;
 use sealantern_application::services::AppServices;
 use sealantern_contract::SystemServiceError;
-use sealantern_contract::system::{ServerResourceUsage, SystemSnapshot};
+use sealantern_contract::system::{Ipv6TestResult, ServerResourceUsage, SystemSnapshot};
 use tauri::State;
 
 /// 获取宿主注入的系统资源信息服务句柄。
@@ -37,6 +37,15 @@ pub async fn get_default_run_path(
 ) -> Result<String, SystemServiceError> {
     let service = system_service(&services);
     service.default_run_path().await
+}
+
+/// 测试本机是否具备 IPv6 连通性。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn test_ipv6_connectivity(
+    services: State<'_, AppServices>,
+) -> Result<Ipv6TestResult, SystemServiceError> {
+    let service = system_service(&services);
+    service.test_ipv6_connectivity().await
 }
 
 /// 按实例标识采集服务器资源占用。
