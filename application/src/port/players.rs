@@ -61,29 +61,33 @@ pub trait PlayerListService: Send + Sync {
 ///
 /// 所有写操作都要求服务器处于运行状态：通过向其 stdin 写入一条控制台命令
 /// （`whitelist add` / `whitelist remove` / `ban` / `pardon` / `op` / `deop` /
-/// `kick`）实现，并捕获回显以确认命令确已送达服务器。
+/// `kick`）实现，并等待命令处理完成。
 ///
-/// Minecraft 服务端在命令生效后会**立即**把结果落盘
-/// （`whitelist.json` / `banned-players.json` / `ops.json`），因此写操作返回后，
+/// **成功判定**：不依赖捕获到的回显文本——并发捕获可能混入无关日志行，命令
+/// 也可能被服务端拒绝（玩家不存在、目标不在线等）。因此各方法在命令执行后
+/// 对**最终状态**（`whitelist.json` / `banned-players.json` / `ops.json` /
+/// 在线列表）做验证，未达到预期返回 [`PlayerAdminError::OperationFailed`]。
+///
+/// Minecraft 服务端在命令生效后会**立即**把结果落盘，因此写操作返回后，
 /// [`PlayerListService`] 的读操作可以立刻看到变更，无需 `whitelist reload`，
 /// 也无需由调用方手动改写文件。
 #[async_trait]
 pub trait PlayerAdminService: Send + Sync {
-    /// 把玩家加入白名单（发 `whitelist add <name>`）。
+    /// 把玩家加入白名单（发 `whitelist add <name>`，随后验证白名单文件已含该玩家）。
     async fn add_to_whitelist(
         &self,
         server_id: String,
         name: String,
     ) -> Result<String, PlayerAdminError>;
 
-    /// 把玩家移出白名单（发 `whitelist remove <name>`）。
+    /// 把玩家移出白名单（发 `whitelist remove <name>`，随后验证白名单文件已不含该玩家）。
     async fn remove_from_whitelist(
         &self,
         server_id: String,
         name: String,
     ) -> Result<String, PlayerAdminError>;
 
-    /// 封禁玩家（发 `ban <name> [reason]`，`reason` 为空时不带原因）。
+    /// 封禁玩家（发 `ban <name> [reason]`，随后验证封禁文件已含该玩家）。
     async fn ban_player(
         &self,
         server_id: String,
@@ -91,20 +95,20 @@ pub trait PlayerAdminService: Send + Sync {
         reason: String,
     ) -> Result<String, PlayerAdminError>;
 
-    /// 解除封禁（发 `pardon <name>`）。
+    /// 解除封禁（发 `pardon <name>`，随后验证封禁文件已不含该玩家）。
     async fn unban_player(
         &self,
         server_id: String,
         name: String,
     ) -> Result<String, PlayerAdminError>;
 
-    /// 授予 OP（发 `op <name>`）。
+    /// 授予 OP（发 `op <name>`，随后验证 ops.json 已含该玩家）。
     async fn add_op(&self, server_id: String, name: String) -> Result<String, PlayerAdminError>;
 
-    /// 撤销 OP（发 `deop <name>`）。
+    /// 撤销 OP（发 `deop <name>`，随后验证 ops.json 已不含该玩家）。
     async fn remove_op(&self, server_id: String, name: String) -> Result<String, PlayerAdminError>;
 
-    /// 踢出在线玩家（发 `kick <name> [reason]`，`reason` 为空时不带原因）。
+    /// 踢出在线玩家（发 `kick <name> [reason]`，执行前后分别通过在线列表验证）。
     async fn kick_player(
         &self,
         server_id: String,

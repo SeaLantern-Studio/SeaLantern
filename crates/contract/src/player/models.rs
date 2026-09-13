@@ -44,10 +44,11 @@ pub struct BanEntryDto {
     /// 执行封禁的操作者（玩家名或 `Server`）。
     #[serde(default)]
     pub source: String,
-    /// 封禁创建时间（ISO 8601 字符串）。
+    /// 封禁创建时间（Minecraft 时间戳字符串，格式为 `yyyy-MM-dd HH:mm:ss Z`，
+    /// 例如 `2026-01-01 00:00:00 +0800`，不是 ISO 8601）。
     #[serde(default)]
     pub created: String,
-    /// 封禁到期时间（ISO 8601 字符串）。
+    /// 封禁到期时间（Minecraft 时间戳字符串，格式同上；`forever` 表示永久）。
     #[serde(default)]
     pub expires: String,
 }

@@ -547,6 +547,9 @@ pub enum PlayerAdminError {
     ServiceUnavailable,
     /// 命令已发出但未在超时内收到回显。
     CaptureFailed,
+    /// 服务器拒绝了命令（玩家不存在、目标不在线等），或命令执行后最终状态
+    /// 未达到预期（由配置文件 / 在线列表验证得出）。
+    OperationFailed,
 }
 
 impl std::fmt::Display for PlayerAdminError {
@@ -556,11 +559,23 @@ impl std::fmt::Display for PlayerAdminError {
             Self::ServerNotRunning => "server is not running",
             Self::ServiceUnavailable => "player admin service unavailable",
             Self::CaptureFailed => "command capture failed or timed out",
+            Self::OperationFailed => "player admin command was rejected by the server",
         })
     }
 }
 
 impl std::error::Error for PlayerAdminError {}
+
+impl From<PlayerListError> for PlayerAdminError {
+    fn from(err: PlayerListError) -> Self {
+        match err {
+            PlayerListError::InvalidInput => PlayerAdminError::InvalidInput,
+            PlayerListError::ServerNotRunning => PlayerAdminError::ServerNotRunning,
+            PlayerListError::ServiceUnavailable => PlayerAdminError::ServiceUnavailable,
+            PlayerListError::CaptureFailed => PlayerAdminError::CaptureFailed,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

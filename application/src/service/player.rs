@@ -83,22 +83,49 @@ impl CorePlayerService {
         serde_json::from_str(trimmed).map_err(|_| PlayerListError::ServiceUnavailable)
     }
 
-    /// 向运行中的服务器发送一条玩家管理命令，并捕获回显确认其已送达。
+    /// 向运行中的服务器发送一条玩家管理命令，等待其处理完成。
     ///
-    /// 只确认"收到回显"、不解析成功与否：Minecraft 的命令回执文案随语言与
-    /// 版本变化，解析成功标志并不可靠；而收到回显已足以证明命令确实被执行
-    /// （而非写进了一个已经关闭的 stdin）。
+    /// 只负责"确认命令已送达且服务器已处理完"（以捕获回显的静默窗口判定），
+    /// **不**把捕获到的回显行当作成功判定：
     ///
-    /// 命令生效后服务端会立即把结果写回配置文件，因此调用方随后读取列表即可
-    /// 看到变更，无需 `whitelist reload`，也无需手动改写文件。
+    /// - 并发捕获会收到同一实例的不相关日志行，仅凭"收到行"证明不了命令成功；
+    /// - 命令本身也可能被服务器拒绝（玩家不存在、目标不在线等），此时服务器
+    ///   仍会输出一条回显。
+    ///
+    /// 因此成功与否由各写方法在命令执行后对**最终状态**（配置文件 / 在线列表）
+    /// 做验证，见 `assert_list_contains` 与各写方法
+    /// （code review：命令被拒绝 / 并发无关行不应被误判为成功）。
     async fn run_admin_command(
         &self,
         server_id: &str,
         command: &str,
-    ) -> Result<String, PlayerAdminError> {
+    ) -> Result<(), PlayerAdminError> {
         capture_command_output(&self.server_svc, server_id, command, Duration::from_secs(6))
             .await?;
-        Ok(command.to_string())
+        Ok(())
+    }
+
+    /// 断言服务器目录下的名单文件（`whitelist.json` / `banned-players.json` /
+    /// `ops.json`）是否包含指定玩家（忽略大小写）。
+    ///
+    /// 服务器拒绝命令（玩家不存在、目标不在线等）时不会把改动写进名单文件，
+    /// 据此把"命令发出但没生效"识别为 [`PlayerAdminError::OperationFailed`]；
+    /// 同时也天然免疫并发场景下的无关回显行——这里的验证读的是文件而非捕获日志。
+    async fn assert_list_contains(
+        &self,
+        server_id: &str,
+        filename: &str,
+        name: &str,
+        contained: bool,
+    ) -> Result<(), PlayerAdminError> {
+        let list = self
+            .read_json_list::<PlayerEntryDto>(server_id, filename)
+            .await?;
+        let found = list.iter().any(|e| e.name.eq_ignore_ascii_case(name));
+        if found != contained {
+            return Err(PlayerAdminError::OperationFailed);
+        }
+        Ok(())
     }
 }
 
@@ -260,8 +287,12 @@ impl PlayerAdminService for CorePlayerService {
         name: String,
     ) -> Result<String, PlayerAdminError> {
         let name = validate_player_name(&name)?;
-        self.run_admin_command(&server_id, &format!("whitelist add {name}"))
-            .await
+        let command = format!("whitelist add {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        // 玩家名无效时服务端不会写入白名单，据此识别命令被拒绝。
+        self.assert_list_contains(&server_id, "whitelist.json", name, true)
+            .await?;
+        Ok(command)
     }
 
     async fn remove_from_whitelist(
@@ -270,8 +301,11 @@ impl PlayerAdminService for CorePlayerService {
         name: String,
     ) -> Result<String, PlayerAdminError> {
         let name = validate_player_name(&name)?;
-        self.run_admin_command(&server_id, &format!("whitelist remove {name}"))
-            .await
+        let command = format!("whitelist remove {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        self.assert_list_contains(&server_id, "whitelist.json", name, false)
+            .await?;
+        Ok(command)
     }
 
     async fn ban_player(
@@ -287,7 +321,11 @@ impl PlayerAdminService for CorePlayerService {
         } else {
             format!("ban {name} {reason}")
         };
-        self.run_admin_command(&server_id, &command).await
+        self.run_admin_command(&server_id, &command).await?;
+        // 封禁不存在的玩家会被服务端拒绝，banned-players.json 不会出现该玩家。
+        self.assert_list_contains(&server_id, "banned-players.json", name, true)
+            .await?;
+        Ok(command)
     }
 
     async fn unban_player(
@@ -296,20 +334,29 @@ impl PlayerAdminService for CorePlayerService {
         name: String,
     ) -> Result<String, PlayerAdminError> {
         let name = validate_player_name(&name)?;
-        self.run_admin_command(&server_id, &format!("pardon {name}"))
-            .await
+        let command = format!("pardon {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        self.assert_list_contains(&server_id, "banned-players.json", name, false)
+            .await?;
+        Ok(command)
     }
 
     async fn add_op(&self, server_id: String, name: String) -> Result<String, PlayerAdminError> {
         let name = validate_player_name(&name)?;
-        self.run_admin_command(&server_id, &format!("op {name}"))
-            .await
+        let command = format!("op {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        self.assert_list_contains(&server_id, "ops.json", name, true)
+            .await?;
+        Ok(command)
     }
 
     async fn remove_op(&self, server_id: String, name: String) -> Result<String, PlayerAdminError> {
         let name = validate_player_name(&name)?;
-        self.run_admin_command(&server_id, &format!("deop {name}"))
-            .await
+        let command = format!("deop {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        self.assert_list_contains(&server_id, "ops.json", name, false)
+            .await?;
+        Ok(command)
     }
 
     async fn kick_player(
@@ -320,12 +367,24 @@ impl PlayerAdminService for CorePlayerService {
     ) -> Result<String, PlayerAdminError> {
         let name = validate_player_name(&name)?;
         let reason = sanitize_reason(&reason);
+        // 服务端会拒绝"踢不在线的玩家"；kick 不写任何配置文件，只能靠在线列表
+        // 判断，因此先确认目标在线，避免把"不在线"误判为踢出成功。
+        let online_before = self.get_online_players(server_id.clone()).await?;
+        if !online_before.iter().any(|n| n.eq_ignore_ascii_case(name)) {
+            return Err(PlayerAdminError::OperationFailed);
+        }
         let command = if reason.is_empty() {
             format!("kick {name}")
         } else {
             format!("kick {name} {reason}")
         };
-        self.run_admin_command(&server_id, &command).await
+        self.run_admin_command(&server_id, &command).await?;
+        // 执行后确认其已下线。
+        let online_after = self.get_online_players(server_id).await?;
+        if online_after.iter().any(|n| n.eq_ignore_ascii_case(name)) {
+            return Err(PlayerAdminError::OperationFailed);
+        }
+        Ok(command)
     }
 }
 
