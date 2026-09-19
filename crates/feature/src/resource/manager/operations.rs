@@ -49,6 +49,11 @@ pub async fn install(
     if !naming::is_resource_file(&file_name) {
         return Err(ResourceManagerError::UnsupportedExtension(file_name));
     }
+    // 禁用态文件不能作为安装来源：`.disabled` 是运行时状态而非资源名，
+    // 直接落盘会让账目 file_name 带上后缀、enabled 记成 true，账实错位。
+    if naming::is_disabled(&file_name) {
+        return Err(ResourceManagerError::DisabledFileName(file_name));
+    }
 
     let target_dir = instance_dir.join(&target.relative);
     tokio::fs::create_dir_all(&target_dir).await?;
@@ -345,6 +350,15 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(error, ResourceManagerError::UnsupportedExtension(_)));
+
+        // 禁用态文件不能作为安装来源：避免账目 file_name 带 .disabled 后缀
+        // 且 enabled 记成 true 的账实错位。
+        let disabled = root.join("paused.jar.disabled");
+        fs::write(&disabled, b"jar").unwrap();
+        let error = install(&instance, &mod_target(), &disabled, None)
+            .await
+            .unwrap_err();
+        assert!(matches!(error, ResourceManagerError::DisabledFileName(_)));
 
         fs::remove_dir_all(root).unwrap();
     }

@@ -38,6 +38,10 @@ pub enum ResourceManagerError {
     #[error("不支持的资源文件类型: {0}")]
     UnsupportedExtension(String),
 
+    /// 文件名处于禁用状态（`.disabled` 后缀），不能作为安装来源。
+    #[error("不能安装禁用态文件: {0}")]
+    DisabledFileName(String),
+
     /// 目标资源已存在。
     #[error("资源已存在: {0}")]
     AlreadyExists(String),

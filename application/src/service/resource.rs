@@ -311,6 +311,7 @@ fn map_manager_error(error: ResourceManagerError) -> ResourceServiceError {
         ResourceManagerError::InstanceDirNotFound(_) => ResourceServiceError::InstanceNotFound,
         ResourceManagerError::InvalidFileName(_)
         | ResourceManagerError::UnsupportedExtension(_)
+        | ResourceManagerError::DisabledFileName(_)
         | ResourceManagerError::AlreadyExists(_) => ResourceServiceError::InvalidInput,
         ResourceManagerError::NotFound(_) => ResourceServiceError::NotFound,
         ResourceManagerError::Manifest { .. }
@@ -510,6 +511,10 @@ mod tests {
             ),
             (
                 ResourceManagerError::UnsupportedExtension("x".into()),
+                ResourceServiceError::InvalidInput,
+            ),
+            (
+                ResourceManagerError::DisabledFileName("x".into()),
                 ResourceServiceError::InvalidInput,
             ),
             (
