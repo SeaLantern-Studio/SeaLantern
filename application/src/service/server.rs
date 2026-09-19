@@ -446,6 +446,10 @@ impl ServerService for CoreServerService {
     }
 
     async fn send_command(&self, id: &InstanceId, command: &str) -> Result<(), ServerServiceError> {
+        // 先确认实例存在：进程表里没有条目只说明"当前没有运行中的进程"，
+        // 并不代表实例本身不存在。缺了这步，未注册的 ID 会被误报成
+        // `server_not_running`（HTTP 409），而不是 `instance_not_found`（404）。
+        self.find_instance(id).await?;
         self.send_command_inner(id, command).await
     }
 }
@@ -657,8 +661,15 @@ impl CoreServerService {
         let Some(managed) = processes.get_mut(&id_str) else {
             return Err(ServerError::NotRunning.into());
         };
-        if managed.daemon.poll().map(|s| s.is_some()).unwrap_or(true) {
-            return Err(ServerError::NotRunning.into());
+        // 轮询是三态而非布尔：仍在运行才可写 stdin；已退出属于"未运行"；
+        // 轮询本身失败（OS 错误）是操作失败，不能一并报成"未运行"——否则
+        // 调用方会提示"服务器已停止"或返回 409，掩盖需要排查的故障。
+        match managed.daemon.poll() {
+            Ok(None) => {}
+            Ok(Some(_)) => return Err(ServerError::NotRunning.into()),
+            Err(error) => {
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+            }
         }
 
         // 写入 stdin 是短同步 IO（单行命令），直接持有锁执行。
@@ -741,22 +752,76 @@ mod tests {
             .join("instances.json")
     }
 
+    /// 构造一个最小可用的实例规格（注册表测试用）。
+    fn sample_spec(id: &str, directory: PathBuf) -> sealantern_core::instance::InstanceSpec {
+        use sealantern_core::instance::{InstanceSpec, LocalLaunch, StartupMode};
+
+        let startup_target = directory.join("server.jar");
+        InstanceSpec {
+            id: InstanceId::new(id).expect("valid id"),
+            name: "测试服".into(),
+            aliases: Vec::new(),
+            core_type: "paper".into(),
+            core_version: "1.20.4".into(),
+            game_version: "1.20.4".into(),
+            directory,
+            port: 25565,
+            max_memory_mib: 1024,
+            min_memory_mib: 512,
+            created_at_unix_secs: 0,
+            last_started_at_unix_secs: None,
+            server_metadata: None,
+            launch: LocalLaunch {
+                startup_mode: StartupMode::Jar,
+                startup_target: Some(startup_target),
+                custom_command: None,
+                custom_executable: None,
+                custom_arguments: Vec::new(),
+                java_executable: None,
+                jvm_arguments: Vec::new(),
+            },
+        }
+    }
+
     #[tokio::test]
-    async fn send_command_reports_not_running_when_no_process() {
-        // 服务器未运行时发送控制台命令（例如用户在已停止的实例上点控制台
-        // 快捷指令）必须返回 `NotRunning`，让宿主能提示"服务器未运行"，
-        // 而不是笼统的"状态错误"。
+    async fn send_command_rejects_unknown_instance() {
+        // 未注册的实例 ID 必须报 InstanceNotFound（HTTP 404）：进程表里没有
+        // 条目只说明"当前没有运行中的进程"，不能据此推断实例不存在。
         let path = registry_path();
         let instances = CoreInstanceService::with_path(&path)
             .await
             .expect("instance service");
         let service =
             CoreServerService::new(Arc::new(instances), Arc::new(CoreSettingsService::new()));
+        let id = InstanceId::new("ghost").expect("valid id");
+
+        let error = crate::port::ServerService::send_command(&service, &id, "time set day")
+            .await
+            .expect_err("未知实例必须失败");
+        assert_eq!(error, sealantern_contract::ServerServiceError::InstanceNotFound);
+    }
+
+    #[tokio::test]
+    async fn send_command_reports_not_running_for_stopped_instance() {
+        // 已注册但从未启动的实例：发命令应报 NotRunning（"服务器未运行"），
+        // 与未知实例的 InstanceNotFound 区分开。
+        let path = registry_path();
+        let instances = CoreInstanceService::with_path(&path)
+            .await
+            .expect("instance service");
+        let directory =
+            std::env::temp_dir().join(format!("sealantern-stopped-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).expect("instance directory");
+        crate::port::InstanceService::create(&instances, sample_spec("stopped", directory))
+            .await
+            .expect("create instance");
+        let service =
+            CoreServerService::new(Arc::new(instances), Arc::new(CoreSettingsService::new()));
         let id = InstanceId::new("stopped").expect("valid id");
 
         let error = crate::port::ServerService::send_command(&service, &id, "time set day")
             .await
-            .expect_err("服务器未运行时必须失败");
+            .expect_err("未运行时必须失败");
         assert_eq!(error, sealantern_contract::ServerServiceError::NotRunning);
     }
 
