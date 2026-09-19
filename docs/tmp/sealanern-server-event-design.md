@@ -1,3 +1,14 @@
+---
+author: DragonHTDev
+references:
+  [
+    "server/src/event",
+    "server/src/adapter/http/router.rs",
+    "application/src/service/log_recorder.rs",
+  ]
+expiration-time: 20261231
+---
+
 # server 宿主事件推送（WebSocket）对接说明 v3
 
 > v3 修订：游标语义精确定义（R1）、应用层 ping 改为必需（R2）、首次连接纳入初始化（R3）、补漏失败兜底（R4）、两宿主补漏通道与参数名差异（R5）、连接状态暴露（R6）、多标签页限制（R7）。
