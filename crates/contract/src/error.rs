@@ -349,6 +349,12 @@ pub enum ResourceServiceError {
     InvalidInput,
     /// 实例没有可管理的资源目录（如纯原版服务端）。
     NoResourceDirs,
+    /// 实例没有该种类的资源目录（如纯插件服上安装模组）。
+    ///
+    /// 与 [`NoResourceDirs`](Self::NoResourceDirs) 区分：后者表示整个实例
+    /// 都不支持资源管理，本变体表示实例支持资源管理、但不支持所请求的种类，
+    /// 前端提示需要区别对待。
+    NoTargetForKind,
     /// 底层文件系统 / 清单操作失败。
     OperationFailed,
     /// 市场查询或下载解析失败。
@@ -364,6 +370,7 @@ impl std::fmt::Display for ResourceServiceError {
             Self::NotFound => "market resource or version not found",
             Self::InvalidInput => "invalid resource input",
             Self::NoResourceDirs => "instance has no resource directories",
+            Self::NoTargetForKind => "instance has no resource directory for this kind",
             Self::OperationFailed => "resource operation failed",
             Self::Market => "market request failed",
             Self::Unsupported => "operation not supported",

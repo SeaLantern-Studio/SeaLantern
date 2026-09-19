@@ -5,6 +5,8 @@
 
 use std::path::PathBuf;
 
+use serde::{Deserialize, Serialize};
+
 use super::models::InstanceExtensionKind;
 use super::path;
 
@@ -25,7 +27,7 @@ const MOD_ECOSYSTEMS: &[&str] =
     &["fabric", "forge", "neoforge", "quilt", "liteloader", "rift", "connector"];
 
 /// 一个实例需要管理的资源目录。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourceTarget {
     /// 资源种类。
     pub kind: InstanceExtensionKind,
@@ -42,6 +44,29 @@ impl ResourceTarget {
     /// 目录名（统一使用 `/` 分隔，便于展示与日志）。
     pub fn dir_name(&self) -> String {
         self.relative.to_string_lossy().replace('\\', "/")
+    }
+}
+
+/// 实例可管理的资源目录清单（供界面决定展示哪些资源分类）。
+///
+/// 前端在资源列表为空时无法从条目反推"该实例支持什么"，因此需要单独的
+/// 目标查询：既有目录清单，也有默认聚焦的主要种类。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourceTargets {
+    /// 需要管理的资源目录，顺序固定为「模组在前」。
+    pub targets: Vec<ResourceTarget>,
+    /// 主要资源种类，供界面默认聚焦；实例无资源目录时为 `None`。
+    ///
+    /// 由 [`targets`](Self::targets) 首项推导：[`resource_targets`] 保证模组
+    /// 优先，无需另行传入生态标记。
+    pub primary_kind: Option<InstanceExtensionKind>,
+}
+
+impl ResourceTargets {
+    /// 由资源目录列表构造，`primary_kind` 取首项。
+    pub fn new(targets: Vec<ResourceTarget>) -> Self {
+        let primary_kind = targets.first().map(|target| target.kind);
+        Self { targets, primary_kind }
     }
 }
 
@@ -75,6 +100,13 @@ pub fn resource_targets(ecosystems: &[String]) -> Vec<ResourceTarget> {
 
 /// 数据包目录；世界名通常取自 `server.properties` 的 `level-name`。
 ///
+/// # 当前未接线（预留）
+///
+/// 首期只管理 `mods/` 与 `plugins/`，数据包不纳入：世界名需要解析
+/// `server.properties` 的 `level-name`，且应用层
+/// `extension_kind` 目前会拒绝 `Datapack`。本函数为后续接入预留，
+/// 生产路径不会调用。
+///
 /// 世界名来自外部配置（导入的服务器目录可被任意编辑），必须先校验为
 /// 单一普通路径组件，避免 `..` 或绝对路径逃逸实例目录。非法世界名
 /// 显式返回 [`LayoutError::InvalidWorldName`]，不做静默回退。
@@ -87,19 +119,6 @@ pub fn datapack_target(world_name: &str) -> Result<ResourceTarget, LayoutError> 
         InstanceExtensionKind::Datapack,
         PathBuf::from(world_name).join("datapacks"),
     ))
-}
-
-/// 推断主要资源种类，供界面默认聚焦使用。
-///
-/// 与 [`resource_targets`] 同为「模组优先」：混合服务端返回 [`InstanceExtensionKind::Mod`]。
-pub fn primary_kind(ecosystems: &[String]) -> Option<InstanceExtensionKind> {
-    if has_mod_ecosystem(ecosystems) {
-        Some(InstanceExtensionKind::Mod)
-    } else if has_plugin_ecosystem(ecosystems) {
-        Some(InstanceExtensionKind::Plugin)
-    } else {
-        None
-    }
 }
 
 fn has_plugin_ecosystem(ecosystems: &[String]) -> bool {
@@ -149,13 +168,27 @@ mod tests {
         assert_eq!(targets.len(), 2);
         assert_eq!(targets[0].kind, InstanceExtensionKind::Mod);
         assert_eq!(targets[1].kind, InstanceExtensionKind::Plugin);
-        assert_eq!(primary_kind(&hybrid), Some(InstanceExtensionKind::Mod));
     }
 
     #[test]
     fn unknown_ecosystems_yield_no_targets() {
         assert!(resource_targets(&ecosystems(&["vanilla"])).is_empty());
-        assert_eq!(primary_kind(&ecosystems(&["vanilla"])), None);
+    }
+
+    #[test]
+    fn targets_report_primary_kind_from_first_entry() {
+        // 模组优先：混合服务端的主要种类是模组。
+        let hybrid = ResourceTargets::new(resource_targets(&ecosystems(&["forge", "bukkit"])));
+        assert_eq!(hybrid.primary_kind, Some(InstanceExtensionKind::Mod));
+
+        // 纯插件服。
+        let plugin = ResourceTargets::new(resource_targets(&ecosystems(&["paper"])));
+        assert_eq!(plugin.primary_kind, Some(InstanceExtensionKind::Plugin));
+
+        // 无资源目录时没有主要种类。
+        let none = ResourceTargets::new(resource_targets(&ecosystems(&["vanilla"])));
+        assert!(none.targets.is_empty());
+        assert_eq!(none.primary_kind, None);
     }
 
     #[test]

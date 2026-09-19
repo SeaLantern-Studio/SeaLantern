@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use sealantern_contract::ResourceServiceError;
 use sealantern_feature::resource::manager::{
-    InstanceExtension, ManagedResource, ReconcileReport, ResourceProvenance,
+    InstanceExtension, ManagedResource, ReconcileReport, ResourceProvenance, ResourceTargets,
 };
 use sealantern_feature::resource::market::{
     MarketSource, ResourceInfo, ResourceType, SearchResult, Version,
@@ -18,9 +18,10 @@ use sealantern_feature::resource::market::{
 ///
 /// # `save_path` 语义与清理责任
 ///
-/// `save_path` 指向应用数据根目录 `market-tmp/` 下的唯一文件名（带
-/// `项目-ID-版本-ID` 前缀，避免同名冲突）。安装成功后由服务端清理该临时
-/// 文件；安装失败时保留，便于用户重试。前端无需自行清理，也不要改动路径。
+/// `save_path` 指向应用数据根目录 `market-tmp/<项目>-<版本>/` 下的唯一
+/// 子目录路径，**文件名保持市场原名**（唯一化只作用于目录，因此安装进
+/// 实例后 `mods/` 里就是 `sodium.jar`）。安装成功后由服务端清理该临时
+/// 子目录；安装失败时保留，便于用户重试。前端无需自行清理，也不要改动路径。
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ResolvedDownload {
     /// 资源文件的直接下载链接。
@@ -37,14 +38,32 @@ pub struct ResolvedDownload {
 
 /// 资源管理宿主能力端口。
 ///
-/// 覆盖实例资源管理（扫描 / 增删 / 启停 / 对账）与市场查询（搜索 / 详情 /
-/// 版本 / 下载解析）。下载动作由前端驱动，后端只做元数据解析与落盘。
+/// 覆盖实例资源管理（目标查询 / 扫描 / 增删 / 启停 / 对账）与市场查询
+/// （搜索 / 详情 / 版本 / 下载解析）。下载动作由前端驱动，后端只做元数据
+/// 解析与落盘。
+///
+/// # 宿主范围
+///
+/// 当前**仅 Tauri 宿主消费**（`src-tauri` 已注册全部资源命令）；`server`
+/// crate 尚无对应 handler，契约错误 [`ResourceServiceError`] 目前只在该宿主
+/// 暴露。将来 server 侧接入时可复用同一端口。
 #[async_trait]
 pub trait ResourceService: Send + Sync {
     /// 列出实例资源：扫描目录并对账（只读）。
     async fn list(&self, instance_id: &str) -> Result<ReconcileReport, ResourceServiceError>;
 
+    /// 列出实例可管理的资源目录与主要种类（只读）。
+    ///
+    /// 资源列表为空时无法从条目反推该实例支持什么，前端需要本查询来决定
+    /// 展示哪些分类。实例完全没有资源目录时返回
+    /// [`ResourceServiceError::NoResourceDirs`]。
+    async fn targets(&self, instance_id: &str) -> Result<ResourceTargets, ResourceServiceError>;
+
     /// 安装本地文件到实例（`source_path` → `mods/` 或 `plugins/`）。
+    ///
+    /// `provenance` 为**前端声明**、服务端不做来源验证：市场流程中该值由
+    /// [`market_resolve_download`](Self::market_resolve_download) 生成后原样
+    /// 回传，本地导入则为 `None`。它仅用于展示与溯源，不应作为可信依据。
     async fn install(
         &self,
         instance_id: &str,

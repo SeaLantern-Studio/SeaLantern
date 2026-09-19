@@ -26,10 +26,11 @@ mod reconcile;
 mod scan;
 
 pub use error::ResourceManagerError;
-pub use layout::{LayoutError, ResourceTarget, datapack_target, primary_kind, resource_targets};
+pub use layout::{LayoutError, ResourceTarget, ResourceTargets, datapack_target, resource_targets};
 pub use models::{
     InstanceExtension, InstanceExtensionError, InstanceExtensionKind, MANIFEST_SCHEMA_VERSION,
     ManagedResource, ReconcileReport, ReconciledResource, ResourceManifest, ResourceProvenance,
     ResourceSource, ResourceState,
 };
 pub use operations::{install, list, remove, set_enabled, sync};
+pub use path::is_single_normal_component;

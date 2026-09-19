@@ -4,13 +4,13 @@
 //! 并向宿主提供统一端口。下载动作由前端驱动：后端只负责"解析下载目标"
 //! 与"安装已下载文件"，进度显示复用前端 TaskPill 机制。
 //!
-//! # 市场下载临时文件
+//! # 市场下载临时目录
 //!
 //! [`market_resolve_download`](ResourceService::market_resolve_download) 解析出的
-//! `save_path` 位于应用数据根目录的 `market-tmp/` 下，文件名带
-//! `项目-ID-版本-ID` 前缀以避免同名冲突。前端把文件下载到该路径后调
-//! [`install`](ResourceService::install)：安装成功即由本服务清理临时文件
-//! （失败时保留，便于用户重试）。
+//! `save_path` 位于应用数据根目录的 `market-tmp/<项目>-<版本>/` 子目录下，
+//! **文件名保持市场原名**（唯一化只作用于目录，避免污染实例内文件名）。
+//! 前端把文件下载到该路径后调 [`install`](ResourceService::install)：
+//! 安装成功即由本服务清理整个子目录（失败时保留，便于用户重试）。
 //!
 //! 错误分层：`ResourceManagerError` / `MarketError` 经映射收敛为契约错误
 //! [`ResourceServiceError`]，不向宿主泄露底层细节。
@@ -24,8 +24,9 @@ use sealantern_contract::{InstanceServiceError, ResourceServiceError};
 use sealantern_core::instance::InstanceId;
 use sealantern_feature::resource::manager::{
     InstanceExtension, InstanceExtensionKind, ManagedResource, ReconcileReport,
-    ResourceManagerError, ResourceProvenance, ResourceTarget, install, list, remove,
-    resource_targets, set_enabled, sync as sync_resources,
+    ResourceManagerError, ResourceProvenance, ResourceTarget, ResourceTargets, install,
+    is_single_normal_component, list, remove, resource_targets, set_enabled,
+    sync as sync_resources,
 };
 use sealantern_feature::resource::market::{
     Fetcher, MarketError, MarketSource, ModrinthFetcher, ResourceInfo, ResourceType, SearchResult,
@@ -99,6 +100,11 @@ impl ResourceService for CoreResourceService {
         list(&directory, &targets).await.map_err(map_manager_error)
     }
 
+    async fn targets(&self, instance_id: &str) -> Result<ResourceTargets, ResourceServiceError> {
+        let (_, targets) = self.resolve_targets(instance_id).await?;
+        Ok(ResourceTargets::new(targets))
+    }
+
     async fn install(
         &self,
         instance_id: &str,
@@ -112,7 +118,7 @@ impl ResourceService for CoreResourceService {
             .await
             .map_err(map_manager_error)?;
 
-        // 市场下载的临时文件安装成功后清理；失败保留便于重试。
+        // 市场下载的临时目录安装成功后清理；失败保留便于重试。
         cleanup_downloaded_tmp(source_path).await;
         Ok(installed)
     }
@@ -194,12 +200,13 @@ impl ResourceService for CoreResourceService {
     ) -> Result<ResolvedDownload, ResourceServiceError> {
         let fetcher = self.fetcher(source);
 
-        // 资源类型（决定安装目标目录）；仅支持插件 / 模组。
+        // 资源类型（决定安装目标目录）；仅支持插件 / 模组，与安装目标选择
+        // 共用同一个判定函数。
         let info = fetcher
             .get_resource(project_id)
             .await
             .map_err(map_market_error)?;
-        supported_kind(info.resource_type)?;
+        extension_kind(info.resource_type)?;
 
         // 定位目标版本与首选文件（无 primary 标记时取第一个）。
         let versions = fetcher
@@ -209,12 +216,21 @@ impl ResourceService for CoreResourceService {
         let (version, file) =
             pick_version_file(&versions, version_id).ok_or(ResourceServiceError::NotFound)?;
 
-        // 确保临时目录存在，前端下载落盘才能成功。
-        let save_dir = get_app_data_dir().join(MARKET_TMP_DIR);
+        // 市场返回的文件名不可信：必须是单一普通路径组件，含分隔符或 `..`
+        // 会逃出临时目录。
+        if !is_single_normal_component(&file.filename) {
+            return Err(ResourceServiceError::InvalidInput);
+        }
+
+        // 唯一化只作用于目录名：`market-tmp/<项目>-<版本>/<原文件名>`。
+        // 安装进实例后 `mods/` 里保持市场原名，不被前缀污染。
+        let save_dir = get_app_data_dir()
+            .join(MARKET_TMP_DIR)
+            .join(unique_download_dir(project_id, version_id));
         tokio::fs::create_dir_all(&save_dir)
             .await
             .map_err(|_| ResourceServiceError::OperationFailed)?;
-        let save_path = save_dir.join(unique_download_name(project_id, version_id, &file.filename));
+        let save_path = save_dir.join(&file.filename);
 
         Ok(ResolvedDownload {
             url: file.url.clone(),
@@ -233,6 +249,9 @@ impl ResourceService for CoreResourceService {
 }
 
 /// 从资源目标中按种类选出安装目标。
+///
+/// 该种类没有对应目录时返回 [`ResourceServiceError::NoTargetForKind`]
+/// （实例有资源目录、只是不含这一种），与"整个实例都没有资源目录"区分。
 fn select_target(
     targets: &[ResourceTarget],
     kind: ResourceType,
@@ -241,24 +260,18 @@ fn select_target(
     targets
         .iter()
         .find(|target| target.kind == kind)
-        .ok_or(ResourceServiceError::NoResourceDirs)
+        .ok_or(ResourceServiceError::NoTargetForKind)
 }
 
 /// 资源类型 → 实例扩展种类；仅插件 / 模组可作为实例资源管理。
+///
+/// 本函数是"哪些种类受支持"的**唯一**判定处：安装目标选择与市场下载解析
+/// 都经它校验，避免两处各写一份支持列表而漂移。
 fn extension_kind(kind: ResourceType) -> Result<InstanceExtensionKind, ResourceServiceError> {
     match kind {
         ResourceType::Plugin => Ok(InstanceExtensionKind::Plugin),
         ResourceType::Mod => Ok(InstanceExtensionKind::Mod),
         _ => Err(ResourceServiceError::Unsupported),
-    }
-}
-
-/// 资源类型是否可作为实例资源管理（仅插件 / 模组；数据包等暂不支持）。
-fn supported_kind(kind: ResourceType) -> Result<(), ResourceServiceError> {
-    if matches!(kind, ResourceType::Plugin | ResourceType::Mod) {
-        Ok(())
-    } else {
-        Err(ResourceServiceError::Unsupported)
     }
 }
 
@@ -276,32 +289,51 @@ fn pick_version_file<'v>(
     Some((version, file))
 }
 
-/// 生成互不冲突的临时下载文件名，避免不同项目的同名文件互相覆盖。
+/// 生成互不冲突的临时下载子目录名（`<项目>-<版本>`）。
 ///
-/// 各输入中的路径分隔符统一替换为 `_`，保证结果为单一普通路径组件。
-fn unique_download_name(project_id: &str, version_id: &str, filename: &str) -> String {
-    let safe = |value: &str| {
-        value
-            .chars()
-            .map(|ch| if matches!(ch, '/' | '\\') { '_' } else { ch })
-            .collect::<String>()
-    };
-    format!("{}-{}-{}", safe(project_id), safe(version_id), safe(filename))
+/// 唯一化只是为了让 `save_path` 不冲突，因此**只**作用于目录名；市场原
+/// 文件名保持不变，安装进实例后 `mods/` 里就是 `sodium.jar`，而不是被前缀
+/// 污染的 `AANobbMI-xJNm0swY-sodium.jar`。各标识符中的路径分隔符替换为
+/// `_`，保证结果仍是单一普通路径组件。
+fn unique_download_dir(project_id: &str, version_id: &str) -> String {
+    format!("{}-{}", sanitize_component(project_id), sanitize_component(version_id))
 }
 
-/// 清理市场下载留下的临时文件；非 `market-tmp/` 路径不动。
+/// 把标识符中的路径分隔符替换为 `_`，避免拼出多级路径。
+fn sanitize_component(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| if matches!(ch, '/' | '\\') { '_' } else { ch })
+        .collect()
+}
+
+/// 清理市场下载留下的临时目录；非 `market-tmp/<唯一子目录>/` 形态不动。
+///
+/// 路径比较走 `canonicalize`：`Path::starts_with` 是纯语法的组件比较、不解析
+/// `..`，`market-tmp/../x.jar` 能骗过前缀检查，删除时却被 OS 解析到
+/// `market-tmp` 之外。规范化后只清理 `market-tmp` 的**直接子目录**。
 async fn cleanup_downloaded_tmp(source_path: &str) {
-    let source = Path::new(source_path);
+    let Some(sub_dir) = Path::new(source_path).parent() else {
+        return;
+    };
     let tmp_root = get_app_data_dir().join(MARKET_TMP_DIR);
-    if !source.starts_with(&tmp_root) {
+
+    let (Ok(sub_dir), Ok(tmp_root)) =
+        (tokio::fs::canonicalize(sub_dir).await, tokio::fs::canonicalize(&tmp_root).await)
+    else {
+        return;
+    };
+
+    if sub_dir.parent() != Some(tmp_root.as_path()) {
         return;
     }
-    if let Err(error) = tokio::fs::remove_file(source).await {
+
+    if let Err(error) = tokio::fs::remove_dir_all(&sub_dir).await {
         tracing::warn!(
             target: "sealantern.application.resource",
-            path = %source.display(),
+            path = %sub_dir.display(),
             error = %error,
-            "failed to clean downloaded temporary file"
+            "failed to clean downloaded temporary directory"
         );
     }
 }
@@ -390,32 +422,34 @@ mod tests {
     }
 
     #[test]
-    fn select_target_reports_missing_directory() {
+    fn select_target_reports_missing_directory_for_kind() {
+        // 实例有 plugins/、但没有 mods/：这是"该种类无目录"，不是"整个实例
+        // 都没有资源目录"，两者错误要区分。
         let targets = vec![ResourceTarget::new(InstanceExtensionKind::Plugin, "plugins")];
         assert!(matches!(
             select_target(&targets, ResourceType::Mod),
-            Err(ResourceServiceError::NoResourceDirs)
+            Err(ResourceServiceError::NoTargetForKind)
         ));
     }
 
-    // ── 纯逻辑：supported_kind / pick_version_file ─────────
+    // ── 纯逻辑：extension_kind / pick_version_file ─────────
 
     #[test]
-    fn supported_kinds_are_plugins_and_mods() {
-        assert!(supported_kind(ResourceType::Plugin).is_ok());
-        assert!(supported_kind(ResourceType::Mod).is_ok());
-        assert!(matches!(
-            supported_kind(ResourceType::Datapack),
-            Err(ResourceServiceError::Unsupported)
-        ));
-        assert!(matches!(
-            supported_kind(ResourceType::Shader),
-            Err(ResourceServiceError::Unsupported)
-        ));
-        assert!(matches!(
-            supported_kind(ResourceType::ResourcePack),
-            Err(ResourceServiceError::Unsupported)
-        ));
+    fn extension_kind_supports_only_plugins_and_mods() {
+        assert_eq!(extension_kind(ResourceType::Plugin).unwrap(), InstanceExtensionKind::Plugin);
+        assert_eq!(extension_kind(ResourceType::Mod).unwrap(), InstanceExtensionKind::Mod);
+
+        for kind in [
+            ResourceType::Datapack,
+            ResourceType::Shader,
+            ResourceType::ResourcePack,
+            ResourceType::Unknown,
+        ] {
+            assert!(
+                matches!(extension_kind(kind), Err(ResourceServiceError::Unsupported)),
+                "{kind:?} 不应被支持"
+            );
+        }
     }
 
     #[test]
@@ -485,13 +519,13 @@ mod tests {
     }
 
     #[test]
-    fn unique_download_name_keeps_distinct_identities_and_sanitizes_separators() {
-        let first = unique_download_name("proj-a", "v1", "sodium.jar");
-        let second = unique_download_name("proj-b", "v1", "sodium.jar");
-        assert_ne!(first, second, "same filename from different projects must not collide");
+    fn unique_download_dir_keeps_distinct_identities_and_sanitizes_separators() {
+        let first = unique_download_dir("proj-a", "v1");
+        let second = unique_download_dir("proj-b", "v1");
+        assert_ne!(first, second, "同一文件名来自不同项目时目录必须不同");
 
-        let sanitized = unique_download_name("a/b", "v1", "x.jar");
-        assert_eq!(sanitized, "a_b-v1-x.jar");
+        let sanitized = unique_download_dir("a/b", "v1");
+        assert_eq!(sanitized, "a_b-v1");
         assert!(!sanitized.contains('/'));
         assert!(!sanitized.contains('\\'));
     }
@@ -698,17 +732,25 @@ mod tests {
 
     // ── install 清理 market-tmp ─────────────────────────────
 
-    #[tokio::test]
-    async fn install_cleans_up_market_tmp_source_after_success() {
-        // 构造 market-tmp 下载文件 + 实例目录。
-        let tmp_root = get_app_data_dir().join(MARKET_TMP_DIR);
-        tokio::fs::create_dir_all(&tmp_root)
+    /// 在真实的 `market-tmp/<唯一子目录>/` 下写一个下载文件，返回其路径。
+    ///
+    /// 子目录名带随机后缀，避免并发测试互相干扰。
+    async fn write_tmp_download(sub_dir: &str, file_name: &str) -> PathBuf {
+        let dir = get_app_data_dir().join(MARKET_TMP_DIR).join(sub_dir);
+        tokio::fs::create_dir_all(&dir)
             .await
-            .expect("tmp dir should be created");
-        let source = tmp_root.join("proj-v1-sodium.jar");
-        tokio::fs::write(&source, b"jar")
+            .expect("tmp sub dir should be created");
+        let path = dir.join(file_name);
+        tokio::fs::write(&path, b"jar")
             .await
             .expect("fixture file should be written");
+        path
+    }
+
+    #[tokio::test]
+    async fn install_keeps_original_name_and_cleans_tmp_dir() {
+        let sub_dir = format!("proj-v1-{}", uuid::Uuid::new_v4());
+        let source = write_tmp_download(&sub_dir, "sodium.jar").await;
 
         let root = std::env::temp_dir()
             .join(format!("sealantern-resource-service-{}", uuid::Uuid::new_v4()));
@@ -726,11 +768,43 @@ mod tests {
             .install("server-1", source.to_str().expect("utf8 path"), ResourceType::Mod, None)
             .await
             .expect("install should succeed");
-        assert_eq!(managed.file_name, "proj-v1-sodium.jar");
-        assert!(instance_dir.join("mods/proj-v1-sodium.jar").exists());
-        assert!(!source.exists(), "market-tmp source should be cleaned after install");
 
-        std::fs::remove_dir_all(&tmp_root).ok();
+        // 唯一化只作用于临时目录：实例内保持市场原名。
+        assert_eq!(managed.file_name, "sodium.jar");
+        assert!(instance_dir.join("mods/sodium.jar").exists());
+        // 整个临时子目录被清理。
+        assert!(!source.exists(), "下载文件应被清理");
+        let tmp_sub_dir = source.parent().expect("下载路径有父目录");
+        assert!(!tmp_sub_dir.exists(), "临时子目录应被整体清理");
+
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[tokio::test]
+    async fn cleanup_ignores_paths_outside_market_tmp() {
+        // `Path::starts_with` 是纯语法组件比较、不解析 `..`，因此
+        // `market-tmp/../x` 能骗过前缀检查；canonicalize 后必须识别为越界。
+        let tmp_root = get_app_data_dir().join(MARKET_TMP_DIR);
+        tokio::fs::create_dir_all(&tmp_root)
+            .await
+            .expect("tmp root should exist");
+
+        let victim_dir =
+            get_app_data_dir().join(format!("sealantern-victim-{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir_all(&victim_dir).await.unwrap();
+        let victim = victim_dir.join("victim.jar");
+        tokio::fs::write(&victim, b"keep me").await.unwrap();
+
+        // 构造 `<market-tmp>/../<victim_dir>/victim.jar`。
+        let traversal = tmp_root
+            .join("..")
+            .join(victim_dir.file_name().expect("victim dir has a name"))
+            .join("victim.jar");
+        cleanup_downloaded_tmp(traversal.to_str().expect("utf8 path")).await;
+
+        assert!(victim.exists(), "market-tmp 之外的路径不得被清理");
+        assert!(victim_dir.exists(), "越界目录不得被删除");
+
+        std::fs::remove_dir_all(&victim_dir).ok();
     }
 }
