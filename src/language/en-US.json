@@ -453,6 +453,7 @@
       "back_to_bottom": "Back to bottom",
       "waiting_for_output": "Waiting for output...",
       "quick": "Quick:",
+      "server_not_running_hint": "Server not running, cannot send commands",
       "custom": "Custom:",
       "running": "Running",
       "starting": "Starting",

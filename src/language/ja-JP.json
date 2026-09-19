@@ -377,6 +377,7 @@
     "back_to_bottom": "最下部へ",
     "waiting_for_output": "出力待ち...",
     "quick": "クイック:",
+    "server_not_running_hint": "サーバーが実行されていません。コマンドを送信できません",
     "custom": "カスタム:",
     "running": "実行中",
     "starting": "起動中",

@@ -377,6 +377,7 @@
     "back_to_bottom": "回到底部",
     "waiting_for_output": "等待輸出...",
     "quick": "快速:",
+    "server_not_running_hint": "伺服器未執行，無法傳送指令",
     "custom": "自訂:",
     "running": "執行中",
     "starting": "啟動中",
