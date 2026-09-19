@@ -59,11 +59,42 @@ pub async fn install(
     tokio::fs::create_dir_all(&target_dir).await?;
 
     let destination = target_dir.join(&file_name);
-    if tokio::fs::try_exists(&destination).await.unwrap_or(false) {
+
+    // 同名目录顶替文件时先拒绝：Windows 上 `create_new` 对已存在的目录返回
+    // 的是权限错误而非 `AlreadyExists`，显式识别以保持"目标已占用"的统一错误
+    // 语义（与 `locate` 只认普通文件对齐）。
+    //
+    // 这一步不是并发关键路径——文件层的竞态由下面的 `create_new` 原子兜底。
+    if tokio::fs::metadata(&destination)
+        .await
+        .map(|metadata| metadata.is_dir())
+        .unwrap_or(false)
+    {
         return Err(ResourceManagerError::AlreadyExists(file_name));
     }
 
-    tokio::fs::copy(source_path, &destination).await?;
+    // 原子占位：`create_new` 保证并发安装同名文件时只有一个能成功，避免
+    // "检查是否存在 → 复制"之间的窗口被另一个安装抢先（原先两个安装都会
+    // 观察到"不存在"，随后互相覆盖，导致账目 hash 与磁盘内容不一致）。
+    match tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&destination)
+        .await
+    {
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            return Err(ResourceManagerError::AlreadyExists(file_name));
+        }
+        Err(error) => return Err(error.into()),
+    }
+
+    // 占位成功后再复制内容（覆盖刚创建的空文件）；失败时清掉占位，避免
+    // 留下 0 字节的残留文件被扫描成资源。
+    if let Err(error) = tokio::fs::copy(source_path, &destination).await {
+        let _ = tokio::fs::remove_file(&destination).await;
+        return Err(error.into());
+    }
 
     let managed = ManagedResource {
         file_name: file_name.clone(),
@@ -359,6 +390,26 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(error, ResourceManagerError::DisabledFileName(_)));
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn install_rejects_existing_directory_with_same_name() {
+        // 同名目录顶替文件时也必须拒绝，不会把文件写进目录里，也不会误报成
+        // 文件层的 IO 错误（Windows 的 `create_new` 对目录返回权限错误，
+        // 因此实现里显式识别）。
+        let root = temp_dir("install-dir-conflict");
+        let instance = root.join("instance");
+        fs::create_dir_all(instance.join("mods/foo.jar")).unwrap();
+        let source = root.join("foo.jar");
+        fs::write(&source, b"jar").unwrap();
+
+        let error = install(&instance, &mod_target(), &source, None)
+            .await
+            .unwrap_err();
+        assert!(matches!(error, ResourceManagerError::AlreadyExists(_)));
+        assert!(instance.join("mods/foo.jar").is_dir(), "目录不得被替换为文件");
 
         fs::remove_dir_all(root).unwrap();
     }

@@ -7,17 +7,20 @@
 //! # 市场下载临时目录
 //!
 //! [`market_resolve_download`](ResourceService::market_resolve_download) 解析出的
-//! `save_path` 位于应用数据根目录的 `market-tmp/<项目>-<版本>/` 子目录下，
-//! **文件名保持市场原名**（唯一化只作用于目录，避免污染实例内文件名）。
-//! 前端把文件下载到该路径后调 [`install`](ResourceService::install)：
-//! 安装成功即由本服务清理整个子目录（失败时保留，便于用户重试）。
+//! `save_path` 位于应用数据根目录的 `market-tmp/<项目>-<版本>-<随机后缀>/`
+//! 子目录下，**文件名保持市场原名**（唯一化只作用于目录，避免污染实例内
+//! 文件名）；随机后缀让同一项目与版本的并发解析互不干扰。
+//!
+//! 前端把文件下载到该路径后调 [`install`](ResourceService::install)：安装
+//! 成功后本服务**尽力**清理整个子目录（清理失败仅记日志，不影响安装结果）；
+//! 下载失败或取消留下的残留由 `prune_stale_market_tmp` 按年龄回收。
 //!
 //! 错误分层：`ResourceManagerError` / `MarketError` 经映射收敛为契约错误
 //! [`ResourceServiceError`]，不向宿主泄露底层细节。
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use sealantern_contract::{InstanceServiceError, ResourceServiceError};
@@ -38,6 +41,12 @@ use crate::port::{InstanceService, ResolvedDownload, ResourceService};
 
 /// 市场下载临时目录名（位于应用数据根目录下）。
 const MARKET_TMP_DIR: &str = "market-tmp";
+
+/// 陈旧临时目录的保留时长：超过此时长的子目录视为无主残留。
+///
+/// 目录名带随机后缀后，下载失败或用户取消留下的目录不会再被后续解析复用
+/// （每次解析都生成新目录），因此需要按年龄主动回收。
+const STALE_MARKET_TMP_AGE: Duration = Duration::from_secs(6 * 60 * 60);
 
 /// 基于 `feature` 资源管理器与市场获取器的资源管理宿主能力实现。
 pub struct CoreResourceService {
@@ -222,7 +231,10 @@ impl ResourceService for CoreResourceService {
             return Err(ResourceServiceError::InvalidInput);
         }
 
-        // 唯一化只作用于目录名：`market-tmp/<项目>-<版本>/<原文件名>`。
+        // 顺带回收陈旧残留（尽力而为，不影响本次解析）。
+        prune_stale_market_tmp().await;
+
+        // 唯一化只作用于目录名：`market-tmp/<项目>-<版本>-<随机>/<原文件名>`。
         // 安装进实例后 `mods/` 里保持市场原名，不被前缀污染。
         let save_dir = get_app_data_dir()
             .join(MARKET_TMP_DIR)
@@ -289,14 +301,24 @@ fn pick_version_file<'v>(
     Some((version, file))
 }
 
-/// 生成互不冲突的临时下载子目录名（`<项目>-<版本>`）。
+/// 生成互不冲突的临时下载子目录名（`<项目>-<版本>-<随机后缀>`）。
 ///
-/// 唯一化只是为了让 `save_path` 不冲突，因此**只**作用于目录名；市场原
-/// 文件名保持不变，安装进实例后 `mods/` 里就是 `sodium.jar`，而不是被前缀
-/// 污染的 `AANobbMI-xJNm0swY-sodium.jar`。各标识符中的路径分隔符替换为
-/// `_`，保证结果仍是单一普通路径组件。
+/// 唯一化只作用于目录名，市场原文件名保持不变——安装进实例后 `mods/` 里
+/// 就是 `sodium.jar`，而不是被前缀污染的 `AANobbMI-xJNm0swY-sodium.jar`。
+/// 各标识符中的路径分隔符替换为 `_`，保证结果仍是单一普通路径组件。
+///
+/// 追加随机后缀是为了让**同一项目与版本的并发解析**各自拿到独立目录：若
+/// 只按 `<项目>-<版本>` 命名，两个并发下载会共用同一个 `save_path`，互相
+/// 覆盖对方正在写入的文件，或抢删对方的临时目录。
 fn unique_download_dir(project_id: &str, version_id: &str) -> String {
-    format!("{}-{}", sanitize_component(project_id), sanitize_component(version_id))
+    // 取 UUID 的前 8 位十六进制，足够避免碰撞且不使目录名过长。
+    let nonce = uuid::Uuid::new_v4().simple().to_string();
+    format!(
+        "{}-{}-{}",
+        sanitize_component(project_id),
+        sanitize_component(version_id),
+        &nonce[..8]
+    )
 }
 
 /// 把标识符中的路径分隔符替换为 `_`，避免拼出多级路径。
@@ -312,6 +334,13 @@ fn sanitize_component(value: &str) -> String {
 /// 路径比较走 `canonicalize`：`Path::starts_with` 是纯语法的组件比较、不解析
 /// `..`，`market-tmp/../x.jar` 能骗过前缀检查，删除时却被 OS 解析到
 /// `market-tmp` 之外。规范化后只清理 `market-tmp` 的**直接子目录**。
+///
+/// # 尽力而为
+///
+/// 本函数在安装**已经成功**之后调用，因此清理失败（无法规范化、删除失败）
+/// **不影响安装结果**，仅记录告警日志——若因清理失败而返回错误，调用方会
+/// 误判为安装失败并重试，反而撞上 `AlreadyExists`。残留由
+/// `prune_stale_market_tmp` 按年龄回收。
 async fn cleanup_downloaded_tmp(source_path: &str) {
     let Some(sub_dir) = Path::new(source_path).parent() else {
         return;
@@ -335,6 +364,46 @@ async fn cleanup_downloaded_tmp(source_path: &str) {
             error = %error,
             "failed to clean downloaded temporary directory"
         );
+    }
+}
+
+/// 回收 `market-tmp` 下的陈旧子目录（尽力而为，失败只记日志）。
+///
+/// 只清理**目录**且只清理超过 `STALE_MARKET_TMP_AGE` 的条目，避免误删正在
+/// 进行的下载。目录名带随机后缀后，失败/取消留下的目录不会再被后续解析
+/// 复用，若不回收就会持续累积。
+async fn prune_stale_market_tmp() {
+    let tmp_root = get_app_data_dir().join(MARKET_TMP_DIR);
+    let Ok(mut entries) = tokio::fs::read_dir(&tmp_root).await else {
+        // 目录尚未创建（还没有过市场下载），无需清理。
+        return;
+    };
+
+    let now = SystemTime::now();
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let Ok(metadata) = entry.metadata().await else {
+            continue;
+        };
+        if !metadata.is_dir() {
+            continue;
+        }
+        let Ok(modified) = metadata.modified() else {
+            continue;
+        };
+        let Ok(age) = now.duration_since(modified) else {
+            continue;
+        };
+        if age < STALE_MARKET_TMP_AGE {
+            continue;
+        }
+        if let Err(error) = tokio::fs::remove_dir_all(entry.path()).await {
+            tracing::warn!(
+                target: "sealantern.application.resource",
+                path = %entry.path().display(),
+                error = %error,
+                "failed to prune stale market tmp directory"
+            );
+        }
     }
 }
 
@@ -519,13 +588,21 @@ mod tests {
     }
 
     #[test]
-    fn unique_download_dir_keeps_distinct_identities_and_sanitizes_separators() {
+    fn unique_download_dir_separates_projects_and_calls() {
+        // 不同项目不冲突。
         let first = unique_download_dir("proj-a", "v1");
         let second = unique_download_dir("proj-b", "v1");
         assert_ne!(first, second, "同一文件名来自不同项目时目录必须不同");
 
+        // 同一项目与版本的两次解析也必须不同目录，否则并发下载会互相覆盖。
+        let a = unique_download_dir("proj-a", "v1");
+        let b = unique_download_dir("proj-a", "v1");
+        assert_ne!(a, b, "同一项目与版本的两次解析必须得到不同目录");
+
+        // 保留可读前缀，且分隔符已被替换为单一普通路径组件。
+        assert!(a.starts_with("proj-a-v1-"));
         let sanitized = unique_download_dir("a/b", "v1");
-        assert_eq!(sanitized, "a_b-v1");
+        assert!(sanitized.starts_with("a_b-v1-"));
         assert!(!sanitized.contains('/'));
         assert!(!sanitized.contains('\\'));
     }
