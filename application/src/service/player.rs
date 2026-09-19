@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use chrono::DateTime;
 use sealantern_contract::{
     BanEntryDto, OpEntryDto, PlayerAdminError, PlayerEntryDto, PlayerListError, PlayerLookupError,
     PlayerProfile,
@@ -185,6 +186,24 @@ fn normalize_uuid(uuid: &mut String) {
     }
 }
 
+/// `banned-players.json` 使用的时间戳格式：`yyyy-MM-dd HH:mm:ss Z`
+/// （例如 `2026-01-01 00:00:00 +0800`）。
+const MINECRAFT_TIMESTAMP_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
+
+/// 把 Minecraft 时间戳规范化为 RFC 3339（与备份等模块的对外格式保持一致）。
+///
+/// 原格式用空格分隔日期时间、时区偏移无冒号（`+0800`），不是 RFC 3339，
+/// 前端 `new Date()` 无法在所有环境可靠解析。转换后输出
+/// `2026-01-01T00:00:00+08:00`。
+///
+/// 非时间戳的值原样透传：`expires` 的 `forever`（永久封禁标记）、老版本
+/// 缺省的空串，以及个别服务器写出的异常格式，都不在此丢失信息。
+fn normalize_minecraft_timestamp(value: &mut String) {
+    if let Ok(parsed) = DateTime::parse_from_str(value.trim(), MINECRAFT_TIMESTAMP_FORMAT) {
+        *value = parsed.to_rfc3339();
+    }
+}
+
 #[async_trait]
 impl PlayerLookupService for CorePlayerService {
     async fn lookup(
@@ -258,11 +277,15 @@ impl PlayerListService for CorePlayerService {
     ) -> Result<Vec<BanEntryDto>, PlayerListError> {
         // 读服务器目录下的 banned-players.json：不要求服务器运行，且保留
         // reason/source/created/expires 等完整封禁信息。
+        // created/expires 由 Minecraft 时间戳规范化为 RFC 3339，与备份等
+        // 模块对外的时间格式保持一致（code review：时间格式统一）。
         let mut entries: Vec<BanEntryDto> = self
             .read_json_list(&server_id, "banned-players.json")
             .await?;
         for entry in &mut entries {
             normalize_uuid(&mut entry.uuid);
+            normalize_minecraft_timestamp(&mut entry.created);
+            normalize_minecraft_timestamp(&mut entry.expires);
         }
         Ok(entries)
     }
@@ -507,6 +530,35 @@ mod tests {
         let mut plain = "069a79f444e94726a5befca90e38aaf5".to_string();
         normalize_uuid(&mut plain);
         assert_eq!(plain, "069a79f444e94726a5befca90e38aaf5");
+    }
+
+    #[test]
+    fn normalize_minecraft_timestamp_converts_to_rfc3339() {
+        let mut created = "2026-01-01 00:00:00 +0800".to_string();
+        normalize_minecraft_timestamp(&mut created);
+        assert_eq!(created, "2026-01-01T00:00:00+08:00");
+
+        // 负偏移同样转换。
+        let mut expires = "2027-06-30 12:30:45 -0500".to_string();
+        normalize_minecraft_timestamp(&mut expires);
+        assert_eq!(expires, "2027-06-30T12:30:45-05:00");
+    }
+
+    #[test]
+    fn normalize_minecraft_timestamp_passthrough_non_timestamps() {
+        // forever 是永久封禁标记，不是时间戳，原样保留。
+        let mut forever = "forever".to_string();
+        normalize_minecraft_timestamp(&mut forever);
+        assert_eq!(forever, "forever");
+
+        // 老版本缺省的空串与异常格式不丢失信息。
+        let mut empty = String::new();
+        normalize_minecraft_timestamp(&mut empty);
+        assert_eq!(empty, "");
+
+        let mut garbage = "not a date".to_string();
+        normalize_minecraft_timestamp(&mut garbage);
+        assert_eq!(garbage, "not a date");
     }
 
     // ── 在线玩家：`list` 回显解析 ────────────────────────────────
