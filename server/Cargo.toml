@@ -12,7 +12,8 @@ path = "src/main.rs"
 path = "src/lib.rs"
 
 [dependencies]
-axum = "0.8"
+# `ws` feature 用于事件推送（`/api/events/ws`）；其余能力（REST / 提取器）为默认。
+axum = { version = "0.8", features = ["ws"] }
 sealantern-application = { path = "../application" }
 sealantern-core = { path = "../crates/core" }
 sealantern-contract = { path = "../crates/contract" }
