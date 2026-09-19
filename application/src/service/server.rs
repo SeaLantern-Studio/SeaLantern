@@ -651,11 +651,14 @@ impl CoreServerService {
     ) -> Result<(), ServerServiceError> {
         let id_str = id.as_str().to_string();
         let mut processes = self.processes_lock()?;
+        // "未运行"是高频且可预期的情况（例如用户在已停止的服务器上点控制台
+        // 快捷指令），单独归类为 `NotRunning`，让宿主能给出针对性提示，而不是
+        // 与"启动中重复启动"这类真正的状态冲突混在 `InvalidState` 里。
         let Some(managed) = processes.get_mut(&id_str) else {
-            return Err(ServerError::InvalidState.into());
+            return Err(ServerError::NotRunning.into());
         };
         if managed.daemon.poll().map(|s| s.is_some()).unwrap_or(true) {
-            return Err(ServerError::InvalidState.into());
+            return Err(ServerError::NotRunning.into());
         }
 
         // 写入 stdin 是短同步 IO（单行命令），直接持有锁执行。
@@ -722,14 +725,39 @@ mod tests {
 
     use super::{CoreInstanceService, CoreServerService, CoreSettingsService};
 
+    /// 生成互不冲突的临时注册表路径。
+    ///
+    /// 只靠时间戳在高频调用下可能取到同一纳秒，使两个测试共用同一份带锁的
+    /// 注册表（后者会因 `AlreadyLocked` 失败）；这里追加进程内自增序号兜底。
     fn registry_path() -> PathBuf {
-        let nonce = SystemTime::now()
+        static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
+        let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         std::env::temp_dir()
-            .join(format!("sealantern-server-lock-{}-{nonce}", std::process::id()))
+            .join(format!("sealantern-server-lock-{}-{stamp}-{seq}", std::process::id()))
             .join("instances.json")
+    }
+
+    #[tokio::test]
+    async fn send_command_reports_not_running_when_no_process() {
+        // 服务器未运行时发送控制台命令（例如用户在已停止的实例上点控制台
+        // 快捷指令）必须返回 `NotRunning`，让宿主能提示"服务器未运行"，
+        // 而不是笼统的"状态错误"。
+        let path = registry_path();
+        let instances = CoreInstanceService::with_path(&path)
+            .await
+            .expect("instance service");
+        let service =
+            CoreServerService::new(Arc::new(instances), Arc::new(CoreSettingsService::new()));
+        let id = InstanceId::new("stopped").expect("valid id");
+
+        let error = crate::port::ServerService::send_command(&service, &id, "time set day")
+            .await
+            .expect_err("服务器未运行时必须失败");
+        assert_eq!(error, sealantern_contract::ServerServiceError::NotRunning);
     }
 
     #[tokio::test]
