@@ -44,13 +44,13 @@ pub struct BanEntryDto {
     /// 执行封禁的操作者（玩家名或 `Server`）。
     #[serde(default)]
     pub source: String,
-    /// 封禁创建时间（RFC 3339，例如 `2026-01-01T00:00:00+08:00`）。
+    /// 封禁创建时间（RFC 3339，UTC，例如 `2026-01-01T00:00:00+00:00`）。
     ///
     /// `banned-players.json` 原始格式为 `yyyy-MM-dd HH:mm:ss Z`，由服务层
-    /// 归一化为 RFC 3339 后对外返回；无法解析时保留原值。
+    /// 归一化为 UTC 的 RFC 3339 后对外返回；无法解析时保留原值。
     #[serde(default)]
     pub created: String,
-    /// 封禁到期时间（RFC 3339；`forever` 表示永久封禁，原样透传）。
+    /// 封禁到期时间（RFC 3339，UTC；`forever` 表示永久封禁，原样透传）。
     #[serde(default)]
     pub expires: String,
 }

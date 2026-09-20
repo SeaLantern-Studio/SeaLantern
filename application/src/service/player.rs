@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 use sealantern_contract::{
     BanEntryDto, OpEntryDto, PlayerAdminError, PlayerEntryDto, PlayerListError, PlayerLookupError,
     PlayerProfile,
@@ -190,17 +190,18 @@ fn normalize_uuid(uuid: &mut String) {
 /// （例如 `2026-01-01 00:00:00 +0800`）。
 const MINECRAFT_TIMESTAMP_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
 
-/// 把 Minecraft 时间戳规范化为 RFC 3339（与备份等模块的对外格式保持一致）。
+/// 把 Minecraft 时间戳规范化为 UTC 的 RFC 3339（与备份等模块的对外格式一致）。
 ///
 /// 原格式用空格分隔日期时间、时区偏移无冒号（`+0800`），不是 RFC 3339，
-/// 前端 `new Date()` 无法在所有环境可靠解析。转换后输出
-/// `2026-01-01T00:00:00+08:00`。
+/// 前端 `new Date()` 无法在所有环境可靠解析。归一化到 UTC 后输出
+/// `2026-01-01T00:00:00+00:00`，且全仓库对外时间统一为 UTC，字典序即可
+/// 直接比较时间先后（不同偏移下 RFC 3339 的字典序不等于时间序）。
 ///
 /// 非时间戳的值原样透传：`expires` 的 `forever`（永久封禁标记）、老版本
 /// 缺省的空串，以及个别服务器写出的异常格式，都不在此丢失信息。
 fn normalize_minecraft_timestamp(value: &mut String) {
     if let Ok(parsed) = DateTime::parse_from_str(value.trim(), MINECRAFT_TIMESTAMP_FORMAT) {
-        *value = parsed.to_rfc3339();
+        *value = parsed.with_timezone(&Utc).to_rfc3339();
     }
 }
 
@@ -277,8 +278,8 @@ impl PlayerListService for CorePlayerService {
     ) -> Result<Vec<BanEntryDto>, PlayerListError> {
         // 读服务器目录下的 banned-players.json：不要求服务器运行，且保留
         // reason/source/created/expires 等完整封禁信息。
-        // created/expires 由 Minecraft 时间戳规范化为 RFC 3339，与备份等
-        // 模块对外的时间格式保持一致（code review：时间格式统一）。
+        // created/expires 由 Minecraft 时间戳规范化为 UTC 的 RFC 3339，与
+        // 备份等模块对外的时间格式保持一致（code review：时间格式统一）。
         let mut entries: Vec<BanEntryDto> = self
             .read_json_list(&server_id, "banned-players.json")
             .await?;
@@ -533,15 +534,16 @@ mod tests {
     }
 
     #[test]
-    fn normalize_minecraft_timestamp_converts_to_rfc3339() {
+    fn normalize_minecraft_timestamp_converts_to_utc_rfc3339() {
+        // +08:00 的 2026-01-01 00:00:00 对应 UTC 的 2025-12-31 16:00:00。
         let mut created = "2026-01-01 00:00:00 +0800".to_string();
         normalize_minecraft_timestamp(&mut created);
-        assert_eq!(created, "2026-01-01T00:00:00+08:00");
+        assert_eq!(created, "2025-12-31T16:00:00+00:00");
 
-        // 负偏移同样转换。
+        // 负偏移同样换算到 UTC：-05:00 的 12:30:45 对应 UTC 17:30:45。
         let mut expires = "2027-06-30 12:30:45 -0500".to_string();
         normalize_minecraft_timestamp(&mut expires);
-        assert_eq!(expires, "2027-06-30T12:30:45-05:00");
+        assert_eq!(expires, "2027-06-30T17:30:45+00:00");
     }
 
     #[test]
