@@ -377,6 +377,7 @@
     "back_to_bottom": "Về cuối",
     "waiting_for_output": "Đợi phản hồi...",
     "quick": "Nhanh:",
+    "server_not_running_hint": "Máy chủ không chạy, không thể gửi lệnh",
     "custom": "Tùy chỉnh:",
     "running": "Đang chạy",
     "starting": "Đang khởi động",
