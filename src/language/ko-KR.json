@@ -377,6 +377,7 @@
     "back_to_bottom": "맨 아래로",
     "waiting_for_output": "출력 대기 중...",
     "quick": "빠른 명령어:",
+    "server_not_running_hint": "서버가 실행 중이지 않아 명령어를 보낼 수 없습니다",
     "custom": "사용자 정의:",
     "running": "실행 중",
     "starting": "시작 중",

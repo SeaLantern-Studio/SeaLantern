@@ -163,6 +163,18 @@
   background: var(--sl-primary-bg);
 }
 
+/* 服务器未运行时禁用快捷指令：置灰且不响应点击，避免发出无效请求 */
+.quick-btn--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.quick-btn--disabled:hover {
+  border-color: var(--sl-border);
+  color: var(--sl-text-secondary);
+  background: var(--sl-bg-secondary);
+}
+
 .console-terminal-shell {
   display: flex;
   flex-direction: column;

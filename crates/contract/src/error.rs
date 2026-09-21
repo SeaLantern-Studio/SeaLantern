@@ -144,6 +144,17 @@ pub enum ServerServiceError {
     InstanceNotFound,
     /// 服务器进程当前状态不允许该操作（如未运行时停止、已运行时重复启动）。
     InvalidState,
+    /// 目标服务器当前未运行，无法执行该操作（如向控制台发送命令）。
+    ///
+    /// 与 [`InvalidState`](Self::InvalidState) 区分：后者是"状态不允许"的宽泛
+    /// 分类，本变体描述高频且可预期的具体原因——实例当前没有运行中的服务端
+    /// 进程。宿主据此给出针对性提示（"服务器未运行"），而不必把它当作
+    /// 笼统的状态错误处理。
+    ///
+    /// 对外标识显式收窄为 `server_not_running`，与 HTTP 适配层的错误码
+    /// 保持一致；变体名保持 `NotRunning`。
+    #[serde(rename = "server_not_running")]
+    NotRunning,
     /// 客户端提供的输入不合法。
     InvalidInput,
     /// 底层进程 / IO 操作失败。
@@ -157,6 +168,7 @@ impl std::fmt::Display for ServerServiceError {
         let message = match self {
             Self::InstanceNotFound => "server instance not found",
             Self::InvalidState => "server is in an invalid state for this operation",
+            Self::NotRunning => "server is not running",
             Self::InvalidInput => "invalid input",
             Self::OperationFailed => "server operation failed",
             Self::Unsupported => "operation not supported",
@@ -583,6 +595,11 @@ mod tests {
             (serde_json::to_string(&CronTaskServiceError::TaskNotFound), "\"task_not_found\""),
             (serde_json::to_string(&InstanceServiceError::InvalidInput), "\"invalid_input\""),
             (serde_json::to_string(&ServerServiceError::InvalidState), "\"invalid_state\""),
+            (
+                // 显式 rename：对外标识必须与 HTTP 适配层的错误码一致。
+                serde_json::to_string(&ServerServiceError::NotRunning),
+                "\"server_not_running\"",
+            ),
             (
                 serde_json::to_string(&SettingsServiceError::StorageFailed),
                 "\"storage_failed\"",

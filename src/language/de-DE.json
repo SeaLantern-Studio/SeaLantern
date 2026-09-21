@@ -377,6 +377,7 @@
     "back_to_bottom": "Zum Ende",
     "waiting_for_output": "Warte auf Ausgabe...",
     "quick": "Schnell:",
+    "server_not_running_hint": "Server läuft nicht, Befehle können nicht gesendet werden",
     "custom": "Benutzerdefiniert:",
     "running": "Läuft",
     "starting": "Starte",
