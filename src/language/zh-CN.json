@@ -453,6 +453,7 @@
       "back_to_bottom": "回到底部",
       "waiting_for_output": "等待输出...",
       "quick": "快捷:",
+      "server_not_running_hint": "服务器未运行，无法发送命令",
       "custom": "自定义:",
       "running": "运行中",
       "starting": "启动中",

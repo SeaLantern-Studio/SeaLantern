@@ -796,6 +796,9 @@ const isRunning = computed(() => serverStatus.value === "Running");
 const isStopping = computed(() => serverStatus.value === "Stopping");
 const isStarting = computed(() => serverStatus.value === "Starting");
 
+/** 仅运行中的服务器能接收命令：未运行时直接拦截，避免无效请求与状态错乱 */
+const canSendCommand = computed(() => isRunning.value);
+
 async function refreshServerStats() {
   const sid = serverId.value;
   if (!sid) {
@@ -973,6 +976,13 @@ async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
   const sid = serverId.value;
   if (!command || !sid) return;
+  // 服务器未运行时拦截：不回显命令、不发请求，只给出提示
+  if (!canSendCommand.value) {
+    consoleOutputRef.value?.appendLines([
+      "[Sea Lantern] " + i18n.t("console.server_not_running_hint"),
+    ]);
+    return;
+  }
   consoleOutputRef.value?.appendLines([`>>> ${command}`]);
   commandHistory.value.push(command);
   if (commandHistory.value.length > 500) {
@@ -1205,8 +1215,10 @@ function deleteCommand() {}
             v-for="cmd in quickCommands"
             :key="cmd.cmd"
             class="quick-btn"
-            @click="sendCommand(cmd.cmd)"
-            :title="cmd.cmd"
+            :class="{ 'quick-btn--disabled': !canSendCommand }"
+            :aria-disabled="!canSendCommand"
+            @click="canSendCommand && sendCommand(cmd.cmd)"
+            :title="canSendCommand ? cmd.cmd : i18n.t('console.server_not_running_hint')"
           >
             {{ cmd.label }}
           </div>
