@@ -377,6 +377,7 @@
     "back_to_bottom": "Retour en bas",
     "waiting_for_output": "En attente de sortie...",
     "quick": "Rapide :",
+    "server_not_running_hint": "Le serveur ne tourne pas, impossible d'envoyer la commande",
     "custom": "Personnalisé :",
     "running": "En cours",
     "starting": "Démarrage",

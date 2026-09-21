@@ -377,6 +377,7 @@
     "back_to_bottom": "Ir al final",
     "waiting_for_output": "Esperando respuesta...",
     "quick": "Rápidos:",
+    "server_not_running_hint": "El servidor no está en ejecución, no se pueden enviar comandos",
     "custom": "Personalizados:",
     "running": "En ejecución",
     "starting": "Iniciando",

@@ -377,6 +377,7 @@
     "back_to_bottom": "Вниз",
     "waiting_for_output": "Ожидание вывода...",
     "quick": "Быстрые:",
+    "server_not_running_hint": "Сервер не запущен, команды не работают",
     "custom": "Свои:",
     "running": "Работает",
     "starting": "Запускается",
