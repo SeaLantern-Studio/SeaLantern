@@ -8,6 +8,7 @@ pub mod download;
 pub mod instance;
 pub mod provisioning;
 pub mod server;
+pub mod server_config;
 pub mod settings;
 pub mod system;
 pub mod update;
@@ -26,6 +27,11 @@ pub use provisioning::inspect_server;
 pub use server::{
     force_stop_server, restart_server, send_server_command, server_status, start_server,
     stop_server,
+};
+pub use server_config::{
+    parse_server_properties_source, preview_server_properties_write,
+    preview_server_properties_write_from_source, read_server_properties,
+    read_server_properties_source, write_server_properties, write_server_properties_source,
 };
 pub use settings::{get_settings, settings_overview};
 pub use system::{default_run_path, server_resource_usage, system_snapshot};

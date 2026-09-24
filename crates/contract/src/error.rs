@@ -353,6 +353,8 @@ impl std::error::Error for BackupServiceError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerConfigServiceError {
+    /// 指定的目标实例不存在。
+    InstanceNotFound,
     /// 客户端提供的输入不合法（如路径为空、源码无法解析）。
     InvalidInput,
     /// 底层配置文件读写失败。
@@ -364,6 +366,7 @@ pub enum ServerConfigServiceError {
 impl std::fmt::Display for ServerConfigServiceError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = match self {
+            Self::InstanceNotFound => "server instance not found",
             Self::InvalidInput => "invalid server config input",
             Self::OperationFailed => "server config operation failed",
             Self::Unsupported => "operation not supported",
@@ -629,6 +632,10 @@ mod tests {
             ),
             (serde_json::to_string(&OnlineTunnelServiceError::NotRunning), "\"not_running\""),
             (serde_json::to_string(&BackupServiceError::ServerRunning), "\"server_running\""),
+            (
+                serde_json::to_string(&ServerConfigServiceError::InstanceNotFound),
+                "\"instance_not_found\"",
+            ),
             (
                 serde_json::to_string(&ServerConfigServiceError::InvalidInput),
                 "\"invalid_input\"",
