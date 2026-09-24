@@ -11,8 +11,8 @@ use serde::Serialize;
 
 use sealantern_contract::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
-    ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
-    UpdateCheckServiceError,
+    ProvisioningServiceError, ServerConfigServiceError, ServerServiceError, SettingsServiceError,
+    SystemServiceError, UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -330,6 +330,34 @@ impl HttpError {
             ProvisioningServiceError::OperationFailed => Self {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 code: "provisioning_operation_failed",
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// 由服务器配置契约错误构建 HTTP 错误。
+    pub fn from_server_config_error(error: ServerConfigServiceError) -> Self {
+        match error {
+            ServerConfigServiceError::InstanceNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "instance_not_found",
+                message: error.to_string(),
+            },
+            ServerConfigServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_input",
+                message: error.to_string(),
+            },
+            ServerConfigServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "operation_failed",
+                message: error.to_string(),
+            },
+            // 契约预留：应用层当前没有任何路径会产生 `Unsupported`（`ServerConfigError`
+            // 只由解析失败与 IO 失败构造），此处保留以穷尽契约分类。
+            ServerConfigServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
                 message: error.to_string(),
             },
         }

@@ -56,6 +56,20 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
             post(handlers::send_server_command),
         )
         .route("/instances/{id}/logs", get(handlers::console_logs))
+        // ── 嵌套子资源（服务器配置：server.properties） ──
+        .route(
+            "/instances/{id}/server-properties",
+            get(handlers::read_server_properties).put(handlers::write_server_properties),
+        )
+        .route(
+            "/instances/{id}/server-properties/source",
+            get(handlers::read_server_properties_source)
+                .put(handlers::write_server_properties_source),
+        )
+        .route(
+            "/instances/{id}/server-properties/preview",
+            post(handlers::preview_server_properties_write),
+        )
         // ── 嵌套子资源（后续扩展） ──
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));
@@ -87,6 +101,18 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
         .route("/downloads/{id}", get(handlers::query_download))
         .route("/downloads/{id}", axum::routing::delete(handlers::cancel_download));
 
+    // 非实例维度的纯文本变换端点：调用方直接给出源码，不触碰任何实例文件。
+    //
+    // 与实例维度同名端点的区别（两者都叫 "preview"，不要混淆）：
+    // - `/server-properties/preview`（本组）：以调用方给出的 `source` 为基准做写入预览；
+    // - `/instances/{id}/server-properties/preview`：以实例磁盘上现有文件为基准做写入预览。
+    let server_properties_routes = Router::new()
+        .route("/server-properties/parse", post(handlers::parse_server_properties_source))
+        .route(
+            "/server-properties/preview",
+            post(handlers::preview_server_properties_write_from_source),
+        );
+
     Router::new()
         .nest(API_PREFIX, instance_routes)
         .nest(API_PREFIX, provisioning_routes)
@@ -95,6 +121,7 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
         .nest(API_PREFIX, cron_routes)
         .nest(API_PREFIX, update_routes)
         .nest(API_PREFIX, download_routes)
+        .nest(API_PREFIX, server_properties_routes)
         .merge(plugin_rpc_routes)
         .fallback_service(axctl_core::serve::spa(assets))
         .with_state(state)
@@ -179,5 +206,208 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         assert!(response.headers().contains_key("x-request-id"));
+    }
+
+    #[tokio::test]
+    async fn unknown_instance_server_properties_returns_not_found() {
+        let (router, _directory) = test_router().await;
+
+        let response = router
+            .oneshot(
+                Request::get("/api/instances/missing/server-properties")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call server properties route");
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value.get("code").and_then(|code| code.as_str()), Some("instance_not_found"));
+    }
+
+    #[tokio::test]
+    async fn blank_instance_id_is_rejected_as_client_error() {
+        let (router, _directory) = test_router().await;
+
+        let response = router
+            .oneshot(
+                Request::get("/api/instances/%20/server-properties/source")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call server properties source route");
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value.get("code").and_then(|code| code.as_str()), Some("invalid_instance_id"));
+    }
+
+    #[tokio::test]
+    async fn server_properties_parse_route_needs_no_instance() {
+        let (router, _directory) = test_router().await;
+
+        let response = router
+            .oneshot(
+                Request::post("/api/server-properties/parse")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"source":"motd=hello\n"}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call parse route");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("read parse response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse parse response");
+        assert!(value.get("entries").is_some(), "unexpected payload: {value}");
+        assert!(value.get("raw").is_some(), "unexpected payload: {value}");
+        assert!(value.get("entriesSnake").is_none(), "unexpected payload: {value}");
+    }
+
+    /// 端到端正向路径：创建实例后按实例维度读写 server.properties。
+    ///
+    /// 覆盖 `resolve_instance_directory` 的成功分支，以及写入、读回、原始文本、
+    /// 预览（含"预览不落盘"）各端点。
+    #[tokio::test]
+    async fn instance_server_properties_round_trip() {
+        let (router, directory) = test_router().await;
+
+        // ── 1. 注册一个实例，其目录位于临时目录内 ──
+        let server_directory = directory.path().join("server-42");
+        std::fs::create_dir_all(&server_directory).expect("create server directory");
+        let spec = serde_json::json!({
+            "id": "server-42",
+            "name": "测试服",
+            "aliases": [],
+            "core_type": "paper",
+            "core_version": "1.20.4",
+            "game_version": "1.20.4",
+            "directory": server_directory,
+            "port": 25565,
+            "max_memory_mib": 2048,
+            "min_memory_mib": 512,
+            "created_at_unix_secs": 0,
+            "last_started_at_unix_secs": null,
+            "server_metadata": null,
+            "launch": {
+                "startup_mode": "jar",
+                "startup_target": server_directory.join("server.jar"),
+                "custom_command": null,
+                "custom_executable": null,
+                "custom_arguments": [],
+                "java_executable": null,
+                "jvm_arguments": [],
+            },
+        });
+        let response = router
+            .clone()
+            .oneshot(
+                Request::post("/api/instances")
+                    .header("content-type", "application/json")
+                    .body(Body::from(spec.to_string()))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call create instance route");
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        // ── 2. 按实例写入键值对 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::put("/api/instances/server-42/server-properties")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"values":{"motd":"hello","server-port":"25566"}}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call write route");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // ── 3. 读回并校验写入结果 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::get("/api/instances/server-42/server-properties")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call read route");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("read properties response");
+        let value: serde_json::Value =
+            serde_json::from_slice(&body).expect("parse properties response");
+        assert_eq!(value.pointer("/raw/motd").and_then(|item| item.as_str()), Some("hello"));
+        assert_eq!(
+            value
+                .pointer("/raw/server-port")
+                .and_then(|item| item.as_str()),
+            Some("25566")
+        );
+
+        // ── 4. 原始文本端点 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::get("/api/instances/server-42/server-properties/source")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call read source route");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("read source response");
+        let source: String = serde_json::from_slice(&body).expect("parse source response");
+        assert!(source.contains("motd=hello"), "unexpected source: {source}");
+
+        // ── 5. 预览：返回改写后的文本，但不落盘 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::post("/api/instances/server-42/server-properties/preview")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"values":{"motd":"preview-only"}}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call preview route");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("read preview response");
+        let preview: String = serde_json::from_slice(&body).expect("parse preview response");
+        assert!(preview.contains("motd=preview-only"), "unexpected preview: {preview}");
+
+        let response = router
+            .oneshot(
+                Request::get("/api/instances/server-42/server-properties/source")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call read source route again");
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("read source response");
+        let source: String = serde_json::from_slice(&body).expect("parse source response");
+        assert!(
+            source.contains("motd=hello") && !source.contains("preview-only"),
+            "preview must not persist, got: {source}"
+        );
     }
 }
