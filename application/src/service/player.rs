@@ -1,14 +1,16 @@
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::port::{InstanceService, PlayerListService, PlayerLookupService};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use sealantern_contract::{
-    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerListError, PlayerLookupError, PlayerProfile,
+    BanEntryDto, OpEntryDto, PlayerAdminError, PlayerEntryDto, PlayerListError, PlayerLookupError,
+    PlayerProfile,
 };
 use sealantern_core::instance::InstanceId;
-use std::path::Path;
 
+use crate::port::{InstanceService, PlayerAdminService, PlayerListService, PlayerLookupService};
 use crate::service::{CoreInstanceService, CoreServerService, capture_command_output};
 
 /// usercache.json 里每条记录的格式。
@@ -23,7 +25,10 @@ pub struct CorePlayerService {
     /// 而非信任前端传入的 server_path（见 code review：server_id 与
     /// server_path 分开信任）。
     instance_svc: Arc<CoreInstanceService>,
-    /// 服务器进程管理服务：用于向运行中的服务器发送控制台命令。
+    /// 服务器进程管理服务：仅在线玩家列表需要它（向运行中的服务器发 `list` 命令）。
+    ///
+    /// 白名单 / 封禁 / OP 三个列表改为直接读取服务器目录下的配置文件，
+    /// 不依赖服务器运行状态，因此不需要该服务。
     server_svc: Arc<CoreServerService>,
 }
 
@@ -46,6 +51,83 @@ impl CorePlayerService {
             .ok_or(PlayerListError::ServiceUnavailable)?;
         Ok(instance.directory.to_string_lossy().into_owned())
     }
+
+    /// 读取服务器目录下的一个 JSON 列表文件并反序列化为 DTO 列表。
+    ///
+    /// 与「发控制台命令捕获回显」不同，读文件不要求服务器处于运行状态，
+    /// 因此服务器未启动时打开玩家管理页不会产生任何错误。
+    ///
+    /// - 文件不存在 → 返回空列表（服务器尚未生成过该文件，属正常状态）
+    /// - 内容为空或 `[]` → 返回空列表
+    /// - 读取或解析失败 → [`PlayerListError::ServiceUnavailable`]
+    async fn read_json_list<T>(
+        &self,
+        server_id: &str,
+        filename: &str,
+    ) -> Result<Vec<T>, PlayerListError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let directory = self.resolve_directory(server_id).await?;
+        let path = Path::new(&directory).join(filename);
+
+        let content = match tokio::fs::read_to_string(&path).await {
+            Ok(content) => content,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(_) => return Err(PlayerListError::ServiceUnavailable),
+        };
+
+        let trimmed = content.trim();
+        if trimmed.is_empty() || trimmed == "[]" {
+            return Ok(Vec::new());
+        }
+        serde_json::from_str(trimmed).map_err(|_| PlayerListError::ServiceUnavailable)
+    }
+
+    /// 向运行中的服务器发送一条玩家管理命令，等待其处理完成。
+    ///
+    /// 只负责"确认命令已送达且服务器已处理完"（以捕获回显的静默窗口判定），
+    /// **不**把捕获到的回显行当作成功判定：
+    ///
+    /// - 并发捕获会收到同一实例的不相关日志行，仅凭"收到行"证明不了命令成功；
+    /// - 命令本身也可能被服务器拒绝（玩家不存在、目标不在线等），此时服务器
+    ///   仍会输出一条回显。
+    ///
+    /// 因此成功与否由各写方法在命令执行后对**最终状态**（配置文件 / 在线列表）
+    /// 做验证，见 `assert_list_contains` 与各写方法
+    /// （code review：命令被拒绝 / 并发无关行不应被误判为成功）。
+    async fn run_admin_command(
+        &self,
+        server_id: &str,
+        command: &str,
+    ) -> Result<(), PlayerAdminError> {
+        capture_command_output(&self.server_svc, server_id, command, Duration::from_secs(6))
+            .await?;
+        Ok(())
+    }
+
+    /// 断言服务器目录下的名单文件（`whitelist.json` / `banned-players.json` /
+    /// `ops.json`）是否包含指定玩家（忽略大小写）。
+    ///
+    /// 服务器拒绝命令（玩家不存在、目标不在线等）时不会把改动写进名单文件，
+    /// 据此把"命令发出但没生效"识别为 [`PlayerAdminError::OperationFailed`]；
+    /// 同时也天然免疫并发场景下的无关回显行——这里的验证读的是文件而非捕获日志。
+    async fn assert_list_contains(
+        &self,
+        server_id: &str,
+        filename: &str,
+        name: &str,
+        contained: bool,
+    ) -> Result<(), PlayerAdminError> {
+        let list = self
+            .read_json_list::<PlayerEntryDto>(server_id, filename)
+            .await?;
+        let found = list.iter().any(|e| e.name.eq_ignore_ascii_case(name));
+        if found != contained {
+            return Err(PlayerAdminError::OperationFailed);
+        }
+        Ok(())
+    }
 }
 
 impl From<crate::service::CaptureError> for PlayerListError {
@@ -56,6 +138,70 @@ impl From<crate::service::CaptureError> for PlayerListError {
             crate::service::CaptureError::Unavailable => PlayerListError::ServiceUnavailable,
             crate::service::CaptureError::NoResponse => PlayerListError::CaptureFailed,
         }
+    }
+}
+
+impl From<crate::service::CaptureError> for PlayerAdminError {
+    fn from(err: crate::service::CaptureError) -> Self {
+        match err {
+            crate::service::CaptureError::InvalidInput => PlayerAdminError::InvalidInput,
+            crate::service::CaptureError::ServerNotRunning => PlayerAdminError::ServerNotRunning,
+            crate::service::CaptureError::Unavailable => PlayerAdminError::ServiceUnavailable,
+            crate::service::CaptureError::NoResponse => PlayerAdminError::CaptureFailed,
+        }
+    }
+}
+
+/// Minecraft 玩家名校验：3-16 字符，仅允许 ASCII 字母、数字与下划线。
+///
+/// 与 `server.properties` 的 `enforce-whitelist` / Mojang 账户命名规则一致；
+/// 同时因为只允许 ASCII，也顺带杜绝了把命令分隔符 / 空格注入命令名的可能。
+fn validate_player_name(name: &str) -> Result<&str, PlayerAdminError> {
+    let name = name.trim();
+    if !(3..=16).contains(&name.len()) {
+        return Err(PlayerAdminError::InvalidInput);
+    }
+    if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err(PlayerAdminError::InvalidInput);
+    }
+    Ok(name)
+}
+
+/// 清理封禁 / 踢出原因里的多余空白（含换行符）。
+///
+/// 原因会作为命令参数拼进控制台命令行；若允许 `\n` / `\r` 存在，就可能把
+/// 一条命令拆成多条写进服务器 stdin，因此统一把所有空白折叠为单个空格，
+/// 并去掉首尾空白。
+fn sanitize_reason(reason: &str) -> String {
+    reason.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// 把 Minecraft 配置文件里的 UUID 规范化为无连字符形式（契约约定）。
+///
+/// `whitelist.json` / `banned-players.json` / `ops.json` 存的是
+/// 8-4-4-4-12 带连字符格式，而契约对外统一返回 32 位 hex。
+fn normalize_uuid(uuid: &mut String) {
+    if uuid.contains('-') {
+        *uuid = uuid.replace('-', "");
+    }
+}
+
+/// `banned-players.json` 使用的时间戳格式：`yyyy-MM-dd HH:mm:ss Z`
+/// （例如 `2026-01-01 00:00:00 +0800`）。
+const MINECRAFT_TIMESTAMP_FORMAT: &str = "%Y-%m-%d %H:%M:%S %z";
+
+/// 把 Minecraft 时间戳规范化为 UTC 的 RFC 3339（与备份等模块的对外格式一致）。
+///
+/// 原格式用空格分隔日期时间、时区偏移无冒号（`+0800`），不是 RFC 3339，
+/// 前端 `new Date()` 无法在所有环境可靠解析。归一化到 UTC 后输出
+/// `2026-01-01T00:00:00+00:00`，且全仓库对外时间统一为 UTC，字典序即可
+/// 直接比较时间先后（不同偏移下 RFC 3339 的字典序不等于时间序）。
+///
+/// 非时间戳的值原样透传：`expires` 的 `forever`（永久封禁标记）、老版本
+/// 缺省的空串，以及个别服务器写出的异常格式，都不在此丢失信息。
+fn normalize_minecraft_timestamp(value: &mut String) {
+    if let Ok(parsed) = DateTime::parse_from_str(value.trim(), MINECRAFT_TIMESTAMP_FORMAT) {
+        *value = parsed.with_timezone(&Utc).to_rfc3339();
     }
 }
 
@@ -106,6 +252,7 @@ impl PlayerLookupService for CorePlayerService {
 #[async_trait]
 impl PlayerListService for CorePlayerService {
     async fn get_online_players(&self, server_id: String) -> Result<Vec<String>, PlayerListError> {
+        // 在线玩家只能从运行中的服务器获取：发 `list` 命令并解析回显。
         let lines =
             capture_command_output(&self.server_svc, &server_id, "list", Duration::from_secs(6))
                 .await?;
@@ -116,65 +263,152 @@ impl PlayerListService for CorePlayerService {
         &self,
         server_id: String,
     ) -> Result<Vec<PlayerEntryDto>, PlayerListError> {
-        let lines = capture_command_output(
-            &self.server_svc,
-            &server_id,
-            "whitelist list",
-            Duration::from_secs(6),
-        )
-        .await?;
-        let server_path = self.resolve_directory(&server_id).await?;
-        let names = parse_whitelist_names(&lines);
-        let mut out = Vec::with_capacity(names.len());
-        for name in names {
-            let uuid = self
-                .lookup(server_path.clone(), name.clone())
-                .await
-                .map(|p| p.uuid)
-                .unwrap_or_default();
-            out.push(PlayerEntryDto { uuid, name });
+        // 读服务器目录下的 whitelist.json：不要求服务器运行，UUID 直接来自文件。
+        let mut entries: Vec<PlayerEntryDto> =
+            self.read_json_list(&server_id, "whitelist.json").await?;
+        for entry in &mut entries {
+            normalize_uuid(&mut entry.uuid);
         }
-        Ok(out)
+        Ok(entries)
     }
 
     async fn get_banned_players(
         &self,
         server_id: String,
     ) -> Result<Vec<BanEntryDto>, PlayerListError> {
-        let lines =
-            capture_command_output(&self.server_svc, &server_id, "banlist", Duration::from_secs(6))
-                .await?;
-        let server_path = self.resolve_directory(&server_id).await?;
-        let bans = parse_ban_entries(&lines);
-        let mut out = Vec::with_capacity(bans.len());
-        for (name, reason) in bans {
-            let uuid = self
-                .lookup(server_path.clone(), name.clone())
-                .await
-                .map(|p| p.uuid)
-                .unwrap_or_default();
-            out.push(BanEntryDto { uuid, name, reason });
+        // 读服务器目录下的 banned-players.json：不要求服务器运行，且保留
+        // reason/source/created/expires 等完整封禁信息。
+        // created/expires 由 Minecraft 时间戳规范化为 UTC 的 RFC 3339，与
+        // 备份等模块对外的时间格式保持一致（code review：时间格式统一）。
+        let mut entries: Vec<BanEntryDto> = self
+            .read_json_list(&server_id, "banned-players.json")
+            .await?;
+        for entry in &mut entries {
+            normalize_uuid(&mut entry.uuid);
+            normalize_minecraft_timestamp(&mut entry.created);
+            normalize_minecraft_timestamp(&mut entry.expires);
         }
-        Ok(out)
+        Ok(entries)
     }
 
     async fn get_ops(&self, server_id: String) -> Result<Vec<OpEntryDto>, PlayerListError> {
-        let lines =
-            capture_command_output(&self.server_svc, &server_id, "list", Duration::from_secs(6))
-                .await?;
-        let server_path = self.resolve_directory(&server_id).await?;
-        let names = parse_online_op_names(&lines);
-        let mut out = Vec::with_capacity(names.len());
-        for name in names {
-            let uuid = self
-                .lookup(server_path.clone(), name.clone())
-                .await
-                .map(|p| p.uuid)
-                .unwrap_or_default();
-            // Minecraft Java 控制台不输出 OP 等级，统一按默认 4 处理。
-            out.push(OpEntryDto { uuid, name, level: 4 });
+        // 读服务器目录下的 ops.json：不要求服务器运行，且包含离线 OP 与真实等级。
+        //
+        // 注意：不能用 `list` 命令的 `*` 前缀代替——那只覆盖在线 OP。
+        let mut entries: Vec<OpEntryDto> = self.read_json_list(&server_id, "ops.json").await?;
+        for entry in &mut entries {
+            normalize_uuid(&mut entry.uuid);
         }
-        Ok(out)
+        Ok(entries)
+    }
+}
+
+#[async_trait]
+impl PlayerAdminService for CorePlayerService {
+    async fn add_to_whitelist(
+        &self,
+        server_id: String,
+        name: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let command = format!("whitelist add {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        // 玩家名无效时服务端不会写入白名单，据此识别命令被拒绝。
+        self.assert_list_contains(&server_id, "whitelist.json", name, true)
+            .await?;
+        Ok(command)
+    }
+
+    async fn remove_from_whitelist(
+        &self,
+        server_id: String,
+        name: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let command = format!("whitelist remove {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        self.assert_list_contains(&server_id, "whitelist.json", name, false)
+            .await?;
+        Ok(command)
+    }
+
+    async fn ban_player(
+        &self,
+        server_id: String,
+        name: String,
+        reason: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let reason = sanitize_reason(&reason);
+        let command = if reason.is_empty() {
+            format!("ban {name}")
+        } else {
+            format!("ban {name} {reason}")
+        };
+        self.run_admin_command(&server_id, &command).await?;
+        // 封禁不存在的玩家会被服务端拒绝，banned-players.json 不会出现该玩家。
+        self.assert_list_contains(&server_id, "banned-players.json", name, true)
+            .await?;
+        Ok(command)
+    }
+
+    async fn unban_player(
+        &self,
+        server_id: String,
+        name: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let command = format!("pardon {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        self.assert_list_contains(&server_id, "banned-players.json", name, false)
+            .await?;
+        Ok(command)
+    }
+
+    async fn add_op(&self, server_id: String, name: String) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let command = format!("op {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        self.assert_list_contains(&server_id, "ops.json", name, true)
+            .await?;
+        Ok(command)
+    }
+
+    async fn remove_op(&self, server_id: String, name: String) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let command = format!("deop {name}");
+        self.run_admin_command(&server_id, &command).await?;
+        self.assert_list_contains(&server_id, "ops.json", name, false)
+            .await?;
+        Ok(command)
+    }
+
+    async fn kick_player(
+        &self,
+        server_id: String,
+        name: String,
+        reason: String,
+    ) -> Result<String, PlayerAdminError> {
+        let name = validate_player_name(&name)?;
+        let reason = sanitize_reason(&reason);
+        // 服务端会拒绝"踢不在线的玩家"；kick 不写任何配置文件，只能靠在线列表
+        // 判断，因此先确认目标在线，避免把"不在线"误判为踢出成功。
+        let online_before = self.get_online_players(server_id.clone()).await?;
+        if !online_before.iter().any(|n| n.eq_ignore_ascii_case(name)) {
+            return Err(PlayerAdminError::OperationFailed);
+        }
+        let command = if reason.is_empty() {
+            format!("kick {name}")
+        } else {
+            format!("kick {name} {reason}")
+        };
+        self.run_admin_command(&server_id, &command).await?;
+        // 执行后确认其已下线。
+        let online_after = self.get_online_players(server_id).await?;
+        if online_after.iter().any(|n| n.eq_ignore_ascii_case(name)) {
+            return Err(PlayerAdminError::OperationFailed);
+        }
+        Ok(command)
     }
 }
 
@@ -231,226 +465,105 @@ fn parse_online_names(lines: &[String]) -> Vec<String> {
     names
 }
 
-/// 解析 `list` 回显里的在线 OP 玩家（带 `*` 前缀的名字）。
-fn parse_online_op_names(lines: &[String]) -> Vec<String> {
-    let mut names = Vec::new();
-    let Some((idx, line)) = lines
-        .iter()
-        .enumerate()
-        .find(|(_, l)| l.to_lowercase().contains("players online"))
-    else {
-        return names;
-    };
-    let lower = line.to_lowercase();
-    let after = match lower.find("players online") {
-        Some(pos) => &line[pos + "players online".len()..],
-        None => return names,
-    };
-
-    let mut all = Vec::new();
-    if let Some((_, list_part)) = after.split_once(':') {
-        let inline: Vec<String> = list_part
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
-        all.extend(inline);
-    }
-    for next in &lines[idx + 1..] {
-        let trimmed = next.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        all.extend(
-            trimmed
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
-        );
-        break;
-    }
-    for n in all {
-        // 仅收集以 `*` 开头的 OP 玩家，去掉 `*` 与空白后作为名字。
-        if let Some(stripped) = n.strip_prefix('*') {
-            let name = stripped.trim();
-            if !name.is_empty() {
-                names.push(name.to_string());
-            }
-        }
-    }
-    names
-}
-
-/// 解析 `whitelist list` 回显里的玩家名。
-fn parse_whitelist_names(lines: &[String]) -> Vec<String> {
-    // 1) 命中"空集"声明 → 直接返回。
-    if lines.iter().any(|l| {
-        let lower = l.to_lowercase();
-        lower.contains("no whitelisted players") || lower.contains("no players are whitelisted")
-    }) {
-        return Vec::new();
-    }
-
-    // 2) 找包含 "whitelisted player" 的那一行。
-    let Some((idx, line)) = lines
-        .iter()
-        .enumerate()
-        .find(|(_, l)| l.to_lowercase().contains("whitelisted player"))
-    else {
-        return Vec::new();
-    };
-
-    let lower = line.to_lowercase();
-    let anchor = if let Some(pos) = lower.find("whitelisted players:") {
-        Some((pos, "whitelisted players:".len()))
-    } else {
-        lower.find("whitelisted player:").map(|pos| (pos, 19))
-    };
-
-    let real_after = match anchor {
-        Some((pos, anchor_len)) => &line[pos + anchor_len..],
-        None => "",
-    };
-
-    // 2a) 单行格式：锚点后紧随名单。
-    let inline: Vec<String> = real_after
-        .split(',')
-        .map(|n| n.trim().trim_start_matches(':').trim().to_string())
-        .filter(|n| !n.is_empty())
-        .collect();
-    if !inline.is_empty() {
-        return inline;
-    }
-
-    // 2b) 多行格式。
-    let mut names = Vec::new();
-    for next in &lines[idx + 1..] {
-        let trimmed = next.trim();
-        if trimmed.is_empty() {
-            break;
-        }
-        for n in trimmed.split(',') {
-            let n = n.trim();
-            if !n.is_empty() {
-                names.push(n.to_string());
-            }
-        }
-    }
-    names
-}
-
-/// 解析 `banlist` 回显：返回 (名字, 原因)。
-fn parse_ban_entries(lines: &[String]) -> Vec<(String, String)> {
-    // 0 个封禁快速返回。
-    if lines.iter().any(|l| {
-        let lower = l.to_lowercase();
-        lower.contains("no bans")
-            || lower.contains("0 bans")
-            || lower.contains("no players are banned")
-            || lower.contains("no banned players")
-    }) {
-        return Vec::new();
-    }
-
-    let mut bans: Vec<(String, String)> = Vec::new();
-    let mut in_banlist = false;
-    for line in lines {
-        let lower = line.to_lowercase();
-        let is_header = lower.contains("bans:")
-            || lower.contains(" ban:")
-            || lower.contains(" banned:")
-            || lower.contains("banlist")
-            || lower.contains("were banned");
-        if is_header {
-            in_banlist = true;
-            if let Some((_, after)) = line.split_once(':') {
-                push_ban_fragments(&mut bans, after);
-            }
-            continue;
-        }
-        if in_banlist {
-            if is_non_ban_noise(&lower) {
-                continue;
-            }
-            if let Some(entry) = extract_ban_name(line) {
-                bans.push(entry);
-            }
-        }
-    }
-    bans
-}
-
-/// 判断一行是否明显是其他命令的回显。
-fn is_non_ban_noise(lower: &str) -> bool {
-    lower.contains("players online")
-        || lower.contains("issued server command")
-        || lower.contains("whitelisted")
-        || lower.contains("whitelist list")
-        || lower.contains("ops:")
-        || lower.contains("op list")
-        || lower.contains("[server")
-}
-
-/// 把 ban list 行内串拆成若干 `(name, reason)` 并 push。
-fn push_ban_fragments(out: &mut Vec<(String, String)>, fragment: &str) {
-    let trimmed = fragment.trim();
-    if trimmed.is_empty() {
-        return;
-    }
-    let mut current = trimmed.to_string();
-    loop {
-        let Some(close_rel) = current.find(')') else {
-            let name = current.trim().trim_end_matches(',').trim().to_string();
-            if !name.is_empty() {
-                out.push((name, String::new()));
-            }
-            return;
-        };
-        let close = close_rel;
-        let entry_part = &current[..=close];
-        if let Some((name, reason)) = extract_ban_name(entry_part) {
-            out.push((name, reason));
-        }
-        let after = current[close + 1..].trim();
-        if after.is_empty() {
-            return;
-        }
-        current = after.trim_start_matches(',').trim().to_string();
-        if current.is_empty() {
-            return;
-        }
-    }
-}
-
-/// 从一行里提取封禁名字与原因。
-fn extract_ban_name(part: &str) -> Option<(String, String)> {
-    let part = part.trim().trim_end_matches(',').trim();
-    if part.is_empty() {
-        return None;
-    }
-    if let Some(open) = part.find('(') {
-        let head = part[..open].trim().trim_end_matches(',').trim().to_string();
-        let reason = part[open + 1..]
-            .trim()
-            .trim_end_matches('.')
-            .trim_end_matches(')')
-            .trim_end_matches('.')
-            .to_string();
-        let name = head
-            .split_whitespace()
-            .take_while(|w| *w != "was")
-            .collect::<Vec<&str>>()
-            .join(" ");
-        let name = if name.is_empty() { head } else { name };
-        Some((name, reason))
-    } else {
-        Some((part.to_string(), String::new()))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── DTO 反序列化：直接对应 Minecraft 配置文件格式 ──────────────
+
+    #[test]
+    fn deserialize_whitelist_entry() {
+        let raw = r#"[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Notch"}]"#;
+        let entries: Vec<PlayerEntryDto> = serde_json::from_str(raw).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "Notch");
+        assert_eq!(entries[0].uuid, "069a79f4-44e9-4726-a5be-fca90e38aaf5");
+    }
+
+    #[test]
+    fn deserialize_ban_entry_keeps_full_fields() {
+        let raw = r#"[{
+            "uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5",
+            "name":"griefer",
+            "created":"2026-01-01 00:00:00 +0800",
+            "source":"Server",
+            "expires":"forever",
+            "reason":"griefing"
+        }]"#;
+        let entries: Vec<BanEntryDto> = serde_json::from_str(raw).unwrap();
+        assert_eq!(entries[0].name, "griefer");
+        assert_eq!(entries[0].reason, "griefing");
+        assert_eq!(entries[0].source, "Server");
+        assert_eq!(entries[0].created, "2026-01-01 00:00:00 +0800");
+        assert_eq!(entries[0].expires, "forever");
+    }
+
+    #[test]
+    fn deserialize_op_entry_accepts_camel_case_bypass_field() {
+        let raw = r#"[{
+            "uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5",
+            "name":"Notch",
+            "level":4,
+            "bypassesPlayerLimit":true
+        }]"#;
+        let entries: Vec<OpEntryDto> = serde_json::from_str(raw).unwrap();
+        assert_eq!(entries[0].name, "Notch");
+        assert_eq!(entries[0].level, 4);
+        assert!(entries[0].bypasses_player_limit);
+    }
+
+    #[test]
+    fn deserialize_entry_tolerates_missing_optional_fields() {
+        // 老版本服务器可能不写 source/created/expires，缺失时取默认值。
+        let raw = r#"[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Notch"}]"#;
+        let entries: Vec<BanEntryDto> = serde_json::from_str(raw).unwrap();
+        assert_eq!(entries[0].reason, "");
+        assert_eq!(entries[0].created, "");
+        assert_eq!(entries[0].expires, "");
+    }
+
+    #[test]
+    fn normalize_uuid_strips_hyphens_only_when_present() {
+        let mut dashed = "069a79f4-44e9-4726-a5be-fca90e38aaf5".to_string();
+        normalize_uuid(&mut dashed);
+        assert_eq!(dashed, "069a79f444e94726a5befca90e38aaf5");
+
+        let mut plain = "069a79f444e94726a5befca90e38aaf5".to_string();
+        normalize_uuid(&mut plain);
+        assert_eq!(plain, "069a79f444e94726a5befca90e38aaf5");
+    }
+
+    #[test]
+    fn normalize_minecraft_timestamp_converts_to_utc_rfc3339() {
+        // +08:00 的 2026-01-01 00:00:00 对应 UTC 的 2025-12-31 16:00:00。
+        let mut created = "2026-01-01 00:00:00 +0800".to_string();
+        normalize_minecraft_timestamp(&mut created);
+        assert_eq!(created, "2025-12-31T16:00:00+00:00");
+
+        // 负偏移同样换算到 UTC：-05:00 的 12:30:45 对应 UTC 17:30:45。
+        let mut expires = "2027-06-30 12:30:45 -0500".to_string();
+        normalize_minecraft_timestamp(&mut expires);
+        assert_eq!(expires, "2027-06-30T17:30:45+00:00");
+    }
+
+    #[test]
+    fn normalize_minecraft_timestamp_passthrough_non_timestamps() {
+        // forever 是永久封禁标记，不是时间戳，原样保留。
+        let mut forever = "forever".to_string();
+        normalize_minecraft_timestamp(&mut forever);
+        assert_eq!(forever, "forever");
+
+        // 老版本缺省的空串与异常格式不丢失信息。
+        let mut empty = String::new();
+        normalize_minecraft_timestamp(&mut empty);
+        assert_eq!(empty, "");
+
+        let mut garbage = "not a date".to_string();
+        normalize_minecraft_timestamp(&mut garbage);
+        assert_eq!(garbage, "not a date");
+    }
+
+    // ── 在线玩家：`list` 回显解析 ────────────────────────────────
 
     #[test]
     fn parse_online_names_legacy_zero_players_single_line() {
@@ -485,96 +598,39 @@ mod tests {
         assert_eq!(parse_online_names(&lines), Vec::<String>::new());
     }
 
+    // ── 写入操作的玩家名校验 ──────────────────────────────────
+
     #[test]
-    fn parse_whitelist_names_empty_declaration() {
-        let lines = vec!["There are 0 whitelisted players".to_string()];
-        assert_eq!(parse_whitelist_names(&lines), Vec::<String>::new());
+    fn validate_player_name_accepts_valid_names() {
+        assert_eq!(validate_player_name("Notch").unwrap(), "Notch");
+        // 前后空白会被裁剪。
+        assert_eq!(validate_player_name("  jeb_  ").unwrap(), "jeb_");
+        // 长度边界：3 与 16。
+        assert_eq!(validate_player_name("abc").unwrap(), "abc");
+        assert_eq!(validate_player_name("a123456789012345").unwrap(), "a123456789012345");
     }
 
     #[test]
-    fn parse_whitelist_names_multi_line_list() {
-        let lines = vec![
-            "There are 2 whitelisted players:".to_string(),
-            "alice".to_string(),
-            "bob".to_string(),
-        ];
-        assert_eq!(parse_whitelist_names(&lines), vec!["alice", "bob"]);
+    fn validate_player_name_rejects_invalid_names() {
+        // 空与超短。
+        assert!(validate_player_name("").is_err());
+        assert!(validate_player_name("ab").is_err());
+        // 超长（17 字符）。
+        assert!(validate_player_name("a1234567890123456").is_err());
+        // 非法字符：空格、连字符、命令分隔符、非 ASCII。
+        assert!(validate_player_name("has space").is_err());
+        assert!(validate_player_name("bad-name").is_err());
+        assert!(validate_player_name("inject;stop").is_err());
+        assert!(validate_player_name("中文名").is_err());
     }
 
     #[test]
-    fn parse_whitelist_names_inline_list() {
-        let lines = vec!["There are 2 whitelisted players: alice, bob".to_string()];
-        assert_eq!(parse_whitelist_names(&lines), vec!["alice", "bob"]);
-    }
-
-    #[test]
-    fn parse_op_names_marks_prefixed_entries() {
-        let lines =
-            vec!["There are 3 of a max of 20 players online: * Notch, jeb, dinnerbone".to_string()];
-        assert_eq!(parse_online_op_names(&lines), vec!["Notch"]);
-    }
-
-    #[test]
-    fn parse_op_names_multi_line_with_two_ops() {
-        let lines = vec![
-            "There are 3 of a max of 20 players online:".to_string(),
-            "* Notch, * jeb, dinnerbone".to_string(),
-        ];
-        assert_eq!(parse_online_op_names(&lines), vec!["Notch", "jeb"]);
-    }
-
-    #[test]
-    fn parse_ban_entries_inline_with_reasons() {
-        let lines = vec![r#"There are 2 bans: alice (banned by Admin, reason: griefing), bob (banned by Mod, reason: spam)"#.to_string()];
-        let bans = parse_ban_entries(&lines);
-        assert_eq!(bans.len(), 2);
-        assert_eq!(bans[0].0, "alice");
-        assert_eq!(bans[1].0, "bob");
-        assert!(bans[0].1.contains("griefing"));
-    }
-
-    #[test]
-    fn parse_ban_entries_multi_line() {
-        let lines = vec![
-            "There are 2 bans:".to_string(),
-            "alice was banned by Admin (reason: griefing)".to_string(),
-            "bob was banned by Mod (reason: spam)".to_string(),
-        ];
-        let bans = parse_ban_entries(&lines);
-        assert_eq!(bans.len(), 2);
-        assert_eq!(bans[0].0, "alice");
-        assert_eq!(bans[1].0, "bob");
-    }
-
-    #[test]
-    fn parse_ban_entries_empty_does_not_swallow_unrelated_lines() {
-        let lines = vec![
-            "There are no bans".to_string(),
-            "There are 1 of a max of 20 players online: hjcboar".to_string(),
-        ];
-        assert_eq!(parse_ban_entries(&lines), Vec::<(String, String)>::new());
-    }
-
-    #[test]
-    fn parse_ban_entries_filters_noise_after_real_header() {
-        let lines = vec![
-            "There is 1 ban:".to_string(),
-            "There are 1 of a max of 20 players online: hjcboar".to_string(),
-            "alice was banned by Admin (reason: griefing)".to_string(),
-            "There are 3 whitelisted players: bob".to_string(),
-        ];
-        let bans = parse_ban_entries(&lines);
-        assert_eq!(bans.len(), 1);
-        assert_eq!(bans[0].0, "alice");
-        assert!(bans[0].1.contains("griefing"));
-    }
-
-    #[test]
-    fn parse_ban_entries_singular_header_inline() {
-        let lines = vec!["There is 1 ban: alice (banned by Admin, reason: griefing)".to_string()];
-        let bans = parse_ban_entries(&lines);
-        assert_eq!(bans.len(), 1);
-        assert_eq!(bans[0].0, "alice");
-        assert!(bans[0].1.contains("griefing"));
+    fn sanitize_reason_collapses_newlines_into_spaces() {
+        assert_eq!(sanitize_reason("griefing"), "griefing");
+        assert_eq!(sanitize_reason("  spam  "), "spam");
+        // 换行不能穿透成第二条控制台命令。
+        assert_eq!(sanitize_reason("griefing\nstop"), "griefing stop");
+        assert_eq!(sanitize_reason("a\r\nb"), "a b");
+        assert_eq!(sanitize_reason(""), "");
     }
 }

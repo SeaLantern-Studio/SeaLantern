@@ -61,6 +61,7 @@ pub use error::JavaServiceError;
 /// 在线隧道服务错误枚举。
 pub use error::OnlineTunnelServiceError;
 /// 玩家列表查询错误枚举。
+pub use error::PlayerAdminError;
 pub use error::PlayerListError;
 /// 玩家查询错误枚举。
 pub use error::PlayerLookupError;
