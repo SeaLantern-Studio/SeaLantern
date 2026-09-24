@@ -924,6 +924,12 @@ pub const EVENT_CONFIG_REGISTRY_DUPLICATE_ID: &str = "config_registry_duplicate_
 pub const EVENT_CONFIG_REGISTRY_NOT_FOUND: &str = "config_registry_server_not_found";
 /// Event: 注册表操作失败。
 pub const EVENT_CONFIG_REGISTRY_OPERATION_FAILED: &str = "config_registry_operation_failed";
+/// Event: 注册表持久化格式版本升级完成。
+pub const EVENT_CONFIG_REGISTRY_SCHEMA_VERSION_UPGRADED: &str =
+    "config_registry_schema_version_upgraded";
+/// Event: 注册表持久化格式版本高于当前实现支持的版本。
+pub const EVENT_CONFIG_REGISTRY_SCHEMA_VERSION_UNSUPPORTED: &str =
+    "config_registry_schema_version_unsupported";
 
 /// 记录注册表加载完成。
 pub fn config_registry_loaded(path: &std::path::Path, count: usize) {
@@ -1008,6 +1014,38 @@ pub fn config_registry_operation_failed(
         id,
         error = %error,
         "registry operation failed"
+    );
+}
+
+/// 记录注册表持久化格式版本升级完成。
+pub fn config_registry_schema_version_upgraded(
+    path: &std::path::Path,
+    from_version: u32,
+    to_version: u32,
+) {
+    tracing::info!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_SCHEMA_VERSION_UPGRADED,
+        path = %path.display(),
+        from_version,
+        to_version,
+        "registry schema version upgraded"
+    );
+}
+
+/// 记录注册表持久化格式版本高于当前实现支持的版本。
+pub fn config_registry_schema_version_unsupported(
+    path: &std::path::Path,
+    version: u32,
+    supported_version: u32,
+) {
+    tracing::error!(
+        target: CONFIG_TARGET,
+        event_name = EVENT_CONFIG_REGISTRY_SCHEMA_VERSION_UNSUPPORTED,
+        path = %path.display(),
+        version,
+        supported_version,
+        "registry schema version is newer than this build supports"
     );
 }
 
