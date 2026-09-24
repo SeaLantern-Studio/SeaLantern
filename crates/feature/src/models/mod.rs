@@ -14,8 +14,8 @@ pub use sealantern_contract::settings::{
     DEFAULT_TUNNEL_LINK_LIFETIME, SettingsGroup, SettingsValidationError, TUNNEL_LINK_LIFETIMES,
 };
 pub use sealantern_contract::settings::{NullablePatch, PartialAppSettings, UpdateResult};
-pub use server::InstanceList;
 pub(crate) use server::LegacyServerInstance;
+pub use server::{CURRENT_INSTANCE_SCHEMA_VERSION, InstanceList};
 pub use task::{TaskProgressResponse, TaskStatus};
 
 #[allow(deprecated)]
