@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from "vue";
-import type { m_PluginConfigFile, m_PluginInfo } from "@api/mcs_plugins";
+import type { PluginConfigFile, PluginSummary } from "@api/serverPlugin";
 import { i18n } from "@language";
 import {
   Trash2,
@@ -10,25 +10,27 @@ import {
   RotateCcw,
   FolderOpen,
   Edit,
+  Plus,
 } from "lucide-vue-next";
 
 interface Props {
-  plugins: m_PluginInfo[];
+  plugins: PluginSummary[];
   pluginsLoading: boolean;
-  selectedPlugin: m_PluginInfo | null;
+  selectedPlugin: PluginSummary | null;
 }
 
 defineProps<Props>();
 
 const emit = defineEmits<{
   refreshList: [];
+  installPlugin: [];
   reloadPlugins: [];
-  pluginClick: [plugin: m_PluginInfo];
-  togglePlugin: [plugin: m_PluginInfo];
-  deletePlugin: [plugin: m_PluginInfo];
+  pluginClick: [plugin: PluginSummary];
+  togglePlugin: [plugin: PluginSummary];
+  deletePlugin: [plugin: PluginSummary];
   registerPluginRow: [payload: { pluginFileName: string; element: HTMLElement | null }];
-  openPluginFolder: [plugin: m_PluginInfo];
-  openConfigFile: [config: m_PluginConfigFile];
+  openPluginFolder: [plugin: PluginSummary];
+  openConfigFile: [config: PluginConfigFile];
 }>();
 
 function formatFileSize(bytes: number) {
@@ -51,6 +53,15 @@ function setPluginRowRef(pluginFileName: string) {
   <div class="plugins-header">
     <h3>{{ i18n.t("config.server_plugins") }}</h3>
     <div class="plugins-header-actions">
+      <cmz-button
+        @click="emit('installPlugin')"
+        :loading="pluginsLoading"
+        variant="outline"
+        size="sm"
+      >
+        <Plus :size="16" />
+        {{ i18n.t("config.install_plugin") }}
+      </cmz-button>
       <cmz-button
         @click="emit('refreshList')"
         :loading="pluginsLoading"

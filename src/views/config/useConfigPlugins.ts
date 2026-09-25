@@ -1,6 +1,10 @@
-import { nextTick, ref, type Ref } from "vue";
-import { m_pluginApi, type m_PluginConfigFile, type m_PluginInfo } from "@api/mcs_plugins";
+import { ref, type Ref } from "vue";
+import { open as openNativeDialog } from "@tauri-apps/plugin-dialog";
+import { readFile } from "@tauri-apps/plugin-fs";
+import { serverPluginApi, type PluginConfigFile, type PluginSummary } from "@api/serverPlugin";
+import { serverApi } from "@api/server";
 import { systemApi } from "@api/system";
+import { isUploadSupported, pickFileFromBrowser } from "@api/upload";
 import { i18n } from "@language";
 import type { ServerInstance } from "@type/server";
 
@@ -16,12 +20,29 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+/** 取路径的父目录，兼容 Windows 与 POSIX 两种分隔符 */
+function getParentDir(filePath: string): string {
+  const trimmed = filePath.replace(/[/\\]+$/, "");
+  const lastSeparator = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  return lastSeparator > 0 ? trimmed.slice(0, lastSeparator) : "";
+}
+
+/** 拼接路径前校验单个路径分量：插件名来自 jar 内的 plugin.yml，可能被构造成路径穿越 */
+function isSafePathSegment(segment: string): boolean {
+  return (
+    segment.length > 0 &&
+    segment !== "." &&
+    segment !== ".." &&
+    !segment.includes("/") &&
+    !segment.includes("\\")
+  );
+}
+
 export function useConfigPlugins(options: UseConfigPluginsOptions) {
-  const plugins = ref<m_PluginInfo[]>([]);
+  const plugins = ref<PluginSummary[]>([]);
   const pluginsLoading = ref(false);
-  const selectedPlugin = ref<m_PluginInfo | null>(null);
-  const loadedPlugins = ref<Set<string>>(new Set());
-  const observer = ref<IntersectionObserver | null>(null);
+  const selectedPlugin = ref<PluginSummary | null>(null);
+  /** 行元素仅用于删除时的收起动画：列表数据一次性返回，不依赖进入视口懒加载 */
   const pluginRowElements = ref<Map<string, HTMLElement>>(new Map());
 
   function removePluginFromState(pluginFileName: string) {
@@ -29,7 +50,6 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     if (selectedPlugin.value?.file_name === pluginFileName) {
       selectedPlugin.value = null;
     }
-    loadedPlugins.value.delete(pluginFileName);
     pluginRowElements.value.delete(pluginFileName);
   }
 
@@ -39,11 +59,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     pluginsLoading.value = true;
     options.setError(null);
     try {
-      plugins.value = await m_pluginApi.m_getPlugins(options.currentServerId.value);
-      loadedPlugins.value = new Set();
-      nextTick(() => {
-        setupIntersectionObserver();
-      });
+      plugins.value = await serverPluginApi.listServerPlugins(options.currentServerId.value);
     } catch (e) {
       options.setError(String(e));
       plugins.value = [];
@@ -52,61 +68,18 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     }
   }
 
-  function setupIntersectionObserver() {
-    if (observer.value) {
-      observer.value.disconnect();
-    }
-
-    observer.value = new IntersectionObserver(
-      (intersectionEntries) => {
-        intersectionEntries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const pluginElement = entry.target as HTMLElement;
-            const pluginFileName = pluginElement.dataset.pluginFileName;
-            if (pluginFileName) {
-              void loadPluginDetails(pluginFileName);
-            }
-          }
-        });
-      },
-      {
-        rootMargin: "200px 0px",
-        threshold: 0.1,
-      },
-    );
-
-    pluginRowElements.value.forEach((element) => {
-      observer.value?.observe(element);
-    });
-  }
-
   function registerPluginRow(payload: { pluginFileName: string; element: HTMLElement | null }) {
     const { pluginFileName, element } = payload;
-    const previousElement = pluginRowElements.value.get(pluginFileName);
-
-    if (previousElement) {
-      observer.value?.unobserve(previousElement);
-    }
 
     if (!element) {
       pluginRowElements.value.delete(pluginFileName);
       return;
     }
 
-    element.dataset.pluginFileName = pluginFileName;
     pluginRowElements.value.set(pluginFileName, element);
-    observer.value?.observe(element);
   }
 
-  async function loadPluginDetails(pluginFileName: string) {
-    if (loadedPlugins.value.has(pluginFileName)) {
-      return;
-    }
-
-    loadedPlugins.value.add(pluginFileName);
-  }
-
-  async function togglePlugin(plugin: m_PluginInfo) {
+  async function togglePlugin(plugin: PluginSummary) {
     if (!options.currentServerId.value) return;
 
     if (!plugin.file_name.endsWith(".jar") && !plugin.file_name.endsWith(".jar.disabled")) {
@@ -115,7 +88,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     }
 
     try {
-      await m_pluginApi.m_togglePlugin(
+      await serverPluginApi.setServerPluginEnabled(
         options.currentServerId.value,
         plugin.file_name,
         !plugin.enabled,
@@ -126,7 +99,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     }
   }
 
-  async function deletePlugin(plugin: m_PluginInfo) {
+  async function deletePlugin(plugin: PluginSummary) {
     const activeServerId = options.currentServerId.value;
     if (!activeServerId) return;
 
@@ -136,16 +109,18 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
         const originalHeight = pluginElement.offsetHeight;
         pluginElement.style.height = `${originalHeight}px`;
         pluginElement.style.flexShrink = "0";
-        pluginElement.dataset.pluginFileName = plugin.file_name;
-
         pluginElement.classList.add("deleting");
 
         setTimeout(async () => {
-          await m_pluginApi.m_deletePlugin(activeServerId, plugin.file_name);
-          removePluginFromState(plugin.file_name);
+          try {
+            await serverPluginApi.deleteServerPlugin(activeServerId, plugin.file_name);
+            removePluginFromState(plugin.file_name);
+          } catch (e) {
+            options.setError(String(e));
+          }
         }, 500);
       } else {
-        await m_pluginApi.m_deletePlugin(activeServerId, plugin.file_name);
+        await serverPluginApi.deleteServerPlugin(activeServerId, plugin.file_name);
         removePluginFromState(plugin.file_name);
       }
     } catch (e) {
@@ -156,14 +131,15 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
   async function reloadPlugins() {
     if (!options.currentServerId.value) return;
     try {
-      await m_pluginApi.m_reloadPlugins(options.currentServerId.value);
+      // 重载由服务端自身处理：这里只是把 reload 命令送进控制台。
+      await serverApi.sendCommand(options.currentServerId.value, "reload");
       await loadPlugins();
     } catch (e) {
       options.setError(String(e));
     }
   }
 
-  async function handlePluginClick(plugin: m_PluginInfo) {
+  async function handlePluginClick(plugin: PluginSummary) {
     const activeServerId = options.currentServerId.value;
     if (!activeServerId) return;
 
@@ -174,7 +150,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
 
     if (!plugin.config_files || (plugin.config_files.length === 0 && plugin.has_config_folder)) {
       try {
-        const configFiles = await m_pluginApi.m_getPluginConfigFiles(
+        const configFiles = await serverPluginApi.readServerPluginConfigFiles(
           activeServerId,
           plugin.file_name,
           plugin.name,
@@ -198,11 +174,16 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     selectedPlugin.value = plugin;
   }
 
-  async function openPluginFolder(plugin: m_PluginInfo) {
+  async function openPluginFolder(plugin: PluginSummary) {
+    if (!isSafePathSegment(plugin.name)) {
+      options.setError(i18n.t("config.invalid_plugin_name", { name: plugin.name }));
+      return;
+    }
+
     const server = options.getCurrentServer();
     if (!server) return;
 
-    const basePath = server.path.replace(/[/\\]$/, "");
+    const basePath = server.path.replace(/[/\\]+$/, "");
     const separator = basePath.includes("\\") ? "\\" : "/";
     const pluginConfigPath = `${basePath}${separator}plugins${separator}${plugin.name}`;
 
@@ -213,9 +194,69 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     }
   }
 
-  async function openConfigFile(config: m_PluginConfigFile) {
+  async function openConfigFile(config: PluginConfigFile) {
+    // 后端未注册 open_file 命令，这里退化为打开配置文件所在的目录
+    const parentDir = getParentDir(config.file_path);
+    if (!parentDir) {
+      options.setError(i18n.t("config.open_config_file_failed"));
+      return;
+    }
+
     try {
-      await systemApi.openFile(config.file_path);
+      await systemApi.openFolder(parentDir);
+    } catch (e) {
+      options.setError(String(e));
+    }
+  }
+
+  /** 读取待安装 jar 的字节内容：浏览器取 File 对象，桌面走原生对话框加文件系统 */
+  async function pickJarBytes(): Promise<{ fileName: string; fileData: number[] } | null> {
+    if (isUploadSupported()) {
+      const picked = await pickFileFromBrowser({ accept: ".jar" });
+      const file = Array.isArray(picked) ? picked[0] : picked;
+      if (!file) return null;
+
+      const buffer = await file.arrayBuffer();
+      return { fileName: file.name, fileData: Array.from(new Uint8Array(buffer)) };
+    }
+
+    const selected = await openNativeDialog({
+      multiple: false,
+      filters: [{ name: "Plugin", extensions: ["jar"] }],
+    });
+    if (!selected || Array.isArray(selected)) return null;
+
+    const fileName = selected.split(/[/\\]/).pop() || "";
+    if (!fileName) return null;
+
+    const buffer = await readFile(selected);
+    return { fileName, fileData: Array.from(buffer) };
+  }
+
+  /** 选择本地 jar 安装到当前实例；后端只接受纯文件名，同名插件会被直接覆盖，这里先确认 */
+  async function installPluginFromLocal() {
+    const activeServerId = options.currentServerId.value;
+    if (!activeServerId) return;
+
+    try {
+      const picked = await pickJarBytes();
+      if (!picked) return;
+
+      if (!picked.fileName.toLowerCase().endsWith(".jar")) {
+        options.setError(i18n.t("config.not_jar_file", { file: picked.fileName }));
+        return;
+      }
+
+      const overwriting = plugins.value.some((p) => p.file_name === picked.fileName);
+      if (
+        overwriting &&
+        !window.confirm(i18n.t("config.install_plugin_overwrite", { file: picked.fileName }))
+      ) {
+        return;
+      }
+
+      await serverPluginApi.installServerPlugin(activeServerId, picked.fileData, picked.fileName);
+      await loadPlugins();
     } catch (e) {
       options.setError(String(e));
     }
@@ -233,6 +274,7 @@ export function useConfigPlugins(options: UseConfigPluginsOptions) {
     registerPluginRow,
     openPluginFolder,
     openConfigFile,
+    installPluginFromLocal,
     formatFileSize,
   };
 }

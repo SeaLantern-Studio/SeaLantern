@@ -77,7 +77,34 @@ const axumRouteMap: Record<string, AxumRoute> = {
     // 参数名与 Tauri 命令契约保持一致（instance_id）
     path: (a) => `/system/servers/${encodeURIComponent(String(a.instance_id))}/usage`,
   },
-
+  // 服务器插件管理：两端一致地以实例标识定位，故路径可直接从 args 派生
+  list_server_plugins: {
+    method: "GET",
+    path: (a) => `/instances/${encodeURIComponent(String(a.instanceId))}/plugins`,
+  },
+  read_server_plugin_config_files: {
+    method: "GET",
+    path: (a) =>
+      `/instances/${encodeURIComponent(String(a.instanceId))}/plugins/config-files` +
+      `?file_name=${encodeURIComponent(String(a.fileName))}` +
+      `&plugin_name=${encodeURIComponent(String(a.pluginName))}`,
+  },
+  set_server_plugin_enabled: {
+    method: "PUT",
+    path: (a) => `/instances/${encodeURIComponent(String(a.instanceId))}/plugins/enabled`,
+    body: (a) => ({ file_name: a.fileName, enabled: a.enabled }),
+  },
+  delete_server_plugin: {
+    method: "DELETE",
+    path: (a) =>
+      `/instances/${encodeURIComponent(String(a.instanceId))}/plugins` +
+      `?file_name=${encodeURIComponent(String(a.fileName))}`,
+  },
+  install_server_plugin: {
+    method: "POST",
+    path: (a) => `/instances/${encodeURIComponent(String(a.instanceId))}/plugins`,
+    body: (a) => ({ file_name: a.fileName, file_data: a.fileData }),
+  },
   // 实例启动配置（SeaLantern/config.toml）
   read_sl_config: {
     method: "GET",
