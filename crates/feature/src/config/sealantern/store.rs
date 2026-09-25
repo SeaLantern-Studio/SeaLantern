@@ -325,7 +325,7 @@ mod tests {
         assert_eq!(
             persisted["version"].as_u64(),
             Some(u64::from(CURRENT_INSTANCE_SCHEMA_VERSION)),
-            "升级后的版本号必须写回磁盘，否则每次启动都会重复升级"
+            "the upgraded version must be persisted, otherwise every start would upgrade again"
         );
     }
 
@@ -350,11 +350,11 @@ mod tests {
         let message = error.to_string();
         assert!(
             message.contains("unsupported future instance registry schema version"),
-            "应报出版本不兼容，而不是退化成通用解码失败: {message}"
+            "expected a version error instead of a generic decode failure: {message}"
         );
         assert!(
             message.contains(&format!("version {future_version}")),
-            "错误应携带触发拒绝的版本号: {message}"
+            "the error should carry the offending version: {message}"
         );
     }
 
@@ -384,12 +384,12 @@ mod tests {
         let message = error.to_string();
         assert!(
             message.contains("unsupported future instance registry schema version"),
-            "应报出版本不兼容；若报 'invalid type: map, expected a sequence' 就说明\
-             版本检查仍晚于类型化反序列化: {message}"
+            "a version error is expected; reporting 'invalid type: map, expected a sequence' means the\
+             version check still runs after typed deserialization: {message}"
         );
         assert!(
             message.contains(&format!("version {future_version}")),
-            "错误应携带触发拒绝的版本号: {message}"
+            "the error should carry the offending version: {message}"
         );
     }
 
@@ -414,12 +414,16 @@ mod tests {
         let stale = ConfigFile::load_or_create(&path, InstanceList::default())
             .await
             .expect("stale snapshot should load");
-        assert_eq!(stale.get().version, 0, "夹具应停留在版本 0 以触发升级");
+        assert_eq!(
+            stale.get().version,
+            0,
+            "the fixture should stay at version 0 so that an upgrade is triggered"
+        );
 
         // 第 2 步：另一个写入者在升级保存之前落盘一条实例（仍保持版本 0）。
         let legacy_record = serde_json::json!([{
             "id": "srv-concurrent",
-            "name": "并发写入",
+            "name": "concurrent writer",
             "core_type": "paper",
             "core_version": "1.20.4",
             "mc_version": "1.20.4",
@@ -454,12 +458,19 @@ mod tests {
         assert_eq!(
             store.get().version,
             CURRENT_INSTANCE_SCHEMA_VERSION,
-            "升级应把版本推进到当前值"
+            "the upgrade should advance the version to the current one"
         );
-        assert_eq!(store.get().instances.len(), 1, "升级后的内存快照应包含并发写入的实例");
+        assert_eq!(
+            store.get().instances.len(),
+            1,
+            "the snapshot after upgrade should contain the concurrently written instance"
+        );
         let persisted = tokio::fs::read_to_string(&path)
             .await
             .expect("upgraded registry should be readable");
-        assert!(persisted.contains("srv-concurrent"), "升级不得覆盖此前写入的实例: {persisted}");
+        assert!(
+            persisted.contains("srv-concurrent"),
+            "the upgrade must not drop the instance written earlier: {persisted}"
+        );
     }
 }
