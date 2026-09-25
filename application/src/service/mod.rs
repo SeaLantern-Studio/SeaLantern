@@ -44,7 +44,7 @@ pub use player::CorePlayerService;
 pub use provisioning::CoreProvisioningService;
 pub use proxy_monitoring::ProxyMonitoringService;
 pub use server::CoreServerService;
-pub use server_config::CoreServerConfigService;
+pub use server_config::{CoreServerConfigService, resolve_instance_directory};
 pub use settings::CoreSettingsService;
 pub use system::CoreSystemService;
 pub use update::CoreUpdateCheckService;

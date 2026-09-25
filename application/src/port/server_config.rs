@@ -1,6 +1,7 @@
 //! 服务器配置（server.properties）服务端口。
 
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use async_trait::async_trait;
 use sealantern_contract::ServerConfigServiceError;
@@ -11,27 +12,31 @@ use sealantern_contract::server_config::ServerProperties;
 /// 提供配置文件的可视化结构与原始文本的双向读写、解析与写入预览。
 /// 方法均为异步：文件读写涉及阻塞 IO，由实现方调度到阻塞线程池，
 /// 不依赖任何具体宿主。
+///
+/// 涉及服务器目录的方法接收 [`Path`] 而不是 `&str`：实例目录在类 Unix 系统上
+/// 允许包含任意字节，若在边界处转成字符串会有损（非 UTF-8 字节被替换），
+/// 后续拼接出的路径将指向别处。
 #[async_trait]
 pub trait ServerConfigService: Send + Sync {
     /// 读取服务器目录下的 `server.properties` 为可视化配置结构。
     ///
     /// 文件不存在时返回空配置（不报错），与原有行为保持一致。
-    async fn read(&self, server_path: &str) -> Result<ServerProperties, ServerConfigServiceError>;
+    async fn read(&self, server_path: &Path) -> Result<ServerProperties, ServerConfigServiceError>;
 
     /// 按键值对更新服务器目录下的 `server.properties`（保留注释与顺序）。
     async fn write(
         &self,
-        server_path: &str,
+        server_path: &Path,
         values: &BTreeMap<String, String>,
     ) -> Result<(), ServerConfigServiceError>;
 
     /// 读取 `server.properties` 原始文本。
-    async fn read_source(&self, server_path: &str) -> Result<String, ServerConfigServiceError>;
+    async fn read_source(&self, server_path: &Path) -> Result<String, ServerConfigServiceError>;
 
     /// 直接写入 `server.properties` 原始文本。
     async fn write_source(
         &self,
-        server_path: &str,
+        server_path: &Path,
         source: &str,
     ) -> Result<(), ServerConfigServiceError>;
 
@@ -44,7 +49,7 @@ pub trait ServerConfigService: Send + Sync {
     /// 预览可视化配置写回后的最终文本（基于服务器目录下的现有内容）。
     async fn preview_write(
         &self,
-        server_path: &str,
+        server_path: &Path,
         values: &BTreeMap<String, String>,
     ) -> Result<String, ServerConfigServiceError>;
 
