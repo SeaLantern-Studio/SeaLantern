@@ -1,6 +1,7 @@
 //! 服务器配置管理 Tauri 命令。
 
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use sealantern_application::port::ServerConfigService;
 use sealantern_application::services::AppServices;
@@ -14,7 +15,7 @@ pub async fn read_server_properties(
     services: State<'_, AppServices>,
     server_path: String,
 ) -> Result<ServerProperties, ServerConfigServiceError> {
-    services.server_config().read(&server_path).await
+    services.server_config().read(Path::new(&server_path)).await
 }
 
 /// 写入服务器配置文件
@@ -24,7 +25,10 @@ pub async fn write_server_properties(
     server_path: String,
     values: BTreeMap<String, String>,
 ) -> Result<(), ServerConfigServiceError> {
-    services.server_config().write(&server_path, &values).await
+    services
+        .server_config()
+        .write(Path::new(&server_path), &values)
+        .await
 }
 
 /// 读取 server.properties 原始文本
@@ -33,7 +37,10 @@ pub async fn read_server_properties_source(
     services: State<'_, AppServices>,
     server_path: String,
 ) -> Result<String, ServerConfigServiceError> {
-    services.server_config().read_source(&server_path).await
+    services
+        .server_config()
+        .read_source(Path::new(&server_path))
+        .await
 }
 
 /// 直接写入 server.properties 原始文本
@@ -45,7 +52,7 @@ pub async fn write_server_properties_source(
 ) -> Result<(), ServerConfigServiceError> {
     services
         .server_config()
-        .write_source(&server_path, &source)
+        .write_source(Path::new(&server_path), &source)
         .await
 }
 
@@ -67,7 +74,7 @@ pub async fn preview_server_properties_write(
 ) -> Result<String, ServerConfigServiceError> {
     services
         .server_config()
-        .preview_write(&server_path, &values)
+        .preview_write(Path::new(&server_path), &values)
         .await
 }
 

@@ -9,6 +9,7 @@
 //! 是纯文本变换，直接接受调用方给出的源码。
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use axum::Json;
 use axum::extract::{Path, State};
@@ -28,11 +29,13 @@ fn parse_id(raw: &str) -> Result<InstanceId, HttpError> {
 }
 
 /// 将实例标识解析为服务器目录。
-async fn resolve_directory(state: &AppState, id: &InstanceId) -> Result<String, HttpError> {
-    let directory = resolve_instance_directory(state.instance().as_ref(), id)
+///
+/// 返回 [`PathBuf`] 而不是字符串：实例目录在类 Unix 系统上允许包含非 UTF-8 字节，
+/// 转成字符串会有损，后续拼接出的路径将指向别处。
+async fn resolve_directory(state: &AppState, id: &InstanceId) -> Result<PathBuf, HttpError> {
+    resolve_instance_directory(state.instance().as_ref(), id)
         .await
-        .map_err(HttpError::from_server_config_error)?;
-    Ok(directory.to_string_lossy().into_owned())
+        .map_err(HttpError::from_server_config_error)
 }
 
 /// 按键值对写入配置的请求体。
