@@ -77,6 +77,17 @@ const axumRouteMap: Record<string, AxumRoute> = {
     // 参数名与 Tauri 命令契约保持一致（instance_id）
     path: (a) => `/system/servers/${encodeURIComponent(String(a.instance_id))}/usage`,
   },
+
+  // 实例启动配置（SeaLantern/config.toml）
+  read_sl_config: {
+    method: "GET",
+    path: (a) => `/instances/${encodeURIComponent(String(a.instanceId))}/startup-config`,
+  },
+  write_sl_config: {
+    method: "PUT",
+    path: (a) => `/instances/${encodeURIComponent(String(a.instanceId))}/startup-config`,
+    body: (a) => a.config,
+  },
   list_cron_tasks: { method: "GET", path: () => "/cron-tasks" },
   create_cron_task: { method: "POST", path: () => "/cron-tasks", body: (a) => a.draft },
   update_cron_task: {

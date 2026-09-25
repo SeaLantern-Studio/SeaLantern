@@ -301,7 +301,7 @@ onActivated(async () => {
 
           <template v-if="activeTab === 'startup'">
             <ConfigStartupSection
-              :serverPath="serverPath"
+              :instanceId="currentServerId"
               :defaultMaxMemory="currentServer?.max_memory ?? 2048"
               :defaultMinMemory="currentServer?.min_memory ?? 512"
               @saved="handleStartupConfigSaved"
