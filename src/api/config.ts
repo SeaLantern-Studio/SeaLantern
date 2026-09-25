@@ -124,16 +124,16 @@ export const configApi = {
   },
 
   /**
-   * 读取 SL.json 启动配置
+   * 读取实例启动配置（SeaLantern/config.toml）
    */
-  async readSLConfig(serverPath: string): Promise<SLStartupConfig> {
-    return tauriInvoke("read_sl_config", { serverPath });
+  async readSLConfig(instanceId: string): Promise<SLStartupConfig> {
+    return tauriInvoke("read_sl_config", { instanceId });
   },
 
   /**
-   * 写入 SL.json 启动配置
+   * 写入实例启动配置（SeaLantern/config.toml）
    */
-  async writeSLConfig(serverPath: string, config: SLStartupConfig): Promise<void> {
-    return tauriInvoke("write_sl_config", { serverPath, config });
+  async writeSLConfig(instanceId: string, config: SLStartupConfig): Promise<void> {
+    return tauriInvoke("write_sl_config", { instanceId, config });
   },
 };
