@@ -305,6 +305,35 @@ function navigateTo(path: string) {
   router.push(path);
 }
 
+// hover 侧栏导航项时预加载目标路由组件：提前触发 import() 让模块进入浏览器缓存，
+// 点击时组件已就绪，页面切换更跟手。120ms 延迟避免鼠标快速划过时无意义加载。
+const prefetchTimers = new Map<string, number>();
+
+function schedulePrefetch(path: string): void {
+  const timer = window.setTimeout(() => {
+    prefetchTimers.delete(path);
+    prefetchRoute(path);
+  }, 120);
+  prefetchTimers.set(path, timer);
+}
+
+function cancelPrefetch(path: string): void {
+  const timer = prefetchTimers.get(path);
+  if (timer !== undefined) {
+    window.clearTimeout(timer);
+    prefetchTimers.delete(path);
+  }
+}
+
+function prefetchRoute(path: string): void {
+  const matched = router.resolve(path).matched[0];
+  const component = matched?.components?.default;
+  if (typeof component !== "function") return;
+  // 懒加载路由组件是 () => Promise，调用它触发 import()
+  const loader = component as unknown as () => Promise<unknown>;
+  void loader().catch(() => {});
+}
+
 // 导航指示器位置更新:用 rAF 合并多次触发,避免连续 querySelector
 let updateNavIndicatorRafId: number | null = null;
 let cachedSidebarNav: HTMLElement | null = null;
@@ -632,6 +661,8 @@ onUnmounted(() => {
                 class="nav-item"
                 :class="{ active: isActive(item.path) }"
                 @click="navigateTo(item.path)"
+                @mouseenter="schedulePrefetch(item.path)"
+                @mouseleave="cancelPrefetch(item.path)"
               >
                 <img
                   v-if="item.pluginIcon"
@@ -660,6 +691,8 @@ onUnmounted(() => {
                   class="nav-item nav-child-item"
                   :class="{ active: isActive(child.path) }"
                   @click="navigateTo(child.path)"
+                  @mouseenter="schedulePrefetch(child.path)"
+                  @mouseleave="cancelPrefetch(child.path)"
                 >
                   <img
                     v-if="child.pluginIcon"
@@ -686,7 +719,13 @@ onUnmounted(() => {
 
       <!-- 关于按钮 -->
       <div class="nav-group lower-side">
-        <div class="nav-item" :class="{ active: isActive('/about') }" @click="navigateTo('/about')">
+        <div
+          class="nav-item"
+          :class="{ active: isActive('/about') }"
+          @click="navigateTo('/about')"
+          @mouseenter="schedulePrefetch('/about')"
+          @mouseleave="cancelPrefetch('/about')"
+        >
           <Info class="nav-icon" :size="20" :stroke-width="1.8" />
           <span class="nav-label">{{ i18n.t("common.about") }}</span>
         </div>

@@ -273,12 +273,19 @@
 
 .nav-icon {
   flex-shrink: 0;
-  transition: transform var(--sl-transition-normal);
+  transition:
+    transform var(--sl-transition-normal),
+    color var(--sl-transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   height: 20px;
+}
+
+/* 悬停导航项时图标轻微放大，营造跟手反馈 */
+.nav-item:hover .nav-icon {
+  transform: scale(1.18);
 }
 
 .nav-plugin-icon {

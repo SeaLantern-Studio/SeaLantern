@@ -14,7 +14,8 @@ use uuid::Uuid;
 use super::archive;
 use super::error::{BackupError, BackupResult};
 use super::models::{
-    BackupContentType, BackupFormat, BackupItem, CreateBackupRequest, is_safe_path_component,
+    BackupContentType, BackupDirectory, BackupFormat, BackupItem, CreateBackupRequest,
+    is_safe_path_component,
 };
 
 const MAX_METADATA_BYTES: u64 = 1024 * 1024;
@@ -67,6 +68,21 @@ impl BackupManager {
     fn get_server_backup_dir(&self, server_id: &str) -> BackupResult<PathBuf> {
         validate_server_id(server_id)?;
         Ok(self.backups_dir.join(server_id))
+    }
+
+    /// 获取备份存储目录信息。
+    ///
+    /// 始终返回备份根目录；传入合法的服务器 ID 时附带该服务器的备份子目录。
+    pub fn get_backup_directory(&self, server_id: Option<&str>) -> BackupResult<BackupDirectory> {
+        let server_dir = match server_id {
+            Some(id) if !id.is_empty() => Some(self.get_server_backup_dir(id)?),
+            _ => None,
+        };
+
+        Ok(BackupDirectory {
+            root_dir: self.backups_dir.to_string_lossy().into_owned(),
+            server_dir: server_dir.map(|dir| dir.to_string_lossy().into_owned()),
+        })
     }
 
     fn get_backup_metadata_path(&self, server_id: &str, backup_id: &str) -> BackupResult<PathBuf> {

@@ -12,6 +12,12 @@ export interface ResourceSearchResult {
   latestVersion?: string;
 }
 
+// 一页搜索结果:结果列表 + 是否还有更多(任一来源返回满页即视为还有更多)
+export interface ResourceSearchPage {
+  results: ResourceSearchResult[];
+  hasMore: boolean;
+}
+
 const MODRINTH_SEARCH_URL = "https://api.modrinth.com/v2/search";
 const CURSEFORGE_SEARCH_URL = "https://api.curseforge.com/v1/mods/search";
 const CURSEFORGE_API_KEY = import.meta.env.VITE_CURSEFORGE_API_KEY || "";
@@ -62,10 +68,19 @@ function normalizeCurseForgeHit(hit: any): ResourceSearchResult {
   };
 }
 
-async function fetchModrinth(query: string, limit: number): Promise<ResourceSearchResult[]> {
+async function fetchModrinth(
+  query: string,
+  limit: number,
+  offset: number,
+): Promise<ResourceSearchResult[]> {
   const url = new URL(MODRINTH_SEARCH_URL);
-  url.searchParams.set("query", query);
+  if (query) {
+    url.searchParams.set("query", query);
+  }
   url.searchParams.set("limit", limit.toString());
+  url.searchParams.set("offset", offset.toString());
+  // 统一按下载量排序,无搜索词时即为热门内容
+  url.searchParams.set("index", "downloads");
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -81,7 +96,11 @@ async function fetchModrinth(query: string, limit: number): Promise<ResourceSear
   return Array.isArray(data.hits) ? data.hits.map(normalizeModrinthHit) : [];
 }
 
-async function fetchCurseForge(query: string, limit: number): Promise<ResourceSearchResult[]> {
+async function fetchCurseForge(
+  query: string,
+  limit: number,
+  offset: number,
+): Promise<ResourceSearchResult[]> {
   if (!CURSEFORGE_API_KEY) {
     return [];
   }
@@ -89,8 +108,14 @@ async function fetchCurseForge(query: string, limit: number): Promise<ResourceSe
   const url = new URL(CURSEFORGE_SEARCH_URL);
   url.searchParams.set("gameId", CURSEFORGE_GAME_ID.toString());
   url.searchParams.set("pageSize", limit.toString());
-  url.searchParams.set("searchFilter", "mod");
-  url.searchParams.set("search", query);
+  // searchFilter 才是 CurseForge 的关键词搜索参数,直接传入查询词(原先误用了不存在的 search 参数,导致查询被忽略)
+  if (query) {
+    url.searchParams.set("searchFilter", query);
+  }
+  url.searchParams.set("index", offset.toString());
+  // sortField 6 = TotalDownloads,统一按下载量排序
+  url.searchParams.set("sortField", "6");
+  url.searchParams.set("sortOrder", "desc");
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -107,22 +132,30 @@ async function fetchCurseForge(query: string, limit: number): Promise<ResourceSe
   return Array.isArray(data.data) ? data.data.map(normalizeCurseForgeHit) : [];
 }
 
-export async function searchResources(query: string, limit = 20): Promise<ResourceSearchResult[]> {
+export async function searchResources(
+  query = "",
+  limit = 20,
+  offset = 0,
+): Promise<ResourceSearchPage> {
   const trimmedQuery = query.trim();
-  if (!trimmedQuery) {
-    return [];
-  }
 
-  const requests = [fetchModrinth(trimmedQuery, limit), fetchCurseForge(trimmedQuery, limit)];
+  const requests = [
+    fetchModrinth(trimmedQuery, limit, offset),
+    fetchCurseForge(trimmedQuery, limit, offset),
+  ];
 
   const settled = await Promise.allSettled(requests);
   const results: ResourceSearchResult[] = [];
+  let modrinthCount = 0;
+  let curseforgeCount = 0;
 
   if (settled[0].status === "fulfilled") {
+    modrinthCount = settled[0].value.length;
     results.push(...settled[0].value);
   }
 
   if (settled[1].status === "fulfilled") {
+    curseforgeCount = settled[1].value.length;
     results.push(...settled[1].value);
   }
 
@@ -134,11 +167,16 @@ export async function searchResources(query: string, limit = 20): Promise<Resour
     }
   }
 
-  return results.toSorted((a, b) => {
+  const sorted = results.toSorted((a, b) => {
     const aHeat = a.downloads ?? 0;
     const bHeat = b.downloads ?? 0;
     return bHeat - aHeat;
   });
+
+  // 任一来源返回满页,说明该来源可能还有下一页可翻
+  const hasMore = modrinthCount >= limit || curseforgeCount >= limit;
+
+  return { results: sorted, hasMore };
 }
 
 export const curseforgeApiKey = CURSEFORGE_API_KEY;

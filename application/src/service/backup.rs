@@ -13,7 +13,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use sealantern_contract::BackupServiceError;
-use sealantern_contract::backup::{BackupItem, BackupSettings, CreateBackupRequest};
+use sealantern_contract::backup::{
+    BackupDirectory, BackupItem, BackupSettings, CreateBackupRequest,
+};
 use sealantern_contract::server::ServerState;
 use sealantern_core::instance::InstanceId;
 
@@ -72,6 +74,16 @@ impl CoreBackupService {
 impl BackupService for CoreBackupService {
     async fn list(&self, server_id: &str) -> Result<Vec<BackupItem>, BackupServiceError> {
         sealantern_feature::backup::get_backup_list(server_id.to_owned())
+            .await
+            .map_err(BackupError::from)
+            .map_err(Into::into)
+    }
+
+    async fn directory(
+        &self,
+        server_id: Option<&str>,
+    ) -> Result<BackupDirectory, BackupServiceError> {
+        sealantern_feature::backup::get_backup_dir(server_id.map(str::to_owned))
             .await
             .map_err(BackupError::from)
             .map_err(Into::into)

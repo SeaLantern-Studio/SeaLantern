@@ -27,6 +27,35 @@
   color: var(--sl-text-secondary);
 }
 
+/* 备份存储路径行：路径芯片 + 复制 / 打开目录操作 */
+.backup-path {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-sm);
+  margin-top: var(--sl-space-sm);
+  min-width: 0;
+}
+
+.backup-path-label {
+  flex-shrink: 0;
+  font-size: var(--sl-font-size-xs);
+  color: var(--sl-text-secondary);
+}
+
+.backup-path-value {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sl-space-xs) var(--sl-space-sm);
+  background: color-mix(in srgb, var(--sl-text-primary) 6%, transparent);
+  border-radius: var(--sl-radius-sm);
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-font-size-xs);
+  color: var(--sl-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 操作区：立即备份 + 自动备份开关 */
 .backup-actions {
   display: flex;
@@ -34,6 +63,10 @@
   gap: var(--sl-space-md);
   padding: var(--sl-space-md);
   border-radius: var(--sl-radius-lg);
+  /* 与联机页 cmz-card --solid 同材质：不透明表面 + 描边 + 投影，形成浮起层级 */
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-elevated);
 }
 
 .backup-actions-row {
@@ -82,6 +115,9 @@
 .backup-settings {
   padding: var(--sl-space-md);
   border-radius: var(--sl-radius-lg);
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-elevated);
 }
 
 .backup-settings-header {
@@ -174,6 +210,9 @@
   flex-direction: column;
   gap: var(--sl-space-sm);
   min-height: 200px;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  box-shadow: var(--sl-shadow-elevated);
 }
 
 .backup-list-header {
@@ -206,14 +245,15 @@
   justify-content: space-between;
   gap: var(--sl-space-md);
   padding: var(--sl-space-sm) var(--sl-space-md);
+  /* 列表项为容器内的下沉层：浅灰底 + 更弱描边，与浮起的卡片形成高低差 */
   background: var(--sl-bg);
-  border: 1px solid var(--sl-border);
+  border: 1px solid var(--sl-border-light);
   border-radius: var(--sl-radius-md);
   transition: border-color var(--sl-transition-fast);
 }
 
 .backup-item:hover {
-  border-color: var(--sl-border-hover);
+  border-color: var(--sl-border);
 }
 
 .backup-item-main {
@@ -241,7 +281,8 @@
 
 .backup-tag {
   padding: 1px 6px;
-  background: var(--sl-surface-hover);
+  /* 与列表项底色拉开差异；--sl-surface-hover 在亮色下与 --sl-bg 同值会“隐形” */
+  background: color-mix(in srgb, var(--sl-text-primary) 8%, transparent);
   border-radius: var(--sl-radius-sm);
   font-weight: 500;
 }

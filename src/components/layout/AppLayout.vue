@@ -10,8 +10,12 @@ import {
 import { applyDeveloperMode } from "@utils/theme";
 import { enqueueAppearanceApply } from "@utils/appearance";
 import { isMacOSPlatform } from "@utils/platform";
+import { useKeepAliveCache } from "@composables/useKeepAliveCache";
 
 const settingsStore = useSettingsStore();
+
+// keep-alive 缓存的组件列表，支持按页面动态增删缓存
+const { cachedViews } = useKeepAliveCache();
 
 const backgroundImage = computed(() => settingsStore.backgroundImage);
 const backgroundOpacity = computed(() => settingsStore.backgroundOpacity);
@@ -90,7 +94,7 @@ const backgroundStyle = computed(() => {
       <AppHeader />
       <main class="app-content">
         <router-view v-slot="{ Component }">
-          <keep-alive :max="5">
+          <keep-alive :include="cachedViews">
             <component :is="Component" />
           </keep-alive>
         </router-view>

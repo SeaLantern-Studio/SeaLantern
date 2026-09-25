@@ -577,7 +577,10 @@ watch(
   z-index: 1;
 }
 
+/* 高级材质下浮层换近实底(--sl-acrylic-bg-strong),
+   否则会继承全局 --sl-surface(材质下仅 0.45)导致面板透底、字发灰 */
 [data-acrylic="on"] .pill-panel {
+  background: var(--sl-acrylic-bg-strong);
   backdrop-filter: blur(var(--sl-acrylic-blur)) saturate(var(--sl-saturate-normal));
   -webkit-backdrop-filter: blur(var(--sl-acrylic-blur)) saturate(var(--sl-saturate-normal));
 }

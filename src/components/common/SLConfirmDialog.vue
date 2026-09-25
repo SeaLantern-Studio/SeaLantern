@@ -55,7 +55,7 @@ const confirmBtnVariant = computed(() => {
 });
 
 const confirmBtnColor = computed(() => {
-  if (props.confirmVariant === "danger") return "#ef4444";
+  if (props.confirmVariant === "danger") return "var(--sl-error)";
   return undefined;
 });
 

@@ -20,7 +20,7 @@ function close() {
     <p class="text-body">{{ i18n.t("settings.reset_desc") }}</p>
     <template #footer>
       <cmz-button variant="outline" @click="close">{{ i18n.t("settings.cancel") }}</cmz-button>
-      <cmz-button variant="solid" color="#ef4444" @click="emit('confirm')">{{
+      <cmz-button variant="solid" color="var(--sl-error)" @click="emit('confirm')">{{
         i18n.t("settings.reset_confirm")
       }}</cmz-button>
     </template>

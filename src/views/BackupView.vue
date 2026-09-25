@@ -8,11 +8,23 @@ import {
   type BackupFormat,
   type CompressionLevel,
   type BackupSettings,
+  type BackupDirectory,
 } from "@api/backup";
+import { systemApi } from "@api/system";
+import { isUploadSupported } from "@api/upload";
 import { i18n } from "@language";
 import { useLoading } from "@composables/useAsync";
 import { useToast } from "cmzya-modern-ui";
-import { Archive, RotateCcw, Trash2, Clock, Package, Gauge } from "lucide-vue-next";
+import {
+  Archive,
+  RotateCcw,
+  Trash2,
+  Clock,
+  Package,
+  Gauge,
+  Copy,
+  FolderOpen,
+} from "lucide-vue-next";
 import "@styles/views/BackupView.css";
 
 const serverStore = useServerStore();
@@ -41,6 +53,15 @@ const selectedServerName = computed(() => {
   const server = serverStore.servers.find((s) => s.id === selectedServerId.value);
   return server?.name || "";
 });
+
+// 备份存储目录信息（根目录，以及当前服务器的备份子目录）
+const backupDir = ref<BackupDirectory | null>(null);
+// 优先展示当前服务器的备份子目录，无服务器时退化为备份根目录
+const displayBackupPath = computed(
+  () => backupDir.value?.serverDir || backupDir.value?.rootDir || "",
+);
+// 浏览器 / Docker 模式下无法调用系统文件管理器
+const canRevealInFileManager = computed(() => !isUploadSupported());
 
 const contentOptions: { value: BackupContentType; labelKey: string }[] = [
   { value: "core", labelKey: "backup.content_core" },
@@ -93,6 +114,33 @@ async function loadSettings() {
     selectedContents.value = [...s.autoBackupContents];
   } catch (e) {
     if (import.meta.env.DEV) console.warn("Failed to load backup settings:", e);
+  }
+}
+
+async function loadBackupDir() {
+  try {
+    backupDir.value = await backupApi.directory(selectedServerId.value || undefined);
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn("Failed to load backup directory:", e);
+  }
+}
+
+async function copyBackupPath() {
+  if (!displayBackupPath.value) return;
+  try {
+    await navigator.clipboard.writeText(displayBackupPath.value);
+    toast.success(i18n.t("backup.copied"));
+  } catch {
+    toast.error(i18n.t("backup.copy_failed"));
+  }
+}
+
+async function openBackupDir() {
+  if (!displayBackupPath.value) return;
+  try {
+    await systemApi.openFolder(displayBackupPath.value);
+  } catch {
+    toast.error(i18n.t("backup.open_folder_failed"));
   }
 }
 
@@ -179,8 +227,11 @@ onMounted(async () => {
     serverStore.setCurrentServer(serverStore.servers[0].id);
   }
   if (serverStore.currentServerId) {
-    // 两个接口互不依赖,并行拉取
-    await Promise.all([loadBackups(), loadSettings()]);
+    // 三个接口互不依赖,并行拉取
+    await Promise.all([loadBackups(), loadSettings(), loadBackupDir()]);
+  } else {
+    // 未选中服务器时仍需展示备份根目录
+    await loadBackupDir();
   }
 });
 
@@ -188,7 +239,7 @@ watch(
   () => serverStore.currentServerId,
   async () => {
     if (serverStore.currentServerId) {
-      await Promise.all([loadBackups(), loadSettings()]);
+      await Promise.all([loadBackups(), loadSettings(), loadBackupDir()]);
     }
   },
 );
@@ -202,10 +253,26 @@ watch(
         {{ i18n.t("backup.title") }}
         <span v-if="selectedServerName" class="backup-server-name">{{ selectedServerName }}</span>
       </h1>
+
+      <!-- 备份存储路径：展示 + 复制 + 打开目录 -->
+      <div v-if="displayBackupPath" class="backup-path">
+        <span class="backup-path-label">{{ i18n.t("backup.storage_path") }}</span>
+        <code class="backup-path-value" :title="displayBackupPath">{{ displayBackupPath }}</code>
+        <cmz-tooltip :content="i18n.t('backup.copy_path')">
+          <cmz-button variant="ghost" size="sm" iconOnly @click="copyBackupPath">
+            <Copy :size="14" />
+          </cmz-button>
+        </cmz-tooltip>
+        <cmz-tooltip v-if="canRevealInFileManager" :content="i18n.t('backup.open_folder')">
+          <cmz-button variant="ghost" size="sm" iconOnly @click="openBackupDir">
+            <FolderOpen :size="14" />
+          </cmz-button>
+        </cmz-tooltip>
+      </div>
     </div>
 
     <!-- 操作区：立即备份 + 自动备份开关 -->
-    <div class="backup-actions glass-strong">
+    <div class="backup-actions">
       <div class="backup-actions-row">
         <cmz-button
           :loading="creatingBackup"
@@ -252,7 +319,7 @@ watch(
     </div>
 
     <!-- 备份设置区 -->
-    <div class="backup-settings glass-strong">
+    <div class="backup-settings">
       <div class="backup-settings-header">{{ i18n.t("backup.settings_title") }}</div>
       <div class="backup-settings-grid">
         <div class="backup-setting-item">
@@ -320,7 +387,7 @@ watch(
     </div>
 
     <!-- 备份列表 -->
-    <div class="backup-list-section glass-strong">
+    <div class="backup-list-section">
       <div class="backup-list-header">{{ i18n.t("backup.list_title") }}</div>
       <div v-if="loading" class="backup-loading">
         <cmz-spinner size="md" />

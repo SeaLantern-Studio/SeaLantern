@@ -22,19 +22,37 @@
   -webkit-backdrop-filter: none;
 }
 
-/* 模态框外壳用卡片同款 surface 实底,透明窗口下保证玻璃质感不露黑 */
+/* 模态框外壳：默认实底；高级材质下换浮层近实底 + 磨砂，与下拉浮层保持统一。
+   磨砂强度取自 --cmz-acrylic-blur (<- acrylic.ts 下发的 --sl-acrylic-blur)，
+   与窗口级原生材质(Windows acrylic / macOS vibrancy)同源，强度保持一致 */
 :root .cmz-modal.cmz-modal {
   position: relative;
   z-index: 900;
   background: var(--sl-surface, #fff);
-  backdrop-filter: blur(24px) saturate(var(--cmz-saturate-normal, 180%));
-  -webkit-backdrop-filter: blur(24px) saturate(var(--cmz-saturate-normal, 180%));
-  border-radius: var(--sl-radius-lg, 12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--sl-border);
+  backdrop-filter: blur(var(--cmz-acrylic-blur, 16px)) saturate(var(--cmz-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--cmz-acrylic-blur, 16px))
+    saturate(var(--cmz-saturate-normal, 180%));
+  border-radius: var(--sl-radius-xl, 24px);
+  box-shadow: var(--sl-shadow-elevated);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  min-width: 320px;
+  min-width: 360px;
+}
+
+/* 高级材质下浮层换近实底,保证正文可读性。
+   必须带 :root + 双 .cmz-modal 把特异性提到 (0,4,0) 压过上面的实底规则,
+   否则会用到 --sl-surface(材质下仅 0.45 不透明),内容透底、字发灰 */
+:root[data-acrylic="on"] .cmz-modal.cmz-modal {
+  background: var(--sl-acrylic-bg-strong);
+  border-color: var(--sl-acrylic-border);
+}
+
+/* 正文统一行高与字色，提升可读性；宽度交给各组件的 width/max-width 控制 */
+:root .cmz-modal .cmz-modal-body {
+  line-height: 1.6;
+  color: var(--sl-text-secondary);
 }
 
 /* === Select 下拉浮层材质 === */
@@ -89,6 +107,15 @@
   border-color: var(--sl-primary) !important;
 }
 
+/* 复选框未选中态可见性:亮色下底色与描边同为 #e2e8f0(无轮廓),
+   材质下底色又只剩 0.48 白,落在浅底浮层上直接糊没。
+   用文字主色混出底与描边,随主题自动翻转 —— 亮底压深、暗底提亮。
+   特异性 (0,4,0) 压过库暗色规则,仍低于库 hover (0,5,0),hover 反馈保留 */
+.cmz-toggle:not(.cmz-toggle--checked):not(.cmz-toggle--indeterminate) .cmz-toggle__checkbox {
+  background: color-mix(in srgb, var(--sl-text-primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--sl-text-primary) 35%, transparent);
+}
+
 /* 输入框背景在毛玻璃下保持不透明 */
 [data-acrylic="on"] .cmz-input-container,
 [data-acrylic="on"] .cmz-textarea {
@@ -109,6 +136,24 @@
 
 /* 毛玻璃下禁用开关提升可见性(默认 opacity 叠毛玻璃几乎看不清) */
 [data-acrylic="on"] .cmz-toggle--disabled {
+  opacity: 1;
+}
+
+/* === Tab 栏胶囊(level-2)材质统一 === */
+/* 库的 level-2 胶囊底取自 --cmz-bg-tertiary,材质下即 --sl-bg-tertiary(0.48 白),
+   与主容器 --sl-surface(0.45 白)几乎同色 → 胶囊整片糊掉、跨页观感不一致。
+   注意:在材质卡面上"压深"会把胶囊做成一块脏灰(低透明黑叠半透明白 = 灰),
+   所以这里反向走"提亮"——用近实底托成一块干净的凹槽,靠明度差与卡面分层;
+   描边换材质专用描边,不再用主色混色(混出来在灰底上同样发脏)。
+   :root 前缀把特异性提到 (0,4,0),压过库 scoped 规则的 (0,2,0) */
+:root[data-acrylic="on"] .cmz-tab-bar.cmz-tab-bar--level-2 {
+  background: var(--sl-acrylic-bg);
+  border-color: var(--sl-acrylic-border);
+}
+
+/* 选中胶囊:库默认 opacity:.9 会让主色描边与文字叠在浅底上一起变灰,
+   材质下提到不透明,选中项才立得住 */
+:root[data-acrylic="on"] .cmz-tab-bar.cmz-tab-bar--level-2 .cmz-tab-bar__indicator {
   opacity: 1;
 }
 

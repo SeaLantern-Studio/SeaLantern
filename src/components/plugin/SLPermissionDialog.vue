@@ -39,7 +39,7 @@ function handleCancel() {
 </script>
 
 <template>
-  <cmz-modal :visible="show" @close="handleCancel">
+  <cmz-modal :visible="show" width="560px" @close="handleCancel">
     <div class="permission-dialog">
       <div class="dialog-header" :class="{ critical: hasCritical }">
         <div class="header-icon" :class="{ critical: hasCritical }">
@@ -122,7 +122,7 @@ function handleCancel() {
         </cmz-button>
         <cmz-button
           :variant="hasCritical ? 'solid' : 'primary'"
-          :color="hasCritical ? '#ef4444' : undefined"
+          :color="hasCritical ? 'var(--sl-error)' : undefined"
           @click="handleConfirm"
         >
           {{ i18n.t("plugins.permission.warning_confirm") }}
@@ -135,7 +135,7 @@ function handleCancel() {
 <style scoped>
 .permission-dialog {
   width: 100%;
-  max-width: 440px;
+  max-width: 520px;
 }
 
 .dialog-header {
@@ -152,8 +152,8 @@ function handleCancel() {
   width: 42px;
   height: 42px;
   border-radius: var(--sl-radius-md);
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: var(--sl-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--sl-warning) 25%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -161,8 +161,8 @@ function handleCancel() {
 }
 
 .header-icon.critical {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.25);
+  background: var(--sl-error-bg);
+  border-color: color-mix(in srgb, var(--sl-error) 25%, transparent);
   color: var(--sl-error);
 }
 
@@ -241,8 +241,8 @@ function handleCancel() {
 }
 
 .perm-row.danger:hover {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: var(--sl-error-bg);
+  border-color: color-mix(in srgb, var(--sl-error) 30%, transparent);
 }
 
 .perm-row.normal:hover {
@@ -274,8 +274,8 @@ function handleCancel() {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: var(--sl-error-bg);
+  border: 1px solid color-mix(in srgb, var(--sl-error) 18%, transparent);
   border-radius: var(--sl-radius-md);
   margin-bottom: 16px;
   color: var(--sl-error);

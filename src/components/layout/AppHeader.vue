@@ -462,7 +462,7 @@ function saveThemeDebounced() {
         <cmz-button variant="outline" @click="handleCloseOption('minimize')">{{
           i18n.t("home.close_action_minimize")
         }}</cmz-button>
-        <cmz-button variant="danger" @click="handleCloseOption('close')">{{
+        <cmz-button variant="solid" color="var(--sl-error)" @click="handleCloseOption('close')">{{
           i18n.t("home.close_action_close")
         }}</cmz-button>
       </div>

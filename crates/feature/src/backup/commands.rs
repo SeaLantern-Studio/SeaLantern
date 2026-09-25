@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use super::error::BackupResult;
 use super::manager::BackupManager;
-use super::models::{BackupItem, BackupSettings, CreateBackupRequest};
+use super::models::{BackupDirectory, BackupItem, BackupSettings, CreateBackupRequest};
 use super::settings::BackupSettingsManager;
 
 /// 获取备份列表
@@ -10,6 +10,15 @@ pub async fn get_backup_list(server_id: String) -> BackupResult<Vec<BackupItem>>
     tokio::task::spawn_blocking(move || {
         let manager = BackupManager::new()?;
         manager.get_backup_list(&server_id)
+    })
+    .await?
+}
+
+/// 获取备份存储目录（根目录，以及传入服务器 ID 时的服务器备份子目录）
+pub async fn get_backup_dir(server_id: Option<String>) -> BackupResult<BackupDirectory> {
+    tokio::task::spawn_blocking(move || {
+        let manager = BackupManager::new()?;
+        manager.get_backup_directory(server_id.as_deref())
     })
     .await?
 }

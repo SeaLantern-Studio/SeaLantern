@@ -20,6 +20,14 @@ export interface BackupItem {
   contents: BackupContentType[];
 }
 
+/** 备份存储目录信息 */
+export interface BackupDirectory {
+  /** 备份根目录绝对路径 */
+  rootDir: string;
+  /** 指定服务器的备份子目录绝对路径；未指定服务器时为空 */
+  serverDir?: string;
+}
+
 /** 备份设置 */
 export interface BackupSettings {
   maxBackups: number;
@@ -44,6 +52,11 @@ export const backupApi = {
   /** 获取服务器备份列表 */
   async list(serverId: string): Promise<BackupItem[]> {
     return tauriInvoke("get_backup_list", { serverId });
+  },
+
+  /** 获取备份存储目录（不传 serverId 时只返回根目录） */
+  async directory(serverId?: string): Promise<BackupDirectory> {
+    return tauriInvoke("get_backup_dir", { serverId: serverId ?? null });
   },
 
   /** 创建备份 */
