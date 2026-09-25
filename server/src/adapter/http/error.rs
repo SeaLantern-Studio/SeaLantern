@@ -12,7 +12,8 @@ use serde::Serialize;
 use sealantern_contract::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
     ProvisioningServiceError, ServerConfigServiceError, ServerPluginServiceError,
-    ServerServiceError, SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
+    ServerServiceError, ServerStartupServiceError, SettingsServiceError, SystemServiceError,
+    UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -382,6 +383,27 @@ impl HttpError {
                 message: error.to_string(),
             },
             ServerPluginServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "operation_failed",
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// 由实例启动配置契约错误构建 HTTP 错误。
+    pub fn from_server_startup_error(error: ServerStartupServiceError) -> Self {
+        match error {
+            ServerStartupServiceError::InstanceNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "instance_not_found",
+                message: error.to_string(),
+            },
+            ServerStartupServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_input",
+                message: error.to_string(),
+            },
+            ServerStartupServiceError::OperationFailed => Self {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 code: "operation_failed",
                 message: error.to_string(),

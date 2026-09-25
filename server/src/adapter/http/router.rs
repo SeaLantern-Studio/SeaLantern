@@ -85,6 +85,11 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
             "/instances/{id}/plugins/enabled",
             put(handlers::set_server_plugin_enabled),
         )
+        // ── 嵌套子资源（实例启动配置：SeaLantern/config.toml） ──
+        .route(
+            "/instances/{id}/startup-config",
+            get(handlers::read_startup_config).put(handlers::write_startup_config),
+        )
         // ── 嵌套子资源（后续扩展） ──
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));
@@ -602,6 +607,106 @@ mod tests {
             )
             .await
             .expect("call delete route");
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value.get("code").and_then(|code| code.as_str()), Some("invalid_input"));
+    }
+
+    #[tokio::test]
+    async fn unknown_instance_startup_config_returns_not_found() {
+        let (router, _directory) = test_router().await;
+
+        let response = router
+            .oneshot(
+                Request::get("/api/instances/missing/startup-config")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call startup config route");
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value.get("code").and_then(|code| code.as_str()), Some("instance_not_found"));
+    }
+
+    /// 端到端：无覆盖时字段为 null → 写入 → 读回 → 部分覆盖 → 非法区间被拒。
+    #[tokio::test]
+    async fn instance_startup_config_round_trip() {
+        let (router, directory) = test_router().await;
+        let server_directory = create_instance_fixture(&router, &directory, "server-9").await;
+
+        // ── 1. 初始无覆盖 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::get("/api/instances/server-9/startup-config")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call read startup config route");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read startup config");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse startup config");
+        assert!(value.get("max_memory").is_some_and(|item| item.is_null()));
+        assert!(value.get("min_memory").is_some_and(|item| item.is_null()));
+
+        // ── 2. 写入覆盖 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::put("/api/instances/server-9/startup-config")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"max_memory":4096,"min_memory":2048}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call write startup config route");
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            server_directory
+                .join("SeaLantern")
+                .join("config.toml")
+                .is_file(),
+            "应写入 SeaLantern/config.toml"
+        );
+
+        // ── 3. 读回 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::get("/api/instances/server-9/startup-config")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call read startup config route");
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read startup config");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse startup config");
+        assert_eq!(value.get("max_memory").and_then(|item| item.as_u64()), Some(4096));
+        assert_eq!(value.get("min_memory").and_then(|item| item.as_u64()), Some(2048));
+
+        // ── 4. 非法区间被拒 ──
+        let response = router
+            .oneshot(
+                Request::put("/api/instances/server-9/startup-config")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"max_memory":1024,"min_memory":2048}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call write startup config route");
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
             .await

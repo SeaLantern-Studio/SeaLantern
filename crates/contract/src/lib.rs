@@ -32,6 +32,8 @@ pub mod server;
 pub mod server_config;
 /// 服务器插件（plugins 目录）相关模型。
 pub mod server_plugin;
+/// 实例启动配置（SeaLantern/config.toml）相关模型。
+pub mod server_startup;
 /// 设置信息相关模型。
 pub mod settings;
 /// 系统资源信息相关模型。
@@ -77,6 +79,8 @@ pub use error::ServerConfigServiceError;
 pub use error::ServerPluginServiceError;
 /// 服务器进程管理错误枚举。
 pub use error::ServerServiceError;
+/// 实例启动配置错误枚举。
+pub use error::ServerStartupServiceError;
 /// 设置信息服务错误枚举。
 pub use error::SettingsServiceError;
 /// 系统资源信息服务错误枚举。
@@ -98,6 +102,8 @@ pub use player::{BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerProfile};
 pub use proxy::{ProxyConfigError, ProxyMode, ProxySettings};
 /// 服务器插件模型。
 pub use server_plugin::{PluginConfigFile, PluginSummary};
+/// 实例启动配置模型。
+pub use server_startup::SLStartupConfig;
 /// 设置模型。
 pub use settings::{
     AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, DEFAULT_TUNNEL_JOIN_PORT,
