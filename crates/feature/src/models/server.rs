@@ -3,19 +3,48 @@
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec, LocalLaunch};
 use serde::{Deserialize, Serialize};
 
+/// 当前实例列表持久化格式版本。
+///
+/// 对 [`InstanceList`] 或 [`Instance`] 的持久化结构做**不向后兼容**的改动时递增此值，
+/// 并同步在实例存储的加载路径上补一段对应版本的升级逻辑，否则旧数据会因字段不匹配
+/// 而读取失败，表现为"所有服务器消失"。
+///
+/// - 版本 `0`：早于版本化改造的数据（对象形式但缺 `version` 字段）。
+/// - 版本 `1`：`{ "version": 1, "instances": [...] }` 对象形式；1.2.0 的裸数组在
+///   加载时被迁移为该形式。
+pub const CURRENT_INSTANCE_SCHEMA_VERSION: u32 = 1;
+
+/// `version` 字段缺失时采用的历史版本号。
+///
+/// 反序列化时缺字段说明数据早于版本化改造，必须按最旧的版本处理，才能在升级链里
+/// 逐级迁移；若直接按当前版本处理，将来的新版会误判旧数据从而跳过迁移步骤。
+///
+/// 实例存储的版本预读复用了这一常量，保证「缺字段按版本 0 处理」只有一个事实来源。
+pub(crate) fn legacy_schema_version() -> u32 {
+    0
+}
+
 /// 实例列表的持久化包装。
 ///
 /// 实例本体由 `sealantern-core` 维护，`feature` 只拥有存储格式版本和集合边界。
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
 pub struct InstanceList {
+    /// 持久化格式版本。
+    ///
+    /// 从磁盘读出且缺失该字段时按 [`legacy_schema_version`] 处理；新建列表时使用
+    /// [`CURRENT_INSTANCE_SCHEMA_VERSION`]。
+    #[serde(default = "legacy_schema_version")]
     pub version: u32,
+    #[serde(default)]
     pub instances: Vec<Instance>,
 }
 
 impl Default for InstanceList {
     fn default() -> Self {
-        Self { version: 1, instances: Vec::new() }
+        Self {
+            version: CURRENT_INSTANCE_SCHEMA_VERSION,
+            instances: Vec::new(),
+        }
     }
 }
 
@@ -123,7 +152,10 @@ impl InstanceList {
             migrated = instances.len(),
             "旧版服务器记录迁移完成"
         );
-        Self { version: 1, instances }
+        Self {
+            version: CURRENT_INSTANCE_SCHEMA_VERSION,
+            instances,
+        }
     }
 }
 
@@ -156,7 +188,7 @@ mod tests {
         let records: Vec<LegacyServerInstance> =
             serde_json::from_str(json).expect("parse legacy records");
         let list = InstanceList::migrate_legacy(records);
-        assert_eq!(list.version, 1);
+        assert_eq!(list.version, CURRENT_INSTANCE_SCHEMA_VERSION);
         assert_eq!(list.instances.len(), 1);
         let instance = &list.instances[0];
         assert_eq!(instance.name, "My Server");
