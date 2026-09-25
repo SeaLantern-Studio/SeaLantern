@@ -24,6 +24,7 @@ use sealantern_infra::archive::{
     ArchiveFormat, detect_archive_format, extract_tar_gz, extract_zip,
 };
 use sealantern_infra::platform::get_app_data_dir;
+use uuid::Uuid;
 
 use crate::error::InstanceError;
 use crate::port::InstanceService;
@@ -32,6 +33,9 @@ use crate::port::InstanceService;
 ///
 /// 沿用历史版本使用的文件名，以保证旧数据文件可被读取迁移。
 const INSTANCES_FILE: &str = "sea_lantern_servers.json";
+
+/// 实例目录名长度：v4 UUID 去除连字符后取前 30 位（沿用 v1.2.0 的目录命名形态）。
+const INSTANCE_DIRECTORY_NAME_LEN: usize = 30;
 
 /// 基于 `core` + `feature` 的实例管理宿主能力实现。
 pub struct CoreInstanceService {
@@ -207,8 +211,12 @@ impl InstanceService for CoreInstanceService {
 
     async fn import_modpack(
         &self,
-        request: ImportModpackRequest,
+        mut request: ImportModpackRequest,
     ) -> Result<Instance, InstanceServiceError> {
+        // run_path 的语义是「实例存放位置」而非最终目录：先派生实例独占子目录再规划。
+        // 文件夹来源直接引用源目录、不使用 run_path，派生结果对其自然无影响。
+        request.run_path = derive_instance_directory(&request.run_path)?;
+
         // 规划导入，构建实例规格（不执行文件操作）。
         let result = plan_import_modpack(&request).map_err(|error| {
             tracing::warn!(
@@ -277,6 +285,51 @@ impl InstanceService for CoreInstanceService {
 
         // 注册实例。
         self.create_inner(result.spec).await.map_err(Into::into)
+    }
+}
+
+/// 依据请求中的运行目录派生实例实际落盘目录。
+///
+/// `run_path` 的语义是「实例存放位置」而非最终目录：
+/// - 末级已是实例目录标识（30/32/36 位十六进制 UUID）时原样复用，
+///   保证前端已自行拼出完整路径（Docker 分支）时不会二次嵌套；
+/// - 其余情况在 `run_path` 下生成一个 30 位十六进制 UUID 子目录，
+///   避免多个实例共用同一父目录互相覆盖，也避免默认开服路径
+///   （与应用数据目录同为 `%APPDATA%/SeaLantern`）被服务器文件直接铺满。
+///
+/// 命名形态与 v1.2.0 的 `import_modpack` 一致（v4 UUID 去连字符取前 30 位）；
+/// 额外补上对 30 位目录的识别——v1.2.0 只认 32/36 位，会导致自己生成的
+/// 目录在重复调用时被再套一层。
+fn derive_instance_directory(run_path: &Path) -> Result<PathBuf, InstanceError> {
+    if run_path.as_os_str().is_empty() {
+        return Err(InstanceError::InvalidInput);
+    }
+    if is_instance_directory_name(run_path) {
+        return Ok(run_path.to_path_buf());
+    }
+    let folder_name = Uuid::new_v4().to_string().replace('-', "");
+    Ok(run_path.join(&folder_name[..INSTANCE_DIRECTORY_NAME_LEN]))
+}
+
+/// 判断路径末级是否形如实例目录标识。
+///
+/// 兼容三种形态：30 位（本模块生成）、32 位无连字符 UUID、36 位带连字符 UUID。
+fn is_instance_directory_name(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let is_hex = |text: &str| text.chars().all(|c| c.is_ascii_hexdigit());
+    match name.len() {
+        // 30 位实例目录片段、32 位无连字符 UUID。
+        INSTANCE_DIRECTORY_NAME_LEN | 32 => is_hex(name),
+        // 36 位带连字符 UUID：8-4-4-4-12。
+        36 => {
+            let groups: Vec<&str> = name.split('-').collect();
+            groups.len() == 5
+                && groups.iter().map(|group| group.len()).eq([8, 4, 4, 4, 12])
+                && groups.iter().all(|group| is_hex(group))
+        }
+        _ => false,
     }
 }
 
@@ -629,5 +682,79 @@ mod tests {
     async fn import_modpack_detects_format_from_content_not_extension() {
         // 扩展名声称是 ZIP，内容实际是 tar.gz：分派须按内容进行。
         assert_modpack_archive_import("mislabeled", "modpack.zip", ArchiveFormat::TarGz).await;
+    }
+
+    #[tokio::test]
+    async fn import_modpack_places_instance_below_run_path() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = CoreInstanceService::with_path(root.path().join("servers.json"))
+            .await
+            .expect("load service");
+
+        let archive = root.path().join("modpack.zip");
+        write_test_modpack(&archive, ArchiveFormat::Zip);
+        let run_path = root.path().join("run");
+
+        let request = ImportModpackRequest {
+            name: "整合包-派生目录".into(),
+            modpack_path: archive,
+            java_path: PathBuf::from("java"),
+            max_memory: 2048,
+            min_memory: 1024,
+            port: 25565,
+            startup_mode: "jar".into(),
+            startup_file_path: Some(PathBuf::from("server.jar")),
+            core_type: Some("paper".into()),
+            mc_version: Some("1.20.4".into()),
+            custom_command: None,
+            run_path: run_path.clone(),
+        };
+
+        let instance = service
+            .import_modpack(request)
+            .await
+            .expect("import modpack");
+
+        // 实例必须落在 run_path 的子目录里，而不是把服务器文件直接铺在 run_path。
+        assert_eq!(instance.directory.parent(), Some(run_path.as_path()));
+        assert_eq!(
+            fs::read(instance.directory.join("server.jar")).expect("extracted jar"),
+            b"fake jar"
+        );
+        assert!(!run_path.join("server.jar").exists());
+    }
+
+    #[test]
+    fn derive_instance_directory_appends_uuid_segment() {
+        let derived = derive_instance_directory(Path::new("/servers/root")).expect("derive");
+
+        assert_eq!(derived.parent(), Some(Path::new("/servers/root")));
+        let name = derived
+            .file_name()
+            .and_then(|n| n.to_str())
+            .expect("dir name");
+        assert_eq!(name.len(), INSTANCE_DIRECTORY_NAME_LEN);
+        assert!(name.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn derive_instance_directory_reuses_existing_instance_directory() {
+        // 幂等：末级已是实例目录标识时不得再嵌套一层。
+        for name in [
+            "0123456789abcdef0123456789abcd",       // 30 位
+            "0123456789abcdef0123456789abcdef",     // 32 位
+            "01234567-89ab-cdef-0123-456789abcdef", // 36 位
+        ] {
+            let path = Path::new("/servers").join(name);
+            assert_eq!(derive_instance_directory(&path).expect("derive"), path);
+        }
+    }
+
+    #[test]
+    fn derive_instance_directory_rejects_empty_path() {
+        assert!(matches!(
+            derive_instance_directory(Path::new("")),
+            Err(InstanceError::InvalidInput)
+        ));
     }
 }
