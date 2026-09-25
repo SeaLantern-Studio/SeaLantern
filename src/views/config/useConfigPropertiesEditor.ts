@@ -113,7 +113,7 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
       const value = editValues.value[entry.key]?.trim() ?? "";
       if (value.length === 0 || !/^-?\d+$/.test(value)) {
-        errors[entry.key] = `${entry.key} 需要填写整数`;
+        errors[entry.key] = i18n.t("config.integer_field_required", { key: entry.key });
       }
     }
 
@@ -149,13 +149,17 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     hasUnsavedChanges.value ? i18n.t("config.status_unsaved") : i18n.t("config.status_loaded"),
   );
 
-  const reloadCurrentTooltipText = computed(
-    () => `重新载入${options.currentServerName.value || i18n.t("config.current_server")}属性`,
+  const reloadCurrentTooltipText = computed(() =>
+    i18n.t("config.reload_tooltip", {
+      server: options.currentServerName.value || i18n.t("config.current_server"),
+    }),
   );
 
   const reloadCompareTooltipText = computed(() => {
     const context = compareContext.value;
-    return `重新载入${context?.compareTargetServerName.value || i18n.t("config.compare.target_server")}属性`;
+    return i18n.t("config.reload_tooltip", {
+      server: context?.compareTargetServerName.value || i18n.t("config.compare.target_server"),
+    });
   });
 
   const currentSideDirty = computed(
@@ -180,10 +184,10 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
 
   const discardConfirmTitle = computed(() => {
     if (pendingReloadSide.value === "compare") {
-      return "丢弃对照侧修改";
+      return i18n.t("config.discard_compare_title");
     }
     if (pendingReloadSide.value === "current") {
-      return "丢弃当前侧修改";
+      return i18n.t("config.discard_current_title");
     }
     return i18n.t("config.discard_title");
   });
@@ -191,10 +195,14 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
   const discardConfirmMessage = computed(() => {
     const context = compareContext.value;
     if (pendingReloadSide.value === "compare") {
-      return `重新载入将丢弃 ${context?.compareTargetServerName.value || i18n.t("config.compare.target_server")} 的未保存属性修改。`;
+      return i18n.t("config.discard_compare_message", {
+        server: context?.compareTargetServerName.value || i18n.t("config.compare.target_server"),
+      });
     }
     if (pendingReloadSide.value === "current") {
-      return `重新载入将丢弃 ${options.currentServerName.value || i18n.t("config.current_server")} 的未保存属性修改。`;
+      return i18n.t("config.discard_current_message", {
+        server: options.currentServerName.value || i18n.t("config.current_server"),
+      });
     }
     return i18n.t("config.discard_message");
   });
@@ -332,7 +340,9 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
     try {
       if (editorMode.value === "visual" && hasInvalidNumericValues.value) {
         const invalidKeys = Object.keys(numericFieldErrors.value);
-        options.setError(`以下字段需要填写整数：${invalidKeys.join("、")}`);
+        options.setError(
+          i18n.t("config.integer_fields_required", { keys: invalidKeys.join("、") }),
+        );
         return;
       }
 
@@ -344,7 +354,9 @@ export function useConfigPropertiesEditor(options: UseConfigPropertiesEditorOpti
         Object.keys(context.compareTargetNumericFieldErrors.value).length > 0
       ) {
         const invalidKeys = Object.keys(context.compareTargetNumericFieldErrors.value);
-        options.setError(`以下字段需要填写整数：${invalidKeys.join("、")}`);
+        options.setError(
+          i18n.t("config.integer_fields_required", { keys: invalidKeys.join("、") }),
+        );
         return;
       }
 
