@@ -18,7 +18,9 @@ pub const CURRENT_INSTANCE_SCHEMA_VERSION: u32 = 1;
 ///
 /// 反序列化时缺字段说明数据早于版本化改造，必须按最旧的版本处理，才能在升级链里
 /// 逐级迁移；若直接按当前版本处理，将来的新版会误判旧数据从而跳过迁移步骤。
-fn legacy_schema_version() -> u32 {
+///
+/// 实例存储的版本预读复用了这一常量，保证「缺字段按版本 0 处理」只有一个事实来源。
+pub(crate) fn legacy_schema_version() -> u32 {
     0
 }
 
