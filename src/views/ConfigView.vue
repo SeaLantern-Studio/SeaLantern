@@ -314,6 +314,7 @@ onActivated(async () => {
               :pluginsLoading="pluginsState.pluginsLoading.value"
               :selectedPlugin="pluginsState.selectedPlugin.value"
               @refreshList="pluginsState.loadPlugins"
+              @installPlugin="pluginsState.installPluginFromLocal"
               @reloadPlugins="pluginsState.reloadPlugins"
               @pluginClick="pluginsState.handlePluginClick"
               @togglePlugin="pluginsState.togglePlugin"

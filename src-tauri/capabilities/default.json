@@ -26,6 +26,7 @@
     "dialog:allow-ask",
     "dialog:allow-confirm",
     "fs:allow-write-text-file",
+    "fs:allow-read-file",
     {
       "identifier": "fs:scope",
       "allow": ["**/*"]
