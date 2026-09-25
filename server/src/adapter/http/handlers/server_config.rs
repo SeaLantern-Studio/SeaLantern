@@ -35,7 +35,8 @@ fn parse_id(raw: &str) -> Result<InstanceId, HttpError> {
 async fn resolve_directory(state: &AppState, id: &InstanceId) -> Result<PathBuf, HttpError> {
     resolve_instance_directory(state.instance().as_ref(), id)
         .await
-        .map_err(HttpError::from_server_config_error)
+        .map_err(HttpError::from)?
+        .ok_or_else(|| HttpError::not_found("instance_not_found", "server instance not found"))
 }
 
 /// 按键值对写入配置的请求体。

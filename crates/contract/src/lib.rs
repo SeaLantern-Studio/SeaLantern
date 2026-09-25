@@ -30,6 +30,8 @@ pub mod proxy;
 pub mod server;
 /// 服务器配置（server.properties）相关模型。
 pub mod server_config;
+/// 服务器插件（plugins 目录）相关模型。
+pub mod server_plugin;
 /// 设置信息相关模型。
 pub mod settings;
 /// 系统资源信息相关模型。
@@ -71,6 +73,8 @@ pub use error::ProvisioningServiceError;
 pub use error::ServerCatalogServiceError;
 /// 服务器配置（server.properties）错误枚举。
 pub use error::ServerConfigServiceError;
+/// 服务器插件管理错误枚举。
+pub use error::ServerPluginServiceError;
 /// 服务器进程管理错误枚举。
 pub use error::ServerServiceError;
 /// 设置信息服务错误枚举。
@@ -92,6 +96,8 @@ pub use online::{
 pub use player::{BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerProfile};
 /// 网络代理配置模型。
 pub use proxy::{ProxyConfigError, ProxyMode, ProxySettings};
+/// 服务器插件模型。
+pub use server_plugin::{PluginConfigFile, PluginSummary};
 /// 设置模型。
 pub use settings::{
     AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, DEFAULT_TUNNEL_JOIN_PORT,

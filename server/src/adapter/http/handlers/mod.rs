@@ -9,6 +9,7 @@ pub mod instance;
 pub mod provisioning;
 pub mod server;
 pub mod server_config;
+pub mod server_plugin;
 pub mod settings;
 pub mod system;
 pub mod update;
@@ -32,6 +33,10 @@ pub use server_config::{
     parse_server_properties_source, preview_server_properties_write,
     preview_server_properties_write_from_source, read_server_properties,
     read_server_properties_source, write_server_properties, write_server_properties_source,
+};
+pub use server_plugin::{
+    delete_server_plugin, install_server_plugin, list_server_plugins,
+    read_server_plugin_config_files, set_server_plugin_enabled,
 };
 pub use settings::{get_settings, settings_overview};
 pub use system::{default_run_path, server_resource_usage, system_snapshot};

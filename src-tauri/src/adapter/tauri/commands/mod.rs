@@ -17,6 +17,7 @@ pub mod plugin;
 pub mod provisioning;
 pub mod server;
 pub mod server_config;
+pub mod server_plugin;
 pub mod settings;
 pub mod system;
 pub mod update;

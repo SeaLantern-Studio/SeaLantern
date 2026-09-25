@@ -11,8 +11,8 @@ use serde::Serialize;
 
 use sealantern_contract::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
-    ProvisioningServiceError, ServerConfigServiceError, ServerServiceError, SettingsServiceError,
-    SystemServiceError, UpdateCheckServiceError,
+    ProvisioningServiceError, ServerConfigServiceError, ServerPluginServiceError,
+    ServerServiceError, SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -360,6 +360,41 @@ impl HttpError {
                 code: "operation_unsupported",
                 message: error.to_string(),
             },
+        }
+    }
+
+    /// 由服务器插件契约错误构建 HTTP 错误。
+    pub fn from_server_plugin_error(error: ServerPluginServiceError) -> Self {
+        match error {
+            ServerPluginServiceError::InstanceNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "instance_not_found",
+                message: error.to_string(),
+            },
+            ServerPluginServiceError::InvalidInput => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "invalid_input",
+                message: error.to_string(),
+            },
+            ServerPluginServiceError::PluginNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "plugin_not_found",
+                message: error.to_string(),
+            },
+            ServerPluginServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "operation_failed",
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// 构建一个资源不存在错误（404），带具体错误码。
+    pub fn not_found(code: &'static str, message: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::NOT_FOUND,
+            code,
+            message: message.into(),
         }
     }
 
