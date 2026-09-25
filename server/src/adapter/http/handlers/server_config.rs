@@ -29,10 +29,11 @@ fn parse_id(raw: &str) -> Result<InstanceId, HttpError> {
 
 /// 将实例标识解析为服务器目录。
 async fn resolve_directory(state: &AppState, id: &InstanceId) -> Result<String, HttpError> {
-    let directory = resolve_instance_directory(state.instance().as_ref(), id)
+    resolve_instance_directory(state.instance().as_ref(), id)
         .await
-        .map_err(HttpError::from_server_config_error)?;
-    Ok(directory.to_string_lossy().into_owned())
+        .map_err(HttpError::from)?
+        .map(|directory| directory.to_string_lossy().into_owned())
+        .ok_or_else(|| HttpError::not_found("instance_not_found", "server instance not found"))
 }
 
 /// 按键值对写入配置的请求体。

@@ -22,6 +22,8 @@ mod provisioning;
 mod proxy_monitoring;
 mod server;
 mod server_config;
+mod server_plugin;
+mod server_startup;
 mod settings;
 mod system;
 mod update;
@@ -33,7 +35,7 @@ pub use command_capture::{CaptureError, capture_command_output};
 pub use console::CoreConsoleService;
 pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
-pub use instance::CoreInstanceService;
+pub use instance::{CoreInstanceService, resolve_instance_directory};
 pub use java::CoreJavaService;
 pub use log_recorder::{
     LogEvent, LogRecorder, deregister_capture_sender, forward_to_capture_senders,
@@ -44,7 +46,9 @@ pub use player::CorePlayerService;
 pub use provisioning::CoreProvisioningService;
 pub use proxy_monitoring::ProxyMonitoringService;
 pub use server::CoreServerService;
-pub use server_config::{CoreServerConfigService, resolve_instance_directory};
+pub use server_config::CoreServerConfigService;
+pub use server_plugin::CoreServerPluginService;
+pub use server_startup::CoreServerStartupService;
 pub use settings::CoreSettingsService;
 pub use system::CoreSystemService;
 pub use update::CoreUpdateCheckService;

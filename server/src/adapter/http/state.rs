@@ -10,8 +10,8 @@ use std::sync::Arc;
 
 use sealantern_application::service::{
     CoreConsoleService, CoreCronTaskService, CoreDownloadService, CoreInstanceService,
-    CoreProvisioningService, CoreServerConfigService, CoreServerService, CoreSettingsService,
-    CoreSystemService, CoreUpdateCheckService,
+    CoreProvisioningService, CoreServerConfigService, CoreServerPluginService, CoreServerService,
+    CoreServerStartupService, CoreSettingsService, CoreSystemService, CoreUpdateCheckService,
 };
 use sealantern_application::services::AppServices;
 
@@ -42,6 +42,16 @@ impl AppState {
     /// 访问服务器配置（server.properties）服务（`Arc` 共享句柄，clone 廉价）。
     pub fn server_config(&self) -> Arc<CoreServerConfigService> {
         self.services.server_config().clone()
+    }
+
+    /// 访问服务器插件（plugins 目录）服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn server_plugin(&self) -> Arc<CoreServerPluginService> {
+        self.services.server_plugin().clone()
+    }
+
+    /// 访问实例启动配置（SeaLantern/config.toml）服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn server_startup(&self) -> Arc<CoreServerStartupService> {
+        self.services.server_startup().clone()
     }
 
     /// 访问服务器进程管理服务（`Arc` 共享句柄，clone 廉价）。

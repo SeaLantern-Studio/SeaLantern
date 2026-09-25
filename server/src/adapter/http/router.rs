@@ -70,6 +70,26 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
             "/instances/{id}/server-properties/preview",
             post(handlers::preview_server_properties_write),
         )
+        // ── 嵌套子资源（服务器插件：plugins 目录） ──
+        .route(
+            "/instances/{id}/plugins",
+            get(handlers::list_server_plugins)
+                .post(handlers::install_server_plugin)
+                .delete(handlers::delete_server_plugin),
+        )
+        .route(
+            "/instances/{id}/plugins/config-files",
+            get(handlers::read_server_plugin_config_files),
+        )
+        .route(
+            "/instances/{id}/plugins/enabled",
+            put(handlers::set_server_plugin_enabled),
+        )
+        // ── 嵌套子资源（实例启动配置：SeaLantern/config.toml） ──
+        .route(
+            "/instances/{id}/startup-config",
+            get(handlers::read_startup_config).put(handlers::write_startup_config),
+        )
         // ── 嵌套子资源（后续扩展） ──
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path));
@@ -132,6 +152,7 @@ mod tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use sealantern_application::service::CoreInstanceService;
+    use std::path::PathBuf;
     use tempfile::{TempDir, tempdir};
     use tower::ServiceExt;
 
@@ -409,5 +430,288 @@ mod tests {
             source.contains("motd=hello") && !source.contains("preview-only"),
             "preview must not persist, got: {source}"
         );
+    }
+
+    /// 注册一个实例并返回其服务器目录；调用方负责后续断言。
+    async fn create_instance_fixture(router: &Router, directory: &TempDir, id: &str) -> PathBuf {
+        let server_directory = directory.path().join(id);
+        std::fs::create_dir_all(&server_directory).expect("create server directory");
+        let spec = serde_json::json!({
+            "id": id,
+            "name": "测试服",
+            "aliases": [],
+            "core_type": "paper",
+            "core_version": "1.20.4",
+            "game_version": "1.20.4",
+            "directory": server_directory,
+            "port": 25565,
+            "max_memory_mib": 2048,
+            "min_memory_mib": 512,
+            "created_at_unix_secs": 0,
+            "last_started_at_unix_secs": null,
+            "server_metadata": null,
+            "launch": {
+                "startup_mode": "jar",
+                "startup_target": server_directory.join("server.jar"),
+                "custom_command": null,
+                "custom_executable": null,
+                "custom_arguments": [],
+                "java_executable": null,
+                "jvm_arguments": [],
+            },
+        });
+
+        let response = router
+            .clone()
+            .oneshot(
+                Request::post("/api/instances")
+                    .header("content-type", "application/json")
+                    .body(Body::from(spec.to_string()))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call create instance route");
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        server_directory
+    }
+
+    #[tokio::test]
+    async fn unknown_instance_plugins_returns_not_found() {
+        let (router, _directory) = test_router().await;
+
+        let response = router
+            .oneshot(
+                Request::get("/api/instances/missing/plugins")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call plugin list route");
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value.get("code").and_then(|code| code.as_str()), Some("instance_not_found"));
+    }
+
+    /// 端到端：安装 → 列表 → 禁用 → 启用 → 删除。
+    ///
+    /// 同时验证文件名穿越被拒后返回 400，而不是落到实例目录之外。
+    #[tokio::test]
+    async fn instance_plugins_round_trip() {
+        let (router, directory) = test_router().await;
+        let server_directory = create_instance_fixture(&router, &directory, "server-7").await;
+
+        // ── 1. 初始为空 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::get("/api/instances/server-7/plugins")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call plugin list route");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("read plugin list");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse plugin list");
+        assert_eq!(value.as_array().map(Vec::len), Some(0));
+
+        // ── 2. 安装（字节数组与 Tauri 契约一致） ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::post("/api/instances/server-7/plugins")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"file_name":"Broken.jar","file_data":[1,2,3]}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call install route");
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            server_directory
+                .join("plugins")
+                .join("Broken.jar")
+                .is_file()
+        );
+
+        // ── 3. 列表中可见；jar 不是合法归档，名称回落到文件名 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::get("/api/instances/server-7/plugins")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call plugin list route");
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("read plugin list");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse plugin list");
+        assert_eq!(
+            value.pointer("/0/file_name").and_then(|item| item.as_str()),
+            Some("Broken.jar")
+        );
+        assert_eq!(value.pointer("/0/enabled").and_then(|item| item.as_bool()), Some(true));
+
+        // ── 4. 禁用后再列表，enabled 翻转 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::put("/api/instances/server-7/plugins/enabled")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"file_name":"Broken.jar","enabled":false}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call set enabled route");
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            server_directory
+                .join("plugins")
+                .join("Broken.jar.disabled")
+                .is_file()
+        );
+
+        // ── 5. 删除 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::delete("/api/instances/server-7/plugins?file_name=Broken.jar")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call delete route");
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            !server_directory
+                .join("plugins")
+                .join("Broken.jar.disabled")
+                .exists()
+        );
+
+        // ── 6. 路径穿越被拒 ──
+        let response = router
+            .oneshot(
+                Request::delete("/api/instances/server-7/plugins?file_name=..%2Fescape.jar")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call delete route");
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value.get("code").and_then(|code| code.as_str()), Some("invalid_input"));
+    }
+
+    #[tokio::test]
+    async fn unknown_instance_startup_config_returns_not_found() {
+        let (router, _directory) = test_router().await;
+
+        let response = router
+            .oneshot(
+                Request::get("/api/instances/missing/startup-config")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call startup config route");
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value.get("code").and_then(|code| code.as_str()), Some("instance_not_found"));
+    }
+
+    /// 端到端：无覆盖时字段为 null → 写入 → 读回 → 部分覆盖 → 非法区间被拒。
+    #[tokio::test]
+    async fn instance_startup_config_round_trip() {
+        let (router, directory) = test_router().await;
+        let server_directory = create_instance_fixture(&router, &directory, "server-9").await;
+
+        // ── 1. 初始无覆盖 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::get("/api/instances/server-9/startup-config")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call read startup config route");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read startup config");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse startup config");
+        assert!(value.get("max_memory").is_some_and(|item| item.is_null()));
+        assert!(value.get("min_memory").is_some_and(|item| item.is_null()));
+
+        // ── 2. 写入覆盖 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::put("/api/instances/server-9/startup-config")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"max_memory":4096,"min_memory":2048}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call write startup config route");
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            server_directory
+                .join("SeaLantern")
+                .join("config.toml")
+                .is_file(),
+            "应写入 SeaLantern/config.toml"
+        );
+
+        // ── 3. 读回 ──
+        let response = router
+            .clone()
+            .oneshot(
+                Request::get("/api/instances/server-9/startup-config")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call read startup config route");
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read startup config");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse startup config");
+        assert_eq!(value.get("max_memory").and_then(|item| item.as_u64()), Some(4096));
+        assert_eq!(value.get("min_memory").and_then(|item| item.as_u64()), Some(2048));
+
+        // ── 4. 非法区间被拒 ──
+        let response = router
+            .oneshot(
+                Request::put("/api/instances/server-9/startup-config")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"max_memory":1024,"min_memory":2048}"#))
+                    .expect("build request"),
+            )
+            .await
+            .expect("call write startup config route");
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+            .await
+            .expect("read error response");
+        let value: serde_json::Value = serde_json::from_slice(&body).expect("parse error response");
+        assert_eq!(value.get("code").and_then(|code| code.as_str()), Some("invalid_input"));
     }
 }

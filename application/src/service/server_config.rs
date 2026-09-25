@@ -9,34 +9,14 @@
 //! [`ServerConfigServiceError`]。
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 
 use async_trait::async_trait;
 use sealantern_contract::ServerConfigServiceError;
 use sealantern_contract::server_config::ServerProperties;
-use sealantern_core::instance::InstanceId;
 use sealantern_feature::config::server::{ServerPropertiesError, ServerPropertiesManager};
 
 use crate::error::ServerConfigError;
-use crate::port::{InstanceService, ServerConfigService};
-
-/// 将实例标识解析为服务器目录。
-///
-/// 供宿主按实例维度访问服务器配置文件的场景使用：调用方只提供实例标识，
-/// 目录由应用层从实例注册表解析，因此调用方无法指定任意路径。
-///
-/// 接收 `&dyn InstanceService` 而非具体实现，便于在测试中注入替身。
-pub async fn resolve_instance_directory(
-    instances: &dyn InstanceService,
-    id: &InstanceId,
-) -> Result<PathBuf, ServerConfigServiceError> {
-    instances
-        .find(id)
-        .await
-        .map_err(|_| ServerConfigServiceError::OperationFailed)?
-        .map(|instance| instance.directory.clone())
-        .ok_or(ServerConfigServiceError::InstanceNotFound)
-}
+use crate::port::ServerConfigService;
 
 /// 将阻塞的文件操作调度到阻塞线程池，统一收敛错误。
 async fn run_blocking<T, F>(operation: F) -> Result<T, ServerConfigError>

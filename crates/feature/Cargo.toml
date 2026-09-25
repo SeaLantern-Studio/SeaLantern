@@ -16,6 +16,8 @@ sealantern-contract = { path = "../contract" }
 tracing = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml = "0.9"
+toml = "0.8"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 cron = "0.12"
@@ -40,3 +42,4 @@ java-manager = { path = "../vendor/java-manager" }
 flate2 = "1"
 proptest = "1"
 tempfile = "3"
+zip = { version = "2.0", default-features = false, features = ["deflate"] }

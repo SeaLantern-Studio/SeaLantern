@@ -280,6 +280,20 @@ impl InstanceService for CoreInstanceService {
     }
 }
 
+/// 将实例标识解析为服务器目录。
+///
+/// 供宿主按实例维度访问服务器文件（server.properties、plugins 目录等）时使用：
+/// 调用方只提供实例标识，目录由应用层从实例注册表解析，因此调用方无法指定
+/// 任意路径。实例不存在时返回 `Ok(None)`，由各领域决定对应的契约错误。
+///
+/// 接收 `&dyn InstanceService` 而非具体实现，便于在测试中注入替身。
+pub async fn resolve_instance_directory(
+    instances: &dyn InstanceService,
+    id: &InstanceId,
+) -> Result<Option<PathBuf>, InstanceServiceError> {
+    Ok(instances.find(id).await?.map(|instance| instance.directory))
+}
+
 /// 按归档实际格式解压整合包。
 ///
 /// 格式由文件魔数判定而非扩展名：`infer_source_type` 已按扩展名把 `.zip`、

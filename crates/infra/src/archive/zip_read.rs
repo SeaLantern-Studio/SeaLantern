@@ -28,6 +28,55 @@ pub fn zip_entry_count(archive: impl AsRef<Path>) -> Result<usize, ArchiveError>
         .map_err(|error| ArchiveError::zip("read", archive_path, error))
 }
 
+/// 从 ZIP 归档中读取指定条目名的文本内容。
+///
+/// 条目不存在时返回 `Ok(None)`，让调用方可以按候选顺序尝试多个条目名
+/// （例如插件的描述文件既可能是 `plugin.yml`，也可能是 `bungee.yml`）。
+///
+/// 内容必须是 UTF-8；读取量受 `max_bytes` 约束，中央目录声明的大小与实际
+/// 读到的字节都会校验，避免声称很小的条目耗尽内存。用途是读取 jar 内的
+/// 元数据，无需把整个归档解压到磁盘。
+pub fn read_zip_entry_text(
+    archive: impl AsRef<Path>,
+    entry_name: &str,
+    max_bytes: usize,
+) -> Result<Option<String>, ArchiveError> {
+    let archive_path = archive.as_ref();
+    let file = File::open(archive_path)
+        .map_err(|error| ArchiveError::io("open ZIP archive", archive_path, error))?;
+    let mut archive =
+        ZipArchive::new(file).map_err(|error| ArchiveError::zip("read", archive_path, error))?;
+
+    for index in 0..archive.len() {
+        let entry = archive
+            .by_index(index)
+            .map_err(|error| ArchiveError::zip("read ZIP entry", archive_path, error))?;
+        if entry.name() != entry_name {
+            continue;
+        }
+
+        // 中央目录声明的大小不可信，先按声明值快速失败。
+        check_limit(archive_path, "entry uncompressed bytes", entry.size(), max_bytes as u64)?;
+
+        // 读取时再按实际字节复核：多读一个字节即可判定超限。
+        let mut content = String::new();
+        entry
+            .take(max_bytes as u64 + 1)
+            .read_to_string(&mut content)
+            .map_err(|error| ArchiveError::io("read ZIP entry text", archive_path, error))?;
+        check_limit(
+            archive_path,
+            "entry uncompressed bytes",
+            content.len() as u64,
+            max_bytes as u64,
+        )?;
+
+        return Ok(Some(content));
+    }
+
+    Ok(None)
+}
+
 /// 使用默认限制将 ZIP 压缩包解压到新的目标目录中。
 ///
 /// 目标目录必须尚未存在。这避免了在压缩包无效或后续
@@ -287,6 +336,89 @@ mod tests {
     use zip::write::SimpleFileOptions;
 
     use super::*;
+
+    #[test]
+    fn reads_a_named_entry_as_text() {
+        let root = crate::fs::test_dir("zip-read-entry");
+        let archive_path = root.join("plugin.jar");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("plugin.yml", SimpleFileOptions::default())
+            .unwrap();
+        writer
+            .write_all(b"name: EssentialsX\nversion: 2.20.1\n")
+            .unwrap();
+        writer
+            .start_file("ignored.txt", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"not the entry we asked for").unwrap();
+        writer.finish().unwrap();
+
+        let content = read_zip_entry_text(&archive_path, "plugin.yml", 64 * 1024)
+            .unwrap()
+            .expect("entry should exist");
+        assert!(content.contains("EssentialsX"), "unexpected content: {content}");
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn returns_none_for_a_missing_entry() {
+        let root = crate::fs::test_dir("zip-read-missing");
+        let archive_path = root.join("plugin.jar");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("bungee.yml", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"name: Legacy").unwrap();
+        writer.finish().unwrap();
+
+        assert_eq!(read_zip_entry_text(&archive_path, "plugin.yml", 64 * 1024).unwrap(), None);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_an_entry_exceeding_the_declared_limit() {
+        let root = crate::fs::test_dir("zip-read-entry-limit");
+        let archive_path = root.join("plugin.jar");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("plugin.yml", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&vec![b'a'; 4096]).unwrap();
+        writer.finish().unwrap();
+
+        assert!(matches!(
+            read_zip_entry_text(&archive_path, "plugin.yml", 64),
+            Err(ArchiveError::LimitExceeded { limit: "entry uncompressed bytes", .. })
+        ));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_non_utf8_entry() {
+        let root = crate::fs::test_dir("zip-read-non-utf8");
+        let archive_path = root.join("plugin.jar");
+        let file = File::create(&archive_path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("plugin.yml", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&[0xff, 0xfe, 0xfd]).unwrap();
+        writer.finish().unwrap();
+
+        assert!(matches!(
+            read_zip_entry_text(&archive_path, "plugin.yml", 64 * 1024),
+            Err(ArchiveError::Io { .. })
+        ));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn rejects_path_traversal_before_creating_destination() {
