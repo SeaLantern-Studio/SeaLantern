@@ -377,6 +377,34 @@ impl std::fmt::Display for ServerConfigServiceError {
 
 impl std::error::Error for ServerConfigServiceError {}
 
+/// 服务器插件管理失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerPluginServiceError {
+    /// 指定的目标实例不存在。
+    InstanceNotFound,
+    /// 客户端提供的输入不合法（如文件名含路径分量、非 jar 文件名）。
+    InvalidInput,
+    /// 指定的插件不在实例的 plugins 目录中。
+    PluginNotFound,
+    /// 底层文件操作失败。
+    OperationFailed,
+}
+
+impl std::fmt::Display for ServerPluginServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InstanceNotFound => "server instance not found",
+            Self::InvalidInput => "invalid server plugin input",
+            Self::PluginNotFound => "server plugin not found",
+            Self::OperationFailed => "server plugin operation failed",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for ServerPluginServiceError {}
+
 /// 应用更新检查失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -639,6 +667,22 @@ mod tests {
             (
                 serde_json::to_string(&ServerConfigServiceError::InvalidInput),
                 "\"invalid_input\"",
+            ),
+            (
+                serde_json::to_string(&ServerPluginServiceError::InstanceNotFound),
+                "\"instance_not_found\"",
+            ),
+            (
+                serde_json::to_string(&ServerPluginServiceError::InvalidInput),
+                "\"invalid_input\"",
+            ),
+            (
+                serde_json::to_string(&ServerPluginServiceError::PluginNotFound),
+                "\"plugin_not_found\"",
+            ),
+            (
+                serde_json::to_string(&ServerPluginServiceError::OperationFailed),
+                "\"operation_failed\"",
             ),
         ];
 

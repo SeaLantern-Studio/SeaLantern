@@ -56,6 +56,10 @@ use adapter::tauri::commands::server_config::{
     preview_server_properties_write_from_source, read_server_properties,
     read_server_properties_source, write_server_properties, write_server_properties_source,
 };
+use adapter::tauri::commands::server_plugin::{
+    delete_server_plugin, install_server_plugin, list_server_plugins,
+    read_server_plugin_config_files, set_server_plugin_enabled,
+};
 use adapter::tauri::commands::settings::{
     export_settings, get_settings, get_system_fonts, import_settings, reset_settings,
     settings_overview, update_settings, update_settings_partial,
@@ -234,6 +238,12 @@ fn main() {
             read_server_properties_source,
             write_server_properties,
             write_server_properties_source,
+            //服务器插件管理契约命令
+            list_server_plugins,
+            read_server_plugin_config_files,
+            set_server_plugin_enabled,
+            delete_server_plugin,
+            install_server_plugin,
             //服务器定时任务契约命令
             create_cron_task,
             delete_cron_task,
@@ -465,6 +475,11 @@ mod tests {
         "update_settings_partial",
         "check_update",
         "lookup_player",
+        "list_server_plugins",
+        "read_server_plugin_config_files",
+        "set_server_plugin_enabled",
+        "delete_server_plugin",
+        "install_server_plugin",
     ];
 
     #[test]

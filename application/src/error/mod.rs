@@ -22,6 +22,8 @@ pub mod plugin;
 pub mod server;
 /// 服务器配置（server.properties）领域错误。
 pub mod server_config;
+/// 服务器插件（plugins 目录）领域错误。
+pub mod server_plugin;
 /// 设置信息服务领域错误。
 pub mod settings;
 /// 系统资源信息领域错误。
@@ -38,6 +40,7 @@ pub use instance::InstanceError;
 pub use plugin::PluginError;
 pub use server::ServerError;
 pub use server_config::ServerConfigError;
+pub use server_plugin::ServerPluginError;
 pub use settings::SettingsError;
 pub use system::SystemError;
 pub use update::UpdateCheckError;
