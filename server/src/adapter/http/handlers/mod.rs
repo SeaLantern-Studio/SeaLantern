@@ -10,6 +10,7 @@ pub mod provisioning;
 pub mod server;
 pub mod server_config;
 pub mod server_plugin;
+pub mod server_startup;
 pub mod settings;
 pub mod system;
 pub mod update;
@@ -38,6 +39,7 @@ pub use server_plugin::{
     delete_server_plugin, install_server_plugin, list_server_plugins,
     read_server_plugin_config_files, set_server_plugin_enabled,
 };
+pub use server_startup::{read_startup_config, write_startup_config};
 pub use settings::{get_settings, settings_overview};
 pub use system::{default_run_path, server_resource_usage, system_snapshot};
 pub use update::check_update;

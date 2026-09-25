@@ -5724,6 +5724,7 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
+ "toml 0.8.2",
  "tracing",
  "urlencoding",
  "uuid",
