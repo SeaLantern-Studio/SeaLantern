@@ -8,7 +8,7 @@ use sealantern_core::app_plugin::{
     CapabilityDispatchError, CapabilityDispatcher, CapabilityInvocation, ExecutionPrincipal,
     PolicyDecision, ScopeKind, capability,
 };
-use sealantern_feature::market::{
+use sealantern_feature::resource::market::{
     Fetcher, MarketError, MarketSource, ResourceInfo, SearchResult, Version,
 };
 use sealantern_infra::net::{
@@ -51,8 +51,8 @@ pub struct DefaultMarketGateway {
 impl DefaultMarketGateway {
     pub fn new() -> Result<Self, String> {
         Ok(Self {
-            modrinth: Arc::new(sealantern_feature::market::ModrinthFetcher::global()),
-            spiget: Arc::new(sealantern_feature::market::SpigetFetcher::global()),
+            modrinth: Arc::new(sealantern_feature::resource::market::ModrinthFetcher::global()),
+            spiget: Arc::new(sealantern_feature::resource::market::SpigetFetcher::global()),
         })
     }
 

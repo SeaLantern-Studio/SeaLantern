@@ -9,17 +9,20 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde::Deserialize;
 
+use sealantern_infra::download::{DownloadManager, DownloadStatus};
 use sealantern_infra::net::{ClientProvider, NetClient};
 
-use crate::market::error::MarketError;
-use crate::market::fetcher;
-use crate::market::fetcher::Fetcher;
-use crate::market::models::*;
 use crate::observability;
 
-// ---------------------------------------------------------------------------
-// Spiget API 响应结构体（自动反序列化）
-// ---------------------------------------------------------------------------
+use super::error::MarketError;
+use super::models::*;
+use super::traits::Fetcher;
+use super::{download_file, send_get};
+
+/// Spiget API 的基础 URL。
+const SPIGET_BASE: &str = "https://api.spiget.org/v2";
+
+// ─── Spiget API 响应结构体（自动反序列化） ──────────────────────────────
 
 /// Spiget 资源详情响应。
 #[derive(Deserialize)]
@@ -41,8 +44,9 @@ struct SpigetFile {
     external_url: Option<String>,
 }
 
-/// Spiget 搜索结果条目。
+/// Spiget 搜索命中项（资源列表项）。
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct SpigetSearchHit {
     id: i64,
     name: String,
@@ -50,13 +54,7 @@ struct SpigetSearchHit {
     downloads: i64,
 }
 
-/// Spiget 版本列表（可能包裹在 `value` 字段中）。
-#[derive(Deserialize)]
-struct SpigetVersionList {
-    value: Vec<SpigetVersion>,
-}
-
-/// Spiget 版本信息。
+/// Spiget 版本响应（可能包裹在 `value` 中）。
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SpigetVersion {
@@ -65,45 +63,45 @@ struct SpigetVersion {
     downloads: i64,
 }
 
-// ---------------------------------------------------------------------------
-// 获取器实现
-// ---------------------------------------------------------------------------
+/// 带 `value` 包裹的版本列表。
+#[derive(Deserialize)]
+struct SpigetVersionList {
+    value: Vec<SpigetVersion>,
+}
 
-/// Spiget API 的基础 URL。
-const SPIGET_BASE: &str = "https://api.spiget.org/v2";
+// ─── SpigetFetcher ───────────────────────────────────────────────────────
 
 /// 基于 Spiget API 的资源获取器。
 ///
-/// 持有客户端获取器（provider），每次请求前获取当前全局客户端，
-/// 避免缓存固定客户端导致代理更新不生效。
+/// 持有客户端获取器（provider）与显式注入的下载管理器，避免全局单例：
+/// 每次请求前获取当前全局客户端，保证代理更新即时生效。
 pub struct SpigetFetcher {
     client_provider: ClientProvider,
+    download: DownloadManager,
 }
 
 impl SpigetFetcher {
-    /// 使用全局客户端获取器构造获取器（生产装配推荐）。
+    /// 使用全局客户端获取器与全局下载器构造（生产装配推荐）。
     pub fn global() -> Self {
-        Self::with_provider(sealantern_infra::net::global_client_provider())
+        Self {
+            client_provider: sealantern_infra::net::global_client_provider(),
+            download: DownloadManager::with_provider(
+                sealantern_infra::net::global_client_provider(),
+            ),
+        }
     }
 
-    /// 使用客户端获取器构造获取器，每次请求前调用以获取当前全局客户端。
-    ///
-    /// # Parameters
-    /// - `client_provider`: 返回当前 `NetClient` 的获取器。
-    ///
-    /// # Returns
-    /// 返回初始化完成的 `SpigetFetcher`。
+    /// 使用自定义客户端获取器构造（测试注入）；下载器使用全局配置。
     pub fn with_provider(client_provider: ClientProvider) -> Self {
-        Self { client_provider }
+        Self {
+            client_provider,
+            download: DownloadManager::with_provider(
+                sealantern_infra::net::global_client_provider(),
+            ),
+        }
     }
 
-    /// 创建一个新的 `SpigetFetcher`（兼容旧调用与测试注入）。
-    ///
-    /// # Parameters
-    /// - `client`: 用于发送 HTTP 请求的 `NetClient` 实例。
-    ///
-    /// # Returns
-    /// 返回初始化完成的 `SpigetFetcher`。
+    /// 使用具体客户端构造（兼容旧调用与测试注入）。
     pub fn new(client: NetClient) -> Self {
         Self::with_provider(Box::new(move || Ok(client.clone())))
     }
@@ -113,16 +111,9 @@ impl SpigetFetcher {
 impl Fetcher for SpigetFetcher {
     /// 在 Spiget 市场中搜索资源。
     ///
-    /// 调用 `GET /search/resources/{query}?size={page_size}&page={page}`，
-    /// 返回匹配的资源列表。响应体为 JSON 数组，直接反序列化为 `Vec<SpigetSearchHit>`。
-    ///
-    /// # Parameters
-    /// - `query`: 搜索关键词。
-    /// - `page`: 页码，从 1 开始；传入 0 会返回错误。
-    /// - `page_size`: 每页结果数。
-    ///
-    /// # Returns
-    /// 包含分页信息和资源列表的 `SearchResult`。
+    /// 调用 `GET /search/resources/{query}?size={page_size}&page={page}`。
+    /// Spiget 的 `page` 从 1 开始；`offset` 语义为"当前页之前已跳过的条目数"，
+    /// 与 Modrinth 保持一致（`(page - 1) * page_size`）。
     async fn search(
         &self,
         query: &str,
@@ -133,6 +124,7 @@ impl Fetcher for SpigetFetcher {
             return Err(MarketError::config("page must be 1 or greater"));
         }
         observability::market_search_started(query, page, page_size, "spiget");
+
         let url = format!(
             "{}/search/resources/{}?size={}&page={}",
             SPIGET_BASE,
@@ -140,22 +132,14 @@ impl Fetcher for SpigetFetcher {
             page_size,
             page
         );
-        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
-        let resp = client
-            .get(&url)
-            .map_err(|e| MarketError::config(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| MarketError::http("search resources", "spiget", e.to_string()))?;
 
-        // 直接反序列化为 Vec<SpigetSearchHit>
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = send_get(client, &url, "search resources", "spiget").await?;
         let hits: Vec<SpigetSearchHit> = resp
             .json()
             .await
             .map_err(|e| MarketError::json("parse search results", "spiget", e.to_string()))?;
 
-        // 将搜索结果映射为统一的 MarketResource
-        // tag 字段作为简要描述，downloads 字段作为下载量
         let items: Vec<MarketResource> = hits
             .into_iter()
             .map(|hit| MarketResource {
@@ -163,7 +147,6 @@ impl Fetcher for SpigetFetcher {
                 name: hit.name,
                 description: hit.tag,
                 download_count: hit.downloads as u64,
-                version_count: 0,
                 source: MarketSource::Spiget,
             })
             .collect();
@@ -171,8 +154,9 @@ impl Fetcher for SpigetFetcher {
         observability::market_search_completed(query, items.len() as u64, "spiget");
 
         Ok(SearchResult {
+            // Spiget 不返回匹配总数，以当前页数量近似。
             total: items.len() as u64,
-            offset: (page * page_size) as u64,
+            offset: ((page - 1) * page_size) as u64,
             limit: page_size as u64,
             resources: items,
         })
@@ -180,30 +164,18 @@ impl Fetcher for SpigetFetcher {
 
     /// 获取 Spiget 上指定资源的详细信息。
     ///
-    /// 调用 `GET /resources/{id}`，返回单个资源的完整信息。
-    /// 响应直接反序列化为 `SpigetResource`，再映射为 `ResourceInfo`。
-    ///
-    /// # Parameters
-    /// - `id`: 资源的数字 ID（由 Spiget 分配）。
-    ///
-    /// # Returns
-    /// 包含资源详细元数据的 `ResourceInfo`。
+    /// 调用 `GET /resources/{id}`。Spiget 会对插件给出 `external` 标记与
+    /// 下载 URL（外部托管或 CDN），因此 [`ResourceInfo::download_url`] 会被填充。
     async fn get_resource(&self, id: &str) -> Result<ResourceInfo, MarketError> {
         let url = format!("{}/resources/{}", SPIGET_BASE, id);
-        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
-        let resp = client
-            .get(&url)
-            .map_err(|e| MarketError::config(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| MarketError::http("get resource details", "spiget", e.to_string()))?;
 
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = send_get(client, &url, "get resource details", "spiget").await?;
         let resource: SpigetResource = resp
             .json()
             .await
             .map_err(|e| MarketError::json("parse resource details", "spiget", e.to_string()))?;
 
-        // 从 SpigetResource 构建 ResourceInfo
         let download_url = build_spiget_download_url(&resource, id);
 
         observability::market_resource_fetched(id, &resource.name, "spiget");
@@ -217,7 +189,7 @@ impl Fetcher for SpigetFetcher {
             icon_url: None,
             game_versions: resource.tested_versions,
             loaders: vec!["spigot".to_string()],
-            resource_type: "plugin".to_string(),
+            resource_type: ResourceType::Plugin,
             external: resource.external,
             download_url,
         })
@@ -225,31 +197,18 @@ impl Fetcher for SpigetFetcher {
 
     /// 获取指定资源的所有版本列表。
     ///
-    /// 调用 `GET /resources/{id}/versions?size=100`。
-    /// Spiget 响应可能有两种格式：直接返回数组 `[...]`，或包裹在 `{"value": [...]}` 中。
-    /// 本方法先尝试 `SpigetVersionList`（带 value 包裹），失败则回退到 `Vec<SpigetVersion>`。
-    ///
-    /// # Parameters
-    /// - `id`: 资源的数字 ID。
-    ///
-    /// # Returns
-    /// 版本对象列表，每个版本包含名称、下载量等信息。
+    /// 调用 `GET /resources/{id}/versions?size=100`。Spiget 响应有两种格式：
+    /// 直接返回数组 `[...]` 或包裹在 `{"value": [...]}` 中，两者都兼容。
     async fn get_resource_versions(&self, id: &str) -> Result<Vec<Version>, MarketError> {
         let url = format!("{}/resources/{}/versions?size=100", SPIGET_BASE, id);
-        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
-        let resp = client
-            .get(&url)
-            .map_err(|e| MarketError::config(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| MarketError::http("get resource versions", "spiget", e.to_string()))?;
 
+        let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
+        let resp = send_get(client, &url, "get resource versions", "spiget").await?;
         let outer: serde_json::Value = resp
             .json()
             .await
             .map_err(|e| MarketError::json("parse version list", "spiget", e.to_string()))?;
 
-        // 兼容两种响应格式：{ value: [...] } 或 [...]
         let versions_raw = if outer.get("value").and_then(|v| v.as_array()).is_some() {
             serde_json::from_value::<SpigetVersionList>(outer)
                 .map_err(|e| MarketError::json("parse version list", "spiget", e.to_string()))?
@@ -259,7 +218,7 @@ impl Fetcher for SpigetFetcher {
                 .map_err(|e| MarketError::json("parse version list", "spiget", e.to_string()))?
         };
 
-        // 映射每个版本对象，version_number 复用 name 字段（Spiget 不单独提供版本号）
+        // version_number 复用 name（Spiget 不单独提供语义化版本号）。
         let versions: Vec<Version> = versions_raw
             .into_iter()
             .map(|v| Version {
@@ -280,24 +239,19 @@ impl Fetcher for SpigetFetcher {
 
     /// 下载资源文件。
     ///
-    /// 委托给 `fetcher::download_file` 执行实际下载，不涉及 Spiget API 调用。
-    ///
-    /// # Parameters
-    /// - `url`: 文件的直接下载链接。
-    /// - `destination`: 保存路径。
-    ///
-    /// # Returns
-    /// 下载任务的状态信息。
+    /// 委托给显式注入的下载管理器执行，不使用全局单例。
     async fn download_resource(
         &self,
         url: &str,
         destination: &str,
-    ) -> Result<Arc<sealantern_infra::download::DownloadStatus>, MarketError> {
+    ) -> Result<Arc<DownloadStatus>, MarketError> {
         observability::market_download_started(url, "spiget");
-        let status = fetcher::download_file(url, destination).await?;
-        Ok(status)
+        download_file(&self.download, url, destination).await
     }
 
+    /// 获取随机资源列表。
+    ///
+    /// Spiget 无原生随机接口；这里以时间为种子选取一个"下载量倒序"的页面。
     async fn get_random_resources(&self, count: u32) -> Result<Vec<MarketResource>, MarketError> {
         let seed = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -306,17 +260,14 @@ impl Fetcher for SpigetFetcher {
         let page = (seed % 100) as u32 + 1;
         let limit = count.min(8);
         let url = format!("{}/resources?size={}&page={}&sort=-downloads", SPIGET_BASE, limit, page);
+
         let client = (self.client_provider)().map_err(|e| MarketError::config(e.to_string()))?;
-        let resp = client
-            .get(&url)
-            .map_err(|e| MarketError::config(e.to_string()))?
-            .send()
-            .await
-            .map_err(|e| MarketError::http("get random resources", "spiget", e.to_string()))?;
+        let resp = send_get(client, &url, "get random resources", "spiget").await?;
         let list: Vec<SpigetSearchHit> = resp
             .json()
             .await
             .map_err(|e| MarketError::json("parse random resources", "spiget", e.to_string()))?;
+
         Ok(list
             .into_iter()
             .map(|h| MarketResource {
@@ -324,7 +275,6 @@ impl Fetcher for SpigetFetcher {
                 name: h.name,
                 description: h.tag,
                 download_count: h.downloads as u64,
-                version_count: 0,
                 source: MarketSource::Spiget,
             })
             .collect())
@@ -345,8 +295,7 @@ fn build_spiget_download_url(resource: &SpigetResource, id: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::market::fetcher::Fetcher;
-    use crate::market::models::MarketSource;
+    use crate::resource::market::models::MarketSource;
 
     use super::*;
 
@@ -355,7 +304,9 @@ mod tests {
         SpigetFetcher::new(client)
     }
 
+    /// 需要真实网络与第三方 API 可用性。CI / 离线环境请用 `--ignored` 显式运行。
     #[tokio::test]
+    #[ignore = "依赖真实 Spiget API 与网络"]
     async fn test_search_returns_results() {
         let fetcher = test_fetcher();
         let result = fetcher.search("luckperms", 1, 5).await.unwrap();
@@ -366,7 +317,9 @@ mod tests {
         }
     }
 
+    /// 依赖 Spiget 平台具体资源 ID（外部托管示例），资源变动会导致测试失败。
     #[tokio::test]
+    #[ignore = "依赖真实 Spiget API、网络与具体资源 ID"]
     async fn test_external_resource_66647() {
         let fetcher = test_fetcher();
         let info = fetcher.get_resource("66647").await.unwrap();
@@ -376,7 +329,9 @@ mod tests {
         assert!(info.download_url.contains("modrinth") || info.download_url.contains("http"));
     }
 
+    /// 依赖 Spiget 平台具体资源 ID（CDN 托管示例）。
     #[tokio::test]
+    #[ignore = "依赖真实 Spiget API、网络与具体资源 ID"]
     async fn test_cdn_resource_28140() {
         let fetcher = test_fetcher();
         let info = fetcher.get_resource("28140").await.unwrap();
@@ -386,6 +341,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "依赖真实 Spiget API 与网络"]
     async fn test_resource_versions_returns_list() {
         let fetcher = test_fetcher();
         let versions = fetcher.get_resource_versions("28140").await.unwrap();
@@ -397,6 +353,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "依赖真实 Spiget API 与网络"]
     async fn test_get_random_resources() {
         let fetcher = test_fetcher();
         let resources = fetcher.get_random_resources(3).await.unwrap();

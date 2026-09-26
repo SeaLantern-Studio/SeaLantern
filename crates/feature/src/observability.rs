@@ -230,6 +230,42 @@ pub fn market_request_failed(operation: &str, source: &str, error: &dyn Display)
 }
 
 // ---------------------------------------------------------------------------
+// 实例资源管理模块
+// ---------------------------------------------------------------------------
+
+/// 实例资源管理模块的 tracing 目标。
+pub const RESOURCE_TARGET: &str = "sealantern.feature.resource";
+
+/// Event: 资源文件元数据读取失败。
+pub const EVENT_RESOURCE_METADATA_UNREADABLE: &str = "resource_metadata_unreadable";
+/// Event: 资源清单存在重复账目。
+pub const EVENT_RESOURCE_MANIFEST_DUPLICATES: &str = "resource_manifest_duplicates";
+
+/// 记录资源文件元数据读取失败。
+///
+/// 扫描单个文件时元数据失败不阻断整体扫描，但大小会被记为 0，
+/// 因此必须留痕，避免静默掩盖。
+pub fn resource_metadata_unreadable(path: &std::path::Path, error: &dyn Display) {
+    tracing::warn!(
+        target: RESOURCE_TARGET,
+        event_name = EVENT_RESOURCE_METADATA_UNREADABLE,
+        path = %path.display(),
+        error = %error,
+        "resource file metadata is unreadable"
+    );
+}
+
+/// 记录资源清单中存在重复账目（同一文件名出现多次）。
+pub fn resource_manifest_duplicates(file_names: &[String]) {
+    tracing::warn!(
+        target: RESOURCE_TARGET,
+        event_name = EVENT_RESOURCE_MANIFEST_DUPLICATES,
+        duplicates = ?file_names,
+        "resource manifest contains duplicate entries"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Java 环境检测模块
 // ---------------------------------------------------------------------------
 
