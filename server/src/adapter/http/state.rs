@@ -15,23 +15,31 @@ use sealantern_application::service::{
 };
 use sealantern_application::services::AppServices;
 
+use crate::event::ServerEventBus;
+
 /// HTTP 层的共享应用状态。
 ///
 /// `Clone` 是 axum 对 `State` 的要求（每次请求提取时克隆，成本仅为一个 `Arc`）。
 #[derive(Clone)]
 pub struct AppState {
     services: AppServices,
+    events: Arc<ServerEventBus>,
 }
 
 impl AppState {
-    /// 从宿主注入的服务句柄构造应用状态。
-    pub fn new(services: AppServices) -> Self {
-        Self { services }
+    /// 从宿主注入的服务句柄与事件总线构造应用状态。
+    pub fn new(services: AppServices, events: Arc<ServerEventBus>) -> Self {
+        Self { services, events }
     }
 
     /// 返回共享应用服务容器，供需要异步初始化子服务的传输适配器使用。
     pub fn services(&self) -> &AppServices {
         &self.services
+    }
+
+    /// 访问事件总线（供事件推送的传输适配器订阅）。
+    pub fn events(&self) -> &Arc<ServerEventBus> {
+        &self.events
     }
 
     /// 访问实例记录管理服务（`Arc` 共享句柄，clone 廉价）。
@@ -77,5 +85,14 @@ impl AppState {
     /// 访问服务端检查与供给计划服务（`Arc` 共享句柄，clone 廉价）。
     pub fn provisioning(&self) -> Arc<CoreProvisioningService> {
         self.services.provisioning().clone()
+    }
+}
+
+/// 允许 handler 只提取事件总线，而不是整个 [`AppState`]。
+///
+/// 事件模块不依赖传输层状态；通过该转换让 WebSocket handler 保持窄依赖。
+impl axum::extract::FromRef<AppState> for Arc<ServerEventBus> {
+    fn from_ref(state: &AppState) -> Self {
+        Arc::clone(&state.events)
     }
 }
