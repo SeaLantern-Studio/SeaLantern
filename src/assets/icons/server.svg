@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-server" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 服务器：悬停时两台机器指示灯交替闪烁 */
+    .si-server .lamp-1 { animation-iteration-count: 1; }
+    .si-server .lamp-1 { animation: sl-lamp-on .8s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-server .lamp-2 { animation: sl-lamp-on .8s ease-in-out .4s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-lamp-on { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+    .si-server:hover { --sl-anim-play: running; }
+  </style>
+  <rect x="2" y="2" width="20" height="8" rx="2"/>
+  <rect x="2" y="14" width="20" height="8" rx="2"/>
+  <path class="lamp-1" d="M6 6h.01"/>
+  <path class="lamp-2" d="M6 18h.01"/>
+</svg>

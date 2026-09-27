@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-terminal" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 终端：悬停时提示符前冲，光标线闪烁 */
+    .si-terminal .term-arrow { transform-box: fill-box; }
+    .si-terminal .term-line { }
+    .si-terminal .term-arrow { animation: sl-term-poke .65s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-terminal .term-line { animation: sl-term-blink .7s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-term-poke  { 0%,100% { transform: translateX(0); } 50% { transform: translateX(1.5px); } }
+    @keyframes sl-term-blink { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+    .si-terminal:hover { --sl-anim-play: running; }
+  </style>
+  <path class="term-arrow" d="m4 17 6-6-6-6"/>
+  <path class="term-line" d="M12 19h8"/>
+</svg>
