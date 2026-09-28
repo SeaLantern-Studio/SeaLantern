@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-users" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 用户组：悬停时前排轻点，后排轻晃应和 */
+    .si-users .u-front { transform-box: fill-box; }
+    .si-users .u-back { transform-box: fill-box; }
+    .si-users .u-front { animation: sl-users-nod .7s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-users .u-back { animation: sl-users-bob .7s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-users-nod { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-.9px); } }
+    @keyframes sl-users-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(.5px); } }
+    .si-users:hover { --sl-anim-play: running; }
+  </style>
+  <g class="u-back">
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </g>
+  <g class="u-front">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+  </g>
+</svg>

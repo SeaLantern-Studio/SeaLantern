@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-home" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 房子：悬停时屋顶轻轻掀起再落下 */
+    .si-home .roof { transform-box: fill-box; }
+    .si-home .roof { animation: sl-home-lift .75s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-home-lift { 0%,100% { transform: translateY(0); } 45% { transform: translateY(-1.2px); } }
+    .si-home:hover { --sl-anim-play: running; }
+  </style>
+  <path class="roof" d="m3 9 9-7 9 7"/>
+  <path d="M3 9v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9"/>
+  <path d="M9 22v-8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v8"/>
+</svg>

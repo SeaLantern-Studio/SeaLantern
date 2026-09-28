@@ -6,28 +6,8 @@ import { usePluginStore } from "@stores/pluginStore";
 import { useSettingsStore } from "@stores/settingsStore";
 import { i18n } from "@language";
 import { useElasticLogo } from "@composables/useElasticLogo";
-import {
-  Home,
-  Plus,
-  Terminal,
-  Settings,
-  Users,
-  Sliders,
-  PaintRoller,
-  Info,
-  Server,
-  Blocks,
-  Store,
-  LayoutDashboard,
-  BarChart2,
-  Sparkles,
-  Link2,
-  DownloadIcon,
-  Archive,
-  BookOpen,
-  Beaker,
-  type LucideIcon,
-} from "lucide-vue-next";
+import { Server } from "lucide-vue-next";
+import AnimatedIcon from "@components/common/AnimatedIcon.vue";
 import logoSvg from "@assets/logo.svg";
 import { isMacOSPlatform } from "@utils/platform";
 
@@ -47,31 +27,7 @@ import { isMacOSPlatform } from "@utils/platform";
  * 4. 确认插件功能完整可用后，移除本 TODO:在实现插件功能后恢复插件相关导航 注释
  */
 
-const iconMap: Record<string, LucideIcon> = {
-  home: Home,
-  plus: Plus,
-  terminal: Terminal,
-  settings: Settings,
-  users: Users,
-  sliders: Sliders,
-  paint: PaintRoller,
-  info: Info,
-  server: Server,
-  blocks: Blocks,
-  store: Store,
-  "layout-dashboard": LayoutDashboard,
-  chart: BarChart2,
-  sparkles: Sparkles,
-  link2: Link2,
-  download: DownloadIcon,
-  archive: Archive,
-  book: BookOpen,
-  beaker: Beaker,
-};
-
-function getNavIcon(name: string): LucideIcon {
-  return iconMap[name] ?? Info;
-}
+// 图标名直接对应 assets/icons/<name>.svg，由 AnimatedIcon 内联渲染并自带 hover 动画
 
 const router = useRouter();
 const route = useRoute();
@@ -565,8 +521,6 @@ onUnmounted(() => {
   window.removeEventListener("touchmove", onWindowTouchMove);
   window.removeEventListener("touchend", onWindowMouseUp);
 });
-
-// 图标已按需导入，模板中直接使用组件标签替代映射表
 </script>
 
 <template>
@@ -672,13 +626,7 @@ onUnmounted(() => {
                   width="20"
                   height="20"
                 />
-                <component
-                  v-else
-                  :is="getNavIcon(item.icon)"
-                  class="nav-icon"
-                  :size="20"
-                  :stroke-width="1.8"
-                />
+                <AnimatedIcon v-else :name="item.icon" :size="20" class="nav-icon" />
                 <span class="nav-label">
                   {{ item.labelKey ? i18n.t(item.labelKey) : item.label }}
                 </span>
@@ -702,13 +650,7 @@ onUnmounted(() => {
                     width="16"
                     height="16"
                   />
-                  <component
-                    v-else
-                    :is="getNavIcon(child.icon || 'blocks')"
-                    class="nav-icon"
-                    :size="16"
-                    :stroke-width="1.8"
-                  />
+                  <AnimatedIcon v-else :name="child.icon || 'blocks'" :size="16" class="nav-icon" />
                   <span class="nav-label">{{ child.label }}</span>
                 </div>
               </div>
@@ -726,7 +668,7 @@ onUnmounted(() => {
           @mouseenter="schedulePrefetch('/about')"
           @mouseleave="cancelPrefetch('/about')"
         >
-          <Info class="nav-icon" :size="20" :stroke-width="1.8" />
+          <AnimatedIcon name="info" :size="20" class="nav-icon" />
           <span class="nav-label">{{ i18n.t("common.about") }}</span>
         </div>
       </div>

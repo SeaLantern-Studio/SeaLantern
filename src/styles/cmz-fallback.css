@@ -41,11 +41,11 @@
   min-width: 360px;
 }
 
-/* 高级材质下浮层换近实底,保证正文可读性。
+/* 高级材质下浮层换中透底,对齐系统亚克力观感(透 + 磨砂 + 噪声,噪声见下方统一规则)。
    必须带 :root + 双 .cmz-modal 把特异性提到 (0,4,0) 压过上面的实底规则,
    否则会用到 --sl-surface(材质下仅 0.45 不透明),内容透底、字发灰 */
 :root[data-acrylic="on"] .cmz-modal.cmz-modal {
-  background: var(--sl-acrylic-bg-strong);
+  background: var(--sl-acrylic-bg);
   border-color: var(--sl-acrylic-border);
 }
 
@@ -65,11 +65,15 @@
   overflow: hidden;
 }
 
-/* 高级材质浮层:近实色底 + 阴影区分层级,避免半透明透出底下内容
-   (透明窗口 WebView2 下 blur 不渲染,玻璃配方只会留下半透明残留) */
+/* 高级材质浮层:对齐系统亚克力观感 — 中透底 + 磨砂,让底下内容色彩渗入,
+   配方与 modal/toast 同源(blur 取 --cmz-acrylic-blur)。
+   不用 bg-strong:0.8+ 白糊完仍是死白,和侧栏半透明材质反差过大 */
 [data-acrylic="on"] .cmz-select-dropdown {
-  background: var(--sl-acrylic-bg-strong);
+  background: var(--sl-acrylic-bg);
   border-color: var(--sl-acrylic-border);
+  backdrop-filter: blur(var(--cmz-acrylic-blur, 16px)) saturate(var(--cmz-saturate-normal, 180%));
+  -webkit-backdrop-filter: blur(var(--cmz-acrylic-blur, 16px))
+    saturate(var(--cmz-saturate-normal, 180%));
   box-shadow: var(--sl-shadow-elevated);
 }
 
@@ -78,13 +82,33 @@
   background: var(--sl-surface);
 }
 
-/* === Toast === */
+/* === Toast / Tooltip === */
 /* 磨砂交给库本体:半透明 --cmz-acrylic-bg + backdrop-filter,data-acrylic=off 时库自动降级纯色。
    0.6.2 时代的 surface 实底覆盖已删,不透明底色会盖死磨砂效果 */
 :root .cmz-toast {
   backdrop-filter: blur(var(--cmz-acrylic-blur, 16px)) saturate(var(--cmz-acrylic-saturate, 180%));
   -webkit-backdrop-filter: blur(var(--cmz-acrylic-blur, 16px))
     saturate(var(--cmz-acrylic-saturate, 180%));
+}
+
+/* 材质下 toast/tooltip 底色统一为中透底,与 modal/下拉同一块玻璃
+   (透 + 磨砂 + 噪声),只有描边和阴影,不加遮罩。off 时走库的 bg-secondary
+   纯色降级,不在此覆盖 */
+:root[data-acrylic="on"] .cmz-toast,
+:root[data-acrylic="on"] .cmz-tooltip__content {
+  background: var(--sl-acrylic-bg);
+  border-color: var(--sl-acrylic-border);
+}
+
+/* === 系统亚克力噪声颗粒 === */
+/* Fluent 亚克力配方 = blur + tint + noise。噪声平铺在磨砂层之上、内容之下,
+   提供 DWM 材质的哑光颗粒签名。纹理来自 --sl-acrylic-noise(feTurbulence 自制),
+   off 时纯色降级不撒沙。选择器前缀与各浮层的底色规则同级,靠源码顺序覆盖 */
+:root[data-acrylic="on"] .cmz-modal.cmz-modal,
+:root[data-acrylic="on"] .cmz-toast,
+:root[data-acrylic="on"] .cmz-tooltip__content,
+[data-acrylic="on"] .cmz-select-dropdown {
+  background-image: var(--sl-acrylic-noise);
 }
 
 /* 顶部 toast 下移到标题栏之下:默认 top:16px 会盖住右上角窗口控件(最小化/最大化/关闭)

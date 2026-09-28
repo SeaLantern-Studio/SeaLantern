@@ -283,7 +283,11 @@
   height: 20px;
 }
 
-/* 悬停导航项时图标轻微放大，营造跟手反馈 */
+/* 悬停导航项时图标轻微放大，并接力播放 SVG 内部动画 */
+.nav-item:hover {
+  --sl-anim-play: running;
+}
+
 .nav-item:hover .nav-icon {
   transform: scale(1.18);
 }
