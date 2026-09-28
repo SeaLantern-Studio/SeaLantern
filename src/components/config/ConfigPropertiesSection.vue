@@ -7,7 +7,7 @@ const ConfigSourceEditor = defineAsyncComponent(
 );
 import ConfigPropertyEditorControl from "@components/config/ConfigPropertyEditorControl.vue";
 import ConfigComparePanel from "@components/config/ConfigComparePanel.vue";
-import type { ComparePanelRow } from "@views/config/useConfigCompare";
+import type { ComparePanelRow } from "@composables/useConfigCompare";
 import type { ConfigEntry as ConfigEntryType } from "@api/config";
 import { i18n } from "@language";
 

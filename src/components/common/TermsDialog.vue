@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { useAboutLinks } from "@composables/useAboutLinks";
+﻿<script setup lang="ts">
+import { useExternalLinks } from "@composables/useExternalLinks";
 import { i18n } from "@language";
 
 interface Props {
@@ -13,7 +13,7 @@ const emit = defineEmits<{
   (e: "close"): void;
 }>();
 
-const { openLink } = useAboutLinks();
+const { openLink } = useExternalLinks();
 
 function handleAgree() {
   emit("agree");

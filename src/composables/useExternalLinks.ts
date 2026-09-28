@@ -1,3 +1,4 @@
+import { ref } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { isBrowserEnv } from "@api/tauri";
 
@@ -17,6 +18,9 @@ function isExternalHref(href: string | null): href is string {
  * 可保证桌面端与浏览器（Docker）行为一致。
  */
 export function useExternalLinks() {
+  // 复制反馈状态：记录刚复制的 QQ 号，2 秒后清除用于按钮文案切换
+  const copiedQQ = ref<string | null>(null);
+
   /** 在系统浏览器（桌面端）或新标签页（浏览器端）打开链接 */
   async function openLink(href: string) {
     if (!href) return;
@@ -30,6 +34,27 @@ export function useExternalLinks() {
       await openUrl(href);
     } catch (error) {
       console.error("[useExternalLinks] 打开外部链接失败:", error);
+    }
+  }
+
+  async function copyQQ(qq: string) {
+    try {
+      await navigator.clipboard.writeText(qq);
+      copiedQQ.value = qq;
+      setTimeout(() => {
+        copiedQQ.value = null;
+      }, 2000);
+    } catch (e) {
+      console.error("[useExternalLinks] 复制QQ失败:", e);
+    }
+  }
+
+  // 社交入口分发：QQ 号复制到剪贴板，其余按外链打开
+  async function openSocialLink(platform: string, value: string) {
+    if (platform === "qq") {
+      await copyQQ(value);
+    } else {
+      await openLink(value);
     }
   }
 
@@ -57,5 +82,5 @@ export function useExternalLinks() {
     void openLink(href);
   }
 
-  return { openLink, handleLinkClick };
+  return { openLink, copyQQ, copiedQQ, openSocialLink, handleLinkClick };
 }

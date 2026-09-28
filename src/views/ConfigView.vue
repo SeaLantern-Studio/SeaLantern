@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, watch, onMounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
 import { defineAsyncComponent } from "vue";
@@ -14,9 +14,9 @@ const ConfigSourceDiffView = defineAsyncComponent(
 import ConfigPluginsSection from "@components/config/ConfigPluginsSection.vue";
 import ConfigPropertiesSection from "@components/config/ConfigPropertiesSection.vue";
 import ConfigStartupSection from "@components/config/ConfigStartupSection.vue";
-import { useConfigPlugins } from "@views/config/useConfigPlugins";
-import { useConfigCompare } from "@views/config/useConfigCompare";
-import { useConfigPropertiesEditor } from "@views/config/useConfigPropertiesEditor";
+import { useConfigPlugins } from "@composables/useConfigPlugins";
+import { useConfigCompare } from "@composables/useConfigCompare";
+import { useConfigPropertiesEditor } from "@composables/useConfigPropertiesEditor";
 import "@styles/plugin-list.css";
 import "@styles/views/ConfigView.css";
 
