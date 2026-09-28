@@ -20,6 +20,8 @@ function isExternalHref(href: string | null): href is string {
 export function useExternalLinks() {
   // 复制反馈状态：记录刚复制的 QQ 号，2 秒后清除用于按钮文案切换
   const copiedQQ = ref<string | null>(null);
+  // 反馈定时器句柄：连续复制时先清旧定时器，避免提前掐掉新反馈
+  let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** 在系统浏览器（桌面端）或新标签页（浏览器端）打开链接 */
   async function openLink(href: string) {
@@ -41,8 +43,10 @@ export function useExternalLinks() {
     try {
       await navigator.clipboard.writeText(qq);
       copiedQQ.value = qq;
-      setTimeout(() => {
+      if (copyTimer !== null) clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => {
         copiedQQ.value = null;
+        copyTimer = null;
       }, 2000);
     } catch (e) {
       console.error("[useExternalLinks] 复制QQ失败:", e);
