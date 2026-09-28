@@ -23,13 +23,29 @@ const props = withDefaults(defineProps<Props>(), {
 
 const svg = ref<string | null>(null);
 
+// 未知图标名的兜底图形，静态 info 样式，保证插件传错名时不至于空白
+const FALLBACK_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+
 watch(
   () => props.name,
   async (name) => {
     svg.value = null;
     const loader = sources[`/src/assets/icons/${name}.svg`];
-    if (loader) {
-      svg.value = await loader();
+    if (!loader) {
+      svg.value = FALLBACK_SVG;
+      return;
+    }
+    try {
+      const loaded = await loader();
+      // 异步等待期间 name 可能又变了，过期结果直接丢弃，防止显示串图
+      if (props.name === name) {
+        svg.value = loaded;
+      }
+    } catch {
+      if (props.name === name) {
+        svg.value = FALLBACK_SVG;
+      }
     }
   },
   { immediate: true },
