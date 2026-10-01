@@ -1,0 +1,213 @@
+name: "发版"
+
+# 需要组织管理员的 PAT（secret: RELEASE_TOKEN），
+# main 受 ruleset 保护，GITHUB_TOKEN 无法推送、其推送也不会触发下游工作流。
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "要发布的版本号（语义化版本，可带 v 前缀，例如 1.3.0 或 v1.3.0）"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_BRANCH: main
+  CHECK_WORKFLOW_NAME: 代码质量检查
+
+jobs:
+  publish:
+    name: 发版 ${{ inputs.version }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    env:
+      PUBLISH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      VERSION_INPUT: ${{ inputs.version }}
+    steps:
+      - name: 校验触发来源与版本号
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${PUBLISH_TOKEN}" ]]; then
+            echo "::error ::缺少推送凭证，请配置仓库 secret：RELEASE_TOKEN（组织管理员 PAT）"
+            exit 1
+          fi
+          echo "::add-mask::${PUBLISH_TOKEN}"
+
+          if [[ "${GITHUB_REF}" != "refs/heads/${RELEASE_BRANCH}" ]]; then
+            echo "::error ::发版只允许从 ${RELEASE_BRANCH} 分支触发，当前来源：${GITHUB_REF}"
+            exit 1
+          fi
+
+          VERSION="${VERSION_INPUT#v}"
+          if ! printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error ::无效版本号：${VERSION_INPUT}，请使用语义化版本，例如 1.3.0"
+            exit 1
+          fi
+
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+          echo "TAG=v${VERSION}" >> "${GITHUB_ENV}"
+          echo "✅ 目标版本：${VERSION}（tag：v${VERSION}）"
+
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_BRANCH }}
+          fetch-depth: 0
+          token: ${{ env.PUBLISH_TOKEN }}
+
+      - name: 校验目标 tag 尚未存在
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            echo "::error ::本地已存在 tag ${TAG}"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error ::远程已存在 tag ${TAG}，请检查版本号"
+            exit 1
+          fi
+          echo "✅ tag ${TAG} 可用"
+
+      - name: 安装系统依赖 (Ubuntu 专用)
+        uses: ./.github/actions/install-tauri-dependencies
+        with:
+          install-xdg-utils: "true"
+
+      - name: 设置 pnpm 环境
+        uses: ./.github/actions/setup-pnpm
+
+      - name: 设置 Rust 环境
+        uses: ./.github/actions/setup-rust
+        with:
+          components: rustfmt, clippy
+          cache: "true"
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 更新版本号
+        run: pnpm cv "${VERSION}"
+
+      - name: 生成 NOTICE
+        run: pnpm notice
+
+      - name: 运行前端全量检查
+        run: pnpm run fmt:check && pnpm run lint && pnpm run build:check
+
+      - name: 运行前端测试
+        run: pnpm test
+
+      - name: 运行后端静态检查
+        run: |
+          cargo fmt --all -- --check
+          cargo check --workspace --all-targets
+          cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: 运行后端测试
+        run: |
+          cargo test -p sealantern-application
+          RUSTFLAGS="--cfg ci_skip_validation" cargo test -p sealantern-core --lib
+          cargo test -p sealantern-feature
+          cargo test -p sealantern-infra --all-features
+          cargo test -p sealantern-contract
+          cargo test -p sealantern-server
+          cargo test --bin sealantern -p sealantern
+
+      - name: 提交版本变更并打 tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin "${RELEASE_BRANCH}"
+          if ! git merge-base --is-ancestor "origin/${RELEASE_BRANCH}" HEAD; then
+            echo "::error ::${RELEASE_BRANCH} 在发版期间有了新提交，请重新运行发版流程"
+            exit 1
+          fi
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::error ::版本号没有变化（当前可能已是 ${VERSION}），没有可提交的内容"
+            exit 1
+          fi
+
+          git commit --no-verify -m "chore: 升级到 ${TAG}"
+          git tag "${TAG}"
+
+          echo "SOURCE_SHA=$(git rev-parse HEAD)" >> "${GITHUB_ENV}"
+          git --no-pager show --stat --oneline HEAD
+
+      - name: 推送版本提交到 main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin "HEAD:refs/heads/${RELEASE_BRANCH}"
+
+      # release.yml 要求 tag 对应提交在 main 上有一次成功的质量检查运行，所以先等检查跑完再推 tag。
+      - name: 等待 main 上的代码质量检查通过
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          deadline=$((SECONDS + 2700))
+          while :; do
+            runs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SOURCE_SHA}&per_page=100")"
+            status="$(printf '%s' "${runs_json}" | jq -r \
+              --arg name "${CHECK_WORKFLOW_NAME}" \
+              --arg branch "${RELEASE_BRANCH}" \
+              '[.workflow_runs[] | select(.name == $name and .event == "push" and .head_branch == $branch)] | first
+               | if . == null then "missing pending" else "\(.status) \(.conclusion // "pending")" end')"
+            read -r run_status run_conclusion <<<"${status}"
+
+            if [[ "${run_status}" == "completed" ]]; then
+              if [[ "${run_conclusion}" == "success" ]]; then
+                echo "✅ ${CHECK_WORKFLOW_NAME} 已通过：${SOURCE_SHA}"
+                break
+              fi
+              echo "::error ::${CHECK_WORKFLOW_NAME} 未通过（${run_conclusion}），已中止发版，tag 未推送"
+              exit 1
+            fi
+
+            if ((SECONDS > deadline)); then
+              echo "::error ::等待 ${CHECK_WORKFLOW_NAME} 超时（当前状态：${status}），已中止发版，tag 未推送"
+              exit 1
+            fi
+
+            echo "等待 ${CHECK_WORKFLOW_NAME} 完成（当前：${status}）..."
+            sleep 30
+          done
+
+      - name: 推送 tag 触发发布流程
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin "refs/tags/${TAG}"
+
+      - name: 输出发版摘要
+        shell: bash
+        run: |
+          {
+            echo "## 发版完成"
+            echo ""
+            echo "- 版本：\`${VERSION}\`"
+            echo "- Tag：\`${TAG}\`（提交 \`${SOURCE_SHA}\`）"
+            echo "- 版本提交已推送到 \`${RELEASE_BRANCH}\`"
+            echo ""
+            echo "「发布」工作流正在构建各平台产物，完成后会创建草稿 Release，请到 Releases 页面确认后再发布。"
+          } >> "${GITHUB_STEP_SUMMARY}"
