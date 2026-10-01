@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -21,18 +21,20 @@ concurrency:
 
 env:
   RELEASE_BRANCH: main
-  CHECK_WORKFLOW_NAME: 代码质量检查
 
 jobs:
   publish:
     name: 发版 ${{ inputs.version }}
     runs-on: ubuntu-22.04
     timeout-minutes: 180
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
     env:
       PUBLISH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
       VERSION_INPUT: ${{ inputs.version }}
     steps:
       - name: 校验触发来源与版本号
+        id: meta
         shell: bash
         run: |
           set -euo pipefail
@@ -56,6 +58,7 @@ jobs:
 
           echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
           echo "TAG=v${VERSION}" >> "${GITHUB_ENV}"
+          echo "tag=v${VERSION}" >> "${GITHUB_OUTPUT}"
           echo "✅ 目标版本：${VERSION}（tag：v${VERSION}）"
 
       - name: 检出代码
@@ -157,47 +160,15 @@ jobs:
           set -euo pipefail
           git push origin "HEAD:refs/heads/${RELEASE_BRANCH}"
 
-      # release.yml 要求 tag 对应提交在 main 上有一次成功的质量检查运行，所以先等检查跑完再推 tag。
-      - name: 等待 main 上的代码质量检查通过
+      # 用默认 token 推 tag：否则 tag push 会再触发一遍「发布」工作流，和下面的显式复用撞成双跑。
+      - name: 推送 tag
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
-          deadline=$((SECONDS + 2700))
-          while :; do
-            runs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SOURCE_SHA}&per_page=100")"
-            status="$(printf '%s' "${runs_json}" | jq -r \
-              --arg name "${CHECK_WORKFLOW_NAME}" \
-              --arg branch "${RELEASE_BRANCH}" \
-              '[.workflow_runs[] | select(.name == $name and .event == "push" and .head_branch == $branch)] | first
-               | if . == null then "missing pending" else "\(.status) \(.conclusion // "pending")" end')"
-            read -r run_status run_conclusion <<<"${status}"
-
-            if [[ "${run_status}" == "completed" ]]; then
-              if [[ "${run_conclusion}" == "success" ]]; then
-                echo "✅ ${CHECK_WORKFLOW_NAME} 已通过：${SOURCE_SHA}"
-                break
-              fi
-              echo "::error ::${CHECK_WORKFLOW_NAME} 未通过（${run_conclusion}），已中止发版，tag 未推送"
-              exit 1
-            fi
-
-            if ((SECONDS > deadline)); then
-              echo "::error ::等待 ${CHECK_WORKFLOW_NAME} 超时（当前状态：${status}），已中止发版，tag 未推送"
-              exit 1
-            fi
-
-            echo "等待 ${CHECK_WORKFLOW_NAME} 完成（当前：${status}）..."
-            sleep 30
-          done
-
-      - name: 推送 tag 触发发布流程
-        shell: bash
-        run: |
-          set -euo pipefail
-          git push origin "refs/tags/${TAG}"
+          echo "::add-mask::${GITHUB_TOKEN}"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${TAG}"
 
       - name: 输出发版摘要
         shell: bash
@@ -209,5 +180,16 @@ jobs:
             echo "- Tag：\`${TAG}\`（提交 \`${SOURCE_SHA}\`）"
             echo "- 版本提交已推送到 \`${RELEASE_BRANCH}\`"
             echo ""
-            echo "「发布」工作流正在构建各平台产物，完成后会创建草稿 Release，请到 Releases 页面确认后再发布。"
+            echo "接下来复用「发布」工作流构建各平台产物并创建草稿 Release，请到 Releases 页面确认后再发布。"
           } >> "${GITHUB_STEP_SUMMARY}"
+
+  release:
+    name: 构建并起草 Release
+    needs: publish
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.publish.outputs.tag }}
+      ci_verified: true
