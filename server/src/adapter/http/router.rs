@@ -4,12 +4,15 @@
 //! [`AppState`] 与前端资源（`FrontendAssets`）后传入 [`build_router`]，
 //! 返回的 [`Router`] 可直接嵌套进更大应用或启动监听。
 
+use std::sync::Arc;
+
 use axctl_core::embed::FrontendAssets;
 use axum::Router;
 use axum::routing::{delete, get, patch, post, put};
 
 use sealantern_application::services::AppServices;
 
+use crate::event::ServerEventBus;
 use crate::rpc::axum::AxumRpcState;
 use crate::rpc::methods::plugin::InvokePluginCapability;
 use crate::rpc::plugin_auth::PluginRpcTokenResolver;
@@ -20,14 +23,19 @@ use super::state::AppState;
 /// REST API 路径前缀。
 const API_PREFIX: &str = "/api";
 
-/// 组装当前所有已实现 REST 路由与前端 SPA 路由的 Axum 应用。
+/// 组装当前所有已实现 REST 路由、事件 WebSocket 与前端 SPA 路由的 Axum 应用。
 ///
 /// - REST 路由挂载在 `/api` 前缀下，采用资源风格，并预留 `/{id}/xxx` 嵌套
 ///   子资源（如状态、日志流）的挂载位置，后续按需在此扩展。
+/// - 事件推送挂载在 `/api/events/ws`（WebSocket），由宿主注入的事件总线驱动。
 /// - SPA fallback 由 [`axctl_core::serve::spa`] 提供：release 从内嵌静态资源
 ///   提供服务；debug 下前端由 vite 提供（axctl 代理统一入口），此处为空包装。
-pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> Router {
-    let state = AppState::new(services);
+pub fn build_router(
+    services: AppServices,
+    events: Arc<ServerEventBus>,
+    assets: FrontendAssets<'static>,
+) -> Router {
+    let state = AppState::new(services, events);
 
     let mut plugin_rpc_routes = Router::new();
     crate::rpc_route!(plugin_rpc_routes, InvokePluginCapability::new(state.services().clone()));
@@ -87,8 +95,12 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
         .route("/downloads/{id}", get(handlers::query_download))
         .route("/downloads/{id}", axum::routing::delete(handlers::cancel_download));
 
+    // 事件推送：WebSocket 长连接；服务端主动推送，客户端按事件名分发。
+    let event_routes = Router::new().route("/events/ws", get(crate::event::ws::events_ws));
+
     Router::new()
         .nest(API_PREFIX, instance_routes)
+        .nest(API_PREFIX, event_routes)
         .nest(API_PREFIX, provisioning_routes)
         .nest(API_PREFIX, settings_routes)
         .nest(API_PREFIX, system_routes)
@@ -116,7 +128,11 @@ mod tests {
             .await
             .expect("create instance service");
         (
-            build_router(AppServices::from_inner(instance), FrontendAssets::empty()),
+            build_router(
+                AppServices::from_inner(instance),
+                Arc::new(ServerEventBus::with_default_capacity()),
+                FrontendAssets::empty(),
+            ),
             directory,
         )
     }
@@ -179,5 +195,23 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         assert!(response.headers().contains_key("x-request-id"));
+    }
+
+    #[tokio::test]
+    async fn events_ws_route_is_mounted_and_rejects_plain_get() {
+        let (router, _directory) = test_router().await;
+
+        // 普通 GET（无 Upgrade 头）应由 WebSocket 提取器拒绝，而非落到 SPA fallback。
+        let response = router
+            .oneshot(
+                Request::get("/api/events/ws")
+                    .body(Body::empty())
+                    .expect("build request"),
+            )
+            .await
+            .expect("call events route");
+
+        assert_ne!(response.status(), StatusCode::NOT_FOUND, "事件路由应已挂载");
+        assert_ne!(response.status(), StatusCode::OK, "缺少 Upgrade 头不应升级成功");
     }
 }

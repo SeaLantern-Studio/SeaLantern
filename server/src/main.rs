@@ -4,9 +4,11 @@
 //! 并在收到终止信号时优雅关闭。
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use sealantern_application::services::AppServices;
 use sealantern_server::adapter::http::build_router;
+use sealantern_server::event::{ServerEventBus, spawn_log_bridge};
 use sealantern_server::observability;
 
 /// axctl dev 注入的后端监听地址（托管模式：本进程只提供 API）。
@@ -87,9 +89,18 @@ pub async fn main() {
         );
     }
 
+    // 事件总线：进程内广播。日志桥接把 application 的日志广播转发进总线，
+    // 再由 `/api/events/ws` 推送给客户端；桥接任务随运行时结束，句柄无需保留。
+    let events = Arc::new(ServerEventBus::with_default_capacity());
+    spawn_log_bridge(Arc::clone(&events));
+
     // 前端资源：release 编译期内嵌 dist；debug 为空包装（dev 前端由 vite 提供，
     // axctl 代理统一入口）。
-    let app = build_router(services.clone(), axctl_core::frontend!("$CARGO_MANIFEST_DIR/../dist"));
+    let app = build_router(
+        services.clone(),
+        events,
+        axctl_core::frontend!("$CARGO_MANIFEST_DIR/../dist"),
+    );
 
     let addr = listen_addr();
 
