@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::market::error::MarketError;
-use crate::market::models::{MarketResource, ResourceInfo, SearchResult, Version};
+use crate::resource::market::error::MarketError;
+use crate::resource::market::models::{MarketResource, ResourceInfo, SearchResult, Version};
 
 /// 统一资源获取器 trait，定义了对接不同资源平台所需的核心操作。
 ///

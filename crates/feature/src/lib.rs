@@ -8,11 +8,9 @@ pub mod java;
 pub mod mclogs;
 pub mod models;
 pub mod observability;
+pub mod resource;
 pub mod server;
 pub mod update;
 
 #[cfg(feature = "online-tunnel")]
 pub mod online;
-
-#[path = "market/lib.rs"]
-pub mod market;

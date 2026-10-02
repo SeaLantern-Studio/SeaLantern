@@ -15,9 +15,9 @@ use crate::port::OnlineTunnelService;
 use crate::service::{
     CoreBackupService, CoreConsoleService, CoreCronTaskService, CoreDownloadService,
     CoreInstanceService, CoreJavaService, CoreOnlineTunnelService, CorePlayerService,
-    CoreProvisioningService, CoreServerCatalogService, CoreServerConfigService, CoreServerService,
-    CoreSettingsService, CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService,
-    ProxyMonitoringService,
+    CoreProvisioningService, CoreResourceService, CoreServerCatalogService,
+    CoreServerConfigService, CoreServerService, CoreSettingsService, CoreSystemService,
+    CoreUpdateCheckService, CoreUpdateInstallService, ProxyMonitoringService,
 };
 
 /// 应用服务聚合句柄；由宿主 composition root 创建并显式传递。
@@ -47,6 +47,8 @@ pub struct AppServicesInner {
     pub catalog: Arc<CoreServerCatalogService>,
     /// 服务端检查与供给计划服务。
     pub provisioning: Arc<CoreProvisioningService>,
+    /// 实例资源管理服务。
+    pub resource: Arc<CoreResourceService>,
     /// 服务器进程管理服务。
     pub server: Arc<CoreServerService>,
     /// 服务器配置（server.properties）服务。
@@ -94,6 +96,7 @@ impl AppServices {
                 online_tunnel: Arc::new(CoreOnlineTunnelService::default()),
                 catalog: Arc::new(CoreServerCatalogService),
                 provisioning: Arc::new(CoreProvisioningService),
+                resource: Arc::new(CoreResourceService::new(instance.clone())),
                 settings,
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 update: Arc::new(CoreUpdateCheckService::new()),
@@ -149,6 +152,11 @@ impl AppServices {
     /// 访问服务端检查与供给计划服务。
     pub fn provisioning(&self) -> &Arc<CoreProvisioningService> {
         &self.inner.provisioning
+    }
+
+    /// 访问资源管理服务（实例资源 + 市场查询）。
+    pub fn resource(&self) -> &Arc<CoreResourceService> {
+        &self.inner.resource
     }
 
     /// 访问服务器进程管理服务（`Arc` 共享句柄，clone 廉价）。

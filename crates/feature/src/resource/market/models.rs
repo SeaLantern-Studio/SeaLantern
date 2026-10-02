@@ -7,7 +7,27 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::market::fetcher::models::VersionFile;
+/// 版本关联的文件信息。
+///
+/// 每个版本可能包含一个或多个文件（例如主 jar 包、API jar 包等），
+/// 该结构描述了其中单个文件的下载地址、名称、大小以及是否为默认下载文件。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionFile {
+    /// 文件的下载 URL。
+    pub url: String,
+
+    /// 文件名（不含路径）。
+    pub filename: String,
+
+    /// 文件大小，单位为字节。
+    pub size: u64,
+
+    /// 是否为该版本的主文件（默认下载项）。
+    ///
+    /// 当同一版本包含多个文件时，`primary = true` 表示该文件是用户
+    /// 通常应下载的那个（如插件本体）。
+    pub primary: bool,
+}
 
 /// 市场资源的基本信息。
 ///
@@ -27,9 +47,6 @@ pub struct MarketResource {
     /// 资源的累计下载次数。
     pub download_count: u64,
 
-    /// 资源已发布的版本数量。
-    pub version_count: u64,
-
     /// 资源来源市场（Spiget 或 Modrinth）。
     pub source: MarketSource,
 }
@@ -45,6 +62,44 @@ pub enum MarketSource {
 
     /// 资源来自 Modrinth（模组与插件分发平台）。
     Modrinth,
+}
+
+/// 资源类型（从平台项目类型映射而来）。
+///
+/// 不同平台的 `project_type` 命名不完全一致（Modrinth 为 `resourcepack` 等），
+/// 本枚举统一表达常见类型；[`Unknown`][Self::Unknown] 兜底未映射的类型，
+/// 避免未来新类型破坏兼容性。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourceType {
+    /// 服务端插件（Bukkit / Spigot / Paper 等）。
+    Plugin,
+    /// 模组（Fabric / Forge / NeoForge 等）。
+    Mod,
+    /// 数据包。
+    Datapack,
+    /// 光影包。
+    Shader,
+    /// 资源包（材质 / 纹理）。
+    ResourcePack,
+    /// 未知或平台新增的类型。
+    Unknown,
+}
+
+impl ResourceType {
+    /// 从市场平台返回的项目类型字符串推断资源类型。
+    ///
+    /// 大小写不敏感；无法识别时返回 [`ResourceType::Unknown`]。
+    pub fn from_platform_value(value: &str) -> Self {
+        match value.to_ascii_lowercase().as_str() {
+            "plugin" | "bukkit" | "spigot" | "paper" | "purpur" => Self::Plugin,
+            "mod" | "fabric" | "forge" | "neoforge" | "quilt" => Self::Mod,
+            "datapack" => Self::Datapack,
+            "shader" | "shaders" => Self::Shader,
+            "resourcepack" | "resource_pack" | "resource-pack" => Self::ResourcePack,
+            _ => Self::Unknown,
+        }
+    }
 }
 
 /// 资源的详细项目信息。
@@ -78,19 +133,20 @@ pub struct ResourceInfo {
     /// 该资源支持的加载器/平台列表（如 `["bukkit", "paper"]` 或 `["fabric", "forge"]`）。
     pub loaders: Vec<String>,
 
-    /// 资源类型标识（如 `"plugin"`、`"mod"`、`"datapack"` 等）。
-    pub resource_type: String,
+    /// 资源类型（插件 / 模组 / 数据包等）。
+    pub resource_type: ResourceType,
 
-    /// 资源是否为外部托管（仅 Spiget 适用）。
+    /// 资源是否为外部托管（**仅 Spiget 适用**）。
     ///
-    /// 为 `true` 时，`download_url` 指向外部站点（如 GitHub、Modrinth）；
-    /// 为 `false` 时，`download_url` 为 Spiget CDN 下载路径。
+    /// Modrinth 恒为 `false`。为 `true` 时，`download_url` 指向外部站点
+    /// （如 GitHub、Modrinth）；为 `false` 时，`download_url` 为 Spiget CDN 下载路径。
     pub external: bool,
 
-    /// 资源的下载链接。
+    /// 资源的首选下载链接。
     ///
-    /// 对于 Spiget，此为完整的 CDN 下载 URL 或外部 URL；
-    /// 对于 Modrinth，此为项目的 CDN 文件下载链接。
+    /// - Spiget：CDN 下载路径（或外部托管 URL）；
+    /// - Modrinth：**不填充**（项目详情接口不返回文件 URL），下载请通过
+    ///   版本列表的 `VersionFile::url` 获取。
     pub download_url: String,
 }
 
