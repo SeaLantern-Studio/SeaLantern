@@ -19,8 +19,8 @@ pub use cron::{
 };
 pub use download::{cancel_download, create_download, query_download};
 pub use instance::{
-    create_instance, delete_instance, get_instance, import_existing_instance, list_instances,
-    rename_instance, update_instance_path,
+    create_instance, delete_instance, discover_instances, get_instance, import_existing_instance,
+    list_instances, rename_instance, update_instance_path,
 };
 pub use provisioning::inspect_server;
 pub use server::{
@@ -28,5 +28,5 @@ pub use server::{
     stop_server,
 };
 pub use settings::{get_settings, settings_overview};
-pub use system::{default_run_path, server_resource_usage, system_snapshot};
+pub use system::{default_run_path, server_resource_usage, system_snapshot, temp_download_dir};
 pub use update::check_update;
