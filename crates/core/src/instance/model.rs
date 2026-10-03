@@ -84,7 +84,10 @@ pub struct LocalLaunch {
 }
 
 impl LocalLaunch {
-    pub(crate) fn normalize_and_validate(&mut self) -> Result<Option<PathBuf>, InstanceError> {
+    /// 规范化并校验启动配置（规范化空白命令、剔除空路径，再按启动模式
+    /// 检查目标/自定义载荷一致性）。除 `Instance::new` 的构造校验外，
+    /// 也供持久化文档层在写回前复用同一套领域规则。
+    pub fn normalize_and_validate(&mut self) -> Result<Option<PathBuf>, InstanceError> {
         self.custom_command = self
             .custom_command
             .as_deref()
