@@ -72,21 +72,29 @@ pub struct AppServicesInner {
 }
 
 impl AppServices {
-    /// 从既有实例构造句柄（供宿主装配和测试注入）。
+    /// 从既有设置服务构造句柄（供宿主装配和测试注入）。
     ///
-    /// 服务器进程服务共享同一实例服务句柄；下载/定时任务/系统资源服务自动构造。
-    pub fn from_inner(instance: CoreInstanceService) -> Self {
-        let instance = Arc::new(instance);
-        let settings = Arc::new(CoreSettingsService::new());
+    /// 实例服务依赖设置服务提供目录布局与名单，必须由同一份 `settings`
+    /// 派生；服务器进程服务共享同一实例服务句柄。
+    pub fn from_inner(settings: Arc<CoreSettingsService>) -> Self {
+        let instance = Arc::new(CoreInstanceService::new(settings.clone()));
         let server = Arc::new(CoreServerService::new(instance.clone(), settings.clone()));
         Self {
             inner: Arc::new(AppServicesInner {
                 background_started: AtomicBool::new(false),
-                backup: Arc::new(CoreBackupService::new(instance.clone(), server.clone())),
+                backup: Arc::new(CoreBackupService::new(
+                    instance.clone(),
+                    server.clone(),
+                    settings.clone(),
+                )),
                 download: Arc::new(CoreDownloadService::new()),
                 console: Arc::new(CoreConsoleService::new(instance.clone())),
-                cron: Arc::new(CoreCronTaskService::new(server.clone())),
-                system: Arc::new(CoreSystemService::new(instance.clone(), server.clone())),
+                cron: Arc::new(CoreCronTaskService::new(server.clone(), instance.clone())),
+                system: Arc::new(CoreSystemService::new(
+                    instance.clone(),
+                    server.clone(),
+                    settings.clone(),
+                )),
                 server: server.clone(),
                 server_config: Arc::new(CoreServerConfigService),
                 instance: instance.clone(),
@@ -109,9 +117,10 @@ impl AppServices {
     /// 每个宿主的 composition root 只应调用一次；这是一个为当前宿主创建
     /// 独立服务图的构造器，不是进程级共享入口。构造后的句柄应通过宿主
     /// 状态显式传给 handler / command，而不是在业务代码中重复构造。
+    ///
+    /// 设置服务先行就绪（实例目录布局/名单的读取来源），实例服务由此派生。
     pub async fn build() -> Result<Self, InstanceError> {
-        sealantern_feature::config::data_migration::run_startup_migration().await?;
-        let services = Self::from_inner(CoreInstanceService::new().await?);
+        let services = Self::from_inner(Arc::new(CoreSettingsService::new()));
         services.start_background_services().await;
         Ok(services)
     }
@@ -245,14 +254,22 @@ impl AppServices {
     }
 
     /// 获取应用插件服务；首次调用才打开策略数据库，避免阻塞常规启动路径。
+    ///
+    /// 插件根目录由设置服务按当前布局解析（主资源目录可经
+    /// `registry.main_resource_dir` 覆盖），不再写死默认数据目录。
     pub async fn plugin(&self) -> Result<&Arc<CorePluginService>, PluginServiceError> {
         let system = self.inner.system.clone();
         let instance = self.inner.instance.clone();
         let server = self.inner.server.clone();
+        let settings = self.inner.settings.clone();
         self.inner
             .plugin
             .get_or_try_init(move || async move {
-                let root = sealantern_infra::platform::get_app_data_dir().join("plugins");
+                let root = settings
+                    .layout()
+                    .await
+                    .map_err(|error| PluginServiceError::Initialization(error.to_string()))?
+                    .plugins_dir();
                 CorePluginService::open_with_read_host(
                     &root,
                     root.join("data"),

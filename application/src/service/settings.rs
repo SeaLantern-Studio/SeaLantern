@@ -12,11 +12,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use sealantern_contract::SettingsServiceError;
 use sealantern_contract::settings::{
-    AppSettings, DEFAULT_ACRYLIC_BLUR_LEVEL, PartialAppSettings, SettingsEntry, SettingsEntryType,
-    SettingsGroupInfo, SettingsOption, SettingsOverview, UpdateResult,
+    AppSettings, DEFAULT_ACRYLIC_BLUR_LEVEL, InstanceRegistrySection, PartialAppSettings,
+    SettingsEntry, SettingsEntryType, SettingsGroupInfo, SettingsOption, SettingsOverview,
+    UpdateResult,
 };
 use sealantern_feature::config::SettingsManager;
-use sealantern_infra::platform::collect_system_fonts;
+use sealantern_infra::platform::{AppLayout, collect_system_fonts};
 
 use crate::error::SettingsError;
 use crate::port::SettingsService;
@@ -57,6 +58,19 @@ impl CoreSettingsService {
         }
     }
 
+    /// 从指定设置文件路径加载管理器并构造服务。
+    ///
+    /// 供测试与需要受控设置根的下游宿主使用（避免直接依赖 feature 的
+    /// `SettingsManager`）；`path` 为 `settings.json` 的完整路径。
+    pub async fn with_settings_file(
+        path: impl Into<std::path::PathBuf>,
+    ) -> Result<Self, SettingsError> {
+        let manager = SettingsManager::load(path.into())
+            .await
+            .map_err(SettingsError::from)?;
+        Ok(Self::with_manager(manager))
+    }
+
     #[cfg(test)]
     fn with_manager_and_runtime(
         manager: SettingsManager,
@@ -90,6 +104,33 @@ impl CoreSettingsService {
             })
             .await?;
         Ok(manager)
+    }
+
+    /// 当前生效的应用目录布局。
+    ///
+    /// 首次调用完成设置加载（含旧文件名迁移）；主资源目录取自
+    /// `registry.main_resource_dir`，未设置时与主配置目录同址。
+    /// 每次访问都从最新设置现构造，目录覆盖值的运行时改动立即生效。
+    pub async fn layout(&self) -> Result<AppLayout, SettingsError> {
+        Ok(self.manager().await?.lock().await.layout())
+    }
+
+    /// 实例注册表分区快照（主资源目录 / 附加目录 / 信任与忽略名单）。
+    ///
+    /// 供实例发现层读取「本机登记了哪些目录与信任状态」；发现是纯读操作，
+    /// 快照即可满足——写路径由信任原语经 `lock_manager` 单独走。
+    pub async fn registry(&self) -> Result<InstanceRegistrySection, SettingsError> {
+        Ok(self.manager().await?.lock().await.get().registry.clone())
+    }
+
+    /// 借用设置管理器写锁。
+    ///
+    /// 供实例服务的信任原语（`trust_instance`/`ignore_dir` 等）在持锁期间
+    /// 调用 `update_registry`；调用方不得在持锁期间执行长耗时 IO。
+    pub(crate) async fn lock_manager(
+        &self,
+    ) -> Result<tokio::sync::MutexGuard<'_, SettingsManager>, SettingsError> {
+        Ok(self.manager().await?.lock().await)
     }
 
     /// 加载持久化设置并同步代理运行时，供网络消费者建立启动屏障。

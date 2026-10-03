@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::java::JavaInfo;
 use crate::proxy::{ProxyConfigError, ProxySettings};
 
+use super::registry::InstanceRegistrySection;
+
 /// 当前配置版本号。
 ///
 /// 每次配置结构变更时递增，由配置管理器据此执行数据迁移。
@@ -30,7 +32,7 @@ pub struct SettingsValidationError {
 }
 
 impl SettingsValidationError {
-    fn new(field: &'static str, message: &'static str) -> Self {
+    pub(crate) fn new(field: &'static str, message: &'static str) -> Self {
         Self { field, message }
     }
 
@@ -133,6 +135,9 @@ pub struct AppSettings {
 
     pub plugin_allowed_commands: Vec<String>,
     pub plugin_blocked_commands: Vec<String>,
+
+    /// 实例注册表：主资源目录、附加服务器目录与信任状态。
+    pub registry: InstanceRegistrySection,
 }
 
 impl Default for AppSettings {
@@ -185,6 +190,7 @@ impl Default for AppSettings {
             tunnel_host_max_players: None,
             plugin_allowed_commands: vec![],
             plugin_blocked_commands: vec![],
+            registry: InstanceRegistrySection::default(),
         }
     }
 }

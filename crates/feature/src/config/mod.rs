@@ -1,16 +1,10 @@
-pub mod data_migration;
-pub mod sealantern;
+pub mod instance;
 pub mod server;
+pub mod settings;
 
-pub use sealantern::InstanceRegistry;
-#[allow(deprecated)]
-pub use sealantern::types::{
-    AppSettings, InstanceList, JavaInfo, NullablePatch, PartialAppSettings, ServerStatus,
-    SettingsGroup, StartupMode, UpdateResult,
+pub use crate::models::{
+    AppSettings, JavaInfo, NullablePatch, PartialAppSettings, SettingsGroup, UpdateResult,
 };
-pub use sealantern::{SettingsError, SettingsManager};
+pub use settings::{SettingsError, SettingsManager};
 
 pub use server::{ConfigEntry, ServerProperties, ServerPropertiesError, ServerPropertiesManager};
-
-/// 解析应用数据目录，优先使用环境变量 `SEALANTERN_DATA_DIR`。
-pub use sealantern_infra::platform::get_app_data_dir as resolve_data_dir;
