@@ -32,8 +32,6 @@ pub const DOCUMENT_FILE_NAME: &str = "sl.json";
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
 /// 文档读取上限：最大 10 MiB。
-// TODO(stack): 消费方（发现层 read_document_bytes）在后续层落地后摘掉 allow。
-#[allow(dead_code)]
 const DOCUMENT_READ_LIMIT: DataLimit = DataLimit::new(10 * 1024 * 1024);
 
 /// 实例文档。
@@ -535,7 +533,6 @@ fn migrate_document(
 
 /// 仅用于无锁读取探测（发现层先读字节判断是否为有效文档）；模块内部
 /// 细节，不外泄到 `config::instance` 的公共 API。
-#[allow(dead_code)]
 pub(crate) async fn read_document_bytes(path: &Path) -> Result<Vec<u8>, FsError> {
     read_limited(path, DOCUMENT_READ_LIMIT).await
 }
