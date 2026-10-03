@@ -4,6 +4,7 @@
 //! [`CronTaskExecutor`] 注入实际的服务器操作，避免 `feature` 反向依赖
 //! `core` 或特定的桌面运行时。
 
+pub mod engine;
 mod model;
 mod service;
 
