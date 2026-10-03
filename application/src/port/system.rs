@@ -20,6 +20,11 @@ pub trait SystemService: Send + Sync {
     /// 路径优先级：标准数据目录 → 文档目录 → 当前工作目录。
     async fn default_run_path(&self) -> Result<String, SystemServiceError>;
 
+    /// 获取临时下载目录（主资源目录下的 `temp/`）。
+    ///
+    /// 供前端把「下载/暂存」文件放到独立目录，避免与 `instances/` 容器混淆。
+    async fn temp_download_dir(&self) -> Result<String, SystemServiceError>;
+
     /// 按实例标识采集服务器资源占用。
     ///
     /// 未运行或进程不存在时返回 `pid = None` 的空资源结果。

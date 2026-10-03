@@ -90,10 +90,22 @@ mod tests {
     use std::path::PathBuf;
 
     use sealantern_core::instance::{InstanceSpec, LocalLaunch, StartupMode};
+    use sealantern_feature::config::SettingsManager;
     use sealantern_feature::server::log::{LogSource, open_log_database};
     use sealantern_infra::persistence::SqlValue;
 
     use super::*;
+
+    /// 以给定路径的父目录作为设置根装配实例服务（该根下 `instances/`
+    /// 即主实例容器）。
+    async fn test_instance_service(settings_file: PathBuf) -> CoreInstanceService {
+        let manager = SettingsManager::load(settings_file)
+            .await
+            .expect("实例服务应创建成功");
+        CoreInstanceService::with_settings(crate::service::CoreSettingsService::with_manager(
+            manager,
+        ))
+    }
 
     fn sample_spec(id: &str, directory: PathBuf) -> InstanceSpec {
         InstanceSpec {
@@ -128,11 +140,8 @@ mod tests {
         let instance_dir = temp.path().join("server-a");
         std::fs::create_dir_all(&instance_dir).expect("实例目录应创建成功");
 
-        let instance_service = Arc::new(
-            CoreInstanceService::with_path(temp.path().join("instances.json"))
-                .await
-                .expect("实例服务应创建成功"),
-        );
+        let instance_service =
+            Arc::new(test_instance_service(temp.path().join("settings.json")).await);
         instance_service
             .create(sample_spec("a", instance_dir.clone()))
             .await
@@ -168,13 +177,9 @@ mod tests {
 
     #[tokio::test]
     async fn logs_rejects_negative_since() {
-        let instance_service = Arc::new(
-            CoreInstanceService::with_path(
-                std::env::temp_dir().join("sealantern-console-neg-since.json"),
-            )
-            .await
-            .expect("实例服务应创建成功"),
-        );
+        let root = tempfile::tempdir().expect("临时目录应创建成功");
+        let instance_service =
+            Arc::new(test_instance_service(root.path().join("settings.json")).await);
         let console = CoreConsoleService::new(instance_service);
 
         let result = console
@@ -185,13 +190,9 @@ mod tests {
 
     #[tokio::test]
     async fn logs_rejects_non_positive_recent_limit() {
-        let instance_service = Arc::new(
-            CoreInstanceService::with_path(
-                std::env::temp_dir().join("sealantern-console-neg-limit.json"),
-            )
-            .await
-            .expect("实例服务应创建成功"),
-        );
+        let root = tempfile::tempdir().expect("临时目录应创建成功");
+        let instance_service =
+            Arc::new(test_instance_service(root.path().join("settings.json")).await);
         let console = CoreConsoleService::new(instance_service);
 
         for invalid in [Some(0), Some(-3)] {
@@ -204,13 +205,9 @@ mod tests {
 
     #[tokio::test]
     async fn logs_reports_missing_instance() {
-        let instance_service = Arc::new(
-            CoreInstanceService::with_path(
-                std::env::temp_dir().join("sealantern-console-missing.json"),
-            )
-            .await
-            .expect("实例服务应创建成功"),
-        );
+        let root = tempfile::tempdir().expect("临时目录应创建成功");
+        let instance_service =
+            Arc::new(test_instance_service(root.path().join("settings.json")).await);
         let console = CoreConsoleService::new(instance_service);
 
         let result = console

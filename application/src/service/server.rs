@@ -733,14 +733,15 @@ mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use sealantern_core::instance::InstanceId;
+    use sealantern_feature::config::SettingsManager;
 
     use super::{CoreInstanceService, CoreServerService, CoreSettingsService};
 
-    /// 生成互不冲突的临时注册表路径。
+    /// 生成互不冲突的临时设置根目录。
     ///
     /// 只靠时间戳在高频调用下可能取到同一纳秒，使两个测试共用同一份带锁的
-    /// 注册表（后者会因 `AlreadyLocked` 失败）；这里追加进程内自增序号兜底。
-    fn registry_path() -> PathBuf {
+    /// 设置文件（后者会因 `AlreadyLocked` 失败）；这里追加进程内自增序号兜底。
+    fn test_root() -> PathBuf {
         static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -749,7 +750,17 @@ mod tests {
         let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         std::env::temp_dir()
             .join(format!("sealantern-server-lock-{}-{stamp}-{seq}", std::process::id()))
-            .join("instances.json")
+    }
+
+    /// 以临时根目录装配共享同一设置的实例服务与设置服务。
+    async fn test_services(
+        root: &std::path::Path,
+    ) -> (Arc<CoreInstanceService>, Arc<CoreSettingsService>) {
+        let manager = SettingsManager::load(root.join("settings.json"))
+            .await
+            .expect("instance service");
+        let settings = Arc::new(CoreSettingsService::with_manager(manager));
+        (Arc::new(CoreInstanceService::new(settings.clone())), settings)
     }
 
     /// 构造一个最小可用的实例规格（注册表测试用）。
@@ -787,12 +798,9 @@ mod tests {
     async fn send_command_rejects_unknown_instance() {
         // 未注册的实例 ID 必须报 InstanceNotFound（HTTP 404）：进程表里没有
         // 条目只说明"当前没有运行中的进程"，不能据此推断实例不存在。
-        let path = registry_path();
-        let instances = CoreInstanceService::with_path(&path)
-            .await
-            .expect("instance service");
-        let service =
-            CoreServerService::new(Arc::new(instances), Arc::new(CoreSettingsService::new()));
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        let service = CoreServerService::new(instances, settings);
         let id = InstanceId::new("ghost").expect("valid id");
 
         let error = crate::port::ServerService::send_command(&service, &id, "time set day")
@@ -805,18 +813,14 @@ mod tests {
     async fn send_command_reports_not_running_for_stopped_instance() {
         // 已注册但从未启动的实例：发命令应报 NotRunning（"服务器未运行"），
         // 与未知实例的 InstanceNotFound 区分开。
-        let path = registry_path();
-        let instances = CoreInstanceService::with_path(&path)
-            .await
-            .expect("instance service");
-        let directory =
-            std::env::temp_dir().join(format!("sealantern-stopped-{}", std::process::id()));
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        let directory = root.join("instances").join("stopped");
         std::fs::create_dir_all(&directory).expect("instance directory");
-        crate::port::InstanceService::create(&instances, sample_spec("stopped", directory))
+        crate::port::InstanceService::create(instances.as_ref(), sample_spec("stopped", directory))
             .await
             .expect("create instance");
-        let service =
-            CoreServerService::new(Arc::new(instances), Arc::new(CoreSettingsService::new()));
+        let service = CoreServerService::new(instances, settings);
         let id = InstanceId::new("stopped").expect("valid id");
 
         let error = crate::port::ServerService::send_command(&service, &id, "time set day")
@@ -827,12 +831,9 @@ mod tests {
 
     #[tokio::test]
     async fn lifecycle_operations_serialize_per_instance() {
-        let path = registry_path();
-        let instances = CoreInstanceService::with_path(&path)
-            .await
-            .expect("instance service");
-        let service =
-            CoreServerService::new(Arc::new(instances), Arc::new(CoreSettingsService::new()));
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        let service = CoreServerService::new(instances, settings);
         let first = InstanceId::new("first").expect("first id");
         let second = InstanceId::new("second").expect("second id");
 
@@ -868,6 +869,6 @@ mod tests {
         drop(locks);
         drop(reacquired);
 
-        let _ = std::fs::remove_dir_all(path.parent().expect("parent"));
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

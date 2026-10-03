@@ -1,7 +1,26 @@
 use async_trait::async_trait;
 use sealantern_contract::InstanceServiceError;
+use sealantern_contract::instance::{ClassifiedProblemEntry, PendingInstance};
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{ImportExistingServerRequest, ImportModpackRequest};
+
+/// 实例发现视图：已信任实例 + 待处理实例 + 问题清单 + 孤儿信任记录。
+///
+/// 由 `InstanceService::discovery` 返回，供宿主展示「哪些实例已纳入管理、
+/// 哪些目录等待用户处置、哪些信任记录已失去对应实例」。字段名对外序列化为
+/// `snake_case`，与契约 DTO 风格保持一致。
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct InstanceDiscoveryView {
+    /// 已登记信任的实例（`list` 的同名集合）。
+    pub trusted: Vec<Instance>,
+    /// 身份有效但未登记的实例（待用户决定信任/忽略）。
+    pub pending: Vec<PendingInstance>,
+    /// 发现过程中记录的问题（含忽略标记）。
+    pub problems: Vec<ClassifiedProblemEntry>,
+    /// 登记为受信任、但磁盘上已不存在对应实例的 id。
+    pub orphan_trusted_ids: Vec<String>,
+}
 
 /// 管理服务器实例记录的宿主能力端口。
 ///
@@ -16,6 +35,9 @@ pub trait InstanceService: Send + Sync {
 
     /// 按 ID 查找实例，不存在时返回 `None`。
     async fn find(&self, id: &InstanceId) -> Result<Option<Instance>, InstanceServiceError>;
+
+    /// 实例发现视图：可信实例 + 待处理实例 + 问题 + 孤儿信任记录。
+    async fn discovery(&self) -> Result<InstanceDiscoveryView, InstanceServiceError>;
 
     /// 创建新实例并持久化。
     async fn create(&self, spec: InstanceSpec) -> Result<Instance, InstanceServiceError>;
@@ -103,6 +125,11 @@ mod tests {
             Ok(Some(sample_instance()))
         }
 
+        async fn discovery(&self) -> Result<InstanceDiscoveryView, InstanceServiceError> {
+            self.calls.lock().expect("lock").push("discovery");
+            Ok(InstanceDiscoveryView::default())
+        }
+
         async fn create(&self, _spec: InstanceSpec) -> Result<Instance, InstanceServiceError> {
             self.calls.lock().expect("lock").push("create");
             Ok(sample_instance())
@@ -161,10 +188,11 @@ mod tests {
             .update_path(&id, "/new/path")
             .await
             .expect("update_path");
+        service.discovery().await.expect("discovery");
 
         assert_eq!(
             *service.calls.lock().expect("lock"),
-            vec!["list", "find", "create", "delete", "rename", "update_path"]
+            vec!["list", "find", "create", "delete", "rename", "update_path", "discovery"]
         );
     }
 }
