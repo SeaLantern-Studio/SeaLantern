@@ -18,6 +18,8 @@ pub mod cron;
 pub mod download;
 /// 接口契约错误类型。
 pub mod error;
+/// 实例发现视图相关模型。
+pub mod instance;
 /// Java 检测结果和安装信息模型。
 pub mod java;
 /// 在线隧道相关模型。
@@ -81,6 +83,10 @@ pub use error::SystemServiceError;
 pub use error::UpdateCheckServiceError;
 /// 应用更新安装错误枚举。
 pub use error::UpdateInstallServiceError;
+/// 实例发现视图模型。
+pub use instance::{
+    ClassifiedProblemEntry, DiscoveryProblemEntry, DiscoveryProblemKind, PendingInstance,
+};
 /// Java 检测结果和安装信息模型。
 pub use java::{JavaDetectionReport, JavaDiscoveryError, JavaInfo};
 /// 在线隧道模型。

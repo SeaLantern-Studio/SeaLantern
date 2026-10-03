@@ -10,7 +10,9 @@ export type SettingsGroup =
   | "Appearance"
   | "Window"
   | "Developer"
-  | "Tunnel";
+  | "Tunnel"
+  | "PluginCommands"
+  | "Registry";
 
 export type ProxySettings =
   | { mode: "adaptive" }
