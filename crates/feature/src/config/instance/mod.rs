@@ -6,6 +6,7 @@
 mod discovery;
 mod document;
 mod error;
+mod trust;
 
 pub use discovery::{
     DiscoveredInstance, DiscoveryOrigin, DiscoveryProblem, DiscoveryReport, discover, probe_dir,
@@ -15,3 +16,8 @@ pub use document::{
     InstanceDocument, MemorySpec, StartupSpec,
 };
 pub use error::DocumentError;
+pub use trust::{
+    ClassifiedInstance, ClassifiedProblem, TrustReport, TrustState, classify, ignore_dir,
+    orphan_trusted_ids, register_extra_dir, trust_instance, unignore_dir, unregister_extra_dir,
+    untrust_instance,
+};
