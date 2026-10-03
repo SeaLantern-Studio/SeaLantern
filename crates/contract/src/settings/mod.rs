@@ -3,6 +3,7 @@
 mod app;
 mod app_update;
 mod models;
+mod registry;
 
 pub use app::{
     AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, DEFAULT_TUNNEL_JOIN_PORT,
@@ -10,3 +11,4 @@ pub use app::{
 };
 pub use app_update::{NullablePatch, PartialAppSettings, UpdateResult};
 pub use models::*;
+pub use registry::InstanceRegistrySection;
