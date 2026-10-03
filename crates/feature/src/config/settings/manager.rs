@@ -16,26 +16,61 @@ use sealantern_infra::fs::{DataLimit, FileLock, FsError, read_string_limited, wr
 use sealantern_infra::persistence::config::ConfigFile;
 use sealantern_infra::persistence::config::UpdatePersistedError;
 use sealantern_infra::persistence::process_lock_registry;
-use sealantern_infra::platform::get_app_data_dir;
+use sealantern_infra::platform::AppLayout;
 use serde::Deserialize;
 use tokio::sync::OwnedRwLockWriteGuard;
 
 use super::SettingsError;
-use super::types::{
-    AppSettings, CURRENT_CONFIG_VERSION, JavaInfo, PartialAppSettings, UpdateResult,
-};
 use crate::models::SettingsValidationError;
+use crate::models::{
+    AppSettings, CURRENT_CONFIG_VERSION, InstanceRegistrySection, JavaInfo, PartialAppSettings,
+    UpdateResult,
+};
 use crate::observability;
 
 /// 配置文件读取上限：最大 10 MiB。
 const CONFIG_READ_LIMIT: DataLimit = DataLimit::new(10 * 1024 * 1024);
 
 /// SeaLantern 应用设置文件名。
-const SETTINGS_FILE_NAME: &str = "sea_lantern_settings.json";
+const SETTINGS_FILE_NAME: &str = "settings.json";
 
-/// 解析 SeaLantern 应用设置文件的默认路径。
-fn default_settings_path() -> PathBuf {
-    get_app_data_dir().join(SETTINGS_FILE_NAME)
+/// 早期版本使用过的设置文件名，仅在升级时一次性重命名。
+const LEGACY_SETTINGS_FILE_NAME: &str = "sea_lantern_settings.json";
+
+/// 把旧文件名迁移为新文件名。
+///
+/// 仅在新文件不存在、旧文件存在时执行 `rename`；这是文件重命名而非
+/// 配置迁移，不涉及实例数据。重命名失败直接返回错误——静默回落到旧路径
+/// 会导致后续写入把偏好存回旧文件并丢失。
+async fn rename_legacy_settings_file(layout: &AppLayout) -> Result<(), FsError> {
+    let new_path = layout.config_file(SETTINGS_FILE_NAME);
+    let old_path = layout.config_file(LEGACY_SETTINGS_FILE_NAME);
+    if tokio::fs::metadata(&new_path).await.is_ok() {
+        return Ok(());
+    }
+    match tokio::fs::metadata(&old_path).await {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => {
+            return Err(FsError::Io {
+                operation: "inspect legacy settings file",
+                path: old_path,
+                source: e,
+            });
+        }
+    }
+    tokio::fs::rename(&old_path, &new_path)
+        .await
+        .map_err(|e| FsError::Io {
+            operation: "rename legacy settings file",
+            path: new_path.clone(),
+            source: e,
+        })
+}
+
+/// 解析本机默认布局；设置文件名重命名与加载共用同一布局来源。
+fn default_settings_layout() -> AppLayout {
+    AppLayout::native(None)
 }
 
 /// 旧版嵌套配置格式（v1：`{ version, preferences: {...} }`）。
@@ -78,7 +113,9 @@ impl SettingsManager {
     /// 默认路径、文件名和持久化策略均由配置模块统一管理；调用方无需了解
     /// 配置文件在不同运行环境中的具体位置。
     pub async fn load_default() -> Result<Self, SettingsError> {
-        Self::load(default_settings_path()).await
+        let layout = default_settings_layout();
+        rename_legacy_settings_file(&layout).await?;
+        Self::load(layout.config_file(SETTINGS_FILE_NAME)).await
     }
 
     /// 加载或创建设置文件，检测版本号并执行迁移。
@@ -178,6 +215,57 @@ impl SettingsManager {
     /// 获取当前设置的只读引用
     pub fn get(&self) -> &AppSettings {
         self.inner.get()
+    }
+
+    /// 由当前设置文件推导应用目录布局。
+    ///
+    /// 主配置目录取设置文件所在目录；主资源目录取
+    /// `registry.main_resource_dir`（`None` 时与配置目录同址）。
+    /// `AppLayout` 是纯数据、每次现构造，因此 `update_registry` 改动
+    /// 资源目录后调用方立即看到最新值，无需缓存失效处理。
+    pub fn layout(&self) -> AppLayout {
+        let config_dir = self
+            .path
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_default();
+        AppLayout::new(config_dir, self.inner.get().registry.main_resource_dir.clone())
+    }
+
+    /// 在单个文件锁内更新实例注册表分区并持久化。
+    ///
+    /// 与偏好字段共用同一份文件与锁，但只触碰 `registry`：调用方改偏好
+    /// （`update_partial`）与本方法改注册表因此不会互相覆盖。
+    ///
+    /// `update` 在磁盘最新值上执行，返回是否需要写回；需要写回时在落盘前
+    /// 校验注册表分区（空路径、空标识、重复条目会被拒绝），校验失败则
+    /// 磁盘与内存均保持不变。即使无需写回也返回锁内加载的最新注册表，
+    /// 供调用方同步内存快照。
+    pub async fn update_registry(
+        &mut self,
+        update: impl FnOnce(&mut InstanceRegistrySection) -> bool,
+    ) -> Result<InstanceRegistrySection, SettingsError> {
+        let updated: Result<_, UpdatePersistedError<SettingsValidationError>> =
+            ConfigFile::try_update_persisted_if_changed(
+                &self.path,
+                AppSettings::default(),
+                false,
+                |settings| {
+                    if !update(&mut settings.registry) {
+                        return Ok(false);
+                    }
+                    settings.registry.validate().map(|()| true)
+                },
+            )
+            .await;
+        let updated = match updated {
+            Ok(settings) => settings,
+            Err(UpdatePersistedError::Storage(error)) => return Err(error.into()),
+            Err(UpdatePersistedError::Update(error)) => return Err(error.into()),
+        };
+        let registry = updated.registry.clone();
+        self.inner.set(updated);
+        Ok(registry)
     }
 
     /// 更新持久化的 Java 检测结果。
@@ -499,18 +587,77 @@ fn upgrade_settings(settings: &mut AppSettings, _from_version: u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::{SETTINGS_FILE_NAME, SettingsManager, default_settings_path, is_legacy_format};
+    use std::path::PathBuf;
+
+    use super::{
+        LEGACY_SETTINGS_FILE_NAME, SETTINGS_FILE_NAME, SettingsManager, default_settings_layout,
+        is_legacy_format, rename_legacy_settings_file,
+    };
     use crate::config::{AppSettings, JavaInfo, PartialAppSettings};
     use crate::models::CURRENT_CONFIG_VERSION;
     use sealantern_infra::fs::{FileLock, FsError};
     use sealantern_infra::net::proxy::{ProxyMode, ProxySettings};
+    use sealantern_infra::platform::AppLayout;
 
     use super::SettingsError;
+
+    #[tokio::test]
+    async fn legacy_settings_file_name_is_renamed_in_place() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let layout = AppLayout::new(root.path(), None);
+        let legacy = layout.config_file(LEGACY_SETTINGS_FILE_NAME);
+        tokio::fs::write(&legacy, "{}")
+            .await
+            .expect("legacy settings fixture should be written");
+
+        rename_legacy_settings_file(&layout)
+            .await
+            .expect("legacy file should be renamed");
+
+        assert_eq!(
+            tokio::fs::read_to_string(layout.config_file(SETTINGS_FILE_NAME))
+                .await
+                .expect("renamed settings should be readable"),
+            "{}"
+        );
+        assert!(tokio::fs::metadata(&legacy).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn existing_settings_file_is_never_overwritten_by_legacy_name() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let layout = AppLayout::new(root.path(), None);
+        tokio::fs::write(layout.config_file(SETTINGS_FILE_NAME), "new")
+            .await
+            .expect("new settings fixture should be written");
+        let legacy = layout.config_file(LEGACY_SETTINGS_FILE_NAME);
+        tokio::fs::write(&legacy, "old")
+            .await
+            .expect("legacy settings fixture should be written");
+
+        rename_legacy_settings_file(&layout)
+            .await
+            .expect("existing new file should make rename a no-op");
+
+        assert_eq!(
+            tokio::fs::read_to_string(layout.config_file(SETTINGS_FILE_NAME))
+                .await
+                .expect("new settings should be readable"),
+            "new"
+        );
+        assert_eq!(
+            tokio::fs::read_to_string(&legacy)
+                .await
+                .expect("legacy file should be left alone"),
+            "old"
+        );
+    }
 
     #[test]
     fn default_path_uses_owned_settings_file_name() {
         assert_eq!(
-            default_settings_path()
+            default_settings_layout()
+                .config_file(SETTINGS_FILE_NAME)
                 .file_name()
                 .and_then(|name| name.to_str()),
             Some(SETTINGS_FILE_NAME)
@@ -872,5 +1019,128 @@ mod tests {
         assert_eq!(manager.get().theme, "dark");
         assert!(manager.get().developer_mode);
         assert_eq!(manager.get().config_version, CURRENT_CONFIG_VERSION);
+    }
+
+    #[tokio::test]
+    async fn registry_update_keeps_preference_fields_intact() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings should load");
+
+        manager
+            .update_partial(PartialAppSettings {
+                theme: Some("dark".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("partial update should succeed");
+
+        let registry = manager
+            .update_registry(|registry| {
+                registry.main_resource_dir = Some(PathBuf::from("D:\\SeaLanternData"));
+                registry.trusted_instances.push("instance-a".to_string());
+                true
+            })
+            .await
+            .expect("registry update should succeed");
+
+        assert_eq!(registry.trusted_instances, vec!["instance-a".to_string()]);
+        assert_eq!(manager.get().theme, "dark", "registry updates must not touch preferences");
+
+        let reloaded = SettingsManager::load(&path)
+            .await
+            .expect("settings should reload");
+        assert_eq!(reloaded.get().theme, "dark");
+        assert_eq!(
+            reloaded.get().registry.main_resource_dir,
+            Some(PathBuf::from("D:\\SeaLanternData"))
+        );
+    }
+
+    #[tokio::test]
+    async fn partial_update_keeps_the_registry_intact() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings should load");
+
+        manager
+            .update_registry(|registry| {
+                registry.trusted_instances.push("keep-me".to_string());
+                true
+            })
+            .await
+            .expect("registry update should succeed");
+
+        manager
+            .update_partial(PartialAppSettings {
+                theme: Some("light".to_string()),
+                ..PartialAppSettings::default()
+            })
+            .await
+            .expect("partial update should succeed");
+
+        assert_eq!(manager.get().registry.trusted_instances, vec!["keep-me".to_string()]);
+
+        let reloaded = SettingsManager::load(&path)
+            .await
+            .expect("settings should reload");
+        assert_eq!(reloaded.get().registry.trusted_instances, vec!["keep-me".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn invalid_registry_update_keeps_memory_and_disk_unchanged() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings should load");
+        let before = tokio::fs::read_to_string(&path)
+            .await
+            .expect("settings fixture should be readable");
+
+        let result = manager
+            .update_registry(|registry| {
+                registry.trusted_instances.push("  ".to_string());
+                true
+            })
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(SettingsError::InvalidInput { field: "trusted_instances", .. })
+        ));
+        assert!(manager.get().registry.trusted_instances.is_empty());
+        assert_eq!(
+            tokio::fs::read_to_string(&path)
+                .await
+                .expect("settings should remain readable"),
+            before
+        );
+    }
+
+    #[tokio::test]
+    async fn duplicate_registry_entries_are_rejected() {
+        let root = tempfile::tempdir().expect("temporary config directory should be created");
+        let path = root.path().join("settings.json");
+        let mut manager = SettingsManager::load(&path)
+            .await
+            .expect("settings should load");
+
+        let result = manager
+            .update_registry(|registry| {
+                registry.trusted_instances.push("dup".to_string());
+                registry.trusted_instances.push("dup".to_string());
+                true
+            })
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(SettingsError::InvalidInput { field: "trusted_instances", .. })
+        ));
     }
 }
