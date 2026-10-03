@@ -10,7 +10,7 @@
 use std::sync::Arc;
 
 use sealantern_application::error::InstanceError;
-use sealantern_application::port::InstanceService;
+use sealantern_application::port::{InstanceDiscoveryView, InstanceService};
 use sealantern_application::service::CoreInstanceService;
 use sealantern_application::services::AppServices;
 use sealantern_contract::InstanceServiceError;
@@ -42,6 +42,18 @@ pub async fn list_instances(
 ) -> Result<Vec<Instance>, InstanceServiceError> {
     let service = instance_service(&services);
     service.list().await
+}
+
+/// 实例发现视图：已信任实例 + 待处理实例 + 问题清单 + 孤儿信任记录。
+///
+/// 供前端区分「已管理 / 待处理 / 有问题」三类目录；返回结构与 HTTP
+/// `GET /api/instances/discovery` 一致。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn discover_instances(
+    services: State<'_, AppServices>,
+) -> Result<InstanceDiscoveryView, InstanceServiceError> {
+    let service = instance_service(&services);
+    service.discovery().await
 }
 
 /// 按 ID 查找实例，不存在时返回 `None`。

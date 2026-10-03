@@ -39,6 +39,18 @@ pub async fn get_default_run_path(
     service.default_run_path().await
 }
 
+/// 获取临时下载目录（主资源目录下的 `temp/`）。
+///
+/// 与 `get_default_run_path` 分离：临时文件不应进入 `instances/` 容器，
+/// 否则会被实例发现层标记为缺失 `sl.json` 的问题目录。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn get_temp_download_dir(
+    services: State<'_, AppServices>,
+) -> Result<String, SystemServiceError> {
+    let service = system_service(&services);
+    service.temp_download_dir().await
+}
+
 /// 测试本机是否具备 IPv6 连通性。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn test_ipv6_connectivity(
