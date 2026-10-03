@@ -1,4 +1,3 @@
-pub mod data_migration;
 pub mod instance;
 pub mod server;
 pub mod settings;
