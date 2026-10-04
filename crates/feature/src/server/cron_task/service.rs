@@ -1,17 +1,13 @@
 use std::fmt;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use cron::Schedule;
 use sealantern_infra::fs::FsError;
 use sealantern_infra::persistence::ConfigFile;
-use uuid::Uuid;
 
-use crate::observability;
-
-use super::model::{CronTask, CronTaskAction, CronTaskDraft, CronTaskList, CronTaskRun};
+use super::engine;
+use super::model::{CronTask, CronTaskDraft, CronTaskList, CronTaskRun};
 
 /// 宿主提供的服务器操作。
 #[async_trait]
@@ -65,7 +61,11 @@ impl From<FsError> for CronTaskError {
     }
 }
 
-/// 任务的持久化和执行调度服务。
+/// 任务的持久化和执行调度服务（`cron_tasks.json` 单文件外壳）。
+///
+/// 调度语义集中在 [`super::engine`]；本类型只负责 `CronTaskList` 的
+/// `ConfigFile` 读写与失败回滚。实例文档 `sl.json` 内嵌的 cron 条目由
+/// application 层直接驱动同一 engine。
 pub struct CronTaskService<E> {
     config: ConfigFile<CronTaskList>,
     executor: E,
@@ -85,20 +85,8 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
 
     /// 创建任务并计算首次执行时间。
     pub async fn create(&mut self, draft: CronTaskDraft) -> Result<CronTask, CronTaskError> {
-        validate_draft(&draft)?;
-        let task = CronTask {
-            id: Uuid::new_v4().to_string(),
-            name: draft.name.trim().to_owned(),
-            server_id: draft.server_id.trim().to_owned(),
-            cron_expression: normalize_cron_expression(&draft.cron_expression)?,
-            action: draft.action,
-            enabled: draft.enabled,
-            last_run_at: None,
-            next_run_at: None,
-            last_error: None,
-        };
-        let mut task = task;
-        task.next_run_at = Some(next_run_after(&task.cron_expression, Utc::now())?);
+        engine::validate_draft(&draft)?;
+        let task = engine::build_task(&draft)?;
 
         let previous = self.config.get().clone();
         self.config.update(|list| list.tasks.push(task.clone()));
@@ -112,10 +100,7 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
         id: &str,
         draft: CronTaskDraft,
     ) -> Result<CronTask, CronTaskError> {
-        validate_draft(&draft)?;
-        let cron_expression = normalize_cron_expression(&draft.cron_expression)?;
-        let next_run_at = next_run_after(&cron_expression, Utc::now())?;
-        let previous = self.config.get().clone();
+        engine::validate_draft(&draft)?;
         let index = self
             .config
             .get()
@@ -123,19 +108,11 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
             .iter()
             .position(|task| task.id == id)
             .ok_or_else(|| CronTaskError::TaskNotFound(id.to_owned()))?;
-        let task = self.config.get().tasks[index].clone();
 
-        let updated = CronTask {
-            id: task.id,
-            name: draft.name.trim().to_owned(),
-            server_id: draft.server_id.trim().to_owned(),
-            cron_expression,
-            action: draft.action,
-            enabled: draft.enabled,
-            last_run_at: task.last_run_at,
-            next_run_at: Some(next_run_at),
-            last_error: task.last_error,
-        };
+        let mut updated = self.config.get().tasks[index].clone();
+        engine::apply_update(&mut updated, &draft)?;
+
+        let previous = self.config.get().clone();
         self.config
             .update(|list| list.tasks[index] = updated.clone());
         self.persist_or_restore(previous).await?;
@@ -160,7 +137,6 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
         id: &str,
         enabled: bool,
     ) -> Result<CronTask, CronTaskError> {
-        let previous = self.config.get().clone();
         let index = self
             .config
             .get()
@@ -168,12 +144,15 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
             .iter()
             .position(|task| task.id == id)
             .ok_or_else(|| CronTaskError::TaskNotFound(id.to_owned()))?;
-        let task = self.config.get().tasks[index].clone();
-        let mut updated = task;
+
+        let mut updated = self.config.get().tasks[index].clone();
         updated.enabled = enabled;
         if enabled {
-            updated.next_run_at = Some(next_run_after(&updated.cron_expression, Utc::now())?);
+            updated.next_run_at =
+                Some(engine::next_run_after(&updated.cron_expression, Utc::now())?);
         }
+
+        let previous = self.config.get().clone();
         self.config
             .update(|list| list.tasks[index] = updated.clone());
         self.persist_or_restore(previous).await?;
@@ -186,99 +165,6 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
         id: &str,
         now: DateTime<Utc>,
     ) -> Result<CronTaskRun, CronTaskError> {
-        let task = self
-            .config
-            .get()
-            .tasks
-            .iter()
-            .find(|task| task.id == id)
-            .cloned()
-            .ok_or_else(|| CronTaskError::TaskNotFound(id.to_owned()))?;
-        self.run_task(task, now).await
-    }
-
-    /// 执行所有已到期且启用的任务。
-    pub async fn run_due(&mut self, now: DateTime<Utc>) -> Result<Vec<CronTaskRun>, CronTaskError> {
-        let due_tasks = self
-            .config
-            .get()
-            .tasks
-            .iter()
-            .filter(|task| task.enabled && task.next_run_at.is_some_and(|next_run| next_run <= now))
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let mut runs = Vec::with_capacity(due_tasks.len());
-        for task in due_tasks {
-            let failed_run = CronTaskRun {
-                task_id: task.id.clone(),
-                server_id: task.server_id.clone(),
-                action: task.action.clone(),
-                succeeded: false,
-                error: None,
-            };
-            match self.run_task(task, now).await {
-                Ok(run) => runs.push(run),
-                Err(CronTaskError::Execution { message, .. }) => {
-                    runs.push(CronTaskRun { error: Some(message), ..failed_run })
-                }
-                Err(error) => return Err(error),
-            }
-        }
-        Ok(runs)
-    }
-
-    async fn run_task(
-        &mut self,
-        task: CronTask,
-        now: DateTime<Utc>,
-    ) -> Result<CronTaskRun, CronTaskError> {
-        let action = task.action.as_str();
-        observability::server_cron_task_started(&task.id, &task.server_id, action);
-
-        let execution_error = match &task.action {
-            CronTaskAction::Restart => self
-                .executor
-                .restart_server(&task.server_id)
-                .await
-                .err()
-                .map(|error| error.to_string()),
-            CronTaskAction::Command { command } => self
-                .executor
-                .send_server_command(&task.server_id, command)
-                .await
-                .err()
-                .map(|error| error.to_string()),
-        };
-
-        let run = CronTaskRun {
-            task_id: task.id.clone(),
-            server_id: task.server_id.clone(),
-            action: task.action.clone(),
-            succeeded: execution_error.is_none(),
-            error: execution_error.clone(),
-        };
-        self.record_attempt(&task.id, now, execution_error).await?;
-
-        if let Some(error) = &run.error {
-            let error = CronTaskError::Execution {
-                task_id: task.id.clone(),
-                message: error.clone(),
-            };
-            observability::server_cron_task_failed(&task.id, &task.server_id, action, &error);
-            return Err(error);
-        }
-
-        observability::server_cron_task_completed(&task.id, &task.server_id, action);
-        Ok(run)
-    }
-
-    async fn record_attempt(
-        &mut self,
-        id: &str,
-        now: DateTime<Utc>,
-        error: Option<String>,
-    ) -> Result<(), CronTaskError> {
         let index = self
             .config
             .get()
@@ -286,15 +172,59 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
             .iter()
             .position(|task| task.id == id)
             .ok_or_else(|| CronTaskError::TaskNotFound(id.to_owned()))?;
-        let next_run = next_run_after(&self.config.get().tasks[index].cron_expression, now)?;
+        let mut task = self.config.get().tasks[index].clone();
+        self.run_and_record(index, &mut task, now).await
+    }
+
+    /// 执行所有已到期且启用的任务。
+    pub async fn run_due(&mut self, now: DateTime<Utc>) -> Result<Vec<CronTaskRun>, CronTaskError> {
+        let due_indices = self
+            .config
+            .get()
+            .tasks
+            .iter()
+            .enumerate()
+            .filter(|(_, task)| {
+                task.enabled && task.next_run_at.is_some_and(|next_run| next_run <= now)
+            })
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+
+        let mut runs = Vec::with_capacity(due_indices.len());
+        for index in due_indices {
+            let mut task = self.config.get().tasks[index].clone();
+            match self.run_and_record(index, &mut task, now).await {
+                Ok(run) => runs.push(run),
+                Err(CronTaskError::Execution { task_id, message }) => {
+                    runs.push(CronTaskRun {
+                        task_id,
+                        server_id: task.server_id.clone(),
+                        action: task.action.clone(),
+                        succeeded: false,
+                        error: Some(message),
+                    });
+                }
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(runs)
+    }
+
+    /// 执行单个任务并把尝试结果持久化回列表。
+    ///
+    /// `engine::run_task` 已把尝试结果写入 `task`；本方法负责把该状态写回
+    /// `config` 并持久化（执行失败的尝试也会回写——与旧实现一致）。
+    async fn run_and_record(
+        &mut self,
+        index: usize,
+        task: &mut CronTask,
+        now: DateTime<Utc>,
+    ) -> Result<CronTaskRun, CronTaskError> {
+        let result = engine::run_task(&self.executor, task, now).await;
         let previous = self.config.get().clone();
-        self.config.update(|list| {
-            let task = &mut list.tasks[index];
-            task.last_run_at = Some(now);
-            task.next_run_at = Some(next_run);
-            task.last_error = error;
-        });
-        self.persist_or_restore(previous).await
+        self.config.update(|list| list.tasks[index] = task.clone());
+        self.persist_or_restore(previous).await?;
+        result
     }
 
     async fn persist_or_restore(&mut self, previous: CronTaskList) -> Result<(), CronTaskError> {
@@ -306,53 +236,6 @@ impl<E: CronTaskExecutor> CronTaskService<E> {
     }
 }
 
-fn validate_draft(draft: &CronTaskDraft) -> Result<(), CronTaskError> {
-    if draft.name.trim().is_empty() {
-        return Err(CronTaskError::InvalidTask("name must not be empty"));
-    }
-    if draft.server_id.trim().is_empty() {
-        return Err(CronTaskError::InvalidTask("server_id must not be empty"));
-    }
-    if matches!(&draft.action, CronTaskAction::Command { command } if command.trim().is_empty()) {
-        return Err(CronTaskError::InvalidTask("command must not be empty"));
-    }
-    Ok(())
-}
-
-fn normalize_cron_expression(expression: &str) -> Result<String, CronTaskError> {
-    let trimmed = expression.trim();
-    let field_count = trimmed.split_whitespace().count();
-    let normalized = match field_count {
-        5 => format!("0 {trimmed}"),
-        6 => trimmed.to_owned(),
-        _ => {
-            return Err(CronTaskError::InvalidCron {
-                expression: expression.to_owned(),
-                message: "expected five or six fields".to_owned(),
-            });
-        }
-    };
-    Schedule::from_str(&normalized).map_err(|error| CronTaskError::InvalidCron {
-        expression: expression.to_owned(),
-        message: error.to_string(),
-    })?;
-    Ok(normalized)
-}
-
-fn next_run_after(expression: &str, now: DateTime<Utc>) -> Result<DateTime<Utc>, CronTaskError> {
-    let schedule = Schedule::from_str(expression).map_err(|error| CronTaskError::InvalidCron {
-        expression: expression.to_owned(),
-        message: error.to_string(),
-    })?;
-    schedule
-        .after(&now)
-        .next()
-        .ok_or_else(|| CronTaskError::InvalidCron {
-            expression: expression.to_owned(),
-            message: "no upcoming occurrence".to_owned(),
-        })
-}
-
 #[cfg(test)]
 mod tests {
     use std::io;
@@ -361,6 +244,7 @@ mod tests {
     use chrono::Duration;
     use tempfile::tempdir;
 
+    use super::super::model::CronTaskAction;
     use super::*;
 
     #[derive(Clone, Default)]
@@ -513,7 +397,7 @@ mod tests {
 
     #[test]
     fn accepts_five_or_six_field_cron_expressions() {
-        assert_eq!(normalize_cron_expression("0 4 * * *").unwrap(), "0 0 4 * * *");
-        assert_eq!(normalize_cron_expression("0 0 4 * * *").unwrap(), "0 0 4 * * *");
+        assert_eq!(engine::normalize_cron_expression("0 4 * * *").unwrap(), "0 0 4 * * *");
+        assert_eq!(engine::normalize_cron_expression("0 0 4 * * *").unwrap(), "0 0 4 * * *");
     }
 }
