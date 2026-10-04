@@ -1,6 +1,7 @@
 pub mod data_migration;
 pub mod sealantern;
 pub mod server;
+pub mod settings;
 
 pub use sealantern::InstanceRegistry;
 #[allow(deprecated)]
