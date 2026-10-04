@@ -24,8 +24,8 @@ use adapter::tauri::commands::cron::{
 };
 use adapter::tauri::commands::download::{download_cancel, download_create, download_query};
 use adapter::tauri::commands::instance::{
-    create_instance, delete_instance, get_instance, import_existing_server, import_modpack,
-    list_instances, rename_instance, update_instance_path,
+    create_instance, delete_instance, discover_instances, get_instance, import_existing_server,
+    import_modpack, list_instances, rename_instance, update_instance_path,
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
 use adapter::tauri::commands::logging::share_logs;
@@ -61,7 +61,8 @@ use adapter::tauri::commands::settings::{
     settings_overview, update_settings, update_settings_partial,
 };
 use adapter::tauri::commands::system::{
-    get_default_run_path, get_server_resource_usage, get_system_snapshot, test_ipv6_connectivity,
+    get_default_run_path, get_server_resource_usage, get_system_snapshot, get_temp_download_dir,
+    test_ipv6_connectivity,
 };
 use adapter::tauri::commands::update::check_update;
 use adapter::tauri::commands::update_install::{
@@ -252,12 +253,14 @@ fn main() {
             get_default_run_path,
             get_server_resource_usage,
             get_system_snapshot,
+            get_temp_download_dir,
             test_ipv6_connectivity,
             //日志分享能力（上传到 mclo.gs）
             share_logs,
             //实例与服务器进程服务
             create_instance,
             delete_instance,
+            discover_instances,
             get_instance,
             import_existing_server,
             import_modpack,
