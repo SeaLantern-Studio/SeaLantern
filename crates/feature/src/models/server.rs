@@ -97,6 +97,7 @@ impl InstanceList {
                 core_type: record.core_type,
                 core_version: record.core_version,
                 game_version: record.mc_version,
+                required_java: None,
                 directory: record.path.into(),
                 port: record.port,
                 max_memory_mib: record.max_memory,

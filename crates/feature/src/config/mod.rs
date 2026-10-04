@@ -1,4 +1,5 @@
 pub mod data_migration;
+pub mod instance;
 pub mod sealantern;
 pub mod server;
 pub mod settings;

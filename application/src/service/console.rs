@@ -103,6 +103,7 @@ mod tests {
             core_type: "paper".into(),
             core_version: "1.20.4".into(),
             game_version: "1.20.4".into(),
+            required_java: None,
             directory: directory.clone(),
             port: 25565,
             max_memory_mib: 2048,
