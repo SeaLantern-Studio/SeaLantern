@@ -24,7 +24,7 @@ pub use catalog::ServerCatalogService;
 pub use console::ConsoleService;
 pub use cron::CronTaskService;
 pub use download::DownloadService;
-pub use instance::InstanceService;
+pub use instance::{InstanceDiscoveryView, InstanceService};
 pub use java::JavaService;
 pub use online::OnlineTunnelService;
 pub use players::{PlayerAdminService, PlayerListService, PlayerLookupService};

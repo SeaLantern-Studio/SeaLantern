@@ -18,8 +18,9 @@ use sealantern_contract::backup::{
 };
 use sealantern_contract::server::ServerState;
 use sealantern_core::instance::InstanceId;
+use sealantern_infra::platform::AppLayout;
 
-use super::{CoreInstanceService, CoreServerService};
+use super::{CoreInstanceService, CoreServerService, CoreSettingsService};
 use crate::error::BackupError;
 use crate::port::{BackupService, InstanceService, ServerService};
 
@@ -27,15 +28,33 @@ use crate::port::{BackupService, InstanceService, ServerService};
 pub struct CoreBackupService {
     instance_service: Arc<CoreInstanceService>,
     server_service: Arc<CoreServerService>,
+    settings_service: Arc<CoreSettingsService>,
 }
 
 impl CoreBackupService {
-    /// 创建使用指定实例与服务器进程服务的备份服务。
+    /// 创建使用指定实例、服务器进程与设置服务的备份服务。
+    ///
+    /// 备份目录布局在每次操作时从设置解析（`registry.main_resource_dir`
+    /// 运行时可改），而不是在构造时缓存——这样资源目录覆盖值的改动
+    /// 立即生效，旧目录上的存量备份由备份归属决策另行处理。
     pub fn new(
         instance_service: Arc<CoreInstanceService>,
         server_service: Arc<CoreServerService>,
+        settings_service: Arc<CoreSettingsService>,
     ) -> Self {
-        Self { instance_service, server_service }
+        Self {
+            instance_service,
+            server_service,
+            settings_service,
+        }
+    }
+
+    /// 解析当前应用目录布局。
+    async fn layout(&self) -> Result<AppLayout, BackupError> {
+        self.settings_service
+            .layout()
+            .await
+            .map_err(|source| BackupError::OperationFailed { source: Box::new(source) })
     }
 
     /// 校验服务器已停止（冷备份前提），返回其实例记录。
@@ -73,7 +92,7 @@ impl CoreBackupService {
 #[async_trait]
 impl BackupService for CoreBackupService {
     async fn list(&self, server_id: &str) -> Result<Vec<BackupItem>, BackupServiceError> {
-        sealantern_feature::backup::get_backup_list(server_id.to_owned())
+        sealantern_feature::backup::get_backup_list(server_id.to_owned(), self.layout().await?)
             .await
             .map_err(BackupError::from)
             .map_err(Into::into)
@@ -83,15 +102,19 @@ impl BackupService for CoreBackupService {
         &self,
         server_id: Option<&str>,
     ) -> Result<BackupDirectory, BackupServiceError> {
-        sealantern_feature::backup::get_backup_dir(server_id.map(str::to_owned))
-            .await
-            .map_err(BackupError::from)
-            .map_err(Into::into)
+        sealantern_feature::backup::get_backup_dir(
+            server_id.map(str::to_owned),
+            self.layout().await?,
+        )
+        .await
+        .map_err(BackupError::from)
+        .map_err(Into::into)
     }
 
     async fn create(&self, request: CreateBackupRequest) -> Result<BackupItem, BackupServiceError> {
         let instance = self.require_stopped_instance(&request.server_id).await?;
         let directory = instance.directory.clone();
+        let layout = self.layout().await?;
 
         // 回调在 feature 的阻塞任务内部被再次调用，用于关闭「状态检查后、实际
         // 落盘前服务器被并发启动」的竞态窗口：此时同步查询一次进程表复核。
@@ -101,14 +124,14 @@ impl BackupService for CoreBackupService {
             move |_server_id: &str| server.server_stopped(&instance)
         };
 
-        sealantern_feature::backup::create_backup(request, directory, check_server_stopped)
+        sealantern_feature::backup::create_backup(request, directory, layout, check_server_stopped)
             .await
             .map_err(BackupError::from)
             .map_err(Into::into)
     }
 
     async fn delete(&self, backup_id: &str) -> Result<(), BackupServiceError> {
-        sealantern_feature::backup::delete_backup(backup_id.to_owned())
+        sealantern_feature::backup::delete_backup(backup_id.to_owned(), self.layout().await?)
             .await
             .map_err(BackupError::from)
             .map_err(Into::into)
@@ -117,6 +140,7 @@ impl BackupService for CoreBackupService {
     async fn restore(&self, backup_id: &str, server_id: &str) -> Result<(), BackupServiceError> {
         let instance = self.require_stopped_instance(server_id).await?;
         let directory = instance.directory.clone();
+        let layout = self.layout().await?;
 
         // 与 create 相同的竞态窗口防护：阻塞任务内部同步复核服务器状态。
         let check_server_stopped = {
@@ -129,6 +153,7 @@ impl BackupService for CoreBackupService {
             backup_id.to_owned(),
             server_id.to_owned(),
             directory,
+            layout,
             check_server_stopped,
         )
         .await
@@ -137,7 +162,7 @@ impl BackupService for CoreBackupService {
     }
 
     async fn settings(&self, server_id: &str) -> Result<BackupSettings, BackupServiceError> {
-        sealantern_feature::backup::get_backup_settings(server_id.to_owned())
+        sealantern_feature::backup::get_backup_settings(server_id.to_owned(), self.layout().await?)
             .await
             .map_err(BackupError::from)
             .map_err(Into::into)
@@ -148,10 +173,14 @@ impl BackupService for CoreBackupService {
         server_id: &str,
         settings: BackupSettings,
     ) -> Result<(), BackupServiceError> {
-        sealantern_feature::backup::update_backup_settings(server_id.to_owned(), settings)
-            .await
-            .map_err(BackupError::from)
-            .map_err(Into::into)
+        sealantern_feature::backup::update_backup_settings(
+            server_id.to_owned(),
+            settings,
+            self.layout().await?,
+        )
+        .await
+        .map_err(BackupError::from)
+        .map_err(Into::into)
     }
 }
 
@@ -163,19 +192,17 @@ mod tests {
 
     use super::*;
 
-    /// 构造测试用备份服务（临时实例目录 + 独立 server 服务）。
+    /// 构造测试用备份服务（临时实例目录 + 独立 server/settings 服务）。
     async fn test_service() -> CoreBackupService {
         let dir = tempdir().expect("create temp dir");
-        let instance = Arc::new(
-            CoreInstanceService::with_path(dir.path().join("instances.json"))
+        let manager =
+            sealantern_feature::config::SettingsManager::load(dir.path().join("settings.json"))
                 .await
-                .expect("create instance service"),
-        );
-        let server = Arc::new(CoreServerService::new(
-            instance.clone(),
-            Arc::new(crate::service::CoreSettingsService::new()),
-        ));
-        CoreBackupService::new(instance, server)
+                .expect("create settings manager");
+        let settings = Arc::new(crate::service::CoreSettingsService::with_manager(manager));
+        let instance = Arc::new(CoreInstanceService::new(settings.clone()));
+        let server = Arc::new(CoreServerService::new(instance.clone(), settings.clone()));
+        CoreBackupService::new(instance, server, settings)
     }
 
     #[tokio::test]

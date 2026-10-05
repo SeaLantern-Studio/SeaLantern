@@ -8,7 +8,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 
-use sealantern_application::port::InstanceService;
+use sealantern_application::port::{InstanceDiscoveryView, InstanceService};
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::ImportExistingServerRequest;
 
@@ -36,6 +36,21 @@ pub async fn list_instances(
     state
         .instance()
         .list()
+        .await
+        .map(Json)
+        .map_err(HttpError::from)
+}
+
+/// `GET /api/instances/discovery` — 实例发现视图。
+///
+/// 返回已信任实例、待处理实例、发现问题与孤儿信任记录，供前端做
+/// 「已管理 / 待处理 / 有问题」三态展示。
+pub async fn discover_instances(
+    State(state): State<AppState>,
+) -> Result<Json<InstanceDiscoveryView>, HttpError> {
+    state
+        .instance()
+        .discovery()
         .await
         .map(Json)
         .map_err(HttpError::from)
