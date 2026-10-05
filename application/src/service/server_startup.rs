@@ -13,7 +13,8 @@ use async_trait::async_trait;
 
 use sealantern_contract::ServerStartupServiceError;
 use sealantern_contract::server_startup::SLStartupConfig;
-use sealantern_feature::config::instance::{DocumentStore, MemorySpec};
+use sealantern_feature::config::instance::{DocumentError, DocumentStore, MemorySpec};
+use sealantern_infra::fs::FsError;
 
 use crate::error::ServerStartupError;
 use crate::port::ServerStartupService;
@@ -26,16 +27,24 @@ pub struct CoreServerStartupService;
 impl ServerStartupService for CoreServerStartupService {
     async fn read(&self, server_path: &str) -> Result<SLStartupConfig, ServerStartupServiceError> {
         let path = DocumentStore::path_for(Path::new(server_path));
-        // 无文档（裸目录/未建档）或文档不可读时按「无覆盖」返回，由前端
-        // 回落到默认值；文档层面的问题会在实例列表/发现页另行暴露。
-        let Ok(store) = DocumentStore::load(path).await else {
-            return Ok(SLStartupConfig::default());
-        };
-        let memory = store.get().startup.memory_mib;
-        Ok(SLStartupConfig {
-            max_memory: (memory.max != 0).then_some(memory.max),
-            min_memory: (memory.min != 0).then_some(memory.min),
-        })
+        // 仅在文档确实不存在（裸目录/未建档）时按「无覆盖」返回默认值；
+        // 文档存在但不可读（损坏、版本超前、权限、校验失败等）则上抛错误，
+        // 避免把不可恢复的故障掩盖成「该实例没有内存覆盖」。
+        match DocumentStore::load(path).await {
+            Ok(store) => {
+                let memory = store.get().startup.memory_mib;
+                Ok(SLStartupConfig {
+                    max_memory: (memory.max != 0).then_some(memory.max),
+                    min_memory: (memory.min != 0).then_some(memory.min),
+                })
+            }
+            Err(DocumentError::Storage { source: FsError::Io { source, .. } })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                Ok(SLStartupConfig::default())
+            }
+            Err(error) => Err(ServerStartupError::from(error).into()),
+        }
     }
 
     async fn write(
