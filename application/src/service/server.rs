@@ -39,6 +39,11 @@ use super::{CoreInstanceService, CoreSettingsService, LogRecorder};
 const STOP_GRACEFUL_TIMEOUT: Duration = Duration::from_secs(10);
 /// 状态轮询间隔。
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
+/// EULA 文件名（实例目录内）。
+const EULA_FILE_NAME: &str = "eula.txt";
+/// 自动同意 EULA 时写入的内容；与历史版本一致，无条件覆盖以修复 JVM
+/// 自行落出的 `eula=false` 文件。
+const EULA_ACCEPTED_CONTENT: &str = "# Auto-accepted by Sea Lantern\neula=true\n";
 
 /// 一个受管服务器进程：守护进程 + 已转移的标准流终端 + 日志记录管线。
 struct ManagedProcess {
@@ -491,6 +496,10 @@ impl CoreServerService {
         command.stdout(std::process::Stdio::piped());
         command.stderr(std::process::Stdio::piped());
 
+        // 启动前文件准备：写 EULA 同意文件必须在 spawn 之前，否则 JVM 会因
+        // EULA 未同意在启动瞬间自行落出 `eula=false` 并退出。
+        self.write_eula_if_enabled(instance).await?;
+
         let mut daemon = match Daemon::spawn(&mut command) {
             Ok(daemon) => daemon,
             Err(error) => {
@@ -644,6 +653,26 @@ impl CoreServerService {
     async fn request_stop_for_restart(&self, id: &InstanceId) -> Result<(), ServerServiceError> {
         self.send_command_inner(id, "stop").await?;
         self.mark_stopping(id.as_str());
+        Ok(())
+    }
+
+    /// 按全局设置把 `eula.txt` 写入实例目录；无条件覆盖以修复 JVM 自行落出的
+    /// `eula=false` 文件。写入失败时启动整体失败——没有同意 EULA 的服务器必然
+    /// 秒退，失败早报好过拉起一个立刻死掉的进程。
+    async fn write_eula_if_enabled(&self, instance: &Instance) -> Result<(), ServerServiceError> {
+        let enabled = self
+            .settings_service
+            .get()
+            .await
+            .map(|settings| settings.auto_accept_eula)
+            .unwrap_or(true);
+        if !enabled {
+            return Ok(());
+        }
+        let eula_path = instance.directory.join(EULA_FILE_NAME);
+        tokio::fs::write(&eula_path, EULA_ACCEPTED_CONTENT)
+            .await
+            .map_err(|e| ServerError::OperationFailed { source: Box::new(e) })?;
         Ok(())
     }
 
@@ -871,5 +900,56 @@ mod tests {
         drop(reacquired);
 
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[tokio::test]
+    async fn eula_is_written_when_auto_accept_is_enabled() {
+        // 默认 `auto_accept_eula = true`：启动前应无条件写出 `eula=true`，
+        // 覆盖 JVM 可能已落出的 `eula=false`。
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        let service = CoreServerService::new(instances, settings);
+        let directory = root.join("instances").join("eula-on");
+        std::fs::create_dir_all(&directory).expect("instance dir should be created");
+        let instance =
+            sealantern_core::instance::Instance::new(sample_spec("eula-on", directory.clone()))
+                .expect("valid instance");
+
+        service
+            .write_eula_if_enabled(&instance)
+            .await
+            .expect("eula write should succeed");
+
+        let content = std::fs::read_to_string(directory.join("eula.txt"))
+            .expect("eula.txt should be written");
+        assert!(content.contains("eula=true"));
+    }
+
+    #[tokio::test]
+    async fn eula_is_not_written_when_auto_accept_is_disabled() {
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        crate::port::SettingsService::update_partial(
+            settings.as_ref(),
+            sealantern_contract::settings::PartialAppSettings {
+                auto_accept_eula: Some(false),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect("settings update should succeed");
+        let service = CoreServerService::new(instances, settings);
+        let directory = root.join("instances").join("eula-off");
+        std::fs::create_dir_all(&directory).expect("instance dir should be created");
+        let instance =
+            sealantern_core::instance::Instance::new(sample_spec("eula-off", directory.clone()))
+                .expect("valid instance");
+
+        service
+            .write_eula_if_enabled(&instance)
+            .await
+            .expect("disabled eula write should be a no-op");
+
+        assert!(!directory.join("eula.txt").exists());
     }
 }
