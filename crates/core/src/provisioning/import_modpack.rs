@@ -140,6 +140,7 @@ pub fn build_instance_spec(
         core_type: request.core_type.clone().unwrap_or_default(),
         core_version: String::new(),
         game_version: request.mc_version.clone().unwrap_or_default(),
+        required_java: None,
         directory: directory.to_path_buf(),
         port: request.port,
         max_memory_mib: request.max_memory,
