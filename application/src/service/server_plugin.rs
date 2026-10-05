@@ -71,14 +71,17 @@ impl ServerPluginService for CoreServerPluginService {
     async fn read_config_files(
         &self,
         id: &InstanceId,
-        _file_name: &str,
+        file_name: &str,
         plugin_name: &str,
     ) -> Result<Vec<PluginConfigFile>, ServerPluginServiceError> {
         let server_path = self.resolve_directory(id).await?;
+        let file_name = file_name.to_owned();
         let plugin_name = plugin_name.to_owned();
-        run_blocking(move || ServerPluginManager::new(&server_path).read_config_files(&plugin_name))
-            .await
-            .map_err(Into::into)
+        run_blocking(move || {
+            ServerPluginManager::new(&server_path).read_config_files(&file_name, &plugin_name)
+        })
+        .await
+        .map_err(Into::into)
     }
 
     async fn set_enabled(

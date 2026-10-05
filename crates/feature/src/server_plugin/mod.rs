@@ -110,13 +110,33 @@ impl ServerPluginManager {
 
     /// 读取某个插件配置目录下的文本文件。
     ///
-    /// `plugin_name` 由调用方给出，因此按单个路径分量校验；目录不存在时返回空列表。
+    /// `file_name` 标识具体的插件 jar，`plugin_name` 是调用方声明的配置目录名。
+    /// 读取前先校验 jar 声明的名称（缺失时回落到 jar 文件名）与 `plugin_name`
+    /// 一致，避免调用方借一个插件的名义读取其它插件的配置目录。目录不存在时
+    /// 返回空列表。
     pub fn read_config_files(
         &self,
+        file_name: &str,
         plugin_name: &str,
     ) -> Result<Vec<PluginConfigFile>, ServerPluginError> {
-        let folder_name = validate_component(plugin_name)?;
-        let folder = self.plugins_dir.join(folder_name);
+        let base_name = normalize_jar_file_name(file_name)?;
+        let requested_folder = validate_component(plugin_name)?;
+
+        let jar_path = self.resolve_jar_path(&base_name)?;
+
+        // 配置目录按插件声明的名称查找，缺失时回落到 jar 文件名。
+        let descriptor = Self::read_descriptor(&jar_path).unwrap_or_default();
+        let file_stem = base_name.strip_suffix(".jar").unwrap_or(&base_name);
+        let declared_name = descriptor.name.filter(|value| !value.is_empty());
+        let expected_folder = declared_name.unwrap_or_else(|| file_stem.to_owned());
+
+        if expected_folder != requested_folder {
+            return Err(ServerPluginError::InvalidFileName(format!(
+                "plugin name {plugin_name:?} does not match the declared name {expected_folder:?} of {file_name}"
+            )));
+        }
+
+        let folder = self.plugins_dir.join(requested_folder);
         if !folder.is_dir() {
             return Ok(Vec::new());
         }
@@ -125,6 +145,21 @@ impl ServerPluginManager {
         collect_config_files(&folder, &mut files)?;
         files.sort_by(|left, right| left.file_path.cmp(&right.file_path));
         Ok(files)
+    }
+
+    /// 解析 jar 文件的实际路径，同时接受启用与禁用两种文件名。
+    fn resolve_jar_path(&self, base_name: &str) -> Result<PathBuf, ServerPluginError> {
+        let enabled_path = self.plugins_dir.join(base_name);
+        if enabled_path.is_file() {
+            return Ok(enabled_path);
+        }
+        let disabled_path = self
+            .plugins_dir
+            .join(format!("{base_name}{DISABLED_SUFFIX}"));
+        if disabled_path.is_file() {
+            return Ok(disabled_path);
+        }
+        Err(ServerPluginError::NotFound(base_name.to_owned()))
     }
 
     /// 启用或禁用插件，通过重命名在 `.jar` 与 `.jar.disabled` 之间切换。
@@ -470,14 +505,16 @@ mod tests {
     #[test]
     fn reads_only_whitelisted_config_files_recursively() {
         let server = tempdir().unwrap();
-        let config_dir = server.path().join(PLUGINS_DIR).join("EssentialsX");
+        let plugins_dir = server.path().join(PLUGINS_DIR);
+        write_plugin_jar(&plugins_dir, "EssentialsX.jar", "name: EssentialsX\n");
+        let config_dir = plugins_dir.join("EssentialsX");
         fs::create_dir_all(config_dir.join("nested")).unwrap();
         fs::write(config_dir.join("config.yml"), "motd: hello").unwrap();
         fs::write(config_dir.join("nested").join("extra.json"), "{}").unwrap();
         fs::write(config_dir.join("notes.txt"), "ignored").unwrap();
 
         let files = plugin_manager(server.path())
-            .read_config_files("EssentialsX")
+            .read_config_files("EssentialsX.jar", "EssentialsX")
             .unwrap();
         assert_eq!(files.len(), 2, "files outside the whitelist should not be read");
         assert!(
@@ -521,13 +558,24 @@ mod tests {
             );
         }
 
+        for name in ["../escape.jar", "nested/EssentialsX.jar", "/absolute.jar", ""] {
+            assert!(
+                matches!(
+                    manager.read_config_files(name, "EssentialsX"),
+                    Err(ServerPluginError::InvalidFileName(_))
+                ),
+                "read_config_files should reject file_name {name}"
+            );
+        }
+
+        // plugin_name 同样不能含路径分量。
         for name in ["../secret", "nested/name", ""] {
             assert!(
                 matches!(
-                    manager.read_config_files(name),
+                    manager.read_config_files("EssentialsX.jar", name),
                     Err(ServerPluginError::InvalidFileName(_))
                 ),
-                "read_config_files should reject {name}"
+                "read_config_files should reject plugin_name {name}"
             );
         }
     }
@@ -542,5 +590,66 @@ mod tests {
             Err(ServerPluginError::NotFound(_))
         ));
         assert!(matches!(manager.delete("Absent.jar"), Err(ServerPluginError::NotFound(_))));
+    }
+
+    /// 核心安全不变量：不能借一个插件的名义读取另一个插件的配置目录。
+    #[test]
+    fn rejects_reading_config_when_plugin_name_does_not_match_the_jar() {
+        let server = tempdir().unwrap();
+        let plugins_dir = server.path().join(PLUGINS_DIR);
+
+        // 两个插件：EssentialsX 与 Vault，各自有配置目录。
+        write_plugin_jar(&plugins_dir, "EssentialsX.jar", "name: EssentialsX\n");
+        write_plugin_jar(&plugins_dir, "Vault.jar", "name: Vault\n");
+        fs::create_dir_all(plugins_dir.join("EssentialsX")).unwrap();
+        fs::write(plugins_dir.join("EssentialsX").join("config.yml"), "secret").unwrap();
+        fs::create_dir_all(plugins_dir.join("Vault")).unwrap();
+
+        let manager = plugin_manager(server.path());
+
+        // 声明读取 EssentialsX 的配置，但 plugin_name 写成 Vault：应被拒绝。
+        assert!(matches!(
+            manager.read_config_files("EssentialsX.jar", "Vault"),
+            Err(ServerPluginError::InvalidFileName(_))
+        ));
+
+        // 反过来也一样。
+        assert!(matches!(
+            manager.read_config_files("Vault.jar", "EssentialsX"),
+            Err(ServerPluginError::InvalidFileName(_))
+        ));
+
+        // 名称一致时允许读取。
+        let files = manager
+            .read_config_files("EssentialsX.jar", "EssentialsX")
+            .unwrap();
+        assert_eq!(files.len(), 1);
+
+        // 声明名称缺失时回落到 jar 文件名（去除 .jar）。
+        write_plugin_jar(&plugins_dir, "NoName.jar", "version: 1.0\n");
+        fs::create_dir_all(plugins_dir.join("NoName")).unwrap();
+        let files = manager.read_config_files("NoName.jar", "NoName").unwrap();
+        assert_eq!(files.len(), 0);
+
+        // 回落到文件名时也不能借名读取。
+        assert!(matches!(
+            manager.read_config_files("NoName.jar", "EssentialsX"),
+            Err(ServerPluginError::InvalidFileName(_))
+        ));
+    }
+
+    /// 禁用态插件（`.jar.disabled`）同样可以按其声明名称读取配置。
+    #[test]
+    fn reads_config_for_disabled_plugin_when_name_matches() {
+        let server = tempdir().unwrap();
+        let plugins_dir = server.path().join(PLUGINS_DIR);
+        write_plugin_jar(&plugins_dir, "EssentialsX.jar.disabled", "name: EssentialsX\n");
+        fs::create_dir_all(plugins_dir.join("EssentialsX")).unwrap();
+        fs::write(plugins_dir.join("EssentialsX").join("config.yml"), "motd: hi").unwrap();
+
+        let files = plugin_manager(server.path())
+            .read_config_files("EssentialsX.jar", "EssentialsX")
+            .unwrap();
+        assert_eq!(files.len(), 1);
     }
 }

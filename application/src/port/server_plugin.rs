@@ -17,7 +17,9 @@ pub trait ServerPluginService: Send + Sync {
 
     /// 读取某个插件配置目录下的文本文件。
     ///
-    /// `plugin_name` 是插件声明的名称（配置目录名），由调用方提供。
+    /// `file_name` 标识具体的插件 jar，`plugin_name` 是插件声明的名称（配置
+    /// 目录名）。读取前会校验 jar 声明的名称与 `plugin_name` 一致，避免借一个
+    /// 插件的名义读取其它插件的配置目录。
     async fn read_config_files(
         &self,
         id: &InstanceId,
