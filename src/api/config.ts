@@ -136,6 +136,9 @@ export const configApi = {
    * 写入 SL.json 启动配置
    */
   async writeSLConfig(instanceId: string, config: SLStartupConfig): Promise<void> {
-    return tauriInvoke("write_sl_config", { instanceId, config });
+    return tauriInvoke("write_sl_config", {
+      instance_id: instanceId,
+      config,
+    });
   },
 };
