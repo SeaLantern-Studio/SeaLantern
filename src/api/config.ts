@@ -128,7 +128,7 @@ export const configApi = {
    */
   async readSLConfig(instanceId: string): Promise<SLStartupConfig> {
     return tauriInvoke("read_sl_config", {
-      instanceId,
+      instance_id: instanceId,
     });
   },
 
