@@ -23,7 +23,7 @@ export interface m_PluginConfigFile {
 
 export const m_pluginApi = {
   async m_getPlugins(serverId: string): Promise<m_PluginInfo[]> {
-    return tauriInvoke<m_PluginInfo[]>("m_get_plugins", { serverId });
+    return tauriInvoke<m_PluginInfo[]>("m_get_plugins", { server_id: serverId });
   },
 
   async m_getPluginConfigFiles(
@@ -32,22 +32,30 @@ export const m_pluginApi = {
     pluginName: string,
   ): Promise<m_PluginConfigFile[]> {
     return tauriInvoke<m_PluginConfigFile[]>("m_get_plugin_config_files", {
-      serverId,
-      fileName,
-      pluginName,
+      server_id: serverId,
+      file_name: fileName,
+      plugin_name: pluginName,
     });
   },
 
   async m_togglePlugin(serverId: string, fileName: string, enabled: boolean): Promise<void> {
-    return tauriInvoke<void>("m_toggle_plugin", { serverId, fileName, enabled });
+    return tauriInvoke<void>("m_toggle_plugin", {
+      server_id: serverId,
+      file_name: fileName,
+      enabled,
+    });
   },
 
   async m_deletePlugin(serverId: string, fileName: string): Promise<void> {
-    return tauriInvoke<void>("m_delete_plugin", { serverId, fileName });
+    return tauriInvoke<void>("m_delete_plugin", { server_id: serverId, file_name: fileName });
   },
 
   async m_installPlugin(serverId: string, fileData: number[], fileName: string): Promise<void> {
-    return tauriInvoke<void>("m_install_plugin", { serverId, fileData, fileName });
+    return tauriInvoke<void>("m_install_plugin", {
+      server_id: serverId,
+      file_name: fileName,
+      file_data: fileData,
+    });
   },
 
   async m_reloadPlugins(serverId: string): Promise<void> {

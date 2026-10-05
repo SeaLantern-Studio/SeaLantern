@@ -56,6 +56,10 @@ use adapter::tauri::commands::server_config::{
     preview_server_properties_write_from_source, read_server_properties,
     read_server_properties_source, write_server_properties, write_server_properties_source,
 };
+use adapter::tauri::commands::server_plugin::{
+    m_delete_plugin, m_get_plugin_config_files, m_get_plugins, m_install_plugin, m_toggle_plugin,
+};
+use adapter::tauri::commands::server_startup::{read_sl_config, write_sl_config};
 use adapter::tauri::commands::settings::{
     export_settings, get_settings, get_system_fonts, import_settings, reset_settings,
     settings_overview, update_settings, update_settings_partial,
@@ -236,6 +240,15 @@ fn main() {
             read_server_properties_source,
             write_server_properties,
             write_server_properties_source,
+            //服务器插件（plugins 目录）管理命令
+            m_get_plugins,
+            m_get_plugin_config_files,
+            m_toggle_plugin,
+            m_delete_plugin,
+            m_install_plugin,
+            //实例启动配置（sl.json 的 startup 段）命令
+            read_sl_config,
+            write_sl_config,
             //服务器定时任务契约命令
             create_cron_task,
             delete_cron_task,
