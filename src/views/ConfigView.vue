@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, watch, onMounted, onActivated } from "vue";
 import { useRoute } from "vue-router";
 import { defineAsyncComponent } from "vue";
@@ -301,7 +301,7 @@ onActivated(async () => {
 
           <template v-if="activeTab === 'startup'">
             <ConfigStartupSection
-              :serverPath="serverPath"
+              :instanceId="currentServerId"
               :defaultMaxMemory="currentServer?.max_memory ?? 2048"
               :defaultMinMemory="currentServer?.min_memory ?? 512"
               @saved="handleStartupConfigSaved"

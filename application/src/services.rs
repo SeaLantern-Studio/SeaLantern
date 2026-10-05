@@ -102,7 +102,7 @@ impl AppServices {
                 server: server.clone(),
                 server_config: Arc::new(CoreServerConfigService),
                 server_plugin: Arc::new(CoreServerPluginService::new(instance.clone())),
-                server_startup: Arc::new(CoreServerStartupService),
+                server_startup: Arc::new(CoreServerStartupService::new(instance.clone())),
                 instance: instance.clone(),
                 java: Arc::new(CoreJavaService),
                 online_tunnel: Arc::new(CoreOnlineTunnelService::default()),
