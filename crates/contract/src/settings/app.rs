@@ -5,10 +5,19 @@ use serde::{Deserialize, Serialize};
 use crate::java::JavaInfo;
 use crate::proxy::{ProxyConfigError, ProxySettings};
 
+use super::registry::InstanceRegistrySection;
+
 /// 当前配置版本号。
 ///
-/// 每次配置结构变更时递增，由配置管理器据此执行数据迁移。
-pub const CURRENT_CONFIG_VERSION: u32 = 6;
+/// 由配置管理器据此做版本门禁：文件版本更高 → 拒绝加载（老程序别读坏新
+/// 文件）；更低 → 锁内备份并按版本号分步升级。递增条件为「旧数据无法被
+/// `serde` 默认值安全吸收」的变更（字段语义改变、需搬移或丢弃旧值）；纯
+/// 新增的 `#[serde(default)]` 字段不构成递增理由——旧文件反序列化时自动
+/// 补默认值。
+///
+/// v7：`AppSettings.registry`（实例注册表分区）引入；缺该字段的旧文件经
+/// 默认值兼容，无字段搬移步骤。
+pub const CURRENT_CONFIG_VERSION: u32 = 7;
 
 /// 亚克力模糊级别的默认值，旧配置缺字段时回落到这里。
 pub const DEFAULT_ACRYLIC_BLUR_LEVEL: &str = "medium";
@@ -30,7 +39,7 @@ pub struct SettingsValidationError {
 }
 
 impl SettingsValidationError {
-    fn new(field: &'static str, message: &'static str) -> Self {
+    pub(crate) fn new(field: &'static str, message: &'static str) -> Self {
         Self { field, message }
     }
 
@@ -65,6 +74,8 @@ pub enum SettingsGroup {
     Developer,
     Tunnel,
     PluginCommands,
+    /// 实例注册表：主资源目录、附加服务器目录、信任与忽略名单。
+    Registry,
 }
 
 /// 完整的应用设置。
@@ -133,6 +144,9 @@ pub struct AppSettings {
 
     pub plugin_allowed_commands: Vec<String>,
     pub plugin_blocked_commands: Vec<String>,
+
+    /// 实例注册表：主资源目录、附加服务器目录与信任状态。
+    pub registry: InstanceRegistrySection,
 }
 
 impl Default for AppSettings {
@@ -185,6 +199,7 @@ impl Default for AppSettings {
             tunnel_host_max_players: None,
             plugin_allowed_commands: vec![],
             plugin_blocked_commands: vec![],
+            registry: InstanceRegistrySection::default(),
         }
     }
 }
@@ -262,6 +277,9 @@ impl AppSettings {
                 "must be greater than zero when set",
             ));
         }
+        // 注册表分区自带校验（空路径/空信任 id/重复条目）；嵌套字段名保持
+        // 原样上报，调用方按需再映射。
+        self.registry.validate()?;
         Ok(())
     }
 
@@ -350,6 +368,10 @@ impl AppSettings {
             groups.push(SettingsGroup::Tunnel);
         }
 
+        if self.registry != other.registry {
+            groups.push(SettingsGroup::Registry);
+        }
+
         groups
     }
 }
@@ -371,7 +393,7 @@ mod tests {
 
     use super::{
         AppSettings, DEFAULT_ACRYLIC_BLUR_LEVEL, DEFAULT_TUNNEL_JOIN_PORT,
-        DEFAULT_TUNNEL_LINK_LIFETIME, SettingsGroup,
+        DEFAULT_TUNNEL_LINK_LIFETIME, InstanceRegistrySection, SettingsGroup,
     };
 
     #[test]
@@ -629,5 +651,40 @@ mod tests {
                 .field(),
             "window_height"
         );
+    }
+
+    #[test]
+    fn validation_rejects_invalid_registry_entries() {
+        // 注册表分区的校验必须经 `AppSettings::validate` 透传——否则空信任 id
+        // 等无效条目会被 load/update 接受。
+        let settings = AppSettings {
+            registry: InstanceRegistrySection {
+                trusted_instances: vec!["  ".to_string()],
+                ..InstanceRegistrySection::default()
+            },
+            ..AppSettings::default()
+        };
+
+        assert_eq!(
+            settings
+                .validate()
+                .expect_err("empty trusted id should fail")
+                .field(),
+            "trusted_instances"
+        );
+    }
+
+    #[test]
+    fn registry_change_marks_registry_group() {
+        let current = AppSettings::default();
+        let changed = AppSettings {
+            registry: InstanceRegistrySection {
+                trusted_instances: vec!["a1b2c3".to_string()],
+                ..InstanceRegistrySection::default()
+            },
+            ..current.clone()
+        };
+
+        assert_eq!(current.changed_groups(&changed), vec![SettingsGroup::Registry]);
     }
 }
