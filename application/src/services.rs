@@ -15,9 +15,9 @@ use crate::port::OnlineTunnelService;
 use crate::service::{
     CoreBackupService, CoreConsoleService, CoreCronTaskService, CoreDownloadService,
     CoreInstanceService, CoreJavaService, CoreOnlineTunnelService, CorePlayerService,
-    CoreProvisioningService, CoreServerCatalogService, CoreServerConfigService, CoreServerService,
-    CoreSettingsService, CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService,
-    ProxyMonitoringService,
+    CoreProvisioningService, CoreServerCatalogService, CoreServerConfigService,
+    CoreServerPluginService, CoreServerService, CoreServerStartupService, CoreSettingsService,
+    CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService, ProxyMonitoringService,
 };
 
 /// 应用服务聚合句柄；由宿主 composition root 创建并显式传递。
@@ -51,6 +51,10 @@ pub struct AppServicesInner {
     pub server: Arc<CoreServerService>,
     /// 服务器配置（server.properties）服务。
     pub server_config: Arc<CoreServerConfigService>,
+    /// 服务器插件（plugins 目录）服务。
+    pub server_plugin: Arc<CoreServerPluginService>,
+    /// 实例启动配置（sl.json 的 startup 段）服务。
+    pub server_startup: Arc<CoreServerStartupService>,
     /// 服务器控制台日志服务。
     pub console: Arc<CoreConsoleService>,
     /// 服务器定时任务服务。
@@ -97,6 +101,8 @@ impl AppServices {
                 )),
                 server: server.clone(),
                 server_config: Arc::new(CoreServerConfigService),
+                server_plugin: Arc::new(CoreServerPluginService::new(instance.clone())),
+                server_startup: Arc::new(CoreServerStartupService),
                 instance: instance.clone(),
                 java: Arc::new(CoreJavaService),
                 online_tunnel: Arc::new(CoreOnlineTunnelService::default()),
@@ -168,6 +174,16 @@ impl AppServices {
     /// 访问服务器配置（server.properties）服务（`Arc` 共享句柄，clone 廉价）。
     pub fn server_config(&self) -> &Arc<CoreServerConfigService> {
         &self.inner.server_config
+    }
+
+    /// 访问服务器插件（plugins 目录）服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn server_plugin(&self) -> &Arc<CoreServerPluginService> {
+        &self.inner.server_plugin
+    }
+
+    /// 访问实例启动配置服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn server_startup(&self) -> &Arc<CoreServerStartupService> {
+        &self.inner.server_startup
     }
 
     /// 访问服务器控制台日志服务（`Arc` 共享句柄，clone 廉价）。
