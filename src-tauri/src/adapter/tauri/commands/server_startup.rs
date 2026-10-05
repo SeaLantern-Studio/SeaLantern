@@ -10,7 +10,7 @@ use sealantern_contract::server_startup::SLStartupConfig;
 use tauri::State;
 
 /// 读取实例的启动内存覆盖。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn read_sl_config(
     services: State<'_, AppServices>,
     server_path: String,
@@ -19,7 +19,7 @@ pub async fn read_sl_config(
 }
 
 /// 写入实例的启动内存覆盖。
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn write_sl_config(
     services: State<'_, AppServices>,
     server_path: String,
