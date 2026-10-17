@@ -401,6 +401,78 @@ impl CoreInstanceService {
         Ok(())
     }
 
+    /// 内部按目录重新分配实例 id（修复「同 id 出现在多个目录」的冲突）。
+    ///
+    /// 与其它命令的关键差异：**按目录定位**。发现层遇重复 id 会把整组移出
+    /// `report.instances`（避免"猜哪个才对"），因此 `find_classified` 找不到
+    /// 它们——`trust`/`rename`/`delete` 这些按 id 的命令一律 `NotFound`。
+    /// 唯一能到达的手段是按目录探查。
+    ///
+    /// 只改 `sl.json` 的 `id`，不动信任名单：原 id 的信任自动归属「保留原 id
+    /// 的那个目录」，本目录的新 id 落回未标记态，由用户走常规 trust/ignore。
+    async fn reassign_id_inner(
+        &self,
+        dir: &str,
+        new_id: Option<&str>,
+    ) -> Result<(), InstanceError> {
+        let target = parse_dir_path(dir)?;
+
+        // 按目录探查，拿到当前文档（重复组不在 `instances` 里，不能按 id 找）。
+        // origin 取 Managed 仅为通过探查；该参数不参与本流程的后续决策。
+        let discovered = probe_dir(target.clone(), DiscoveryOrigin::Managed)
+            .await
+            .map_err(|problem| discovery_problem_error(&problem))?;
+
+        // 解析新 id：缺省时生成 v4 UUID（与 `derive_instance_directory` 同风格）。
+        let new_id = match new_id.map(str::trim) {
+            Some(value) if !value.is_empty() => {
+                InstanceId::new(value).map_err(InstanceError::from)?
+            }
+            _ => InstanceId::new(Uuid::new_v4().to_string()).map_err(InstanceError::from)?,
+        };
+
+        // 幂等：与现值相同直接返回，不写盘。
+        if discovered.document.id.as_str() == new_id.as_str() {
+            return Ok(());
+        }
+
+        // 新 id 不得与任何「可见」实例冲突（含其它重复组以外的实例）。同组
+        // 其它成员此刻不在 `instances` 里，但它们都占用**原 id**，而本目录
+        // 正要放弃原 id，故只要 `new_id != 原 id` 即不会与它们撞。
+        let scan = self.scan().await?;
+        if scan
+            .classified
+            .instances
+            .iter()
+            .any(|item| item.instance.document.id.as_str() == new_id.as_str())
+        {
+            return Err(InstanceError::AlreadyExists);
+        }
+
+        // 锁内改文档；`update` 内部会重跑 `validate`，保证新 id 合法。
+        let mut store = DocumentStore::load(DocumentStore::path_for(&target))
+            .await
+            .map_err(doc_error)?;
+        store
+            .update(|document| {
+                if document.id.as_str() == new_id.as_str() {
+                    return Ok(false);
+                }
+                document.id = new_id.clone();
+                Ok(true)
+            })
+            .await
+            .map_err(doc_error)?;
+
+        tracing::info!(
+            target: "sealantern.application.instance",
+            dir = %target.display(),
+            new_id = %new_id.as_str(),
+            "instance id reassigned"
+        );
+        Ok(())
+    }
+
     /// 导入已有服务器目录：校验 → 探查 →（已建档：登记 / 裸目录：识别构建）→ 持久化。
     /// 返回应用层富错误（携带 PathBuf 用于日志详情）；契约层
     /// （[`InstanceService`] 的 `import_existing_server`）在此之上收敛为薄契约错误。
@@ -601,6 +673,16 @@ impl InstanceService for CoreInstanceService {
 
     async fn unignore_dir(&self, path: &str) -> Result<(), InstanceServiceError> {
         self.unignore_dir_inner(path)
+            .await
+            .map_err(InstanceServiceError::from)
+    }
+
+    async fn reassign_id(
+        &self,
+        dir: &str,
+        new_id: Option<&str>,
+    ) -> Result<(), InstanceServiceError> {
+        self.reassign_id_inner(dir, new_id)
             .await
             .map_err(InstanceServiceError::from)
     }
@@ -1241,6 +1323,83 @@ mod tests {
         let discovery = service.discovery().await.expect("discovery");
         assert_eq!(discovery.trusted.len(), 1);
         assert!(discovery.pending.is_empty());
+    }
+
+    #[tokio::test]
+    async fn reassign_id_resolves_a_duplicate_group_by_directory() {
+        // 两个受管目录携带同一 id：发现层整组移出 instances 并报 DuplicateId，
+        // 按 id 的命令都够不着它们。按目录改掉其中一个的 id 后，重复消失、
+        // 被改者落回 pending（其新 id 未登记），保留原 id 者继承信任。
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir_a = root.path().join("instances").join("dup-a");
+        let dir_b = root.path().join("instances").join("dup-b");
+        write_sl_json(&dir_a, "same-id").await;
+        write_sl_json(&dir_b, "same-id").await;
+
+        let service = test_service(root.path()).await;
+
+        // 前置：重复组不可达——按 id 信任失败。
+        let dup_id = InstanceId::new("same-id").expect("valid id");
+        assert_eq!(service.trust(&dup_id).await, Err(InstanceServiceError::InstanceNotFound));
+
+        // 按目录改 id（自动生成）→ 重复消失。
+        service
+            .reassign_id(&dir_b.to_string_lossy(), None)
+            .await
+            .expect("reassign should succeed");
+
+        let discovery = service.discovery().await.expect("discovery");
+        // 不再有 duplicate 问题；两个实例都回到可达集合。
+        assert!(
+            !discovery
+                .problems
+                .iter()
+                .any(|e| e.problem.kind == DiscoveryProblemKind::DuplicateId)
+        );
+        let total = discovery.trusted.len() + discovery.pending.len();
+        assert_eq!(total, 2, "both instances should become reachable");
+        // 原 id 保留在 dir_a（继承信任需先登记；此处仅验证可达性）。
+        assert!(
+            discovery.pending.iter().any(|p| p.name == "server-same-id"),
+            "both reassigned and original should be reachable"
+        );
+    }
+
+    #[tokio::test]
+    async fn reassign_id_is_idempotent_and_rejects_conflicts() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("alpha");
+        write_sl_json(&dir, "alpha").await;
+        let service = test_service(root.path()).await;
+        let path = dir.to_string_lossy().to_string();
+
+        // 改成一个未被占用的显式 id。
+        service
+            .reassign_id(&path, Some("alpha-2"))
+            .await
+            .expect("reassign to explicit id");
+
+        // 幂等：同一目标再改一次不报错。
+        service
+            .reassign_id(&path, Some("alpha-2"))
+            .await
+            .expect("reassign should be idempotent");
+
+        // 冲突：改成另一个已存在实例的 id 被拒绝。
+        let other_dir = root.path().join("instances").join("beta");
+        write_sl_json(&other_dir, "beta").await;
+        service
+            .trust(&InstanceId::new("beta").expect("valid id"))
+            .await
+            .expect("trust beta");
+
+        assert_eq!(
+            service.reassign_id(&path, Some("beta")).await,
+            Err(InstanceServiceError::AlreadyExists)
+        );
+
+        // 空目录路径被拒绝。
+        assert_eq!(service.reassign_id("  ", None).await, Err(InstanceServiceError::InvalidInput));
     }
 
     #[tokio::test]

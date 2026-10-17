@@ -161,6 +161,20 @@ pub async fn unignore_instance_dir(
     service.unignore_dir(&path).await
 }
 
+/// 为指定目录的实例重新分配 id（修复「同 id 出现在多个目录」的冲突）。
+///
+/// **按目录定位**而非按 id：重复组被发现层整组移出实例列表，按 id 的命令
+/// 都够不着它们。`new_id` 缺省时由后端生成 v4 UUID。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn reassign_instance_id(
+    services: State<'_, AppServices>,
+    dir: String,
+    new_id: Option<String>,
+) -> Result<(), InstanceServiceError> {
+    let service = instance_service(&services);
+    service.reassign_id(&dir, new_id.as_deref()).await
+}
+
 /// 导入已有服务器目录：转发至 service 层编排，仅做错误映射。
 ///
 /// 校验、去重、检查与规格构建均在 `CoreInstanceService::import_existing_server`

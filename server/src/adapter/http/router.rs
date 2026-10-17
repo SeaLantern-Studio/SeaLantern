@@ -64,7 +64,9 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
         .route("/instances/{id}/trust", post(handlers::trust_instance))
         .route("/instances/{id}/untrust", post(handlers::untrust_instance))
         .route("/instances/ignored-dirs", post(handlers::ignore_instance_dir))
-        .route("/instances/ignored-dirs", delete(handlers::unignore_instance_dir));
+        .route("/instances/ignored-dirs", delete(handlers::unignore_instance_dir))
+        // ── 重复 id 修复（按目录重新分配身份） ──
+        .route("/instances/reassign-id", post(handlers::reassign_instance_id));
 
     let settings_routes = Router::new()
         .route("/settings", get(handlers::settings_overview))

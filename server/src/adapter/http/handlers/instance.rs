@@ -174,6 +174,30 @@ pub async fn unignore_instance_dir(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// 重新分配实例 id 请求体。
+///
+/// `new_id` 缺省（或空）时由服务层生成 v4 UUID。
+#[derive(Debug, serde::Deserialize)]
+pub struct ReassignIdRequest {
+    /// 目标实例所在目录。
+    pub dir: String,
+    /// 新的实例 id；缺省时自动生成。
+    #[serde(default)]
+    pub new_id: Option<String>,
+}
+
+/// `POST /api/instances/reassign-id` — 按目录为实例重新分配 id。幂等。
+pub async fn reassign_instance_id(
+    State(state): State<AppState>,
+    Json(request): Json<ReassignIdRequest>,
+) -> Result<StatusCode, HttpError> {
+    state
+        .instance()
+        .reassign_id(&request.dir, request.new_id.as_deref())
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// `POST /api/instances/import-existing` — 导入已有服务器目录。
 ///
 /// 校验、去重、检查与规格构建均由 `CoreInstanceService::import_existing_server`

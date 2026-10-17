@@ -20,8 +20,8 @@ pub use cron::{
 pub use download::{cancel_download, create_download, query_download};
 pub use instance::{
     create_instance, delete_instance, discover_instances, get_instance, ignore_instance_dir,
-    import_existing_instance, list_instances, rename_instance, trust_instance,
-    unignore_instance_dir, untrust_instance, update_instance_path,
+    import_existing_instance, list_instances, reassign_instance_id, rename_instance,
+    trust_instance, unignore_instance_dir, untrust_instance, update_instance_path,
 };
 pub use provisioning::inspect_server;
 pub use server::{
