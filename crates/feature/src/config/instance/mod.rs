@@ -18,6 +18,6 @@ pub use document::{
 pub use error::DocumentError;
 pub use trust::{
     ClassifiedInstance, ClassifiedProblem, TrustReport, TrustState, classify, ignore_dir,
-    orphan_trusted_ids, register_extra_dir, trust_instance, unignore_dir, unregister_extra_dir,
-    untrust_instance,
+    orphan_trusted_ids, register_extra_dir, trust_and_unignore, trust_instance, unignore_dir,
+    unregister_extra_dir, untrust_instance,
 };

@@ -154,7 +154,7 @@ pub async fn untrust_instance(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// `POST /api/instances/ignored-dirs` — 把目录加入忽略名单。幂等。
+/// `POST /api/instance-registry/ignored-dirs` — 把目录加入忽略名单。幂等。
 ///
 /// 目录不必是有效实例，故路径放在请求体而非路径参数（避免路径分量转义歧义）。
 pub async fn ignore_instance_dir(
@@ -165,7 +165,7 @@ pub async fn ignore_instance_dir(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// `DELETE /api/instances/ignored-dirs` — 把目录移出忽略名单。幂等。
+/// `DELETE /api/instance-registry/ignored-dirs` — 把目录移出忽略名单。幂等。
 pub async fn unignore_instance_dir(
     State(state): State<AppState>,
     Json(request): Json<IgnoreDirRequest>,
@@ -186,7 +186,7 @@ pub struct ReassignIdRequest {
     pub new_id: Option<String>,
 }
 
-/// `POST /api/instances/reassign-id` — 按目录为实例重新分配 id。幂等。
+/// `POST /api/instance-registry/reassign-id` — 按目录为实例重新分配 id。幂等。
 pub async fn reassign_instance_id(
     State(state): State<AppState>,
     Json(request): Json<ReassignIdRequest>,

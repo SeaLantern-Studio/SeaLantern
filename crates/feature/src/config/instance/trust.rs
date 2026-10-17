@@ -190,6 +190,43 @@ pub async fn untrust_instance(
         .await
 }
 
+/// 单次写入内同时「解除忽略 + 登记信任」（原子）。
+///
+/// 供显式信任已忽略目录的场景使用：分两次调用（先 `unignore_dir` 再
+/// `trust_instance`）时，若第二次失败或进程在中途停止，会留下「已解除忽略
+/// 但仍未信任」的中间态——目录从忽略名单消失却仍不受管理。合并为一次
+/// `update_registry` 可消除该窗口。
+pub async fn trust_and_unignore(
+    settings: &mut SettingsManager,
+    id: &str,
+    dir: &Path,
+) -> Result<InstanceRegistrySection, SettingsError> {
+    let id = id.trim();
+    let normalized = normalize_dir(dir);
+    let key = dir_key(&normalized);
+    settings
+        .update_registry(|registry| {
+            let mut changed = false;
+            let before = registry.ignored_dirs.len();
+            registry
+                .ignored_dirs
+                .retain(|existing| dir_key(existing) != key);
+            if registry.ignored_dirs.len() != before {
+                changed = true;
+            }
+            if !registry
+                .trusted_instances
+                .iter()
+                .any(|existing| existing == id)
+            {
+                registry.trusted_instances.push(id.to_string());
+                changed = true;
+            }
+            changed
+        })
+        .await
+}
+
 /// 把目录加入忽略名单（词法规范化后存储）。幂等。
 ///
 /// 匹配用 [`dir_key`]（大小写折叠/分隔符统一）与 `extra_server_dirs`
