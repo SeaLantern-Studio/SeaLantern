@@ -59,7 +59,12 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
         .route("/instances/{id}/logs", get(handlers::console_logs))
         // ── 嵌套子资源（后续扩展） ──
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
-        .route("/instances/{id}/path", put(handlers::update_instance_path));
+        .route("/instances/{id}/path", put(handlers::update_instance_path))
+        // ── 信任 / 忽略名单维护（实例发现流的用户处置动作） ──
+        .route("/instances/{id}/trust", post(handlers::trust_instance))
+        .route("/instances/{id}/untrust", post(handlers::untrust_instance))
+        .route("/instances/ignored-dirs", post(handlers::ignore_instance_dir))
+        .route("/instances/ignored-dirs", delete(handlers::unignore_instance_dir));
 
     let settings_routes = Router::new()
         .route("/settings", get(handlers::settings_overview))

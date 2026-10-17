@@ -29,6 +29,13 @@ pub struct UpdatePathRequest {
     pub path: String,
 }
 
+/// 忽略名单请求体。
+#[derive(Debug, serde::Deserialize)]
+pub struct IgnoreDirRequest {
+    /// 要忽略 / 恢复提示的目录路径。
+    pub path: String,
+}
+
 /// `GET /api/instances` — 列出全部实例。
 pub async fn list_instances(
     State(state): State<AppState>,
@@ -125,6 +132,46 @@ pub async fn update_instance_path(
 fn parse_id(raw: &str) -> Result<InstanceId, HttpError> {
     InstanceId::new(raw.to_owned())
         .map_err(|_| HttpError::bad_request("invalid_instance_id", "invalid instance id"))
+}
+
+/// `POST /api/instances/{id}/trust` — 把实例登记为受信任。幂等。
+pub async fn trust_instance(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, HttpError> {
+    let id = parse_id(&id)?;
+    state.instance().trust(&id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/instances/{id}/untrust` — 撤销实例的信任登记。幂等。
+pub async fn untrust_instance(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, HttpError> {
+    let id = parse_id(&id)?;
+    state.instance().untrust(&id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/instances/ignored-dirs` — 把目录加入忽略名单。幂等。
+///
+/// 目录不必是有效实例，故路径放在请求体而非路径参数（避免路径分量转义歧义）。
+pub async fn ignore_instance_dir(
+    State(state): State<AppState>,
+    Json(request): Json<IgnoreDirRequest>,
+) -> Result<StatusCode, HttpError> {
+    state.instance().ignore_dir(&request.path).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `DELETE /api/instances/ignored-dirs` — 把目录移出忽略名单。幂等。
+pub async fn unignore_instance_dir(
+    State(state): State<AppState>,
+    Json(request): Json<IgnoreDirRequest>,
+) -> Result<StatusCode, HttpError> {
+    state.instance().unignore_dir(&request.path).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// `POST /api/instances/import-existing` — 导入已有服务器目录。

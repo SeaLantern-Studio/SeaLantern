@@ -330,8 +330,78 @@ impl CoreInstanceService {
         Ok(())
     }
 
-    /// 导入已有服务器目录：校验 → 探查 →（已建档：登记 / 裸目录：识别构建）→ 持久化。
+    /// 内部信任登记：要求实例在本次扫描中身份有效（`sl.json` 可解析通过）。
     ///
+    /// 与 `import_existing_server` 的「已验证条目」分支同源：先 `probe_dir`
+    /// 确认文档身份，再登记信任——绝不凭一个未经验证的 id 写名单。
+    async fn trust_inner(&self, id: &InstanceId) -> Result<(), InstanceError> {
+        let scan = self.scan().await?;
+        let item = Self::find_classified(&scan.classified, id).ok_or(InstanceError::NotFound)?;
+        let origin = item.instance.origin;
+        let dir = item.instance.dir.clone();
+
+        // 已信任：幂等返回，不做多余写盘。
+        if item.state == TrustState::Trusted {
+            return Ok(());
+        }
+        // 复核文档仍有效（并发场景下目录可能已被外部改动）。
+        match probe_dir(dir.clone(), origin).await {
+            Ok(discovered) if discovered.document.id.as_str() == id.as_str() => {}
+            Ok(_) => return Err(InstanceError::InvalidInput),
+            Err(problem) => return Err(discovery_problem_error(&problem)),
+        }
+
+        // 显式信任即用户处置：先解除忽略，再登记信任（与创建/导入的转正语义一致）。
+        let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+        unignore_dir(&mut manager, &dir)
+            .await
+            .map_err(internal_error)?;
+        trust_instance(&mut manager, id.as_str())
+            .await
+            .map_err(internal_error)?;
+        drop(manager);
+
+        tracing::info!(
+            target: "sealantern.application.instance",
+            id = %id.as_str(),
+            dir = %dir.display(),
+            "instance trusted"
+        );
+        Ok(())
+    }
+
+    /// 内部忽略登记：只校验路径形状，不要求目录内存在有效 `sl.json`。
+    ///
+    /// 被忽略的目录本就可能是半成品或外来目录；若强制要求文档存在，
+    /// 「忽略这个提示」就永远做不到。
+    async fn ignore_dir_inner(&self, path: &str) -> Result<(), InstanceError> {
+        let target = parse_dir_path(path)?;
+        let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+        ignore_dir(&mut manager, &target)
+            .await
+            .map_err(internal_error)?;
+        drop(manager);
+
+        tracing::info!(
+            target: "sealantern.application.instance",
+            dir = %target.display(),
+            "instance directory ignored"
+        );
+        Ok(())
+    }
+
+    /// 内部解除忽略：仅维护名单，不做文件系统探查（目录可能已被删除）。
+    async fn unignore_dir_inner(&self, path: &str) -> Result<(), InstanceError> {
+        let target = parse_dir_path(path)?;
+        let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+        unignore_dir(&mut manager, &target)
+            .await
+            .map_err(internal_error)?;
+        drop(manager);
+        Ok(())
+    }
+
+    /// 导入已有服务器目录：校验 → 探查 →（已建档：登记 / 裸目录：识别构建）→ 持久化。
     /// 返回应用层富错误（携带 PathBuf 用于日志详情）；契约层
     /// （[`InstanceService`] 的 `import_existing_server`）在此之上收敛为薄契约错误。
     /// 编排逻辑收口于 service 层，命令层（Tauri / Axum）只负责参数转发与错误映射。
@@ -505,6 +575,36 @@ impl InstanceService for CoreInstanceService {
             })
     }
 
+    async fn trust(&self, id: &InstanceId) -> Result<(), InstanceServiceError> {
+        self.trust_inner(id)
+            .await
+            .map_err(InstanceServiceError::from)
+    }
+
+    async fn untrust(&self, id: &InstanceId) -> Result<(), InstanceServiceError> {
+        let mut manager = self
+            .settings
+            .lock_manager()
+            .await
+            .map_err(|e| InstanceServiceError::from(internal_error(e)))?;
+        untrust_instance(&mut manager, id.as_str())
+            .await
+            .map_err(|e| InstanceServiceError::from(internal_error(e)))?;
+        Ok(())
+    }
+
+    async fn ignore_dir(&self, path: &str) -> Result<(), InstanceServiceError> {
+        self.ignore_dir_inner(path)
+            .await
+            .map_err(InstanceServiceError::from)
+    }
+
+    async fn unignore_dir(&self, path: &str) -> Result<(), InstanceServiceError> {
+        self.unignore_dir_inner(path)
+            .await
+            .map_err(InstanceServiceError::from)
+    }
+
     async fn import_modpack(
         &self,
         mut request: ImportModpackRequest,
@@ -670,6 +770,19 @@ fn problem_dirs(problem: &DiscoveryProblem) -> Vec<PathBuf> {
 /// 基础设施层面问题，不向调用方区分细节（细节由日志承载）。
 fn internal_error(error: impl std::fmt::Display) -> InstanceError {
     InstanceError::Internal(error.to_string())
+}
+
+/// 解析忽略名单操作传入的目录字符串。
+///
+/// 只做非空校验，不要求目录存在——被忽略的目录可能早已被删除，用户仍需要
+/// 能把它移出名单。路径的规范化（消 `.`/`..`、统一分隔符）由 feature 层的
+/// `normalize_dir` 在名单写入时完成，与此处保持同一套词法语义。
+fn parse_dir_path(path: &str) -> Result<PathBuf, InstanceError> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err(InstanceError::InvalidInput);
+    }
+    Ok(PathBuf::from(trimmed))
 }
 
 /// `sl.json` 文档错误 → 应用层实例错误。
@@ -1041,6 +1154,93 @@ mod tests {
         DocumentStore::create(DocumentStore::path_for(dir), document)
             .await
             .expect("write sl.json");
+    }
+
+    #[tokio::test]
+    async fn trust_then_untrust_round_trip() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("alpha");
+        write_sl_json(&dir, "alpha").await;
+        let service = test_service(root.path()).await;
+        let id = InstanceId::new("alpha").expect("valid id");
+
+        // 初始：身份有效但未登记 → 待处理。
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.pending.len(), 1);
+        assert_eq!(discovery.pending[0].instance_id, "alpha");
+
+        // 信任 → 转入已管理。
+        service.trust(&id).await.expect("trust");
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.trusted.len(), 1);
+        assert!(discovery.pending.is_empty());
+
+        // 撤销 → 回到待处理（目录仍有效、不在忽略名单）。
+        service.untrust(&id).await.expect("untrust");
+        let discovery = service.discovery().await.expect("discovery");
+        assert!(discovery.trusted.is_empty());
+        assert_eq!(discovery.pending.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn ignoring_a_pending_dir_removes_the_hint_and_unignore_restores_it() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("beta");
+        write_sl_json(&dir, "beta").await;
+        let service = test_service(root.path()).await;
+        let path = dir.to_string_lossy().to_string();
+
+        // 忽略 → 不再提示（忽略优先于「待处理」）。
+        service.ignore_dir(&path).await.expect("ignore");
+        let discovery = service.discovery().await.expect("discovery");
+        assert!(discovery.pending.is_empty());
+        assert!(discovery.trusted.is_empty());
+
+        // 解除忽略 → 提示恢复。
+        service.unignore_dir(&path).await.expect("unignore");
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.pending.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn trusting_an_unknown_instance_reports_not_found() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+        let ghost = InstanceId::new("ghost").expect("valid id");
+
+        assert_eq!(service.trust(&ghost).await, Err(InstanceServiceError::InstanceNotFound));
+    }
+
+    #[tokio::test]
+    async fn ignoring_a_blank_path_is_rejected() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+
+        assert_eq!(service.ignore_dir("   ").await, Err(InstanceServiceError::InvalidInput));
+        assert_eq!(service.unignore_dir("").await, Err(InstanceServiceError::InvalidInput));
+    }
+
+    #[tokio::test]
+    async fn trusting_an_ignored_instance_promotes_it() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("gamma");
+        write_sl_json(&dir, "gamma").await;
+        let service = test_service(root.path()).await;
+        let id = InstanceId::new("gamma").expect("valid id");
+        let path = dir.to_string_lossy().to_string();
+
+        service.ignore_dir(&path).await.expect("ignore");
+        let discovery = service.discovery().await.expect("discovery");
+        assert!(discovery.pending.is_empty());
+
+        // 显式信任即用户处置：解除忽略 + 登记信任。
+        service
+            .trust(&id)
+            .await
+            .expect("trust promotes ignored dir");
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.trusted.len(), 1);
+        assert!(discovery.pending.is_empty());
     }
 
     #[tokio::test]

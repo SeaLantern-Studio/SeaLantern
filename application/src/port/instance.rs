@@ -51,6 +51,25 @@ pub trait InstanceService: Send + Sync {
     /// 更新实例目录路径。
     async fn update_path(&self, id: &InstanceId, path: &str) -> Result<(), InstanceServiceError>;
 
+    /// 把实例登记为受信任（`trusted_instances`）。幂等。
+    ///
+    /// 目标实例须是本次扫描中身份有效（`sl.json` 可解析且通过校验）的条目；
+    /// 实例不存在或文档无效时返回 [`InstanceServiceError::InstanceNotFound`] /
+    /// [`InstanceServiceError::InvalidInput`]。
+    async fn trust(&self, id: &InstanceId) -> Result<(), InstanceServiceError>;
+
+    /// 撤销实例的信任登记。幂等：未登记时视为成功。
+    async fn untrust(&self, id: &InstanceId) -> Result<(), InstanceServiceError>;
+
+    /// 把目录加入忽略名单（`ignored_dirs`），此后该目录不再作为待处理项提示。
+    ///
+    /// 目录不必是有效实例：被忽略的目录本就可能没有 `sl.json`。
+    /// 路径为空或不是目录时返回 [`InstanceServiceError::InvalidInput`]。
+    async fn ignore_dir(&self, path: &str) -> Result<(), InstanceServiceError>;
+
+    /// 把目录移出忽略名单。幂等：不在名单内时视为成功。
+    async fn unignore_dir(&self, path: &str) -> Result<(), InstanceServiceError>;
+
     /// 导入已有服务器目录：校验源目录 → 去重 → 构建导入规格 → 供给计划 → 持久化登记。
     ///
     /// 返回薄契约错误（无主机路径载荷）；底层失败详情由实现层写入受控日志。
@@ -152,6 +171,26 @@ mod tests {
             _path: &str,
         ) -> Result<(), InstanceServiceError> {
             self.calls.lock().expect("lock").push("update_path");
+            Ok(())
+        }
+
+        async fn trust(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
+            self.calls.lock().expect("lock").push("trust");
+            Ok(())
+        }
+
+        async fn untrust(&self, _id: &InstanceId) -> Result<(), InstanceServiceError> {
+            self.calls.lock().expect("lock").push("untrust");
+            Ok(())
+        }
+
+        async fn ignore_dir(&self, _path: &str) -> Result<(), InstanceServiceError> {
+            self.calls.lock().expect("lock").push("ignore_dir");
+            Ok(())
+        }
+
+        async fn unignore_dir(&self, _path: &str) -> Result<(), InstanceServiceError> {
+            self.calls.lock().expect("lock").push("unignore_dir");
             Ok(())
         }
 

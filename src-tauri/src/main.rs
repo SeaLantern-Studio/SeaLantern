@@ -24,8 +24,9 @@ use adapter::tauri::commands::cron::{
 };
 use adapter::tauri::commands::download::{download_cancel, download_create, download_query};
 use adapter::tauri::commands::instance::{
-    create_instance, delete_instance, discover_instances, get_instance, import_existing_server,
-    import_modpack, list_instances, rename_instance, update_instance_path,
+    create_instance, delete_instance, discover_instances, get_instance, ignore_instance_dir,
+    import_existing_server, import_modpack, list_instances, rename_instance, trust_instance,
+    unignore_instance_dir, untrust_instance, update_instance_path,
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
 use adapter::tauri::commands::logging::share_logs;
@@ -275,10 +276,14 @@ fn main() {
             delete_instance,
             discover_instances,
             get_instance,
+            ignore_instance_dir,
             import_existing_server,
             import_modpack,
             list_instances,
             rename_instance,
+            trust_instance,
+            unignore_instance_dir,
+            untrust_instance,
             update_instance_path,
             //Java 运行时检测与校验
             java_detect,
@@ -454,8 +459,12 @@ mod tests {
         "create_instance",
         "delete_instance",
         "get_instance",
+        "ignore_instance_dir",
         "list_instances",
         "rename_instance",
+        "trust_instance",
+        "unignore_instance_dir",
+        "untrust_instance",
         "update_instance_path",
         "import_existing_server",
         "import_modpack",

@@ -112,6 +112,55 @@ pub async fn update_instance_path(
     service.update_path(&id, &path).await
 }
 
+/// 把实例登记为受信任（用户对「待处理实例」点「信任」）。
+///
+/// 幂等；目标实例身份无效时返回 [`InstanceServiceError::InstanceNotFound`]
+/// 或 [`InstanceServiceError::InvalidInput`]。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn trust_instance(
+    services: State<'_, AppServices>,
+    id: String,
+) -> Result<(), InstanceServiceError> {
+    let service = instance_service(&services);
+    let id = parse_id_for_tauri(id)?;
+    service.trust(&id).await
+}
+
+/// 撤销实例的信任登记（用户对已管理实例「不再管理」或清理孤儿记录）。
+///
+/// 幂等：未登记时视为成功。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn untrust_instance(
+    services: State<'_, AppServices>,
+    id: String,
+) -> Result<(), InstanceServiceError> {
+    let service = instance_service(&services);
+    let id = parse_id_for_tauri(id)?;
+    service.untrust(&id).await
+}
+
+/// 把目录加入忽略名单（用户对「待处理/问题目录」点「忽略」）。
+///
+/// 目录不必是有效实例；幂等。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn ignore_instance_dir(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<(), InstanceServiceError> {
+    let service = instance_service(&services);
+    service.ignore_dir(&path).await
+}
+
+/// 把目录移出忽略名单（用户「恢复提示」）。幂等。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn unignore_instance_dir(
+    services: State<'_, AppServices>,
+    path: String,
+) -> Result<(), InstanceServiceError> {
+    let service = instance_service(&services);
+    service.unignore_dir(&path).await
+}
+
 /// 导入已有服务器目录：转发至 service 层编排，仅做错误映射。
 ///
 /// 校验、去重、检查与规格构建均在 `CoreInstanceService::import_existing_server`
