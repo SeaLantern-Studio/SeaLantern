@@ -150,6 +150,7 @@ mod tests {
             core_type: "paper".to_string(),
             core_version: String::new(),
             game_version: "unknown".to_string(),
+            required_java: None,
             directory: PathBuf::from("managed/imported-a"),
             port: 25565,
             max_memory_mib: 4096,

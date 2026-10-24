@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-beaker" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 烧杯：悬停时液面微晃，气泡上冒 */
+    .si-beaker .liquid { transform-box: fill-box; }
+    .si-beaker .bub { transform-box: fill-box; opacity: 0; }
+    .si-beaker .liquid { animation: sl-beaker-wave 1s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-beaker .bub-1 { animation: sl-beaker-bub .95s ease-in-out .1s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-beaker .bub-2 { animation: sl-beaker-bub .95s ease-in-out .5s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-beaker-wave { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-.7px); } }
+    @keyframes sl-beaker-bub  { 0% { opacity: 0; transform: translateY(1px) scale(.7); } 35% { opacity: .9; } 100% { opacity: 0; transform: translateY(-2.6px) scale(1); } }
+    .si-beaker:hover { --sl-anim-play: running; }
+  </style>
+  <path d="M4.5 3h15"/>
+  <path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3"/>
+  <path class="liquid" d="M6 14h12"/>
+  <circle class="bub bub-1" cx="9.5" cy="12.4" r="1" fill="currentColor" stroke="none"/>
+  <circle class="bub bub-2" cx="14" cy="12.2" r=".8" fill="currentColor" stroke="none"/>
+</svg>

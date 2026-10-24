@@ -128,6 +128,7 @@ pub fn build_import_spec(
         core_type: String::new(),
         core_version: String::new(),
         game_version: String::new(),
+        required_java: None,
         directory: source.clone(),
         port: request.port.unwrap_or(25565),
         max_memory_mib: request.max_memory_mib.unwrap_or(4096),

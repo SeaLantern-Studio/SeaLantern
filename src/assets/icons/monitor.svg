@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-monitor" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 显示器：悬停时屏幕轻压弹回，像信号刷新 */
+    .si-monitor .screen { transform-box: fill-box; transform-origin: 50% 100%; }
+    .si-monitor .screen { animation: sl-mon-tap .75s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-mon-tap { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(.94); } }
+    .si-monitor:hover { --sl-anim-play: running; }
+  </style>
+  <rect class="screen" x="2" y="3" width="20" height="14" rx="2"/>
+  <line x1="8" y1="21" x2="16" y2="21"/>
+  <line x1="12" y1="17" x2="12" y2="21"/>
+</svg>

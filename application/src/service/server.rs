@@ -39,6 +39,11 @@ use super::{CoreInstanceService, CoreSettingsService, LogRecorder};
 const STOP_GRACEFUL_TIMEOUT: Duration = Duration::from_secs(10);
 /// 状态轮询间隔。
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
+/// EULA 文件名（实例目录内）。
+const EULA_FILE_NAME: &str = "eula.txt";
+/// 自动同意 EULA 时写入的内容；与历史版本一致，无条件覆盖以修复 JVM
+/// 自行落出的 `eula=false` 文件。
+const EULA_ACCEPTED_CONTENT: &str = "# Auto-accepted by Sea Lantern\neula=true\n";
 
 /// 一个受管服务器进程：守护进程 + 已转移的标准流终端 + 日志记录管线。
 struct ManagedProcess {
@@ -446,6 +451,10 @@ impl ServerService for CoreServerService {
     }
 
     async fn send_command(&self, id: &InstanceId, command: &str) -> Result<(), ServerServiceError> {
+        // 先确认实例存在：进程表里没有条目只说明"当前没有运行中的进程"，
+        // 并不代表实例本身不存在。缺了这步，未注册的 ID 会被误报成
+        // `server_not_running`（HTTP 409），而不是 `instance_not_found`（404）。
+        self.find_instance(id).await?;
         self.send_command_inner(id, command).await
     }
 }
@@ -486,6 +495,10 @@ impl CoreServerService {
         command.stdin(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());
         command.stderr(std::process::Stdio::piped());
+
+        // 启动前文件准备：写 EULA 同意文件必须在 spawn 之前，否则 JVM 会因
+        // EULA 未同意在启动瞬间自行落出 `eula=false` 并退出。
+        self.write_eula_if_enabled(instance).await?;
 
         let mut daemon = match Daemon::spawn(&mut command) {
             Ok(daemon) => daemon,
@@ -643,6 +656,26 @@ impl CoreServerService {
         Ok(())
     }
 
+    /// 按全局设置把 `eula.txt` 写入实例目录；无条件覆盖以修复 JVM 自行落出的
+    /// `eula=false` 文件。写入失败时启动整体失败——没有同意 EULA 的服务器必然
+    /// 秒退，失败早报好过拉起一个立刻死掉的进程。
+    async fn write_eula_if_enabled(&self, instance: &Instance) -> Result<(), ServerServiceError> {
+        let enabled = self
+            .settings_service
+            .get()
+            .await
+            .map(|settings| settings.auto_accept_eula)
+            .unwrap_or(true);
+        if !enabled {
+            return Ok(());
+        }
+        let eula_path = instance.directory.join(EULA_FILE_NAME);
+        tokio::fs::write(&eula_path, EULA_ACCEPTED_CONTENT)
+            .await
+            .map_err(|e| ServerError::OperationFailed { source: Box::new(e) })?;
+        Ok(())
+    }
+
     /// 向服务器控制台发送命令（内部实现）。
     async fn send_command_inner(
         &self,
@@ -651,11 +684,21 @@ impl CoreServerService {
     ) -> Result<(), ServerServiceError> {
         let id_str = id.as_str().to_string();
         let mut processes = self.processes_lock()?;
+        // "未运行"是高频且可预期的情况（例如用户在已停止的服务器上点控制台
+        // 快捷指令），单独归类为 `NotRunning`，让宿主能给出针对性提示，而不是
+        // 与"启动中重复启动"这类真正的状态冲突混在 `InvalidState` 里。
         let Some(managed) = processes.get_mut(&id_str) else {
-            return Err(ServerError::InvalidState.into());
+            return Err(ServerError::NotRunning.into());
         };
-        if managed.daemon.poll().map(|s| s.is_some()).unwrap_or(true) {
-            return Err(ServerError::InvalidState.into());
+        // 轮询是三态而非布尔：仍在运行才可写 stdin；已退出属于"未运行"；
+        // 轮询本身失败（OS 错误）是操作失败，不能一并报成"未运行"——否则
+        // 调用方会提示"服务器已停止"或返回 409，掩盖需要排查的故障。
+        match managed.daemon.poll() {
+            Ok(None) => {}
+            Ok(Some(_)) => return Err(ServerError::NotRunning.into()),
+            Err(error) => {
+                return Err(ServerError::OperationFailed { source: Box::new(error) }.into());
+            }
         }
 
         // 写入 stdin 是短同步 IO（单行命令），直接持有锁执行。
@@ -719,27 +762,108 @@ mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use sealantern_core::instance::InstanceId;
+    use sealantern_feature::config::SettingsManager;
 
     use super::{CoreInstanceService, CoreServerService, CoreSettingsService};
 
-    fn registry_path() -> PathBuf {
-        let nonce = SystemTime::now()
+    /// 生成互不冲突的临时设置根目录。
+    ///
+    /// 只靠时间戳在高频调用下可能取到同一纳秒，使两个测试共用同一份带锁的
+    /// 设置文件（后者会因 `AlreadyLocked` 失败）；这里追加进程内自增序号兜底。
+    fn test_root() -> PathBuf {
+        static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
+        let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         std::env::temp_dir()
-            .join(format!("sealantern-server-lock-{}-{nonce}", std::process::id()))
-            .join("instances.json")
+            .join(format!("sealantern-server-lock-{}-{stamp}-{seq}", std::process::id()))
+    }
+
+    /// 以临时根目录装配共享同一设置的实例服务与设置服务。
+    async fn test_services(
+        root: &std::path::Path,
+    ) -> (Arc<CoreInstanceService>, Arc<CoreSettingsService>) {
+        let manager = SettingsManager::load(root.join("settings.json"))
+            .await
+            .expect("instance service");
+        let settings = Arc::new(CoreSettingsService::with_manager(manager));
+        (Arc::new(CoreInstanceService::new(settings.clone())), settings)
+    }
+
+    /// 构造一个最小可用的实例规格（注册表测试用）。
+    fn sample_spec(id: &str, directory: PathBuf) -> sealantern_core::instance::InstanceSpec {
+        use sealantern_core::instance::{InstanceSpec, LocalLaunch, StartupMode};
+
+        let startup_target = directory.join("server.jar");
+        InstanceSpec {
+            id: InstanceId::new(id).expect("valid id"),
+            name: "测试服".into(),
+            aliases: Vec::new(),
+            core_type: "paper".into(),
+            core_version: "1.20.4".into(),
+            game_version: "1.20.4".into(),
+            required_java: None,
+            directory,
+            port: 25565,
+            max_memory_mib: 1024,
+            min_memory_mib: 512,
+            created_at_unix_secs: 0,
+            last_started_at_unix_secs: None,
+            server_metadata: None,
+            launch: LocalLaunch {
+                startup_mode: StartupMode::Jar,
+                startup_target: Some(startup_target),
+                custom_command: None,
+                custom_executable: None,
+                custom_arguments: Vec::new(),
+                java_executable: None,
+                jvm_arguments: Vec::new(),
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn send_command_rejects_unknown_instance() {
+        // 未注册的实例 ID 必须报 InstanceNotFound（HTTP 404）：进程表里没有
+        // 条目只说明"当前没有运行中的进程"，不能据此推断实例不存在。
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        let service = CoreServerService::new(instances, settings);
+        let id = InstanceId::new("ghost").expect("valid id");
+
+        let error = crate::port::ServerService::send_command(&service, &id, "time set day")
+            .await
+            .expect_err("未知实例必须失败");
+        assert_eq!(error, sealantern_contract::ServerServiceError::InstanceNotFound);
+    }
+
+    #[tokio::test]
+    async fn send_command_reports_not_running_for_stopped_instance() {
+        // 已注册但从未启动的实例：发命令应报 NotRunning（"服务器未运行"），
+        // 与未知实例的 InstanceNotFound 区分开。
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        let directory = root.join("instances").join("stopped");
+        std::fs::create_dir_all(&directory).expect("instance directory");
+        crate::port::InstanceService::create(instances.as_ref(), sample_spec("stopped", directory))
+            .await
+            .expect("create instance");
+        let service = CoreServerService::new(instances, settings);
+        let id = InstanceId::new("stopped").expect("valid id");
+
+        let error = crate::port::ServerService::send_command(&service, &id, "time set day")
+            .await
+            .expect_err("未运行时必须失败");
+        assert_eq!(error, sealantern_contract::ServerServiceError::NotRunning);
     }
 
     #[tokio::test]
     async fn lifecycle_operations_serialize_per_instance() {
-        let path = registry_path();
-        let instances = CoreInstanceService::with_path(&path)
-            .await
-            .expect("instance service");
-        let service =
-            CoreServerService::new(Arc::new(instances), Arc::new(CoreSettingsService::new()));
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        let service = CoreServerService::new(instances, settings);
         let first = InstanceId::new("first").expect("first id");
         let second = InstanceId::new("second").expect("second id");
 
@@ -775,6 +899,57 @@ mod tests {
         drop(locks);
         drop(reacquired);
 
-        let _ = std::fs::remove_dir_all(path.parent().expect("parent"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[tokio::test]
+    async fn eula_is_written_when_auto_accept_is_enabled() {
+        // 默认 `auto_accept_eula = true`：启动前应无条件写出 `eula=true`，
+        // 覆盖 JVM 可能已落出的 `eula=false`。
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        let service = CoreServerService::new(instances, settings);
+        let directory = root.join("instances").join("eula-on");
+        std::fs::create_dir_all(&directory).expect("instance dir should be created");
+        let instance =
+            sealantern_core::instance::Instance::new(sample_spec("eula-on", directory.clone()))
+                .expect("valid instance");
+
+        service
+            .write_eula_if_enabled(&instance)
+            .await
+            .expect("eula write should succeed");
+
+        let content = std::fs::read_to_string(directory.join("eula.txt"))
+            .expect("eula.txt should be written");
+        assert!(content.contains("eula=true"));
+    }
+
+    #[tokio::test]
+    async fn eula_is_not_written_when_auto_accept_is_disabled() {
+        let root = test_root();
+        let (instances, settings) = test_services(&root).await;
+        crate::port::SettingsService::update_partial(
+            settings.as_ref(),
+            sealantern_contract::settings::PartialAppSettings {
+                auto_accept_eula: Some(false),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect("settings update should succeed");
+        let service = CoreServerService::new(instances, settings);
+        let directory = root.join("instances").join("eula-off");
+        std::fs::create_dir_all(&directory).expect("instance dir should be created");
+        let instance =
+            sealantern_core::instance::Instance::new(sample_spec("eula-off", directory.clone()))
+                .expect("valid instance");
+
+        service
+            .write_eula_if_enabled(&instance)
+            .await
+            .expect("disabled eula write should be a no-op");
+
+        assert!(!directory.join("eula.txt").exists());
     }
 }

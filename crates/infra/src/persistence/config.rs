@@ -160,6 +160,16 @@ pub struct ConfigFile<T> {
 }
 
 impl<T: Serialize + DeserializeOwned> ConfigFile<T> {
+    /// 由已解析的数据与路径直接构造句柄（不再读盘）。
+    ///
+    /// 供调用方在自行完成"读字节 → 版本门禁 → 反序列化"的分步加载后，
+    /// 复用本类型的锁内更新/原子写回原语；配置格式从文件扩展名推断。
+    pub fn from_parts(path: impl Into<PathBuf>, data: T) -> Result<Self, FsError> {
+        let path = path.into();
+        let format = ConfigFormat::from_extension(&path)?;
+        Ok(Self { path, data, format })
+    }
+
     pub async fn load_or_create(path: impl Into<PathBuf>, default: T) -> Result<Self, FsError> {
         let path = path.into();
         let format = ConfigFormat::from_extension(&path)?;

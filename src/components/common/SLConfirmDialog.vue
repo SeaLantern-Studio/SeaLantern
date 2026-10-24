@@ -47,7 +47,7 @@ const isConfirmDisabled = computed(() => {
 });
 
 const confirmBtnColor = computed(() => {
-  if (props.dangerous) return "#ef4444";
+  if (props.dangerous) return "var(--sl-error)";
   return undefined;
 });
 

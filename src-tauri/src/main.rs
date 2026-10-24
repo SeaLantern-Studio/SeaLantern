@@ -13,8 +13,8 @@ use sealantern_application::services::AppServices;
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 use adapter::tauri::commands::backup::{
-    create_backup, delete_backup, get_backup_list, get_backup_settings, restore_backup,
-    update_backup_settings,
+    create_backup, delete_backup, get_backup_dir, get_backup_list, get_backup_settings,
+    restore_backup, update_backup_settings,
 };
 use adapter::tauri::commands::catalog::{catalog_details, catalog_server_types, catalog_versions};
 use adapter::tauri::commands::console::get_server_logs;
@@ -24,14 +24,19 @@ use adapter::tauri::commands::cron::{
 };
 use adapter::tauri::commands::download::{download_cancel, download_create, download_query};
 use adapter::tauri::commands::instance::{
-    create_instance, delete_instance, get_instance, import_existing_server, import_modpack,
-    list_instances, rename_instance, update_instance_path,
+    create_instance, delete_instance, discover_instances, get_instance, ignore_instance_dir,
+    import_existing_server, import_modpack, list_instances, reassign_instance_id, rename_instance,
+    trust_instance, unignore_instance_dir, untrust_instance, update_instance_path,
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
 use adapter::tauri::commands::logging::share_logs;
 use adapter::tauri::commands::online_tunnel::{
     OnlineTunnelEventForwarder, online_tunnel_host, online_tunnel_join, online_tunnel_status,
     online_tunnel_stop,
+};
+use adapter::tauri::commands::player::{
+    add_op, add_to_whitelist, ban_player, get_banned_players, get_online_players, get_ops,
+    get_whitelist, kick_player, lookup_player, remove_from_whitelist, remove_op, unban_player,
 };
 use adapter::tauri::commands::plugin::{
     plugin_v2_approve_session, plugin_v2_audit, plugin_v2_disable, plugin_v2_discover,
@@ -52,12 +57,17 @@ use adapter::tauri::commands::server_config::{
     preview_server_properties_write_from_source, read_server_properties,
     read_server_properties_source, write_server_properties, write_server_properties_source,
 };
+use adapter::tauri::commands::server_plugin::{
+    m_delete_plugin, m_get_plugin_config_files, m_get_plugins, m_install_plugin, m_toggle_plugin,
+};
+use adapter::tauri::commands::server_startup::{read_sl_config, write_sl_config};
 use adapter::tauri::commands::settings::{
-    export_settings, get_settings, import_settings, reset_settings, settings_overview,
-    update_settings, update_settings_partial,
+    export_settings, get_settings, get_system_fonts, import_settings, reset_settings,
+    settings_overview, update_settings, update_settings_partial,
 };
 use adapter::tauri::commands::system::{
-    get_default_run_path, get_server_resource_usage, get_system_snapshot,
+    get_default_run_path, get_server_resource_usage, get_system_snapshot, get_temp_download_dir,
+    test_ipv6_connectivity,
 };
 use adapter::tauri::commands::update::check_update;
 use adapter::tauri::commands::update_install::{
@@ -218,6 +228,7 @@ fn main() {
             //服务器备份管理契约命令
             create_backup,
             delete_backup,
+            get_backup_dir,
             get_backup_list,
             get_backup_settings,
             restore_backup,
@@ -230,6 +241,15 @@ fn main() {
             read_server_properties_source,
             write_server_properties,
             write_server_properties_source,
+            //服务器插件（plugins 目录）管理命令
+            m_get_plugins,
+            m_get_plugin_config_files,
+            m_toggle_plugin,
+            m_delete_plugin,
+            m_install_plugin,
+            //实例启动配置（sl.json 的 startup 段）命令
+            read_sl_config,
+            write_sl_config,
             //服务器定时任务契约命令
             create_cron_task,
             delete_cron_task,
@@ -247,16 +267,24 @@ fn main() {
             get_default_run_path,
             get_server_resource_usage,
             get_system_snapshot,
+            get_temp_download_dir,
+            test_ipv6_connectivity,
             //日志分享能力（上传到 mclo.gs）
             share_logs,
             //实例与服务器进程服务
             create_instance,
             delete_instance,
+            discover_instances,
             get_instance,
+            ignore_instance_dir,
             import_existing_server,
             import_modpack,
             list_instances,
+            reassign_instance_id,
             rename_instance,
+            trust_instance,
+            unignore_instance_dir,
+            untrust_instance,
             update_instance_path,
             //Java 运行时检测与校验
             java_detect,
@@ -278,6 +306,7 @@ fn main() {
             download_query,
             export_settings,
             get_settings,
+            get_system_fonts,
             import_settings,
             reset_settings,
             settings_overview,
@@ -296,6 +325,20 @@ fn main() {
             update_download,
             update_install,
             update_pending,
+            //玩家查询与列表服务
+            lookup_player,
+            get_online_players,
+            get_whitelist,
+            get_banned_players,
+            get_ops,
+            //玩家管理写操作
+            add_to_whitelist,
+            remove_from_whitelist,
+            ban_player,
+            unban_player,
+            add_op,
+            remove_op,
+            kick_player,
             //插件 v2 宿主能力与策略管理
             plugin_v2_approve_session,
             plugin_v2_audit,
@@ -417,8 +460,13 @@ mod tests {
         "create_instance",
         "delete_instance",
         "get_instance",
+        "ignore_instance_dir",
         "list_instances",
+        "reassign_instance_id",
         "rename_instance",
+        "trust_instance",
+        "unignore_instance_dir",
+        "untrust_instance",
         "update_instance_path",
         "import_existing_server",
         "import_modpack",
@@ -437,12 +485,14 @@ mod tests {
         "download_query",
         "export_settings",
         "get_settings",
+        "get_system_fonts",
         "import_settings",
         "reset_settings",
         "settings_overview",
         "update_settings",
         "update_settings_partial",
         "check_update",
+        "lookup_player",
     ];
 
     #[test]

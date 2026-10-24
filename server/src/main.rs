@@ -4,13 +4,13 @@
 //! 并在收到终止信号时优雅关闭。
 
 use std::net::SocketAddr;
-use std::path::PathBuf;
 
-use axum_vite::ViteConfig;
 use sealantern_application::services::AppServices;
 use sealantern_server::adapter::http::build_router;
 use sealantern_server::observability;
 
+/// axctl dev 注入的后端监听地址（托管模式：本进程只提供 API）。
+const AXCTL_BACKEND_ADDR_ENV: &str = "AXCTL_BACKEND_ADDR";
 /// 监听地址环境变量；设置后完全覆盖默认地址选择。
 const SERVER_ADDR_ENV: &str = "SEALANTERN_SERVER_ADDR";
 /// 设置该环境变量为 `1` 时默认监听所有网卡（公网可达）；否则默认仅本机。
@@ -20,9 +20,23 @@ const DEFAULT_ADDR: &str = "127.0.0.1:3000";
 /// 公网绑定时的默认监听地址。
 const DEFAULT_PUBLIC_ADDR: &str = "0.0.0.0:3000";
 
-/// 解析监听地址：优先 `SEALANTERN_SERVER_ADDR`，其次按是否开启公网绑定
-/// 选择默认地址，最后回退到仅本机监听。
+/// 解析监听地址：axctl 注入 > SEALANTERN_SERVER_ADDR > 默认（公网/本机）。
 fn listen_addr() -> SocketAddr {
+    if let Ok(value) = std::env::var(AXCTL_BACKEND_ADDR_ENV) {
+        // 注入地址无效视为致命错误，不回退（默认地址通常是代理端口）
+        return match value.parse() {
+            Ok(addr) => addr,
+            Err(error) => {
+                tracing::error!(
+                    env = AXCTL_BACKEND_ADDR_ENV,
+                    value = %value,
+                    error = %error,
+                    "invalid axctl backend address"
+                );
+                std::process::exit(1);
+            }
+        };
+    }
     if let Ok(value) = std::env::var(SERVER_ADDR_ENV) {
         return match value.parse() {
             Ok(addr) => addr,
@@ -73,12 +87,9 @@ pub async fn main() {
         );
     }
 
-    // 构建 Vite 配置并（在 dev 模式下）拉起 dev server。
-    // 手柄必须在此持有，drop 时会终止 vite 子进程。
-    let vite_config = vite_config();
-    let vite_dev_server = vite_config.maybe_spawn_dev_server();
-
-    let app = build_router(services.clone(), vite_config);
+    // 前端资源：release 编译期内嵌 dist；debug 为空包装（dev 前端由 vite 提供，
+    // axctl 代理统一入口）。
+    let app = build_router(services.clone(), axctl_core::frontend!("$CARGO_MANIFEST_DIR/../dist"));
 
     let addr = listen_addr();
 
@@ -92,7 +103,6 @@ pub async fn main() {
                     "failed to shut down application services after bind failure"
                 );
             }
-            drop(vite_dev_server);
             std::process::exit(1);
         }
     };
@@ -107,7 +117,6 @@ pub async fn main() {
     if let Err(error) = services.shutdown().await {
         tracing::error!(error = %error, "failed to shut down application services");
     }
-    drop(vite_dev_server);
     if serve_result.is_err() {
         std::process::exit(1);
     }
@@ -139,29 +148,4 @@ async fn shutdown_signal() {
     }
 
     tracing::info!("shutdown signal received");
-}
-
-/// 构建 Vite 开发配置。
-///
-/// 前端项目根默认为仓库根目录（`server` 的父目录，即 `package.json` 所在处）；
-/// 可通过 `VITE_ROOT` 覆盖。dev 模式下默认自动拉起 vite dev server
-/// （`VITE_AUTO_START=false` 可关闭），release 模式不拉起、改为服务内嵌静态资源。
-fn vite_config() -> ViteConfig {
-    let mut config = ViteConfig::from_env(axum_vite::embedded_dir!("$CARGO_MANIFEST_DIR/../dist"));
-
-    // 未显式设置前端根目录时，默认仓库根。
-    if config.frontend_root.is_none() {
-        config.frontend_root = Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".."));
-    }
-    // 未显式设置 dev host 时，使用 127.0.0.1 而非 localhost——
-    // 后者在部分平台解析为 IPv6 (::1)，而 vite 默认只监听 IPv4，会导致代理连不上。
-    if std::env::var_os("VITE_DEV_HOST").is_none() {
-        config.dev_host = "127.0.0.1".to_string();
-    }
-    // 未显式设置 auto_start 时，dev 模式默认自动拉起 vite。
-    if std::env::var_os("VITE_AUTO_START").is_none() {
-        config.auto_start = true;
-    }
-
-    config
 }

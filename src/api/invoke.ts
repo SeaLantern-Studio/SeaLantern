@@ -72,6 +72,7 @@ const axumRouteMap: Record<string, AxumRoute> = {
   },
   get_system_snapshot: { method: "GET", path: () => "/system" },
   get_default_run_path: { method: "GET", path: () => "/system/default-run-path" },
+  get_temp_download_dir: { method: "GET", path: () => "/system/temp-download-dir" },
   get_server_resource_usage: {
     method: "GET",
     // 参数名与 Tauri 命令契约保持一致（instance_id）

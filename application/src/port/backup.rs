@@ -2,7 +2,9 @@
 
 use async_trait::async_trait;
 use sealantern_contract::BackupServiceError;
-use sealantern_contract::backup::{BackupItem, BackupSettings, CreateBackupRequest};
+use sealantern_contract::backup::{
+    BackupDirectory, BackupItem, BackupSettings, CreateBackupRequest,
+};
 
 /// 服务器备份宿主能力端口。
 ///
@@ -13,6 +15,12 @@ use sealantern_contract::backup::{BackupItem, BackupSettings, CreateBackupReques
 pub trait BackupService: Send + Sync {
     /// 列出指定服务器的全部备份项。
     async fn list(&self, server_id: &str) -> Result<Vec<BackupItem>, BackupServiceError>;
+
+    /// 获取备份存储目录；传入服务器 ID 时同时返回该服务器的备份子目录。
+    async fn directory(
+        &self,
+        server_id: Option<&str>,
+    ) -> Result<BackupDirectory, BackupServiceError>;
 
     /// 为指定服务器创建备份；服务器正在运行时拒绝。
     async fn create(&self, request: CreateBackupRequest) -> Result<BackupItem, BackupServiceError>;

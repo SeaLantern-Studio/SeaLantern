@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-languages" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 语言：悬停时中文与字母两组交替闪烁 */
+    .si-languages .lang-cn, .si-languages .lang-ab { transform-box: fill-box; }
+    .si-languages .lang-cn { animation: sl-lang-a 1s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-languages .lang-ab { animation: sl-lang-b 1s ease-in-out .5s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-lang-a { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+    @keyframes sl-lang-b { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+    .si-languages:hover { --sl-anim-play: running; }
+  </style>
+  <g class="lang-cn">
+    <path d="m5 8 6 6"/>
+    <path d="m4 14 6-6 2-3"/>
+    <path d="M2 5h12"/>
+    <path d="M7 2h1"/>
+  </g>
+  <g class="lang-ab">
+    <path d="m22 22-5-10-5 10"/>
+    <path d="M14 18h6"/>
+  </g>
+</svg>

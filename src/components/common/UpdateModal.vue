@@ -277,7 +277,7 @@ function closeInstallRiskConfirm() {
         </cmz-button>
         <cmz-button
           variant="solid"
-          color="#ef4444"
+          color="var(--sl-error)"
           size="md"
           :disabled="isInstallLaunching"
           @click="handleForceAutoUpdate"

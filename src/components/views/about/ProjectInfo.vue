@@ -1,13 +1,13 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref } from "vue";
 import { RefreshCw, Check, XCircle } from "lucide-vue-next";
 import { checkUpdate, type UpdateInfo } from "@api/update";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { BUILD_YEAR } from "@utils/version";
 import { i18n } from "@language";
-import { useAboutLinks } from "@composables/useAboutLinks";
+import { useExternalLinks } from "@composables/useExternalLinks";
 
-const { openLink } = useAboutLinks();
+const { openLink } = useExternalLinks();
 
 const props = defineProps<{
   version: string;

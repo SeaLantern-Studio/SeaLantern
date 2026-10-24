@@ -89,6 +89,14 @@ pub async fn import_settings(
     Ok(result)
 }
 
+/// 枚举系统可用字体族名（去重、按不分大小写升序排序）。
+#[tauri::command(rename_all = "snake_case")]
+pub async fn get_system_fonts(
+    services: State<'_, AppServices>,
+) -> Result<Vec<String>, SettingsServiceError> {
+    settings_service(&services).system_fonts().await
+}
+
 fn sync_auto_lightweight(app: &AppHandle, settings: &AppSettings) {
     app.state::<AutoLightweightState>()
         .configure(settings.auto_lightweight_minutes);

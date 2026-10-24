@@ -338,6 +338,7 @@ mod tests {
             core_type: "paper".into(),
             core_version: String::new(),
             game_version: "1.21.1".into(),
+            required_java: None,
             directory: PathBuf::from("servers/restartable"),
             port: 25565,
             max_memory_mib: 0,

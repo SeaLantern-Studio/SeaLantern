@@ -316,6 +316,11 @@ export const systemApi = {
     return tauriInvoke("get_default_run_path");
   },
 
+  /** 临时下载目录（主资源目录下的 `temp/`）——与实例容器分离，避免被实例发现层误识别 */
+  async getTempDownloadDir(): Promise<string> {
+    return tauriInvoke("get_temp_download_dir");
+  },
+
   async getSafeModeStatus(): Promise<boolean> {
     return tauriInvoke("get_safe_mode_status");
   },

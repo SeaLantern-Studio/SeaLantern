@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import JavaDownloader from "@components/JavaDownloader.vue";
+import JavaDownloader from "@components/views/settings/JavaDownloader.vue";
 import { i18n } from "@language";
 
 defineProps<{

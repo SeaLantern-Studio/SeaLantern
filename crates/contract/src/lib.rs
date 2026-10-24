@@ -18,16 +18,24 @@ pub mod cron;
 pub mod download;
 /// 接口契约错误类型。
 pub mod error;
+/// 实例发现视图相关模型。
+pub mod instance;
 /// Java 检测结果和安装信息模型。
 pub mod java;
 /// 在线隧道相关模型。
 pub mod online;
+/// 玩家查询相关模型。
+pub mod player;
 /// 网络代理配置模型。
 pub mod proxy;
 /// 服务器进程管理相关模型。
 pub mod server;
 /// 服务器配置（server.properties）相关模型。
 pub mod server_config;
+/// 服务器插件（`plugins` 目录）相关模型。
+pub mod server_plugin;
+/// 实例启动配置（`sl.json` 的 `startup` 段）相关模型。
+pub mod server_startup;
 /// 设置信息相关模型。
 pub mod settings;
 /// 系统资源信息相关模型。
@@ -58,14 +66,23 @@ pub use error::InstanceServiceError;
 pub use error::JavaServiceError;
 /// 在线隧道服务错误枚举。
 pub use error::OnlineTunnelServiceError;
+/// 玩家列表查询错误枚举。
+pub use error::PlayerAdminError;
+pub use error::PlayerListError;
+/// 玩家查询错误枚举。
+pub use error::PlayerLookupError;
 /// 服务端检查与实例供给计划失败类别。
 pub use error::ProvisioningServiceError;
 /// 服务器核心下载目录错误枚举。
 pub use error::ServerCatalogServiceError;
 /// 服务器配置（server.properties）错误枚举。
 pub use error::ServerConfigServiceError;
+/// 服务器插件管理错误枚举。
+pub use error::ServerPluginServiceError;
 /// 服务器进程管理错误枚举。
 pub use error::ServerServiceError;
+/// 实例启动配置管理错误枚举。
+pub use error::ServerStartupServiceError;
 /// 设置信息服务错误枚举。
 pub use error::SettingsServiceError;
 /// 系统资源信息服务错误枚举。
@@ -74,6 +91,10 @@ pub use error::SystemServiceError;
 pub use error::UpdateCheckServiceError;
 /// 应用更新安装错误枚举。
 pub use error::UpdateInstallServiceError;
+/// 实例发现视图模型。
+pub use instance::{
+    ClassifiedProblemEntry, DiscoveryProblemEntry, DiscoveryProblemKind, PendingInstance,
+};
 /// Java 检测结果和安装信息模型。
 pub use java::{JavaDetectionReport, JavaDiscoveryError, JavaInfo};
 /// 在线隧道模型。
@@ -81,13 +102,16 @@ pub use online::{
     OnlineTunnelConnection, OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest,
     OnlineTunnelMode, OnlineTunnelStatus,
 };
+/// 玩家查询模型。
+pub use player::{BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerProfile};
 /// 网络代理配置模型。
 pub use proxy::{ProxyConfigError, ProxyMode, ProxySettings};
 /// 设置模型。
 pub use settings::{
-    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, NullablePatch,
-    PartialAppSettings, SettingsEntry, SettingsEntryType, SettingsGroup, SettingsGroupInfo,
-    SettingsOption, SettingsOverview, SettingsValidationError, UpdateResult,
+    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, DEFAULT_TUNNEL_JOIN_PORT,
+    DEFAULT_TUNNEL_LINK_LIFETIME, NullablePatch, PartialAppSettings, SettingsEntry,
+    SettingsEntryType, SettingsGroup, SettingsGroupInfo, SettingsOption, SettingsOverview,
+    SettingsValidationError, TUNNEL_LINK_LIFETIMES, UpdateResult,
 };
 /// 更新模型。
 pub use update::{PendingUpdate, UpdateInfo, UpdateSource};

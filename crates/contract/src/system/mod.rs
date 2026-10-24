@@ -6,6 +6,6 @@
 mod models;
 
 pub use models::{
-    CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
-    ServerResourceUsage, SystemSnapshot,
+    CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, Ipv6TestResult, Ipv6TestTarget, MemoryInfo,
+    NetworkInfo, ProcessResourceUsage, ServerResourceUsage, SystemSnapshot,
 };

@@ -77,10 +77,12 @@
   --cmz-saturate-subtle: var(--sl-saturate-subtle);
   --cmz-saturate-normal: var(--sl-saturate-normal);
   --cmz-saturate-strong: var(--sl-saturate-strong);
-  --cmz-z-dropdown: 100;
-  --cmz-z-tooltip: 500;
   --cmz-z-modal-backdrop: 800;
   --cmz-z-modal: 900;
+  /* teleport 到 body 的浮层与遮罩同层叠上下文竞争,必须高于 modal 才能在弹窗内穿透;
+     tooltip 压过 dropdown,保证注解下拉项时仍可见 */
+  --cmz-z-dropdown: 950;
+  --cmz-z-tooltip: 960;
   --cmz-z-toast: 1000;
   --cmz-opacity-disabled: 0.4;
   /* CmzYa 特有状态色（映射到项目 --sl-* 变量） */

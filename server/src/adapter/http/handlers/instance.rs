@@ -8,7 +8,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 
-use sealantern_application::port::InstanceService;
+use sealantern_application::port::{InstanceDiscoveryView, InstanceService};
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::ImportExistingServerRequest;
 
@@ -29,6 +29,13 @@ pub struct UpdatePathRequest {
     pub path: String,
 }
 
+/// 忽略名单请求体。
+#[derive(Debug, serde::Deserialize)]
+pub struct IgnoreDirRequest {
+    /// 要忽略 / 恢复提示的目录路径。
+    pub path: String,
+}
+
 /// `GET /api/instances` — 列出全部实例。
 pub async fn list_instances(
     State(state): State<AppState>,
@@ -36,6 +43,21 @@ pub async fn list_instances(
     state
         .instance()
         .list()
+        .await
+        .map(Json)
+        .map_err(HttpError::from)
+}
+
+/// `GET /api/instances/discovery` — 实例发现视图。
+///
+/// 返回已信任实例、待处理实例、发现问题与孤儿信任记录，供前端做
+/// 「已管理 / 待处理 / 有问题」三态展示。
+pub async fn discover_instances(
+    State(state): State<AppState>,
+) -> Result<Json<InstanceDiscoveryView>, HttpError> {
+    state
+        .instance()
+        .discovery()
         .await
         .map(Json)
         .map_err(HttpError::from)
@@ -110,6 +132,70 @@ pub async fn update_instance_path(
 fn parse_id(raw: &str) -> Result<InstanceId, HttpError> {
     InstanceId::new(raw.to_owned())
         .map_err(|_| HttpError::bad_request("invalid_instance_id", "invalid instance id"))
+}
+
+/// `POST /api/instances/{id}/trust` — 把实例登记为受信任。幂等。
+pub async fn trust_instance(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, HttpError> {
+    let id = parse_id(&id)?;
+    state.instance().trust(&id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/instances/{id}/untrust` — 撤销实例的信任登记。幂等。
+pub async fn untrust_instance(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, HttpError> {
+    let id = parse_id(&id)?;
+    state.instance().untrust(&id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/instance-registry/ignored-dirs` — 把目录加入忽略名单。幂等。
+///
+/// 目录不必是有效实例，故路径放在请求体而非路径参数（避免路径分量转义歧义）。
+pub async fn ignore_instance_dir(
+    State(state): State<AppState>,
+    Json(request): Json<IgnoreDirRequest>,
+) -> Result<StatusCode, HttpError> {
+    state.instance().ignore_dir(&request.path).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `DELETE /api/instance-registry/ignored-dirs` — 把目录移出忽略名单。幂等。
+pub async fn unignore_instance_dir(
+    State(state): State<AppState>,
+    Json(request): Json<IgnoreDirRequest>,
+) -> Result<StatusCode, HttpError> {
+    state.instance().unignore_dir(&request.path).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// 重新分配实例 id 请求体。
+///
+/// `new_id` 缺省（或空）时由服务层生成 v4 UUID。
+#[derive(Debug, serde::Deserialize)]
+pub struct ReassignIdRequest {
+    /// 目标实例所在目录。
+    pub dir: String,
+    /// 新的实例 id；缺省时自动生成。
+    #[serde(default)]
+    pub new_id: Option<String>,
+}
+
+/// `POST /api/instance-registry/reassign-id` — 按目录为实例重新分配 id。幂等。
+pub async fn reassign_instance_id(
+    State(state): State<AppState>,
+    Json(request): Json<ReassignIdRequest>,
+) -> Result<StatusCode, HttpError> {
+    state
+        .instance()
+        .reassign_id(&request.dir, request.new_id.as_deref())
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// `POST /api/instances/import-existing` — 导入已有服务器目录。

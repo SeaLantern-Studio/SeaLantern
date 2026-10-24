@@ -99,6 +99,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^6.0.5
         version: 6.0.5(vite@8.0.0(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.7.0)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.46.0)(yaml@2.9.0))(vue@3.5.30(typescript@5.9.3))
+      axctl:
+        specifier: ^0.1.0
+        version: 0.1.0
       glob:
         specifier: ^13.0.0
         version: 13.0.6
@@ -1422,6 +1425,36 @@ packages:
   ast-walker-scope@0.8.3:
     resolution: {integrity: sha512-cbdCP0PGOBq0ASG+sjnKIoYkWMKhhz+F/h9pRexUdX2Hd38+WOlBkRKlqkGOSm0YQpcFMQBJeK4WspUAkwsEdg==}
     engines: {node: '>=20.19.0'}
+
+  axctl-darwin-arm64@0.1.0:
+    resolution: {integrity: sha512-O2DY0HTYI/8eLDpFl0TmCh8AHA6N4RSCL15HOLk7IeGiz1yudyBtvJkFidXUxcxy7Ig62hgrY0i/iw8juVIraQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  axctl-darwin-x64@0.1.0:
+    resolution: {integrity: sha512-uH9eQAgfxzoa8n5S915hbCHm/xinQ9GU4XbfoLUavezFPIeUfOj8AQYMswi0nwu6IvlORAzY4ndS8nxTrfhE8g==}
+    cpu: [x64]
+    os: [darwin]
+
+  axctl-linux-arm64@0.1.0:
+    resolution: {integrity: sha512-CnAmJpvK0TfCVDc6vTfYdmObUiXpwdnb1p8oMG1SL58eXuJ96KVJ+f6KAUxkBCHCK6kJ47WsyYtzNZcj7EwY/Q==}
+    cpu: [arm64]
+    os: [linux]
+
+  axctl-linux-x64@0.1.0:
+    resolution: {integrity: sha512-9aCweDwzD1txM2p1GP7uigtwMNUWrM9RE77v3MrTYDTC/FhE4cyLTZPJGb87GxRYWeKEcKL4PPVwBr23OzJS+w==}
+    cpu: [x64]
+    os: [linux]
+
+  axctl-win32-x64@0.1.0:
+    resolution: {integrity: sha512-zEwn+B/JYmoZUTZZABJk6GJaJ+Le7e0J41ZXCXR+nlsvggbPctK64sk/r7RKUTdN7OgCgWN0f26QJvwCs1ZPHw==}
+    cpu: [x64]
+    os: [win32]
+
+  axctl@0.1.0:
+    resolution: {integrity: sha512-BwkOdZKCRUwT6E+CiAC7MuKXTVMibeuZLtAUsy9vrCtGW6opM8q09Xn3jYAeonnerU5IUHhD0RgpJ18oLl1m/Q==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -3710,6 +3743,29 @@ snapshots:
     dependencies:
       '@babel/parser': 7.29.0
       ast-kit: 2.2.0
+
+  axctl-darwin-arm64@0.1.0:
+    optional: true
+
+  axctl-darwin-x64@0.1.0:
+    optional: true
+
+  axctl-linux-arm64@0.1.0:
+    optional: true
+
+  axctl-linux-x64@0.1.0:
+    optional: true
+
+  axctl-win32-x64@0.1.0:
+    optional: true
+
+  axctl@0.1.0:
+    optionalDependencies:
+      axctl-darwin-arm64: 0.1.0
+      axctl-darwin-x64: 0.1.0
+      axctl-linux-arm64: 0.1.0
+      axctl-linux-x64: 0.1.0
+      axctl-win32-x64: 0.1.0
 
   balanced-match@1.0.2: {}
 

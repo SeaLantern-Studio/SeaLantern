@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-bell" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 铃铛：悬停时绕顶部摇摆，铃舌反向甩 */
+    .si-bell .bell-body { transform-box: fill-box; transform-origin: 50% 10%; }
+    .si-bell .bell-clap { transform-box: fill-box; transform-origin: 50% 0%; }
+    .si-bell .bell-body { animation: sl-bell-swing .65s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-bell .bell-clap { animation: sl-bell-clap .65s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-bell-swing { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(12deg); } 75% { transform: rotate(-12deg); } }
+    @keyframes sl-bell-clap  { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(-22deg); } 75% { transform: rotate(22deg); } }
+    .si-bell:hover { --sl-anim-play: running; }
+  </style>
+  <g class="bell-body">
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+  </g>
+  <path class="bell-clap" d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+</svg>

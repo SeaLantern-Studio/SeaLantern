@@ -559,9 +559,12 @@
   border-color: var(--sl-glass-border, rgba(255, 255, 255, 0.08));
 }
 
+/* 高级材质下换浮层近实底(--sl-acrylic-bg-strong),
+   原 --sl-glass-bg 在材质下仅 0.3,比普通卡面还透,正文会透底 */
 [data-acrylic="on"] .config-floating-actions,
 [data-acrylic]:not([data-acrylic="off"]) .config-floating-actions {
-  background: var(--sl-glass-bg);
+  background: var(--sl-acrylic-bg-strong);
+  border-color: var(--sl-acrylic-border);
   backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-lg, 20px)) saturate(var(--sl-saturate-normal, 180%));
 }

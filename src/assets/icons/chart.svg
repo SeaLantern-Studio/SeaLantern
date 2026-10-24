@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-chart" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 柱状图：悬停时柱子从底部依次长高 */
+    .si-chart .bar { transform-box: fill-box; transform-origin: 50% 100%; }
+    .si-chart .bar-1 { animation: sl-bar-grow .8s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-chart .bar-2 { animation: sl-bar-grow .8s ease-in-out .15s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-chart .bar-3 { animation: sl-bar-grow .8s ease-in-out .3s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-bar-grow { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(.65); } }
+    .si-chart:hover { --sl-anim-play: running; }
+  </style>
+  <line class="bar bar-1" x1="6" y1="20" x2="6" y2="14"/>
+  <line class="bar bar-2" x1="12" y1="20" x2="12" y2="4"/>
+  <line class="bar bar-3" x1="18" y1="20" x2="18" y2="10"/>
+</svg>

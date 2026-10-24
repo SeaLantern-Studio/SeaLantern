@@ -5,7 +5,7 @@
 
 use std::fmt::Display;
 
-use crate::config::sealantern::types::SettingsGroup;
+use crate::models::SettingsGroup;
 
 /// 服务器定时任务模块的 tracing 目标。
 pub const SERVER_CRON_TASK_TARGET: &str = "sealantern.feature.server.cron_task";

@@ -4,6 +4,33 @@
 //! 由 `application` 层的主错误（`application::error`）转换而来。
 //! 底层失败详情由应用层记录到受控日志，不跨传输面泄漏。
 
+/// 玩家查询失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerLookupError {
+    // 玩家不存在
+    NotFound,
+    //玩家名空或非法字符
+    InvalidInput,
+    //服务器目录未选择
+    ServerNotSelected,
+    //读取本地文件失败
+    ServiceUnavailable,
+}
+impl std::fmt::Display for PlayerLookupError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::NotFound => "player not found",
+            Self::InvalidInput => "invalid player input",
+            Self::ServerNotSelected => "server not selected",
+            Self::ServiceUnavailable => "service unavailable",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for PlayerLookupError {}
+
 /// 服务器定时任务操作失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -117,6 +144,17 @@ pub enum ServerServiceError {
     InstanceNotFound,
     /// 服务器进程当前状态不允许该操作（如未运行时停止、已运行时重复启动）。
     InvalidState,
+    /// 目标服务器当前未运行，无法执行该操作（如向控制台发送命令）。
+    ///
+    /// 与 [`InvalidState`](Self::InvalidState) 区分：后者是"状态不允许"的宽泛
+    /// 分类，本变体描述高频且可预期的具体原因——实例当前没有运行中的服务端
+    /// 进程。宿主据此给出针对性提示（"服务器未运行"），而不必把它当作
+    /// 笼统的状态错误处理。
+    ///
+    /// 对外标识显式收窄为 `server_not_running`，与 HTTP 适配层的错误码
+    /// 保持一致；变体名保持 `NotRunning`。
+    #[serde(rename = "server_not_running")]
+    NotRunning,
     /// 客户端提供的输入不合法。
     InvalidInput,
     /// 底层进程 / IO 操作失败。
@@ -130,6 +168,7 @@ impl std::fmt::Display for ServerServiceError {
         let message = match self {
             Self::InstanceNotFound => "server instance not found",
             Self::InvalidState => "server is in an invalid state for this operation",
+            Self::NotRunning => "server is not running",
             Self::InvalidInput => "invalid input",
             Self::OperationFailed => "server operation failed",
             Self::Unsupported => "operation not supported",
@@ -335,6 +374,56 @@ impl std::fmt::Display for ServerConfigServiceError {
 
 impl std::error::Error for ServerConfigServiceError {}
 
+/// 服务器插件管理失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerPluginServiceError {
+    /// 指定的目标实例不存在。
+    InstanceNotFound,
+    /// 客户端提供的输入不合法（如文件名含路径分量、非 jar 文件名）。
+    InvalidInput,
+    /// 指定的插件不在实例的 plugins 目录中。
+    PluginNotFound,
+    /// 底层文件操作失败。
+    OperationFailed,
+}
+
+impl std::fmt::Display for ServerPluginServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InstanceNotFound => "server instance not found",
+            Self::InvalidInput => "invalid server plugin input",
+            Self::PluginNotFound => "server plugin not found",
+            Self::OperationFailed => "server plugin operation failed",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for ServerPluginServiceError {}
+
+/// 实例启动配置管理失败的契约错误类别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerStartupServiceError {
+    /// 客户端提供的输入不合法（如最小内存大于最大内存）。
+    InvalidInput,
+    /// 底层配置文件读写失败。
+    OperationFailed,
+}
+
+impl std::fmt::Display for ServerStartupServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InvalidInput => "invalid server startup config",
+            Self::OperationFailed => "server startup config operation failed",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for ServerStartupServiceError {}
+
 /// 应用更新检查失败的契约错误类别。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -446,6 +535,8 @@ impl std::error::Error for UpdateInstallServiceError {}
 pub enum OnlineTunnelServiceError {
     /// 客户端提供的隧道请求不合法（如票据为空）。
     InvalidInput,
+    /// Minecraft 本地端口未开放或没有可用世界。
+    PortUnavailable,
     /// 已有隧道正在启动、运行或停止，无法响应新操作。
     Busy,
     /// 当前没有运行中的隧道。
@@ -458,6 +549,7 @@ impl std::fmt::Display for OnlineTunnelServiceError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(match self {
             Self::InvalidInput => "invalid online tunnel input",
+            Self::PortUnavailable => "minecraft port is unavailable",
             Self::Busy => "online tunnel is busy",
             Self::NotRunning => "online tunnel is not running",
             Self::OperationFailed => "online tunnel operation failed",
@@ -466,6 +558,86 @@ impl std::fmt::Display for OnlineTunnelServiceError {
 }
 
 impl std::error::Error for OnlineTunnelServiceError {}
+
+/// 玩家列表**查询**失败的契约错误类别。
+///
+/// 在线玩家通过控制台命令捕获（适用 [`Self::ServerNotRunning`] 与
+/// [`Self::CaptureFailed`]）；白名单、封禁、OP 列表通过读取服务器本地
+/// 配置文件（适用 [`Self::ServiceUnavailable`]）。
+///
+/// 写操作（增删白名单、封禁/解封、授予/撤销 OP、踢人）见 [`PlayerAdminError`]。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerListError {
+    /// 客户端提供的输入不合法（如空服务器 ID）。
+    InvalidInput,
+    /// 服务器未在运行（无法写入 stdin 发送命令）。
+    ServerNotRunning,
+    /// 服务装配层不可用。
+    ServiceUnavailable,
+    /// 命令已发出但未在超时内收到回显。
+    CaptureFailed,
+}
+
+impl std::fmt::Display for PlayerListError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidInput => "invalid player list input",
+            Self::ServerNotRunning => "server is not running",
+            Self::ServiceUnavailable => "player list service unavailable",
+            Self::CaptureFailed => "command capture failed or timed out",
+        })
+    }
+}
+
+impl std::error::Error for PlayerListError {}
+
+/// 玩家管理**写操作**失败的契约错误类别。
+///
+/// 所有写操作（增删白名单、封禁/解封、授予/撤销 OP、踢人）都通过向运行中的
+/// 服务器发送控制台命令实现：服务器未运行返回 [`Self::ServerNotRunning`]，
+/// 命令发出但未收到回显返回 [`Self::CaptureFailed`]，玩家名不合法返回
+/// [`Self::InvalidInput`]。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerAdminError {
+    /// 客户端提供的输入不合法（如玩家名不符合 Minecraft 规则、空服务器 ID）。
+    InvalidInput,
+    /// 服务器未在运行（无法写入 stdin 发送命令）。
+    ServerNotRunning,
+    /// 服务装配层不可用。
+    ServiceUnavailable,
+    /// 命令已发出但未在超时内收到回显。
+    CaptureFailed,
+    /// 服务器拒绝了命令（玩家不存在、目标不在线等），或命令执行后最终状态
+    /// 未达到预期（由配置文件 / 在线列表验证得出）。
+    OperationFailed,
+}
+
+impl std::fmt::Display for PlayerAdminError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidInput => "invalid player admin input",
+            Self::ServerNotRunning => "server is not running",
+            Self::ServiceUnavailable => "player admin service unavailable",
+            Self::CaptureFailed => "command capture failed or timed out",
+            Self::OperationFailed => "player admin command was rejected by the server",
+        })
+    }
+}
+
+impl std::error::Error for PlayerAdminError {}
+
+impl From<PlayerListError> for PlayerAdminError {
+    fn from(err: PlayerListError) -> Self {
+        match err {
+            PlayerListError::InvalidInput => PlayerAdminError::InvalidInput,
+            PlayerListError::ServerNotRunning => PlayerAdminError::ServerNotRunning,
+            PlayerListError::ServiceUnavailable => PlayerAdminError::ServiceUnavailable,
+            PlayerListError::CaptureFailed => PlayerAdminError::CaptureFailed,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -477,6 +649,11 @@ mod tests {
             (serde_json::to_string(&CronTaskServiceError::TaskNotFound), "\"task_not_found\""),
             (serde_json::to_string(&InstanceServiceError::InvalidInput), "\"invalid_input\""),
             (serde_json::to_string(&ServerServiceError::InvalidState), "\"invalid_state\""),
+            (
+                // 显式 rename：对外标识必须与 HTTP 适配层的错误码一致。
+                serde_json::to_string(&ServerServiceError::NotRunning),
+                "\"server_not_running\"",
+            ),
             (
                 serde_json::to_string(&SettingsServiceError::StorageFailed),
                 "\"storage_failed\"",

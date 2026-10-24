@@ -56,7 +56,7 @@ const commandTextModel = computed({
       <cmz-button
         v-if="editingCommand"
         variant="solid"
-        color="#ef4444"
+        color="var(--sl-error)"
         @click="emit('delete', editingCommand)"
         :disabled="loading"
       >

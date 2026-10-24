@@ -126,14 +126,19 @@ export const configApi = {
   /**
    * 读取 SL.json 启动配置
    */
-  async readSLConfig(serverPath: string): Promise<SLStartupConfig> {
-    return tauriInvoke("read_sl_config", { serverPath });
+  async readSLConfig(instanceId: string): Promise<SLStartupConfig> {
+    return tauriInvoke("read_sl_config", {
+      instance_id: instanceId,
+    });
   },
 
   /**
    * 写入 SL.json 启动配置
    */
-  async writeSLConfig(serverPath: string, config: SLStartupConfig): Promise<void> {
-    return tauriInvoke("write_sl_config", { serverPath, config });
+  async writeSLConfig(instanceId: string, config: SLStartupConfig): Promise<void> {
+    return tauriInvoke("write_sl_config", {
+      instance_id: instanceId,
+      config,
+    });
   },
 };

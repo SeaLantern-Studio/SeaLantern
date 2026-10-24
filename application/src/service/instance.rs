@@ -1,180 +1,689 @@
-//! 服务器实例记录管理服务实现。
+//! 服务器实例管理服务实现。
 //!
-//! 实现 [`crate::port::InstanceService`] 能力端口，用 `feature` 的
-//! [`InstanceRegistry`](sealantern_feature::config::InstanceRegistry)（持久化到
-//! `sea_lantern_servers.json`）驱动实例记录的查询与 CRUD。服务器进程生命周期
-//! 由 [`crate::port::ServerService`] 负责（见 `service/server.rs`）。
+//! 实现 [`crate::port::InstanceService`] 能力端口。实例以 `sl.json` 为权威
+//! 存储（`DocumentStore` 锁内读写）；目录布局、信任名单与忽略名单统一来自
+//! [`CoreSettingsService`]（懒加载 `SettingsManager`）——服务不再持有自己的
+//! 注册表文件，「哪些实例受管理」由发现层 + 名单合成：
 //!
+//! - `discover`/`classify`：按 `AppLayout` + 注册表分区只读扫描与分类；
+//! - `trust_instance`/`ignore_dir`/`register_extra_dir` 等：经
+//!   `SettingsManager::update_registry` 做设置文件锁内的名单维护；
+//! - `DocumentStore`：`sl.json` 的创建/重载/局部更新。
+//!
+//! `instances.json`（`sea_lantern_servers.json`）体系已随阶段 7 移除。
 //! 错误分层：内部以应用层主错误 [`InstanceError`] 为源头，沿
 //! `core/feature/infra` → `application::error::instance` → `contract::error`
 //! 收敛；暴露 [`InstanceService`] 时统一转为接口契约错误 [`InstanceServiceError`]。
 
 use async_trait::async_trait;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use sealantern_contract::InstanceServiceError;
+use sealantern_contract::instance::{
+    ClassifiedProblemEntry, DiscoveryProblemEntry, DiscoveryProblemKind, PendingInstance,
+};
 use sealantern_core::instance::{Instance, InstanceId, InstanceSpec};
 use sealantern_core::provisioning::{
     ImportExistingServerRequest, ImportModpackError as CoreModpackError, ImportModpackRequest,
     SourceType, build_import_spec, infer_source_type, plan_existing_instance, plan_import_modpack,
     source_directories_equal, validate_source_directory,
 };
-use sealantern_feature::config::InstanceRegistry;
+use sealantern_feature::config::instance::{
+    ClassifiedInstance, DiscoveryOrigin, DiscoveryProblem, DocumentError, DocumentStore,
+    InstanceDocument, TrustReport, TrustState, classify, discover, ignore_dir, orphan_trusted_ids,
+    probe_dir, register_extra_dir, trust_and_unignore, trust_instance, unignore_dir,
+    unregister_extra_dir, untrust_instance,
+};
 use sealantern_infra::archive::{
     ArchiveFormat, detect_archive_format, extract_tar_gz, extract_zip,
 };
-use sealantern_infra::platform::get_app_data_dir;
+use sealantern_infra::platform::AppLayout;
+use uuid::Uuid;
 
 use crate::error::InstanceError;
-use crate::port::InstanceService;
+use crate::port::{InstanceDiscoveryView, InstanceService};
+use crate::service::settings::CoreSettingsService;
 
-/// 实例列表数据文件名，置于应用数据根目录。
+/// 实例目录名长度：v4 UUID 去除连字符后取前 30 位（沿用 v1.2.0 的目录命名形态）。
+const INSTANCE_DIRECTORY_NAME_LEN: usize = 30;
+
+/// 一次「布局 + 名单快照 + 只读发现 + 信任分类」的扫描结果。
 ///
-/// 沿用历史版本使用的文件名，以保证旧数据文件可被读取迁移。
-const INSTANCES_FILE: &str = "sea_lantern_servers.json";
+/// 布局与名单是读取时刻的快照（发现层纯只读，快照即可满足查询）；
+/// 写路径（信任/忽略/目录注册）由调用方经 `lock_manager` 单独持锁完成，
+/// 不与本快照共享锁。
+struct InstanceScan {
+    /// 当前生效的目录布局。
+    layout: AppLayout,
+    /// 发现结果与名单合成后的分类报告（含 Unmarked/Ignored 条目）。
+    classified: TrustReport,
+    /// 登记为受信任、但本次扫描中不存在对应实例的 id。
+    orphan_trusted_ids: Vec<String>,
+}
 
 /// 基于 `core` + `feature` 的实例管理宿主能力实现。
 pub struct CoreInstanceService {
-    registry: tokio::sync::Mutex<InstanceRegistry>,
+    settings: Arc<CoreSettingsService>,
+    /// 实例名单维护的全局互斥。
+    ///
+    /// 串行化「扫描 → 判定 → 写文档/名单」的复合操作。缺了它，两个并发的
+    /// `reassign_id` 会各自通过冲突扫描后写入不同文档，制造新的重复组；
+    /// `trust` 的探查与登记之间也会被 `reassign` 插空，登记到过期的 id。
+    /// 单文档锁只能串行化同一文件的更新，无法覆盖跨文件的唯一性判定。
+    instance_ops: tokio::sync::Mutex<()>,
 }
 
 impl CoreInstanceService {
-    /// 从应用数据根目录加载实例注册表。
-    pub async fn new() -> Result<Self, InstanceError> {
-        let path = get_app_data_dir().join(INSTANCES_FILE);
-        Self::with_path(path).await
+    /// 以共享的设置服务构造实例服务（设置必须先于实例装配）。
+    pub fn new(settings: Arc<CoreSettingsService>) -> Self {
+        Self {
+            settings,
+            instance_ops: tokio::sync::Mutex::new(()),
+        }
     }
 
-    /// 从指定路径加载实例注册表（便于测试注入）。
-    pub async fn with_path(path: impl Into<PathBuf>) -> Result<Self, InstanceError> {
-        let registry = InstanceRegistry::load(path).await?;
-        Ok(Self {
-            registry: tokio::sync::Mutex::new(registry),
+    /// 测试/独立装配用：以独占的设置服务构造。
+    pub fn with_settings(settings: CoreSettingsService) -> Self {
+        Self::new(Arc::new(settings))
+    }
+
+    /// 完整扫描：布局 + 名单快照 → 只读发现 → 信任分类 + 孤儿记录。
+    async fn scan(&self) -> Result<InstanceScan, InstanceError> {
+        let layout = self.settings.layout().await.map_err(internal_error)?;
+        let registry = self.settings.registry().await.map_err(internal_error)?;
+        let report = discover(&layout, &registry).await;
+        let orphans = orphan_trusted_ids(&report, &registry);
+        let classified = classify(report, &registry);
+        Ok(InstanceScan {
+            layout,
+            classified,
+            orphan_trusted_ids: orphans,
         })
     }
 
+    /// 在分类结果中按 id 查找条目（不限信任状态）。
+    fn find_classified<'a>(
+        classified: &'a TrustReport,
+        id: &InstanceId,
+    ) -> Option<&'a ClassifiedInstance> {
+        classified
+            .instances
+            .iter()
+            .find(|item| item.instance.document.id.as_str() == id.as_str())
+    }
+
+    /// 受信任实例的目录列表，供实例文档级访问者（cron/备份等）按
+    /// `DocumentStore` 打开 `sl.json`。未标记/已忽略的实例不在列——
+    /// 它们的任务不应被自动调度执行。
+    pub(crate) async fn trusted_instance_dirs(&self) -> Result<Vec<PathBuf>, InstanceError> {
+        let scan = self.scan().await?;
+        Ok(scan
+            .classified
+            .instances
+            .iter()
+            .filter(|item| item.state == TrustState::Trusted)
+            .map(|item| item.instance.dir.clone())
+            .collect())
+    }
+
     /// 更新实例的最后启动时间（服务器进程成功拉起后调用）。
+    ///
+    /// 目标须是已发现的实例（`sl.json` 权威）；找不到时按 `NotFound` 上报。
     pub async fn update_last_started(&self, id: &InstanceId) -> Result<(), InstanceError> {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
             .unwrap_or(0);
-        let mut registry = self.registry.lock().await;
-        let edited = registry
-            .edit_instance(id, |instance| instance.last_started_at_unix_secs = Some(now))
-            .await?;
-        if !edited {
-            return Err(InstanceError::NotFound);
-        }
+        let scan = self.scan().await?;
+        let item = Self::find_classified(&scan.classified, id).ok_or(InstanceError::NotFound)?;
+        let mut store = DocumentStore::load(DocumentStore::path_for(&item.instance.dir))
+            .await
+            .map_err(doc_error)?;
+        store
+            .update(|document| {
+                document.last_started_at_unix_secs = Some(now);
+                Ok(true)
+            })
+            .await
+            .map_err(doc_error)?;
         Ok(())
     }
 
-    /// 内部创建实例：core 校验规范化后持久化登记，返回应用层主错误。
+    /// 内部创建实例：校验 → 冲突检查 → 写 `sl.json` → 名单登记，返回应用层主错误。
+    ///
+    /// 冲突检查针对「同 id」与「同目录」：同目录已有实例、或该目录存在不可用
+    /// 文档的问题条目时拒绝；`MissingDocument` 不在此列——裸目录允许通过创建
+    /// 接管（与 `import_existing_server` 的语义一致）。
     async fn create_inner(&self, spec: InstanceSpec) -> Result<Instance, InstanceError> {
         let instance = Instance::new(spec)?;
-        let mut registry = self.registry.lock().await;
+        let scan = self.scan().await?;
 
-        if registry.get(&instance.id).is_some() {
-            return Err(InstanceError::AlreadyExists);
-        }
-
-        // 目录维度的“良性锁”：在持锁状态下检查是否已有相同目录
-        if registry
-            .list()
+        if scan
+            .classified
+            .instances
             .iter()
-            .any(|existing| source_directories_equal(&existing.directory, &instance.directory))
+            .any(|item| item.instance.document.id.as_str() == instance.id.as_str())
         {
             return Err(InstanceError::AlreadyExists);
         }
+        if scan
+            .classified
+            .instances
+            .iter()
+            .any(|item| source_directories_equal(&item.instance.dir, &instance.directory))
+        {
+            return Err(InstanceError::AlreadyExists);
+        }
+        for classified_problem in &scan.classified.problems {
+            if matches!(classified_problem.problem, DiscoveryProblem::MissingDocument { .. }) {
+                continue;
+            }
+            if problem_dirs(&classified_problem.problem)
+                .iter()
+                .any(|dir| source_directories_equal(dir, &instance.directory))
+            {
+                return Err(InstanceError::AlreadyExists);
+            }
+        }
 
-        registry.save_instance(&instance).await?;
+        // 写 sl.json（目录位置即实例身份；启动目标在文档层换算为相对路径）。
+        let document = InstanceDocument::try_from_instance(&instance).map_err(doc_error)?;
+        let document_path = DocumentStore::path_for(&instance.directory);
+        DocumentStore::create(document_path.clone(), document)
+            .await
+            .map_err(doc_error)?;
+
+        // 名单登记（设置文件锁内）：信任 id；非 `instances/` 下的目录登记为
+        // 附加服务器目录；目录曾被忽略时先解除忽略（显式创建即用户处置）。
+        // 登记失败时回滚已写文档，避免留下未被信任、目录也未登记的孤儿实例。
+        let registration = async {
+            let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+            let register_extra = !is_managed_dir(&instance.directory, &manager.layout());
+            if register_extra {
+                register_extra_dir(&mut manager, &instance.directory)
+                    .await
+                    .map_err(internal_error)?;
+            }
+            unignore_dir(&mut manager, &instance.directory)
+                .await
+                .map_err(internal_error)?;
+            trust_instance(&mut manager, instance.id.as_str())
+                .await
+                .map_err(internal_error)?;
+            Ok::<(), InstanceError>(())
+        }
+        .await;
+        if let Err(error) = registration {
+            if let Err(rollback) = DocumentStore::remove(document_path).await {
+                tracing::warn!(
+                    target: "sealantern.application.instance",
+                    error = %rollback,
+                    "failed to roll back instance document after registration failure"
+                );
+            }
+            return Err(error);
+        }
+
+        tracing::info!(
+            target: "sealantern.application.instance",
+            id = %instance.id.as_str(),
+            dir = %instance.directory.display(),
+            "instance created"
+        );
         Ok(instance)
     }
 
-    /// 内部删除实例，返回应用层主错误。
+    /// 内部删除实例：撤销信任登记并把目录加入忽略名单（「移除但保留目录」语义）。
     async fn delete_inner(&self, id: &InstanceId) -> Result<(), InstanceError> {
-        let mut registry = self.registry.lock().await;
-        let deleted = registry.delete(id).await?;
-        if !deleted {
+        let scan = self.scan().await?;
+        let item = scan
+            .classified
+            .instances
+            .iter()
+            .find(|item| {
+                item.state == TrustState::Trusted
+                    && item.instance.document.id.as_str() == id.as_str()
+            })
+            .ok_or(InstanceError::NotFound)?;
+        let dir = item.instance.dir.clone();
+
+        // 先忽略目录、再撤销信任：若忽略失败，信任仍在、实例仍受管——状态
+        // 一致（不会出现「已不受信任但仍作为待处理实例被发现」的中间态）。
+        let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+        ignore_dir(&mut manager, &dir)
+            .await
+            .map_err(internal_error)?;
+        untrust_instance(&mut manager, id.as_str())
+            .await
+            .map_err(internal_error)?;
+        drop(manager);
+
+        tracing::info!(
+            target: "sealantern.application.instance",
+            id = %id.as_str(),
+            dir = %dir.display(),
+            "instance removed (directory kept)"
+        );
+        Ok(())
+    }
+
+    /// 内部重命名实例：先经 `Instance::new` 校验与规范化，再写回 `sl.json` 名称。
+    async fn rename_inner(&self, id: &InstanceId, name: &str) -> Result<(), InstanceError> {
+        let scan = self.scan().await?;
+        let item = Self::find_classified(&scan.classified, id).ok_or(InstanceError::NotFound)?;
+
+        let mut spec = item.instance.document.to_spec(item.instance.dir.clone());
+        spec.name = name.to_owned();
+        let instance = Instance::new(spec)?;
+
+        let mut store = DocumentStore::load(DocumentStore::path_for(&item.instance.dir))
+            .await
+            .map_err(doc_error)?;
+        store
+            .update(|document| {
+                if document.name == instance.name {
+                    return Ok(false);
+                }
+                document.name = instance.name.clone();
+                Ok(true)
+            })
+            .await
+            .map_err(doc_error)?;
+        Ok(())
+    }
+
+    /// 内部更新实例目录：验证目标目录归属本实例后同步附加目录登记。
+    ///
+    /// `sl.json` 随目录移动，登记层只需维护 `extra_server_dirs`：目标目录
+    /// 探查出的实例 id 必须等于本实例 id（目录已搬迁完毕的场景）；其他
+    /// 结果一律拒绝。目标在 `instances/` 外时登记为附加目录，旧位置的
+    /// 附加登记同步收回。
+    async fn update_path_inner(&self, id: &InstanceId, path: &str) -> Result<(), InstanceError> {
+        let trimmed = path.trim();
+        if trimmed.is_empty() {
+            return Err(InstanceError::InvalidInput);
+        }
+        let target = PathBuf::from(trimmed);
+
+        let scan = self.scan().await?;
+        let item = Self::find_classified(&scan.classified, id).ok_or(InstanceError::NotFound)?;
+        if source_directories_equal(&item.instance.dir, &target) {
+            return Ok(());
+        }
+        let old_extra = item.instance.origin == DiscoveryOrigin::Extra;
+
+        let origin = if is_managed_dir(&target, &scan.layout) {
+            DiscoveryOrigin::Managed
+        } else {
+            DiscoveryOrigin::Extra
+        };
+        match probe_dir(target.clone(), origin).await {
+            Ok(discovered) if discovered.document.id.as_str() == id.as_str() => {}
+            Ok(_) => return Err(InstanceError::InvalidInput),
+            Err(problem) => return Err(discovery_problem_error(&problem)),
+        }
+
+        let new_extra = !is_managed_dir(&target, &scan.layout);
+        let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+        if new_extra {
+            register_extra_dir(&mut manager, &target)
+                .await
+                .map_err(internal_error)?;
+        }
+        if old_extra {
+            unregister_extra_dir(&mut manager, &item.instance.dir)
+                .await
+                .map_err(internal_error)?;
+        }
+        drop(manager);
+        Ok(())
+    }
+
+    /// 内部信任登记：要求实例在本次扫描中身份有效（`sl.json` 可解析通过）。
+    ///
+    /// 与 `import_existing_server` 的「已验证条目」分支同源：先 `probe_dir`
+    /// 确认文档身份，再登记信任——绝不凭一个未经验证的 id 写名单。
+    async fn trust_inner(&self, id: &InstanceId) -> Result<(), InstanceError> {
+        // 全局互斥：与 reassign 等名单维护操作串行化。持锁完成「扫描 → 探查
+        // → 登记」全程，否则 reassign 会在探查与登记之间改掉文档 id，导致
+        // 这里登记到过期 id。
+        let _ops = self.instance_ops.lock().await;
+
+        let scan = self.scan().await?;
+        let item = Self::find_classified(&scan.classified, id).ok_or(InstanceError::NotFound)?;
+        let origin = item.instance.origin;
+        let dir = item.instance.dir.clone();
+
+        // 已信任：幂等返回，不做多余写盘。
+        if item.state == TrustState::Trusted {
+            return Ok(());
+        }
+        // 复核文档仍有效（持锁后并发写已被排除，此处兜底外部改动）。
+        match probe_dir(dir.clone(), origin).await {
+            Ok(discovered) if discovered.document.id.as_str() == id.as_str() => {}
+            Ok(_) => return Err(InstanceError::InvalidInput),
+            Err(problem) => return Err(discovery_problem_error(&problem)),
+        }
+
+        // 显式信任即用户处置：单次写入内解除忽略 + 登记信任（原子），避免
+        // 两步之间失败留下「已解除忽略但仍未信任」的中间态。
+        let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+        trust_and_unignore(&mut manager, id.as_str(), &dir)
+            .await
+            .map_err(internal_error)?;
+        drop(manager);
+
+        tracing::info!(
+            target: "sealantern.application.instance",
+            id = %id.as_str(),
+            dir = %dir.display(),
+            "instance trusted"
+        );
+        Ok(())
+    }
+
+    /// 内部忽略登记：只校验路径形状，不要求目录内存在有效 `sl.json`。
+    ///
+    /// 被忽略的目录本就可能是半成品或外来目录；若强制要求文档存在，
+    /// 「忽略这个提示」就永远做不到。
+    async fn ignore_dir_inner(&self, path: &str) -> Result<(), InstanceError> {
+        let target = parse_dir_path(path)?;
+        let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+        ignore_dir(&mut manager, &target)
+            .await
+            .map_err(internal_error)?;
+        drop(manager);
+
+        tracing::info!(
+            target: "sealantern.application.instance",
+            dir = %target.display(),
+            "instance directory ignored"
+        );
+        Ok(())
+    }
+
+    /// 内部解除忽略：仅维护名单，不做文件系统探查（目录可能已被删除）。
+    async fn unignore_dir_inner(&self, path: &str) -> Result<(), InstanceError> {
+        let target = parse_dir_path(path)?;
+        let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+        unignore_dir(&mut manager, &target)
+            .await
+            .map_err(internal_error)?;
+        drop(manager);
+        Ok(())
+    }
+
+    /// 内部按目录重新分配实例 id（修复「同 id 出现在多个目录」的冲突）。
+    ///
+    /// 与其它命令的关键差异：**按目录定位**。发现层遇重复 id 会把整组移出
+    /// `report.instances`（避免"猜哪个才对"），因此 `find_classified` 找不到
+    /// 它们——`trust`/`rename`/`delete` 这些按 id 的命令一律 `NotFound`。
+    /// 唯一能到达的手段是按目录探查。
+    ///
+    /// 只改 `sl.json` 的 `id`，不动信任名单：原 id 的信任自动归属「保留原 id
+    /// 的那个目录」，本目录的新 id 落回未标记态，由用户走常规 trust/ignore。
+    async fn reassign_id_inner(
+        &self,
+        dir: &str,
+        new_id: Option<&str>,
+    ) -> Result<(), InstanceError> {
+        // 全局互斥：持锁完成「扫描 → 判定 → 写文档」全程。否则两个并发请求
+        // 各自通过冲突扫描后写入不同文档，会制造出新的重复组（单文档锁无法
+        // 串行化跨文件的唯一性判定）。
+        let _ops = self.instance_ops.lock().await;
+
+        let target = parse_dir_path(dir)?;
+
+        // 扫描一次，取「已知目录集合」与名单快照；后续校验与冲突检查复用。
+        let scan = self.scan().await?;
+        let registry = self.settings.registry().await.map_err(internal_error)?;
+
+        // 目标必须属于已知集合：已发现实例目录，或问题条目涉及的目录
+        // （重复组成员只在这里可见）。否则拒绝——避免凭任意路径改写无关文档。
+        let known_dirs = scan
+            .classified
+            .instances
+            .iter()
+            .map(|item| item.instance.dir.clone())
+            .chain(
+                scan.classified
+                    .problems
+                    .iter()
+                    .flat_map(|entry| problem_dirs(&entry.problem)),
+            );
+        if !known_dirs
+            .into_iter()
+            .any(|known| source_directories_equal(&known, &target))
+        {
             return Err(InstanceError::NotFound);
         }
+
+        // 按目录探查，拿到当前文档（重复组不在 `instances` 里，不能按 id 找）。
+        // `probe_dir` 会规范化路径；后续读写沿用其返回的 `dir`，保证探查与更新
+        // 作用于同一目录（原始路径含 `..` 且跨符号链接时两者会分叉）。
+        let discovered = probe_dir(target.clone(), DiscoveryOrigin::Managed)
+            .await
+            .map_err(|problem| discovery_problem_error(&problem))?;
+        let resolved = discovered.dir.clone();
+
+        // 解析新 id：缺省时生成 v4 UUID（与 `derive_instance_directory` 同风格）。
+        let new_id = match new_id.map(str::trim) {
+            Some(value) if !value.is_empty() => {
+                InstanceId::new(value).map_err(InstanceError::from)?
+            }
+            _ => InstanceId::new(Uuid::new_v4().to_string()).map_err(InstanceError::from)?,
+        };
+
+        // 幂等：与现值相同直接返回。必须在冲突检查之前——原 id 通常已在信任
+        // 名单里，放到后面会被误判为冲突。
+        if discovered.document.id.as_str() == new_id.as_str() {
+            return Ok(());
+        }
+
+        // 新 id 必须避开**所有** id 域：可见实例、其它重复组的 id（成员不在
+        // `instances` 里，只出现在 problems 条目）、以及信任名单（含孤儿条目
+        // ——否则新实例会凭旧记录直接变成 Trusted）。
+        let conflicts = scan
+            .classified
+            .instances
+            .iter()
+            .any(|item| item.instance.document.id.as_str() == new_id.as_str())
+            || scan.classified.problems.iter().any(|entry| {
+                matches!(
+                    &entry.problem,
+                    DiscoveryProblem::DuplicateId { id, .. } if id.as_str() == new_id.as_str()
+                )
+            })
+            || registry
+                .trusted_instances
+                .iter()
+                .any(|trusted| trusted == new_id.as_str());
+        if conflicts {
+            return Err(InstanceError::AlreadyExists);
+        }
+
+        let old_id = discovered.document.id.clone();
+
+        // 锁内改文档；`update` 内部会重跑 `validate`，保证新 id 合法。
+        let mut store = DocumentStore::load(DocumentStore::path_for(&resolved))
+            .await
+            .map_err(doc_error)?;
+        store
+            .update(|document| {
+                if document.id.as_str() == new_id.as_str() {
+                    return Ok(false);
+                }
+                document.id = new_id.clone();
+                Ok(true)
+            })
+            .await
+            .map_err(doc_error)?;
+
+        // 原 id 若已无 live 宿主（单实例场景），清理其遗留信任记录——否则它
+        // 成为孤儿条目，会被后来复用该 id 的实例继承。重复组场景下另一成员
+        // 仍在，重新扫描能看到它，故保留信任（符合「信任跟随原 id 目录」设计）。
+        let after = self.scan().await?;
+        let old_id_still_live = after
+            .classified
+            .instances
+            .iter()
+            .any(|item| item.instance.document.id.as_str() == old_id.as_str());
+        if !old_id_still_live {
+            let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+            untrust_instance(&mut manager, old_id.as_str())
+                .await
+                .map_err(internal_error)?;
+        }
+
+        tracing::info!(
+            target: "sealantern.application.instance",
+            dir = %resolved.display(),
+            old_id = %old_id.as_str(),
+            new_id = %new_id.as_str(),
+            "instance id reassigned"
+        );
         Ok(())
     }
 
-    /// 内部重命名实例：改字段后经 core 校验再写回，返回应用层主错误。
-    async fn rename_inner(&self, id: &InstanceId, name: &str) -> Result<(), InstanceError> {
-        let mut registry = self.registry.lock().await;
-        let mut instance = registry.get(id).cloned().ok_or(InstanceError::NotFound)?;
-        instance.name = name.to_owned();
-        // 写回前复用 core 字段校验，拒绝空名/纯空白名。
-        instance.validate()?;
-        registry.save_instance(&instance).await?;
-        Ok(())
-    }
-
-    /// 内部更新实例目录路径：改字段后经 core 校验再写回，返回应用层主错误。
-    async fn update_path_inner(&self, id: &InstanceId, path: &str) -> Result<(), InstanceError> {
-        let mut registry = self.registry.lock().await;
-        let mut instance = registry.get(id).cloned().ok_or(InstanceError::NotFound)?;
-        instance.directory = PathBuf::from(path);
-        // 写回前复用 core 字段校验，拒绝空路径。
-        instance.validate()?;
-        registry.save_instance(&instance).await?;
-        Ok(())
-    }
-
-    /// 导入已有服务器目录：校验源目录 → 去重 → 构建导入规格 → 供给计划 → 持久化登记。
-    ///
-    /// 返回应用层富错误（携带 PathBuf 用于日志详情）；契约层（[`InstanceService`]
-    /// 的 `import_existing_server`）在此之上收敛为薄契约错误。
+    /// 导入已有服务器目录：校验 → 探查 →（已建档：登记 / 裸目录：识别构建）→ 持久化。
+    /// 返回应用层富错误（携带 PathBuf 用于日志详情）；契约层
+    /// （[`InstanceService`] 的 `import_existing_server`）在此之上收敛为薄契约错误。
     /// 编排逻辑收口于 service 层，命令层（Tauri / Axum）只负责参数转发与错误映射。
-    /// 导入的实例直接引用原始目录（FR-5：不复制文件）；检查与构建规格为同步文件系统
-    /// 扫描，经 `spawn_blocking` 调度到阻塞线程池，避免阻塞异步运行时核心线程。
+    /// 导入的实例直接引用原始目录（FR-5：不复制文件）；检查与构建规格为同步文件
+    /// 系统扫描，经 `spawn_blocking` 调度到阻塞线程池。
     async fn import_existing_server_inner(
         &self,
         request: ImportExistingServerRequest,
     ) -> Result<Instance, InstanceError> {
         validate_source_directory(&request.source_directory)?;
 
-        let instances = self
-            .list()
-            .await
-            .map_err(|e| InstanceError::ImportListFailed { source: e })?;
-        if instances.iter().any(|instance| {
-            source_directories_equal(
-                instance.directory.as_path(),
-                request.source_directory.as_path(),
-            )
-        }) {
-            return Err(InstanceError::SourceAlreadyImported);
+        let scan = self.scan().await?;
+        let origin = if is_managed_dir(&request.source_directory, &scan.layout) {
+            DiscoveryOrigin::Managed
+        } else {
+            DiscoveryOrigin::Extra
+        };
+
+        match probe_dir(request.source_directory.clone(), origin).await {
+            Ok(discovered) => {
+                // 目录已有合法 sl.json：核实归属后直接登记信任/忽略/附加名单。
+                // 去重只拦 Trusted——Unmarked/Ignored 目录经此转正（unignore+trust），
+                // 否则被忽略或待处理的实例将没有任何恢复入口。
+                if scan.classified.instances.iter().any(|item| {
+                    item.state == TrustState::Trusted
+                        && source_directories_equal(&item.instance.dir, &request.source_directory)
+                }) {
+                    return Err(InstanceError::SourceAlreadyImported);
+                }
+                // 同一 id 已在其它目录受信任：不同目录的同名实例才算冲突。
+                if scan.classified.instances.iter().any(|item| {
+                    item.state == TrustState::Trusted
+                        && item.instance.document.id.as_str() == discovered.document.id.as_str()
+                        && !source_directories_equal(&item.instance.dir, &request.source_directory)
+                }) {
+                    return Err(InstanceError::AlreadyExists);
+                }
+
+                // 先构造并校验 `Instance`，确认文档能产出合法实例后再动名单——
+                // 否则转换失败会在注册表里留下一个受信任的无效 id。
+                let spec = discovered.document.to_spec(discovered.dir.clone());
+                let instance = Instance::new(spec).map_err(InstanceError::from)?;
+
+                let mut manager = self.settings.lock_manager().await.map_err(internal_error)?;
+                if origin == DiscoveryOrigin::Extra {
+                    register_extra_dir(&mut manager, &request.source_directory)
+                        .await
+                        .map_err(internal_error)?;
+                }
+                unignore_dir(&mut manager, &request.source_directory)
+                    .await
+                    .map_err(internal_error)?;
+                trust_instance(&mut manager, discovered.document.id.as_str())
+                    .await
+                    .map_err(internal_error)?;
+                drop(manager);
+
+                Ok(instance)
+            }
+            Err(DiscoveryProblem::MissingDocument { .. }) => {
+                // 裸目录接管：识别服务器构件并构建导入规格（同步文件系统
+                // 扫描经 spawn_blocking 调度到阻塞线程池）。
+                let import_request = tokio::task::spawn_blocking({
+                    let request = request.clone();
+                    move || build_import_spec(&request)
+                })
+                .await
+                .map_err(|_| InstanceError::InspectionPanicked)?
+                .map_err(InstanceError::from)?;
+
+                let plan = plan_existing_instance(import_request).map_err(InstanceError::from)?;
+
+                self.create_inner(plan.instance.spec())
+                    .await
+                    .map_err(|e| InstanceError::ImportCreateFailed { source: e.into() })
+            }
+            Err(problem) => Err(discovery_problem_error(&problem)),
         }
-
-        let import_request = tokio::task::spawn_blocking({
-            let request = request.clone();
-            move || build_import_spec(&request)
-        })
-        .await
-        .map_err(|_| InstanceError::InspectionPanicked)?
-        .map_err(InstanceError::from)?;
-
-        let plan = plan_existing_instance(import_request).map_err(InstanceError::from)?;
-
-        self.create(plan.instance.spec())
-            .await
-            .map_err(|e| InstanceError::ImportCreateFailed { source: e })
     }
 }
 
 #[async_trait]
 impl InstanceService for CoreInstanceService {
     async fn list(&self) -> Result<Vec<Instance>, InstanceServiceError> {
-        let registry = self.registry.lock().await;
-        Ok(registry.list().to_vec())
+        let scan = self.scan().await.map_err(InstanceServiceError::from)?;
+        let mut instances = Vec::new();
+        for item in &scan.classified.instances {
+            if item.state == TrustState::Trusted {
+                instances.push(to_instance(item).map_err(InstanceServiceError::from)?);
+            }
+        }
+        instances.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(instances)
     }
 
     async fn find(&self, id: &InstanceId) -> Result<Option<Instance>, InstanceServiceError> {
-        let registry = self.registry.lock().await;
-        Ok(registry.get(id).cloned())
+        let scan = self.scan().await.map_err(InstanceServiceError::from)?;
+        match Self::find_classified(&scan.classified, id) {
+            Some(item) if item.state == TrustState::Trusted => {
+                Ok(Some(to_instance(item).map_err(InstanceServiceError::from)?))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    async fn discovery(&self) -> Result<InstanceDiscoveryView, InstanceServiceError> {
+        let scan = self.scan().await.map_err(InstanceServiceError::from)?;
+        let mut trusted = Vec::new();
+        let mut pending = Vec::new();
+        for item in &scan.classified.instances {
+            match item.state {
+                TrustState::Trusted => {
+                    trusted.push(to_instance(item).map_err(InstanceServiceError::from)?)
+                }
+                TrustState::Unmarked => pending.push(PendingInstance {
+                    dir: item.instance.dir.clone(),
+                    instance_id: item.instance.document.id.as_str().to_string(),
+                    name: item.instance.document.name.clone(),
+                }),
+                TrustState::Ignored => {}
+            }
+        }
+        let problems = scan
+            .classified
+            .problems
+            .iter()
+            .map(|entry| ClassifiedProblemEntry {
+                problem: problem_entry(&entry.problem),
+                ignored: entry.ignored,
+            })
+            .collect();
+        Ok(InstanceDiscoveryView {
+            trusted,
+            pending,
+            problems,
+            orphan_trusted_ids: scan.orphan_trusted_ids,
+        })
     }
 
     async fn create(&self, spec: InstanceSpec) -> Result<Instance, InstanceServiceError> {
@@ -197,18 +706,77 @@ impl InstanceService for CoreInstanceService {
         &self,
         request: ImportExistingServerRequest,
     ) -> Result<Instance, InstanceServiceError> {
+        // 目录从 request 摘出后再移交 inner——失败日志需要带上源目录便于定位。
+        let source_directory = request.source_directory.clone();
         self.import_existing_server_inner(request)
             .await
             .map_err(|e| {
-                tracing::warn!(error = ?e, "import existing server failed");
+                tracing::warn!(
+                    directory = %source_directory.display(),
+                    error = ?e,
+                    "import existing server failed"
+                );
                 e.into()
             })
     }
 
+    async fn trust(&self, id: &InstanceId) -> Result<(), InstanceServiceError> {
+        self.trust_inner(id)
+            .await
+            .map_err(InstanceServiceError::from)
+    }
+
+    async fn untrust(&self, id: &InstanceId) -> Result<(), InstanceServiceError> {
+        let mut manager = self
+            .settings
+            .lock_manager()
+            .await
+            .map_err(|e| InstanceServiceError::from(internal_error(e)))?;
+        untrust_instance(&mut manager, id.as_str())
+            .await
+            .map_err(|e| InstanceServiceError::from(internal_error(e)))?;
+        Ok(())
+    }
+
+    async fn ignore_dir(&self, path: &str) -> Result<(), InstanceServiceError> {
+        self.ignore_dir_inner(path)
+            .await
+            .map_err(InstanceServiceError::from)
+    }
+
+    async fn unignore_dir(&self, path: &str) -> Result<(), InstanceServiceError> {
+        self.unignore_dir_inner(path)
+            .await
+            .map_err(InstanceServiceError::from)
+    }
+
+    async fn reassign_id(
+        &self,
+        dir: &str,
+        new_id: Option<&str>,
+    ) -> Result<(), InstanceServiceError> {
+        self.reassign_id_inner(dir, new_id)
+            .await
+            .map_err(InstanceServiceError::from)
+    }
+
     async fn import_modpack(
         &self,
-        request: ImportModpackRequest,
+        mut request: ImportModpackRequest,
     ) -> Result<Instance, InstanceServiceError> {
+        // run_path 缺省时落到主资源 `instances/` 容器（子目录由派生步生成）。
+        if request.run_path.as_os_str().is_empty() {
+            request.run_path = self
+                .settings
+                .layout()
+                .await
+                .map_err(|e| InstanceServiceError::from(internal_error(e)))?
+                .instances_dir();
+        }
+        // run_path 的语义是「实例存放位置」而非最终目录：先派生实例独占子目录再规划。
+        // 文件夹来源直接引用源目录、不使用 run_path，派生结果对其自然无影响。
+        request.run_path = derive_instance_directory(&request.run_path)?;
+
         // 规划导入，构建实例规格（不执行文件操作）。
         let result = plan_import_modpack(&request).map_err(|error| {
             tracing::warn!(
@@ -275,8 +843,177 @@ impl InstanceService for CoreInstanceService {
             }
         }
 
-        // 注册实例。
+        // 写 sl.json + 名单登记（含必要的附加目录注册）。
         self.create_inner(result.spec).await.map_err(Into::into)
+    }
+}
+
+/// 实例目录是否位于主资源 `instances/` 容器下（词法比较，不做 IO）。
+fn is_managed_dir(dir: &Path, layout: &AppLayout) -> bool {
+    dir.parent()
+        .map(|parent| parent == layout.instances_dir().as_path())
+        .unwrap_or(false)
+}
+
+/// `ClassifiedInstance` → `Instance`：`to_spec` 已含全部字段，重建经 core 校验。
+fn to_instance(item: &ClassifiedInstance) -> Result<Instance, InstanceError> {
+    let spec = item.instance.document.to_spec(item.instance.dir.clone());
+    Instance::new(spec).map_err(InstanceError::from)
+}
+
+/// `DiscoveryProblem`（feature 层）→ `DiscoveryProblemEntry`（契约层）。
+fn problem_entry(problem: &DiscoveryProblem) -> DiscoveryProblemEntry {
+    let mut entry = DiscoveryProblemEntry {
+        kind: DiscoveryProblemKind::InvalidDocument,
+        dir: None,
+        dirs: Vec::new(),
+        id: None,
+        schema_version: None,
+        alias_of: None,
+        message: None,
+    };
+    match problem {
+        DiscoveryProblem::UnreadableDir { dir, message } => {
+            entry.kind = DiscoveryProblemKind::UnreadableDir;
+            entry.dir = Some(dir.clone());
+            entry.message = Some(message.clone());
+        }
+        DiscoveryProblem::MissingDocument { dir } => {
+            entry.kind = DiscoveryProblemKind::MissingDocument;
+            entry.dir = Some(dir.clone());
+        }
+        DiscoveryProblem::InvalidDocument { dir, message } => {
+            entry.kind = DiscoveryProblemKind::InvalidDocument;
+            entry.dir = Some(dir.clone());
+            entry.message = Some(message.clone());
+        }
+        DiscoveryProblem::UnsupportedSchemaVersion { dir, found } => {
+            entry.kind = DiscoveryProblemKind::UnsupportedSchemaVersion;
+            entry.dir = Some(dir.clone());
+            entry.schema_version = Some(*found);
+        }
+        DiscoveryProblem::DuplicateId { id, dirs } => {
+            entry.kind = DiscoveryProblemKind::DuplicateId;
+            entry.id = Some(id.clone());
+            entry.dirs = dirs.clone();
+        }
+        DiscoveryProblem::DuplicateDirAlias { dir, alias_of } => {
+            entry.kind = DiscoveryProblemKind::DuplicateDirAlias;
+            entry.dir = Some(dir.clone());
+            entry.alias_of = Some(alias_of.clone());
+        }
+    }
+    entry
+}
+
+/// 问题条目涉及的目录集合（`DuplicateId` 携带多个目录；别名条目含本体与
+/// 首次出现位置，冲突检查须同时覆盖两侧）。
+fn problem_dirs(problem: &DiscoveryProblem) -> Vec<PathBuf> {
+    match problem {
+        DiscoveryProblem::UnreadableDir { dir, .. }
+        | DiscoveryProblem::MissingDocument { dir }
+        | DiscoveryProblem::InvalidDocument { dir, .. }
+        | DiscoveryProblem::UnsupportedSchemaVersion { dir, .. } => vec![dir.clone()],
+        DiscoveryProblem::DuplicateId { dirs, .. } => dirs.clone(),
+        DiscoveryProblem::DuplicateDirAlias { dir, alias_of } => {
+            vec![dir.clone(), alias_of.clone()]
+        }
+    }
+}
+
+/// 设置管理器错误收敛为 `Internal`：布局/名单的读取与写入失败都属于
+/// 基础设施层面问题，不向调用方区分细节（细节由日志承载）。
+fn internal_error(error: impl std::fmt::Display) -> InstanceError {
+    InstanceError::Internal(error.to_string())
+}
+
+/// 解析忽略名单 / 重分配操作传入的目录字符串。
+///
+/// 只做非空校验，不要求目录存在——被忽略的目录可能早已被删除，用户仍需要
+/// 能把它移出名单。路径的规范化（消 `.`/`..`、统一分隔符）由 feature 层的
+/// `normalize_dir` 在名单写入时完成，与此处保持同一套词法语义。
+///
+/// **不做 trim**：首尾空白可能是合法目录名的一部分，裁剪后指向别处。
+/// 仅当裁剪后为空时拒绝。
+fn parse_dir_path(path: &str) -> Result<PathBuf, InstanceError> {
+    if path.trim().is_empty() {
+        return Err(InstanceError::InvalidInput);
+    }
+    Ok(PathBuf::from(path))
+}
+
+/// `sl.json` 文档错误 → 应用层实例错误。
+fn doc_error(error: DocumentError) -> InstanceError {
+    match error {
+        DocumentError::Storage { source } => InstanceError::OperationFailed { source },
+        DocumentError::UnsupportedSchemaVersion { .. } => {
+            InstanceError::Internal(error.to_string())
+        }
+        DocumentError::AlreadyExists { .. } => InstanceError::AlreadyExists,
+        DocumentError::Invalid { .. } => InstanceError::InvalidInput,
+    }
+}
+
+/// 发现问题 → 应用层实例错误（`import_existing_server`/`update_path` 的
+/// 单目录探查失败分类）。`MissingDocument` 在上层已被单独处理，此处兜底
+/// 为 `InvalidInput`；重复类问题在单目录探查中不会出现，同样兜底。
+fn discovery_problem_error(problem: &DiscoveryProblem) -> InstanceError {
+    match problem {
+        DiscoveryProblem::UnreadableDir { dir, .. } => {
+            InstanceError::SourceUnavailable(dir.clone())
+        }
+        // `MissingDocument` 在上层被单独处理（裸目录接管）；重复类问题在单目录
+        // 探查中不会出现——到达此处都按「输入无效」兜底。
+        DiscoveryProblem::MissingDocument { .. }
+        | DiscoveryProblem::InvalidDocument { .. }
+        | DiscoveryProblem::UnsupportedSchemaVersion { .. }
+        | DiscoveryProblem::DuplicateId { .. }
+        | DiscoveryProblem::DuplicateDirAlias { .. } => InstanceError::InvalidInput,
+    }
+}
+
+/// 依据请求中的运行目录派生实例实际落盘目录。
+///
+/// `run_path` 的语义是「实例存放位置」而非最终目录：
+/// - 末级已是实例目录标识（30/32/36 位十六进制 UUID）时原样复用，
+///   保证前端已自行拼出完整路径（Docker 分支）时不会二次嵌套；
+/// - 其余情况在 `run_path` 下生成一个 30 位十六进制 UUID 子目录，
+///   避免多个实例共用同一父目录互相覆盖，也避免默认开服路径
+///   （与应用数据目录同为 `%APPDATA%/SeaLantern`）被服务器文件直接铺满。
+///
+/// 命名形态与 v1.2.0 的 `import_modpack` 一致（v4 UUID 去连字符取前 30 位）；
+/// 额外补上对 30 位目录的识别——v1.2.0 只认 32/36 位，会导致自己生成的
+/// 目录在重复调用时被再套一层。
+fn derive_instance_directory(run_path: &Path) -> Result<PathBuf, InstanceError> {
+    if run_path.as_os_str().is_empty() {
+        return Err(InstanceError::InvalidInput);
+    }
+    if is_instance_directory_name(run_path) {
+        return Ok(run_path.to_path_buf());
+    }
+    let folder_name = Uuid::new_v4().to_string().replace('-', "");
+    Ok(run_path.join(&folder_name[..INSTANCE_DIRECTORY_NAME_LEN]))
+}
+
+/// 判断路径末级是否形如实例目录标识。
+///
+/// 兼容三种形态：30 位（本模块生成）、32 位无连字符 UUID、36 位带连字符 UUID。
+fn is_instance_directory_name(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let is_hex = |text: &str| text.chars().all(|c| c.is_ascii_hexdigit());
+    match name.len() {
+        // 30 位实例目录片段、32 位无连字符 UUID。
+        INSTANCE_DIRECTORY_NAME_LEN | 32 => is_hex(name),
+        // 36 位带连字符 UUID：8-4-4-4-12。
+        36 => {
+            let groups: Vec<&str> = name.split('-').collect();
+            groups.len() == 5
+                && groups.iter().map(|group| group.len()).eq([8, 4, 4, 4, 12])
+                && groups.iter().all(|group| is_hex(group))
+        }
+        _ => false,
     }
 }
 
@@ -311,20 +1048,35 @@ mod tests {
 
     use sealantern_core::instance::{LocalLaunch, StartupMode};
     use sealantern_core::provisioning::ImportExistingServerRequest;
+    use sealantern_feature::config::SettingsManager;
 
     use sealantern_contract::InstanceServiceError;
 
     use super::*;
 
-    fn sample_spec(id: &str) -> InstanceSpec {
+    /// 以临时根目录装配服务：`settings.json` 落在根下，`instances/` 容器即
+    /// `root/instances`——实例目录默认放进该容器（受管），无需附加目录登记。
+    async fn test_service(root: &Path) -> CoreInstanceService {
+        let manager = SettingsManager::load(root.join("settings.json"))
+            .await
+            .expect("load settings manager");
+        CoreInstanceService::with_settings(CoreSettingsService::with_manager(manager))
+    }
+
+    /// 构造落位真实目录的实例规格：`directory`/`startup_target` 一致且位于
+    /// `root/instances/{id}`（实例目录存在与否不影响创建——`sl.json` 写入会
+    /// 自补父目录；但 `Instance::new` 校验要求启动目标在目录内）。
+    fn sample_spec(root: &Path, id: &str) -> InstanceSpec {
+        let dir = root.join("instances").join(id);
         InstanceSpec {
             id: InstanceId::new(id).expect("valid id"),
-            name: format!("服务器-{id}"),
+            name: format!("server-{id}"),
             aliases: Vec::new(),
             core_type: "paper".into(),
             core_version: "1.20.4".into(),
             game_version: "1.20.4".into(),
-            directory: PathBuf::from(format!("/tmp/server-{id}")),
+            required_java: None,
+            directory: dir.clone(),
             port: 25565,
             max_memory_mib: 2048,
             min_memory_mib: 512,
@@ -333,7 +1085,7 @@ mod tests {
             server_metadata: None,
             launch: LocalLaunch {
                 startup_mode: StartupMode::Jar,
-                startup_target: Some(PathBuf::from(format!("/tmp/server-{id}/server.jar"))),
+                startup_target: Some(dir.join("server.jar")),
                 custom_command: None,
                 custom_executable: None,
                 custom_arguments: Vec::new(),
@@ -343,21 +1095,16 @@ mod tests {
         }
     }
 
-    fn test_path(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("sealantern-inst-svc-{label}"));
-        std::fs::create_dir_all(&dir).expect("create temp dir");
-        dir.join("sea_lantern_servers.json")
-    }
-
     #[tokio::test]
     async fn persists_reads_and_deletes_an_instance() {
-        let path = test_path("crud");
-        let service = CoreInstanceService::with_path(&path)
-            .await
-            .expect("load service");
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
 
-        let created = service.create(sample_spec("a")).await.expect("create");
-        assert_eq!(created.name, "服务器-a");
+        let created = service
+            .create(sample_spec(root.path(), "a"))
+            .await
+            .expect("create");
+        assert_eq!(created.name, "server-a");
 
         let listed = service.list().await.expect("list");
         assert_eq!(listed.len(), 1);
@@ -365,58 +1112,53 @@ mod tests {
         let found = service.find(&created.id).await.expect("find");
         assert!(found.is_some());
 
-        service.rename(&created.id, "改名").await.expect("rename");
-        assert_eq!(service.list().await.expect("list")[0].name, "改名");
+        service
+            .rename(&created.id, "renamed")
+            .await
+            .expect("rename");
+        assert_eq!(service.list().await.expect("list")[0].name, "renamed");
 
         service.delete(&created.id).await.expect("delete");
         assert!(service.list().await.expect("list").is_empty());
-
-        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 
     #[tokio::test]
     async fn rename_missing_instance_reports_not_found() {
-        let path = test_path("rename-missing");
-        let service = CoreInstanceService::with_path(&path)
-            .await
-            .expect("load service");
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
         let missing = InstanceId::new("missing").expect("valid id");
         let result = service.rename(&missing, "x").await;
         assert_eq!(result, Err(InstanceServiceError::InstanceNotFound));
-        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 
     #[tokio::test]
     async fn create_with_duplicate_id_reports_already_exists() {
-        let path = test_path("duplicate");
-        let service = CoreInstanceService::with_path(&path)
-            .await
-            .expect("load service");
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
 
         service
-            .create(sample_spec("dup"))
+            .create(sample_spec(root.path(), "dup"))
             .await
             .expect("first create");
 
         // 相同 ID 再次创建应被拒绝，而不是覆盖原实例。
-        let result = service.create(sample_spec("dup")).await;
+        let result = service.create(sample_spec(root.path(), "dup")).await;
         assert_eq!(result, Err(InstanceServiceError::AlreadyExists));
 
         // 原实例未被覆盖。
         let listed = service.list().await.expect("list");
         assert_eq!(listed.len(), 1);
-        assert_eq!(listed[0].name, "服务器-dup");
-
-        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        assert_eq!(listed[0].name, "server-dup");
     }
 
     #[tokio::test]
     async fn rename_with_blank_name_is_rejected() {
-        let path = test_path("rename-blank");
-        let service = CoreInstanceService::with_path(&path)
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+        let created = service
+            .create(sample_spec(root.path(), "a"))
             .await
-            .expect("load service");
-        let created = service.create(sample_spec("a")).await.expect("create");
+            .expect("create");
 
         for blank in ["", "   "] {
             let result = service.rename(&created.id, blank).await;
@@ -425,27 +1167,24 @@ mod tests {
 
         // 原名称未被修改。
         let found = service.find(&created.id).await.expect("find");
-        assert_eq!(found.expect("exists").name, "服务器-a");
-
-        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        assert_eq!(found.expect("exists").name, "server-a");
     }
 
     #[tokio::test]
     async fn update_path_with_blank_path_is_rejected() {
-        let path = test_path("path-blank");
-        let service = CoreInstanceService::with_path(&path)
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+        let created = service
+            .create(sample_spec(root.path(), "a"))
             .await
-            .expect("load service");
-        let created = service.create(sample_spec("a")).await.expect("create");
+            .expect("create");
 
         let result = service.update_path(&created.id, "").await;
         assert_eq!(result, Err(InstanceServiceError::InvalidInput));
 
         // 原路径未被修改。
         let found = service.find(&created.id).await.expect("find");
-        assert_eq!(found.expect("exists").directory, PathBuf::from("/tmp/server-a"));
-
-        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        assert_eq!(found.expect("exists").directory, root.path().join("instances").join("a"));
     }
 
     /// 写一个最小可识别服务器 jar：含 `Main-Class` 清单即可被通用检测器识别为可启动 jar。
@@ -488,9 +1227,7 @@ mod tests {
             "Manifest-Version: 1.0\r\nMain-Class: com.example.DemoServer\r\n\r\n",
         );
 
-        let service = CoreInstanceService::with_path(root.path().join("servers.json"))
-            .await
-            .expect("load service");
+        let service = test_service(root.path()).await;
 
         let instance = service
             .import_existing_server(import_request(source, Some(vec!["-Xmx4G".to_string()])))
@@ -506,9 +1243,7 @@ mod tests {
         let root = tempfile::tempdir().expect("temp dir");
         let missing = root.path().join("does-not-exist");
 
-        let service = CoreInstanceService::with_path(root.path().join("servers.json"))
-            .await
-            .expect("load service");
+        let service = test_service(root.path()).await;
 
         let result = service
             .import_existing_server(import_request(missing, None))
@@ -518,13 +1253,391 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn import_modpack_from_folder_registers_instance() {
-        let path = test_path("import-modpack-folder");
-        let service = CoreInstanceService::with_path(&path)
-            .await
-            .expect("load service");
+    async fn import_existing_server_restores_ignored_instance() {
+        // 「移除但保留目录」的实例（untrust + ignore）必须能经 import 恢复：
+        // 去重只拦 Trusted，Ignored/Unmarked 目录走 unignore + trust 转正。
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
 
-        let source = std::env::temp_dir().join("sealantern-modpack-source");
+        let created = service
+            .create(sample_spec(root.path(), "revive"))
+            .await
+            .expect("create");
+        let dir = created.directory.clone();
+        service.delete(&created.id).await.expect("delete");
+        assert!(service.list().await.expect("list").is_empty());
+
+        let restored = service
+            .import_existing_server(import_request(dir, None))
+            .await
+            .expect("import should restore ignored instance");
+
+        // 身份沿用原 sl.json 的 id，名单状态回到 trusted。
+        assert_eq!(restored.id, created.id);
+        let listed = service.list().await.expect("list");
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].id, created.id);
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.trusted.len(), 1);
+        assert!(discovery.pending.is_empty());
+        assert!(discovery.orphan_trusted_ids.is_empty());
+    }
+
+    #[tokio::test]
+    async fn import_existing_server_rejects_trusted_source_directory() {
+        // 已受信任的实例目录重复导入仍然被拒绝。
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+
+        let created = service
+            .create(sample_spec(root.path(), "registered"))
+            .await
+            .expect("create");
+
+        let result = service
+            .import_existing_server(import_request(created.directory.clone(), None))
+            .await;
+        assert_eq!(result, Err(InstanceServiceError::SourceAlreadyImported));
+    }
+
+    /// 在指定目录写入一份合法的 `sl.json`（实例 id 固定为 `id`，目录/启动
+    /// 目标按 `dir` 重写），供「目录已有建档」的导入/发现场景使用。
+    async fn write_sl_json(dir: &Path, id: &str) {
+        let mut spec = sample_spec(dir.parent().expect("parent"), id);
+        spec.directory = dir.to_path_buf();
+        spec.launch.startup_target = Some(dir.join("server.jar"));
+        let instance = Instance::new(spec).expect("valid instance");
+        let document = InstanceDocument::try_from_instance(&instance).expect("document");
+        DocumentStore::create(DocumentStore::path_for(dir), document)
+            .await
+            .expect("write sl.json");
+    }
+
+    /// 把测试目录转成命令参数用的字符串。
+    ///
+    /// 断言为 UTF-8 而非 `to_string_lossy`：后者会把非 UTF-8 分量静默替换成
+    /// `U+FFFD`，让参数指向另一个路径，测试即使服务正确也会失败且难以定位。
+    fn path_str(path: &Path) -> String {
+        path.to_str()
+            .expect("test directory path must be valid UTF-8")
+            .to_string()
+    }
+
+    /// 读回 `sl.json` 里实际持久化的实例 id。
+    ///
+    /// 断言返回值只说明命令「声称成功」；这里直接查盘，保证重新分配真的落盘。
+    async fn stored_id(dir: &Path) -> String {
+        let store = DocumentStore::load(DocumentStore::path_for(dir))
+            .await
+            .expect("sl.json should load");
+        store.get().id.as_str().to_string()
+    }
+
+    #[tokio::test]
+    async fn trust_then_untrust_round_trip() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("alpha");
+        write_sl_json(&dir, "alpha").await;
+        let service = test_service(root.path()).await;
+        let id = InstanceId::new("alpha").expect("valid id");
+
+        // 初始：身份有效但未登记 → 待处理。
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.pending.len(), 1);
+        assert_eq!(discovery.pending[0].instance_id, "alpha");
+
+        // 信任 → 转入已管理。
+        service.trust(&id).await.expect("trust");
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.trusted.len(), 1);
+        assert!(discovery.pending.is_empty());
+
+        // 撤销 → 回到待处理（目录仍有效、不在忽略名单）。
+        service.untrust(&id).await.expect("untrust");
+        let discovery = service.discovery().await.expect("discovery");
+        assert!(discovery.trusted.is_empty());
+        assert_eq!(discovery.pending.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn ignoring_a_pending_dir_removes_the_hint_and_unignore_restores_it() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("beta");
+        write_sl_json(&dir, "beta").await;
+        let service = test_service(root.path()).await;
+        let path = path_str(&dir);
+
+        // 忽略 → 不再提示（忽略优先于「待处理」）。
+        service.ignore_dir(&path).await.expect("ignore");
+        let discovery = service.discovery().await.expect("discovery");
+        assert!(discovery.pending.is_empty());
+        assert!(discovery.trusted.is_empty());
+
+        // 解除忽略 → 提示恢复。
+        service.unignore_dir(&path).await.expect("unignore");
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.pending.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn trusting_an_unknown_instance_reports_not_found() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+        let ghost = InstanceId::new("ghost").expect("valid id");
+
+        assert_eq!(service.trust(&ghost).await, Err(InstanceServiceError::InstanceNotFound));
+    }
+
+    #[tokio::test]
+    async fn ignoring_a_blank_path_is_rejected() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+
+        assert_eq!(service.ignore_dir("   ").await, Err(InstanceServiceError::InvalidInput));
+        assert_eq!(service.unignore_dir("").await, Err(InstanceServiceError::InvalidInput));
+    }
+
+    #[tokio::test]
+    async fn trusting_an_ignored_instance_promotes_it() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("gamma");
+        write_sl_json(&dir, "gamma").await;
+        let service = test_service(root.path()).await;
+        let id = InstanceId::new("gamma").expect("valid id");
+        let path = path_str(&dir);
+
+        service.ignore_dir(&path).await.expect("ignore");
+        let discovery = service.discovery().await.expect("discovery");
+        assert!(discovery.pending.is_empty());
+
+        // 显式信任即用户处置：解除忽略 + 登记信任。
+        service
+            .trust(&id)
+            .await
+            .expect("trust promotes ignored dir");
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.trusted.len(), 1);
+        assert!(discovery.pending.is_empty());
+    }
+
+    #[tokio::test]
+    async fn reassign_id_resolves_a_duplicate_group_by_directory() {
+        // 两个受管目录携带同一 id：发现层整组移出 instances 并报 DuplicateId，
+        // 按 id 的命令都够不着它们。按目录改掉其中一个的 id 后，重复消失、
+        // 被改者落回 pending（其新 id 未登记），保留原 id 者继承信任。
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir_a = root.path().join("instances").join("dup-a");
+        let dir_b = root.path().join("instances").join("dup-b");
+        write_sl_json(&dir_a, "same-id").await;
+        write_sl_json(&dir_b, "same-id").await;
+
+        let service = test_service(root.path()).await;
+
+        // 前置：重复组不可达——按 id 信任失败。
+        let dup_id = InstanceId::new("same-id").expect("valid id");
+        assert_eq!(service.trust(&dup_id).await, Err(InstanceServiceError::InstanceNotFound));
+
+        // 按目录改 id（自动生成）→ 重复消失。
+        service
+            .reassign_id(&path_str(&dir_b), None)
+            .await
+            .expect("reassign should succeed");
+
+        let discovery = service.discovery().await.expect("discovery");
+        // 不再有 duplicate 问题；两个实例都回到可达集合。
+        assert!(
+            !discovery
+                .problems
+                .iter()
+                .any(|e| e.problem.kind == DiscoveryProblemKind::DuplicateId)
+        );
+        let total = discovery.trusted.len() + discovery.pending.len();
+        assert_eq!(total, 2, "both instances should become reachable");
+
+        // 按目录定向：只有请求的 dir_b 换了 id，dir_a 必须原样保留。
+        let id_a = stored_id(&dir_a).await;
+        let id_b = stored_id(&dir_b).await;
+        assert_eq!(id_a, "same-id", "the untouched member must keep the original id");
+        assert_ne!(id_b, "same-id", "the requested directory must get a new id");
+        assert_ne!(id_a, id_b, "the two directories must no longer share an id");
+    }
+
+    #[tokio::test]
+    async fn reassign_id_is_idempotent_and_rejects_conflicts() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("alpha");
+        write_sl_json(&dir, "alpha").await;
+        let service = test_service(root.path()).await;
+        let path = path_str(&dir);
+
+        // 改成一个未被占用的显式 id。
+        service
+            .reassign_id(&path, Some("alpha-2"))
+            .await
+            .expect("reassign to explicit id");
+        // 返回值只说明命令声称成功；直接查盘确认新 id 真的持久化了。
+        assert_eq!(stored_id(&dir).await, "alpha-2", "the new id must be persisted");
+
+        // 幂等：同一目标再改一次不报错。
+        service
+            .reassign_id(&path, Some("alpha-2"))
+            .await
+            .expect("reassign should be idempotent");
+        assert_eq!(stored_id(&dir).await, "alpha-2", "idempotent call must not change id");
+
+        // 冲突：改成另一个已存在实例的 id 被拒绝。
+        let other_dir = root.path().join("instances").join("beta");
+        write_sl_json(&other_dir, "beta").await;
+        service
+            .trust(&InstanceId::new("beta").expect("valid id"))
+            .await
+            .expect("trust beta");
+
+        assert_eq!(
+            service.reassign_id(&path, Some("beta")).await,
+            Err(InstanceServiceError::AlreadyExists)
+        );
+
+        // 空目录路径被拒绝。
+        assert_eq!(service.reassign_id("  ", None).await, Err(InstanceServiceError::InvalidInput));
+    }
+
+    #[tokio::test]
+    async fn reassign_id_rejects_orphan_trusted_ids() {
+        // 信任名单里的孤儿 id（无 live 实例）必须被拒绝：否则新实例会凭这条
+        // 遗留记录被 `classify` 直接标成 Trusted，继承不该继承的信任。
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir = root.path().join("instances").join("alpha");
+        write_sl_json(&dir, "alpha").await;
+        let service = test_service(root.path()).await;
+
+        // 直接向注册表写入一个孤儿 id（等价于实例目录被外部删除后残留）。
+        {
+            let mut manager = service.settings.lock_manager().await.expect("lock manager");
+            trust_instance(&mut manager, "orphan-id")
+                .await
+                .expect("trust orphan");
+        }
+
+        assert_eq!(
+            service
+                .reassign_id(&path_str(&dir), Some("orphan-id"))
+                .await,
+            Err(InstanceServiceError::AlreadyExists)
+        );
+        // 原 id 未被改动。
+        assert_eq!(stored_id(&dir).await, "alpha");
+    }
+
+    #[tokio::test]
+    async fn reassign_id_rejects_directories_outside_the_known_set() {
+        // 目标必须属于已发现实例或问题条目涉及的目录；任意路径即便含合法
+        // `sl.json` 也不得被改写（否则可改写无关实例文档）。
+        let root = tempfile::tempdir().expect("temp dir");
+        let known = root.path().join("instances").join("alpha");
+        write_sl_json(&known, "alpha").await;
+        let service = test_service(root.path()).await;
+
+        // 一个合法但不在已知集合内的目录。
+        let outsider = root.path().join("elsewhere").join("beta");
+        write_sl_json(&outsider, "beta").await;
+
+        assert_eq!(
+            service.reassign_id(&path_str(&outsider), None).await,
+            Err(InstanceServiceError::InstanceNotFound)
+        );
+        assert_eq!(stored_id(&outsider).await, "beta", "outsider must stay untouched");
+    }
+
+    #[tokio::test]
+    async fn import_existing_server_rejects_duplicate_id_after_first_import() {
+        // 两个未登记目录携带同一实例 id：前者导入转正后，后者按 id 冲突拒绝。
+        // 去重只拦 Trusted——第二个目录的探查结果与首个实例同 id、不同目录，
+        // 命中 AlreadyExists（而不是被静默并入受管实例）。
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir_a = root.path().join("external-a");
+        let dir_b = root.path().join("external-b");
+        write_sl_json(&dir_a, "dup-ext").await;
+        write_sl_json(&dir_b, "dup-ext").await;
+
+        let service = test_service(root.path()).await;
+
+        service
+            .import_existing_server(import_request(dir_a, None))
+            .await
+            .expect("first import should succeed");
+
+        let result = service
+            .import_existing_server(import_request(dir_b, None))
+            .await;
+        assert_eq!(result, Err(InstanceServiceError::AlreadyExists));
+    }
+
+    #[tokio::test]
+    async fn discovery_reports_duplicate_id_for_untrusted_dirs() {
+        // 同一实例 id 出现在 managed 容器下的两个目录（均未登记信任）：发现层
+        // 将整组目录移出 instances 并归入 problems——trusted/pending 都不含
+        // 冲突成员，orphan 名单也不应有（无人登记过该 id）。
+        let root = tempfile::tempdir().expect("temp dir");
+        let dir_a = root.path().join("instances").join("dup-a");
+        let dir_b = root.path().join("instances").join("dup-b");
+        write_sl_json(&dir_a, "dup-managed").await;
+        write_sl_json(&dir_b, "dup-managed").await;
+
+        let service = test_service(root.path()).await;
+
+        let discovery = service.discovery().await.expect("discovery");
+        assert!(discovery.trusted.is_empty());
+        assert!(discovery.pending.is_empty());
+        assert!(discovery.orphan_trusted_ids.is_empty());
+        let problem = discovery
+            .problems
+            .iter()
+            .find(|entry| entry.problem.kind == DiscoveryProblemKind::DuplicateId)
+            .expect("duplicate id problem should be reported");
+        assert_eq!(problem.problem.id.as_deref(), Some("dup-managed"));
+        assert_eq!(problem.problem.dirs.len(), 2);
+        assert!(problem.problem.dirs.contains(&dir_a));
+        assert!(problem.problem.dirs.contains(&dir_b));
+    }
+
+    #[tokio::test]
+    async fn discovery_reports_and_clears_orphan_trusted_ids() {
+        // 孤儿信任记录链路：登记了信任但磁盘上没有对应实例的 id 出现在
+        // discovery 视图的 orphan_trusted_ids；撤销登记后不再报告（孤儿
+        // 只报告不自动清理，清除动作由调用方决定——这里模拟用户处置）。
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+
+        // 直接登记一个不存在的实例 id（等价于实例目录被外部删除后残留）。
+        {
+            let mut manager = service.settings.lock_manager().await.expect("lock manager");
+            trust_instance(&mut manager, "gone-instance")
+                .await
+                .expect("trust should succeed");
+        }
+
+        let discovery = service.discovery().await.expect("discovery");
+        assert_eq!(discovery.orphan_trusted_ids, vec!["gone-instance".to_string()]);
+
+        // 处置：撤销信任后孤儿报告清空。
+        {
+            let mut manager = service.settings.lock_manager().await.expect("lock manager");
+            untrust_instance(&mut manager, "gone-instance")
+                .await
+                .expect("untrust should succeed");
+        }
+
+        let discovery = service.discovery().await.expect("discovery");
+        assert!(discovery.orphan_trusted_ids.is_empty());
+    }
+
+    #[tokio::test]
+    async fn import_modpack_from_folder_registers_instance() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+
+        let source = root.path().join("modpack-source");
         std::fs::create_dir_all(&source).expect("create source dir");
         std::fs::write(source.join("server.jar"), b"fake jar").expect("write jar");
 
@@ -540,7 +1653,8 @@ mod tests {
             core_type: Some("paper".into()),
             mc_version: Some("1.20.4".into()),
             custom_command: None,
-            run_path: std::env::temp_dir().join("sealantern-modpack-run"),
+            // 文件夹来源直接引用源目录，run_path 不参与；空路径走缺省分支。
+            run_path: PathBuf::new(),
         };
 
         let instance = service
@@ -551,10 +1665,6 @@ mod tests {
         assert_eq!(instance.game_version, "1.20.4");
         // 文件夹来源直接引用原目录，不复制文件。
         assert_eq!(instance.directory, source);
-
-        let _ = std::fs::remove_dir_all(path.parent().unwrap());
-        let _ = std::fs::remove_dir_all(&source);
-        let _ = std::fs::remove_dir_all(std::env::temp_dir().join("sealantern-modpack-run"));
     }
 
     /// 用 infra 的写入侧构造一个含 `server.jar` 的整合包归档。
@@ -582,9 +1692,7 @@ mod tests {
     /// 归档来源的导入应把内容解压到运行目录，且格式按内容而非扩展名判定。
     async fn assert_modpack_archive_import(label: &str, filename: &str, format: ArchiveFormat) {
         let root = tempfile::tempdir().expect("temp dir");
-        let service = CoreInstanceService::with_path(root.path().join("servers.json"))
-            .await
-            .expect("load service");
+        let service = test_service(root.path()).await;
 
         let archive = root.path().join(filename);
         write_test_modpack(&archive, format);
@@ -629,5 +1737,77 @@ mod tests {
     async fn import_modpack_detects_format_from_content_not_extension() {
         // 扩展名声称是 ZIP，内容实际是 tar.gz：分派须按内容进行。
         assert_modpack_archive_import("mislabeled", "modpack.zip", ArchiveFormat::TarGz).await;
+    }
+
+    #[tokio::test]
+    async fn import_modpack_places_instance_below_run_path() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let service = test_service(root.path()).await;
+
+        let archive = root.path().join("modpack.zip");
+        write_test_modpack(&archive, ArchiveFormat::Zip);
+        let run_path = root.path().join("run");
+
+        let request = ImportModpackRequest {
+            name: "整合包-派生目录".into(),
+            modpack_path: archive,
+            java_path: PathBuf::from("java"),
+            max_memory: 2048,
+            min_memory: 1024,
+            port: 25565,
+            startup_mode: "jar".into(),
+            startup_file_path: Some(PathBuf::from("server.jar")),
+            core_type: Some("paper".into()),
+            mc_version: Some("1.20.4".into()),
+            custom_command: None,
+            run_path: run_path.clone(),
+        };
+
+        let instance = service
+            .import_modpack(request)
+            .await
+            .expect("import modpack");
+
+        // 实例必须落在 run_path 的子目录里，而不是把服务器文件直接铺在 run_path。
+        assert_eq!(instance.directory.parent(), Some(run_path.as_path()));
+        assert_eq!(
+            fs::read(instance.directory.join("server.jar")).expect("extracted jar"),
+            b"fake jar"
+        );
+        assert!(!run_path.join("server.jar").exists());
+    }
+
+    #[test]
+    fn derive_instance_directory_appends_uuid_segment() {
+        let derived = derive_instance_directory(Path::new("/servers/root")).expect("derive");
+
+        assert_eq!(derived.parent(), Some(Path::new("/servers/root")));
+        let name = derived
+            .file_name()
+            .and_then(|n| n.to_str())
+            .expect("dir name");
+        assert_eq!(name.len(), INSTANCE_DIRECTORY_NAME_LEN);
+        assert!(name.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn derive_instance_directory_reuses_existing_instance_directory() {
+        // 幂等：末级已是实例目录标识时不得再嵌套一层。
+        for name in [
+            "0123456789abcdef0123456789abcd",       // 30 位
+            "0123456789abcdef0123456789abcdef",     // 32 位
+            "01234567-89ab-cdef-0123-456789abcdef", // 36 位
+        ] {
+            let path = Path::new("/servers").join(name);
+            assert_eq!(derive_instance_directory(&path).expect("derive"), path);
+        }
+    }
+
+    #[test]
+    fn derive_instance_directory_rejects_empty_path() {
+        assert!(matches!(
+            derive_instance_directory(Path::new("")),
+            Err(InstanceError::InvalidInput)
+        ));
     }
 }

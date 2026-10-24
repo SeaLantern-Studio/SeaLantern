@@ -9,6 +9,7 @@ pub mod mclogs;
 pub mod models;
 pub mod observability;
 pub mod server;
+pub mod server_plugin;
 pub mod update;
 
 #[cfg(feature = "online-tunnel")]

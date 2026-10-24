@@ -5,13 +5,22 @@ import tauriIcon64 from "@src-tauri/icons/64x64.png";
 defineProps<{
   name: string;
   size?: number;
+  clickable?: boolean;
+  title?: string;
+}>();
+
+const emit = defineEmits<{
+  (e: "click"): void;
 }>();
 </script>
 
 <template>
   <AvatarRoot
     class="player-avatar-root"
+    :class="{ 'player-avatar-clickable': clickable }"
     :style="{ width: `${size || 36}px`, height: `${size || 36}px` }"
+    :title="title"
+    @click="clickable && emit('click')"
   >
     <AvatarImage
       :src="`https://api.rms.net.cn/head/${name}`"
@@ -58,5 +67,17 @@ defineProps<{
   color: var(--sl-primary);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.player-avatar-clickable {
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.player-avatar-clickable:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--sl-primary);
 }
 </style>

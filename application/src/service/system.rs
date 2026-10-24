@@ -14,18 +14,18 @@ use async_trait::async_trait;
 use sealantern_contract::SystemServiceError;
 use sealantern_contract::server::ServerState;
 use sealantern_contract::system::{
-    CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, MemoryInfo, NetworkInfo, ProcessResourceUsage,
-    ServerResourceUsage, SystemSnapshot,
+    CpuInfo, DirectoryUsage, DiskInfo, DiskSummary, Ipv6TestResult, Ipv6TestTarget, MemoryInfo,
+    NetworkInfo, ProcessResourceUsage, ServerResourceUsage, SystemSnapshot,
 };
 use sealantern_infra::platform::{
     collect_cpu_info, collect_disks, collect_networks, collect_process_usage,
     collect_resource_snapshot, collect_system_info, cpu_brand_name, directory_size,
-    get_default_run_path, path_disk_capacity, process_count,
+    path_disk_capacity, process_count,
 };
 
 use crate::error::SystemError;
 use crate::port::{InstanceService, ServerService, SystemService};
-use crate::service::{CoreInstanceService, CoreServerService};
+use crate::service::{CoreInstanceService, CoreServerService, CoreSettingsService};
 
 /// CPU 采样间隔：`sysinfo` 的 CPU 使用率是增量值，需间隔两次采样取后一次。
 const CPU_SAMPLE_INTERVAL: Duration = Duration::from_millis(200);
@@ -34,6 +34,7 @@ const CPU_SAMPLE_INTERVAL: Duration = Duration::from_millis(200);
 pub struct CoreSystemService {
     instance_service: Arc<CoreInstanceService>,
     server_service: Arc<CoreServerService>,
+    settings: Arc<CoreSettingsService>,
 }
 
 impl CoreSystemService {
@@ -41,8 +42,13 @@ impl CoreSystemService {
     pub fn new(
         instance_service: Arc<CoreInstanceService>,
         server_service: Arc<CoreServerService>,
+        settings: Arc<CoreSettingsService>,
     ) -> Self {
-        Self { instance_service, server_service }
+        Self {
+            instance_service,
+            server_service,
+            settings,
+        }
     }
     /// 采集整机资源快照，返回应用层主错误。
     ///
@@ -176,17 +182,181 @@ impl CoreSystemService {
         })
     }
 
-    /// 解析默认运行路径，返回应用层主错误。
-    async fn default_run_path_inner() -> Result<String, SystemError> {
-        get_default_run_path()
-            .map(|path| path.to_string_lossy().to_string())
-            .map_err(|error| match error {
-                sealantern_infra::platform::PlatformError::ResolveDefaultRunPath { source } => {
-                    SystemError::DefaultRunPathUnresolved { source }
-                }
-                _ => SystemError::Unsupported,
-            })
+    /// 解析默认运行路径（主资源目录下的 `instances/` 容器），返回应用层主错误。
+    ///
+    /// 新实例缺省落进该容器：与服务层 `import_modpack` 的缺省 `run_path`
+    /// 语义保持一致（发现层按 `instances/` 子目录扫描受管实例）。
+    async fn default_run_path_inner(&self) -> Result<String, SystemError> {
+        let layout = self
+            .settings
+            .layout()
+            .await
+            .map_err(|error| SystemError::Internal { source: Box::new(error) })?;
+        Ok(layout.instances_dir().to_string_lossy().to_string())
     }
+
+    /// 解析临时下载目录（主资源目录下的 `temp/`），返回应用层主错误。
+    ///
+    /// 与 `default_run_path` 分离：临时文件不应进入 `instances/` 容器，
+    /// 否则会被实例发现层标记为缺失 `sl.json` 的问题目录。
+    async fn temp_download_dir_inner(&self) -> Result<String, SystemError> {
+        let layout = self
+            .settings
+            .layout()
+            .await
+            .map_err(|error| SystemError::Internal { source: Box::new(error) })?;
+        Ok(layout.temp_dir().to_string_lossy().to_string())
+    }
+
+    /// 测试 IPv6 连通性，返回应用层主错误。
+    ///
+    /// 并发向若干公网 IPv6 字面地址发起短超时 TCP 连接，任一成功即视为支持；
+    /// 全部失败时收集每个目标的失败明细，便于前端展示与排查。
+    async fn test_ipv6_connectivity_inner() -> Result<Ipv6TestResult, SystemError> {
+        let targets = ipv6_test_targets();
+        let timeout = Duration::from_secs(IPV6_TEST_TIMEOUT_SECS);
+
+        // 并发测试：每个目标一个短超时 TCP 连接，最先成功者即可短路返回。
+        let mut joinset = tokio::task::JoinSet::new();
+        for endpoint in targets {
+            joinset.spawn(async move {
+                let result = tokio::time::timeout(
+                    timeout,
+                    tokio::net::TcpStream::connect(endpoint.socket_addr),
+                )
+                .await;
+                (endpoint.as_target(), result)
+            });
+        }
+
+        let mut failures: Vec<Ipv6TestTarget> = Vec::new();
+        let mut any_success = false;
+        while let Some(join_result) = joinset.join_next().await {
+            let (target, outcome) = join_result.map_err(SystemError::from)?;
+            let Some(failure) = classify_outcome(target, outcome) else {
+                // 成功：记录即可，无需继续收集其余目标的失败明细。
+                any_success = true;
+                continue;
+            };
+            failures.push(failure);
+        }
+
+        if any_success {
+            return Ok(Ipv6TestResult {
+                supported: true,
+                message: "IPv6 connectivity is available".into(),
+                detail: None,
+                error_kind: None,
+                targets: None,
+            });
+        }
+
+        // 全部失败：返回首个失败的分类作为整体 error_kind，并提供每个目标的明细。
+        let primary = failures.first().cloned();
+        Ok(Ipv6TestResult {
+            supported: false,
+            message: "IPv6 connectivity is not available".into(),
+            detail: primary.as_ref().map(|f| f.error.clone()),
+            error_kind: primary.as_ref().map(|f| f.kind.clone()),
+            targets: Some(failures),
+        })
+    }
+}
+
+/// IPv6 连通性测试单目标超时秒数。
+///
+/// 取较短值：测试仅为判定本机是否具备公网 IPv6 路由，无需等待完整 TCP 重传。
+const IPV6_TEST_TIMEOUT_SECS: u64 = 5;
+
+/// IPv6 连通性测试目标。
+#[derive(Clone)]
+struct Ipv6TestEndpoint {
+    /// 面向用户的目标名称（如 `cloudflare-dns`）。
+    name: &'static str,
+    /// IPv6 字面地址。
+    address: &'static str,
+    /// 已解析的 IPv6 套接字地址。
+    socket_addr: std::net::SocketAddr,
+}
+
+impl Ipv6TestEndpoint {
+    /// 解析目标；地址非法时返回 `None`（编程错误，静默跳过）。
+    fn new(name: &'static str, address: &'static str, port: u16) -> Option<Self> {
+        let ip: std::net::Ipv6Addr = address.parse().ok()?;
+        Some(Self {
+            name,
+            address,
+            socket_addr: std::net::SocketAddr::new(std::net::IpAddr::V6(ip), port),
+        })
+    }
+
+    /// 转换为契约层的目标占位（不含失败明细）。
+    fn as_target(&self) -> Ipv6TestTarget {
+        Ipv6TestTarget {
+            target: self.name.into(),
+            address: self.address.into(),
+            error: String::new(),
+            kind: String::new(),
+        }
+    }
+}
+
+/// 返回 IPv6 连通性测试使用的公网字面地址集合。
+///
+/// 选择稳定且双栈可达的知名服务（Cloudflare / Google / Quad9），
+/// 使用字面地址以避免 DNS 解析返回 IPv4 时误判本机 IPv6 能力。
+fn ipv6_test_targets() -> Vec<Ipv6TestEndpoint> {
+    [
+        Ipv6TestEndpoint::new("cloudflare-dns", "2606:4700:4700::1111", 443),
+        Ipv6TestEndpoint::new("google-dns", "2001:4860:4860::8888", 443),
+        Ipv6TestEndpoint::new("quad9-dns", "2620:fe::fe", 443),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+/// 将单目标测试结果归类为失败明细；成功返回 `None`。
+fn classify_outcome(
+    target: Ipv6TestTarget,
+    outcome: Result<Result<tokio::net::TcpStream, std::io::Error>, tokio::time::error::Elapsed>,
+) -> Option<Ipv6TestTarget> {
+    match outcome {
+        Ok(Ok(_stream)) => None,
+        Ok(Err(error)) => {
+            let kind = error_kind(&error);
+            let message = error.to_string();
+            Some(Ipv6TestTarget {
+                target: target.target,
+                address: target.address,
+                error: message,
+                kind,
+            })
+        }
+        Err(_) => Some(Ipv6TestTarget {
+            target: target.target,
+            address: target.address,
+            error: format!("connection timed out after {IPV6_TEST_TIMEOUT_SECS}s"),
+            kind: "timeout".into(),
+        }),
+    }
+}
+
+/// 将底层 IO 错误映射为简短分类标签。
+fn error_kind(error: &std::io::Error) -> String {
+    use std::io::ErrorKind;
+    match error.kind() {
+        ErrorKind::TimedOut => "timeout",
+        ErrorKind::ConnectionRefused => "connect_refused",
+        ErrorKind::ConnectionReset => "connect_reset",
+        ErrorKind::ConnectionAborted => "connect_aborted",
+        ErrorKind::PermissionDenied => "permission_denied",
+        ErrorKind::AddrNotAvailable => "addr_not_available",
+        ErrorKind::NetworkUnreachable => "network_unreachable",
+        ErrorKind::HostUnreachable => "host_unreachable",
+        _ => "connect",
+    }
+    .into()
 }
 
 #[async_trait]
@@ -196,7 +366,17 @@ impl SystemService for CoreSystemService {
     }
 
     async fn default_run_path(&self) -> Result<String, SystemServiceError> {
-        Self::default_run_path_inner().await.map_err(Into::into)
+        self.default_run_path_inner().await.map_err(Into::into)
+    }
+
+    async fn temp_download_dir(&self) -> Result<String, SystemServiceError> {
+        self.temp_download_dir_inner().await.map_err(Into::into)
+    }
+
+    async fn test_ipv6_connectivity(&self) -> Result<Ipv6TestResult, SystemServiceError> {
+        Self::test_ipv6_connectivity_inner()
+            .await
+            .map_err(Into::into)
     }
 
     async fn server_resource_usage(
@@ -306,16 +486,14 @@ mod tests {
     /// 构造测试用系统服务（临时实例目录 + 独立 server 服务）。
     async fn test_service() -> CoreSystemService {
         let dir = tempdir().expect("create temp dir");
-        let instance = Arc::new(
-            CoreInstanceService::with_path(dir.path().join("instances.json"))
+        let manager =
+            sealantern_feature::config::SettingsManager::load(dir.path().join("settings.json"))
                 .await
-                .expect("create instance service"),
-        );
-        let server = Arc::new(CoreServerService::new(
-            instance.clone(),
-            Arc::new(crate::service::CoreSettingsService::new()),
-        ));
-        CoreSystemService::new(instance, server)
+                .expect("create settings manager");
+        let settings = Arc::new(crate::service::CoreSettingsService::with_manager(manager));
+        let instance = Arc::new(CoreInstanceService::new(settings.clone()));
+        let server = Arc::new(CoreServerService::new(instance.clone(), settings.clone()));
+        CoreSystemService::new(instance, server, settings)
     }
 
     #[tokio::test]
@@ -331,15 +509,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn default_run_path_resolves_to_sea_lantern_dir() {
+    async fn default_run_path_resolves_to_instances_dir() {
         let service = test_service().await;
         let path = service.default_run_path().await.expect("default run path");
 
+        // 默认运行路径 = 主资源目录下的 `instances/` 容器（受管实例目录）。
         let name = std::path::Path::new(&path)
             .file_name()
             .expect("path should have a file name")
             .to_string_lossy();
-        assert_eq!(name, "SeaLantern", "unexpected default run dir: {name}");
+        assert_eq!(name, "instances", "unexpected default run dir: {name}");
     }
 
     /// 服务器页面的磁盘指标应为实例目录占用，而非整机磁盘汇总。
@@ -354,11 +533,12 @@ mod tests {
         let payload = vec![0x5A; 4096];
         std::fs::write(instance_dir.join("level.dat"), &payload).expect("write payload");
 
-        let instance_service = Arc::new(
-            CoreInstanceService::with_path(dir.path().join("instances.json"))
+        let manager =
+            sealantern_feature::config::SettingsManager::load(dir.path().join("settings.json"))
                 .await
-                .expect("create instance service"),
-        );
+                .expect("create settings manager");
+        let settings = Arc::new(crate::service::CoreSettingsService::with_manager(manager));
+        let instance_service = Arc::new(CoreInstanceService::new(settings));
         let spec = sealantern_core::instance::InstanceSpec {
             id: InstanceId::new("disk-test").expect("valid id"),
             name: "磁盘测试".into(),
@@ -366,6 +546,7 @@ mod tests {
             core_type: "paper".into(),
             core_version: "1.20.4".into(),
             game_version: "1.20.4".into(),
+            required_java: None,
             directory: instance_dir.clone(),
             port: 25565,
             max_memory_mib: 2048,
@@ -387,11 +568,9 @@ mod tests {
             .create(spec)
             .await
             .expect("create instance");
-        let server = Arc::new(CoreServerService::new(
-            instance_service.clone(),
-            Arc::new(crate::service::CoreSettingsService::new()),
-        ));
-        let service = CoreSystemService::new(instance_service, server);
+        let settings = Arc::new(crate::service::CoreSettingsService::new());
+        let server = Arc::new(CoreServerService::new(instance_service.clone(), settings.clone()));
+        let service = CoreSystemService::new(instance_service, server, settings);
 
         let usage = service
             .server_resource_usage(instance.id.as_str())

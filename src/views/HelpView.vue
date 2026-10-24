@@ -19,8 +19,7 @@ import {
   getTutorialSegments,
   type TutorialSegment,
 } from "@data/helpDocs";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { isBrowserEnv } from "@api/tauri";
+import { useExternalLinks } from "@composables/useExternalLinks";
 
 // 文档页面配置
 const docPages = computed(() => [
@@ -37,6 +36,9 @@ const docPages = computed(() => [
 const currentSection = ref("intro");
 const sidebarOpen = ref(true);
 const isMobile = ref(false);
+
+// 外链统一处理：拦截 Markdown 中的绝对外链，改由系统浏览器打开
+const { openLink, handleLinkClick } = useExternalLinks();
 
 // 页面标记（需自定义渲染的页面）
 const pageType = computed<
@@ -79,14 +81,9 @@ function updateFaqModel(categoryTitle: string, ids: string[]) {
   faqOpenState.value[categoryTitle] = ids;
 }
 
-// 在浏览器打开
+// 在系统浏览器中打开当前章节的在线文档
 function openInBrowser() {
-  const url = `https://docs.ideaflash.cn/zh/${currentSection.value}`;
-  if (isBrowserEnv()) {
-    window.open(url, "_blank");
-  } else {
-    openUrl(url);
-  }
+  void openLink(`https://docs.ideaflash.cn/zh/${currentSection.value}`);
 }
 
 // 检测移动端
@@ -133,7 +130,7 @@ onDeactivated(() => {
 
     <!-- 内容区域 -->
     <!-- :key=currentSection 强制切换章节时重建容器,触发 animate-stagger-in 交错动画 -->
-    <main :key="currentSection" class="help-content animate-stagger-in">
+    <main :key="currentSection" class="help-content animate-stagger-in" @click="handleLinkClick">
       <!-- 项目简介：顶部 + 特性卡片网格 + 底部 -->
       <template v-if="pageType === 'intro'">
         <cmz-markdown :content="introTop" variant="card" />

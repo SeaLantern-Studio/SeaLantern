@@ -104,6 +104,13 @@ pub struct PartialAppSettings {
     pub last_run_path: Option<String>,
     pub agreed_to_terms: Option<bool>,
 
+    pub tunnel_relay_url: Option<String>,
+    pub tunnel_join_port: Option<u16>,
+    pub tunnel_join_uri: Option<String>,
+    pub tunnel_host_link_lifetime: Option<String>,
+    #[serde(default, skip_serializing_if = "NullablePatch::is_unchanged")]
+    pub tunnel_host_max_players: NullablePatch<u32>,
+
     pub plugin_allowed_commands: Option<Vec<String>>,
     pub plugin_blocked_commands: Option<Vec<String>>,
 }
@@ -227,6 +234,21 @@ impl PartialAppSettings {
         }
         if let Some(value) = self.agreed_to_terms {
             target.agreed_to_terms = value;
+        }
+        if let Some(value) = &self.tunnel_relay_url {
+            target.tunnel_relay_url.clone_from(value);
+        }
+        if let Some(value) = self.tunnel_join_port {
+            target.tunnel_join_port = value;
+        }
+        if let Some(value) = &self.tunnel_join_uri {
+            target.tunnel_join_uri.clone_from(value);
+        }
+        if let Some(value) = &self.tunnel_host_link_lifetime {
+            target.tunnel_host_link_lifetime.clone_from(value);
+        }
+        if let NullablePatch::Set(value) = self.tunnel_host_max_players {
+            target.tunnel_host_max_players = value;
         }
         if let Some(value) = &self.plugin_allowed_commands {
             target.plugin_allowed_commands.clone_from(value);

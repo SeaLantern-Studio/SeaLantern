@@ -177,6 +177,11 @@ impl HttpError {
                 code: "server_invalid_state",
                 message: error.to_string(),
             },
+            ServerServiceError::NotRunning => Self {
+                status: StatusCode::CONFLICT,
+                code: "server_not_running",
+                message: error.to_string(),
+            },
             ServerServiceError::InvalidInput => Self {
                 status: StatusCode::BAD_REQUEST,
                 code: "invalid_input",

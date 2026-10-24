@@ -1,8 +1,8 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { i18n } from "@language";
-import { useAboutLinks } from "@composables/useAboutLinks";
+import { useExternalLinks } from "@composables/useExternalLinks";
 
-const { openLink } = useAboutLinks();
+const { openLink } = useExternalLinks();
 </script>
 
 <template>
