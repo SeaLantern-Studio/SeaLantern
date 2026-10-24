@@ -129,17 +129,38 @@ fn main() {
     // 直接终止进程（Arch + Wayland 上已复现）。检测到 Wayland 会话时关闭
     // 该后端，让 WebKit 回退到普通纹理路径。
     //
+    // 策略是「Linux 默认禁用，但允许用户退出绕行」：
+    // - 用户已显式设置该变量时一律尊重（`=0` 即表示要保留 DMA-BUF 渲染器）；
+    // - `GDK_BACKEND` 明确排除了 wayland（不含 `wayland` 也不含 `*`）时，
+    //   GDK 不会选中 Wayland 后端，不做绕行。
+    //
     // 必须在 Tauri 构建之前写入：WebKit 的 web 进程在创建窗口时才拉起，
     // 之后再改环境变量不会被它继承。此处尚未派生任何线程，满足
     // `Environment::set` 要求的「启动阶段、无并发访问」前提。
     #[cfg(target_os = "linux")]
-    if Environment::get_os("WAYLAND_DISPLAY").is_some()
-        && let Err(error) = Environment::set("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
     {
-        tracing::warn!(
-            error = %error,
-            "failed to disable the WebKit DMA-BUF renderer for the Wayland session"
-        );
+        let user_override = Environment::get_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_some();
+        // GDK_BACKEND 是逗号分隔的候选列表，按顺序取第一个可用的后端。
+        // 只有列表里既不包含 wayland 也不包含通配 `*` 时，才确定走非 Wayland 路径。
+        let gdk_allows_wayland = Environment::get_os("GDK_BACKEND").is_none_or(|value| {
+            value
+                .to_string_lossy()
+                .to_ascii_lowercase()
+                .split(',')
+                .any(|backend| matches!(backend.trim(), "wayland" | "*"))
+        });
+        let wayland_session = Environment::get_os("WAYLAND_DISPLAY").is_some();
+
+        if wayland_session
+            && gdk_allows_wayland
+            && !user_override
+            && let Err(error) = Environment::set("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+        {
+            tracing::warn!(
+                error = %error,
+                "failed to disable the WebKit DMA-BUF renderer for the Wayland session"
+            );
+        }
     }
 
     let app = tauri::Builder::default()
