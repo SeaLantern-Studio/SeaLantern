@@ -170,68 +170,96 @@ async function discoverFiles() {
 // 读取与输出
 // ---------------------------------------------------------------------------
 
-/** 提取单个文件的版本号。
+/** 从已读入的内存内容中解析单个文件的版本信息。
+ *
+ * 返回 `{ display, comparable }`：
+ * - `display`：展示用字符串（继承成员带来源标注）
+ * - `comparable`：参与一致性比较的版本值；无法解析时为 `null`
+ *
+ * 用结构化结果而非字符串后缀判断，避免「(未找到)（继承 workspace）」
+ * 这类拼接串绕过缺失检查、把占位符当成真实版本参与比较。
  *
  * `inheritedVersion` 为根 `[workspace.package]` 的当前值：成员声明
  * `version.workspace = true` 时用它回填，并标注来源。
  */
-async function readVersion(file, inheritedVersion) {
-  const raw = await readFile(file.path, "utf8");
-
+function parseVersionFromRaw(file, raw, inheritedVersion) {
   if (file.type === "cargo") {
     const extracted = extractCargoPackageVersion(raw);
-    if (!extracted) return "(未找到)";
+    if (!extracted) return { display: "(未找到)", comparable: null };
     if (extracted.inherited) {
-      return inheritedVersion ? `${inheritedVersion}（继承 workspace）` : "(继承 workspace)";
+      // 根版本读不到时，继承成员同样视为缺失——不能把占位符当版本比对。
+      if (!inheritedVersion) {
+        return { display: "(继承 workspace，但根版本不可读)", comparable: null };
+      }
+      return { display: `${inheritedVersion}（继承 workspace）`, comparable: inheritedVersion };
     }
-    return extracted.value;
+    return { display: extracted.value, comparable: extracted.value };
   }
   if (file.type === "cargo-workspace") {
-    return extractWorkspacePackageVersion(raw) ?? "(未找到)";
+    const value = extractWorkspacePackageVersion(raw);
+    return value === null
+      ? { display: "(未找到)", comparable: null }
+      : { display: value, comparable: value };
   }
   if (file.type === "json") {
     try {
-      return JSON.parse(raw).version ?? "(未找到)";
+      const value = JSON.parse(raw).version ?? null;
+      return value === null
+        ? { display: "(未找到)", comparable: null }
+        : { display: value, comparable: value };
     } catch {
-      return "(解析失败)";
+      return { display: "(解析失败)", comparable: null };
     }
   }
-  return "(未知类型)";
+  return { display: "(未知类型)", comparable: null };
 }
 
-/** 读取所有文件的版本号。 */
+/** 读取所有文件的版本信息。
+ *
+ * 先把全部文件内容读进内存（单次快照），再从快照解析——避免「读 workspace
+ * 与读成员之间」被其它写入插入，出现新旧混杂的比较结果。
+ */
 async function readVersions(files) {
-  // 先取根 [workspace.package] 版本，供继承成员回填展示。
-  const workspaceFile = files.find((f) => f.type === "cargo-workspace");
-  const inheritedVersion = workspaceFile ? await readVersion(workspaceFile, null) : null;
+  const raws = await Promise.all(files.map((f) => readFile(f.path, "utf8")));
 
-  const entries = await Promise.all(
-    files.map(async (file) => [file.label, await readVersion(file, inheritedVersion)]),
-  );
+  const workspaceIndex = files.findIndex((f) => f.type === "cargo-workspace");
+  const inheritedVersion =
+    workspaceIndex === -1 ? null : extractWorkspacePackageVersion(raws[workspaceIndex]);
+
+  const entries = files.map((file, i) => [
+    file.label,
+    parseVersionFromRaw(file, raws[i], inheritedVersion),
+  ]);
   return Object.fromEntries(entries);
 }
 
 /** 按统一格式输出版本信息并检查是否一致。
  *
- * 一致性比较只看数值部分：继承成员的展示串带「（继承 workspace）」后缀，
- * 需要剥掉再比对，否则会误报不一致。
+ * 一致性只看 `comparable`：无法解析的条目（缺失 / 解析失败 / 根版本不可读）
+ * 不参与比较，避免占位符被当成真实版本值。
  */
 function printVersions(versions) {
   console.log("当前版本信息：\n");
-  Object.entries(versions).forEach(([file, version]) => {
-    console.log(`  ${file}: ${version}`);
+  Object.entries(versions).forEach(([file, info]) => {
+    console.log(`  ${file}: ${info.display}`);
   });
 
-  const normalize = (value) => value.replace(/（继承 workspace）$/, "");
-  const validValues = Object.values(versions)
-    .filter((v) => v !== "(未找到)" && v !== "(解析失败)")
-    .map(normalize);
-  const unique = new Set(validValues);
+  const comparableValues = Object.values(versions)
+    .map((info) => info.comparable)
+    .filter((value) => value !== null);
+  const unique = new Set(comparableValues);
+
   console.log("");
-  if (unique.size <= 1) {
+  const missing = Object.values(versions).filter((info) => info.comparable === null).length;
+  if (unique.size === 1) {
     console.log("✅ 版本状态：所有已检测文件版本一致");
+  } else if (unique.size === 0) {
+    console.log("⚠️ 版本状态：没有可比较的版本值，请检查上述文件");
   } else {
     console.log("❌ 版本状态：检测到版本不一致，请检查上述文件");
+  }
+  if (missing > 0) {
+    console.log(`   （${missing} 个条目无法解析，已排除在比较之外）`);
   }
 }
 
