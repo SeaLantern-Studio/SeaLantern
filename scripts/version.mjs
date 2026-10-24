@@ -36,7 +36,7 @@ async function exists(filePath) {
  * - 两者皆无 → `null`
  */
 function extractCargoPackageVersion(content) {
-  const section = content.match(/\[package\][^\[]*/)?.[0];
+  const section = content.match(/\[package\][^[]*/)?.[0];
   if (!section) return null;
 
   // 先判继承：`version.workspace = true` 的写法不含字面量版本
@@ -50,7 +50,7 @@ function extractCargoPackageVersion(content) {
 
 /** 从根 Cargo.toml 的 [workspace.package] 段中提取 version 值。 */
 function extractWorkspacePackageVersion(content) {
-  const section = content.match(/\[workspace\.package\][^\[]*/)?.[0];
+  const section = content.match(/\[workspace\.package\][^[]*/)?.[0];
   if (!section) return null;
 
   return section.match(/^version\s*=\s*"([^"]+)"/m)?.[1] ?? null;
@@ -61,7 +61,7 @@ function extractWorkspacePackageVersion(content) {
  * 只改 `version` 一行，段内其它字段（如 `edition`）保持原样。
  */
 function replaceWorkspacePackageVersion(content, version) {
-  const section = content.match(/\[workspace\.package\][^\[]*/)?.[0];
+  const section = content.match(/\[workspace\.package\][^[]*/)?.[0];
   if (!section) throw new Error("Cargo.toml 中未找到 [workspace.package] 段");
 
   if (!/^version\s*=\s*"[^"]+"/m.test(section)) {
@@ -78,7 +78,7 @@ function replaceWorkspacePackageVersion(content, version) {
  * `[workspace.package]`，由 `replaceWorkspacePackageVersion` 负责。
  */
 function replaceCargoPackageVersion(content, version) {
-  const section = content.match(/\[package\][^\[]*/)?.[0];
+  const section = content.match(/\[package\][^[]*/)?.[0];
   if (!section) throw new Error("Cargo.toml 中未找到 [package] 段");
 
   if (/^\s*version\.workspace\s*=\s*true/m.test(section)) {
@@ -305,15 +305,11 @@ async function updateVersion(files, version) {
     content: buildUpdatedContent(file, contents[i], version),
   }));
 
-  // 阶段二：写入需要变更的文件；继承版本成员内容为 null，跳过
-  const written = [];
-  for (const { file, content } of planned) {
-    if (content === null) {
-      continue;
-    }
-    await writeFile(file.path, content, "utf8");
-    written.push(file.label);
-  }
+  // 阶段二：并行写入需要变更的文件；继承版本成员内容为 null，跳过。
+  // 文件之间无依赖，并发写不改变最终结果，也避免循环内逐次 await。
+  const toWrite = planned.filter((p) => p.content !== null);
+  await Promise.all(toWrite.map((p) => writeFile(p.file.path, p.content, "utf8")));
+  const written = toWrite.map((p) => p.file.label);
 
   console.log(`已更新 ${written.length} 个文件为 ${version}：`);
   for (const label of written) {
