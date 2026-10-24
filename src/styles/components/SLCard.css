@@ -37,12 +37,32 @@
   background: var(--sl-border);
   outline: none;
   -webkit-appearance: none;
+  appearance: none;
 }
 
-.sl-slider::-webkit-slider-thumb,
+/* 注意：::-webkit-* 与 ::-moz-* 不能写在同一个选择器列表里，
+ * 未识别 -moz 伪元素会让整条规则被 WebKit/Blink 丢弃，滑块手柄就不见了。 */
+.sl-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--sl-primary);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
+}
+
 .sl-slider::-moz-range-thumb {
   width: 16px;
   height: 16px;
+  border: none;
   border-radius: 50%;
   background: var(--sl-primary);
   cursor: pointer;
@@ -55,16 +75,11 @@
     opacity var(--sl-transition-fast);
 }
 
-.sl-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
+.sl-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px var(--sl-primary-bg);
 }
 
-.sl-slider::-moz-range-thumb {
-  border: none;
-}
-
-.sl-slider::-webkit-slider-thumb:hover,
 .sl-slider::-moz-range-thumb:hover {
   transform: scale(1.2);
   box-shadow: 0 0 0 4px var(--sl-primary-bg);

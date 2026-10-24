@@ -288,6 +288,15 @@
   --sl-anim-play: running;
 }
 
+/* 移出时先跑完当前一轮，再由脚本移除动画 */
+.nav-item.nav-anim-settling {
+  --sl-anim-play: running;
+}
+
+.nav-item:not(:hover):not(.nav-anim-settling) .nav-icon svg * {
+  animation: none;
+}
+
 .nav-item:hover .nav-icon {
   transform: scale(1.18);
 }

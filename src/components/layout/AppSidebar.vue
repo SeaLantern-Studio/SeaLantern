@@ -281,6 +281,56 @@ function cancelPrefetch(path: string): void {
   }
 }
 
+// 导航图标动画只在悬停时播放；移出后跑完当前一轮再停，避免定格在中间帧。
+const NAV_SETTLE_CLASS = "nav-anim-settling";
+const navSettleStops = new WeakMap<HTMLElement, (() => void)[]>();
+
+function navIconAnimationTargets(item: HTMLElement): HTMLElement[] {
+  return Array.from(item.querySelectorAll<HTMLElement>(".nav-icon svg *"));
+}
+
+function settleNavIcons(item: HTMLElement): void {
+  const animated = navIconAnimationTargets(item).filter(
+    (element) => getComputedStyle(element).animationName !== "none",
+  );
+  if (animated.length === 0) return;
+
+  item.classList.add(NAV_SETTLE_CLASS);
+  let pending = animated.length;
+  const stops: (() => void)[] = [];
+
+  for (const element of animated) {
+    const stop = () => {
+      element.removeEventListener("animationiteration", stop);
+      element.style.animationName = "none";
+      if (--pending === 0) item.classList.remove(NAV_SETTLE_CLASS);
+    };
+    stops.push(() => element.removeEventListener("animationiteration", stop));
+    element.addEventListener("animationiteration", stop);
+  }
+
+  navSettleStops.set(item, stops);
+}
+
+function resumeNavIcons(item: HTMLElement): void {
+  navSettleStops.get(item)?.forEach((cancel) => cancel());
+  navSettleStops.delete(item);
+  item.classList.remove(NAV_SETTLE_CLASS);
+  for (const element of navIconAnimationTargets(item)) {
+    element.style.animationName = "";
+  }
+}
+
+function onSidebarPointerOver(event: MouseEvent): void {
+  const item = (event.target as HTMLElement | null)?.closest<HTMLElement>(".nav-item");
+  if (item && !item.contains(event.relatedTarget as Node | null)) resumeNavIcons(item);
+}
+
+function onSidebarPointerOut(event: MouseEvent): void {
+  const item = (event.target as HTMLElement | null)?.closest<HTMLElement>(".nav-item");
+  if (item && !item.contains(event.relatedTarget as Node | null)) settleNavIcons(item);
+}
+
 function prefetchRoute(path: string): void {
   const matched = router.resolve(path).matched[0];
   const component = matched?.components?.default;
@@ -524,7 +574,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <aside class="sidebar" :class="{ 'macos-overlay': isMacOS }">
+  <aside
+    class="sidebar"
+    :class="{ 'macos-overlay': isMacOS }"
+    @mouseover="onSidebarPointerOver"
+    @mouseout="onSidebarPointerOut"
+  >
     <div
       class="sidebar-logo"
       :class="{ 'logo-armed': elastic.isArmed.value, 'logo-dragging': elastic.isDragging.value }"
