@@ -133,13 +133,13 @@ fn main() {
     // 之后再改环境变量不会被它继承。此处尚未派生任何线程，满足
     // `Environment::set` 要求的「启动阶段、无并发访问」前提。
     #[cfg(target_os = "linux")]
-    if Environment::get_os("WAYLAND_DISPLAY").is_some() {
-        if let Err(error) = Environment::set("WEBKIT_DISABLE_DMABUF_RENDERER", "1") {
-            tracing::warn!(
-                error = %error,
-                "failed to disable the WebKit DMA-BUF renderer for the Wayland session"
-            );
-        }
+    if Environment::get_os("WAYLAND_DISPLAY").is_some()
+        && let Err(error) = Environment::set("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+    {
+        tracing::warn!(
+            error = %error,
+            "failed to disable the WebKit DMA-BUF renderer for the Wayland session"
+        );
     }
 
     let app = tauri::Builder::default()
