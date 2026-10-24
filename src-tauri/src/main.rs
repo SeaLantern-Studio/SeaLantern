@@ -10,6 +10,8 @@ pub mod observability;
 
 use sealantern_application::port::SettingsService;
 use sealantern_application::services::AppServices;
+#[cfg(target_os = "linux")]
+use sealantern_infra::platform::Environment;
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 use adapter::tauri::commands::backup::{
@@ -121,6 +123,24 @@ fn app_handle_has_close_listener(app_handle: &AppHandle) -> bool {
 fn main() {
     // 初始化 tracing 日志（在 Tauri 构建之前）
     observability::init();
+
+    // Wayland 兼容处理：WebKitGTK 的 DMA-BUF 渲染器在部分合成器/驱动组合下
+    // 会以 `Gdk-Message: Error 71 (Protocol error) dispatching to Wayland display`
+    // 直接终止进程（Arch + Wayland 上已复现）。检测到 Wayland 会话时关闭
+    // 该后端，让 WebKit 回退到普通纹理路径。
+    //
+    // 必须在 Tauri 构建之前写入：WebKit 的 web 进程在创建窗口时才拉起，
+    // 之后再改环境变量不会被它继承。此处尚未派生任何线程，满足
+    // `Environment::set` 要求的「启动阶段、无并发访问」前提。
+    #[cfg(target_os = "linux")]
+    if Environment::get_os("WAYLAND_DISPLAY").is_some() {
+        if let Err(error) = Environment::set("WEBKIT_DISABLE_DMABUF_RENDERER", "1") {
+            tracing::warn!(
+                error = %error,
+                "failed to disable the WebKit DMA-BUF renderer for the Wayland session"
+            );
+        }
+    }
 
     let app = tauri::Builder::default()
         .on_window_event(|window, event| {
