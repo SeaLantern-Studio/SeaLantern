@@ -71,7 +71,7 @@ impl UpdateChecker for ReleaseUpdateChecker {
                 super::fetch_cnb_release(client, current_version),
                 super::fetch_github_release(client, &github_config, current_version)
             );
-            return select_linux_result(cnb, github);
+            return select_linux_result(cnb, github).map(with_mirror_url);
         }
 
         #[cfg(not(target_os = "linux"))]
@@ -83,6 +83,7 @@ impl UpdateChecker for ReleaseUpdateChecker {
             )
             .await
             .map_err(|message| UpdateCheckError::ProviderFailed { provider: "github", message })
+            .map(with_mirror_url)
         }
     }
 }
@@ -101,11 +102,48 @@ fn no_update(current_version: &str) -> UpdateInfo {
         latest_version: current_version.to_owned(),
         current_version: current_version.to_owned(),
         download_url: None,
+        mirror_url: None,
         release_notes: None,
         published_at: None,
         source: None,
         sha256: None,
     }
+}
+
+/// 为 GitHub 来源的检查结果补齐镜像下载地址。
+///
+/// 仅当结果来自 GitHub、存在下载地址且能从该地址还原出发布标签与文件名时才补齐；
+/// 其余情况保持 `None`，下载流程退化为单源。
+fn with_mirror_url(mut info: UpdateInfo) -> UpdateInfo {
+    if info.source.as_deref() == Some("github")
+        && let Some(download_url) = info.download_url.as_deref()
+        && let Some((tag, file_name)) = parse_github_download_parts(download_url)
+    {
+        info.mirror_url = super::cnb::mirror_download_url(&tag, &file_name);
+    }
+
+    info
+}
+
+/// 从 GitHub 发布资源地址还原发布标签与文件名。
+///
+/// 地址形如 `https://github.com/{owner}/{repo}/releases/download/{tag}/{file}`。
+fn parse_github_download_parts(url: &str) -> Option<(String, String)> {
+    let (_, remainder) = url.split_once("/releases/download/")?;
+    let (tag, file_name) = remainder.split_once('/')?;
+
+    let tag = tag.trim();
+    let file_name = file_name
+        .split(['?', '#'])
+        .next()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())?;
+    if tag.is_empty() {
+        return None;
+    }
+
+    let tag = urlencoding::decode(tag).ok()?.into_owned();
+    Some((tag, file_name.to_owned()))
 }
 
 #[cfg(any(test, target_os = "linux"))]
@@ -131,6 +169,7 @@ mod tests {
             latest_version: if has_update { "2.0.0" } else { "1.0.0" }.to_owned(),
             current_version: "1.0.0".to_owned(),
             download_url: has_update.then(|| "https://example.com/update".to_owned()),
+            mirror_url: None,
             release_notes: None,
             published_at: None,
             source: Some(source.to_owned()),

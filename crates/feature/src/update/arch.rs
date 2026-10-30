@@ -127,6 +127,8 @@ mod imp {
             latest_version: aur_version.clone(),
             current_version: current_version.to_string(),
             download_url: Some(AUR_PACKAGE_PAGE_URL.to_string()),
+            // AUR 走系统包管理器更新，不经过应用内下载链路。
+            mirror_url: None,
             release_notes: Some(release_notes),
             published_at: None,
             source: Some("arch-aur".to_string()),

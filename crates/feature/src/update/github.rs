@@ -135,6 +135,8 @@ pub async fn fetch_release(
         latest_version,
         current_version: current_version.to_string(),
         download_url,
+        // 镜像地址由检查编排层统一补齐，本模块只负责发布源本身的查询。
+        mirror_url: None,
         release_notes: release.body,
         published_at: release.published_at.or(release.created_at),
         source: Some("github".to_string()),

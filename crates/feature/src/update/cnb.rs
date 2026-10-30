@@ -6,7 +6,7 @@
 
 use std::collections::HashSet;
 
-use super::constants::{CNB_BASE_URL, CNB_RELEASES_URL};
+use super::constants::{CNB_BASE_URL, CNB_OWNER, CNB_RELEASES_URL, CNB_REPO};
 use super::types::UpdateInfo;
 use super::version::{compare_versions, normalize_release_tag_version};
 use crate::observability;
@@ -114,6 +114,23 @@ fn to_absolute_download_url(path: &str) -> String {
     }
 
     format!("{}{}", CNB_BASE_URL, path)
+}
+
+/// 构造 CNB 镜像上指定发布资源的下载地址。
+///
+/// `tag` 必须是发布时的原始标签（例如 `v1.3.1`），CNB 的下载路由不接受去掉
+/// `v` 前缀的版本号；`file_name` 需与发布资产名保持一致。任一参数为空时返回
+/// `None`，交由调用方放弃镜像来源。
+pub(crate) fn mirror_download_url(tag: &str, file_name: &str) -> Option<String> {
+    let tag = tag.trim();
+    let file_name = file_name.trim();
+    if tag.is_empty() || file_name.is_empty() {
+        return None;
+    }
+
+    Some(format!(
+        "{CNB_BASE_URL}/{CNB_OWNER}/{CNB_REPO}/-/releases/download/{tag}/{file_name}"
+    ))
 }
 
 fn asset_sha256(asset: &CnbAsset) -> Option<String> {
@@ -240,6 +257,8 @@ pub async fn fetch_release(
         latest_version,
         current_version: current_version.to_string(),
         download_url,
+        // 该来源本身就是镜像，无需再提供镜像地址。
+        mirror_url: None,
         release_notes: latest_release
             .body
             .clone()

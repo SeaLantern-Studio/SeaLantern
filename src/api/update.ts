@@ -7,6 +7,7 @@ export interface UpdateInfo {
   latest_version: string;
   current_version: string;
   download_url?: string;
+  mirror_url?: string;
   sha256?: string;
   release_notes?: string;
   published_at?: string;
