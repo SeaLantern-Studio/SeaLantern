@@ -85,7 +85,14 @@ pub async fn download_update_file_without_events(
     }
 
     let mut failures: Vec<String> = Vec::new();
-    for (source, first_byte_timeout) in sources {
+    for (index, (source, first_byte_timeout)) in sources.into_iter().enumerate() {
+        // 只有前面的来源失败后才会走到后续来源，此时记录一次镜像回退。
+        if index > 0
+            && let Some(reason) = failures.last()
+        {
+            observability::update_download_mirror_used(&url, source, reason);
+        }
+
         match try_download_once(&client, source, first_byte_timeout).await {
             AttemptOutcome::Downloaded(bytes) => {
                 match write_and_verify(&file_path, &bytes, expected_hash).await {

@@ -477,6 +477,8 @@ pub const EVENT_UPDATE_HASH_VERIFIED: &str = "update_hash_verified";
 pub const EVENT_UPDATE_HASH_MISMATCH: &str = "update_hash_mismatch";
 /// Event: 更新 API 请求失败。
 pub const EVENT_UPDATE_API_REQUEST_FAILED: &str = "update_api_request_failed";
+/// Event: 更新下载切换到镜像源。
+pub const EVENT_UPDATE_DOWNLOAD_MIRROR_USED: &str = "update_download_mirror_used";
 
 /// 记录更新检查开始。
 pub fn update_check_started(source: &str, current_version: &str) {
@@ -529,6 +531,20 @@ pub fn update_download_failed(url: &str, error: &dyn Display) {
         url,
         error = %error,
         "update download failed"
+    );
+}
+
+/// 记录更新下载切换到镜像源。
+///
+/// 该事件只在主地址失败后触发，可用来评估镜像回退的实际使用频率。
+pub fn update_download_mirror_used(primary_url: &str, mirror_url: &str, reason: &dyn Display) {
+    tracing::warn!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_DOWNLOAD_MIRROR_USED,
+        primary_url,
+        mirror_url,
+        reason = %reason,
+        "update download switched to mirror"
     );
 }
 
