@@ -53,37 +53,36 @@ impl UpdateChecker for ReleaseUpdateChecker {
 
         let client = (self.client_provider)()
             .map_err(|source| UpdateCheckError::ClientInitialization { source })?;
+        let client = client.get_reqwest_client();
 
+        // Arch Linux 走 AUR 独占流程，不再查询发布页。
         #[cfg(target_os = "linux")]
         {
-            let client = client.get_reqwest_client();
             if super::is_arch_linux() {
                 return super::arch::check_aur_update_with_client(client, current_version)
                     .await
                     .map_err(|message| UpdateCheckError::ProviderFailed {
                         provider: "arch-aur",
                         message,
-                    });
+                    })
+                    .map(with_mirror_url);
             }
-
-            let github_config = super::get_github_config();
-            let (cnb, github) = tokio::join!(
-                super::fetch_cnb_release(client, current_version),
-                super::fetch_github_release(client, &github_config, current_version)
-            );
-            return select_linux_result(cnb, github).map(with_mirror_url);
         }
 
-        #[cfg(not(target_os = "linux"))]
-        {
-            super::fetch_github_release(
-                client.get_reqwest_client(),
-                &super::get_github_config(),
-                current_version,
-            )
+        match super::fetch_github_release(client, &super::get_github_config(), current_version)
             .await
-            .map_err(|message| UpdateCheckError::ProviderFailed { provider: "github", message })
-            .map(with_mirror_url)
+        {
+            Ok(info) => Ok(with_mirror_url(info)),
+            Err(github) => {
+                // GitHub 不可达时才付出解析镜像页的代价，成功则直接采用其结果。
+                match super::fetch_cnb_release(client, current_version).await {
+                    Ok(info) => {
+                        crate::observability::update_check_cnb_fallback_triggered(&github);
+                        Ok(with_mirror_url(info))
+                    }
+                    Err(cnb) => Err(UpdateCheckError::ProvidersFailed { cnb, github }),
+                }
+            }
         }
     }
 }
@@ -146,65 +145,9 @@ fn parse_github_download_parts(url: &str) -> Option<(String, String)> {
     Some((tag, file_name.to_owned()))
 }
 
-#[cfg(any(test, target_os = "linux"))]
-fn select_linux_result(
-    cnb: Result<UpdateInfo, String>,
-    github: Result<UpdateInfo, String>,
-) -> Result<UpdateInfo, UpdateCheckError> {
-    match (cnb, github) {
-        (_, Ok(github_info)) if github_info.has_update => Ok(github_info),
-        (Ok(cnb_info), _) => Ok(cnb_info),
-        (Err(_), Ok(github_info)) => Ok(github_info),
-        (Err(cnb), Err(github)) => Err(UpdateCheckError::ProvidersFailed { cnb, github }),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn update(source: &str, has_update: bool) -> UpdateInfo {
-        UpdateInfo {
-            has_update,
-            latest_version: if has_update { "2.0.0" } else { "1.0.0" }.to_owned(),
-            current_version: "1.0.0".to_owned(),
-            download_url: has_update.then(|| "https://example.com/update".to_owned()),
-            mirror_url: None,
-            release_notes: None,
-            published_at: None,
-            source: Some(source.to_owned()),
-            sha256: None,
-        }
-    }
-
-    #[test]
-    fn linux_selection_prefers_available_github_release() {
-        let selected = select_linux_result(Ok(update("cnb", true)), Ok(update("github", true)))
-            .expect("select update");
-
-        assert_eq!(selected.source.as_deref(), Some("github"));
-    }
-
-    #[test]
-    fn linux_selection_falls_back_to_cnb() {
-        let selected = select_linux_result(Ok(update("cnb", true)), Err("offline".to_owned()))
-            .expect("select update");
-
-        assert_eq!(selected.source.as_deref(), Some("cnb"));
-    }
-
-    #[test]
-    fn linux_selection_preserves_both_failures() {
-        let error =
-            select_linux_result(Err("cnb failed".to_owned()), Err("github failed".to_owned()))
-                .expect_err("both providers should fail");
-
-        assert!(matches!(
-            error,
-            UpdateCheckError::ProvidersFailed { ref cnb, ref github }
-                if cnb == "cnb failed" && github == "github failed"
-        ));
-    }
 
     #[cfg(debug_assertions)]
     #[tokio::test]

@@ -479,6 +479,8 @@ pub const EVENT_UPDATE_HASH_MISMATCH: &str = "update_hash_mismatch";
 pub const EVENT_UPDATE_API_REQUEST_FAILED: &str = "update_api_request_failed";
 /// Event: 更新下载切换到镜像源。
 pub const EVENT_UPDATE_DOWNLOAD_MIRROR_USED: &str = "update_download_mirror_used";
+/// Event: 更新检查降级到 CNB 镜像页。
+pub const EVENT_UPDATE_CHECK_CNB_FALLBACK: &str = "update_check_cnb_fallback";
 
 /// 记录更新检查开始。
 pub fn update_check_started(source: &str, current_version: &str) {
@@ -500,6 +502,19 @@ pub fn update_check_completed(source: &str, has_update: bool, latest_version: Op
         has_update,
         latest_version,
         "update check completed"
+    );
+}
+
+/// 记录更新检查降级到 CNB 镜像页。
+///
+/// 该路径依赖镜像页的 Next.js 数据结构，属于脆弱兜底；若长期不触发，
+/// 可据此判断是否还能继续简化这条链路。
+pub fn update_check_cnb_fallback_triggered(github_error: &dyn Display) {
+    tracing::warn!(
+        target: UPDATE_TARGET,
+        event_name = EVENT_UPDATE_CHECK_CNB_FALLBACK,
+        error = %github_error,
+        "update check fell back to cnb"
     );
 }
 

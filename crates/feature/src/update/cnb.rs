@@ -3,6 +3,15 @@
 //! 从 CNB.cool 平台获取 SeaLantern 的版本发布信息。
 //! CNB OpenAPI 的匿名 release 查询需要登录，因此从公开 release 页面提取
 //! 稳定详情链接，再解析详情页中的 Next.js 结构化数据。
+//!
+//! # 当前定位
+//!
+//! 主检查路径已改为 GitHub Releases API，本模块只在 GitHub 请求失败时兜底；
+//! 下载镜像由 `mirror_download_url` 直接拼装，不经过页面解析。
+//!
+//! TODO(update-cleanup): 页面解析依赖 CNB 的 Next.js 内部结构，上游改版会静默
+//! 失败。待 `update_check_cnb_fallback` 事件连续两个版本为 0 后，删除本模块的
+//! 抓取与解析逻辑，仅保留 `mirror_download_url`。
 
 use std::collections::HashSet;
 
@@ -225,12 +234,6 @@ async fn fetch_release_detail(client: &reqwest::Client, path: &str) -> Result<Cn
     })
 }
 
-fn normalized_version_from_link(link: &str) -> Option<String> {
-    let encoded_tag = link.rsplit('/').next()?;
-    let tag = urlencoding::decode(encoded_tag).ok()?;
-    Some(normalize_release_tag_version(&tag))
-}
-
 pub async fn fetch_release(
     client: &reqwest::Client,
     current_version: &str,
@@ -270,29 +273,6 @@ pub async fn fetch_release(
         source: Some("cnb".to_string()),
         sha256: selected_asset.and_then(asset_sha256),
     })
-}
-
-pub async fn resolve_download_candidate_by_version(
-    client: &reqwest::Client,
-    version: &str,
-) -> Result<Option<(String, Option<String>)>, String> {
-    let release_links = fetch_release_links(client).await?;
-    let target_version = normalize_release_tag_version(version);
-
-    let release_link = release_links
-        .iter()
-        .find(|link| normalized_version_from_link(link).as_deref() == Some(&target_version));
-
-    let Some(release_link) = release_link else {
-        return Ok(None);
-    };
-    let release = fetch_release_detail(client, release_link).await?;
-
-    let Some(asset) = find_suitable_asset(&release.assets) else {
-        return Ok(None);
-    };
-
-    Ok(Some((to_absolute_download_url(&asset.path), asset_sha256(asset))))
 }
 
 #[cfg(test)]
