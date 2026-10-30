@@ -172,8 +172,18 @@ async fn try_download_once(
         };
     }
 
+    let declared_bytes = response.content_length();
     match response.bytes().await {
-        Ok(bytes) => AttemptOutcome::Downloaded(bytes.to_vec()),
+        Ok(bytes) => {
+            tracing::info!(
+                target: "sealantern.feature.update",
+                event_name = "update_download_payload_received",
+                declared_bytes = declared_bytes.unwrap_or(0),
+                received_bytes = bytes.len(),
+                "update payload received"
+            );
+            AttemptOutcome::Downloaded(bytes.to_vec())
+        }
         Err(error) => AttemptOutcome::Retryable(format!("Failed to read response: {error}")),
     }
 }
@@ -213,7 +223,8 @@ async fn write_and_verify(
     let calculated = sealantern_infra::fs::sha256_file(file_path)
         .await
         .map_err(|error| format!("Failed to calculate hash: {error}"))?;
-    let calculated_hex = sealantern_infra::fs::sha256_hex(calculated);
+    // `sha256_file` 返回的已经是摘要字节，这里只做十六进制编码，不能再哈希一次。
+    let calculated_hex = sealantern_infra::fs::digest_to_hex(&calculated);
     let display_path = file_path.to_string_lossy().to_string();
 
     if calculated_hex.eq_ignore_ascii_case(expected) {

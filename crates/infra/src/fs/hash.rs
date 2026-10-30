@@ -55,6 +55,22 @@ pub fn sha256_hex(data: impl AsRef<[u8]>) -> String {
     format!("{digest:x}")
 }
 
+/// 把 SHA-256 摘要字节转换为小写十六进制字符串。
+///
+/// 与 [`sha256_hex`] 的区别：本函数不做任何哈希运算，只做编码。
+/// 对 [`sha256_file`] 的返回值应使用本函数，而不是再调用 [`sha256_hex`]
+/// 二次哈希。
+pub fn digest_to_hex(digest: &[u8; 32]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+
+    let mut output = String::with_capacity(64);
+    for byte in digest {
+        output.push(HEX[(byte >> 4) as usize] as char);
+        output.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    output
+}
+
 /// 检查字符串是否为有效的 SHA256 十六进制值（64 位小写 hex）。
 pub fn is_sha256_hex(value: &str) -> bool {
     value.len() == 64 && value.chars().all(|ch| ch.is_ascii_hexdigit())
