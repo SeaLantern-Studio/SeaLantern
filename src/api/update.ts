@@ -35,12 +35,14 @@ export async function checkUpdate(): Promise<UpdateInfo | null> {
 
 export async function downloadUpdate(
   url: string,
+  mirrorUrl?: string,
   expectedHash?: string,
   version?: string,
 ): Promise<string> {
   // 后端参数名是 snake_case，version 非可选需给默认值
   return invoke<string>("update_download", {
     url,
+    mirror_url: mirrorUrl,
     expected_hash: expectedHash,
     version: version ?? "",
   });

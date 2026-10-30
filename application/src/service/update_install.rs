@@ -30,22 +30,32 @@ impl UpdateInstallService for CoreUpdateInstallService {
     /// 下载更新文件并登记为待安装。
     ///
     /// 参数校验：`url` 必须非空且为 http / https 协议（协议名大小写不敏感），
-    /// `version` 不能为空，`expected_hash` 若存在必须是偶数长度的十六进制
-    /// 字符串，不满足时视为非法输入；下载成功后把文件路径与版本写入待安装
-    /// 记录，供应用重启后的安装流程读取。校验与持久化统一使用去除首尾空白
-    /// 后的值。
+    /// `mirror_url` 若存在也必须使用同样的协议，`version` 不能为空，
+    /// `expected_hash` 若存在必须是偶数长度的十六进制字符串，不满足时视为
+    /// 非法输入；下载成功后把文件路径与版本写入待安装记录，供应用重启后的
+    /// 安装流程读取。校验与持久化统一使用去除首尾空白后的值。
+    ///
+    /// 主地址不可用时会回退到 `mirror_url`，两者指向同一个发布产物。
     async fn download(
         &self,
         url: String,
+        mirror_url: Option<String>,
         expected_hash: Option<String>,
         version: String,
     ) -> Result<String, UpdateInstallServiceError> {
         // URL 基本校验：非空 + 基础协议检查（协议名大小写不敏感）。
         let trimmed_url = url.trim();
-        let scheme_matches = trimmed_url.split_once("://").is_some_and(|(scheme, _)| {
-            matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https")
-        });
-        if trimmed_url.is_empty() || !scheme_matches {
+        if trimmed_url.is_empty() || !is_supported_download_url(trimmed_url) {
+            return Err(UpdateInstallServiceError::InvalidInput);
+        }
+        // 镜像地址可选，给出时按与主地址相同的规则校验；空串视为未提供。
+        let trimmed_mirror = mirror_url
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+        if let Some(mirror) = trimmed_mirror
+            && !is_supported_download_url(mirror)
+        {
             return Err(UpdateInstallServiceError::InvalidInput);
         }
         // 版本号校验：去除首尾空白后不能为空。
@@ -64,6 +74,7 @@ impl UpdateInstallService for CoreUpdateInstallService {
         }
         let path = download_update_file_without_events(
             trimmed_url.to_string(),
+            trimmed_mirror.map(str::to_string),
             trimmed_hash.map(str::to_string),
             get_update_cache_dir(),
         )
@@ -119,4 +130,10 @@ impl UpdateInstallService for CoreUpdateInstallService {
             Err(UpdateInstallServiceError::Unsupported)
         }
     }
+}
+
+/// 判断地址是否使用应用支持的下载协议（http / https，协议名大小写不敏感）。
+fn is_supported_download_url(url: &str) -> bool {
+    url.split_once("://")
+        .is_some_and(|(scheme, _)| matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https"))
 }

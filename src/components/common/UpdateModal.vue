@@ -83,6 +83,7 @@ async function handleUpdateClick() {
     updateStore.setDownloading(0);
     const filePath = await downloadUpdate(
       updateStore.updateInfo.download_url,
+      updateStore.updateInfo.mirror_url,
       updateStore.updateInfo.sha256,
       updateStore.updateInfo.latest_version,
     );
