@@ -11,7 +11,7 @@
 //! | macOS | `.dmg`, `.app`, `.tar.gz` |
 //! | Linux | `.appimage`, `.deb`, `.rpm`, `.tar.gz` |
 
-use super::checksum::resolve_asset_sha256;
+use super::checksum::{resolve_asset_sha256, sha256_from_github_digest};
 use super::types::{ReleaseAsset, ReleaseResponse, RepoConfig, UpdateInfo};
 use super::version::normalize_release_tag_version;
 use crate::observability;
@@ -113,11 +113,14 @@ pub async fn fetch_release(
     let is_newer_version = compare_versions(current_version, &latest_version);
     let selected_asset = find_suitable_asset(&release.assets);
     let download_url = selected_asset.map(|asset| asset.browser_download_url.clone());
+    // 优先采用发布平台给出的摘要，避免为没有附带校验文件的发布额外发请求。
     let sha256 = if is_newer_version {
-        if let Some(asset) = selected_asset {
-            resolve_asset_sha256(client, &release.assets, asset).await
-        } else {
-            None
+        match selected_asset {
+            Some(asset) => match asset.digest.as_deref().and_then(sha256_from_github_digest) {
+                Some(hash) => Some(hash),
+                None => resolve_asset_sha256(client, &release.assets, asset).await,
+            },
+            None => None,
         }
     } else {
         None

@@ -45,6 +45,9 @@ pub struct ReleaseResponse {
 pub struct ReleaseAsset {
     pub name: String,
     pub browser_download_url: String,
+    /// 发布平台计算的摘要，形如 `sha256:<hex>`；平台未提供时为空。
+    #[serde(default)]
+    pub digest: Option<String>,
 }
 
 /// 仓库配置结构体

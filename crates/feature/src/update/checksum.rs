@@ -19,6 +19,20 @@ pub use sealantern_infra::fs::{
     find_sha256_in_line, is_sha256_hex, parse_sha256_from_checksum_content,
 };
 
+/// 从发布平台给出的摘要中提取 SHA-256。
+///
+/// 摘要格式为 `算法:<hex>`，只接受 `sha256`；算法不匹配或长度、字符不合法时
+/// 返回 `None`，由调用方回落到下载校验文件。
+pub fn sha256_from_github_digest(digest: &str) -> Option<String> {
+    let (algorithm, value) = digest.split_once(':')?;
+    if !algorithm.eq_ignore_ascii_case("sha256") {
+        return None;
+    }
+
+    let value = value.trim();
+    is_sha256_hex(value).then(|| value.to_ascii_lowercase())
+}
+
 /// 查找 SHA256 校验文件资源
 pub fn find_sha256_assets<'a>(
     assets: &'a [ReleaseAsset],

@@ -45,19 +45,16 @@ impl ReleaseUpdateChecker {
 #[async_trait]
 impl UpdateChecker for ReleaseUpdateChecker {
     async fn check(&self, current_version: &str) -> Result<UpdateInfo, UpdateCheckError> {
-        #[cfg(debug_assertions)]
-        {
-            let _ = &self.client_provider;
+        if debug_checks_disabled() {
             crate::observability::update_check_started("disabled", current_version);
             crate::observability::update_check_completed("disabled", false, Some(current_version));
             return Ok(no_update(current_version));
         }
 
-        #[cfg(not(debug_assertions))]
         let client = (self.client_provider)()
             .map_err(|source| UpdateCheckError::ClientInitialization { source })?;
 
-        #[cfg(all(not(debug_assertions), target_os = "linux"))]
+        #[cfg(target_os = "linux")]
         {
             let client = client.get_reqwest_client();
             if super::is_arch_linux() {
@@ -77,7 +74,7 @@ impl UpdateChecker for ReleaseUpdateChecker {
             return select_linux_result(cnb, github);
         }
 
-        #[cfg(all(not(debug_assertions), not(target_os = "linux")))]
+        #[cfg(not(target_os = "linux"))]
         {
             super::fetch_github_release(
                 client.get_reqwest_client(),
@@ -90,7 +87,14 @@ impl UpdateChecker for ReleaseUpdateChecker {
     }
 }
 
-#[cfg(debug_assertions)]
+/// 非发布构建默认跳过远程检查，避免开发期反复请求发布源。
+///
+/// 设置环境变量 `SEALANTERN_UPDATE_CHECK` 可在开发构建中强制走真实检查流程，
+/// 用于验证多来源选择、下载源切换等依赖真实网络的逻辑。
+fn debug_checks_disabled() -> bool {
+    cfg!(debug_assertions) && std::env::var_os("SEALANTERN_UPDATE_CHECK").is_none()
+}
+
 fn no_update(current_version: &str) -> UpdateInfo {
     UpdateInfo {
         has_update: false,
@@ -104,7 +108,7 @@ fn no_update(current_version: &str) -> UpdateInfo {
     }
 }
 
-#[cfg(any(test, all(not(debug_assertions), target_os = "linux")))]
+#[cfg(any(test, target_os = "linux"))]
 fn select_linux_result(
     cnb: Result<UpdateInfo, String>,
     github: Result<UpdateInfo, String>,
@@ -166,6 +170,11 @@ mod tests {
     #[cfg(debug_assertions)]
     #[tokio::test]
     async fn debug_checker_skips_remote_requests() {
+        if std::env::var_os("SEALANTERN_UPDATE_CHECK").is_some() {
+            // 开发构建强制启用真实检查时，本用例的前提不成立。
+            return;
+        }
+
         let checker = ReleaseUpdateChecker::new().expect("create update checker");
         let info = checker.check("1.2.3").await.expect("check update");
 
