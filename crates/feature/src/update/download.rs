@@ -78,19 +78,16 @@ pub async fn download_update_file_without_events(
 
     let expected_hash = expected_hash.as_deref();
 
-    // 主地址在前，镜像地址在后；只有主地址限制首包等待时长。
-    let mut sources = vec![(url.as_str(), Some(PRIMARY_FIRST_BYTE_TIMEOUT))];
-    if let Some(mirror) = mirror_url.as_deref() {
-        sources.push((mirror, None));
-    }
+    let sources = build_download_sources(url.as_str(), mirror_url.as_deref());
 
     let mut failures: Vec<String> = Vec::new();
+    let mut last_failure: Option<String> = None;
     for (index, (source, first_byte_timeout)) in sources.into_iter().enumerate() {
-        // 只有前面的来源失败后才会走到后续来源，此时记录一次镜像回退。
-        if index > 0
-            && let Some(reason) = failures.last()
-        {
-            observability::update_download_mirror_used(&url, source, reason);
+        // 走到后续来源说明前一个来源已失败，此时记录一次镜像回退。
+        // 兜底文案仅用于防御，正常流程下 last_failure 必定已赋值。
+        if index > 0 {
+            let reason = last_failure.as_deref().unwrap_or("previous source failed");
+            observability::update_download_mirror_used(&url, source, &reason);
         }
 
         match try_download_once(&client, source, first_byte_timeout).await {
@@ -102,10 +99,18 @@ pub async fn download_update_file_without_events(
                         return Ok(path);
                     }
                     // 校验失败说明该来源的文件不可信，换下一个来源再试。
-                    Err(error) => failures.push(format!("{source}: {error}")),
+                    Err(error) => {
+                        let reason = format!("{source}: {error}");
+                        last_failure = Some(reason.clone());
+                        failures.push(reason);
+                    }
                 }
             }
-            AttemptOutcome::Retryable(error) => failures.push(format!("{source}: {error}")),
+            AttemptOutcome::Retryable(error) => {
+                let reason = format!("{source}: {error}");
+                last_failure = Some(reason.clone());
+                failures.push(reason);
+            }
             AttemptOutcome::Fatal(error) => {
                 failures.push(format!("{source}: {error}"));
                 // 请求参数或客户端层面的问题，换源不会有帮助。
@@ -121,6 +126,26 @@ pub async fn download_update_file_without_events(
     };
     observability::update_download_failed(&url, &message);
     Err(message)
+}
+
+/// 按尝试顺序组装下载来源。
+///
+/// 主地址在前并限制首包等待时长，镜像地址在后且沿用默认重试策略。镜像地址
+/// 与主地址相同时只保留一个，避免对同一地址重复发起完整请求。
+fn build_download_sources<'a>(
+    primary: &'a str,
+    mirror: Option<&'a str>,
+) -> Vec<(&'a str, Option<Duration>)> {
+    let mut sources = vec![(primary, Some(PRIMARY_FIRST_BYTE_TIMEOUT))];
+    if let Some(mirror) = mirror {
+        // 空白镜像地址等同于未提供，交给单源流程处理。
+        let mirror = mirror.trim();
+        if !mirror.is_empty() && mirror != primary {
+            sources.push((mirror, None));
+        }
+    }
+
+    sources
 }
 
 /// 按来源尝试一次下载。
@@ -329,5 +354,45 @@ mod tests {
             }
             _ => panic!("expected retryable outcome"),
         }
+    }
+
+    #[test]
+    fn sources_put_primary_first_with_first_byte_timeout() {
+        let sources =
+            build_download_sources("https://primary/app.msi", Some("https://mirror/app.msi"));
+
+        assert_eq!(sources.len(), 2);
+        assert_eq!(sources[0].0, "https://primary/app.msi");
+        assert_eq!(sources[0].1, Some(PRIMARY_FIRST_BYTE_TIMEOUT));
+        // 镜像地址沿用客户端默认重试策略，不设首包超时。
+        assert_eq!(sources[1].0, "https://mirror/app.msi");
+        assert_eq!(sources[1].1, None);
+    }
+
+    #[test]
+    fn sources_collapse_when_mirror_equals_primary() {
+        // 同一地址只应请求一次，否则会白白多走一轮完整重试。
+        let sources = build_download_sources("https://same/app.msi", Some("https://same/app.msi"));
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].0, "https://same/app.msi");
+    }
+
+    #[test]
+    fn sources_ignore_missing_or_blank_mirror() {
+        let url = "https://primary/app.msi";
+
+        assert_eq!(build_download_sources(url, None).len(), 1);
+        assert_eq!(build_download_sources(url, Some("")).len(), 1);
+        assert_eq!(build_download_sources(url, Some("   ")).len(), 1);
+    }
+
+    #[test]
+    fn sources_trim_mirror_before_comparing() {
+        // 带空白的镜像地址应被 trim 后参与比较与使用。
+        let sources =
+            build_download_sources("https://same/app.msi", Some("  https://same/app.msi "));
+
+        assert_eq!(sources.len(), 1);
     }
 }
