@@ -29,7 +29,11 @@ pub struct LegacyMigrationStatus {
 impl LegacyMigrationStatus {
     /// 没有任何需要提示的内容时的空状态。
     pub fn empty(dismissed: bool) -> Self {
-        Self { available: false, dismissed, entries: Vec::new() }
+        Self {
+            available: false,
+            dismissed,
+            entries: Vec::new(),
+        }
     }
 }
 

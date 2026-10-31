@@ -20,7 +20,8 @@ use async_trait::async_trait;
 use sealantern_contract::LegacyMigrationServiceError;
 use sealantern_contract::legacy_migration::{
     LegacyMigrationEntry, LegacyMigrationEntryState, LegacyMigrationReport,
-    LegacyMigrationSkipReason, LegacyMigrationStatus, MigratedLegacyInstance, SkippedLegacyInstance,
+    LegacyMigrationSkipReason, LegacyMigrationStatus, MigratedLegacyInstance,
+    SkippedLegacyInstance,
 };
 use sealantern_feature::config::instance::{
     DocumentStore, InstanceDocument, LEGACY_SERVERS_FILE_NAME, LegacyConfigError,
@@ -45,7 +46,11 @@ pub struct CoreLegacyMigrationService {
 impl CoreLegacyMigrationService {
     /// 以共享的实例与设置服务构造迁移服务。
     pub fn new(instance: Arc<CoreInstanceService>, settings: Arc<CoreSettingsService>) -> Self {
-        Self { instance, settings, migration_ops: tokio::sync::Mutex::new(()) }
+        Self {
+            instance,
+            settings,
+            migration_ops: tokio::sync::Mutex::new(()),
+        }
     }
 
     /// 旧配置文件路径（主配置目录下）。
@@ -282,9 +287,7 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
                 return Err(LegacyMigrationServiceError::InvalidLegacyData);
             }
             Err(LegacyConfigError::Storage { source }) => {
-                return Err(LegacyMigrationServiceError::from(
-                    LegacyMigrationError::Io { source },
-                ));
+                return Err(LegacyMigrationServiceError::from(LegacyMigrationError::Io { source }));
             }
         };
         if entries.is_empty() {
@@ -387,11 +390,7 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
             match self.register_instance(&layout, &directory, document).await {
                 Ok(()) => {
                     occupied.insert(instance_id.clone());
-                    migrated.push(MigratedLegacyInstance {
-                        instance_id,
-                        name,
-                        directory,
-                    });
+                    migrated.push(MigratedLegacyInstance { instance_id, name, directory });
                 }
                 Err(error) => {
                     tracing::warn!(
@@ -464,7 +463,9 @@ mod tests {
 
     /// 写一份旧版 `sea_lantern_servers.json`。
     async fn write_legacy(root: &Path, body: &str) {
-        tokio::fs::write(legacy_servers_path(root), body).await.expect("write legacy list");
+        tokio::fs::write(legacy_servers_path(root), body)
+            .await
+            .expect("write legacy list");
     }
 
     fn legacy_entry(id: &str, name: &str, dir: &Path) -> String {
@@ -491,11 +492,8 @@ mod tests {
         let root = TempDir::new().unwrap();
         let server_dir = root.path().join("srv").join("paper");
         tokio::fs::create_dir_all(&server_dir).await.unwrap();
-        write_legacy(
-            root.path(),
-            &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)),
-        )
-        .await;
+        write_legacy(root.path(), &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)))
+            .await;
         let service = test_service(root.path()).await;
 
         let status = service.status().await.expect("status");
@@ -511,11 +509,8 @@ mod tests {
         let root = TempDir::new().unwrap();
         let server_dir = root.path().join("srv").join("paper");
         tokio::fs::create_dir_all(&server_dir).await.unwrap();
-        write_legacy(
-            root.path(),
-            &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)),
-        )
-        .await;
+        write_legacy(root.path(), &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)))
+            .await;
         let service = test_service(root.path()).await;
 
         let report = service.migrate().await.expect("migrate");
@@ -529,7 +524,9 @@ mod tests {
             !legacy_servers_path(root.path()).exists(),
             "legacy file should be archived away"
         );
-        let archived = root.path().join(format!("{LEGACY_SERVERS_FILE_NAME}.migrated"));
+        let archived = root
+            .path()
+            .join(format!("{LEGACY_SERVERS_FILE_NAME}.migrated"));
         assert!(archived.is_file(), "archived legacy file should remain on disk");
 
         let registry = service.settings.registry().await.expect("registry");
@@ -552,7 +549,9 @@ mod tests {
         let migrated_dir = root.path().join("srv").join("done");
         let missing_dir = root.path().join("srv").join("gone");
         tokio::fs::create_dir_all(&migrated_dir).await.unwrap();
-        tokio::fs::write(migrated_dir.join("sl.json"), "{}").await.unwrap();
+        tokio::fs::write(migrated_dir.join("sl.json"), "{}")
+            .await
+            .unwrap();
         write_legacy(
             root.path(),
             &format!(
@@ -580,11 +579,8 @@ mod tests {
         let root = TempDir::new().unwrap();
         let server_dir = root.path().join("srv").join("paper");
         tokio::fs::create_dir_all(&server_dir).await.unwrap();
-        write_legacy(
-            root.path(),
-            &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)),
-        )
-        .await;
+        write_legacy(root.path(), &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)))
+            .await;
         let service = test_service(root.path()).await;
 
         service.dismiss().await.expect("dismiss");
@@ -597,7 +593,11 @@ mod tests {
 
         let reloaded = test_service(root.path()).await;
         assert!(
-            reloaded.settings.legacy_migration_dismissed().await.expect("read flag"),
+            reloaded
+                .settings
+                .legacy_migration_dismissed()
+                .await
+                .expect("read flag"),
             "dismissal must survive reload"
         );
     }
@@ -639,11 +639,8 @@ mod tests {
 
         let server_dir = root.path().join("srv").join("paper");
         tokio::fs::create_dir_all(&server_dir).await.unwrap();
-        write_legacy(
-            root.path(),
-            &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)),
-        )
-        .await;
+        write_legacy(root.path(), &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)))
+            .await;
 
         let status = service.status().await.expect("status");
 

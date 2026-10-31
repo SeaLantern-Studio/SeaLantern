@@ -137,7 +137,13 @@ impl CoreSettingsService {
     ///
     /// 只读快照；调用方（迁移服务）不持有锁，避免与长耗时迁移交错。
     pub async fn legacy_migration_dismissed(&self) -> Result<bool, SettingsError> {
-        Ok(self.manager().await?.lock().await.get().legacy_migration_dismissed)
+        Ok(self
+            .manager()
+            .await?
+            .lock()
+            .await
+            .get()
+            .legacy_migration_dismissed)
     }
 
     /// 记录用户已关闭旧版实例配置迁移提示。

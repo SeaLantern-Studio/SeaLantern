@@ -274,7 +274,10 @@ impl LegacyServerInstance {
                     .map(|arg| arg.trim().to_string())
                     .filter(|arg| !arg.is_empty())
                     .collect(),
-                memory_mib: MemorySpec { min: self.min_memory, max: self.max_memory },
+                memory_mib: MemorySpec {
+                    min: self.min_memory,
+                    max: self.max_memory,
+                },
                 port: if self.port == 0 { 25565 } else { self.port },
             },
             cron: Vec::new(),
@@ -347,7 +350,10 @@ mod tests {
         assert_eq!(mapped.document.startup.mode, StartupMode::Jar);
         assert_eq!(mapped.document.startup.memory_mib.max, 4096);
         assert_eq!(mapped.document.created_at_unix_secs, Some(1_700_000_000));
-        mapped.document.validate().expect("mapped document should validate");
+        mapped
+            .document
+            .validate()
+            .expect("mapped document should validate");
     }
 
     #[test]
@@ -363,7 +369,10 @@ mod tests {
         assert_eq!(mapped.document.startup.mode, StartupMode::Custom);
         assert_eq!(mapped.document.startup.target, None);
         assert_eq!(mapped.document.startup.custom_command.as_deref(), Some("./start.sh"));
-        mapped.document.validate().expect("mapped document should validate");
+        mapped
+            .document
+            .validate()
+            .expect("mapped document should validate");
     }
 
     #[test]
@@ -400,16 +409,10 @@ mod tests {
 
     #[test]
     fn missing_directory_is_rejected() {
-        let mut entry = legacy(
-            "abc",
-            Path::new("/srv/mc/paper"),
-            Path::new("/srv/mc/paper/server.jar"),
-        );
+        let mut entry =
+            legacy("abc", Path::new("/srv/mc/paper"), Path::new("/srv/mc/paper/server.jar"));
         entry.path = "  ".to_string();
 
-        assert!(matches!(
-            entry.to_document(),
-            Err(LegacyMappingError::MissingDirectory)
-        ));
+        assert!(matches!(entry.to_document(), Err(LegacyMappingError::MissingDirectory)));
     }
 }

@@ -11,8 +11,8 @@ use serde::Serialize;
 
 use sealantern_contract::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
-    LegacyMigrationServiceError, ProvisioningServiceError, ServerServiceError, SettingsServiceError,
-    SystemServiceError, UpdateCheckServiceError,
+    LegacyMigrationServiceError, ProvisioningServiceError, ServerServiceError,
+    SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
