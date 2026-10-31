@@ -85,6 +85,7 @@ async function handleUpdateClick() {
       updateStore.updateInfo.download_url,
       updateStore.updateInfo.sha256,
       updateStore.updateInfo.latest_version,
+      updateStore.updateInfo.mirror_url,
     );
     updateStore.setDownloaded(filePath);
   } catch (error) {

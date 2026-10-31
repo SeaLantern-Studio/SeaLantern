@@ -127,6 +127,8 @@ mod imp {
             latest_version: aur_version.clone(),
             current_version: current_version.to_string(),
             download_url: Some(AUR_PACKAGE_PAGE_URL.to_string()),
+            // AUR 走系统包管理器更新，不经过应用内下载链路。
+            mirror_url: None,
             release_notes: Some(release_notes),
             published_at: None,
             source: Some("arch-aur".to_string()),
@@ -151,5 +153,7 @@ pub use imp::{get_aur_helper, is_arch_linux};
 
 #[cfg(target_os = "linux")]
 pub use imp::check_aur_update;
-#[cfg(all(target_os = "linux", not(debug_assertions)))]
+// 检查流程已改为运行时开关，开发构建同样可能真正执行 AUR 分支，
+// 因此这里不能再按 `not(debug_assertions)` 收窄。
+#[cfg(target_os = "linux")]
 pub(crate) use imp::check_aur_update_with_client;
