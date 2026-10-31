@@ -132,8 +132,61 @@ impl UpdateInstallService for CoreUpdateInstallService {
     }
 }
 
-/// 判断地址是否使用应用支持的下载协议（http / https，协议名大小写不敏感）。
+/// 判断地址是否使用应用支持的下载协议，且包含非空主机名。
+///
+/// 协议名大小写不敏感。主机名为空（如 `http://`、`http:///path`）时提前拒绝，
+/// 让错误在入口层归为输入无效，而不是留给 HTTP 客户端报出模棱两可的失败。
 fn is_supported_download_url(url: &str) -> bool {
-    url.split_once("://")
-        .is_some_and(|(scheme, _)| matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https"))
+    url.split_once("://").is_some_and(|(scheme, rest)| {
+        matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https")
+            && !rest.is_empty()
+            && !rest.starts_with('/')
+    })
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn download_url_accepts_http_and_https() {
+        assert!(is_supported_download_url("https://example.com/app.msi"));
+        assert!(is_supported_download_url("http://example.com/app.msi"));
+        assert!(is_supported_download_url(
+            "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.1/app.msi"
+        ));
+    }
+
+    #[test]
+    fn download_url_accepts_uppercase_scheme() {
+        assert!(is_supported_download_url("HTTPS://example.com/app.msi"));
+        assert!(is_supported_download_url("Http://example.com/app.msi"));
+    }
+
+    #[test]
+    fn download_url_rejects_other_schemes() {
+        // 防止被塞入本地文件或其他协议。
+        for url in [
+            "file:///C:/app.msi",
+            "ftp://example.com/app.msi",
+            "data:text/plain,hello",
+            "javascript:alert(1)",
+        ] {
+            assert!(!is_supported_download_url(url), "{url} should be rejected");
+        }
+    }
+
+    #[test]
+    fn download_url_rejects_empty_host() {
+        // 协议后为空或直接跟路径，说明缺少主机名。
+        for url in ["http://", "https://", "http:///path/app.msi", "https:///app.msi"] {
+            assert!(!is_supported_download_url(url), "{url} should be rejected");
+        }
+    }
+
+    #[test]
+    fn download_url_rejects_malformed_input() {
+        for url in ["", "example.com/app.msi", "https:/example.com/app.msi"] {
+            assert!(!is_supported_download_url(url), "{url} should be rejected");
+        }
+    }
 }
