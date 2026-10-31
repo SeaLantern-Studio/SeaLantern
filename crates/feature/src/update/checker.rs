@@ -1,5 +1,7 @@
 //! 多来源应用更新检查编排。
 
+use std::time::Duration;
+
 use async_trait::async_trait;
 use sealantern_infra::net::{ClientProvider, NetClient};
 
@@ -69,9 +71,21 @@ impl UpdateChecker for ReleaseUpdateChecker {
             }
         }
 
-        match super::fetch_github_release(client, &super::get_github_config(), current_version)
-            .await
+        // GitHub 单独设上限：串行兜底意味着 GitHub 耗时直接压缩 CNB 的窗口，
+        // 若它一直挂到外层 30 秒总超时，CNB 根本没有机会执行。
+        let github = match tokio::time::timeout(
+            GITHUB_CHECK_TIMEOUT,
+            super::fetch_github_release(client, &super::get_github_config(), current_version),
+        )
+        .await
         {
+            Ok(result) => result,
+            Err(_) => {
+                Err(format!("GitHub check timed out after {}s", GITHUB_CHECK_TIMEOUT.as_secs()))
+            }
+        };
+
+        match github {
             Ok(info) => Ok(with_mirror_url(info)),
             Err(github) => {
                 // GitHub 不可达时才付出解析镜像页的代价，成功则直接采用其结果。
@@ -86,6 +100,12 @@ impl UpdateChecker for ReleaseUpdateChecker {
         }
     }
 }
+
+/// GitHub 检查的单独上限。
+///
+/// 外层总超时为 30 秒，这里取一半，保证 GitHub 挂起时 CNB 仍有足够的窗口
+/// 完成页面解析并返回结果，而不是让用户直接看到超时。
+const GITHUB_CHECK_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// 非发布构建默认跳过远程检查，避免开发期反复请求发布源。
 ///
@@ -157,9 +177,24 @@ mod tests {
             return;
         }
 
-        let checker = ReleaseUpdateChecker::new().expect("create update checker");
+        // 用计数 provider 断言「没有获取客户端」：只看返回字段无法区分
+        // 「跳过检查」与「发起了请求但恰好也没发现更新」。
+        let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counter = std::sync::Arc::clone(&calls);
+        let checker = ReleaseUpdateChecker::with_provider(Box::new(move || {
+            counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Err(sealantern_infra::net::NetError::Config(
+                "provider must not be called".to_string(),
+            ))
+        }));
+
         let info = checker.check("1.2.3").await.expect("check update");
 
+        assert_eq!(
+            calls.load(std::sync::atomic::Ordering::SeqCst),
+            0,
+            "disabled checks must not acquire an HTTP client"
+        );
         assert!(!info.has_update);
         assert_eq!(info.current_version, "1.2.3");
         assert_eq!(info.latest_version, "1.2.3");
