@@ -16,6 +16,8 @@ pub mod cron;
 pub mod download;
 /// 实例管理领域错误。
 pub mod instance;
+/// 旧版实例配置迁移领域错误。
+pub mod legacy_migration;
 /// 插件管理领域错误。
 pub mod plugin;
 /// 服务器管理领域错误。
@@ -39,6 +41,7 @@ pub use console::ConsoleError;
 pub use cron::CronTaskError;
 pub use download::DownloadError;
 pub use instance::InstanceError;
+pub use legacy_migration::LegacyMigrationError;
 pub use plugin::PluginError;
 pub use server::ServerError;
 pub use server_config::ServerConfigError;

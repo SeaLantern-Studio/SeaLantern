@@ -76,6 +76,11 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
         .route("/instance-registry/ignored-dirs", delete(handlers::unignore_instance_dir))
         .route("/instance-registry/reassign-id", post(handlers::reassign_instance_id));
 
+    let legacy_migration_routes = Router::new()
+        .route("/legacy-migration", get(handlers::legacy_migration_status))
+        .route("/legacy-migration", post(handlers::migrate_legacy_config))
+        .route("/legacy-migration/dismiss", post(handlers::dismiss_legacy_migration));
+
     let settings_routes = Router::new()
         .route("/settings", get(handlers::settings_overview))
         .route("/settings/all", get(handlers::get_settings));
@@ -109,6 +114,7 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
         .nest(API_PREFIX, instance_registry_routes)
         .nest(API_PREFIX, provisioning_routes)
         .nest(API_PREFIX, settings_routes)
+        .nest(API_PREFIX, legacy_migration_routes)
         .nest(API_PREFIX, system_routes)
         .nest(API_PREFIX, cron_routes)
         .nest(API_PREFIX, update_routes)

@@ -133,6 +133,28 @@ impl CoreSettingsService {
         Ok(self.manager().await?.lock().await)
     }
 
+    /// 是否已关闭旧版实例配置迁移提示。
+    ///
+    /// 只读快照；调用方（迁移服务）不持有锁，避免与长耗时迁移交错。
+    pub async fn legacy_migration_dismissed(&self) -> Result<bool, SettingsError> {
+        Ok(self
+            .manager()
+            .await?
+            .lock()
+            .await
+            .get()
+            .legacy_migration_dismissed)
+    }
+
+    /// 记录用户已关闭旧版实例配置迁移提示。
+    ///
+    /// 只触碰该标志位，不改变其他偏好；重复写入幂等（值未变化时不落盘）。
+    pub async fn dismiss_legacy_migration(&self) -> Result<(), SettingsError> {
+        let mut manager = self.lock_manager().await?;
+        manager.update_legacy_migration_dismissed(true).await?;
+        Ok(())
+    }
+
     /// 加载持久化设置并同步代理运行时，供网络消费者建立启动屏障。
     pub async fn initialize(&self) -> Result<(), SettingsServiceError> {
         self.lock_synchronized_manager()

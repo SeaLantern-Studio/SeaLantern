@@ -22,6 +22,8 @@ pub mod error;
 pub mod instance;
 /// Java 检测结果和安装信息模型。
 pub mod java;
+/// 旧版实例配置迁移相关模型。
+pub mod legacy_migration;
 /// 在线隧道相关模型。
 pub mod online;
 /// 玩家查询相关模型。
@@ -64,6 +66,8 @@ pub use error::DownloadServiceError;
 pub use error::InstanceServiceError;
 /// Java 检测与校验错误枚举。
 pub use error::JavaServiceError;
+/// 旧版实例配置迁移错误枚举。
+pub use error::LegacyMigrationServiceError;
 /// 在线隧道服务错误枚举。
 pub use error::OnlineTunnelServiceError;
 /// 玩家列表查询错误枚举。
@@ -97,6 +101,12 @@ pub use instance::{
 };
 /// Java 检测结果和安装信息模型。
 pub use java::{JavaDetectionReport, JavaDiscoveryError, JavaInfo};
+/// 旧版实例配置迁移模型。
+pub use legacy_migration::{
+    LegacyMigrationEntry, LegacyMigrationEntryState, LegacyMigrationReport,
+    LegacyMigrationSkipReason, LegacyMigrationStatus, MigratedLegacyInstance,
+    SkippedLegacyInstance,
+};
 /// 在线隧道模型。
 pub use online::{
     OnlineTunnelConnection, OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest,

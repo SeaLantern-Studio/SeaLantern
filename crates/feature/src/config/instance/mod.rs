@@ -6,6 +6,7 @@
 mod discovery;
 mod document;
 mod error;
+mod legacy;
 mod trust;
 
 pub use discovery::{
@@ -16,6 +17,10 @@ pub use document::{
     InstanceDocument, MemorySpec, StartupSpec,
 };
 pub use error::DocumentError;
+pub use legacy::{
+    LEGACY_SERVERS_FILE_NAME, LegacyConfigError, LegacyMappingError, LegacyServerInstance,
+    MappedLegacyServer, has_document, legacy_servers_path, read_legacy_servers,
+};
 pub use trust::{
     ClassifiedInstance, ClassifiedProblem, TrustReport, TrustState, classify, ignore_dir,
     orphan_trusted_ids, register_extra_dir, trust_and_unignore, trust_instance, unignore_dir,
