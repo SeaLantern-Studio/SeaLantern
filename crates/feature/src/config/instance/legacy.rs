@@ -300,10 +300,10 @@ fn relative_startup_target(directory: &Path, jar_path: &str) -> Option<PathBuf> 
         return None;
     }
     let jar_path = Path::new(jar_path);
-    if let Ok(relative) = jar_path.strip_prefix(directory) {
-        if !relative.as_os_str().is_empty() {
-            return Some(relative.to_path_buf());
-        }
+    if let Ok(relative) = jar_path.strip_prefix(directory)
+        && !relative.as_os_str().is_empty()
+    {
+        return Some(relative.to_path_buf());
     }
     jar_path.file_name().map(PathBuf::from)
 }
