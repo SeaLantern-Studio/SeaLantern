@@ -153,5 +153,7 @@ pub use imp::{get_aur_helper, is_arch_linux};
 
 #[cfg(target_os = "linux")]
 pub use imp::check_aur_update;
-#[cfg(all(target_os = "linux", not(debug_assertions)))]
+// 检查流程已改为运行时开关，开发构建同样可能真正执行 AUR 分支，
+// 因此这里不能再按 `not(debug_assertions)` 收窄。
+#[cfg(target_os = "linux")]
 pub(crate) use imp::check_aur_update_with_client;
