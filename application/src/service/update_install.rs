@@ -134,14 +134,24 @@ impl UpdateInstallService for CoreUpdateInstallService {
 
 /// 判断地址是否使用应用支持的下载协议，且包含非空主机名。
 ///
-/// 协议名大小写不敏感。主机名为空（如 `http://`、`http:///path`）时提前拒绝，
-/// 让错误在入口层归为输入无效，而不是留给 HTTP 客户端报出模棱两可的失败。
+/// 协议名大小写不敏感。主机名为空（如 `http://`、`http:///path`、`http://?q`）
+/// 时提前拒绝，让错误在入口层归为输入无效，而不是留给 HTTP 客户端报出模棱两可的
+/// 失败。
 fn is_supported_download_url(url: &str) -> bool {
-    url.split_once("://").is_some_and(|(scheme, rest)| {
-        matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https")
-            && !rest.is_empty()
-            && !rest.starts_with('/')
-    })
+    let Some((scheme, rest)) = url.split_once("://") else {
+        return false;
+    };
+    if !matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https") {
+        return false;
+    }
+
+    // 主机名是 `://` 之后到路径、查询串或片段之前的部分，必须非空。
+    let authority = rest
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or_default()
+        .trim();
+    !authority.is_empty()
 }
 #[cfg(test)]
 mod tests {
@@ -177,8 +187,15 @@ mod tests {
 
     #[test]
     fn download_url_rejects_empty_host() {
-        // 协议后为空或直接跟路径，说明缺少主机名。
-        for url in ["http://", "https://", "http:///path/app.msi", "https:///app.msi"] {
+        // 协议后为空、直接跟路径、或直接跟查询串/片段，都说明缺少主机名。
+        for url in [
+            "http://",
+            "https://",
+            "http:///path/app.msi",
+            "https:///app.msi",
+            "http://?query",
+            "https://#fragment",
+        ] {
             assert!(!is_supported_download_url(url), "{url} should be rejected");
         }
     }
