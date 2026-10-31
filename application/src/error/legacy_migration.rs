@@ -53,7 +53,6 @@ impl std::error::Error for LegacyMigrationError {
             Self::DocumentWrite { source, .. } => Some(source),
             Self::Settings { source } => Some(source),
             Self::Io { source } => Some(source),
-            _ => None,
         }
     }
 }
