@@ -164,8 +164,7 @@ async fn try_download_once(
     let status = response.status();
     if !status.is_success() {
         let message = format!("Download failed with status: {status}");
-        // 资源缺失（镜像尚未同步）、鉴权受限与服务端故障都值得换来源再试。
-        return if status.is_server_error() || matches!(status.as_u16(), 401 | 403 | 404) {
+        return if is_worth_retrying_status(status.as_u16()) {
             AttemptOutcome::Retryable(message)
         } else {
             AttemptOutcome::Fatal(message)
@@ -188,13 +187,23 @@ async fn try_download_once(
     }
 }
 
+/// 判断某个失败状态码是否值得切换到下一个下载来源。
+///
+/// 资源缺失（镜像尚未同步）、鉴权受限与服务端故障都值得换来源再试；
+/// 其余 4xx 通常是请求本身有问题，换源也不会有帮助。
+///
+/// 响应状态码与网络错误两条路径共用本函数，避免两处判定各自演化后出现分歧。
+fn is_worth_retrying_status(status: u16) -> bool {
+    (500..=599).contains(&status) || matches!(status, 401 | 403 | 404)
+}
+
 /// 判断网络错误是否值得换源重试。
 fn classify_net_error(error: NetError) -> AttemptOutcome {
     let retryable = match &error {
         // 连接建立失败与超时属于来源不可达。
         NetError::Request(_) | NetError::Timeout => true,
-        // 响应类错误按状态码判断，与 `try_download_once` 中的判定保持一致。
-        NetError::Response(status, _) => *status >= 500 || matches!(*status, 401 | 403 | 404),
+        // 服务端返回的状态码交由统一判定处理。
+        NetError::Response(status, _) => is_worth_retrying_status(*status),
         NetError::Config(_) | NetError::Parse(_) | NetError::Io(_) | NetError::Cancelled => false,
     };
     let message = format!("Download request failed: {error}");
@@ -246,4 +255,79 @@ pub fn calculate_progress(downloaded: u64, total: u64) -> DownloadProgress {
         0.0
     };
     DownloadProgress { downloaded, total, percent }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retrying_status_covers_server_errors_and_resource_missing() {
+        // 5xx：服务端故障，换源有意义。
+        for status in [500, 502, 503, 504, 599] {
+            assert!(is_worth_retrying_status(status), "{status} should be retryable");
+        }
+
+        // 401/403/404：鉴权受限与资源缺失，同样值得换源。
+        for status in [401, 403, 404] {
+            assert!(is_worth_retrying_status(status), "{status} should be retryable");
+        }
+    }
+
+    #[test]
+    fn retrying_status_rejects_client_errors_and_success() {
+        // 非 401/403/404 的 4xx 属于请求本身有问题，换源无益。
+        for status in [400, 402, 405, 406, 409, 410, 422, 429] {
+            assert!(!is_worth_retrying_status(status), "{status} should be fatal");
+        }
+
+        // 1xx/2xx/3xx 与越界值都不应进入重试分支。
+        for status in [0, 100, 200, 204, 301, 304, 399, 600, 999] {
+            assert!(!is_worth_retrying_status(status), "{status} should be fatal");
+        }
+    }
+
+    #[test]
+    fn network_errors_are_classified_for_source_fallback() {
+        let retryable_cases = [
+            NetError::Request("connection refused".to_string()),
+            NetError::Timeout,
+            NetError::Response(500, String::new()),
+            NetError::Response(404, String::new()),
+            NetError::Response(403, String::new()),
+        ];
+        for error in retryable_cases {
+            let label = format!("{error}");
+            assert!(
+                matches!(classify_net_error(error), AttemptOutcome::Retryable(_)),
+                "{label} should be retryable"
+            );
+        }
+
+        let fatal_cases = [
+            NetError::Config("bad proxy".to_string()),
+            NetError::Parse("invalid json".to_string()),
+            NetError::Io(std::io::Error::other("disk full")),
+            NetError::Cancelled,
+            NetError::Response(400, String::new()),
+        ];
+        for error in fatal_cases {
+            let label = format!("{error}");
+            assert!(
+                matches!(classify_net_error(error), AttemptOutcome::Fatal(_)),
+                "{label} should be fatal"
+            );
+        }
+    }
+
+    #[test]
+    fn retryable_message_keeps_original_cause() {
+        let outcome = classify_net_error(NetError::Response(503, String::new()));
+        match outcome {
+            AttemptOutcome::Retryable(message) => {
+                assert!(message.contains("503"), "message should carry status: {message}");
+            }
+            _ => panic!("expected retryable outcome"),
+        }
+    }
 }
