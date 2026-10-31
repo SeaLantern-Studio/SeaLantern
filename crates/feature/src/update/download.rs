@@ -15,10 +15,12 @@
 //!
 //! 所有失败路径均返回 `Err(String)`，并同步通过 `observability` 模块记录结构化日志。
 
+use std::io::{BufWriter, Write as IoWrite};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use sealantern_infra::net::{NetClient, NetError, RetryPolicy};
+use sha2::{Digest, Sha256};
 
 use super::types::DownloadProgress;
 use crate::observability;
@@ -38,8 +40,13 @@ const PRIMARY_FIRST_BYTE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// 单次下载尝试的结果。
 enum AttemptOutcome {
-    /// 响应体读取完成，等待落盘与校验。
-    Downloaded(bytes::Bytes),
+    /// 响应体已完整写入目标文件，附带已接收字节数与落盘计算出的摘要。
+    Downloaded {
+        /// 实际写入的字节数。
+        received: u64,
+        /// 流式计算得到的 SHA-256 摘要；未要求校验时为 `None`。
+        digest: Option<[u8; 32]>,
+    },
     /// 该来源当前不可用，可以尝试其他来源。
     Retryable(String),
     /// 换源也无法解决的失败。
@@ -97,9 +104,11 @@ pub async fn download_update_file_without_events(
             observability::update_download_mirror_used(&url, source, &reason);
         }
 
-        match try_download_once(&client, source, first_byte_timeout).await {
-            AttemptOutcome::Downloaded(bytes) => {
-                match write_and_verify(&file_path, &bytes, expected_hash).await {
+        match try_download_once(&client, source, first_byte_timeout, &file_path, expected_hash)
+            .await
+        {
+            AttemptOutcome::Downloaded { received, digest } => {
+                match verify_digest(&file_path, digest, received, expected_hash) {
                     Ok(()) => {
                         let path = file_path.to_string_lossy().to_string();
                         observability::update_download_completed(&path);
@@ -163,6 +172,8 @@ async fn try_download_once(
     client: &NetClient,
     url: &str,
     first_byte_timeout: Option<Duration>,
+    file_path: &Path,
+    expected_hash: Option<&str>,
 ) -> AttemptOutcome {
     let builder = match client.get(url) {
         Ok(builder) => builder,
@@ -204,25 +215,50 @@ async fn try_download_once(
     }
 
     let declared_bytes = response.content_length();
-    match response.bytes().await {
-        Ok(bytes) => {
-            tracing::info!(
-                target: "sealantern.feature.update",
-                event_name = "update_download_payload_received",
-                declared_bytes = declared_bytes.unwrap_or(0),
-                received_bytes = bytes.len(),
-                "update payload received"
-            );
 
-            // 服务端声明了长度却未给够，说明传输被截断，换源重来比落盘损坏文件更稳。
-            // 分块传输不提供 `content_length` 时跳过该检查。
-            if let Err(reason) = check_declared_length(declared_bytes, bytes.len()) {
-                return AttemptOutcome::Retryable(reason);
+    // 边读边写并同步喂给 hasher：落盘完成即校验完成，无需再读一次整个文件。
+    let mut sink = match DownloadSink::create(file_path, expected_hash.is_some()) {
+        Ok(sink) => sink,
+        Err(error) => return AttemptOutcome::Fatal(error),
+    };
+
+    let mut response = response;
+    loop {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                if let Err(error) = sink.write(&chunk) {
+                    // 本地磁盘写入失败，换源无法解决。
+                    return AttemptOutcome::Fatal(error);
+                }
             }
-
-            AttemptOutcome::Downloaded(bytes)
+            Ok(None) => break,
+            Err(error) => {
+                // 已写入的部分是残缺文件，清掉再换源。
+                sink.discard();
+                return AttemptOutcome::Retryable(format!("Failed to read response: {error}"));
+            }
         }
-        Err(error) => AttemptOutcome::Retryable(format!("Failed to read response: {error}")),
+    }
+
+    let received = sink.received();
+    tracing::info!(
+        target: "sealantern.feature.update",
+        event_name = "update_download_payload_received",
+        declared_bytes = declared_bytes.unwrap_or(0),
+        received_bytes = received,
+        "update payload received"
+    );
+
+    // 服务端声明了长度却未给够，说明传输被截断，换源重来比落盘损坏文件更稳。
+    // 分块传输不提供 `content_length` 时跳过该检查。
+    if let Err(reason) = check_declared_length(declared_bytes, received) {
+        sink.discard();
+        return AttemptOutcome::Retryable(reason);
+    }
+
+    match sink.finish() {
+        Ok(digest) => AttemptOutcome::Downloaded { received, digest },
+        Err(error) => AttemptOutcome::Fatal(error),
     }
 }
 
@@ -258,44 +294,108 @@ fn classify_net_error(error: NetError) -> AttemptOutcome {
 ///
 /// 仅在服务端给出 `Content-Length` 时生效：分块传输不提供该值，此时无法判断
 /// 是否截断，直接放行。
-fn check_declared_length(declared: Option<u64>, received: usize) -> Result<(), String> {
+fn check_declared_length(declared: Option<u64>, received: u64) -> Result<(), String> {
     match declared {
-        Some(declared) if declared != received as u64 => {
+        Some(declared) if declared != received => {
             Err(format!("size mismatch: declared {declared}, received {received}"))
         }
         _ => Ok(()),
     }
 }
 
-/// 落盘并按需校验 SHA256。
+/// 下载落盘器：边写边算摘要，避免把整个更新包读进内存，也不必写完后重读一遍。
+struct DownloadSink {
+    file: BufWriter<std::fs::File>,
+    hasher: Sha256,
+    received: u64,
+    /// 是否需要在写入过程中累计摘要。
+    ///
+    /// 没有期望校验值时跳过哈希计算，省掉一次完整的数据搬运。
+    hashing: bool,
+    path: PathBuf,
+}
+
+impl DownloadSink {
+    /// 创建落盘器，目标文件被截断为新建状态。
+    fn create(path: &Path, hashing: bool) -> Result<Self, String> {
+        let file = std::fs::File::create(path)
+            .map_err(|error| format!("Failed to create file: {error}"))?;
+
+        Ok(Self {
+            file: BufWriter::new(file),
+            hasher: Sha256::new(),
+            received: 0,
+            hashing,
+            path: path.to_path_buf(),
+        })
+    }
+
+    /// 追加一个分块。
+    fn write(&mut self, chunk: &[u8]) -> Result<(), String> {
+        self.file
+            .write_all(chunk)
+            .map_err(|error| format!("Failed to write file: {error}"))?;
+        if self.hashing {
+            self.hasher.update(chunk);
+        }
+        self.received += chunk.len() as u64;
+        Ok(())
+    }
+
+    /// 已写入的字节数。
+    fn received(&self) -> u64 {
+        self.received
+    }
+
+    /// 冲刷并返回摘要；未启用校验时返回 `None`。
+    fn finish(self) -> Result<Option<[u8; 32]>, String> {
+        let Self { mut file, hasher, hashing, .. } = self;
+        file.flush()
+            .map_err(|error| format!("Failed to flush file: {error}"))?;
+        // 数据必须真正落到磁盘后再交给安装流程，避免读到未落盘的缓存。
+        file.get_ref()
+            .sync_all()
+            .map_err(|error| format!("Failed to sync file: {error}"))?;
+
+        Ok(hashing.then(|| hasher.finalize().into()))
+    }
+
+    /// 放弃本次下载，删除残缺文件。
+    fn discard(self) {
+        drop(self.file);
+        std::fs::remove_file(&self.path).ok();
+    }
+}
+
+/// 校验流式计算出的摘要是否与期望值一致。
 ///
-/// 校验不通过时删除已写入的文件，避免把损坏内容留在缓存目录里。
-async fn write_and_verify(
+/// 不一致时删除已写入的文件，避免把损坏内容留在缓存目录里。
+fn verify_digest(
     file_path: &Path,
-    bytes: impl AsRef<[u8]>,
+    digest: Option<[u8; 32]>,
+    received: u64,
     expected_hash: Option<&str>,
 ) -> Result<(), String> {
-    let bytes = bytes.as_ref();
-    std::fs::write(file_path, bytes).map_err(|error| format!("Failed to write file: {error}"))?;
-
     let Some(expected) = expected_hash else {
         return Ok(());
     };
 
-    let calculated = sealantern_infra::fs::sha256_file(file_path)
-        .await
-        .map_err(|error| format!("Failed to calculate hash: {error}"))?;
-    // `sha256_file` 返回的已经是摘要字节，这里只做十六进制编码，不能再哈希一次。
-    let calculated_hex = sealantern_infra::fs::digest_to_hex(&calculated);
     let display_path = file_path.to_string_lossy().to_string();
+    // 要求校验却拿不到摘要，说明落盘器配置有误，按失败处理而不是静默放行。
+    let Some(digest) = digest else {
+        return Err("hash digest missing although verification was requested".to_string());
+    };
 
+    let calculated_hex = sealantern_infra::fs::digest_to_hex(&digest);
     if calculated_hex.eq_ignore_ascii_case(expected) {
         observability::update_hash_verified(&display_path);
         return Ok(());
     }
 
     std::fs::remove_file(file_path).ok();
-    let message = format!("Hash verification failed. Expected: {expected}, Got: {calculated_hex}");
+    let message = format!(
+        "Hash verification failed after {received} bytes. Expected: {expected}, Got: {calculated_hex}"
+    );
     observability::update_hash_mismatch(&display_path, expected, &calculated_hex);
     Err(message)
 }
@@ -446,5 +546,113 @@ mod tests {
     fn declared_length_skips_check_without_content_length() {
         // 分块传输不提供长度，无法判断截断，应直接放行。
         assert!(check_declared_length(None, 12345).is_ok());
+    }
+    #[test]
+    fn sink_digest_matches_whole_file_hash() {
+        // 流式计算必须与整文件哈希完全等价，否则校验会误判。
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let path = dir.path().join("payload.bin");
+        let payload: Vec<u8> = (0..5000_u32).map(|value| (value % 251) as u8).collect();
+
+        let mut sink = DownloadSink::create(&path, true).expect("create sink");
+        // 按不等长分块写入，覆盖 chunk 边界落在数据中部的情况。
+        for chunk in payload.chunks(997) {
+            sink.write(chunk).expect("write chunk");
+        }
+        let received = sink.received();
+        let digest = sink.finish().expect("finish sink").expect("digest");
+
+        assert_eq!(received, payload.len() as u64);
+        assert_eq!(std::fs::read(&path).expect("read back"), payload);
+        assert_eq!(
+            sealantern_infra::fs::digest_to_hex(&digest),
+            sealantern_infra::fs::sha256_hex(&payload)
+        );
+    }
+
+    #[test]
+    fn sink_skips_hashing_when_disabled() {
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let path = dir.path().join("payload.bin");
+
+        let mut sink = DownloadSink::create(&path, false).expect("create sink");
+        sink.write(b"sealantern").expect("write chunk");
+        let digest = sink.finish().expect("finish sink");
+
+        assert!(digest.is_none());
+        assert_eq!(std::fs::read(&path).expect("read back"), b"sealantern");
+    }
+
+    #[test]
+    fn sink_discard_removes_partial_file() {
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let path = dir.path().join("payload.bin");
+
+        let mut sink = DownloadSink::create(&path, true).expect("create sink");
+        sink.write(b"partial").expect("write chunk");
+        sink.discard();
+
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn verify_digest_accepts_matching_hash() {
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let path = dir.path().join("payload.bin");
+        std::fs::write(&path, b"sealantern").expect("write file");
+        let payload = b"sealantern";
+        let digest: [u8; 32] = Sha256::digest(payload).into();
+        let expected = sealantern_infra::fs::sha256_hex(payload);
+
+        assert!(verify_digest(&path, Some(digest), payload.len() as u64, Some(&expected)).is_ok());
+    }
+
+    #[test]
+    fn verify_digest_removes_file_on_mismatch() {
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let path = dir.path().join("payload.bin");
+        std::fs::write(&path, b"tampered").expect("write file");
+        // 摘要对应另一份内容，与期望值不一致。
+        let digest: [u8; 32] = Sha256::digest(b"tampered").into();
+        let expected = sealantern_infra::fs::sha256_hex(b"expected");
+
+        let error = verify_digest(&path, Some(digest), 8, Some(&expected))
+            .expect_err("mismatch should fail");
+
+        assert!(error.contains("Hash verification failed"), "{error}");
+        // 损坏内容不应留在缓存目录里。
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn verify_digest_accepts_uppercase_expected_hash() {
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let path = dir.path().join("payload.bin");
+        let payload = b"sealantern";
+        std::fs::write(&path, payload).expect("write file");
+        let digest: [u8; 32] = Sha256::digest(payload).into();
+        let expected = sealantern_infra::fs::sha256_hex(payload).to_ascii_uppercase();
+
+        assert!(verify_digest(&path, Some(digest), payload.len() as u64, Some(&expected)).is_ok());
+    }
+
+    #[test]
+    fn verify_digest_skips_check_without_expected_hash() {
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let path = dir.path().join("payload.bin");
+        std::fs::write(&path, b"anything").expect("write file");
+
+        assert!(verify_digest(&path, None, 8, None).is_ok());
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn verify_digest_fails_when_digest_missing() {
+        // 要求校验却没有摘要属于配置错误，不能静默放行。
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let path = dir.path().join("payload.bin");
+        std::fs::write(&path, b"anything").expect("write file");
+
+        assert!(verify_digest(&path, None, 8, Some("deadbeef")).is_err());
     }
 }
