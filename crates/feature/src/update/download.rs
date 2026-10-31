@@ -81,7 +81,7 @@ pub async fn download_update_file_without_events(
     })?;
 
     let file_name = file_name_from_url(&url);
-    let file_path = cache_dir.join(file_name);
+    let file_path = cache_dir.join(&file_name);
 
     // 获取当前全局客户端，与全局代理设置保持一致。
     let client = sealantern_infra::net::global_client().map_err(|error| {
@@ -96,41 +96,43 @@ pub async fn download_update_file_without_events(
 
     let mut failures: Vec<String> = Vec::new();
     let mut last_failure: Option<String> = None;
-    for (index, (source, first_byte_timeout)) in sources.into_iter().enumerate() {
+    for (index, source) in sources.iter().enumerate() {
         // 走到后续来源说明前一个来源已失败，此时记录一次镜像回退。
         // 兜底文案仅用于防御，正常流程下 last_failure 必定已赋值。
         if index > 0 {
             let reason = last_failure.as_deref().unwrap_or("previous source failed");
-            observability::update_download_mirror_used(&url, source, &reason);
+            observability::update_download_mirror_used(&url, source.url, &reason);
         }
 
-        match try_download_once(&client, source, first_byte_timeout, &file_path, expected_hash)
-            .await
-        {
+        // 每次尝试都写入独立的临时文件：既不会截断已有缓存，也不会与并发
+        // 下载互相覆盖，只有校验通过后才替换到最终路径。
+        let temp = TempDownload::new(&cache_dir, &file_name);
+
+        let outcome = match try_download_once(&client, source, temp.path(), expected_hash).await {
             AttemptOutcome::Downloaded { received, digest } => {
-                match verify_digest(&file_path, digest, received, expected_hash) {
-                    Ok(()) => {
-                        let path = file_path.to_string_lossy().to_string();
-                        observability::update_download_completed(&path);
-                        return Ok(path);
-                    }
-                    // 校验失败说明该来源的文件不可信，换下一个来源再试。
-                    Err(error) => {
-                        let reason = format!("{source}: {error}");
-                        last_failure = Some(reason.clone());
-                        failures.push(reason);
-                    }
+                match verify_digest(temp.path(), digest, received, expected_hash) {
+                    Ok(()) => temp.commit(&file_path),
+                    Err(error) => Err(error),
                 }
             }
-            AttemptOutcome::Retryable(error) => {
-                let reason = format!("{source}: {error}");
+            AttemptOutcome::Retryable(error) => Err(error),
+            AttemptOutcome::Fatal(error) => {
+                // 请求参数或客户端层面的问题，换源不会有帮助。
+                failures.push(format!("{}: {error}", source.url));
+                break;
+            }
+        };
+
+        match outcome {
+            Ok(()) => {
+                let path = file_path.to_string_lossy().to_string();
+                observability::update_download_completed(&path);
+                return Ok(path);
+            }
+            Err(error) => {
+                let reason = format!("{}: {error}", source.url);
                 last_failure = Some(reason.clone());
                 failures.push(reason);
-            }
-            AttemptOutcome::Fatal(error) => {
-                failures.push(format!("{source}: {error}"));
-                // 请求参数或客户端层面的问题，换源不会有帮助。
-                break;
             }
         }
     }
@@ -144,82 +146,221 @@ pub async fn download_update_file_without_events(
     Err(message)
 }
 
-/// 按尝试顺序组装下载来源。
+/// 下载期间使用的临时文件。
 ///
-/// 主地址在前并限制首包等待时长，镜像地址在后且沿用默认重试策略。镜像地址
-/// 与主地址相同时只保留一个，避免对同一地址重复发起完整请求。
-fn build_download_sources<'a>(
-    primary: &'a str,
-    mirror: Option<&'a str>,
-) -> Vec<(&'a str, Option<Duration>)> {
-    let mut sources = vec![(primary, Some(PRIMARY_FIRST_BYTE_TIMEOUT))];
-    if let Some(mirror) = mirror {
-        // 空白镜像地址等同于未提供，交给单源流程处理。
-        let mirror = mirror.trim();
-        if !mirror.is_empty() && mirror != primary {
-            sources.push((mirror, None));
+/// 未提交即被丢弃时自动删除，因此中途失败、取消或提前 return 都不会在缓存
+/// 目录留下残缺内容。
+struct TempDownload {
+    path: PathBuf,
+    committed: bool,
+}
+
+impl TempDownload {
+    fn new(cache_dir: &Path, file_name: &str) -> Self {
+        Self {
+            path: cache_dir.join(format!("{file_name}.{}.part", unique_suffix())),
+            committed: false,
         }
     }
 
-    sources
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// 把临时文件替换为最终缓存路径。
+    fn commit(mut self, final_path: &Path) -> Result<(), String> {
+        // Windows 下 rename 到已存在文件会失败，需要先移除旧文件。
+        if final_path.exists() {
+            std::fs::remove_file(final_path)
+                .map_err(|error| format!("Failed to replace cached file: {error}"))?;
+        }
+        std::fs::rename(&self.path, final_path)
+            .map_err(|error| format!("Failed to move download into place: {error}"))?;
+
+        self.committed = true;
+        Ok(())
+    }
 }
 
-/// 按来源尝试一次下载。
+impl Drop for TempDownload {
+    fn drop(&mut self) {
+        if !self.committed {
+            std::fs::remove_file(&self.path).ok();
+        }
+    }
+}
+
+/// 生成足以区分并发下载的临时文件后缀。
+fn unique_suffix() -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    let sequence = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_nanos())
+        .unwrap_or(0);
+
+    format!("{}-{nanos}-{sequence}", std::process::id())
+}
+
+/// 单个下载来源及其尝试策略。
+struct DownloadSource<'a> {
+    /// 下载地址。
+    url: &'a str,
+    /// 等待响应头的上限；`None` 表示沿用客户端超时。
+    first_byte_timeout: Option<Duration>,
+    /// 该来源允许的重试次数（含响应体读取阶段）。
+    max_retries: u32,
+}
+
+/// 按尝试顺序组装下载来源。
 ///
-/// `first_byte_timeout` 为 `Some` 时不重试并限制等待响应头的时长，用于主地址；
-/// 为 `None` 时沿用客户端默认重试策略，用于镜像地址。
+/// 只有在存在备用镜像时才让主地址「短超时且不重试」：此时快速失败并换源比在
+/// 主地址上反复退避更划算。没有镜像时主地址是唯一希望，必须保留默认重试策略，
+/// 否则短暂抖动就会直接导致更新失败。
+///
+/// 镜像地址与主地址相同时只保留一个，避免对同一地址重复发起完整请求。
+fn build_download_sources<'a>(
+    primary: &'a str,
+    mirror: Option<&'a str>,
+) -> Vec<DownloadSource<'a>> {
+    let mirror = mirror
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && *value != primary);
+    let default_retries = RetryPolicy::default().max_retries;
+
+    let Some(mirror) = mirror else {
+        return vec![DownloadSource {
+            url: primary,
+            first_byte_timeout: None,
+            max_retries: default_retries,
+        }];
+    };
+
+    vec![
+        DownloadSource {
+            url: primary,
+            first_byte_timeout: Some(PRIMARY_FIRST_BYTE_TIMEOUT),
+            // 重试由换源代替，避免在主地址上白等。
+            max_retries: 0,
+        },
+        DownloadSource {
+            url: mirror,
+            first_byte_timeout: None,
+            max_retries: default_retries,
+        },
+    ]
+}
+
+/// 单次流式接收的结果。
+enum StreamOutcome {
+    /// 响应体已完整落盘。
+    Completed {
+        received: u64,
+        digest: Option<[u8; 32]>,
+    },
+    /// 传输中断或内容不完整，同一来源重试有机会成功。
+    Interrupted(String),
+    /// 本地写入失败，换源或重试都无济于事。
+    Fatal(String),
+}
+
+/// 按来源尝试下载，必要时在同一来源上重试响应体读取。
+///
+/// 请求层不做重试（`max_retries` 固定为 0），重试完全由本函数控制：只有在
+/// 响应体传输中断、长度不符等可恢复情形下才重新发起请求，本地写盘失败则
+/// 直接终止。
 async fn try_download_once(
     client: &NetClient,
-    url: &str,
-    first_byte_timeout: Option<Duration>,
+    source: &DownloadSource<'_>,
     file_path: &Path,
     expected_hash: Option<&str>,
 ) -> AttemptOutcome {
-    let builder = match client.get(url) {
-        Ok(builder) => builder,
-        Err(error) => return AttemptOutcome::Fatal(format!("HTTP client init failed: {error}")),
-    };
+    let mut body_attempts: u32 = 0;
 
-    // 重试由编排层跨来源完成，主地址本身不再重试。
-    let builder = if first_byte_timeout.is_some() {
-        builder.retry(RetryPolicy { max_retries: 0, ..RetryPolicy::default() })
-    } else {
-        builder
-    };
+    loop {
+        let builder = match client.get(source.url) {
+            Ok(builder) => builder,
+            Err(error) => {
+                return AttemptOutcome::Fatal(format!("HTTP client init failed: {error}"));
+            }
+        };
+        // 请求层不重试，避免与下面的响应体重试叠加。
+        let builder = builder.retry(RetryPolicy { max_retries: 0, ..RetryPolicy::default() });
 
-    let response = match first_byte_timeout {
+        let response = match send_request(builder, source.first_byte_timeout).await {
+            Ok(response) => response,
+            Err(outcome) => return outcome,
+        };
+
+        let status = response.status();
+        if !status.is_success() {
+            let message = format!("Download failed with status: {status}");
+            return if is_worth_retrying_status(status.as_u16()) {
+                AttemptOutcome::Retryable(message)
+            } else {
+                AttemptOutcome::Fatal(message)
+            };
+        }
+
+        match stream_to_file(response, file_path, expected_hash).await {
+            StreamOutcome::Completed { received, digest } => {
+                return AttemptOutcome::Downloaded { received, digest };
+            }
+            StreamOutcome::Fatal(error) => return AttemptOutcome::Fatal(error),
+            StreamOutcome::Interrupted(error) => {
+                if body_attempts < source.max_retries {
+                    body_attempts += 1;
+                    tracing::debug!(
+                        target: "sealantern.feature.update",
+                        event_name = "update_download_body_retry",
+                        url = source.url,
+                        attempt = body_attempts,
+                        reason = %error,
+                        "retry download body on same source"
+                    );
+                    continue;
+                }
+                return AttemptOutcome::Retryable(error);
+            }
+        }
+    }
+}
+
+/// 发送请求，可选地限制等待响应头的时长。
+async fn send_request(
+    builder: sealantern_infra::net::RequestBuilder<'_>,
+    first_byte_timeout: Option<Duration>,
+) -> Result<reqwest::Response, AttemptOutcome> {
+    match first_byte_timeout {
         Some(timeout) => match tokio::time::timeout(timeout, builder.send()).await {
-            Ok(Ok(response)) => response,
-            Ok(Err(error)) => return classify_net_error(error),
+            Ok(Ok(response)) => Ok(response),
+            Ok(Err(error)) => Err(classify_net_error(error)),
             Err(_) => {
-                return AttemptOutcome::Retryable(format!(
-                    "no response within {}s",
-                    timeout.as_secs()
-                ));
+                Err(AttemptOutcome::Retryable(format!("no response within {}s", timeout.as_secs())))
             }
         },
         None => match builder.send().await {
-            Ok(response) => response,
-            Err(error) => return classify_net_error(error),
+            Ok(response) => Ok(response),
+            Err(error) => Err(classify_net_error(error)),
         },
-    };
-
-    let status = response.status();
-    if !status.is_success() {
-        let message = format!("Download failed with status: {status}");
-        return if is_worth_retrying_status(status.as_u16()) {
-            AttemptOutcome::Retryable(message)
-        } else {
-            AttemptOutcome::Fatal(message)
-        };
     }
+}
 
+/// 把响应体流式写入文件并计算摘要。
+async fn stream_to_file(
+    response: reqwest::Response,
+    file_path: &Path,
+    expected_hash: Option<&str>,
+) -> StreamOutcome {
     let declared_bytes = response.content_length();
 
     // 边读边写并同步喂给 hasher：落盘完成即校验完成，无需再读一次整个文件。
     let mut sink = match DownloadSink::create(file_path, expected_hash.is_some()) {
         Ok(sink) => sink,
-        Err(error) => return AttemptOutcome::Fatal(error),
+        Err(error) => return StreamOutcome::Fatal(error),
     };
 
     let mut response = response;
@@ -227,15 +368,13 @@ async fn try_download_once(
         match response.chunk().await {
             Ok(Some(chunk)) => {
                 if let Err(error) = sink.write(&chunk) {
-                    // 本地磁盘写入失败，换源无法解决。
-                    return AttemptOutcome::Fatal(error);
+                    return StreamOutcome::Fatal(error);
                 }
             }
             Ok(None) => break,
             Err(error) => {
-                // 已写入的部分是残缺文件，清掉再换源。
                 sink.discard();
-                return AttemptOutcome::Retryable(format!("Failed to read response: {error}"));
+                return StreamOutcome::Interrupted(format!("Failed to read response: {error}"));
             }
         }
     }
@@ -249,27 +388,29 @@ async fn try_download_once(
         "update payload received"
     );
 
-    // 服务端声明了长度却未给够，说明传输被截断，换源重来比落盘损坏文件更稳。
+    // 服务端声明了长度却未给够，说明传输被截断，重来比落盘损坏文件更稳。
     // 分块传输不提供 `content_length` 时跳过该检查。
     if let Err(reason) = check_declared_length(declared_bytes, received) {
         sink.discard();
-        return AttemptOutcome::Retryable(reason);
+        return StreamOutcome::Interrupted(reason);
     }
 
     match sink.finish() {
-        Ok(digest) => AttemptOutcome::Downloaded { received, digest },
-        Err(error) => AttemptOutcome::Fatal(error),
+        Ok(digest) => StreamOutcome::Completed { received, digest },
+        Err(error) => StreamOutcome::Fatal(error),
     }
 }
 
 /// 判断某个失败状态码是否值得切换到下一个下载来源。
 ///
-/// 资源缺失（镜像尚未同步）、鉴权受限与服务端故障都值得换来源再试；
+/// 资源缺失（镜像尚未同步）、鉴权受限、服务端故障与触发限流都值得换来源再试；
 /// 其余 4xx 通常是请求本身有问题，换源也不会有帮助。
+///
+/// 429 尤其重要：GitHub 对发布产物下载有速率限制，此时换到镜像往往能直接成功。
 ///
 /// 响应状态码与网络错误两条路径共用本函数，避免两处判定各自演化后出现分歧。
 fn is_worth_retrying_status(status: u16) -> bool {
-    (500..=599).contains(&status) || matches!(status, 401 | 403 | 404)
+    (500..=599).contains(&status) || matches!(status, 401 | 403 | 404 | 429)
 }
 
 /// 判断网络错误是否值得换源重试。
@@ -421,16 +562,16 @@ mod tests {
             assert!(is_worth_retrying_status(status), "{status} should be retryable");
         }
 
-        // 401/403/404：鉴权受限与资源缺失，同样值得换源。
-        for status in [401, 403, 404] {
+        // 401/403/404：鉴权受限与资源缺失；429：触发限流，换到镜像通常可用。
+        for status in [401, 403, 404, 429] {
             assert!(is_worth_retrying_status(status), "{status} should be retryable");
         }
     }
 
     #[test]
     fn retrying_status_rejects_client_errors_and_success() {
-        // 非 401/403/404 的 4xx 属于请求本身有问题，换源无益。
-        for status in [400, 402, 405, 406, 409, 410, 422, 429] {
+        // 非 401/403/404/429 的 4xx 属于请求本身有问题，换源无益。
+        for status in [400, 402, 405, 406, 409, 410, 422, 451] {
             assert!(!is_worth_retrying_status(status), "{status} should be fatal");
         }
 
@@ -490,11 +631,26 @@ mod tests {
             build_download_sources("https://primary/app.msi", Some("https://mirror/app.msi"));
 
         assert_eq!(sources.len(), 2);
-        assert_eq!(sources[0].0, "https://primary/app.msi");
-        assert_eq!(sources[0].1, Some(PRIMARY_FIRST_BYTE_TIMEOUT));
-        // 镜像地址沿用客户端默认重试策略，不设首包超时。
-        assert_eq!(sources[1].0, "https://mirror/app.msi");
-        assert_eq!(sources[1].1, None);
+        assert_eq!(sources[0].url, "https://primary/app.msi");
+        assert_eq!(sources[0].first_byte_timeout, Some(PRIMARY_FIRST_BYTE_TIMEOUT));
+        // 有兜底时主地址不重试，快速让位给镜像。
+        assert_eq!(sources[0].max_retries, 0);
+
+        // 镜像地址沿用默认重试策略，不设首包超时。
+        assert_eq!(sources[1].url, "https://mirror/app.msi");
+        assert_eq!(sources[1].first_byte_timeout, None);
+        assert_eq!(sources[1].max_retries, RetryPolicy::default().max_retries);
+    }
+
+    #[test]
+    fn single_source_keeps_default_retry_policy() {
+        // 没有镜像时唯一来源不能快速失败，否则一次抖动就让更新中断。
+        let sources = build_download_sources("https://primary/app.msi", None);
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].first_byte_timeout, None);
+        assert_eq!(sources[0].max_retries, RetryPolicy::default().max_retries);
+        assert!(sources[0].max_retries > 0);
     }
 
     #[test]
@@ -503,7 +659,9 @@ mod tests {
         let sources = build_download_sources("https://same/app.msi", Some("https://same/app.msi"));
 
         assert_eq!(sources.len(), 1);
-        assert_eq!(sources[0].0, "https://same/app.msi");
+        assert_eq!(sources[0].url, "https://same/app.msi");
+        // 去重后退化为单源，同样要保留重试。
+        assert_eq!(sources[0].max_retries, RetryPolicy::default().max_retries);
     }
 
     #[test]
@@ -654,5 +812,54 @@ mod tests {
         std::fs::write(&path, b"anything").expect("write file");
 
         assert!(verify_digest(&path, None, 8, Some("deadbeef")).is_err());
+    }
+
+    #[test]
+    fn temp_download_is_removed_when_dropped_uncommitted() {
+        // 失败或取消时不能把残缺文件留在缓存目录。
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let temp = TempDownload::new(dir.path(), "app.msi");
+        std::fs::write(temp.path(), b"partial").expect("write partial");
+        let path = temp.path().to_path_buf();
+
+        drop(temp);
+
+        assert!(!path.exists(), "uncommitted temp file should be removed");
+    }
+
+    #[test]
+    fn temp_download_commit_replaces_existing_cache_file() {
+        // 已存在的缓存文件必须被新内容整体替换，而不是被截断后留在原地。
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let final_path = dir.path().join("app.msi");
+        std::fs::write(&final_path, b"old installer").expect("write old");
+
+        let temp = TempDownload::new(dir.path(), "app.msi");
+        std::fs::write(temp.path(), b"new installer").expect("write new");
+        temp.commit(&final_path).expect("commit download");
+
+        assert_eq!(std::fs::read(&final_path).expect("read back"), b"new installer");
+    }
+
+    #[test]
+    fn temp_download_paths_are_unique() {
+        // 并发下载必须落在不同临时文件上，否则会互相覆盖。
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let first = TempDownload::new(dir.path(), "app.msi");
+        let second = TempDownload::new(dir.path(), "app.msi");
+
+        assert_ne!(first.path(), second.path());
+    }
+
+    #[test]
+    fn temp_download_keeps_file_after_commit() {
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let final_path = dir.path().join("app.msi");
+        let temp = TempDownload::new(dir.path(), "app.msi");
+        std::fs::write(temp.path(), b"payload").expect("write payload");
+        temp.commit(&final_path).expect("commit download");
+
+        assert!(final_path.exists());
+        assert_eq!(std::fs::read(&final_path).expect("read back"), b"payload");
     }
 }
