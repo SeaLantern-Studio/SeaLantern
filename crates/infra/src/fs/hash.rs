@@ -158,6 +158,51 @@ mod tests {
     }
 
     #[test]
+    fn digest_to_hex_encodes_known_digest() {
+        // 这里刻意使用硬编码字面量而非 sha256_hex，避免两个函数一起出错时
+        // 交叉验证仍然通过、缺陷无从暴露。
+        let digest: [u8; 32] = Sha256::digest(b"abc").into();
+        assert_eq!(
+            digest_to_hex(&digest),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn digest_to_hex_matches_sha256_hex_for_same_input() {
+        let samples: [&[u8]; 4] = [b"", b"abc", b"sealantern", &[0_u8; 1000]];
+        for data in samples {
+            let digest: [u8; 32] = Sha256::digest(data).into();
+            assert_eq!(digest_to_hex(&digest), sha256_hex(data));
+        }
+    }
+
+    #[test]
+    fn digest_to_hex_is_64_lowercase_hex_chars() {
+        let digest: [u8; 32] = Sha256::digest(b"sealantern").into();
+        let encoded = digest_to_hex(&digest);
+        assert_eq!(encoded.len(), 64);
+        assert!(
+            encoded
+                .chars()
+                .all(|ch| ch.is_ascii_hexdigit() && !ch.is_ascii_uppercase())
+        );
+    }
+
+    #[test]
+    fn digest_to_hex_keeps_two_chars_per_byte() {
+        // 高位为 0 的字节也必须输出两位，否则长度会小于 64。
+        assert_eq!(digest_to_hex(&[0_u8; 32]), "0".repeat(64));
+        let mut digest = [0_u8; 32];
+        digest[0] = 0x0a;
+        digest[31] = 0xf0;
+        let encoded = digest_to_hex(&digest);
+        assert!(encoded.starts_with("0a"));
+        assert!(encoded.ends_with("f0"));
+        assert_eq!(encoded.len(), 64);
+    }
+
+    #[test]
     fn is_sha256_hex_validates_length_and_chars() {
         assert!(is_sha256_hex(
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
