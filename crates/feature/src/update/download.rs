@@ -32,7 +32,7 @@ const PRIMARY_FIRST_BYTE_TIMEOUT: Duration = Duration::from_secs(5);
 /// 单次下载尝试的结果。
 enum AttemptOutcome {
     /// 响应体读取完成，等待落盘与校验。
-    Downloaded(Vec<u8>),
+    Downloaded(bytes::Bytes),
     /// 该来源当前不可用，可以尝试其他来源。
     Retryable(String),
     /// 换源也无法解决的失败。
@@ -206,7 +206,14 @@ async fn try_download_once(
                 received_bytes = bytes.len(),
                 "update payload received"
             );
-            AttemptOutcome::Downloaded(bytes.to_vec())
+
+            // 服务端声明了长度却未给够，说明传输被截断，换源重来比落盘损坏文件更稳。
+            // 分块传输不提供 `content_length` 时跳过该检查。
+            if let Err(reason) = check_declared_length(declared_bytes, bytes.len()) {
+                return AttemptOutcome::Retryable(reason);
+            }
+
+            AttemptOutcome::Downloaded(bytes)
         }
         Err(error) => AttemptOutcome::Retryable(format!("Failed to read response: {error}")),
     }
@@ -240,14 +247,28 @@ fn classify_net_error(error: NetError) -> AttemptOutcome {
     }
 }
 
+/// 比对服务端声明的长度与实际接收长度。
+///
+/// 仅在服务端给出 `Content-Length` 时生效：分块传输不提供该值，此时无法判断
+/// 是否截断，直接放行。
+fn check_declared_length(declared: Option<u64>, received: usize) -> Result<(), String> {
+    match declared {
+        Some(declared) if declared != received as u64 => {
+            Err(format!("size mismatch: declared {declared}, received {received}"))
+        }
+        _ => Ok(()),
+    }
+}
+
 /// 落盘并按需校验 SHA256。
 ///
 /// 校验不通过时删除已写入的文件，避免把损坏内容留在缓存目录里。
 async fn write_and_verify(
     file_path: &Path,
-    bytes: &[u8],
+    bytes: impl AsRef<[u8]>,
     expected_hash: Option<&str>,
 ) -> Result<(), String> {
+    let bytes = bytes.as_ref();
     std::fs::write(file_path, bytes).map_err(|error| format!("Failed to write file: {error}"))?;
 
     let Some(expected) = expected_hash else {
@@ -394,5 +415,29 @@ mod tests {
             build_download_sources("https://same/app.msi", Some("  https://same/app.msi "));
 
         assert_eq!(sources.len(), 1);
+    }
+
+    #[test]
+    fn declared_length_accepts_matching_size() {
+        assert!(check_declared_length(Some(11_010_048), 11_010_048).is_ok());
+    }
+
+    #[test]
+    fn declared_length_rejects_truncated_payload() {
+        // 声明 100 字节却只收到 80 字节，说明传输被截断。
+        let error = check_declared_length(Some(100), 80).expect_err("should reject short payload");
+        assert!(error.contains("100"), "{error}");
+        assert!(error.contains("80"), "{error}");
+    }
+
+    #[test]
+    fn declared_length_rejects_overlong_payload() {
+        assert!(check_declared_length(Some(100), 120).is_err());
+    }
+
+    #[test]
+    fn declared_length_skips_check_without_content_length() {
+        // 分块传输不提供长度，无法判断截断，应直接放行。
+        assert!(check_declared_length(None, 12345).is_ok());
     }
 }

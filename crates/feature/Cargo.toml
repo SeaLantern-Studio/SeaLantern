@@ -32,6 +32,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 regex = "1"
 sha2 = "0.10"
 reqwest = { version = "0.12", features = ["json", "stream"] }
+bytes = "1"
 dirs = "5"
 dom_query = "0.27"
 mlua = { version = "0.10", features = ["lua54", "vendored", "serialize", "send"] }
