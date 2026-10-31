@@ -130,6 +130,10 @@ fn to_absolute_download_url(path: &str) -> String {
 /// `tag` 必须是发布时的原始标签（例如 `v1.3.1`），CNB 的下载路由不接受去掉
 /// `v` 前缀的版本号；`file_name` 需与发布资产名保持一致。任一参数为空时返回
 /// `None`，交由调用方放弃镜像来源。
+///
+/// 标签在 GitHub 地址里是经过百分号编码的单一路径段，解析时已还原为原始文本，
+/// 这里必须重新编码：否则含 `/` 的标签会被当成路径分隔符，镜像地址指向错误的
+/// 发布版本。
 pub(crate) fn mirror_download_url(tag: &str, file_name: &str) -> Option<String> {
     let tag = tag.trim();
     let file_name = file_name.trim();
@@ -137,8 +141,9 @@ pub(crate) fn mirror_download_url(tag: &str, file_name: &str) -> Option<String> 
         return None;
     }
 
+    let encoded_tag = urlencoding::encode(tag);
     Some(format!(
-        "{CNB_BASE_URL}/{CNB_OWNER}/{CNB_REPO}/-/releases/download/{tag}/{file_name}"
+        "{CNB_BASE_URL}/{CNB_OWNER}/{CNB_REPO}/-/releases/download/{encoded_tag}/{file_name}"
     ))
 }
 
@@ -364,5 +369,32 @@ mod tests {
         assert!(mirror_download_url("v1.3.1", "").is_none());
         assert!(mirror_download_url("   ", "file.msi").is_none());
         assert!(mirror_download_url("v1.3.1", "  ").is_none());
+    }
+
+    #[test]
+    fn mirror_url_reencodes_tag_path_segments() {
+        // 标签是单一路径段，含 `/` 时必须重新编码，否则会被当成路径分隔符。
+        let url = mirror_download_url("release/1.0.0", "app.msi").expect("build mirror url");
+
+        assert!(
+            url.contains("/download/release%2F1.0.0/app.msi"),
+            "slash in tag must stay encoded: {url}"
+        );
+        assert!(!url.contains("/download/release/1.0.0/"));
+    }
+
+    #[test]
+    fn mirror_url_encodes_tag_whitespace() {
+        let url = mirror_download_url("v1.0.0 rc1", "app.msi").expect("build mirror url");
+
+        assert!(url.contains("/download/v1.0.0%20rc1/app.msi"), "{url}");
+    }
+
+    #[test]
+    fn mirror_url_keeps_plain_tag_unchanged() {
+        // 普通标签编码后应保持不变，避免引入无谓的差异。
+        let url = mirror_download_url("v1.3.1", "app.msi").expect("build mirror url");
+
+        assert!(url.contains("/download/v1.3.1/app.msi"), "{url}");
     }
 }
