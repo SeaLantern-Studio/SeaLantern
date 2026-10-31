@@ -25,7 +25,8 @@ pub use sealantern_infra::fs::{
 /// 返回 `None`，由调用方回落到下载校验文件。
 pub fn sha256_from_github_digest(digest: &str) -> Option<String> {
     let (algorithm, value) = digest.split_once(':')?;
-    if !algorithm.eq_ignore_ascii_case("sha256") {
+    // 两侧都做 trim：摘要值在下面处理，算法名同样不应受空白影响。
+    if !algorithm.trim().eq_ignore_ascii_case("sha256") {
         return None;
     }
 
@@ -139,4 +140,58 @@ pub async fn resolve_asset_sha256(
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SAMPLE: &str = "427a87e592cbc2843cbf0ba8e5c928297c0e198036e48e1c55da8964e71700db";
+
+    #[test]
+    fn digest_parses_standard_format() {
+        assert_eq!(
+            sha256_from_github_digest(&format!("sha256:{SAMPLE}")),
+            Some(SAMPLE.to_string())
+        );
+    }
+
+    #[test]
+    fn digest_accepts_uppercase_algorithm_and_hex() {
+        // 算法名与摘要都需要归一为小写。
+        let upper = format!("SHA256:{}", SAMPLE.to_ascii_uppercase());
+        assert_eq!(sha256_from_github_digest(&upper), Some(SAMPLE.to_string()));
+    }
+
+    #[test]
+    fn digest_tolerates_surrounding_whitespace() {
+        assert_eq!(
+            sha256_from_github_digest(&format!(" sha256:  {SAMPLE} ")),
+            Some(SAMPLE.to_string())
+        );
+    }
+
+    #[test]
+    fn digest_rejects_other_algorithms() {
+        for algorithm in ["sha1", "sha512", "md5", "blake3"] {
+            let digest = format!("{algorithm}:{SAMPLE}");
+            assert!(sha256_from_github_digest(&digest).is_none(), "{algorithm} should be rejected");
+        }
+    }
+
+    #[test]
+    fn digest_rejects_malformed_values() {
+        // 缺少算法前缀、前缀为空、摘要长度不足、含非十六进制字符。
+        let cases = [
+            SAMPLE.to_string(),
+            format!(":{SAMPLE}"),
+            "sha256:".to_string(),
+            "sha256:abc".to_string(),
+            format!("sha256:{}", &SAMPLE[..63]),
+            format!("sha256:{}g", &SAMPLE[..63]),
+        ];
+        for digest in cases {
+            assert!(sha256_from_github_digest(&digest).is_none(), "{digest} should be rejected");
+        }
+    }
 }

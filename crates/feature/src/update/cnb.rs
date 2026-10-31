@@ -335,4 +335,34 @@ mod tests {
 
         assert_eq!(selected.name, "SeaLantern_2.0.0_amd64.AppImage");
     }
+
+    #[test]
+    fn mirror_url_keeps_version_tag_prefix() {
+        // CNB 的下载路由要求标签带 `v` 前缀，去掉会返回 404。
+        let url = mirror_download_url("v1.3.1", "Sea.Lantern_1.3.1_x64_zh-CN.msi")
+            .expect("build mirror url");
+
+        assert_eq!(
+            url,
+            "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.1/Sea.Lantern_1.3.1_x64_zh-CN.msi"
+        );
+        assert!(url.contains("/download/v1.3.1/"));
+    }
+
+    #[test]
+    fn mirror_url_trims_surrounding_whitespace() {
+        let url = mirror_download_url("  v1.3.1 ", " Sea.Lantern_1.3.1_x64_zh-CN.msi\t")
+            .expect("build mirror url");
+
+        assert!(url.ends_with("/v1.3.1/Sea.Lantern_1.3.1_x64_zh-CN.msi"), "{url}");
+    }
+
+    #[test]
+    fn mirror_url_rejects_empty_parts() {
+        // 任一参数为空时放弃镜像来源，交由调用方退化为单源下载。
+        assert!(mirror_download_url("", "file.msi").is_none());
+        assert!(mirror_download_url("v1.3.1", "").is_none());
+        assert!(mirror_download_url("   ", "file.msi").is_none());
+        assert!(mirror_download_url("v1.3.1", "  ").is_none());
+    }
 }

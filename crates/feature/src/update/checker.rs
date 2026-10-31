@@ -165,4 +165,111 @@ mod tests {
         assert_eq!(info.latest_version, "1.2.3");
         assert!(info.source.is_none());
     }
+
+    #[test]
+    fn download_parts_split_standard_url() {
+        let parts = parse_github_download_parts(
+            "https://github.com/SeaLantern-Studio/SeaLantern/releases/download/v1.3.1/Sea.Lantern_1.3.1_x64_zh-CN.msi",
+        )
+        .expect("parse download parts");
+
+        assert_eq!(parts.0, "v1.3.1");
+        assert_eq!(parts.1, "Sea.Lantern_1.3.1_x64_zh-CN.msi");
+    }
+
+    #[test]
+    fn download_parts_keep_version_tag_prefix() {
+        // 从 GitHub 地址还原出的标签必须保留 `v` 前缀，CNB 路由依赖它。
+        let (tag, _) =
+            parse_github_download_parts("https://github.com/o/r/releases/download/v2.0.0/app.zip")
+                .expect("parse download parts");
+
+        assert_eq!(tag, "v2.0.0");
+    }
+
+    #[test]
+    fn download_parts_strip_query_and_fragment() {
+        let (_, file) = parse_github_download_parts(
+            "https://github.com/o/r/releases/download/v1.0.0/app.zip?download=1",
+        )
+        .expect("parse download parts");
+        assert_eq!(file, "app.zip");
+
+        let (_, file) = parse_github_download_parts(
+            "https://github.com/o/r/releases/download/v1.0.0/app.zip#section",
+        )
+        .expect("parse download parts");
+        assert_eq!(file, "app.zip");
+    }
+
+    #[test]
+    fn download_parts_decode_encoded_tag() {
+        // 标签里出现空格等字符时会被编码，还原后应得到原始文本。
+        let (tag, _) = parse_github_download_parts(
+            "https://github.com/o/r/releases/download/v1.0.0%20rc1/app.zip",
+        )
+        .expect("parse download parts");
+
+        assert_eq!(tag, "v1.0.0 rc1");
+    }
+
+    #[test]
+    fn download_parts_reject_unrelated_urls() {
+        // 非 releases/download 结构的地址不应产出镜像来源。
+        let cases = [
+            "https://github.com/o/r/releases/tag/v1.0.0",
+            "https://github.com/o/r/archive/refs/tags/v1.0.0.zip",
+            "https://example.com/app.zip",
+            "not a url",
+        ];
+        for url in cases {
+            assert!(parse_github_download_parts(url).is_none(), "{url} should be rejected");
+        }
+    }
+
+    #[test]
+    fn download_parts_reject_empty_tag_or_file() {
+        // 空标签、空文件名、以及只有查询串没有文件名的情况。
+        let cases = [
+            "https://github.com/o/r/releases/download//app.zip",
+            "https://github.com/o/r/releases/download/v1.0.0/",
+            "https://github.com/o/r/releases/download/v1.0.0/?x=1",
+            "https://github.com/o/r/releases/download/v1.0.0",
+        ];
+        for url in cases {
+            assert!(parse_github_download_parts(url).is_none(), "{url} should be rejected");
+        }
+    }
+
+    #[test]
+    fn mirror_url_only_filled_for_github_results() {
+        // 只有 source 为 github 且地址可还原时才补镜像，其它来源原样返回。
+        let base = UpdateInfo {
+            has_update: true,
+            latest_version: "2.0.0".to_string(),
+            current_version: "1.0.0".to_string(),
+            download_url: Some(
+                "https://github.com/o/r/releases/download/v2.0.0/app.zip".to_string(),
+            ),
+            mirror_url: None,
+            release_notes: None,
+            published_at: None,
+            source: Some("github".to_string()),
+            sha256: None,
+        };
+
+        assert!(with_mirror_url(base.clone()).mirror_url.is_some());
+
+        let non_github = UpdateInfo {
+            source: Some("aur".to_string()),
+            ..base.clone()
+        };
+        assert!(with_mirror_url(non_github).mirror_url.is_none());
+
+        let no_source = UpdateInfo { source: None, ..base.clone() };
+        assert!(with_mirror_url(no_source).mirror_url.is_none());
+
+        let no_download = UpdateInfo { download_url: None, ..base };
+        assert!(with_mirror_url(no_download).mirror_url.is_none());
+    }
 }
