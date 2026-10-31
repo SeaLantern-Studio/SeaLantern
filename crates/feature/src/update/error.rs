@@ -14,7 +14,7 @@ pub enum UpdateCheckError {
         provider: &'static str,
         message: String,
     },
-    /// Linux 通用发行版的两个更新源均检查失败。
+    /// GitHub 检查失败，且 CNB 镜像页兜底也未能给出结果。
     ProvidersFailed { cnb: String, github: String },
 }
 

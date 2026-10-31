@@ -5718,6 +5718,7 @@ name = "sealantern-feature"
 version = "1.3.1"
 dependencies = [
  "async-trait",
+ "bytes",
  "chrono",
  "cron",
  "dirs 5.0.1",

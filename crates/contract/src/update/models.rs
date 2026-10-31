@@ -25,6 +25,8 @@ pub struct UpdateInfo {
     pub current_version: String,
     /// 当前平台资源的下载地址。
     pub download_url: Option<String>,
+    /// 同一发布在镜像源上的下载地址，主地址不可用时回退使用。
+    pub mirror_url: Option<String>,
     /// 发布说明。
     pub release_notes: Option<String>,
     /// 发布时间。
@@ -48,6 +50,7 @@ mod tests {
             latest_version: "2.0.0".to_owned(),
             current_version: "1.0.0".to_owned(),
             download_url: Some("https://example.com/update".to_owned()),
+            mirror_url: None,
             release_notes: None,
             published_at: None,
             source: Some(UpdateSource::ArchAur),

@@ -17,10 +17,12 @@ pub trait UpdateCheckService: Send + Sync {
 pub trait UpdateInstallService: Send + Sync {
     /// 下载指定版本的更新资源到本地，返回文件路径。
     ///
+    /// `mirror_url` 描述同一资源在镜像源上的位置，主地址不可用时回退使用；
     /// `expected_hash` 非空时校验下载内容的 SHA-256，不一致视为失败。
     async fn download(
         &self,
         url: String,
+        mirror_url: Option<String>,
         expected_hash: Option<String>,
         version: String,
     ) -> Result<String, UpdateInstallServiceError>;
