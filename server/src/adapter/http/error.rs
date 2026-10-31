@@ -11,8 +11,8 @@ use serde::Serialize;
 
 use sealantern_contract::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
-    ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
-    UpdateCheckServiceError,
+    LegacyMigrationServiceError, ProvisioningServiceError, ServerServiceError, SettingsServiceError,
+    SystemServiceError, UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -375,6 +375,12 @@ impl From<ServerServiceError> for HttpError {
 impl From<ConsoleServiceError> for HttpError {
     fn from(error: ConsoleServiceError) -> Self {
         Self::from_console_error(error)
+    }
+}
+
+impl From<LegacyMigrationServiceError> for HttpError {
+    fn from(error: LegacyMigrationServiceError) -> Self {
+        Self::from_legacy_migration_error(error)
     }
 }
 
