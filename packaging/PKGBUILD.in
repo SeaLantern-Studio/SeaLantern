@@ -1,4 +1,5 @@
-# Maintainer: SeaLantern Studio
+# Maintainer: xuezhajv <liaozecheng123@163.com>
+# Contributor: SeaLantern Studio
 # 该文件是 AUR 发布与 Release Arch 安装包共用的 PKGBUILD 模板，
 # 由 scripts/ci/arch-package.sh 渲染后使用，请勿直接 makepkg。
 

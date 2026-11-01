@@ -1,6 +1,6 @@
 name: "构建 Arch 安装包"
 
-# 复用发布与 Nightly 工作流的 Linux x64 产物，把官方 deb 重新打包为
+# 复用正式发布工作流的 Linux x64 产物，把官方 deb 重新打包为
 # Arch Linux 可直接安装的 pkg.tar.zst，并以构建产物形式交给汇总发布步骤。
 # 配方与 AUR 共用 packaging/PKGBUILD.in，避免两条路径出现差异。
 
@@ -14,16 +14,6 @@ on:
       source_sha:
         description: "要检出的提交，保证与其它平台产物来自同一棵代码树"
         required: true
-        type: string
-      artifact_name:
-        description: "包含 Linux x64 发布产物的构建产物名称"
-        required: false
-        default: "release-assets-linux-x64"
-        type: string
-      output_name:
-        description: "上传 Arch 安装包时使用的构建产物名称"
-        required: false
-        default: "arch-package-linux-x64"
         type: string
 
 permissions:
@@ -58,7 +48,7 @@ jobs:
       - name: 下载 Linux x64 产物
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
+          name: release-assets-linux-x64
           path: linux-assets
 
       - name: 构建 Arch 安装包
@@ -84,7 +74,7 @@ jobs:
       - name: 上传 Arch 安装包到工作流
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.output_name }}
+          name: arch-package-linux-x64
           path: arch-package/*.pkg.tar.zst
           if-no-files-found: error
           retention-days: 3

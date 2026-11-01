@@ -97,7 +97,6 @@ jobs:
             echo "- \`Sea.Lantern_${VERSION}_macos_x64_portable.tar.gz\` / \`Sea.Lantern_${VERSION}_macos_arm64_portable.tar.gz\`：Mac 免安装版，解压后把 \`.app\` 放到任意位置即可打开。"
             echo "- \`*.AppImage\`：Linux 免安装版，给文件执行权限后即可直接运行。"
             echo "- \`*.deb\` / \`*.rpm\`：Linux 安装包。"
-            echo "- \`*.pkg.tar.zst\`：Arch Linux 安装包（x86_64），用 \`sudo pacman -U\` 安装。"
             echo ""
             echo "本次构建基于 ${RELEASE_BRANCH} 分支提交 ${SHORT_SHA}，仅发布在 GitHub Release。"
             echo "EOF"
@@ -237,25 +236,11 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  build-arch-package-nightly:
-    name: 构建 Nightly Arch 安装包
-    needs:
-      - validate-nightly
-      - build-tauri-nightly
-    permissions:
-      contents: read
-      actions: read
-    uses: ./.github/workflows/arch-package.yml
-    with:
-      version: ${{ needs.validate-nightly.outputs.version }}
-      source_sha: ${{ needs.validate-nightly.outputs.source_sha }}
-
   publish-nightly:
     name: 汇总并发布 Nightly
     needs:
       - validate-nightly
       - build-tauri-nightly
-      - build-arch-package-nightly
     runs-on: ubuntu-22.04
     permissions:
       actions: read
@@ -271,23 +256,6 @@ jobs:
         with:
           pattern: release-assets-*
           path: release-assets
-
-      - name: 下载 Arch 安装包
-        uses: actions/download-artifact@v4
-        with:
-          name: arch-package-linux-x64
-          path: arch-package
-
-      - name: 合并 Arch 安装包到 Linux x64 产物
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t ARCH_PACKAGES < <(find arch-package -maxdepth 1 -type f -name '*.pkg.tar.zst' | sort)
-          if [[ "${#ARCH_PACKAGES[@]}" -ne 1 ]]; then
-            echo "❌ 期望恰好一个 Arch 安装包，实际 ${#ARCH_PACKAGES[@]} 个"
-            exit 1
-          fi
-          cp -v "${ARCH_PACKAGES[0]}" release-assets/release-assets-linux-x64/
 
       - name: 校验并直接发布 Nightly Release
         shell: bash
