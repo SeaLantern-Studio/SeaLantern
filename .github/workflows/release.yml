@@ -190,7 +190,9 @@ jobs:
           echo "- \`Sea.Lantern_${VERSION}_macos_x64_portable.tar.gz\` / \`Sea.Lantern_${VERSION}_macos_arm64_portable.tar.gz\`：Mac 免安装版，解压后把 \`.app\` 放到任意位置即可打开。" >> "$GITHUB_OUTPUT"
           echo "- \`*.AppImage\`：Linux 免安装版，给文件执行权限后即可直接运行。" >> "$GITHUB_OUTPUT"
           echo "- \`*.deb\` / \`*.rpm\`：Linux 安装包。" >> "$GITHUB_OUTPUT"
-          echo "- \`*.pkg.tar.zst\`：Arch Linux 安装包（x86_64），用 \`sudo pacman -U\` 安装。" >> "$GITHUB_OUTPUT"
+          if [[ "$PRERELEASE" == "false" ]]; then
+            echo "- \`*.pkg.tar.zst\`：Arch Linux 安装包（x86_64），用 \`sudo pacman -U\` 安装。" >> "$GITHUB_OUTPUT"
+          fi
           echo "EOF" >> "$GITHUB_OUTPUT"
           echo "✅ 发布版本: $VERSION"
 
@@ -274,6 +276,9 @@ jobs:
     needs:
       - validate-tag
       - build-tauri
+    # 预发布 tag（如 v1.4.0-rc.1）只提取到数字版本，产出 Arch 包会被 pacman
+    # 误认为稳定版，因此跳过；Nightly 走独立版本号，不受影响。
+    if: ${{ needs.validate-tag.outputs.prerelease != 'true' }}
     permissions:
       contents: read
       actions: read
@@ -288,6 +293,7 @@ jobs:
       - validate-tag
       - build-tauri
       - build-arch-package
+    if: ${{ needs.validate-tag.result == 'success' && needs.build-tauri.result == 'success' && (needs.build-arch-package.result == 'success' || needs.build-arch-package.result == 'skipped') }}
     runs-on: ubuntu-22.04
     permissions:
       actions: read
@@ -305,12 +311,14 @@ jobs:
           path: release-assets
 
       - name: 下载 Arch 安装包
+        if: ${{ needs.build-arch-package.result == 'success' }}
         uses: actions/download-artifact@v4
         with:
           name: arch-package-linux-x64
           path: arch-package
 
       - name: 合并 Arch 安装包到 Linux x64 产物
+        if: ${{ needs.build-arch-package.result == 'success' }}
         shell: bash
         run: |
           set -euo pipefail

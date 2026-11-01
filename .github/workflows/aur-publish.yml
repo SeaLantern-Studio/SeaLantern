@@ -58,6 +58,21 @@ jobs:
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: 生成 AUR 包信息（不接触密钥）
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          # 先用 Release tag 检出的配方渲染 PKGBUILD 并生成 .SRCINFO，再去配置 AUR 密钥：
+          # 这样即使 tag 指向的代码不可信，也无法在持有私钥的环境里被执行。
+          bash scripts/ci/arch-package.sh render "${VERSION}" "${TAG}" aur-staging
+          chown -R builder:builder aur-staging
+          sudo -u builder bash -c 'cd aur-staging && makepkg --printsrcinfo > .SRCINFO'
+          ls -l aur-staging
+
       - name: 配置 AUR SSH
         shell: bash
         env:
@@ -69,23 +84,18 @@ jobs:
           chmod 600 /root/.ssh/aur
           ssh-keyscan -H aur.archlinux.org >> /root/.ssh/known_hosts
 
-      - name: 在 AUR 仓库内渲染并发布包信息
+      - name: 推送到 AUR
         shell: bash
         env:
           VERSION: ${{ steps.meta.outputs.version }}
-          TAG: ${{ steps.meta.outputs.tag }}
         run: |
           set -euo pipefail
           export GIT_SSH_COMMAND='ssh -i /root/.ssh/aur -o IdentitiesOnly=yes'
 
+          # 该步骤只做 git 与文件复制，不执行仓库内脚本，私钥只在这一步可用。
           git clone "ssh://aur@aur.archlinux.org/${AUR_PKGBASE}.git" aur
-          bash scripts/ci/arch-package.sh render "${VERSION}" "${TAG}" aur
-
-          chown -R builder:builder aur
-          sudo -u builder bash -c 'cd aur && makepkg --printsrcinfo > .SRCINFO'
-          # 容器内的 git 操作以 root 执行，生成 .SRCINFO 后把属主还给 root，
-          # 否则 git 会以 dubious ownership 拒绝后续 add/commit/push。
-          chown -R root:root aur
+          cp aur-staging/PKGBUILD aur-staging/.SRCINFO \
+             aur-staging/sealantern.desktop aur-staging/sealantern.install aur/
 
           git -C aur add PKGBUILD .SRCINFO sealantern.desktop sealantern.install
           if git -C aur diff --cached --quiet; then
