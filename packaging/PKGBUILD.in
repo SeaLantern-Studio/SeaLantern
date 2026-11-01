@@ -1,0 +1,53 @@
+# Maintainer: SeaLantern Studio
+# 该文件是 AUR 发布与 Release Arch 安装包共用的 PKGBUILD 模板，
+# 由 scripts/ci/arch-package.sh 渲染后使用，请勿直接 makepkg。
+
+pkgname=sealantern
+pkgver=@PKGVER@
+pkgrel=1
+_debarch=amd64
+pkgdesc="A lightweight Minecraft server management tool based on Tauri 2 + Rust + Vue 3"
+arch=('x86_64')
+url="https://github.com/SeaLantern-Studio/SeaLantern"
+license=('GPL-3.0-or-later')
+depends=(
+    'gtk3'
+    'webkit2gtk-4.1'
+    'libayatana-appindicator'
+    'openssl'
+)
+
+# 可选依赖（推荐但不是必须的）
+optdepends=(
+    'ffmpeg: 视频/音频编解码支持'
+    'gst-plugins-base: GStreamer 基础插件'
+    'gst-plugins-good: GStreamer 优质插件'
+    'gst-plugins-bad: GStreamer 额外插件'
+    'gst-plugins-ugly: GStreamer 非自由插件'
+    'noto-fonts: 更好的字体显示'
+    'noto-fonts-cjk: 中日韩字体支持'
+    'noto-fonts-emoji: 表情符号支持'
+)
+
+options=('!strip' '!emptydirs')
+install=sealantern.install
+
+source=(
+    @DEB_SOURCE@
+    'sealantern.desktop'
+)
+sha256sums=(
+    '@DEB_SHA256@'
+    'SKIP'
+)
+
+package() {
+    local deb="${srcdir}/sealantern-${pkgver}-${_debarch}.deb"
+
+    bsdtar --no-same-owner -xf "${deb}" -C "${srcdir}" data.tar.*
+    bsdtar --no-same-owner -xpf "${srcdir}"/data.tar.* -C "${pkgdir}"
+
+    rm -f "${pkgdir}/usr/share/applications/Sea Lantern.desktop"
+    install -Dm644 "${srcdir}/sealantern.desktop" \
+        "${pkgdir}/usr/share/applications/sealantern.desktop"
+}

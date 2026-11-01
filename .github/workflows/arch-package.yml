@@ -1,0 +1,90 @@
+name: "构建 Arch 安装包"
+
+# 复用发布与 Nightly 工作流的 Linux x64 产物，把官方 deb 重新打包为
+# Arch Linux 可直接安装的 pkg.tar.zst，并以构建产物形式交给汇总发布步骤。
+# 配方与 AUR 共用 packaging/PKGBUILD.in，避免两条路径出现差异。
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "要打包的版本号，例如 1.3.1"
+        required: true
+        type: string
+      source_sha:
+        description: "要检出的提交，保证与其它平台产物来自同一棵代码树"
+        required: true
+        type: string
+      artifact_name:
+        description: "包含 Linux x64 发布产物的构建产物名称"
+        required: false
+        default: "release-assets-linux-x64"
+        type: string
+      output_name:
+        description: "上传 Arch 安装包时使用的构建产物名称"
+        required: false
+        default: "arch-package-linux-x64"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-arch-package:
+    name: 构建 pkg.tar.zst
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    container:
+      image: archlinux:latest
+      options: --user root
+
+    steps:
+      - name: 安装打包依赖
+        run: |
+          set -euo pipefail
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Syu --noconfirm base-devel git sudo
+
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha }}
+
+      - name: 下载 Linux x64 产物
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: linux-assets
+
+      - name: 构建 Arch 安装包
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          PACKAGER: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+        run: |
+          set -euo pipefail
+
+          DEB_FILE="$(find linux-assets -maxdepth 2 -type f -name '*.deb' | sort | head -n 1)"
+          if [[ -z "${DEB_FILE}" ]]; then
+            echo "❌ 未找到 Linux x64 deb 产物，无法构建 Arch 安装包"
+            exit 1
+          fi
+          echo "✅ 使用 deb：${DEB_FILE}"
+
+          mkdir -p arch-package
+          chown -R builder:builder "${GITHUB_WORKSPACE}" arch-package
+          sudo -u builder env "PACKAGER=${PACKAGER}" \
+            bash scripts/ci/arch-package.sh build "${VERSION}" "${DEB_FILE}" arch-package
+
+      - name: 上传 Arch 安装包到工作流
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.output_name }}
+          path: arch-package/*.pkg.tar.zst
+          if-no-files-found: error
+          retention-days: 3
