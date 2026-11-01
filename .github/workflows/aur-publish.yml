@@ -58,6 +58,21 @@ jobs:
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: 生成 AUR 包信息（不接触密钥）
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          # 先用 Release tag 检出的配方渲染 PKGBUILD 并生成 .SRCINFO，再去配置 AUR 密钥：
+          # 这样即使 tag 指向的代码不可信，也无法在持有私钥的环境里被执行。
+          bash scripts/ci/arch-package.sh render "${VERSION}" "${TAG}" aur-staging
+          chown -R builder:builder aur-staging
+          sudo -u builder bash -c 'cd aur-staging && makepkg --printsrcinfo > .SRCINFO'
+          ls -l aur-staging
+
       - name: 配置 AUR SSH
         shell: bash
         env:
@@ -69,66 +84,18 @@ jobs:
           chmod 600 /root/.ssh/aur
           ssh-keyscan -H aur.archlinux.org >> /root/.ssh/known_hosts
 
-      - name: 在 AUR 仓库内生成并发布包信息
+      - name: 推送到 AUR
         shell: bash
         env:
           VERSION: ${{ steps.meta.outputs.version }}
-          TAG: ${{ steps.meta.outputs.tag }}
         run: |
           set -euo pipefail
           export GIT_SSH_COMMAND='ssh -i /root/.ssh/aur -o IdentitiesOnly=yes'
 
+          # 该步骤只做 git 与文件复制，不执行仓库内脚本，私钥只在这一步可用。
           git clone "ssh://aur@aur.archlinux.org/${AUR_PKGBASE}.git" aur
-          cp packaging/sealantern.desktop packaging/sealantern.install aur/
-
-          cat > aur/PKGBUILD <<PKG
-          # Maintainer: SeaLantern Studio
-          pkgname=sealantern
-          pkgver=${VERSION}
-          pkgrel=1
-          _debarch=amd64
-          pkgdesc="A lightweight Minecraft server management tool based on Tauri 2 + Rust + Vue 3"
-          arch=('x86_64')
-          url="https://github.com/SeaLantern-Studio/SeaLantern"
-          license=('GPL-3.0-or-later')
-          depends=(
-              'gtk3'
-              'webkit2gtk-4.1'
-              'libayatana-appindicator'
-              'openssl'
-          )
-          optdepends=(
-              'ffmpeg: 视频/音频编解码支持'
-              'gst-plugins-base: GStreamer 基础插件'
-              'gst-plugins-good: GStreamer 优质插件'
-              'gst-plugins-bad: GStreamer 额外插件'
-              'gst-plugins-ugly: GStreamer 非自由插件'
-              'noto-fonts: 更好的字体显示'
-              'noto-fonts-cjk: 中日韩字体支持'
-              'noto-fonts-emoji: 表情符号支持'
-          )
-          options=('!strip' '!emptydirs')
-          install=sealantern.install
-          source=(
-              "\${pkgname}-\${pkgver}-\${_debarch}.deb::https://github.com/SeaLantern-Studio/SeaLantern/releases/download/${TAG}/Sea.Lantern_\${pkgver}_\${_debarch}.deb"
-              'sealantern.desktop'
-          )
-          sha256sums=('SKIP' 'SKIP')
-
-          package() {
-              local deb="\${srcdir}/\${pkgname}-\${pkgver}-\${_debarch}.deb"
-
-              bsdtar --no-same-owner -xf "\${deb}" -C "\${srcdir}" data.tar.*
-              bsdtar --no-same-owner -xpf "\${srcdir}"/data.tar.* -C "\${pkgdir}"
-
-              rm -f "\${pkgdir}/usr/share/applications/Sea Lantern.desktop"
-              install -Dm644 "\${srcdir}/sealantern.desktop" \
-                  "\${pkgdir}/usr/share/applications/sealantern.desktop"
-          }
-          PKG
-
-          chown -R builder:builder aur
-          sudo -u builder bash -c 'cd aur && makepkg --printsrcinfo > .SRCINFO'
+          cp aur-staging/PKGBUILD aur-staging/.SRCINFO \
+             aur-staging/sealantern.desktop aur-staging/sealantern.install aur/
 
           git -C aur add PKGBUILD .SRCINFO sealantern.desktop sealantern.install
           if git -C aur diff --cached --quiet; then
