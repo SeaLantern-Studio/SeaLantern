@@ -25,7 +25,7 @@ use sealantern_contract::legacy_migration::{
 };
 use sealantern_feature::config::instance::{
     DocumentStore, InstanceDocument, LEGACY_SERVERS_FILE_NAME, LegacyConfigError,
-    LegacyServerInstance, has_document, legacy_servers_path, read_legacy_servers,
+    LegacyServerInstance, has_document, legacy_servers_candidates, read_legacy_servers,
     register_extra_dir, trust_and_unignore,
 };
 use sealantern_infra::platform::AppLayout;
@@ -53,15 +53,26 @@ impl CoreLegacyMigrationService {
         }
     }
 
-    /// 旧配置文件路径（主配置目录下）。
-    async fn legacy_path(&self) -> Result<PathBuf, LegacyMigrationError> {
+    /// 解析实际使用的旧配置文件位置。
+    ///
+    /// 优先当前配置目录；1.2.x 在 Windows / macOS 上用的是带空格的
+    /// `Sea Lantern` 目录，升级后旧文件仍留在那里，只看当前目录会永远
+    /// 检测不到。返回 `None` 表示两处都没有旧文件。
+    async fn resolve_legacy_path(&self) -> Result<Option<PathBuf>, LegacyMigrationError> {
         let layout = self.settings.layout().await?;
-        Ok(legacy_servers_path(layout.config_dir()))
+        for candidate in legacy_servers_candidates(layout.config_dir()) {
+            if tokio::fs::try_exists(&candidate).await.unwrap_or(false) {
+                return Ok(Some(candidate));
+            }
+        }
+        Ok(None)
     }
 
     /// 读取旧条目；文件不存在视为「没有旧数据」而不是错误。
     async fn legacy_entries(&self) -> Result<Vec<LegacyServerInstance>, LegacyMigrationError> {
-        let path = self.legacy_path().await?;
+        let Some(path) = self.resolve_legacy_path().await? else {
+            return Ok(Vec::new());
+        };
         match read_legacy_servers(&path).await {
             Ok(entries) => Ok(entries),
             Err(LegacyConfigError::NotFound { .. }) => Ok(Vec::new()),
@@ -272,7 +283,13 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
             .layout()
             .await
             .map_err(LegacyMigrationError::from)?;
-        let legacy_path = legacy_servers_path(layout.config_dir());
+        let Some(legacy_path) = self
+            .resolve_legacy_path()
+            .await
+            .map_err(LegacyMigrationServiceError::from)?
+        else {
+            return Err(LegacyMigrationServiceError::NothingToMigrate);
+        };
         let entries = match read_legacy_servers(&legacy_path).await {
             Ok(entries) => entries,
             Err(LegacyConfigError::NotFound { .. }) => {
@@ -445,6 +462,7 @@ mod tests {
     use std::sync::Arc;
 
     use sealantern_contract::legacy_migration::LegacyMigrationEntryState;
+    use sealantern_feature::config::instance::{LEGACY_APP_DIR_NAME, legacy_servers_path};
     use sealantern_feature::config::settings::SettingsManager;
     use tempfile::TempDir;
 
@@ -453,7 +471,12 @@ mod tests {
 
     /// 构造以临时目录为配置根的迁移服务。
     async fn test_service(root: &Path) -> CoreLegacyMigrationService {
-        let manager = SettingsManager::load(root.join("settings.json"))
+        test_service_in_config_dir(root).await
+    }
+
+    /// 构造以指定配置目录（`settings.json` 所在目录）为根的迁移服务。
+    async fn test_service_in_config_dir(config_dir: &Path) -> CoreLegacyMigrationService {
+        let manager = SettingsManager::load(config_dir.join("settings.json"))
             .await
             .expect("load settings manager");
         let settings = Arc::new(CoreSettingsService::with_manager(manager));
@@ -485,6 +508,34 @@ mod tests {
 
         assert!(!status.available);
         assert!(status.entries.is_empty());
+    }
+
+    #[tokio::test]
+    async fn detects_legacy_file_in_previous_app_directory() {
+        let root = TempDir::new().unwrap();
+        let config_dir = root.path().join("SeaLantern");
+        let previous_dir = root.path().join(LEGACY_APP_DIR_NAME);
+        let server_dir = root.path().join("srv").join("paper");
+        tokio::fs::create_dir_all(&config_dir).await.unwrap();
+        tokio::fs::create_dir_all(&previous_dir).await.unwrap();
+        tokio::fs::create_dir_all(&server_dir).await.unwrap();
+        write_legacy(&previous_dir, &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)))
+            .await;
+        let service = test_service_in_config_dir(&config_dir).await;
+
+        let status = service.status().await.expect("status");
+
+        assert!(status.available, "legacy file in previous app dir must be found");
+        assert_eq!(status.entries.len(), 1);
+
+        let report = service.migrate().await.expect("migrate");
+
+        assert_eq!(report.migrated.len(), 1);
+        assert!(report.legacy_file_archived);
+        assert!(
+            !legacy_servers_path(&previous_dir).exists(),
+            "legacy file in previous app dir should be archived away"
+        );
     }
 
     #[tokio::test]

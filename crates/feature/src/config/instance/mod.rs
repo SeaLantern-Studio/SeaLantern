@@ -18,8 +18,9 @@ pub use document::{
 };
 pub use error::DocumentError;
 pub use legacy::{
-    LEGACY_SERVERS_FILE_NAME, LegacyConfigError, LegacyMappingError, LegacyServerInstance,
-    MappedLegacyServer, has_document, legacy_servers_path, read_legacy_servers,
+    LEGACY_APP_DIR_NAME, LEGACY_SERVERS_FILE_NAME, LegacyConfigError, LegacyMappingError,
+    LegacyServerInstance, MappedLegacyServer, has_document, legacy_servers_candidates,
+    legacy_servers_path, read_legacy_servers,
 };
 pub use trust::{
     ClassifiedInstance, ClassifiedProblem, TrustReport, TrustState, classify, ignore_dir,

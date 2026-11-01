@@ -20,6 +20,12 @@ use super::{CoreSpec, DOCUMENT_FILE_NAME, InstanceDocument, MemorySpec, StartupS
 /// 旧版实例列表文件名（位于主配置目录）。
 pub const LEGACY_SERVERS_FILE_NAME: &str = "sea_lantern_servers.json";
 
+/// 1.2.x 在 Windows / macOS 上使用的应用目录名（带空格）。
+///
+/// 1.3.x 起改为 `SeaLantern`（无空格），升级用户的数据仍留在旧目录里，
+/// 因此检测旧文件时要把同级旧目录一并纳入候选。
+pub const LEGACY_APP_DIR_NAME: &str = "Sea Lantern";
+
 /// 旧文件读取上限：最大 10 MiB（与 `sl.json` 保持一致）。
 const LEGACY_READ_LIMIT: DataLimit = DataLimit::new(10 * 1024 * 1024);
 
@@ -115,6 +121,23 @@ impl std::error::Error for LegacyConfigError {
 /// 旧配置文件在主配置目录下的约定位置。
 pub fn legacy_servers_path(config_dir: &Path) -> PathBuf {
     config_dir.join(LEGACY_SERVERS_FILE_NAME)
+}
+
+/// 旧配置文件的候选位置，按优先级排列。
+///
+/// 首选当前配置目录；其次 1.2.x 在 Windows / macOS 上使用的同级
+/// [`LEGACY_APP_DIR_NAME`] 目录。检测是只读的，多试一个不存在的兄弟目录
+/// 没有副作用；其他平台的目录名未变，候选自然只命中第一个。
+pub fn legacy_servers_candidates(config_dir: &Path) -> Vec<PathBuf> {
+    let primary = legacy_servers_path(config_dir);
+    let mut candidates = vec![primary.clone()];
+    if let Some(parent) = config_dir.parent() {
+        let sibling = legacy_servers_path(&parent.join(LEGACY_APP_DIR_NAME));
+        if sibling != primary {
+            candidates.push(sibling);
+        }
+    }
+    candidates
 }
 
 /// 读取并解析旧配置；文件不存在时返回 [`LegacyConfigError::NotFound`]。
@@ -414,5 +437,27 @@ mod tests {
         entry.path = "  ".to_string();
 
         assert!(matches!(entry.to_document(), Err(LegacyMappingError::MissingDirectory)));
+    }
+
+    #[test]
+    fn candidates_include_previous_app_directory() {
+        let config_dir = Path::new("/home/user/SeaLantern");
+
+        let candidates = legacy_servers_candidates(config_dir);
+
+        assert_eq!(candidates[0], config_dir.join(LEGACY_SERVERS_FILE_NAME));
+        assert_eq!(
+            candidates[1],
+            Path::new("/home/user/Sea Lantern").join(LEGACY_SERVERS_FILE_NAME)
+        );
+    }
+
+    #[test]
+    fn candidates_do_not_repeat_when_already_in_legacy_directory() {
+        let config_dir = Path::new("/home/user/Sea Lantern");
+
+        let candidates = legacy_servers_candidates(config_dir);
+
+        assert_eq!(candidates.len(), 1);
     }
 }
