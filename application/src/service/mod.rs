@@ -15,9 +15,11 @@ mod download;
 mod instance;
 mod java;
 mod log_recorder;
+mod map;
 mod network_settings;
 mod online_tunnel;
 mod player;
+mod player_position;
 mod provisioning;
 mod proxy_monitoring;
 mod server;
@@ -39,8 +41,10 @@ pub use log_recorder::{
     LogEvent, LogRecorder, deregister_capture_sender, forward_to_capture_senders,
     register_capture_sender, subscribe_log_events,
 };
+pub use map::CoreWorldMapService;
 pub use online_tunnel::CoreOnlineTunnelService;
 pub use player::CorePlayerService;
+pub use player_position::CorePlayerPositionService;
 pub use provisioning::CoreProvisioningService;
 pub use proxy_monitoring::ProxyMonitoringService;
 pub use server::CoreServerService;

@@ -26,6 +26,7 @@ import {
   Archive,
   BookOpen,
   Beaker,
+  Map as MapIcon,
   type LucideIcon,
 } from "lucide-vue-next";
 import logoSvg from "@assets/logo.svg";
@@ -67,6 +68,7 @@ const iconMap: Record<string, LucideIcon> = {
   archive: Archive,
   book: BookOpen,
   beaker: Beaker,
+  map: MapIcon,
 };
 
 function getNavIcon(name: string): LucideIcon {
@@ -277,6 +279,16 @@ const navItems = computed<NavItem[]>(() => {
       result.push(item);
     }
   }
+
+  // 世界地图：放在系统组之后，跟服务器相关的入口一起
+  result.push({
+    name: "world-map",
+    path: "/world-map",
+    icon: "map",
+    labelKey: "common.world_map",
+    label: i18n.t("common.world_map"),
+    group: "system",
+  });
 
   // 5. 开发者模式：仅当设置开启时展示测试工具入口
   if (settingsStore.settings.developer_mode) {

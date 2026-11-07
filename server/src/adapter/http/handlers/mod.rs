@@ -6,6 +6,7 @@ pub mod console;
 pub mod cron;
 pub mod download;
 pub mod instance;
+pub mod map;
 pub mod provisioning;
 pub mod server;
 pub mod settings;
@@ -22,6 +23,7 @@ pub use instance::{
     create_instance, delete_instance, get_instance, import_existing_instance, list_instances,
     rename_instance, update_instance_path,
 };
+pub use map::{world_map_image, world_map_info, world_map_players, world_map_regions};
 pub use provisioning::inspect_server;
 pub use server::{
     force_stop_server, restart_server, send_server_command, server_status, start_server,

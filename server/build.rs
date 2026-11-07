@@ -4,8 +4,13 @@
 //! 版本号从 `CARGO_PKG_VERSION` 动态读取，避免与 Cargo.toml 双份维护。
 
 fn main() {
+    // `winres` 通过注册表（reg.exe）定位 rc.exe。在 reg.exe 被策略拦截或无注册表
+    // 访问权的环境里构建会直接 panic，因此留一个显式逃生口：设置
+    // `SEALANTERN_SKIP_WINRES` 可跳过资源嵌入（产物将没有图标与版本信息）。
     #[cfg(target_os = "windows")]
-    embed_windows_resources();
+    if std::env::var_os("SEALANTERN_SKIP_WINRES").is_none() {
+        embed_windows_resources();
+    }
 }
 
 #[cfg(target_os = "windows")]

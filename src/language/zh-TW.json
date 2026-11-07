@@ -129,7 +129,8 @@
     "docker_only_method": "This method is only supported in Docker/browser environment",
     "docker_native_picker_unsupported": "Native file picker is not supported in Docker. Please use file upload instead.",
     "docker_open_file_unsupported": "Opening local files directly from browser is not supported in Docker",
-    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker"
+    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker",
+    "world_map": "世界地圖"
   },
   "sidebar": {
     "groups": {
@@ -1370,5 +1371,27 @@
       "faq": "FAQ",
       "contributor": "Contributors"
     }
+  },
+  "world_map": {
+    "title": "世界地圖",
+    "subtitle": "俯視圖，1 像素 = 1 方塊。拖曳平移，滾輪縮放。",
+    "level": "世界：{{name}}",
+    "instance": "實例",
+    "dimension": "維度",
+    "overworld": "主世界",
+    "nether": "地獄",
+    "end": "終界",
+    "players": "線上 {{count}}",
+    "no_players": "目前沒有玩家在線",
+    "no_regions": "這個世界沒有 region 檔案",
+    "rendering": "渲染中 {{count}}",
+    "zoom_in": "放大",
+    "zoom_out": "縮小",
+    "reset_view": "重設視圖",
+    "locate_player": "定位玩家",
+    "follow_player": "跟隨玩家",
+    "rcon_disabled": "伺服器沒有啟用 RCON。在 server.properties 設定 enable-rcon=true 與 rcon.password，然後重新啟動。",
+    "rcon_unreachable": "連不上 RCON 連接埠，伺服器可能沒有執行。",
+    "rcon_unauthorized": "RCON 密碼不正確，請檢查 server.properties 的 rcon.password。"
   }
 }

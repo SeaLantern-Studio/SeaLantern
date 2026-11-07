@@ -1,6 +1,8 @@
 //! 玩家查询与玩家列表的契约模型。
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+use crate::dimension::Dimension;
 
 /// 按用户名查询到的玩家档案。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -46,4 +48,42 @@ pub struct OpEntryDto {
     pub name: String,
     /// OP 等级。
     pub level: i32,
+}
+
+/// 一名在线玩家的实时位置。
+///
+/// 坐标与游戏内 F3 一致，单位为方块：`x` 东正、`z` 南正、`y` 上正。
+/// 地图是俯视图，只用到 `(x, z)`；`y` 留给悬浮提示。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct PlayerPosition {
+    /// 玩家名。
+    pub name: String,
+    /// X 坐标（东为正）。
+    pub x: f64,
+    /// Y 坐标（上为正）。
+    pub y: f64,
+    /// Z 坐标（南为正）。
+    pub z: f64,
+    /// 水平朝向，单位度。
+    ///
+    /// Minecraft 的约定：0 指向正南（+Z），90 指向正西（-X），
+    /// 与数学上的极角方向相反，前端画箭头时不能直接当弧度用。
+    pub yaw: f32,
+    /// 该玩家所在维度。
+    pub dimension: Dimension,
+}
+
+/// 某个维度下所有在线玩家的位置快照。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct PlayerPositions {
+    /// 目标实例 ID。
+    pub instance_id: String,
+    /// 本次查询的维度。
+    pub dimension: Dimension,
+    /// 快照生成时间（Unix 秒）。
+    pub captured_at_unix_secs: u64,
+    /// 按玩家名升序排列的位置列表。
+    pub players: Vec<PlayerPosition>,
 }

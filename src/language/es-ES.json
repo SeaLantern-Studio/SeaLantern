@@ -129,7 +129,8 @@
     "docker_only_method": "This method is only supported in Docker/browser environment",
     "docker_native_picker_unsupported": "Native file picker is not supported in Docker. Please use file upload instead.",
     "docker_open_file_unsupported": "Opening local files directly from browser is not supported in Docker",
-    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker"
+    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker",
+    "world_map": "Mapa del mundo"
   },
   "sidebar": {
     "groups": {
@@ -1370,5 +1371,27 @@
       "faq": "FAQ",
       "contributor": "Contributors"
     }
+  },
+  "world_map": {
+    "title": "Mapa del mundo",
+    "subtitle": "Vista cenital, 1 píxel = 1 bloque. Arrastra para desplazar, rueda para el zoom.",
+    "level": "Mundo: {{name}}",
+    "instance": "Instancia",
+    "dimension": "Dimensión",
+    "overworld": "Superficie",
+    "nether": "Nether",
+    "end": "End",
+    "players": "{{count}} en línea",
+    "no_players": "No hay jugadores en línea",
+    "no_regions": "Este mundo no tiene archivos de región",
+    "rendering": "Renderizando {{count}}",
+    "zoom_in": "Acercar",
+    "zoom_out": "Alejar",
+    "reset_view": "Restablecer vista",
+    "locate_player": "Localizar jugador",
+    "follow_player": "Seguir jugador",
+    "rcon_disabled": "RCON está desactivado en este servidor. Activa enable-rcon=true y rcon.password en server.properties y reinicia.",
+    "rcon_unreachable": "No se puede alcanzar el puerto RCON; puede que el servidor no esté en ejecución.",
+    "rcon_unauthorized": "La contraseña RCON es incorrecta. Revisa rcon.password en server.properties."
   }
 }

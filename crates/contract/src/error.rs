@@ -523,6 +523,78 @@ impl std::fmt::Display for PlayerListError {
 
 impl std::error::Error for PlayerListError {}
 
+/// 世界地图渲染失败的契约错误类别。
+///
+/// 与其它契约错误一致：不携带主机路径、世界内容等细节，底层失败原因由应用层
+/// 写入受控日志。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WorldMapServiceError {
+    /// 指定的实例不存在。
+    InstanceNotFound,
+    /// 找不到世界目录或 `level-name` 指向的目录。
+    WorldNotFound,
+    /// 指定的 region 文件不存在。
+    RegionNotFound,
+    /// 渲染或写出图片失败。
+    RenderFailed,
+    /// 未分类的内部操作失败。
+    OperationFailed,
+}
+
+impl std::fmt::Display for WorldMapServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InstanceNotFound => "instance not found",
+            Self::WorldNotFound => "world not found",
+            Self::RegionNotFound => "region not found",
+            Self::RenderFailed => "world map render failed",
+            Self::OperationFailed => "world map operation failed",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for WorldMapServiceError {}
+
+/// 玩家实时位置查询失败的契约错误类别。
+///
+/// `RconDisabled` 与 `RconUnreachable` 分开报，是因为处置方式完全不同：
+/// 前者要去 `server.properties` 打开 `enable-rcon` 并重启，后者多半是服务器
+/// 没在运行或者端口被占，开配置没用。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerPositionServiceError {
+    /// 指定的实例不存在。
+    InstanceNotFound,
+    /// 服务器没有启用 RCON（`enable-rcon=false` 或缺少密码）。
+    RconDisabled,
+    /// RCON 端口连不上（服务器未运行或端口不可达）。
+    RconUnreachable,
+    /// RCON 认证失败（密码不对）。
+    RconUnauthorized,
+    /// 命令有返回但解析不出任何玩家位置。
+    MalformedResponse,
+    /// 未分类的内部操作失败。
+    OperationFailed,
+}
+
+impl std::fmt::Display for PlayerPositionServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InstanceNotFound => "instance not found",
+            Self::RconDisabled => "rcon is not enabled for this server",
+            Self::RconUnreachable => "rcon port is unreachable",
+            Self::RconUnauthorized => "rcon authentication failed",
+            Self::MalformedResponse => "rcon response could not be parsed",
+            Self::OperationFailed => "player position operation failed",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for PlayerPositionServiceError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -129,7 +129,8 @@
     "docker_only_method": "This method is only supported in Docker/browser environment",
     "docker_native_picker_unsupported": "Native file picker is not supported in Docker. Please use file upload instead.",
     "docker_open_file_unsupported": "Opening local files directly from browser is not supported in Docker",
-    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker"
+    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker",
+    "world_map": "Bản đồ thế giới"
   },
   "sidebar": {
     "groups": {
@@ -1370,5 +1371,27 @@
       "faq": "FAQ",
       "contributor": "Contributors"
     }
+  },
+  "world_map": {
+    "title": "Bản đồ thế giới",
+    "subtitle": "Góc nhìn từ trên xuống, 1 pixel = 1 khối. Kéo để di chuyển, cuộn để thu phóng.",
+    "level": "Thế giới: {{name}}",
+    "instance": "Máy chủ",
+    "dimension": "Chiều không gian",
+    "overworld": "Thế giới chính",
+    "nether": "Nether",
+    "end": "End",
+    "players": "{{count}} trực tuyến",
+    "no_players": "Không có người chơi trực tuyến",
+    "no_regions": "Thế giới này không có tệp region",
+    "rendering": "Đang kết xuất {{count}}",
+    "zoom_in": "Phóng to",
+    "zoom_out": "Thu nhỏ",
+    "reset_view": "Đặt lại khung nhìn",
+    "locate_player": "Tới người chơi",
+    "follow_player": "Theo dõi người chơi",
+    "rcon_disabled": "RCON chưa được bật trên máy chủ này. Đặt enable-rcon=true và rcon.password trong server.properties rồi khởi động lại.",
+    "rcon_unreachable": "Không kết nối được cổng RCON — máy chủ có thể chưa chạy.",
+    "rcon_unauthorized": "Mật khẩu RCON không đúng. Kiểm tra rcon.password trong server.properties."
   }
 }

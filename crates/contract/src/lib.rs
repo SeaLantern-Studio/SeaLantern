@@ -14,12 +14,16 @@ pub mod catalog;
 pub mod console;
 /// 服务器定时任务相关模型。
 pub mod cron;
+/// 维度（主世界 / 下界 / 末地）模型。
+pub mod dimension;
 /// 下载任务管理相关模型。
 pub mod download;
 /// 接口契约错误类型。
 pub mod error;
 /// Java 检测结果和安装信息模型。
 pub mod java;
+/// 世界地图渲染相关模型。
+pub mod map;
 /// 在线隧道相关模型。
 pub mod online;
 /// 玩家查询相关模型。
@@ -46,6 +50,8 @@ pub use backup::{
 pub use catalog::DownloadLink;
 /// 服务器控制台日志行模型。
 pub use console::ConsoleLogLine;
+/// 维度模型。
+pub use dimension::Dimension;
 /// 备份管理错误枚举。
 pub use error::BackupServiceError;
 /// 服务器控制台日志错误枚举。
@@ -64,6 +70,8 @@ pub use error::OnlineTunnelServiceError;
 pub use error::PlayerListError;
 /// 玩家查询错误枚举。
 pub use error::PlayerLookupError;
+/// 玩家实时位置查询错误。
+pub use error::PlayerPositionServiceError;
 /// 服务端检查与实例供给计划失败类别。
 pub use error::ProvisioningServiceError;
 /// 服务器核心下载目录错误枚举。
@@ -80,15 +88,21 @@ pub use error::SystemServiceError;
 pub use error::UpdateCheckServiceError;
 /// 应用更新安装错误枚举。
 pub use error::UpdateInstallServiceError;
+/// 世界地图渲染错误。
+pub use error::WorldMapServiceError;
 /// Java 检测结果和安装信息模型。
 pub use java::{JavaDetectionReport, JavaDiscoveryError, JavaInfo};
+/// 世界地图渲染模型。
+pub use map::{WorldMapImage, WorldMapInfo, WorldMapRegion, WorldMapRegionList, WorldMapRequest};
 /// 在线隧道模型。
 pub use online::{
     OnlineTunnelConnection, OnlineTunnelEvent, OnlineTunnelHostRequest, OnlineTunnelJoinRequest,
     OnlineTunnelMode, OnlineTunnelStatus,
 };
 /// 玩家查询模型。
-pub use player::{BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerProfile};
+pub use player::{
+    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerPosition, PlayerPositions, PlayerProfile,
+};
 /// 网络代理配置模型。
 pub use proxy::{ProxyConfigError, ProxyMode, ProxySettings};
 /// 设置模型。

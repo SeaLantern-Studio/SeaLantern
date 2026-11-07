@@ -42,6 +42,17 @@ export type {
   SystemInfo,
 } from "@api/system";
 
+export { MAP_DIMENSIONS, mapApi } from "@api/map";
+export type {
+  MapDimension,
+  PlayerPosition,
+  PlayerPositions,
+  WorldMapCoords,
+  WorldMapInfo,
+  WorldMapRegion,
+  WorldMapRegionList,
+} from "@api/map";
+
 export * from "@api/update";
 export * from "@api/plugin";
 export * from "@api/remoteLocales";

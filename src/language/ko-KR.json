@@ -129,7 +129,8 @@
     "docker_only_method": "This method is only supported in Docker/browser environment",
     "docker_native_picker_unsupported": "Native file picker is not supported in Docker. Please use file upload instead.",
     "docker_open_file_unsupported": "Opening local files directly from browser is not supported in Docker",
-    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker"
+    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker",
+    "world_map": "월드 맵"
   },
   "sidebar": {
     "groups": {
@@ -1370,5 +1371,27 @@
       "faq": "FAQ",
       "contributor": "Contributors"
     }
+  },
+  "world_map": {
+    "title": "월드 맵",
+    "subtitle": "탑다운 뷰, 1픽셀 = 1블록. 드래그로 이동, 휠로 확대·축소.",
+    "level": "월드: {{name}}",
+    "instance": "인스턴스",
+    "dimension": "차원",
+    "overworld": "오버월드",
+    "nether": "네더",
+    "end": "엔드",
+    "players": "온라인 {{count}}",
+    "no_players": "온라인 플레이어가 없습니다",
+    "no_regions": "이 월드에는 리전 파일이 없습니다",
+    "rendering": "렌더링 중 {{count}}",
+    "zoom_in": "확대",
+    "zoom_out": "축소",
+    "reset_view": "보기 초기화",
+    "locate_player": "플레이어로 이동",
+    "follow_player": "플레이어 따라가기",
+    "rcon_disabled": "이 서버에서 RCON이 비활성화되어 있습니다. server.properties에서 enable-rcon=true와 rcon.password를 설정한 뒤 재시작하세요.",
+    "rcon_unreachable": "RCON 포트에 연결할 수 없습니다. 서버가 실행 중이 아닐 수 있습니다.",
+    "rcon_unauthorized": "RCON 비밀번호가 올바르지 않습니다. server.properties의 rcon.password를 확인하세요."
   }
 }

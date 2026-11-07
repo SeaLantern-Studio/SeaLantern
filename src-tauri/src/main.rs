@@ -29,6 +29,9 @@ use adapter::tauri::commands::instance::{
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
 use adapter::tauri::commands::logging::share_logs;
+use adapter::tauri::commands::map::{
+    get_map_player_positions, get_world_map_info, list_world_map_regions, render_world_map,
+};
 use adapter::tauri::commands::online_tunnel::{
     OnlineTunnelEventForwarder, online_tunnel_host, online_tunnel_join, online_tunnel_status,
     online_tunnel_stop,
@@ -246,6 +249,11 @@ fn main() {
             catalog_versions,
             //服务器控制台日志契约命令
             get_server_logs,
+            //世界地图渲染契约命令
+            get_map_player_positions,
+            get_world_map_info,
+            list_world_map_regions,
+            render_world_map,
             //系统资源能力（由adapter/tauri/commands接入application）
             get_default_run_path,
             get_server_resource_usage,
@@ -453,6 +461,10 @@ mod tests {
         "update_settings_partial",
         "check_update",
         "lookup_player",
+        "get_map_player_positions",
+        "get_world_map_info",
+        "list_world_map_regions",
+        "render_world_map",
     ];
 
     #[test]
