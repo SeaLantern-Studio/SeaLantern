@@ -1,6 +1,6 @@
 //! RCON 协议实现。
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -21,11 +21,32 @@ const TYPE_RESPONSE: i32 = 0;
 /// （例如 `list` 在人多时），给到 4 MiB 足够且能防住异常长度。
 const MAX_BODY: usize = 4 * 1024 * 1024;
 
+/// 等第一个响应包的上限。
+///
+/// 命令发出去到服务端回第一个包之间，服务器可能正好在保存区块或跑 GC，
+/// 这里的余量给得比较宽。
+const FIRST_PACKET_WINDOW: Duration = Duration::from_secs(3);
+
 /// 等待后续响应包的静默窗口。
 ///
-/// 一次命令的回显可能被拆成多个包，服务端发完就不再发；靠「一段时间内没有
-/// 新包」判定结束。Minecraft 的 RCON 是逐包即时写的，50ms 足够区分。
+/// 一次命令的回显可能被拆成多个包，而 RCON 协议**没有结束标记**：服务端发完
+/// 就不发了，只能靠「一段时间内没有新包」判定结束。Minecraft 的 RCON 是逐包
+/// 即时写的，80ms 足够区分。
+///
+/// 这个近似有两个已知边界，靠 [_`RconClient::command`] 里的逻辑兜住：
+/// - 包还没收完（缓冲里有半截帧）时**不**按窗口结束，继续等；
+/// - 窗口到期后先非阻塞地把已排队的字节收干净，收到就重新计时。
+///
+/// 仍然存在理论窗口：某个包在网络上被拆得比 80ms 还散，且中间没有其他包到达。
+/// 真要根治只能给命令加哨兵（发一条空命令当结束标记），但空命令在 vanilla /
+/// Paper / 各类插件下的回显并不统一，风险大于收益。
 const IDLE_WINDOW: Duration = Duration::from_millis(80);
+
+/// 单条命令从发出到收完的总上限，防止服务端持续慢速滴包把连接吊死。
+const COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// 每次从 socket 读的块大小。
+const READ_CHUNK: usize = 8 * 1024;
 
 /// RCON 操作错误。
 #[derive(Debug)]
@@ -68,6 +89,13 @@ struct Packet {
 pub struct RconClient {
     stream: TcpStream,
     next_id: i32,
+    /// 已从 socket 读出、尚未拆成完整帧的字节。
+    ///
+    /// 必须由连接自己持有，不能放在 `read_packet` 的局部变量里：等待下一个包
+    /// 的超时会取消正在进行的读取，而 `read_exact` 被取消时已经读走的字节会
+    /// 连同局部缓冲一起丢掉，流就停在帧中间，后续命令把剩下的字节当成新包解析。
+    /// `read` 是取消安全的，字节落在 `buf` 里，下一轮接着拆即可。
+    buf: Vec<u8>,
 }
 
 impl RconClient {
@@ -81,7 +109,7 @@ impl RconClient {
             .map_err(RconError::Connect)?;
         let _ = stream.set_nodelay(true);
 
-        let mut client = Self { stream, next_id: 1 };
+        let mut client = Self { stream, next_id: 1, buf: Vec::new() };
 
         // 认证用请求号 1；服务端成功时回同样的号，失败时回 -1
         let auth_id = client.take_id();
@@ -90,10 +118,7 @@ impl RconClient {
         // 有的实现会在认证响应后再补一个空的 RESPONSE_VALUE，多读一轮兜住
         let mut authed = false;
         for _ in 0..2 {
-            let packet = match tokio::time::timeout(timeout, client.read_packet()).await {
-                Ok(result) => result?,
-                Err(_) => return Err(RconError::Timeout),
-            };
+            let packet = client.next_packet(timeout).await?;
             if packet.id == -1 {
                 return Err(RconError::Unauthorized);
             }
@@ -113,49 +138,160 @@ impl RconClient {
     ///
     /// 服务端可能把长回显拆成多个包，这里按静默窗口合并；命令成功但没有
     /// 任何回显时返回空 `Vec`（例如 `execute if` 条件不成立）。
+    ///
+    /// 三条结束条件，优先级从高到低：
+    /// 1. 缓冲里还有收了一半的帧 —— 继续等，绝不按窗口收尾（否则流会停在帧中间）；
+    /// 2. 读写出错或包格式非法 —— 上抛，不把截断的回显当成功；
+    /// 3. 已收到匹配的回显且窗口内再无数据 —— 正常结束。
     pub async fn command(&mut self, command: &str) -> Result<Vec<String>, RconError> {
         let id = self.take_id();
         self.write_packet(id, TYPE_EXEC, command).await?;
 
+        let deadline = Instant::now() + COMMAND_TIMEOUT;
         let mut lines: Vec<String> = Vec::new();
-        let mut got_any = false;
+        let mut matched = false;
+
         loop {
-            let wait = if got_any {
+            // 先把缓冲里已经完整的帧拆完。上一轮可能一次读进来多个包，
+            // 也可能留着上一命令迟到的包。
+            while let Some(packet) = self.take_frame()? {
+                // 认证阶段的残留包、或别的请求号的包，直接丢弃。
+                // 注意 matched 只能在确认请求号匹配之后置位：否则一个无关包
+                // 就会启动静默窗口，真正的回显晚到就变成「空结果」。
+                if packet.id != id {
+                    continue;
+                }
+                matched = true;
+                for line in packet.body.split('\n') {
+                    let line = strip_formatting(line).trim_end().to_string();
+                    if !line.is_empty() {
+                        lines.push(line);
+                    }
+                }
+            }
+
+            let wait = if matched {
                 IDLE_WINDOW
             } else {
-                Duration::from_secs(3)
+                FIRST_PACKET_WINDOW
             };
-            let packet = match tokio::time::timeout(wait, self.read_packet()).await {
-                Ok(Ok(packet)) => packet,
-                // 首包都等不到才算失败；收过包之后的超时就是「发完了」
-                Ok(Err(error)) => {
-                    if got_any {
+            match tokio::time::timeout(wait, self.fill()).await {
+                Ok(Ok(read)) if read > 0 => {}
+                Ok(Ok(_)) => {
+                    // 对端关闭连接。缓冲里还有半截帧说明回显被截断了，必须报错；
+                    // 缓冲干净则说明已经收全（有的实现回完就关连接）。
+                    if !self.buf.is_empty() {
+                        return Err(RconError::Protocol(
+                            "connection closed in the middle of a packet".to_string(),
+                        ));
+                    }
+                    if matched {
                         break;
                     }
-                    return Err(error);
+                    return Err(RconError::Io(std::io::ErrorKind::UnexpectedEof.into()));
                 }
+                // 读写错误一律上抛：断连和格式错误都不能当成「回显收完了」，
+                // 否则调用方会把残缺的玩家列表当成真实快照
+                Ok(Err(error)) => return Err(error),
                 Err(_) => {
-                    if got_any {
+                    // 超时。缓冲里有半截帧说明这个包还没收完，继续等；
+                    // 只是还没到下一个包，就先看看 socket 里有没有已经排队的字节。
+                    if !self.buf.is_empty() || self.drain_ready() {
+                        if Instant::now() >= deadline {
+                            return Err(RconError::Timeout);
+                        }
+                        continue;
+                    }
+                    if matched {
                         break;
                     }
                     return Err(RconError::Timeout);
                 }
-            };
-            got_any = true;
-
-            // 认证阶段的残留包、或别的请求号的包，直接丢弃
-            if packet.id != id {
-                continue;
             }
-            for line in packet.body.split('\n') {
-                let line = strip_formatting(line).trim_end().to_string();
-                if !line.is_empty() {
-                    lines.push(line);
-                }
+
+            if Instant::now() >= deadline {
+                return Err(RconError::Timeout);
             }
         }
 
         Ok(lines)
+    }
+
+    /// 取下一个完整包，超过 `wait` 没有进展就报超时。
+    async fn next_packet(&mut self, wait: Duration) -> Result<Packet, RconError> {
+        loop {
+            if let Some(packet) = self.take_frame()? {
+                return Ok(packet);
+            }
+            match tokio::time::timeout(wait, self.fill()).await {
+                Ok(Ok(read)) if read > 0 => {}
+                Ok(Ok(_)) => {
+                    return Err(RconError::Io(std::io::ErrorKind::UnexpectedEof.into()));
+                }
+                Ok(Err(error)) => return Err(error),
+                Err(_) => return Err(RconError::Timeout),
+            }
+        }
+    }
+
+    /// 从 socket 读一块追加到 `buf`，返回读到的字节数（0 表示对端关闭）。
+    ///
+    /// 用 `read` 而不是 `read_exact`：`read` 是取消安全的，被超时打断时
+    /// 已经读到的字节留在 `buf` 里，不会让流停在帧中间。
+    async fn fill(&mut self) -> Result<usize, RconError> {
+        let mut chunk = [0u8; READ_CHUNK];
+        let read = self.stream.read(&mut chunk).await.map_err(RconError::Io)?;
+        self.buf.extend_from_slice(&chunk[..read]);
+        Ok(read)
+    }
+
+    /// 非阻塞地把 socket 里已经排队的字节收进缓冲，返回是否收到了新数据。
+    fn drain_ready(&mut self) -> bool {
+        let mut chunk = [0u8; READ_CHUNK];
+        let mut got_any = false;
+        loop {
+            match self.stream.try_read(&mut chunk) {
+                Ok(0) => break,
+                Ok(read) => {
+                    self.buf.extend_from_slice(&chunk[..read]);
+                    got_any = true;
+                }
+                // 还有数据没读完就继续，读空了或出错就停
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => break,
+                Err(_) => break,
+            }
+        }
+        got_any
+    }
+
+    /// 从缓冲里拆出下一个完整包；不够一帧时返回 `None`，不消费任何字节。
+    fn take_frame(&mut self) -> Result<Option<Packet>, RconError> {
+        if self.buf.len() < 4 {
+            return Ok(None);
+        }
+        // 长度字段包含紧随其后的 8 字节（请求号 + 类型）
+        let len = i32::from_le_bytes([self.buf[0], self.buf[1], self.buf[2], self.buf[3]]);
+        if !(10..=MAX_BODY as i32).contains(&len) {
+            return Err(RconError::Protocol(format!("bad packet length {len}")));
+        }
+        let total = 4 + len as usize;
+        if self.buf.len() < total {
+            return Ok(None);
+        }
+
+        let id = i32::from_le_bytes([self.buf[4], self.buf[5], self.buf[6], self.buf[7]]);
+        let kind = i32::from_le_bytes([self.buf[8], self.buf[9], self.buf[10], self.buf[11]]);
+        // 服务端只会发这两种：认证结果(2) 与命令回显(0)
+        if kind != TYPE_RESPONSE && kind != TYPE_AUTH_RESPONSE {
+            return Err(RconError::Protocol(format!("unexpected packet type {kind}")));
+        }
+
+        // 负载尾部有两个 0x00，去掉
+        let body = String::from_utf8_lossy(&self.buf[12..total])
+            .trim_end_matches('\0')
+            .to_string();
+        self.buf.drain(..total);
+        Ok(Some(Packet { id, body }))
     }
 
     /// 取下一个请求号，跳过 0 与负数（协议里没有特殊含义，但也没必要用）。
@@ -177,38 +313,6 @@ impl RconClient {
 
         self.stream.write_all(&frame).await.map_err(RconError::Io)?;
         self.stream.flush().await.map_err(RconError::Io)
-    }
-
-    async fn read_packet(&mut self) -> Result<Packet, RconError> {
-        let mut len_buf = [0u8; 4];
-        self.stream
-            .read_exact(&mut len_buf)
-            .await
-            .map_err(RconError::Io)?;
-        let len = i32::from_le_bytes(len_buf);
-        // 长度字段包含自己的 8 字节（请求号 + 类型）
-        if !(10..=MAX_BODY as i32).contains(&len) {
-            return Err(RconError::Protocol(format!("bad packet length {len}")));
-        }
-
-        let mut buf = vec![0u8; len as usize];
-        self.stream
-            .read_exact(&mut buf)
-            .await
-            .map_err(RconError::Io)?;
-
-        let id = i32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
-        let kind = i32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
-        // 服务端只会发这两种：认证结果(2) 与命令回显(0)
-        if kind != TYPE_RESPONSE && kind != TYPE_AUTH_RESPONSE {
-            return Err(RconError::Protocol(format!("unexpected packet type {kind}")));
-        }
-
-        // 负载尾部有两个 0x00，去掉
-        let body = String::from_utf8_lossy(&buf[8..])
-            .trim_end_matches('\0')
-            .to_string();
-        Ok(Packet { id, body })
     }
 
     /// 主动断开。失败无所谓，对端多半已经先关了。
@@ -294,6 +398,15 @@ mod protocol_tests {
 
     /// 按协议写一帧。
     async fn write_frame(stream: &mut TcpStream, id: i32, kind: i32, body: &str) {
+        stream
+            .write_all(&encode_frame(id, kind, body))
+            .await
+            .unwrap();
+        stream.flush().await.unwrap();
+    }
+
+    /// 编码一帧，便于测试里把同一帧拆成两段发。
+    fn encode_frame(id: i32, kind: i32, body: &str) -> Vec<u8> {
         let mut payload = body.as_bytes().to_vec();
         payload.push(0);
         payload.push(0);
@@ -302,8 +415,7 @@ mod protocol_tests {
         frame.extend_from_slice(&id.to_le_bytes());
         frame.extend_from_slice(&kind.to_le_bytes());
         frame.extend_from_slice(&payload);
-        stream.write_all(&frame).await.unwrap();
-        stream.flush().await.unwrap();
+        frame
     }
 
     #[tokio::test]
@@ -393,6 +505,175 @@ mod protocol_tests {
         let lines = client.command("x").await.expect("命令应成功");
         assert_eq!(lines.len(), 2, "两包都要收下");
         assert!(lines[1].starts_with("Alex"));
+
+        server.await.unwrap();
+    }
+
+    /// 回归测试：第二个包被拆成两段、中间间隔远超静默窗口时，不能把半截帧当成收完。
+    ///
+    /// 故障必须落在**第二个**包上：首包窗口是 3 秒，只有收到第一个包之后静默窗口
+    /// 才切到 80ms。旧实现在 80ms 超时时取消 `read_exact`，已读的半截帧随局部
+    /// 缓冲一起丢掉并直接结束，于是只返回第一行，连接还停在第二帧中间。
+    #[tokio::test]
+    async fn packet_arriving_in_two_halves_is_not_truncated() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let (auth_id, _, _) = read_frame(&mut stream).await;
+            write_frame(&mut stream, auth_id, TYPE_AUTH_RESPONSE, "").await;
+
+            let (exec_id, _, _) = read_frame(&mut stream).await;
+            // 第一个包完整发完，客户端进入 80ms 静默窗口状态
+            write_frame(
+                &mut stream,
+                exec_id,
+                TYPE_RESPONSE,
+                "Steve has the following entity data: [1.0d, 2.0d, 3.0d]",
+            )
+            .await;
+
+            // 第二个包拆成两半，中间停 200ms（远大于 80ms）
+            let frame = encode_frame(
+                exec_id,
+                TYPE_RESPONSE,
+                "Alex has the following entity data: [4.0d, 5.0d, 6.0d]",
+            );
+            let split = frame.len() / 2;
+            stream.write_all(&frame[..split]).await.unwrap();
+            stream.flush().await.unwrap();
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            stream.write_all(&frame[split..]).await.unwrap();
+            stream.flush().await.unwrap();
+        });
+
+        let mut client = RconClient::connect(&addr.to_string(), "secret", Duration::from_secs(2))
+            .await
+            .expect("认证应成功");
+        let lines = client.command("x").await.expect("半截帧不该被判成收完");
+
+        assert_eq!(lines.len(), 2, "两个包都要收全，实际 {lines:?}");
+        assert!(lines[1].starts_with("Alex"), "第二个包内容不完整: {lines:?}");
+
+        server.await.unwrap();
+    }
+
+    /// 回归测试：先到的是别的请求号的包时，不能把它当成响应开始。
+    ///
+    /// 旧实现先置 `got_any` 再比对请求号，无关包会启动 80ms 静默窗口，
+    /// 真正的回显晚到就变成空结果。
+    #[tokio::test]
+    async fn stale_packet_does_not_end_the_response() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let (auth_id, _, _) = read_frame(&mut stream).await;
+            write_frame(&mut stream, auth_id, TYPE_AUTH_RESPONSE, "").await;
+
+            let (exec_id, _, _) = read_frame(&mut stream).await;
+            // 上一个命令迟到的包
+            write_frame(&mut stream, exec_id + 7, TYPE_RESPONSE, "leftover").await;
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            write_frame(
+                &mut stream,
+                exec_id,
+                TYPE_RESPONSE,
+                "Steve has the following entity data: [1.0d, 2.0d, 3.0d]",
+            )
+            .await;
+        });
+
+        let mut client = RconClient::connect(&addr.to_string(), "secret", Duration::from_secs(2))
+            .await
+            .expect("认证应成功");
+        let lines = client.command("x").await.expect("命令应成功");
+
+        assert_eq!(lines.len(), 1, "无关包不该吃掉真实回显，实际 {lines:?}");
+        assert!(lines[0].starts_with("Steve"), "实际 {lines:?}");
+
+        server.await.unwrap();
+    }
+
+    /// 回归测试：第二个包没发完就断开，必须报错，不能返回截断的回显。
+    ///
+    /// 故障同样要落在第二个包上：首包读失败本来就会上抛，只有「已经收到过包」
+    /// 之后旧实现才会把断连当成响应正常结束。
+    #[tokio::test]
+    async fn disconnect_in_the_middle_of_a_packet_is_an_error() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let (auth_id, _, _) = read_frame(&mut stream).await;
+            write_frame(&mut stream, auth_id, TYPE_AUTH_RESPONSE, "").await;
+
+            let (exec_id, _, _) = read_frame(&mut stream).await;
+            write_frame(
+                &mut stream,
+                exec_id,
+                TYPE_RESPONSE,
+                "Steve has the following entity data: [1.0d, 2.0d, 3.0d]",
+            )
+            .await;
+
+            let frame = encode_frame(
+                exec_id,
+                TYPE_RESPONSE,
+                "Alex has the following entity data: [4.0d, 5.0d, 6.0d]",
+            );
+            stream.write_all(&frame[..frame.len() / 2]).await.unwrap();
+            stream.flush().await.unwrap();
+            stream.shutdown().await.unwrap();
+        });
+
+        let mut client = RconClient::connect(&addr.to_string(), "secret", Duration::from_secs(2))
+            .await
+            .expect("认证应成功");
+        let result = client.command("x").await;
+
+        assert!(result.is_err(), "半截帧 + 断连必须报错，不能返回截断结果: {result:?}");
+
+        server.await.unwrap();
+    }
+
+    /// 回归测试：收到过正常包之后再遇到格式非法的包，错误要上抛。
+    ///
+    /// 旧实现只判断「有没有收到过包」，格式错误会被当成响应正常结束。
+    #[tokio::test]
+    async fn malformed_packet_after_a_valid_one_is_an_error() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let (auth_id, _, _) = read_frame(&mut stream).await;
+            write_frame(&mut stream, auth_id, TYPE_AUTH_RESPONSE, "").await;
+
+            let (exec_id, _, _) = read_frame(&mut stream).await;
+            write_frame(
+                &mut stream,
+                exec_id,
+                TYPE_RESPONSE,
+                "Steve has the following entity data: [1.0d, 2.0d, 3.0d]",
+            )
+            .await;
+            // 类型 7 不在协议允许的范围内
+            write_frame(&mut stream, exec_id, 7, "garbage").await;
+        });
+
+        let mut client = RconClient::connect(&addr.to_string(), "secret", Duration::from_secs(2))
+            .await
+            .expect("认证应成功");
+        let result = client.command("x").await;
+
+        assert!(
+            matches!(result, Err(RconError::Protocol(_))),
+            "非法包类型要上抛，不能当成回显结束: {result:?}"
+        );
 
         server.await.unwrap();
     }

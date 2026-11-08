@@ -3,9 +3,15 @@
 //! 一条命令就能拿到某个维度全部在线玩家的坐标，不需要按玩家逐个查：
 //!
 //! ```text
-//! execute as @a if dimension minecraft:overworld run data get entity @s Pos
-//! execute as @a if dimension minecraft:overworld run data get entity @s Rotation
+//! execute as @a at @s if dimension minecraft:overworld run data get entity @s Pos
+//! execute as @a at @s if dimension minecraft:overworld run data get entity @s Rotation
 //! ```
+//!
+//! `at @s` 不能省。`as` 只换执行者，执行上下文的位置与维度仍是命令源自己的：
+//! 走 RCON 时命令源是控制台，落在主世界出生点，于是 `if dimension overworld`
+//! 恒为真、`if dimension the_nether` 恒为假 —— 前者会把下界玩家一并返回、
+//! 画到主世界地图上，后者永远返回空。`at` 才会把上下文的位置、朝向与维度
+//! 一起换成目标的。
 //!
 //! 回显形如：
 //!
@@ -19,17 +25,21 @@
 use sealantern_contract::Dimension;
 
 /// 构造「某维度所有玩家坐标」的命令。
+///
+/// `at @s` 必须在 `as` 之后：判断维度用的是执行上下文，而只有 `at` 会替换上下文。
 pub fn build_positions_command(dimension: Dimension) -> String {
     format!(
-        "execute as @a if dimension {} run data get entity @s Pos",
+        "execute as @a at @s if dimension {} run data get entity @s Pos",
         dimension.vanilla_id()
     )
 }
 
 /// 构造「某维度所有玩家朝向」的命令。
+///
+/// 同 [`build_positions_command`]，`at @s` 负责把上下文维度换到玩家身上。
 pub fn build_rotation_command(dimension: Dimension) -> String {
     format!(
-        "execute as @a if dimension {} run data get entity @s Rotation",
+        "execute as @a at @s if dimension {} run data get entity @s Rotation",
         dimension.vanilla_id()
     )
 }
@@ -105,12 +115,30 @@ mod tests {
     fn builds_command_with_dimension_id() {
         assert_eq!(
             build_positions_command(Dimension::Nether),
-            "execute as @a if dimension minecraft:the_nether run data get entity @s Pos"
+            "execute as @a at @s if dimension minecraft:the_nether run data get entity @s Pos"
         );
         assert_eq!(
             build_rotation_command(Dimension::End),
-            "execute as @a if dimension minecraft:the_end run data get entity @s Rotation"
+            "execute as @a at @s if dimension minecraft:the_end run data get entity @s Rotation"
         );
+    }
+
+    /// 回归测试：`at @s` 必须在 `if dimension` 之前，否则维度条件检查的是
+    /// RCON 命令源（主世界出生点）而不是玩家本人。
+    #[test]
+    fn dimension_guard_is_preceded_by_at() {
+        for command in [
+            build_positions_command(Dimension::Overworld),
+            build_rotation_command(Dimension::Overworld),
+        ] {
+            let at = command
+                .find("at @s")
+                .unwrap_or_else(|| panic!("缺少 at @s: {command}"));
+            let guard = command
+                .find("if dimension")
+                .unwrap_or_else(|| panic!("缺少 if dimension: {command}"));
+            assert!(at < guard, "`at @s` 必须出现在维度判断之前: {command}");
+        }
     }
 
     #[test]
