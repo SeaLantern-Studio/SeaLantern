@@ -11,8 +11,8 @@ use serde::Serialize;
 
 use sealantern_contract::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
-    ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
-    UpdateCheckServiceError,
+    PlayerPositionServiceError, ProvisioningServiceError, ServerServiceError, SettingsServiceError,
+    SystemServiceError, UpdateCheckServiceError, WorldMapServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -335,6 +335,77 @@ impl HttpError {
         }
     }
 
+    /// 由世界地图渲染服务契约错误构建 HTTP 错误。
+    pub fn from_map_error(error: WorldMapServiceError) -> Self {
+        match error {
+            WorldMapServiceError::InstanceNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "instance_not_found",
+                message: error.to_string(),
+            },
+            WorldMapServiceError::WorldNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "map_world_not_found",
+                message: error.to_string(),
+            },
+            WorldMapServiceError::RegionNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "map_region_not_found",
+                message: error.to_string(),
+            },
+            WorldMapServiceError::RenderFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "map_render_failed",
+                message: error.to_string(),
+            },
+            WorldMapServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "map_operation_failed",
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// 把玩家实时位置服务的错误映射成 HTTP 错误。
+    ///
+    /// 区分 4xx/5xx 的依据是「谁能修」：没开 RCON 属于服务端配置问题，
+    /// 用 409 让前端能给出「去设置里打开 RCON」的提示；连不上说明服务器
+    /// 没在运行，用 503；密码错误是 401，属于排查方向完全不同的一类。
+    pub fn from_player_position_error(error: PlayerPositionServiceError) -> Self {
+        match error {
+            PlayerPositionServiceError::InstanceNotFound => Self {
+                status: StatusCode::NOT_FOUND,
+                code: "instance_not_found",
+                message: error.to_string(),
+            },
+            PlayerPositionServiceError::RconDisabled => Self {
+                status: StatusCode::CONFLICT,
+                code: "map_rcon_disabled",
+                message: error.to_string(),
+            },
+            PlayerPositionServiceError::RconUnreachable => Self {
+                status: StatusCode::SERVICE_UNAVAILABLE,
+                code: "map_rcon_unreachable",
+                message: error.to_string(),
+            },
+            PlayerPositionServiceError::RconUnauthorized => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "map_rcon_unauthorized",
+                message: error.to_string(),
+            },
+            PlayerPositionServiceError::MalformedResponse => Self {
+                status: StatusCode::BAD_GATEWAY,
+                code: "map_rcon_malformed_response",
+                message: error.to_string(),
+            },
+            PlayerPositionServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "map_player_position_failed",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 构建一个客户端输入错误（400），带具体错误码。
     pub fn bad_request(code: &'static str, message: impl Into<String>) -> Self {
         Self {
@@ -405,6 +476,18 @@ impl From<UpdateCheckServiceError> for HttpError {
 impl From<ProvisioningServiceError> for HttpError {
     fn from(error: ProvisioningServiceError) -> Self {
         Self::from_provisioning_error(error)
+    }
+}
+
+impl From<WorldMapServiceError> for HttpError {
+    fn from(error: WorldMapServiceError) -> Self {
+        Self::from_map_error(error)
+    }
+}
+
+impl From<PlayerPositionServiceError> for HttpError {
+    fn from(error: PlayerPositionServiceError) -> Self {
+        Self::from_player_position_error(error)
     }
 }
 

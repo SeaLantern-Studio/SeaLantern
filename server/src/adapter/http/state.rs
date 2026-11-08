@@ -10,8 +10,8 @@ use std::sync::Arc;
 
 use sealantern_application::service::{
     CoreConsoleService, CoreCronTaskService, CoreDownloadService, CoreInstanceService,
-    CoreProvisioningService, CoreServerService, CoreSettingsService, CoreSystemService,
-    CoreUpdateCheckService,
+    CorePlayerPositionService, CoreProvisioningService, CoreServerService, CoreSettingsService,
+    CoreSystemService, CoreUpdateCheckService, CoreWorldMapService,
 };
 use sealantern_application::services::AppServices;
 
@@ -77,5 +77,15 @@ impl AppState {
     /// 访问服务端检查与供给计划服务（`Arc` 共享句柄，clone 廉价）。
     pub fn provisioning(&self) -> Arc<CoreProvisioningService> {
         self.services.provisioning().clone()
+    }
+
+    /// 访问世界地图渲染服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn world_map(&self) -> Arc<CoreWorldMapService> {
+        self.services.world_map().clone()
+    }
+
+    /// 访问玩家实时位置服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn player_position(&self) -> Arc<CorePlayerPositionService> {
+        self.services.player_position().clone()
     }
 }
