@@ -14,10 +14,11 @@ use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceE
 use crate::port::OnlineTunnelService;
 use crate::service::{
     CoreBackupService, CoreConsoleService, CoreCronTaskService, CoreDownloadService,
-    CoreInstanceService, CoreJavaService, CoreOnlineTunnelService, CorePlayerService,
-    CoreProvisioningService, CoreServerCatalogService, CoreServerConfigService,
+    CoreInstanceService, CoreJavaService, CoreOnlineTunnelService, CorePlayerPositionService,
+    CorePlayerService, CoreProvisioningService, CoreServerCatalogService, CoreServerConfigService,
     CoreServerPluginService, CoreServerService, CoreServerStartupService, CoreSettingsService,
-    CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService, ProxyMonitoringService,
+    CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService, CoreWorldMapService,
+    ProxyMonitoringService,
 };
 
 /// 应用服务聚合句柄；由宿主 composition root 创建并显式传递。
@@ -71,6 +72,10 @@ pub struct AppServicesInner {
     pub update_install: Arc<CoreUpdateInstallService>,
     /// 玩家查询服务。
     pub player: Arc<CorePlayerService>,
+    /// 玩家实时位置服务（RCON）。
+    pub player_position: Arc<CorePlayerPositionService>,
+    /// 世界地图渲染服务（含磁盘缓存）。
+    pub world_map: Arc<CoreWorldMapService>,
     /// 惰性初始化的应用插件服务。
     plugin: tokio::sync::OnceCell<Arc<CorePluginService>>,
 }
@@ -112,7 +117,9 @@ impl AppServices {
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 update: Arc::new(CoreUpdateCheckService::new()),
                 update_install: Arc::new(CoreUpdateInstallService),
-                player: Arc::new(CorePlayerService::new(instance, server)),
+                world_map: Arc::new(CoreWorldMapService::new(instance.clone())),
+                player: Arc::new(CorePlayerService::new(instance.clone(), server)),
+                player_position: Arc::new(CorePlayerPositionService::new(instance)),
                 plugin: tokio::sync::OnceCell::new(),
             }),
         }
@@ -267,6 +274,16 @@ impl AppServices {
     /// 访问玩家查询服务（`Arc` 共享句柄，clone 廉价）。
     pub fn player(&self) -> &Arc<CorePlayerService> {
         &self.inner.player
+    }
+
+    /// 访问世界地图渲染服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn world_map(&self) -> &Arc<CoreWorldMapService> {
+        &self.inner.world_map
+    }
+
+    /// 访问玩家实时位置服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn player_position(&self) -> &Arc<CorePlayerPositionService> {
+        &self.inner.player_position
     }
 
     /// 获取应用插件服务；首次调用才打开策略数据库，避免阻塞常规启动路径。

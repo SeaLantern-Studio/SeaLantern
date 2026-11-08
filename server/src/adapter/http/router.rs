@@ -57,6 +57,11 @@ pub fn build_router(services: AppServices, assets: FrontendAssets<'static>) -> R
             post(handlers::send_server_command),
         )
         .route("/instances/{id}/logs", get(handlers::console_logs))
+        // ── 嵌套子资源（世界地图） ──
+        .route("/instances/{id}/map", get(handlers::world_map_image))
+        .route("/instances/{id}/map/info", get(handlers::world_map_info))
+        .route("/instances/{id}/map/regions", get(handlers::world_map_regions))
+        .route("/instances/{id}/map/players", get(handlers::world_map_players))
         // ── 嵌套子资源（后续扩展） ──
         // 示例：.route("/instances/{id}/logs", get(handlers::instance_logs))
         .route("/instances/{id}/path", put(handlers::update_instance_path))
@@ -182,6 +187,35 @@ mod tests {
             .expect("call update route");
 
         assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn map_routes_report_missing_instance() {
+        let (router, _directory) = test_router().await;
+
+        for uri in [
+            "/api/instances/missing/map",
+            "/api/instances/missing/map/info",
+            "/api/instances/missing/map/regions",
+        ] {
+            let response = router
+                .clone()
+                .oneshot(
+                    Request::get(uri)
+                        .body(Body::empty())
+                        .expect("build request"),
+                )
+                .await
+                .expect("call map route");
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND, "uri {uri}");
+            let body = axum::body::to_bytes(response.into_body(), 16 * 1024)
+                .await
+                .expect("read map response");
+            let value: serde_json::Value =
+                serde_json::from_slice(&body).expect("parse map error response");
+            assert_eq!(value["code"], "instance_not_found", "uri {uri}");
+        }
     }
 
     #[tokio::test]
