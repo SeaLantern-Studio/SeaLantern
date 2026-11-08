@@ -6,6 +6,20 @@
 //! - [`render_region_png`]：把整块 region 画成 512×512 的 PNG。
 //!
 //! 这里不做任何宿主相关处理（不碰缓存、不碰实例目录），保持可单元测试。
+//!
+//! ## 与正在运行的服务器并发
+//!
+//! 只读 `.mca`，不加文件锁。如果服务端此刻正在写同一块 region，读到的数据可能
+//! 半新半旧，极端情况下单个 chunk 根本解不出来。缓解手段有三层：
+//!
+//! - 调用方在渲染前先发 `save-all flush`，并按实例节流（见应用层的
+//!   `flush_world_if_due`），把「脏区块还没落盘」这个最大的窗口关掉；
+//! - 解析失败的 chunk 单独记进 `corrupt_chunks`，不会被说成「格式太旧」；
+//! - 有损坏时打 `warn`，带上坐标和原因，便于事后判断是不是撞上了保存。
+//!
+//! 彻底解决要么给 region 加文件锁（服务端不配合，拿不到锁），要么每次渲染前
+//! 把整个 `.mca` 复制一份再读（几 MB 到上百 MB 的额外 IO，而地图只是个只读
+//! 可视化）。成本与收益不匹配，所以接受这个残余风险并让它可见。
 
 use std::fs::File;
 use std::path::Path;
@@ -74,6 +88,18 @@ pub enum WorldMapError {
 }
 
 /// 只有完全生成的 chunk 才参与统计，与 fastanvil 渲染器的判断保持一致。
+///
+/// `spawn` 也在白名单里，看着违反直觉（它早于 `heightmaps` 与 `full`），但实测
+/// 无害，理由有三条：
+/// - 1.18+ 的阶段顺序是 `features → initialize_light → light → spawn → heightmaps
+///   → full`，方块数据在 `features` 阶段就写完了，到 `spawn` 时地形已经完整；
+/// - 缺 heightmap 不会把高度算成 0：fastanvil 的 `HeightMode::Trust` 在
+///   `motion_blocking` 缺失时会 fall through 到按方块重算（`chunk.rs` 里
+///   `Trust` 分支未命中就继续走 calc 逻辑）；
+/// - fastanvil 自己的 `TopShadeRenderer` 用的就是同一份白名单
+///   （`OK_STATUSES`，见 `fastanvil-0.32.0/src/render.rs`），这里不单方面收紧。
+///
+/// 换句话说：`spawn` 的区块画出来是对的，只是慢一点（要重算高度图）。
 pub(crate) fn is_finished(status: &str) -> bool {
     matches!(
         status,
@@ -154,13 +180,20 @@ pub fn probe_region(path: &Path) -> Result<RegionProbe, WorldMapError> {
 mod tests {
     use super::*;
 
-    /// 需要真实 region 文件时才跑：设置 `SEALANTERN_TEST_REGION` 指向一个 `.mca`。
+    /// 需要真实 region 文件时才跑。
+    ///
+    /// ```text
+    /// SEALANTERN_TEST_REGION=/path/to/r.0.0.mca \
+    ///   cargo test -p sealantern-feature -- --ignored
+    /// ```
+    ///
+    /// 标 `#[ignore]` 而不是「环境变量没设就 return」：后者会让 `cargo test`
+    /// 把没跑过的用例报成通过，被测代码坏掉也看不出来。
     #[test]
+    #[ignore = "需要 SEALANTERN_TEST_REGION 指向一个真实的 .mca 文件"]
     fn probe_real_region_file() {
-        let Ok(path) = std::env::var("SEALANTERN_TEST_REGION") else {
-            eprintln!("跳过：未设置 SEALANTERN_TEST_REGION");
-            return;
-        };
+        let path = std::env::var("SEALANTERN_TEST_REGION")
+            .expect("跑这个测试需要设置 SEALANTERN_TEST_REGION 指向一个真实的 .mca");
 
         let probe = probe_region(Path::new(&path)).expect("探查 region 失败");
         println!("{probe:#?}");

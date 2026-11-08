@@ -420,13 +420,20 @@ pub fn render_region_png(
 mod tests {
     use super::*;
 
-    /// 需要真实 region 目录时才跑：设置 `SEALANTERN_TEST_REGION_DIR`。
+    /// 需要真实 region 目录时才跑。
+    ///
+    /// ```text
+    /// SEALANTERN_TEST_REGION_DIR=/path/to/world/region \
+    ///   cargo test -p sealantern-feature -- --ignored
+    /// ```
+    ///
+    /// 标 `#[ignore]` 而不是「环境变量没设就 return」，理由同 `probe_real_region_file`：
+    /// 静默 return 会把没执行的用例报成通过。
     #[test]
+    #[ignore = "需要 SEALANTERN_TEST_REGION_DIR 指向真实的 region 目录"]
     fn render_real_region_to_png() {
-        let Ok(dir) = std::env::var("SEALANTERN_TEST_REGION_DIR") else {
-            eprintln!("跳过：未设置 SEALANTERN_TEST_REGION_DIR");
-            return;
-        };
+        let dir = std::env::var("SEALANTERN_TEST_REGION_DIR")
+            .expect("跑这个测试需要设置 SEALANTERN_TEST_REGION_DIR 指向真实的 region 目录");
 
         let out = std::env::temp_dir().join("sealantern_world_map_test.png");
         let info = render_region_png(Path::new(&dir), 0, 0, &out).expect("渲染 region 失败");
