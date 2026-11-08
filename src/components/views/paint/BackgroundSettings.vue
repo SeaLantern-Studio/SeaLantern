@@ -25,7 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const bgPreviewLoaded = ref(false);
-const bgPreviewLoading = ref(false);
+const bgPreviewFailed = ref(false);
 
 const backgroundSizeOptions = computed(() => [
   { label: i18n.t("settings.background_size_options.cover"), value: "cover" },
@@ -50,22 +50,10 @@ function isAnimatedImage(path: string): boolean {
 }
 
 watch(
-  () => props.expanded,
-  (expanded) => {
-    if (expanded && props.backgroundImage) {
-      bgPreviewLoaded.value = false;
-      bgPreviewLoading.value = true;
-    }
-  },
-);
-
-watch(
   () => props.backgroundImage,
-  (backgroundImage, previousBackgroundImage) => {
-    if (props.expanded && backgroundImage && backgroundImage !== previousBackgroundImage) {
-      bgPreviewLoaded.value = false;
-      bgPreviewLoading.value = true;
-    }
+  () => {
+    bgPreviewLoaded.value = false;
+    bgPreviewFailed.value = false;
   },
 );
 
@@ -95,7 +83,12 @@ function handleBackgroundSizeChange(value: string) {
 
 function handleImageLoad() {
   bgPreviewLoaded.value = true;
-  bgPreviewLoading.value = false;
+  bgPreviewFailed.value = false;
+}
+
+function handleImageError() {
+  bgPreviewLoaded.value = false;
+  bgPreviewFailed.value = true;
 }
 </script>
 
@@ -115,18 +108,15 @@ function handleImageLoad() {
         <div class="setting-row full-width">
           <div class="bg-image-picker">
             <div v-if="backgroundImage" class="bg-preview">
-              <div v-if="bgPreviewLoading && !bgPreviewLoaded" class="bg-preview-loading">
+              <div v-if="!bgPreviewLoaded && !bgPreviewFailed" class="bg-preview-loading">
                 <cmz-spinner size="sm" />
                 <span>{{ i18n.t("settings.loading_preview") }}</span>
               </div>
               <img
-                v-show="bgPreviewLoaded || !bgPreviewLoading"
                 :src="backgroundPreviewUrl"
                 alt="Background preview"
                 @load="handleImageLoad"
-                @loadstart="bgPreviewLoading = true"
-                @error="bgPreviewLoading = false"
-                loading="lazy"
+                @error="handleImageError"
               />
               <div v-if="isAnimatedImage(backgroundImage)" class="bg-animated-badge">
                 {{ i18n.t("settings.animated_image") }}
@@ -437,6 +427,7 @@ function handleImageLoad() {
   background: var(--sl-border);
   outline: none;
   -webkit-appearance: none;
+  appearance: none;
 }
 
 .sl-slider::-webkit-slider-thumb {

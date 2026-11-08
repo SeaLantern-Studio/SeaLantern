@@ -16,6 +16,8 @@ pub struct UpdateInfo {
     pub latest_version: String,
     pub current_version: String,
     pub download_url: Option<String>,
+    /// 同一发布在镜像源上的下载地址，主地址不可用时回退使用。
+    pub mirror_url: Option<String>,
     pub release_notes: Option<String>,
     pub published_at: Option<String>,
     pub source: Option<String>,
@@ -45,6 +47,9 @@ pub struct ReleaseResponse {
 pub struct ReleaseAsset {
     pub name: String,
     pub browser_download_url: String,
+    /// 发布平台计算的摘要，形如 `sha256:<hex>`；平台未提供时为空。
+    #[serde(default)]
+    pub digest: Option<String>,
 }
 
 /// 仓库配置结构体

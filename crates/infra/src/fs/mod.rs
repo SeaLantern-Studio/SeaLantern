@@ -22,7 +22,8 @@ pub use cleanup::{clear_directory, remove_if_exists};
 pub use dir::{ensure_dir, ensure_parent};
 pub use error::FsError;
 pub use hash::{
-    find_sha256_in_line, is_sha256_hex, parse_sha256_from_checksum_content, sha256_file, sha256_hex,
+    digest_to_hex, find_sha256_in_line, is_sha256_hex, parse_sha256_from_checksum_content,
+    sha256_file, sha256_hex,
 };
 pub use lock::FileLock;
 pub use metadata::{FileMetadata, describe, file_size};

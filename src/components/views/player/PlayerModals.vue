@@ -26,15 +26,15 @@ const emit = defineEmits<{
       <cmz-input
         :label="i18n.t('players.player_name')"
         :placeholder="i18n.t('players.player_id')"
-        :modelValue="playerName"
-        @update:modelValue="emit('update:playerName', $event)"
+        :model-value="playerName"
+        @update:model-value="emit('update:playerName', $event)"
       />
       <cmz-input
         v-if="showBanReason"
         :label="i18n.t('players.ban_reason')"
         :placeholder="i18n.t('players.ban_reason_placeholder')"
-        :modelValue="banReason"
-        @update:modelValue="emit('update:banReason', $event)"
+        :model-value="banReason"
+        @update:model-value="emit('update:banReason', $event)"
       />
       <p v-if="!serverRunning" class="text-error" style="font-size: 0.8125rem">
         <AlertTriangle

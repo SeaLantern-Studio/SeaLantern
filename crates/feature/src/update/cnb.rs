@@ -3,10 +3,19 @@
 //! 从 CNB.cool 平台获取 SeaLantern 的版本发布信息。
 //! CNB OpenAPI 的匿名 release 查询需要登录，因此从公开 release 页面提取
 //! 稳定详情链接，再解析详情页中的 Next.js 结构化数据。
+//!
+//! # 当前定位
+//!
+//! 主检查路径已改为 GitHub Releases API，本模块只在 GitHub 请求失败时兜底；
+//! 下载镜像由 `mirror_download_url` 直接拼装，不经过页面解析。
+//!
+//! TODO(update-cleanup): 页面解析依赖 CNB 的 Next.js 内部结构，上游改版会静默
+//! 失败。待 `update_check_cnb_fallback` 事件连续两个版本为 0 后，删除本模块的
+//! 抓取与解析逻辑，仅保留 `mirror_download_url`。
 
 use std::collections::HashSet;
 
-use super::constants::{CNB_BASE_URL, CNB_RELEASES_URL};
+use super::constants::{CNB_BASE_URL, CNB_OWNER, CNB_RELEASES_URL, CNB_REPO};
 use super::types::UpdateInfo;
 use super::version::{compare_versions, normalize_release_tag_version};
 use crate::observability;
@@ -116,6 +125,28 @@ fn to_absolute_download_url(path: &str) -> String {
     format!("{}{}", CNB_BASE_URL, path)
 }
 
+/// 构造 CNB 镜像上指定发布资源的下载地址。
+///
+/// `tag` 必须是发布时的原始标签（例如 `v1.3.1`），CNB 的下载路由不接受去掉
+/// `v` 前缀的版本号；`file_name` 需与发布资产名保持一致。任一参数为空时返回
+/// `None`，交由调用方放弃镜像来源。
+///
+/// 标签在 GitHub 地址里是经过百分号编码的单一路径段，解析时已还原为原始文本，
+/// 这里必须重新编码：否则含 `/` 的标签会被当成路径分隔符，镜像地址指向错误的
+/// 发布版本。
+pub(crate) fn mirror_download_url(tag: &str, file_name: &str) -> Option<String> {
+    let tag = tag.trim();
+    let file_name = file_name.trim();
+    if tag.is_empty() || file_name.is_empty() {
+        return None;
+    }
+
+    let encoded_tag = urlencoding::encode(tag);
+    Some(format!(
+        "{CNB_BASE_URL}/{CNB_OWNER}/{CNB_REPO}/-/releases/download/{encoded_tag}/{file_name}"
+    ))
+}
+
 fn asset_sha256(asset: &CnbAsset) -> Option<String> {
     let algo = asset.hash_algo.as_deref()?;
     let hash = asset.hash_value.as_deref()?.trim();
@@ -208,12 +239,6 @@ async fn fetch_release_detail(client: &reqwest::Client, path: &str) -> Result<Cn
     })
 }
 
-fn normalized_version_from_link(link: &str) -> Option<String> {
-    let encoded_tag = link.rsplit('/').next()?;
-    let tag = urlencoding::decode(encoded_tag).ok()?;
-    Some(normalize_release_tag_version(&tag))
-}
-
 pub async fn fetch_release(
     client: &reqwest::Client,
     current_version: &str,
@@ -240,6 +265,8 @@ pub async fn fetch_release(
         latest_version,
         current_version: current_version.to_string(),
         download_url,
+        // 该来源本身就是镜像，无需再提供镜像地址。
+        mirror_url: None,
         release_notes: latest_release
             .body
             .clone()
@@ -251,29 +278,6 @@ pub async fn fetch_release(
         source: Some("cnb".to_string()),
         sha256: selected_asset.and_then(asset_sha256),
     })
-}
-
-pub async fn resolve_download_candidate_by_version(
-    client: &reqwest::Client,
-    version: &str,
-) -> Result<Option<(String, Option<String>)>, String> {
-    let release_links = fetch_release_links(client).await?;
-    let target_version = normalize_release_tag_version(version);
-
-    let release_link = release_links
-        .iter()
-        .find(|link| normalized_version_from_link(link).as_deref() == Some(&target_version));
-
-    let Some(release_link) = release_link else {
-        return Ok(None);
-    };
-    let release = fetch_release_detail(client, release_link).await?;
-
-    let Some(asset) = find_suitable_asset(&release.assets) else {
-        return Ok(None);
-    };
-
-    Ok(Some((to_absolute_download_url(&asset.path), asset_sha256(asset))))
 }
 
 #[cfg(test)]
@@ -335,5 +339,62 @@ mod tests {
                 .expect("select x86_64 asset");
 
         assert_eq!(selected.name, "SeaLantern_2.0.0_amd64.AppImage");
+    }
+
+    #[test]
+    fn mirror_url_keeps_version_tag_prefix() {
+        // CNB 的下载路由要求标签带 `v` 前缀，去掉会返回 404。
+        let url = mirror_download_url("v1.3.1", "Sea.Lantern_1.3.1_x64_zh-CN.msi")
+            .expect("build mirror url");
+
+        assert_eq!(
+            url,
+            "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases/download/v1.3.1/Sea.Lantern_1.3.1_x64_zh-CN.msi"
+        );
+        assert!(url.contains("/download/v1.3.1/"));
+    }
+
+    #[test]
+    fn mirror_url_trims_surrounding_whitespace() {
+        let url = mirror_download_url("  v1.3.1 ", " Sea.Lantern_1.3.1_x64_zh-CN.msi\t")
+            .expect("build mirror url");
+
+        assert!(url.ends_with("/v1.3.1/Sea.Lantern_1.3.1_x64_zh-CN.msi"), "{url}");
+    }
+
+    #[test]
+    fn mirror_url_rejects_empty_parts() {
+        // 任一参数为空时放弃镜像来源，交由调用方退化为单源下载。
+        assert!(mirror_download_url("", "file.msi").is_none());
+        assert!(mirror_download_url("v1.3.1", "").is_none());
+        assert!(mirror_download_url("   ", "file.msi").is_none());
+        assert!(mirror_download_url("v1.3.1", "  ").is_none());
+    }
+
+    #[test]
+    fn mirror_url_reencodes_tag_path_segments() {
+        // 标签是单一路径段，含 `/` 时必须重新编码，否则会被当成路径分隔符。
+        let url = mirror_download_url("release/1.0.0", "app.msi").expect("build mirror url");
+
+        assert!(
+            url.contains("/download/release%2F1.0.0/app.msi"),
+            "slash in tag must stay encoded: {url}"
+        );
+        assert!(!url.contains("/download/release/1.0.0/"));
+    }
+
+    #[test]
+    fn mirror_url_encodes_tag_whitespace() {
+        let url = mirror_download_url("v1.0.0 rc1", "app.msi").expect("build mirror url");
+
+        assert!(url.contains("/download/v1.0.0%20rc1/app.msi"), "{url}");
+    }
+
+    #[test]
+    fn mirror_url_keeps_plain_tag_unchanged() {
+        // 普通标签编码后应保持不变，避免引入无谓的差异。
+        let url = mirror_download_url("v1.3.1", "app.msi").expect("build mirror url");
+
+        assert!(url.contains("/download/v1.3.1/app.msi"), "{url}");
     }
 }

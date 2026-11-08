@@ -18,6 +18,11 @@ pub enum CronTaskError {
     ExecutionFailed { source: FeatureCronTaskError },
     /// 上游新增且尚未显式分类的错误。
     Unexpected { source: FeatureCronTaskError },
+    /// 实例文档（`sl.json`）读写或其他内部操作失败。
+    OperationFailed {
+        /// 底层来源错误。
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
     /// 该能力尚未实现。
     Unsupported,
 }
@@ -36,6 +41,9 @@ impl fmt::Display for CronTaskError {
             Self::Unexpected { source } => {
                 write!(formatter, "cron task operation failed: {source}")
             }
+            Self::OperationFailed { source } => {
+                write!(formatter, "cron task operation failed: {source}")
+            }
             Self::Unsupported => write!(formatter, "operation not supported"),
         }
     }
@@ -49,6 +57,7 @@ impl std::error::Error for CronTaskError {
             | Self::StorageFailed { source }
             | Self::ExecutionFailed { source }
             | Self::Unexpected { source } => Some(source),
+            Self::OperationFailed { source } => Some(source.as_ref()),
             Self::Unsupported => None,
         }
     }
@@ -78,7 +87,9 @@ impl From<CronTaskError> for CronTaskServiceError {
             CronTaskError::InvalidInput { .. } => Self::InvalidInput,
             CronTaskError::StorageFailed { .. } => Self::StorageFailed,
             CronTaskError::ExecutionFailed { .. } => Self::ExecutionFailed,
-            CronTaskError::Unexpected { .. } => Self::OperationFailed,
+            CronTaskError::Unexpected { .. } | CronTaskError::OperationFailed { .. } => {
+                Self::OperationFailed
+            }
             CronTaskError::Unsupported => Self::Unsupported,
         }
     }

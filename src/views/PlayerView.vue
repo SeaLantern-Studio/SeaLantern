@@ -294,10 +294,10 @@ async function handleKick(name: string) {
       <div class="player-content-layout">
         <PlayerTabs
           v-model="activeTab"
-          :onlineCount="onlinePlayers.length"
-          :whitelistCount="whitelist.length"
-          :bannedCount="bannedPlayers.length"
-          :opsCount="ops.length"
+          :online-count="onlinePlayers.length"
+          :whitelist-count="whitelist.length"
+          :banned-count="bannedPlayers.length"
+          :ops-count="ops.length"
         />
 
         <div class="player-main">
@@ -313,11 +313,11 @@ async function handleKick(name: string) {
             :loading="loading"
             :tab="activeTab"
             :server-id="selectedServerId"
-            :onlinePlayers="onlinePlayers"
+            :online-players="onlinePlayers"
             :whitelist="whitelist"
-            :bannedPlayers="bannedPlayers"
+            :banned-players="bannedPlayers"
             :ops="ops"
-            :serverRunning="isRunning"
+            :server-running="isRunning"
             @kick="handleKick"
             @removeWhitelist="handleRemoveWhitelist"
             @unban="handleUnban"
@@ -329,11 +329,11 @@ async function handleKick(name: string) {
       <PlayerModals
         v-model:visible="showAddModal"
         :title="getAddLabel()"
-        :showBanReason="activeTab === 'banned'"
+        :show-ban-reason="activeTab === 'banned'"
         :loading="addLoading"
-        :serverRunning="isRunning"
-        v-model:playerName="addPlayerName"
-        v-model:banReason="addBanReason"
+        :server-running="isRunning"
+        v-model:player-name="addPlayerName"
+        v-model:ban-reason="addBanReason"
         @confirm="handleAdd"
       />
     </template>

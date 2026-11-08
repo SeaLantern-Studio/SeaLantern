@@ -1,16 +1,14 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use super::{
+    CoreCapabilityDispatcher, DefaultMarketGateway, PluginPolicyError, PluginPolicyStore,
+    PluginReadHost,
+};
 use async_trait::async_trait;
 use sealantern_core::app_plugin::{CapabilityDispatchError, CapabilityInvocation};
 use sealantern_feature::app_plugin::{
     AsyncPluginManager, PluginInfo, PluginLoader, PluginManagerConfig,
-};
-use sealantern_infra::platform::get_app_data_dir;
-
-use super::{
-    CoreCapabilityDispatcher, DefaultMarketGateway, PluginPolicyError, PluginPolicyStore,
-    PluginReadHost,
 };
 
 /// 应用插件生命周期的宿主入口。
@@ -79,12 +77,6 @@ pub struct CorePluginService {
 }
 
 impl CorePluginService {
-    /// 使用应用数据目录中的插件目录、私有数据和策略数据库构造服务。
-    pub async fn open_default() -> Result<Self, PluginServiceError> {
-        let root = get_app_data_dir().join("plugins");
-        Self::open(&root, root.join("data"), root.join("plugin-state.sqlite")).await
-    }
-
     /// 使用明确的目录构造服务，适用于宿主配置和测试注入。
     pub async fn open(
         plugins_dir: impl Into<PathBuf>,

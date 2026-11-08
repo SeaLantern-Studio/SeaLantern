@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-moon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 月亮：悬停时轻轻摇晃 */
+    .si-moon .moon-g { transform-box: fill-box; transform-origin: 50% 50%; }
+    .si-moon .moon-g { animation: sl-moon-sway 1.2s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-moon-sway { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+    .si-moon:hover { --sl-anim-play: running; }
+  </style>
+  <g class="moon-g">
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+  </g>
+</svg>

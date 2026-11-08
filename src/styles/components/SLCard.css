@@ -1,0 +1,107 @@
+/* SLCard 统一卡片样式 */
+
+/* 设置卡片公共样式 */
+.sl-settings-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 输入框宽度预设 */
+.sl-input-sm {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.sl-input-md {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.sl-input-lg {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+/* 滑块控制样式 */
+.sl-slider-control {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-md);
+  min-width: 200px;
+}
+
+.sl-slider {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--sl-radius-full);
+  background: var(--sl-border);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* 注意：::-webkit-* 与 ::-moz-* 不能写在同一个选择器列表里，
+ * 未识别 -moz 伪元素会让整条规则被 WebKit/Blink 丢弃，滑块手柄就不见了。 */
+.sl-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--sl-primary);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
+}
+
+.sl-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--sl-primary);
+  cursor: pointer;
+  transition:
+    color var(--sl-transition-fast),
+    background-color var(--sl-transition-fast),
+    border-color var(--sl-transition-fast),
+    box-shadow var(--sl-transition-fast),
+    transform var(--sl-transition-fast),
+    opacity var(--sl-transition-fast);
+}
+
+.sl-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px var(--sl-primary-bg);
+}
+
+.sl-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px var(--sl-primary-bg);
+}
+
+.sl-slider-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sl-text-primary);
+  min-width: 50px;
+  text-align: right;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .sl-input-sm,
+  .sl-input-md,
+  .sl-input-lg {
+    width: 100%;
+  }
+
+  .sl-slider-control {
+    width: 100%;
+  }
+}

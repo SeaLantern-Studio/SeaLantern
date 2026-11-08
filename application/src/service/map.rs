@@ -558,6 +558,16 @@ mod tests {
     use super::*;
     use std::fs;
 
+    /// 临时目录里装配一个可用的实例服务（设置先于实例）。
+    async fn test_instance(dir: &Path) -> CoreInstanceService {
+        let manager = sealantern_feature::config::SettingsManager::load(dir.join("settings.json"))
+            .await
+            .expect("设置管理器");
+        CoreInstanceService::with_settings(crate::service::CoreSettingsService::with_manager(
+            manager,
+        ))
+    }
+
     #[test]
     fn level_name_falls_back_to_world() {
         let dir = tempfile::tempdir().expect("临时目录");
@@ -692,9 +702,7 @@ mod tests {
     #[tokio::test]
     async fn gate_is_shared_per_region_and_level() {
         let dir = tempfile::tempdir().expect("临时目录");
-        let instance = CoreInstanceService::with_path(dir.path().join("instances.json"))
-            .await
-            .expect("实例服务");
+        let instance = test_instance(dir.path()).await;
         let service =
             CoreWorldMapService::with_cache_root(Arc::new(instance), dir.path().join("cache"));
 
@@ -711,9 +719,7 @@ mod tests {
     #[tokio::test]
     async fn flush_is_throttled_per_instance() {
         let dir = tempfile::tempdir().expect("临时目录");
-        let instance = CoreInstanceService::with_path(dir.path().join("instances.json"))
-            .await
-            .expect("实例服务");
+        let instance = test_instance(dir.path()).await;
         let service =
             CoreWorldMapService::with_cache_root(Arc::new(instance), dir.path().join("cache"));
 

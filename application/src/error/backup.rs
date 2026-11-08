@@ -110,6 +110,7 @@ impl From<sealantern_contract::ServerServiceError> for BackupError {
             sealantern_contract::ServerServiceError::InstanceNotFound => Self::NotFound,
             sealantern_contract::ServerServiceError::InvalidInput => Self::InvalidInput,
             sealantern_contract::ServerServiceError::InvalidState
+            | sealantern_contract::ServerServiceError::NotRunning
             | sealantern_contract::ServerServiceError::OperationFailed => {
                 Self::OperationFailed { source: Box::new(source) }
             }

@@ -85,6 +85,7 @@ async function handleUpdateClick() {
       updateStore.updateInfo.download_url,
       updateStore.updateInfo.sha256,
       updateStore.updateInfo.latest_version,
+      updateStore.updateInfo.mirror_url,
     );
     updateStore.setDownloaded(filePath);
   } catch (error) {
@@ -277,7 +278,7 @@ function closeInstallRiskConfirm() {
         </cmz-button>
         <cmz-button
           variant="solid"
-          color="#ef4444"
+          color="var(--sl-error)"
           size="md"
           :disabled="isInstallLaunching"
           @click="handleForceAutoUpdate"

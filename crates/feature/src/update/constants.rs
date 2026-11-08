@@ -1,6 +1,8 @@
 //! 更新相关的常量定义。
 
 pub const CNB_BASE_URL: &str = "https://cnb.cool";
+pub const CNB_OWNER: &str = "SeaLantern-studio";
+pub const CNB_REPO: &str = "SeaLantern";
 pub const CNB_RELEASES_URL: &str = "https://cnb.cool/SeaLantern-studio/SeaLantern/-/releases";
 
 pub const UPDATE_GITHUB_OWNER: &str = "SeaLantern-Studio";

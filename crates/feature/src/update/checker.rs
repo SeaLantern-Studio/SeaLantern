@@ -1,5 +1,7 @@
 //! 多来源应用更新检查编排。
 
+use std::time::Duration;
+
 use async_trait::async_trait;
 use sealantern_infra::net::{ClientProvider, NetClient};
 
@@ -45,58 +47,81 @@ impl ReleaseUpdateChecker {
 #[async_trait]
 impl UpdateChecker for ReleaseUpdateChecker {
     async fn check(&self, current_version: &str) -> Result<UpdateInfo, UpdateCheckError> {
-        #[cfg(debug_assertions)]
-        {
-            let _ = &self.client_provider;
+        if debug_checks_disabled() {
             crate::observability::update_check_started("disabled", current_version);
             crate::observability::update_check_completed("disabled", false, Some(current_version));
             return Ok(no_update(current_version));
         }
 
-        #[cfg(not(debug_assertions))]
         let client = (self.client_provider)()
             .map_err(|source| UpdateCheckError::ClientInitialization { source })?;
+        let client = client.get_reqwest_client();
 
-        #[cfg(all(not(debug_assertions), target_os = "linux"))]
+        // Arch Linux 走 AUR 独占流程，不再查询发布页。
+        #[cfg(target_os = "linux")]
         {
-            let client = client.get_reqwest_client();
             if super::is_arch_linux() {
                 return super::arch::check_aur_update_with_client(client, current_version)
                     .await
                     .map_err(|message| UpdateCheckError::ProviderFailed {
                         provider: "arch-aur",
                         message,
-                    });
+                    })
+                    .map(with_mirror_url);
             }
-
-            let github_config = super::get_github_config();
-            let (cnb, github) = tokio::join!(
-                super::fetch_cnb_release(client, current_version),
-                super::fetch_github_release(client, &github_config, current_version)
-            );
-            return select_linux_result(cnb, github);
         }
 
-        #[cfg(all(not(debug_assertions), not(target_os = "linux")))]
+        // GitHub 单独设上限：串行兜底意味着 GitHub 耗时直接压缩 CNB 的窗口，
+        // 若它一直挂到外层 30 秒总超时，CNB 根本没有机会执行。
+        let github = match tokio::time::timeout(
+            GITHUB_CHECK_TIMEOUT,
+            super::fetch_github_release(client, &super::get_github_config(), current_version),
+        )
+        .await
         {
-            super::fetch_github_release(
-                client.get_reqwest_client(),
-                &super::get_github_config(),
-                current_version,
-            )
-            .await
-            .map_err(|message| UpdateCheckError::ProviderFailed { provider: "github", message })
+            Ok(result) => result,
+            Err(_) => {
+                Err(format!("GitHub check timed out after {}s", GITHUB_CHECK_TIMEOUT.as_secs()))
+            }
+        };
+
+        match github {
+            Ok(info) => Ok(with_mirror_url(info)),
+            Err(github) => {
+                // GitHub 不可达时才付出解析镜像页的代价，成功则直接采用其结果。
+                match super::fetch_cnb_release(client, current_version).await {
+                    Ok(info) => {
+                        crate::observability::update_check_cnb_fallback_triggered(&github);
+                        Ok(with_mirror_url(info))
+                    }
+                    Err(cnb) => Err(UpdateCheckError::ProvidersFailed { cnb, github }),
+                }
+            }
         }
     }
 }
 
-#[cfg(debug_assertions)]
+/// GitHub 检查的单独上限。
+///
+/// 外层总超时为 30 秒，这里取一半，保证 GitHub 挂起时 CNB 仍有足够的窗口
+/// 完成页面解析并返回结果，而不是让用户直接看到超时。
+const GITHUB_CHECK_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// 非发布构建默认跳过远程检查，避免开发期反复请求发布源。
+///
+/// 设置环境变量 `SEALANTERN_UPDATE_CHECK` 可在开发构建中强制走真实检查流程，
+/// 用于验证多来源选择、下载源切换等依赖真实网络的逻辑。
+fn debug_checks_disabled() -> bool {
+    cfg!(debug_assertions) && std::env::var_os("SEALANTERN_UPDATE_CHECK").is_none()
+}
+
 fn no_update(current_version: &str) -> UpdateInfo {
     UpdateInfo {
         has_update: false,
         latest_version: current_version.to_owned(),
         current_version: current_version.to_owned(),
         download_url: None,
+        mirror_url: None,
         release_notes: None,
         published_at: None,
         source: None,
@@ -104,74 +129,182 @@ fn no_update(current_version: &str) -> UpdateInfo {
     }
 }
 
-#[cfg(any(test, all(not(debug_assertions), target_os = "linux")))]
-fn select_linux_result(
-    cnb: Result<UpdateInfo, String>,
-    github: Result<UpdateInfo, String>,
-) -> Result<UpdateInfo, UpdateCheckError> {
-    match (cnb, github) {
-        (_, Ok(github_info)) if github_info.has_update => Ok(github_info),
-        (Ok(cnb_info), _) => Ok(cnb_info),
-        (Err(_), Ok(github_info)) => Ok(github_info),
-        (Err(cnb), Err(github)) => Err(UpdateCheckError::ProvidersFailed { cnb, github }),
+/// 为 GitHub 来源的检查结果补齐镜像下载地址。
+///
+/// 仅当结果来自 GitHub、存在下载地址且能从该地址还原出发布标签与文件名时才补齐；
+/// 其余情况保持 `None`，下载流程退化为单源。
+fn with_mirror_url(mut info: UpdateInfo) -> UpdateInfo {
+    if info.source.as_deref() == Some("github")
+        && let Some(download_url) = info.download_url.as_deref()
+        && let Some((tag, file_name)) = parse_github_download_parts(download_url)
+    {
+        info.mirror_url = super::cnb::mirror_download_url(&tag, &file_name);
     }
+
+    info
+}
+
+/// 从 GitHub 发布资源地址还原发布标签与文件名。
+///
+/// 地址形如 `https://github.com/{owner}/{repo}/releases/download/{tag}/{file}`。
+fn parse_github_download_parts(url: &str) -> Option<(String, String)> {
+    let (_, remainder) = url.split_once("/releases/download/")?;
+    let (tag, file_name) = remainder.split_once('/')?;
+
+    let tag = tag.trim();
+    let file_name = file_name
+        .split(['?', '#'])
+        .next()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())?;
+    if tag.is_empty() {
+        return None;
+    }
+
+    let tag = urlencoding::decode(tag).ok()?.into_owned();
+    Some((tag, file_name.to_owned()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn update(source: &str, has_update: bool) -> UpdateInfo {
-        UpdateInfo {
-            has_update,
-            latest_version: if has_update { "2.0.0" } else { "1.0.0" }.to_owned(),
-            current_version: "1.0.0".to_owned(),
-            download_url: has_update.then(|| "https://example.com/update".to_owned()),
-            release_notes: None,
-            published_at: None,
-            source: Some(source.to_owned()),
-            sha256: None,
-        }
-    }
-
-    #[test]
-    fn linux_selection_prefers_available_github_release() {
-        let selected = select_linux_result(Ok(update("cnb", true)), Ok(update("github", true)))
-            .expect("select update");
-
-        assert_eq!(selected.source.as_deref(), Some("github"));
-    }
-
-    #[test]
-    fn linux_selection_falls_back_to_cnb() {
-        let selected = select_linux_result(Ok(update("cnb", true)), Err("offline".to_owned()))
-            .expect("select update");
-
-        assert_eq!(selected.source.as_deref(), Some("cnb"));
-    }
-
-    #[test]
-    fn linux_selection_preserves_both_failures() {
-        let error =
-            select_linux_result(Err("cnb failed".to_owned()), Err("github failed".to_owned()))
-                .expect_err("both providers should fail");
-
-        assert!(matches!(
-            error,
-            UpdateCheckError::ProvidersFailed { ref cnb, ref github }
-                if cnb == "cnb failed" && github == "github failed"
-        ));
-    }
-
     #[cfg(debug_assertions)]
     #[tokio::test]
     async fn debug_checker_skips_remote_requests() {
-        let checker = ReleaseUpdateChecker::new().expect("create update checker");
+        if std::env::var_os("SEALANTERN_UPDATE_CHECK").is_some() {
+            // 开发构建强制启用真实检查时，本用例的前提不成立。
+            return;
+        }
+
+        // 用计数 provider 断言「没有获取客户端」：只看返回字段无法区分
+        // 「跳过检查」与「发起了请求但恰好也没发现更新」。
+        let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counter = std::sync::Arc::clone(&calls);
+        let checker = ReleaseUpdateChecker::with_provider(Box::new(move || {
+            counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Err(sealantern_infra::net::NetError::Config(
+                "provider must not be called".to_string(),
+            ))
+        }));
+
         let info = checker.check("1.2.3").await.expect("check update");
 
+        assert_eq!(
+            calls.load(std::sync::atomic::Ordering::SeqCst),
+            0,
+            "disabled checks must not acquire an HTTP client"
+        );
         assert!(!info.has_update);
         assert_eq!(info.current_version, "1.2.3");
         assert_eq!(info.latest_version, "1.2.3");
         assert!(info.source.is_none());
+    }
+
+    #[test]
+    fn download_parts_split_standard_url() {
+        let parts = parse_github_download_parts(
+            "https://github.com/SeaLantern-Studio/SeaLantern/releases/download/v1.3.1/Sea.Lantern_1.3.1_x64_zh-CN.msi",
+        )
+        .expect("parse download parts");
+
+        assert_eq!(parts.0, "v1.3.1");
+        assert_eq!(parts.1, "Sea.Lantern_1.3.1_x64_zh-CN.msi");
+    }
+
+    #[test]
+    fn download_parts_keep_version_tag_prefix() {
+        // 从 GitHub 地址还原出的标签必须保留 `v` 前缀，CNB 路由依赖它。
+        let (tag, _) =
+            parse_github_download_parts("https://github.com/o/r/releases/download/v2.0.0/app.zip")
+                .expect("parse download parts");
+
+        assert_eq!(tag, "v2.0.0");
+    }
+
+    #[test]
+    fn download_parts_strip_query_and_fragment() {
+        let (_, file) = parse_github_download_parts(
+            "https://github.com/o/r/releases/download/v1.0.0/app.zip?download=1",
+        )
+        .expect("parse download parts");
+        assert_eq!(file, "app.zip");
+
+        let (_, file) = parse_github_download_parts(
+            "https://github.com/o/r/releases/download/v1.0.0/app.zip#section",
+        )
+        .expect("parse download parts");
+        assert_eq!(file, "app.zip");
+    }
+
+    #[test]
+    fn download_parts_decode_encoded_tag() {
+        // 标签里出现空格等字符时会被编码，还原后应得到原始文本。
+        let (tag, _) = parse_github_download_parts(
+            "https://github.com/o/r/releases/download/v1.0.0%20rc1/app.zip",
+        )
+        .expect("parse download parts");
+
+        assert_eq!(tag, "v1.0.0 rc1");
+    }
+
+    #[test]
+    fn download_parts_reject_unrelated_urls() {
+        // 非 releases/download 结构的地址不应产出镜像来源。
+        let cases = [
+            "https://github.com/o/r/releases/tag/v1.0.0",
+            "https://github.com/o/r/archive/refs/tags/v1.0.0.zip",
+            "https://example.com/app.zip",
+            "not a url",
+        ];
+        for url in cases {
+            assert!(parse_github_download_parts(url).is_none(), "{url} should be rejected");
+        }
+    }
+
+    #[test]
+    fn download_parts_reject_empty_tag_or_file() {
+        // 空标签、空文件名、以及只有查询串没有文件名的情况。
+        let cases = [
+            "https://github.com/o/r/releases/download//app.zip",
+            "https://github.com/o/r/releases/download/v1.0.0/",
+            "https://github.com/o/r/releases/download/v1.0.0/?x=1",
+            "https://github.com/o/r/releases/download/v1.0.0",
+        ];
+        for url in cases {
+            assert!(parse_github_download_parts(url).is_none(), "{url} should be rejected");
+        }
+    }
+
+    #[test]
+    fn mirror_url_only_filled_for_github_results() {
+        // 只有 source 为 github 且地址可还原时才补镜像，其它来源原样返回。
+        let base = UpdateInfo {
+            has_update: true,
+            latest_version: "2.0.0".to_string(),
+            current_version: "1.0.0".to_string(),
+            download_url: Some(
+                "https://github.com/o/r/releases/download/v2.0.0/app.zip".to_string(),
+            ),
+            mirror_url: None,
+            release_notes: None,
+            published_at: None,
+            source: Some("github".to_string()),
+            sha256: None,
+        };
+
+        assert!(with_mirror_url(base.clone()).mirror_url.is_some());
+
+        let non_github = UpdateInfo {
+            source: Some("aur".to_string()),
+            ..base.clone()
+        };
+        assert!(with_mirror_url(non_github).mirror_url.is_none());
+
+        let no_source = UpdateInfo { source: None, ..base.clone() };
+        assert!(with_mirror_url(no_source).mirror_url.is_none());
+
+        let no_download = UpdateInfo { download_url: None, ..base };
+        assert!(with_mirror_url(no_download).mirror_url.is_none());
     }
 }

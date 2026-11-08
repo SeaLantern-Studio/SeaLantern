@@ -85,6 +85,15 @@ impl Daemon {
             command.process_group(0);
         }
 
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+
+            // GUI 宿主没有控制台，控制台子进程会新开终端窗口。
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
+
         command.spawn().map(|child| Self { child })
     }
 

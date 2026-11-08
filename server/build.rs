@@ -4,6 +4,11 @@
 //! 版本号从 `CARGO_PKG_VERSION` 动态读取，避免与 Cargo.toml 双份维护。
 
 fn main() {
+    // dist 哨兵契约：axctl build 在 vite build 后写 ../dist/.axctl-sentinel，
+    // 声明监控它使 cargo 感知前端变化 → 重编主 crate → frontend! 重读 dist。
+    println!("cargo:rerun-if-changed=../dist/.axctl-sentinel");
+    println!("cargo:rerun-if-changed=../dist");
+
     // `winres` 通过注册表（reg.exe）定位 rc.exe。在 reg.exe 被策略拦截或无注册表
     // 访问权的环境里构建会直接 panic，因此留一个显式逃生口：设置
     // `SEALANTERN_SKIP_WINRES` 可跳过资源嵌入（产物将没有图标与版本信息）。

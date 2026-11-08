@@ -3,7 +3,9 @@
 use sealantern_application::port::BackupService;
 use sealantern_application::services::AppServices;
 use sealantern_contract::BackupServiceError;
-use sealantern_contract::backup::{BackupItem, BackupSettings, CreateBackupRequest};
+use sealantern_contract::backup::{
+    BackupDirectory, BackupItem, BackupSettings, CreateBackupRequest,
+};
 use tauri::State;
 
 /// 获取备份列表
@@ -13,6 +15,15 @@ pub async fn get_backup_list(
     server_id: String,
 ) -> Result<Vec<BackupItem>, BackupServiceError> {
     services.backup().list(&server_id).await
+}
+
+/// 获取备份存储目录
+#[tauri::command]
+pub async fn get_backup_dir(
+    services: State<'_, AppServices>,
+    server_id: Option<String>,
+) -> Result<BackupDirectory, BackupServiceError> {
+    services.backup().directory(server_id.as_deref()).await
 }
 
 /// 创建备份

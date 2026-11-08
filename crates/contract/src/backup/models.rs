@@ -90,6 +90,17 @@ pub struct BackupItem {
     pub contents: Vec<BackupContentType>,
 }
 
+/// 备份存储目录信息
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupDirectory {
+    /// 备份根目录绝对路径（各服务器备份的父目录）
+    pub root_dir: String,
+    /// 指定服务器的备份子目录绝对路径；未指定服务器时为 `None`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server_dir: Option<String>,
+}
+
 /// 创建备份请求
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -11,3 +11,8 @@ export function isWindowsPlatform(): boolean {
 export function supportsNativeWindowMaterial(): boolean {
   return isMacOSPlatform() || isWindowsPlatform();
 }
+
+export function isLinuxPlatform(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent);
+}

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use sealantern_contract::SystemServiceError;
-use sealantern_contract::system::{ServerResourceUsage, SystemSnapshot};
+use sealantern_contract::system::{Ipv6TestResult, ServerResourceUsage, SystemSnapshot};
 
 /// 系统资源信息宿主能力端口。
 ///
@@ -20,6 +20,11 @@ pub trait SystemService: Send + Sync {
     /// 路径优先级：标准数据目录 → 文档目录 → 当前工作目录。
     async fn default_run_path(&self) -> Result<String, SystemServiceError>;
 
+    /// 获取临时下载目录（主资源目录下的 `temp/`）。
+    ///
+    /// 供前端把「下载/暂存」文件放到独立目录，避免与 `instances/` 容器混淆。
+    async fn temp_download_dir(&self) -> Result<String, SystemServiceError>;
+
     /// 按实例标识采集服务器资源占用。
     ///
     /// 未运行或进程不存在时返回 `pid = None` 的空资源结果。
@@ -27,4 +32,10 @@ pub trait SystemService: Send + Sync {
         &self,
         instance_id: &str,
     ) -> Result<ServerResourceUsage, SystemServiceError>;
+
+    /// 测试本机是否具备 IPv6 连通性。
+    ///
+    /// 向若干公网 IPv6 字面地址发起短超时 TCP 连接，任一成功即视为支持；
+    /// 全部失败时返回各目标的失败明细，便于用户排查。
+    async fn test_ipv6_connectivity(&self) -> Result<Ipv6TestResult, SystemServiceError>;
 }

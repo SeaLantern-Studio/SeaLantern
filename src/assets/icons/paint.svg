@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-paint" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 滚筒刷：悬停时上滚筒蘸漆轻摆，下手柄上下刷动 */
+    .si-paint .roller-top { transform-box: fill-box; transform-origin: 50% 50%; }
+    .si-paint .roller-grip { transform-box: fill-box; }
+    .si-paint .roller-top { animation: sl-paint-dip .8s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-paint .roller-grip { animation: sl-paint-stroke .4s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-paint-dip    { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-7deg); } }
+    @keyframes sl-paint-stroke { 0%,100% { transform: translateY(0); } 50% { transform: translateY(1.6px); } }
+    .si-paint:hover { --sl-anim-play: running; }
+  </style>
+  <g class="roller-top">
+    <rect x="2" y="2" width="16" height="6" rx="2"/>
+  </g>
+  <path d="M10 16v-2a2 2 0 0 1 2-2h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+  <rect class="roller-grip" x="8" y="16" width="4" height="6" rx="1"/>
+</svg>

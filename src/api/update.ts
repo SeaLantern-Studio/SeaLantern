@@ -7,6 +7,7 @@ export interface UpdateInfo {
   latest_version: string;
   current_version: string;
   download_url?: string;
+  mirror_url?: string;
   sha256?: string;
   release_notes?: string;
   published_at?: string;
@@ -32,14 +33,22 @@ export async function checkUpdate(): Promise<UpdateInfo | null> {
   }
 }
 
+/**
+ * 下载更新包并返回本地文件路径。
+ *
+ * `mirrorUrl` 放在参数末尾而非第二位，避免已有调用方按
+ * `(url, expectedHash, version)` 传参时参数整体错位。
+ */
 export async function downloadUpdate(
   url: string,
   expectedHash?: string,
   version?: string,
+  mirrorUrl?: string,
 ): Promise<string> {
   // 后端参数名是 snake_case，version 非可选需给默认值
   return invoke<string>("update_download", {
     url,
+    mirror_url: mirrorUrl,
     expected_hash: expectedHash,
     version: version ?? "",
   });

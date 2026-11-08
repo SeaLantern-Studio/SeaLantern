@@ -10,6 +10,7 @@ pub mod models;
 pub mod observability;
 pub mod rcon;
 pub mod server;
+pub mod server_plugin;
 pub mod update;
 pub mod world_map;
 

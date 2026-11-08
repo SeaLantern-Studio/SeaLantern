@@ -87,16 +87,14 @@ const handleItemClick = (item: MenuItem) => {
   --sl-glass-border: rgba(255, 255, 255, 0.08);
 }
 
+/* 高级材质下换浮层近实底(--sl-acrylic-bg-strong),跟随主题变量自动明暗,
+   替代原来硬编码的 rgba(255,255,255,0.65) / rgba(15,17,23,0.65) */
 [data-acrylic="on"] .sl-menu-base,
 [data-acrylic]:not([data-acrylic="off"]) .sl-menu-base {
-  --sl-glass-bg: rgba(255, 255, 255, 0.65);
+  background: var(--sl-acrylic-bg-strong);
+  border-color: var(--sl-acrylic-border);
   backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
   -webkit-backdrop-filter: blur(var(--sl-blur-xl, 32px)) saturate(var(--sl-saturate-normal, 180%));
-}
-
-[data-theme="dark"][data-acrylic="on"] .sl-menu-base,
-[data-theme="dark"][data-acrylic]:not([data-acrylic="off"]) .sl-menu-base {
-  --sl-glass-bg: rgba(15, 17, 23, 0.65);
 }
 
 [data-acrylic="off"] .sl-menu-base {

@@ -20,7 +20,7 @@ async function discoverMarkdownFiles(directory) {
       return entry.isFile() && entry.name.endsWith(".md") ? [entryPath] : [];
     }),
   );
-  return nestedFiles.flat().sort();
+  return nestedFiles.flat().toSorted();
 }
 
 function relativePath(filePath) {

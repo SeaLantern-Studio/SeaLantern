@@ -24,7 +24,6 @@ import {
 import { usePluginStore } from "@stores/pluginStore";
 import { useToast } from "cmzya-modern-ui";
 import { useLoading } from "@composables/useAsync";
-import { supportsNativeWindowMaterial } from "@utils/platform";
 import {
   dispatchSettingsUpdate,
   SETTINGS_UPDATE_EVENT,
@@ -33,7 +32,6 @@ import {
 
 const toast = useToast();
 const { loading, start: startLoading, stop: stopLoading } = useLoading();
-const nativeMaterialSupported = supportsNativeWindowMaterial();
 
 const settings = ref<AppSettings | null>(null);
 
@@ -433,11 +431,11 @@ async function handleImport(json: string) {
       <div class="settings-main">
         <section data-settings-section="general" class="settings-section">
           <GeneralSettingsCard
-            v-model:closeServersOnExit="settings.close_servers_on_exit"
-            v-model:closeServersOnUpdate="settings.close_servers_on_update"
-            v-model:autoAcceptEula="settings.auto_accept_eula"
-            v-model:autoLightweightMinutes="settings.auto_lightweight_minutes"
-            v-model:closeAction="closeActionModel"
+            v-model:close-servers-on-exit="settings.close_servers_on_exit"
+            v-model:close-servers-on-update="settings.close_servers_on_update"
+            v-model:auto-accept-eula="settings.auto_accept_eula"
+            v-model:auto-lightweight-minutes="settings.auto_lightweight_minutes"
+            v-model:close-action="closeActionModel"
             @change="markChanged"
           />
         </section>
@@ -451,7 +449,6 @@ async function handleImport(json: string) {
             :font-family-options="fontFamilyOptions"
             :fonts-loading="fontsLoading"
             :acrylic-enabled="settings.acrylic_enabled"
-            :native-material-supported="nativeMaterialSupported"
             :is-theme-proxied="isThemeProxied"
             :theme-proxy-plugin-name="themeProxyPluginName"
             :background-image="settings.background_image"
@@ -486,24 +483,24 @@ async function handleImport(json: string) {
 
         <section data-settings-section="console" class="settings-section">
           <ConsoleSettingsCard
-            v-model:consoleFontSize="consoleFontSize"
-            v-model:consoleFontFamily="consoleFontFamily"
-            v-model:consoleLetterSpacing="consoleLetterSpacing"
-            v-model:maxLogLines="maxLogLines"
-            :fontFamilyOptions="fontFamilyOptions"
-            :fontsLoading="fontsLoading"
+            v-model:console-font-size="consoleFontSize"
+            v-model:console-font-family="consoleFontFamily"
+            v-model:console-letter-spacing="consoleLetterSpacing"
+            v-model:max-log-lines="maxLogLines"
+            :font-family-options="fontFamilyOptions"
+            :fonts-loading="fontsLoading"
             @change="markChanged"
           />
         </section>
 
         <section data-settings-section="server" class="settings-section">
           <ServerDefaultsCard
-            v-model:maxMemory="maxMem"
-            v-model:minMemory="minMem"
+            v-model:max-memory="maxMem"
+            v-model:min-memory="minMem"
             v-model:port="port"
-            v-model:defaultJavaPath="settings.default_java_path"
-            v-model:defaultJvmArgs="settings.default_jvm_args"
-            v-model:defaultRunPath="defaultRunPath"
+            v-model:default-java-path="settings.default_java_path"
+            v-model:default-jvm-args="settings.default_jvm_args"
+            v-model:default-run-path="defaultRunPath"
             @change="markChanged"
             @javaInstalled="handleJavaInstalled"
             @browseJavaPath="handleBrowseJavaPath"
@@ -517,7 +514,7 @@ async function handleImport(json: string) {
 
         <section data-settings-section="developer" class="settings-section">
           <DeveloperModeCard
-            v-model:developerMode="settings.developer_mode"
+            v-model:developer-mode="settings.developer_mode"
             @change="markChanged"
           />
         </section>

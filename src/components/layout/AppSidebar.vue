@@ -6,29 +6,8 @@ import { usePluginStore } from "@stores/pluginStore";
 import { useSettingsStore } from "@stores/settingsStore";
 import { i18n } from "@language";
 import { useElasticLogo } from "@composables/useElasticLogo";
-import {
-  Home,
-  Plus,
-  Terminal,
-  Settings,
-  Users,
-  Sliders,
-  PaintRoller,
-  Info,
-  Server,
-  Blocks,
-  Store,
-  LayoutDashboard,
-  BarChart2,
-  Sparkles,
-  Link2,
-  DownloadIcon,
-  Archive,
-  BookOpen,
-  Beaker,
-  Map as MapIcon,
-  type LucideIcon,
-} from "lucide-vue-next";
+import { Server } from "lucide-vue-next";
+import AnimatedIcon from "@components/common/AnimatedIcon.vue";
 import logoSvg from "@assets/logo.svg";
 import { isMacOSPlatform } from "@utils/platform";
 
@@ -48,32 +27,7 @@ import { isMacOSPlatform } from "@utils/platform";
  * 4. 确认插件功能完整可用后，移除本 TODO:在实现插件功能后恢复插件相关导航 注释
  */
 
-const iconMap: Record<string, LucideIcon> = {
-  home: Home,
-  plus: Plus,
-  terminal: Terminal,
-  settings: Settings,
-  users: Users,
-  sliders: Sliders,
-  paint: PaintRoller,
-  info: Info,
-  server: Server,
-  blocks: Blocks,
-  store: Store,
-  "layout-dashboard": LayoutDashboard,
-  chart: BarChart2,
-  sparkles: Sparkles,
-  link2: Link2,
-  download: DownloadIcon,
-  archive: Archive,
-  book: BookOpen,
-  beaker: Beaker,
-  map: MapIcon,
-};
-
-function getNavIcon(name: string): LucideIcon {
-  return iconMap[name] ?? Info;
-}
+// 图标名直接对应 assets/icons/<name>.svg，由 AnimatedIcon 内联渲染并自带 hover 动画
 
 const router = useRouter();
 const route = useRoute();
@@ -113,6 +67,14 @@ const staticNavItems: NavItem[] = [
     icon: "plus",
     labelKey: "common.create_server",
     label: i18n.t("common.create_server"),
+    group: "main",
+  },
+  {
+    name: "resource-market",
+    path: "/resource-market",
+    icon: "store",
+    labelKey: "common.resource_market",
+    label: i18n.t("common.resource_market"),
     group: "main",
   },
   {
@@ -307,6 +269,85 @@ const navItems = computed<NavItem[]>(() => {
 
 function navigateTo(path: string) {
   router.push(path);
+}
+
+// hover 侧栏导航项时预加载目标路由组件：提前触发 import() 让模块进入浏览器缓存，
+// 点击时组件已就绪，页面切换更跟手。120ms 延迟避免鼠标快速划过时无意义加载。
+const prefetchTimers = new Map<string, number>();
+
+function schedulePrefetch(path: string): void {
+  const timer = window.setTimeout(() => {
+    prefetchTimers.delete(path);
+    prefetchRoute(path);
+  }, 120);
+  prefetchTimers.set(path, timer);
+}
+
+function cancelPrefetch(path: string): void {
+  const timer = prefetchTimers.get(path);
+  if (timer !== undefined) {
+    window.clearTimeout(timer);
+    prefetchTimers.delete(path);
+  }
+}
+
+// 导航图标动画只在悬停时播放；移出后跑完当前一轮再停，避免定格在中间帧。
+const NAV_SETTLE_CLASS = "nav-anim-settling";
+const navSettleStops = new WeakMap<HTMLElement, (() => void)[]>();
+
+function navIconAnimationTargets(item: HTMLElement): HTMLElement[] {
+  return Array.from(item.querySelectorAll<HTMLElement>(".nav-icon svg *"));
+}
+
+function settleNavIcons(item: HTMLElement): void {
+  const animated = navIconAnimationTargets(item).filter(
+    (element) => getComputedStyle(element).animationName !== "none",
+  );
+  if (animated.length === 0) return;
+
+  item.classList.add(NAV_SETTLE_CLASS);
+  let pending = animated.length;
+  const stops: (() => void)[] = [];
+
+  for (const element of animated) {
+    const stop = () => {
+      element.removeEventListener("animationiteration", stop);
+      element.style.animationName = "none";
+      if (--pending === 0) item.classList.remove(NAV_SETTLE_CLASS);
+    };
+    stops.push(() => element.removeEventListener("animationiteration", stop));
+    element.addEventListener("animationiteration", stop);
+  }
+
+  navSettleStops.set(item, stops);
+}
+
+function resumeNavIcons(item: HTMLElement): void {
+  navSettleStops.get(item)?.forEach((cancel) => cancel());
+  navSettleStops.delete(item);
+  item.classList.remove(NAV_SETTLE_CLASS);
+  for (const element of navIconAnimationTargets(item)) {
+    element.style.animationName = "";
+  }
+}
+
+function onSidebarPointerOver(event: MouseEvent): void {
+  const item = (event.target as HTMLElement | null)?.closest<HTMLElement>(".nav-item");
+  if (item && !item.contains(event.relatedTarget as Node | null)) resumeNavIcons(item);
+}
+
+function onSidebarPointerOut(event: MouseEvent): void {
+  const item = (event.target as HTMLElement | null)?.closest<HTMLElement>(".nav-item");
+  if (item && !item.contains(event.relatedTarget as Node | null)) settleNavIcons(item);
+}
+
+function prefetchRoute(path: string): void {
+  const matched = router.resolve(path).matched[0];
+  const component = matched?.components?.default;
+  if (typeof component !== "function") return;
+  // 懒加载路由组件是 () => Promise，调用它触发 import()
+  const loader = component as unknown as () => Promise<unknown>;
+  void loader().catch(() => {});
 }
 
 // 导航指示器位置更新:用 rAF 合并多次触发,避免连续 querySelector
@@ -540,12 +581,15 @@ onUnmounted(() => {
   window.removeEventListener("touchmove", onWindowTouchMove);
   window.removeEventListener("touchend", onWindowMouseUp);
 });
-
-// 图标已按需导入，模板中直接使用组件标签替代映射表
 </script>
 
 <template>
-  <aside class="sidebar" :class="{ 'macos-overlay': isMacOS }">
+  <aside
+    class="sidebar"
+    :class="{ 'macos-overlay': isMacOS }"
+    @mouseover="onSidebarPointerOver"
+    @mouseout="onSidebarPointerOut"
+  >
     <div
       class="sidebar-logo"
       :class="{ 'logo-armed': elastic.isArmed.value, 'logo-dragging': elastic.isDragging.value }"
@@ -636,6 +680,8 @@ onUnmounted(() => {
                 class="nav-item"
                 :class="{ active: isActive(item.path) }"
                 @click="navigateTo(item.path)"
+                @mouseenter="schedulePrefetch(item.path)"
+                @mouseleave="cancelPrefetch(item.path)"
               >
                 <img
                   v-if="item.pluginIcon"
@@ -645,13 +691,7 @@ onUnmounted(() => {
                   width="20"
                   height="20"
                 />
-                <component
-                  v-else
-                  :is="getNavIcon(item.icon)"
-                  class="nav-icon"
-                  :size="20"
-                  :stroke-width="1.8"
-                />
+                <AnimatedIcon v-else :name="item.icon" :size="20" class="nav-icon" />
                 <span class="nav-label">
                   {{ item.labelKey ? i18n.t(item.labelKey) : item.label }}
                 </span>
@@ -664,6 +704,8 @@ onUnmounted(() => {
                   class="nav-item nav-child-item"
                   :class="{ active: isActive(child.path) }"
                   @click="navigateTo(child.path)"
+                  @mouseenter="schedulePrefetch(child.path)"
+                  @mouseleave="cancelPrefetch(child.path)"
                 >
                   <img
                     v-if="child.pluginIcon"
@@ -673,13 +715,7 @@ onUnmounted(() => {
                     width="16"
                     height="16"
                   />
-                  <component
-                    v-else
-                    :is="getNavIcon(child.icon || 'blocks')"
-                    class="nav-icon"
-                    :size="16"
-                    :stroke-width="1.8"
-                  />
+                  <AnimatedIcon v-else :name="child.icon || 'blocks'" :size="16" class="nav-icon" />
                   <span class="nav-label">{{ child.label }}</span>
                 </div>
               </div>
@@ -690,8 +726,14 @@ onUnmounted(() => {
 
       <!-- 关于按钮 -->
       <div class="nav-group lower-side">
-        <div class="nav-item" :class="{ active: isActive('/about') }" @click="navigateTo('/about')">
-          <Info class="nav-icon" :size="20" :stroke-width="1.8" />
+        <div
+          class="nav-item"
+          :class="{ active: isActive('/about') }"
+          @click="navigateTo('/about')"
+          @mouseenter="schedulePrefetch('/about')"
+          @mouseleave="cancelPrefetch('/about')"
+        >
+          <AnimatedIcon name="info" :size="20" class="nav-icon" />
           <span class="nav-label">{{ i18n.t("common.about") }}</span>
         </div>
       </div>

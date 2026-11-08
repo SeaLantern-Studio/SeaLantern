@@ -70,7 +70,7 @@ async function pickJavaFile() {
             :options="javaOptions"
             :placeholder="i18n.t('create.select_java')"
             searchable
-            maxHeight="240px"
+            max-height="240px"
             @update:model-value="$emit('update:selectedJava', String($event))"
           />
           <button type="button" class="java-step-rescan" @click="$emit('detect')">

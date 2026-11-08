@@ -691,8 +691,9 @@ export function useCreateServerPage() {
             serverDownloadType.value,
             serverDownloadVersion.value,
           );
-          const defaultPath = await systemApi.getDefaultRunPath();
-          const tempDir = `${defaultPath.replace(/[\\/]+$/, "").replace(/\\/g, "/")}/temp`;
+          const tempDir = (await systemApi.getTempDownloadDir())
+            .replace(/[\\/]+$/, "")
+            .replace(/\\/g, "/");
           const fileName = info.fileName || "server.jar";
           tempDownloadPath = `${tempDir}/${fileName}`;
 

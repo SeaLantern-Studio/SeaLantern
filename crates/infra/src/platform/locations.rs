@@ -7,7 +7,7 @@
 //! 路径优先级因平台而异（Docker → MSI → 便携版 → 标准目录），各平台内部的
 //! fallback 链通过 `Option::or_else` 表达，优先级由调用顺序决定。
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::error::PlatformError;
 use crate::observability;
@@ -148,6 +148,100 @@ pub fn get_default_run_path() -> Result<PathBuf, PlatformError> {
         .map_err(|source| PlatformError::ResolveDefaultRunPath { source })
 }
 
+/// 备份目录名（主资源目录下）。
+const BACKUPS_DIR_NAME: &str = "backups";
+
+/// 实例容器目录名（主资源目录下）。
+const INSTANCES_DIR_NAME: &str = "instances";
+
+/// 临时下载目录名（主资源目录下）；与实例容器分离，避免下载暂存被实例
+/// 发现层误识别为实例目录。
+const TEMP_DIR_NAME: &str = "temp";
+
+/// 宿主插件目录名（主资源目录下）。
+const PLUGINS_DIR_NAME: &str = "plugins";
+
+/// 共享资源目录名（主资源目录下）。
+const RESOURCES_DIR_NAME: &str = "resources";
+
+/// 应用目录布局。
+///
+/// 主配置目录存放应用设置；主资源目录存放服务器实例、备份与共享资源。
+/// 主资源目录默认与主配置目录同址，可由应用设置覆盖。
+///
+/// 本类型只描述"目录应该在哪"，不做任何 IO、也不读取设置——覆盖值由调用方
+/// （应用层）从设置中取出后传入，因此它应当保持为纯数据。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppLayout {
+    config_dir: PathBuf,
+    resource_dir: PathBuf,
+}
+
+impl AppLayout {
+    /// 按显式路径构造布局；`resource_override` 为 `None` 时主资源目录与主配置目录同址。
+    pub fn new(config_dir: impl Into<PathBuf>, resource_override: Option<PathBuf>) -> Self {
+        let config_dir = config_dir.into();
+        let resource_dir = match resource_override {
+            Some(dir) => dir,
+            None => config_dir.clone(),
+        };
+        Self { config_dir, resource_dir }
+    }
+
+    /// 按本机默认数据目录构造布局。
+    pub fn native(resource_override: Option<PathBuf>) -> Self {
+        Self::new(get_app_data_dir(), resource_override)
+    }
+
+    /// 主配置目录。
+    pub fn config_dir(&self) -> &Path {
+        &self.config_dir
+    }
+
+    /// 主资源目录。
+    pub fn resource_dir(&self) -> &Path {
+        &self.resource_dir
+    }
+
+    /// 主配置目录下的某个文件。
+    pub fn config_file(&self, name: &str) -> PathBuf {
+        self.config_dir.join(name)
+    }
+
+    /// 主资源目录下的某个文件。
+    pub fn resource_file(&self, name: &str) -> PathBuf {
+        self.resource_dir.join(name)
+    }
+
+    /// 备份目录。
+    pub fn backups_dir(&self) -> PathBuf {
+        self.resource_dir.join(BACKUPS_DIR_NAME)
+    }
+
+    /// 服务器实例容器目录。
+    pub fn instances_dir(&self) -> PathBuf {
+        self.resource_dir.join(INSTANCES_DIR_NAME)
+    }
+
+    /// 临时下载目录（下载暂存等非实例数据）。
+    ///
+    /// 与 `instances_dir()` 同级但独立于实例容器：下载暂存目录若放进
+    /// `instances/`，会被实例发现层当成缺失 `sl.json` 的问题目录上报。
+    pub fn temp_dir(&self) -> PathBuf {
+        self.resource_dir.join(TEMP_DIR_NAME)
+    }
+
+    /// 宿主插件目录。
+    pub fn plugins_dir(&self) -> PathBuf {
+        self.resource_dir.join(PLUGINS_DIR_NAME)
+    }
+
+    /// 共享资源目录。
+    pub fn resources_dir(&self) -> PathBuf {
+        self.resource_dir.join(RESOURCES_DIR_NAME)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -195,5 +289,33 @@ mod tests {
             .to_string_lossy();
 
         assert_eq!(name, "SeaLantern", "expected SeaLantern directory name, got: {name}");
+    }
+
+    #[test]
+    fn app_layout_defaults_the_resource_dir_to_the_config_dir() {
+        let layout = AppLayout::new("config", None);
+
+        assert_eq!(layout.resource_dir(), layout.config_dir());
+        assert_eq!(layout.instances_dir(), Path::new("config").join("instances"));
+    }
+
+    #[test]
+    fn app_layout_honours_a_resource_dir_override() {
+        let layout = AppLayout::new("config", Some(PathBuf::from("data")));
+
+        assert_eq!(layout.config_dir(), Path::new("config"));
+        assert_eq!(layout.resource_dir(), Path::new("data"));
+        assert_eq!(layout.instances_dir(), Path::new("data").join("instances"));
+        assert_eq!(layout.backups_dir(), Path::new("data").join("backups"));
+        assert_eq!(layout.plugins_dir(), Path::new("data").join("plugins"));
+        assert_eq!(layout.resources_dir(), Path::new("data").join("resources"));
+    }
+
+    #[test]
+    fn app_layout_keeps_config_files_apart_from_resource_files() {
+        let layout = AppLayout::new("config", Some(PathBuf::from("data")));
+
+        assert_eq!(layout.config_file("settings.json"), Path::new("config").join("settings.json"));
+        assert_eq!(layout.resource_file("archive.zip"), Path::new("data").join("archive.zip"));
     }
 }

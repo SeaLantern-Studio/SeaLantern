@@ -130,6 +130,15 @@
   color: var(--sl-text-inverse);
 }
 
+/* 窗口控制按钮图标：hover 时轻微放大，跟手反馈 */
+.win-btn svg {
+  transition: transform var(--sl-transition-fast);
+}
+
+.win-btn:hover svg {
+  transform: scale(1.12);
+}
+
 .language-selector {
   position: relative;
   -webkit-app-region: no-drag;
@@ -161,6 +170,11 @@
 
 .language-button :deep(svg) {
   color: var(--sl-text-secondary);
+  transition: transform var(--sl-transition-fast);
+}
+
+.language-button:hover :deep(svg) {
+  transform: scale(1.15);
 }
 
 .theme-switcher {
@@ -208,6 +222,15 @@
 
 .theme-btn:hover {
   color: var(--sl-text-secondary);
+}
+
+/* 主题切换按钮图标：hover 轻微放大 */
+.theme-btn :deep(svg) {
+  transition: transform var(--sl-transition-fast);
+}
+
+.theme-btn:hover :deep(svg) {
+  transform: scale(1.15);
 }
 
 .theme-btn.active {

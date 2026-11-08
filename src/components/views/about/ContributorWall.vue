@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from "vue";
 import { AvatarImage, AvatarRoot, AvatarFallback } from "reka-ui";
 import { Plus, Link, ExternalLink, Check } from "lucide-vue-next";
@@ -6,7 +6,7 @@ import BrandIcon from "@components/common/BrandIcon.vue";
 import { contributors as contributorsList, type SocialLinks } from "@data/contributors";
 import { i18n } from "@language";
 import tauriIcon64 from "@src-tauri/icons/64x64.png";
-import { useAboutLinks } from "@composables/useAboutLinks";
+import { useExternalLinks } from "@composables/useExternalLinks";
 
 const contributors = ref(contributorsList);
 
@@ -32,7 +32,7 @@ function loadMore() {
   currentPage.value++;
 }
 
-const { copiedQQ, openSocialLink } = useAboutLinks();
+const { copiedQQ, openSocialLink } = useExternalLinks();
 
 function isSocialLinks(url: string | SocialLinks | undefined): url is SocialLinks {
   return typeof url === "object" && url !== null;

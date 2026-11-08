@@ -28,6 +28,55 @@ pub fn zip_entry_count(archive: impl AsRef<Path>) -> Result<usize, ArchiveError>
         .map_err(|error| ArchiveError::zip("read", archive_path, error))
 }
 
+/// 从 ZIP 归档中读取指定条目名的文本内容。
+///
+/// 条目不存在时返回 `Ok(None)`，让调用方可以按候选顺序尝试多个条目名
+/// （例如插件的描述文件既可能是 `plugin.yml`，也可能是 `bungee.yml`）。
+///
+/// 内容必须是 UTF-8；读取量受 `max_bytes` 约束，中央目录声明的大小与实际
+/// 读到的字节都会校验，避免声称很小的条目耗尽内存。用途是读取 jar 内的
+/// 元数据，无需把整个归档解压到磁盘。
+pub fn read_zip_entry_text(
+    archive: impl AsRef<Path>,
+    entry_name: &str,
+    max_bytes: usize,
+) -> Result<Option<String>, ArchiveError> {
+    let archive_path = archive.as_ref();
+    let file = File::open(archive_path)
+        .map_err(|error| ArchiveError::io("open ZIP archive", archive_path, error))?;
+    let mut archive =
+        ZipArchive::new(file).map_err(|error| ArchiveError::zip("read", archive_path, error))?;
+
+    for index in 0..archive.len() {
+        let entry = archive
+            .by_index(index)
+            .map_err(|error| ArchiveError::zip("read ZIP entry", archive_path, error))?;
+        if entry.name() != entry_name {
+            continue;
+        }
+
+        // 中央目录声明的大小不可信，先按声明值快速失败。
+        check_limit(archive_path, "entry uncompressed bytes", entry.size(), max_bytes as u64)?;
+
+        // 读取时再按实际字节复核：多读一个字节即可判定超限。
+        let mut content = String::new();
+        entry
+            .take(max_bytes as u64 + 1)
+            .read_to_string(&mut content)
+            .map_err(|error| ArchiveError::io("read ZIP entry text", archive_path, error))?;
+        check_limit(
+            archive_path,
+            "entry uncompressed bytes",
+            content.len() as u64,
+            max_bytes as u64,
+        )?;
+
+        return Ok(Some(content));
+    }
+
+    Ok(None)
+}
+
 /// 使用默认限制将 ZIP 压缩包解压到新的目标目录中。
 ///
 /// 目标目录必须尚未存在。这避免了在压缩包无效或后续
@@ -187,8 +236,8 @@ fn validate_archive(
 ///
 /// 中央目录声明的大小不可信，因此写入过程中重新累加单条目字节与总字节，
 /// 任一超限立即中止。
-fn copy_entry_with_limits(
-    entry: &mut zip::read::ZipFile<'_>,
+fn copy_entry_with_limits<R: Read>(
+    entry: &mut zip::read::ZipFile<'_, R>,
     output: &mut cap_std::fs::File,
     output_path: &Path,
     archive_path: &Path,
@@ -245,8 +294,8 @@ fn copy_entry_with_limits(
 /// 读取并校验符号链接载荷，用于在拒绝条目前给出精确原因。
 ///
 /// ZIP 把符号链接目标存放在条目内容中，需要读取后才能判定其是否可移植。
-fn validate_symbolic_link_target(
-    entry: &mut zip::read::ZipFile<'_>,
+fn validate_symbolic_link_target<R: Read>(
+    entry: &mut zip::read::ZipFile<'_, R>,
     archive_path: &Path,
     entry_name: &str,
 ) -> Result<(), ArchiveError> {

@@ -50,9 +50,9 @@ function handlePickFolder() {
           :disabled="loadingTypes || isDownloading"
           :loading="loadingTypes"
           searchable
-          maxHeight="240px"
-          dropdownWidth="260px"
-          @update:modelValue="emit('update:selectedType', $event)"
+          max-height="240px"
+          dropdown-width="260px"
+          @update:model-value="emit('update:selectedType', $event)"
         />
       </div>
 
@@ -67,9 +67,9 @@ function handlePickFolder() {
           :disabled="loadingVersions || !selectedType || isDownloading"
           :loading="loadingVersions"
           searchable
-          maxHeight="240px"
-          dropdownWidth="260px"
-          @update:modelValue="emit('update:selectedVersion', $event)"
+          max-height="240px"
+          dropdown-width="260px"
+          @update:model-value="emit('update:selectedVersion', $event)"
         />
       </div>
 
@@ -80,7 +80,7 @@ function handlePickFolder() {
           type="text"
           :placeholder="i18n.t('downloadServerView.form.fileNamePlaceholder')"
           :disabled="isDownloading"
-          @update:modelValue="emit('update:filename', $event)"
+          @update:model-value="emit('update:filename', $event)"
         >
           <template #prefix>
             <FileText :size="16" class="input-icon" />
@@ -128,7 +128,7 @@ function handlePickFolder() {
           :placeholder="i18n.t('downloadServerView.form.threadCountPlaceholder')"
           :disabled="isDownloading"
           :aria-invalid="threadCountInvalid"
-          @update:modelValue="emit('update:threadCount', $event)"
+          @update:model-value="emit('update:threadCount', $event)"
           @focusout="emit('checkThreadCount')"
         >
           <template #prefix>

@@ -78,6 +78,11 @@ const defaultSettings: AppSettings = {
   last_run_path: "",
   minimal_mode: false,
   agreed_to_terms: false,
+  tunnel_relay_url: "",
+  tunnel_join_port: 30000,
+  tunnel_join_uri: "",
+  tunnel_host_link_lifetime: "always",
+  tunnel_host_max_players: null,
 };
 
 export interface SettingsUpdateEvent {

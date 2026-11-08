@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-dashboard" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 仪表盘：悬停时四块面板依次呼吸缩放 */
+    .si-dashboard .tile { transform-box: fill-box; transform-origin: 50% 50%; }
+    .si-layout-dashboard .tile-a { animation: sl-tile-pulse .9s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-layout-dashboard .tile-b { animation: sl-tile-pulse .9s ease-in-out .12s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-layout-dashboard .tile-c { animation: sl-tile-pulse .9s ease-in-out .24s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-layout-dashboard .tile-d { animation: sl-tile-pulse .9s ease-in-out .36s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-tile-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(.92); } }
+    .si-layout-dashboard:hover { --sl-anim-play: running; }
+  </style>
+  <rect class="tile tile-a" x="3" y="3" width="7" height="9" rx="1"/>
+  <rect class="tile tile-b" x="14" y="3" width="7" height="5" rx="1"/>
+  <rect class="tile tile-c" x="14" y="12" width="7" height="9" rx="1"/>
+  <rect class="tile tile-d" x="3" y="16" width="7" height="5" rx="1"/>
+</svg>

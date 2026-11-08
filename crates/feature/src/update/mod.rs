@@ -31,7 +31,7 @@ pub use checksum::{
     fetch_sha256_from_asset, find_sha256_assets, parse_sha256_from_checksum_content,
     resolve_asset_sha256,
 };
-pub use cnb::{fetch_release as fetch_cnb_release, resolve_download_candidate_by_version};
+pub use cnb::fetch_release as fetch_cnb_release;
 pub use constants::UPDATE_HTTP_USER_AGENT;
 pub use download::{calculate_progress, download_update_file_without_events, file_name_from_url};
 pub use error::UpdateCheckError;

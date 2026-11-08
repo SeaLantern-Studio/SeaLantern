@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use sealantern_infra::fs::write_atomic_blocking;
-use sealantern_infra::platform::get_app_data_dir;
+use sealantern_infra::platform::AppLayout;
 use serde::{Deserialize, Serialize};
 use tempfile::Builder;
 use tracing::{debug, error, info, warn};
@@ -14,7 +14,8 @@ use uuid::Uuid;
 use super::archive;
 use super::error::{BackupError, BackupResult};
 use super::models::{
-    BackupContentType, BackupFormat, BackupItem, CreateBackupRequest, is_safe_path_component,
+    BackupContentType, BackupDirectory, BackupFormat, BackupItem, CreateBackupRequest,
+    is_safe_path_component,
 };
 
 const MAX_METADATA_BYTES: u64 = 1024 * 1024;
@@ -39,9 +40,12 @@ pub struct BackupManager {
 }
 
 impl BackupManager {
-    /// 创建新的备份管理器
-    pub fn new() -> BackupResult<Self> {
-        Self::from_backups_dir(get_app_data_dir().join("backups"))
+    /// 按应用目录布局创建备份管理器。
+    ///
+    /// 备份根目录取 `layout.backups_dir()`（主资源目录下），由调用方
+    /// 从当前设置解析后传入——资源目录覆盖值改动后立即生效。
+    pub fn new(layout: &AppLayout) -> BackupResult<Self> {
+        Self::from_backups_dir(layout.backups_dir())
     }
 
     fn from_backups_dir(backups_dir: PathBuf) -> BackupResult<Self> {
@@ -67,6 +71,23 @@ impl BackupManager {
     fn get_server_backup_dir(&self, server_id: &str) -> BackupResult<PathBuf> {
         validate_server_id(server_id)?;
         Ok(self.backups_dir.join(server_id))
+    }
+
+    /// 获取备份存储目录信息。
+    ///
+    /// 始终返回备份根目录；传入合法的服务器 ID 时附带该服务器的备份子目录。
+    pub fn get_backup_directory(&self, server_id: Option<&str>) -> BackupResult<BackupDirectory> {
+        let server_dir = match server_id {
+            Some(id) if !id.is_empty() => Some(self.get_server_backup_dir(id)?),
+            _ => None,
+        };
+
+        // 契约层字段是 String：路径经 to_string_lossy 有损转换。仅作展示/
+        // 定位用途，不可回填为 PathBuf（非 UTF-8 路径已被替换为 U+FFFD）。
+        Ok(BackupDirectory {
+            root_dir: self.backups_dir.to_string_lossy().into_owned(),
+            server_dir: server_dir.map(|dir| dir.to_string_lossy().into_owned()),
+        })
     }
 
     fn get_backup_metadata_path(&self, server_id: &str, backup_id: &str) -> BackupResult<PathBuf> {

@@ -4,11 +4,11 @@
 //! 因而 server、桌面宿主和后续调用方不会依赖 `sculk` 的公开类型。
 
 mod model;
-mod sculk;
 mod service;
 
 pub use model::{
-    HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError, TunnelConnection, TunnelEvent,
-    TunnelIdentity, TunnelMode, TunnelStatus, TunnelTicket,
+    HostTunnelRequest, JoinTunnelRequest, OnlineTunnelError, TunnelConnection, TunnelErrorCategory,
+    TunnelEvent, TunnelIdentity, TunnelLinkLifetime, TunnelMode, TunnelPhase, TunnelStatus,
+    TunnelTicket,
 };
 pub use service::OnlineTunnelService;

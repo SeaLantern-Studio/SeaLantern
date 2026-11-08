@@ -12,6 +12,6 @@ pub(crate) fn is_safe_path_component(value: &str) -> bool {
 
 // 备份契约模型统一由 `sealantern-contract` 提供，feature 侧 re-export 保持兼容。
 pub use sealantern_contract::backup::{
-    BackupContentType, BackupFormat, BackupItem, BackupSettings, CompressionLevel,
+    BackupContentType, BackupDirectory, BackupFormat, BackupItem, BackupSettings, CompressionLevel,
     CreateBackupRequest,
 };

@@ -14,6 +14,8 @@ pub enum ServerError {
     InstanceNotFound,
     /// 服务器进程当前状态不允许该操作。
     InvalidState,
+    /// 目标服务器当前没有运行中的进程（如向已停止的服务器发送命令）。
+    NotRunning,
     /// 客户端提供的输入不合法。
     InvalidInput,
     /// 底层进程 / IO 操作失败。
@@ -37,6 +39,7 @@ impl fmt::Display for ServerError {
             Self::InvalidState => {
                 write!(formatter, "server is in an invalid state for this operation")
             }
+            Self::NotRunning => write!(formatter, "server is not running"),
             Self::InvalidInput => write!(formatter, "invalid input"),
             Self::OperationFailed { source } => {
                 write!(formatter, "server operation failed: {source}")
@@ -77,11 +80,35 @@ impl From<ServerError> for ServerServiceError {
         match error {
             ServerError::InstanceNotFound => Self::InstanceNotFound,
             ServerError::InvalidState => Self::InvalidState,
+            ServerError::NotRunning => Self::NotRunning,
             ServerError::InvalidInput => Self::InvalidInput,
             ServerError::OperationFailed { .. } | ServerError::Internal { .. } => {
                 Self::OperationFailed
             }
             ServerError::Unsupported => Self::Unsupported,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn not_running_maps_to_contract_variant() {
+        // "未运行"必须原样透传到契约变体，不能与 InvalidState 混同——宿主
+        // 依赖该区分来给出针对性提示。
+        assert_eq!(
+            ServerServiceError::from(ServerError::NotRunning),
+            ServerServiceError::NotRunning
+        );
+    }
+
+    #[test]
+    fn invalid_state_is_not_confused_with_not_running() {
+        assert_eq!(
+            ServerServiceError::from(ServerError::InvalidState),
+            ServerServiceError::InvalidState
+        );
     }
 }

@@ -35,6 +35,19 @@ pub async fn default_run_path(State(state): State<AppState>) -> Result<Json<Stri
         .map_err(HttpError::from)
 }
 
+/// `GET /api/system/temp-download-dir` — 获取临时下载目录。
+///
+/// 与 `default-run-path` 分离：临时文件不应进入 `instances/` 容器，
+/// 否则会被实例发现层标记为缺失 `sl.json` 的问题目录。
+pub async fn temp_download_dir(State(state): State<AppState>) -> Result<Json<String>, HttpError> {
+    state
+        .system()
+        .temp_download_dir()
+        .await
+        .map(Json)
+        .map_err(HttpError::from)
+}
+
 /// `GET /api/system/servers/{instance_id}/usage` — 按实例标识采集服务器资源占用。
 pub async fn server_resource_usage(
     State(state): State<AppState>,

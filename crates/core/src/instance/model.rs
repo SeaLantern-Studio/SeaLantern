@@ -84,7 +84,10 @@ pub struct LocalLaunch {
 }
 
 impl LocalLaunch {
-    pub(crate) fn normalize_and_validate(&mut self) -> Result<Option<PathBuf>, InstanceError> {
+    /// 规范化并校验启动配置（规范化空白命令、剔除空路径，再按启动模式
+    /// 检查目标/自定义载荷一致性）。除 `Instance::new` 的构造校验外，
+    /// 也供持久化文档层在写回前复用同一套领域规则。
+    pub fn normalize_and_validate(&mut self) -> Result<Option<PathBuf>, InstanceError> {
         self.custom_command = self
             .custom_command
             .as_deref()
@@ -138,6 +141,8 @@ pub struct InstanceSpec {
     pub core_type: String,
     pub core_version: String,
     pub game_version: String,
+    /// 最低 Java 版本要求（主版本号，如 `21`）；`None` 表示不限制。
+    pub required_java: Option<u32>,
     pub directory: PathBuf,
     pub port: u16,
     pub max_memory_mib: u32,
@@ -158,6 +163,9 @@ pub struct Instance {
     pub core_type: String,
     pub core_version: String,
     pub game_version: String,
+    /// 最低 Java 版本要求（主版本号，如 `21`）；`None` 表示不限制。
+    #[serde(default)]
+    pub required_java: Option<u32>,
     pub directory: PathBuf,
     pub port: u16,
     pub max_memory_mib: u32,
@@ -190,6 +198,7 @@ impl Instance {
             core_type: spec.core_type,
             core_version: spec.core_version,
             game_version: spec.game_version,
+            required_java: spec.required_java,
             directory: spec.directory,
             port: spec.port,
             max_memory_mib: spec.max_memory_mib,
@@ -227,6 +236,7 @@ impl Instance {
             core_type: self.core_type.clone(),
             core_version: self.core_version.clone(),
             game_version: self.game_version.clone(),
+            required_java: self.required_java,
             directory: self.directory.clone(),
             port: self.port,
             max_memory_mib: self.max_memory_mib,
@@ -361,6 +371,7 @@ mod tests {
             core_type: "paper".to_string(),
             core_version: String::new(),
             game_version: "1.21.1".to_string(),
+            required_java: None,
             directory: PathBuf::from("servers/instance-a"),
             port: 25565,
             max_memory_mib: 4096,

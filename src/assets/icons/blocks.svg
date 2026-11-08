@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-blocks" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 积木：L 型底座加待拼装的小方框，悬停时小框浮起轻转 */
+    .si-blocks .block-top { transform-box: fill-box; transform-origin: 50% 50%; animation: sl-block-float .9s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-block-float { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-1px) rotate(5deg); } }
+    .si-blocks:hover { --sl-anim-play: running; }
+  </style>
+  <path d="M4 4h6v10h8v6H4z"/>
+  <rect class="block-top" x="14" y="4" width="6" height="6" rx="1"/>
+</svg>

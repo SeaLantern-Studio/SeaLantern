@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-plus" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 加号：悬停时擦除再重画两笔；0% 帧保持完整显示，暂停态不缺笔 */
+    .si-plus .p-h { stroke-dasharray: 14; animation: sl-plus-draw 1.1s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-plus .p-v { stroke-dasharray: 14; animation: sl-plus-draw 1.1s ease-in-out .3s infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-plus-draw { 0%,45% { stroke-dashoffset: 0; } 70%,75% { stroke-dashoffset: 14; } 100% { stroke-dashoffset: 0; } }
+    .si-plus:hover { --sl-anim-play: running; }
+  </style>
+  <path class="p-h" d="M5 12h14"/>
+  <path class="p-v" d="M12 5v14"/>
+</svg>

@@ -59,6 +59,13 @@ pub trait SettingsService: Send + Sync {
     async fn import_json(&self, _json: &str) -> Result<UpdateResult, SettingsServiceError> {
         Err(SettingsServiceError::Unsupported)
     }
+
+    /// 枚举系统可用字体族名（去重、按不分大小写升序排序）。
+    ///
+    /// 默认返回 [`SettingsServiceError::Unsupported`]，允许宿主分阶段接入新契约。
+    async fn system_fonts(&self) -> Result<Vec<String>, SettingsServiceError> {
+        Err(SettingsServiceError::Unsupported)
+    }
 }
 
 #[cfg(test)]
@@ -97,5 +104,6 @@ mod tests {
             service.import_json("{}").await,
             Err(SettingsServiceError::Unsupported)
         ));
+        assert_eq!(service.system_fonts().await, Err(SettingsServiceError::Unsupported));
     }
 }

@@ -20,6 +20,8 @@ pub mod dimension;
 pub mod download;
 /// 接口契约错误类型。
 pub mod error;
+/// 实例发现视图相关模型。
+pub mod instance;
 /// Java 检测结果和安装信息模型。
 pub mod java;
 /// 世界地图渲染相关模型。
@@ -34,6 +36,10 @@ pub mod proxy;
 pub mod server;
 /// 服务器配置（server.properties）相关模型。
 pub mod server_config;
+/// 服务器插件（`plugins` 目录）相关模型。
+pub mod server_plugin;
+/// 实例启动配置（`sl.json` 的 `startup` 段）相关模型。
+pub mod server_startup;
 /// 设置信息相关模型。
 pub mod settings;
 /// 系统资源信息相关模型。
@@ -67,6 +73,7 @@ pub use error::JavaServiceError;
 /// 在线隧道服务错误枚举。
 pub use error::OnlineTunnelServiceError;
 /// 玩家列表查询错误枚举。
+pub use error::PlayerAdminError;
 pub use error::PlayerListError;
 /// 玩家查询错误枚举。
 pub use error::PlayerLookupError;
@@ -78,8 +85,12 @@ pub use error::ProvisioningServiceError;
 pub use error::ServerCatalogServiceError;
 /// 服务器配置（server.properties）错误枚举。
 pub use error::ServerConfigServiceError;
+/// 服务器插件管理错误枚举。
+pub use error::ServerPluginServiceError;
 /// 服务器进程管理错误枚举。
 pub use error::ServerServiceError;
+/// 实例启动配置管理错误枚举。
+pub use error::ServerStartupServiceError;
 /// 设置信息服务错误枚举。
 pub use error::SettingsServiceError;
 /// 系统资源信息服务错误枚举。
@@ -90,6 +101,10 @@ pub use error::UpdateCheckServiceError;
 pub use error::UpdateInstallServiceError;
 /// 世界地图渲染错误。
 pub use error::WorldMapServiceError;
+/// 实例发现视图模型。
+pub use instance::{
+    ClassifiedProblemEntry, DiscoveryProblemEntry, DiscoveryProblemKind, PendingInstance,
+};
 /// Java 检测结果和安装信息模型。
 pub use java::{JavaDetectionReport, JavaDiscoveryError, JavaInfo};
 /// 世界地图渲染模型。
@@ -107,9 +122,10 @@ pub use player::{
 pub use proxy::{ProxyConfigError, ProxyMode, ProxySettings};
 /// 设置模型。
 pub use settings::{
-    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, NullablePatch,
-    PartialAppSettings, SettingsEntry, SettingsEntryType, SettingsGroup, SettingsGroupInfo,
-    SettingsOption, SettingsOverview, SettingsValidationError, UpdateResult,
+    AppSettings, CURRENT_CONFIG_VERSION, DEFAULT_ACRYLIC_BLUR_LEVEL, DEFAULT_TUNNEL_JOIN_PORT,
+    DEFAULT_TUNNEL_LINK_LIFETIME, NullablePatch, PartialAppSettings, SettingsEntry,
+    SettingsEntryType, SettingsGroup, SettingsGroupInfo, SettingsOption, SettingsOverview,
+    SettingsValidationError, TUNNEL_LINK_LIFETIMES, UpdateResult,
 };
 /// 更新模型。
 pub use update::{PendingUpdate, UpdateInfo, UpdateSource};

@@ -4,9 +4,11 @@
 //! 由上层负责；尤其是 CA 证书仅供 HTTP 客户端使用，不会修改操作系统信任库。
 
 mod certificate;
+mod clipboard;
 mod elevation;
 mod environment;
 mod error;
+mod fonts;
 mod locations;
 mod proxy;
 mod system;
@@ -14,10 +16,14 @@ mod system;
 pub use certificate::{
     CaCertificateBundle, load_ca_certificate_bundle, parse_ca_certificate_bundle,
 };
+pub use clipboard::copy_text;
 pub use elevation::{ElevationLaunch, is_elevated, request_elevation};
 pub use environment::{Environment, EnvironmentError};
 pub use error::PlatformError;
-pub use locations::{get_app_data_dir, get_default_run_path, get_or_create_app_data_dir};
+pub use fonts::collect_system_fonts;
+pub use locations::{
+    AppLayout, get_app_data_dir, get_default_run_path, get_or_create_app_data_dir,
+};
 pub use proxy::{PlatformSystemProxyProvider, SystemProxyReadError, current_system_proxy};
 pub use system::{
     DiskUsage, NetworkUsage, ProcessUsage, ResourceSnapshot, SystemInfo, collect_cpu_info,

@@ -879,7 +879,8 @@ function goToMarket() {
             {{ i18n.t("plugins.deselect_all") }}
           </cmz-button>
           <cmz-button
-            variant="danger"
+            variant="solid"
+            color="var(--sl-error)"
             size="sm"
             :disabled="selectedPlugins.size === 0"
             @click="showBatchDeleteConfirm"
@@ -906,8 +907,8 @@ function goToMarket() {
             <label v-if="batchMode" class="plugin-checkbox" @click.stop>
               <cmz-toggle
                 variant="checkbox"
-                :modelValue="selectedPlugins.has(plugin.manifest.id)"
-                @update:modelValue="togglePluginSelection(plugin.manifest.id)"
+                :model-value="selectedPlugins.has(plugin.manifest.id)"
+                @update:model-value="togglePluginSelection(plugin.manifest.id)"
               />
             </label>
 
@@ -921,7 +922,7 @@ function goToMarket() {
               <cmz-badge
                 v-if="getDependencyInfo(plugin.manifest.id)?.hasMissingRequired"
                 dot
-                variant="danger"
+                color="var(--sl-error)"
                 :title="getDependencyInfo(plugin.manifest.id)?.tooltip"
                 class="dependency-clickable"
                 @click.stop="showMissingDependenciesModal(plugin)"
@@ -929,7 +930,7 @@ function goToMarket() {
               <cmz-badge
                 v-else-if="getDependencyInfo(plugin.manifest.id)?.hasMissingOptional"
                 dot
-                variant="warning"
+                color="var(--sl-warning)"
                 :title="getDependencyInfo(plugin.manifest.id)?.tooltip"
                 class="dependency-clickable"
                 @click.stop="showMissingDependenciesModal(plugin)"
@@ -1022,7 +1023,7 @@ function goToMarket() {
                 <cmz-toggle
                   v-if="!safeMode"
                   variant="switch"
-                  :modelValue="isPluginEnabled(plugin.state)"
+                  :model-value="isPluginEnabled(plugin.state)"
                   :disabled="
                     getDependencyInfo(plugin.manifest.id)?.hasMissingRequired &&
                     !isPluginEnabled(plugin.state)
@@ -1033,7 +1034,7 @@ function goToMarket() {
                       ? i18n.t('plugins.missing_required_deps')
                       : ''
                   "
-                  @update:modelValue="
+                  @update:model-value="
                     handleToggle(plugin.manifest.id, isPluginEnabled(plugin.state))
                   "
                   size="sm"
@@ -1086,8 +1087,8 @@ function goToMarket() {
               <label v-else-if="field.type === 'boolean'" class="setting-toggle">
                 <cmz-toggle
                   variant="switch"
-                  :modelValue="Boolean(settingsForm[field.key])"
-                  @update:modelValue="settingsForm[field.key] = $event"
+                  :model-value="Boolean(settingsForm[field.key])"
+                  @update:model-value="settingsForm[field.key] = $event"
                   size="sm"
                 />
               </label>
@@ -1214,9 +1215,13 @@ function goToMarket() {
         <cmz-button variant="secondary" size="sm" @click="closeConfirmDialog">{{
           i18n.t("plugins.cancel")
         }}</cmz-button>
-        <cmz-button variant="danger" size="sm" @click="executeConfirmDialog">{{
-          i18n.t("plugins.delete")
-        }}</cmz-button>
+        <cmz-button
+          variant="solid"
+          color="var(--sl-error)"
+          size="sm"
+          @click="executeConfirmDialog"
+          >{{ i18n.t("plugins.delete") }}</cmz-button
+        >
       </template>
     </cmz-modal>
 

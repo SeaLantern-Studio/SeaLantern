@@ -17,13 +17,14 @@ fn escape_powershell_single_quoted(value: &str) -> String {
 }
 
 fn decode_utf16(bytes: &[u8], little_endian: bool) -> String {
-    let utf16 = bytes
-        .chunks_exact(2)
+    let (chunks, _remainder) = bytes.as_chunks::<2>();
+    let utf16 = chunks
+        .iter()
         .map(|chunk| {
             if little_endian {
-                u16::from_le_bytes([chunk[0], chunk[1]])
+                u16::from_le_bytes(*chunk)
             } else {
-                u16::from_be_bytes([chunk[0], chunk[1]])
+                u16::from_be_bytes(*chunk)
             }
         })
         .collect::<Vec<u16>>();

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-sun" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 太阳：悬停时整体旋转 */
+    .si-sun .sun-g { transform-box: view-box; transform-origin: 50% 50%; }
+    .si-sun .sun-g { animation: sl-sun-spin 1.6s linear infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-sun-spin { to { transform: rotate(360deg); } }
+    .si-sun:hover { --sl-anim-play: running; }
+  </style>
+  <g class="sun-g">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2"/>
+    <path d="M12 20v2"/>
+    <path d="m4.93 4.93 1.41 1.41"/>
+    <path d="m17.66 17.66 1.41 1.41"/>
+    <path d="M2 12h2"/>
+    <path d="M20 12h2"/>
+    <path d="m6.34 17.66-1.41 1.41"/>
+    <path d="m19.07 4.93-1.41 1.41"/>
+  </g>
+</svg>

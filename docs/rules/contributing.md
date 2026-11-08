@@ -31,9 +31,9 @@ pnpm tauri dev
 Web/Axum 宿主开发、构建和打包：
 
 ```bash
-pnpm axum dev
-pnpm axum build
-pnpm axum package
+pnpm axctl dev
+pnpm axctl build
+pnpm axctl package
 ```
 
 如果安装了 Only，可从根目录运行：

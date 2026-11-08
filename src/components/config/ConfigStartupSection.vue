@@ -4,7 +4,7 @@ import { configApi, type SLStartupConfig } from "@api/config";
 import { i18n } from "@language";
 
 const props = defineProps<{
-  serverPath: string;
+  instanceId: string;
   defaultMaxMemory: number;
   defaultMinMemory: number;
 }>();
@@ -30,11 +30,11 @@ function scheduleAutoSave() {
 }
 
 async function loadConfig() {
-  if (!props.serverPath) return;
+  if (!props.instanceId) return;
   loading.value = true;
   error.value = null;
   try {
-    const config = await configApi.readSLConfig(props.serverPath);
+    const config = await configApi.readSLConfig(props.instanceId);
     maxMemory.value = config.max_memory ?? props.defaultMaxMemory;
     minMemory.value = config.min_memory ?? props.defaultMinMemory;
   } catch (e: any) {
@@ -45,7 +45,7 @@ async function loadConfig() {
 }
 
 async function saveConfig() {
-  if (!props.serverPath || saving.value) return;
+  if (!props.instanceId || saving.value) return;
   if (maxMemory.value < 128) {
     error.value = i18n.t("config.max_memory_too_small");
     return;
@@ -66,7 +66,7 @@ async function saveConfig() {
       max_memory: maxMemory.value,
       min_memory: minMemory.value,
     };
-    await configApi.writeSLConfig(props.serverPath, config);
+    await configApi.writeSLConfig(props.instanceId, config);
     emit("saved", maxMemory.value, minMemory.value);
   } catch (e: any) {
     error.value = e?.toString() || i18n.t("config.startup_save_failed");
@@ -81,7 +81,7 @@ onUnmounted(() => {
   if (autoSaveTimer) clearTimeout(autoSaveTimer);
 });
 
-watch(() => props.serverPath, loadConfig);
+watch(() => props.instanceId, loadConfig);
 watch([maxMemory, minMemory], () => {
   scheduleAutoSave();
 });
@@ -107,8 +107,8 @@ watch([maxMemory, minMemory], () => {
           </div>
           <div class="entry-control">
             <cmz-input
-              :modelValue="String(maxMemory)"
-              @update:modelValue="maxMemory = Number($event)"
+              :model-value="String(maxMemory)"
+              @update:model-value="maxMemory = Number($event)"
               type="number"
               :placeholder="'2048'"
               :min="128"
@@ -125,8 +125,8 @@ watch([maxMemory, minMemory], () => {
           </div>
           <div class="entry-control">
             <cmz-input
-              :modelValue="String(minMemory)"
-              @update:modelValue="minMemory = Number($event)"
+              :model-value="String(minMemory)"
+              @update:model-value="minMemory = Number($event)"
               type="number"
               :placeholder="'512'"
               :min="128"

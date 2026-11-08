@@ -13,16 +13,19 @@ use sealantern_contract::update::PendingUpdate;
 use tauri::State;
 
 /// 下载更新文件并登记为待安装，返回本地文件路径。
+///
+/// `mirror_url` 为主地址不可用时的回退来源，两者指向同一个发布产物。
 #[tauri::command(rename_all = "snake_case")]
 pub async fn update_download(
     services: State<'_, AppServices>,
     url: String,
+    mirror_url: Option<String>,
     expected_hash: Option<String>,
     version: String,
 ) -> Result<String, UpdateInstallServiceError> {
     services
         .update_install()
-        .download(url, expected_hash, version)
+        .download(url, mirror_url, expected_hash, version)
         .await
 }
 

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-search" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 放大镜：悬停时整组绕中心转圈扫描 */
+    .si-search .lens { transform-box: view-box; transform-origin: 50% 50%; }
+    .si-search .lens { animation: sl-search-spin .9s linear infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-search-spin { to { transform: rotate(360deg); } }
+    .si-search:hover { --sl-anim-play: running; }
+  </style>
+  <g class="lens">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="m21 21-4.35-4.35"/>
+  </g>
+</svg>
