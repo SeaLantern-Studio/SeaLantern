@@ -142,7 +142,8 @@
     "docker_only_method": "This method is only supported in Docker/browser environment",
     "docker_native_picker_unsupported": "Native file picker is not supported in Docker. Please use file upload instead.",
     "docker_open_file_unsupported": "Opening local files directly from browser is not supported in Docker",
-    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker"
+    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker",
+    "world_map": "Карта мира"
   },
   "sidebar": {
     "groups": {
@@ -1415,5 +1416,27 @@
       "faq": "FAQ",
       "contributor": "Contributors"
     }
+  },
+  "world_map": {
+    "title": "Карта мира",
+    "subtitle": "Вид сверху, 1 пиксель = 1 блок. Перетаскивайте для перемещения, колесо — масштаб.",
+    "level": "Мир: {{name}}",
+    "instance": "Инстанс",
+    "dimension": "Измерение",
+    "overworld": "Верхний мир",
+    "nether": "Нижний мир",
+    "end": "Край",
+    "players": "Онлайн: {{count}}",
+    "no_players": "Нет игроков онлайн",
+    "no_regions": "В этом мире нет файлов регионов",
+    "rendering": "Рендеринг {{count}}",
+    "zoom_in": "Приблизить",
+    "zoom_out": "Отдалить",
+    "reset_view": "Сбросить вид",
+    "locate_player": "К игроку",
+    "follow_player": "Следовать за игроком",
+    "rcon_disabled": "RCON отключён на этом сервере. Установите enable-rcon=true и rcon.password в server.properties и перезапустите сервер.",
+    "rcon_unreachable": "Порт RCON недоступен — возможно, сервер не запущен.",
+    "rcon_unauthorized": "Неверный пароль RCON. Проверьте rcon.password в server.properties."
   }
 }

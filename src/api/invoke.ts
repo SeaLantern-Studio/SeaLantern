@@ -22,6 +22,8 @@ interface AxumRoute {
   path: (args: Record<string, unknown>) => string;
   /** 从 args 提取请求体，GET/DELETE 不需要 */
   body?: (args: Record<string, unknown>) => unknown;
+  /** 响应类型：缺省按 JSON 解析，`blob` 用于图片等二进制资源 */
+  responseType?: "blob";
 }
 
 // Axum 路由映射：key 直接用 Tauri 命令名，Tauri 模式零映射透传
@@ -120,6 +122,34 @@ const axumRouteMap: Record<string, AxumRoute> = {
     path: () => "/provisioning/inspect",
     body: (a) => ({ path: a.path }),
   },
+  // 世界地图：图片是二进制（responseType: blob），摘要与清单是 JSON
+  render_world_map: {
+    method: "GET",
+    path: (a) =>
+      `/instances/${encodeURIComponent(String(a.instance_id))}/map` +
+      `?region_x=${a.region_x ?? 0}&region_z=${a.region_z ?? 0}` +
+      `&dimension=${encodeURIComponent(String(a.dimension ?? "overworld"))}`,
+    responseType: "blob",
+  },
+  get_world_map_info: {
+    method: "GET",
+    path: (a) =>
+      `/instances/${encodeURIComponent(String(a.instance_id))}/map/info` +
+      `?region_x=${a.region_x ?? 0}&region_z=${a.region_z ?? 0}` +
+      `&dimension=${encodeURIComponent(String(a.dimension ?? "overworld"))}`,
+  },
+  list_world_map_regions: {
+    method: "GET",
+    path: (a) =>
+      `/instances/${encodeURIComponent(String(a.instance_id))}/map/regions` +
+      `?dimension=${encodeURIComponent(String(a.dimension ?? "overworld"))}`,
+  },
+  get_map_player_positions: {
+    method: "GET",
+    path: (a) =>
+      `/instances/${encodeURIComponent(String(a.instance_id))}/map/players` +
+      `?dimension=${encodeURIComponent(String(a.dimension ?? "overworld"))}`,
+  },
 };
 
 /** Tauri 原生 invoke，动态导入避免浏览器环境加载失败 */
@@ -149,8 +179,8 @@ async function extractErrorMessage(response: Response): Promise<string> {
   return text || response.statusText;
 }
 
-/** 通过 Axum HTTP 调用，响应直接是数据 */
-async function axumFetch<T>(route: AxumRoute, args: Record<string, unknown>): Promise<T> {
+/** 发起 Axum 请求，统一处理 URL 拼接、请求体与错误消息 */
+async function axumRequest(route: AxumRoute, args: Record<string, unknown>): Promise<Response> {
   const url = `${HTTP_API_BASE}/api${route.path(args)}`;
   const init: RequestInit = { method: route.method };
 
@@ -165,6 +195,13 @@ async function axumFetch<T>(route: AxumRoute, args: Record<string, unknown>): Pr
     const message = await extractErrorMessage(response);
     throw new Error(message || `HTTP ${response.status}`);
   }
+
+  return response;
+}
+
+/** 通过 Axum HTTP 调用，响应直接是数据 */
+async function axumFetch<T>(route: AxumRoute, args: Record<string, unknown>): Promise<T> {
+  const response = await axumRequest(route, args);
 
   // 204 无内容
   if (response.status === 204) {
@@ -242,4 +279,52 @@ export async function invoke<T>(
     // 静默模式无 defaultValue 时返回 undefined，类型已通过重载表达
     return options.defaultValue as T | undefined;
   }
+}
+
+/** 二进制响应的调用选项 */
+export interface BlobInvokeOptions {
+  /** 桌面端拿不到响应头，需要显式指定 Blob 的 MIME 类型 */
+  mimeType?: string;
+}
+
+/**
+ * 统一后端二进制调用入口
+ *
+ * 与 `invoke` 只差在响应体处理：按原始字节返回 Blob，不走 JSON（图片编成
+ * JSON 数组会膨胀数倍）。
+ * - 桌面端：命令返回 IPC 原始字节（`ArrayBuffer`），包装成 Blob
+ * - 浏览器端：要求路由标注 `responseType: "blob"`
+ *
+ * 失败时直接抛异常，与 `invoke` 的非静默模式一致。
+ */
+export async function invokeBlob(
+  method: string,
+  args: Record<string, unknown> = {},
+  options: BlobInvokeOptions = {},
+): Promise<Blob> {
+  const mimeType = options.mimeType ?? "application/octet-stream";
+
+  if (isBrowserEnv()) {
+    const route = axumRouteMap[method];
+    if (!route || route.responseType !== "blob") {
+      throw new NotImplementedError(method, "axum");
+    }
+    const response = await axumRequest(route, args);
+    const blob = await response.blob();
+
+    if (import.meta.env.DEV) {
+      console.debug(`[HTTP] ${method} ok (${blob.size} bytes)`);
+    }
+
+    // 服务端带了 content-type 就直接用，否则回退到调用方声明的类型
+    return blob.type ? blob : blob.slice(0, blob.size, mimeType);
+  }
+
+  const buffer = await tauriNativeInvoke<ArrayBuffer>(method, args);
+
+  if (import.meta.env.DEV) {
+    console.debug(`[Tauri] ${method} ok (${buffer.byteLength} bytes)`);
+  }
+
+  return new Blob([buffer], { type: mimeType });
 }
