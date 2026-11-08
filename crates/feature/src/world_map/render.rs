@@ -293,6 +293,15 @@ fn open_region(region_dir: &Path, x: isize, z: isize) -> Result<Region<File>, Wo
 ///
 /// `region_dir` 是包含 `.mca` 文件的目录。不是 1.18+ 格式的 chunk 会被跳过，
 /// 对应像素保持透明——宁可留空，也不画假数据。
+///
+/// # 输出路径的原子性由调用方负责
+///
+/// 本函数直接 `File::create(out_path)`，中途失败会留下半截文件，并发调用同一
+/// 路径也会互相覆盖。这个约定是有意的：`crates/feature` 只管渲染，不碰缓存
+/// 布局。应用层传进来的是 `<缓存名>.<pid>.png.part`，渲染成功后才 `rename` 到
+/// 正式缓存路径，所以这里的覆盖影响不到已有图片。
+///
+/// 如果要在别的宿主里直接调用，请自己先写临时文件再替换目标。
 pub fn render_region_png(
     region_dir: &Path,
     x: isize,
@@ -315,12 +324,24 @@ pub fn render_region_png(
 
     for cz in 0..CHUNKS_PER_SIDE {
         for (cx, north_slot) in north_cache.iter_mut().enumerate() {
-            let Some(data) = region
-                .read_chunk(cx, cz)
-                .map_err(|e| WorldMapError::Region(e.to_string()))?
-            else {
-                *north_slot = None;
-                continue;
+            let data = match region.read_chunk(cx, cz) {
+                Ok(Some(data)) => data,
+                // 位置表里没有这一项：区块根本不存在，不算损坏
+                Ok(None) => {
+                    *north_slot = None;
+                    continue;
+                }
+                // 读都读不出来（扇区损坏、或服务端正在改这张位置表）：
+                // 和 NBT 解析失败一样按损坏跳过，不能因为一个坏块让整块 region
+                // 渲染失败 —— 那等于放弃其余正常区块
+                Err(error) => {
+                    corrupt_chunks += 1;
+                    if first_corrupt.is_none() {
+                        first_corrupt = Some(format!("({cx}, {cz}) 读取失败: {error}"));
+                    }
+                    *north_slot = None;
+                    continue;
+                }
             };
 
             let chunk = match JavaChunk::from_bytes(&data) {
@@ -481,6 +502,29 @@ mod tests {
         assert_eq!(info.unsupported_chunks, 0, "损坏不能被算成「格式太旧」");
         assert_eq!(info.rendered_chunks, 0);
         assert_eq!(info.pixels, REGION_PIXELS);
+    }
+
+    /// 位置表指向文件末尾之外：`from_stream` 能过，但 `read_chunk` 会失败。
+    fn write_region_with_unreadable_chunk(path: &Path) {
+        let mut file = vec![0u8; 8192];
+        // 第 0 项指向第 3 个扇区，而文件只有 2 个扇区
+        file[2] = 3;
+        file[3] = 1;
+        std::fs::write(path, &file).expect("写 region 文件");
+    }
+
+    /// 单个区块读失败不能中止整块 region 的渲染，要按损坏计数后继续。
+    #[test]
+    fn unreadable_chunk_is_counted_as_corrupt() {
+        let dir = tempfile::tempdir().expect("临时目录");
+        write_region_with_unreadable_chunk(&dir.path().join("r.0.0.mca"));
+
+        let out = dir.path().join("r.0.0.png");
+        let info = render_region_png(dir.path(), 0, 0, &out).expect("读失败不应让整块 region 报错");
+
+        assert_eq!(info.corrupt_chunks, 1, "读失败要记成损坏");
+        assert_eq!(info.unsupported_chunks, 0);
+        assert_eq!(info.rendered_chunks, 0);
     }
 
     /// 不同方块要产出不同颜色，避免像纯群系配色那样整张图一个色。
