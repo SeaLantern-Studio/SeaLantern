@@ -42,8 +42,14 @@ pub struct RenderInfo {
     pub bytes: u64,
     /// 实际渲染的 chunk 数（1.18+ 已生成）。
     pub rendered_chunks: usize,
-    /// 因不是 1.18+ 格式而跳过的 chunk 数。
+    /// 因不是 1.18+ 格式而跳过的 chunk 数（含 1.13~1.17 与 1.12 及更早）。
     pub unsupported_chunks: usize,
+    /// 因区块数据无法解析而跳过的 chunk 数。
+    ///
+    /// 和 [`Self::unsupported_chunks`] 分开统计：那个是版本问题（数据本身完好，
+    /// 只是格式太旧），这个是数据损坏（多数情况下是服务端正在写这块 region）。
+    /// 混在一起会让「图上有洞」被误判成版本限制，从而掩盖真正的问题。
+    pub corrupt_chunks: usize,
     /// 因未完全生成而跳过的 chunk 数。
     pub unfinished_chunks: usize,
 }
@@ -303,7 +309,9 @@ pub fn render_region_png(
 
     let mut rendered_chunks = 0usize;
     let mut unsupported_chunks = 0usize;
+    let mut corrupt_chunks = 0usize;
     let mut unfinished_chunks = 0usize;
+    let mut first_corrupt: Option<String> = None;
 
     for cz in 0..CHUNKS_PER_SIDE {
         for (cx, north_slot) in north_cache.iter_mut().enumerate() {
@@ -317,8 +325,13 @@ pub fn render_region_png(
 
             let chunk = match JavaChunk::from_bytes(&data) {
                 Ok(chunk) => chunk,
-                Err(_) => {
-                    unsupported_chunks += 1;
+                Err(error) => {
+                    // 解析失败是数据本身的问题（region 正被写入、或文件损坏），
+                    // 与「版本太旧」是两回事，单独计数并留痕
+                    corrupt_chunks += 1;
+                    if first_corrupt.is_none() {
+                        first_corrupt = Some(format!("({cx}, {cz}): {error}"));
+                    }
                     *north_slot = None;
                     continue;
                 }
@@ -348,6 +361,17 @@ pub fn render_region_png(
                 pixels[dest..dest + 16].copy_from_slice(&tile[row * 16..row * 16 + 16]);
             }
         }
+    }
+
+    if corrupt_chunks > 0 {
+        tracing::warn!(
+            target: "sealantern.feature.world_map",
+            x,
+            z,
+            corrupt_chunks,
+            first_error = first_corrupt.as_deref().unwrap_or_default(),
+            "region 里有区块无法解析，已按损坏跳过"
+        );
     }
 
     let mut bytes = Vec::with_capacity(pixels.len() * 4);
@@ -387,6 +411,7 @@ pub fn render_region_png(
         bytes: file_bytes,
         rendered_chunks,
         unsupported_chunks,
+        corrupt_chunks,
         unfinished_chunks,
     })
 }
@@ -411,6 +436,44 @@ mod tests {
         assert_eq!(info.pixels, REGION_PIXELS);
         assert!(info.rendered_chunks > 0, "应该有 1.18+ chunk 被渲染");
         assert!(info.bytes > 10_000, "PNG 体积过小，可能是全空图：{} 字节", info.bytes);
+    }
+
+    /// 造一个 region 文件：8KB 位置表 + 一个「未压缩」标记但内容是垃圾的 chunk。
+    ///
+    /// 压缩类型写 3（未压缩），fastanvil 就不解压、直接把原始字节交出来，失败点
+    /// 因此落在 NBT 解析上 —— 正是「数据损坏」，而不是「格式太旧」。
+    fn write_region_with_one_corrupt_chunk(path: &Path) {
+        let mut file = vec![0u8; 8192];
+        // 位置表第 0 项：起始扇区 2（跳过 8KB 头部）、占 1 个扇区
+        file[2] = 2;
+        file[3] = 1;
+
+        let garbage = b"not a valid chunk payload";
+        // 4 字节大端长度（含压缩类型那 1 字节）+ 压缩类型 3（未压缩）
+        file.extend_from_slice(&((garbage.len() as u32 + 1).to_be_bytes()));
+        file.push(3);
+        file.extend_from_slice(garbage);
+
+        let pad = (4096 - (file.len() - 8192) % 4096) % 4096;
+        file.resize(file.len() + pad, 0);
+
+        std::fs::write(path, &file).expect("写 region 文件");
+    }
+
+    /// 损坏的区块要单独计数，不能混进「不是 1.18+ 格式」那一栏。
+    #[test]
+    fn corrupt_chunk_is_not_counted_as_unsupported_format() {
+        let dir = tempfile::tempdir().expect("临时目录");
+        write_region_with_one_corrupt_chunk(&dir.path().join("r.0.0.mca"));
+
+        let out = dir.path().join("r.0.0.png");
+        let info =
+            render_region_png(dir.path(), 0, 0, &out).expect("单个坏块不该让整块 region 渲染失败");
+
+        assert_eq!(info.corrupt_chunks, 1, "应当记一次损坏");
+        assert_eq!(info.unsupported_chunks, 0, "损坏不能被算成「格式太旧」");
+        assert_eq!(info.rendered_chunks, 0);
+        assert_eq!(info.pixels, REGION_PIXELS);
     }
 
     /// 不同方块要产出不同颜色，避免像纯群系配色那样整张图一个色。

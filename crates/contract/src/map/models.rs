@@ -23,8 +23,8 @@ pub struct WorldMapRequest {
 
 /// 一次世界地图渲染的结果摘要。
 ///
-/// `coverage` 与三个 chunk 计数来自真实数据，不做美化：没渲染的部分就是 0，
-/// 调用方据此决定是否提示「该区域含旧版本区块」。
+/// `coverage` 与各个 chunk 计数都来自真实数据，不做美化：没渲染的部分就是 0，
+/// 调用方据此决定是否提示「该区域含旧版本区块」或「该区域有区块读取失败」。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct WorldMapInfo {
@@ -42,8 +42,17 @@ pub struct WorldMapInfo {
     pub pixels: u32,
     /// 已渲染的 chunk 数（1.18+ 且已生成）。
     pub rendered_chunks: usize,
-    /// 因是 1.12 及更早格式而跳过的 chunk 数。
+    /// 因不是 1.18+ 格式而跳过的 chunk 数。
+    ///
+    /// 覆盖 1.13~1.17 与 1.12 及更早两种旧格式：1.18 之前的区块结构与当前渲染器
+    /// 不兼容，一律跳过。这张摘要不细分版本，需要逐版本统计请用探查接口。
     pub unsupported_chunks: usize,
+    /// 因区块数据无法解析而跳过的 chunk 数。
+    ///
+    /// 与 [`Self::unsupported_chunks`] 区分：那个是版本问题，数据本身完好；
+    /// 这个是数据损坏，常见于服务端正在写这块 region。两者混在一起会把
+    /// 「图上有洞」误判成版本限制。
+    pub corrupt_chunks: usize,
     /// 因未完全生成而跳过的 chunk 数。
     pub unfinished_chunks: usize,
     /// 已渲染 chunk 占整块 region 的比例，取值 0.0~1.0。
