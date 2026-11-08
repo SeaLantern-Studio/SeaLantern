@@ -143,7 +143,8 @@
       "docker_only_method": "This method is only supported in Docker/browser environment",
       "docker_native_picker_unsupported": "Native file picker is not supported in Docker. Please use file upload instead.",
       "docker_open_file_unsupported": "Opening local files directly from browser is not supported in Docker",
-      "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker"
+      "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker",
+      "world_map": "World Map"
     },
     "sidebar": {
       "groups": {
@@ -1414,6 +1415,28 @@
       "message": "使用 SeaLantern 前，请您阅读并同意我们的",
       "link": "《隐私与服务协议》",
       "agree": "同意"
+    },
+    "world_map": {
+      "title": "World Map",
+      "subtitle": "Top-down view, 1 pixel = 1 block. Drag to pan, scroll to zoom.",
+      "level": "World: {{name}}",
+      "instance": "Instance",
+      "dimension": "Dimension",
+      "overworld": "Overworld",
+      "nether": "Nether",
+      "end": "The End",
+      "players": "{{count}} online",
+      "no_players": "No players online",
+      "no_regions": "This world has no region files",
+      "rendering": "Rendering {{count}}",
+      "zoom_in": "Zoom in",
+      "zoom_out": "Zoom out",
+      "reset_view": "Reset view",
+      "locate_player": "Locate player",
+      "follow_player": "Follow player",
+      "rcon_disabled": "RCON is disabled on this server. Set enable-rcon=true and rcon.password in server.properties, then restart.",
+      "rcon_unreachable": "Cannot reach the RCON port — the server may not be running.",
+      "rcon_unauthorized": "RCON password is incorrect. Check rcon.password in server.properties."
     }
   }
 }

@@ -143,7 +143,8 @@
       "docker_only_method": "仅在Docker/浏览器环境中支持该方法",
       "docker_native_picker_unsupported": "Docker环境不支持原生文件选择器，请使用文件上传功能",
       "docker_open_file_unsupported": "Docker环境不支持从浏览器直接打开本地文件",
-      "docker_open_folder_unsupported": "Docker环境不支持从浏览器直接打开本地文件夹"
+      "docker_open_folder_unsupported": "Docker环境不支持从浏览器直接打开本地文件夹",
+      "world_map": "世界地图"
     },
     "sidebar": {
       "groups": {
@@ -1414,6 +1415,28 @@
         "faq": "常见问题",
         "contributor": "贡献者"
       }
+    },
+    "world_map": {
+      "title": "世界地图",
+      "subtitle": "俯视图，1 像素 = 1 方块。拖动平移，滚轮缩放。",
+      "level": "世界：{{name}}",
+      "instance": "实例",
+      "dimension": "维度",
+      "overworld": "主世界",
+      "nether": "下界",
+      "end": "末地",
+      "players": "在线 {{count}}",
+      "no_players": "当前没有玩家在线",
+      "no_regions": "这个世界没有 region 文件",
+      "rendering": "渲染中 {{count}}",
+      "zoom_in": "放大",
+      "zoom_out": "缩小",
+      "reset_view": "重置视图",
+      "locate_player": "定位玩家",
+      "follow_player": "跟随玩家",
+      "rcon_disabled": "服务器没有启用 RCON。在 server.properties 里设置 enable-rcon=true 与 rcon.password，然后重启服务器。",
+      "rcon_unreachable": "连不上 RCON 端口，服务器可能没有运行。",
+      "rcon_unauthorized": "RCON 密码不正确，检查 server.properties 里的 rcon.password。"
     }
   }
 }

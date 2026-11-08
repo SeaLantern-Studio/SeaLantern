@@ -142,7 +142,8 @@
     "docker_only_method": "This method is only supported in Docker/browser environment",
     "docker_native_picker_unsupported": "Native file picker is not supported in Docker. Please use file upload instead.",
     "docker_open_file_unsupported": "Opening local files directly from browser is not supported in Docker",
-    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker"
+    "docker_open_folder_unsupported": "Opening local folders directly from browser is not supported in Docker",
+    "world_map": "ワールドマップ"
   },
   "sidebar": {
     "groups": {
@@ -1415,5 +1416,27 @@
       "faq": "FAQ",
       "contributor": "Contributors"
     }
+  },
+  "world_map": {
+    "title": "ワールドマップ",
+    "subtitle": "見下ろし表示、1 ピクセル = 1 ブロック。ドラッグで移動、ホイールでズーム。",
+    "level": "ワールド: {{name}}",
+    "instance": "インスタンス",
+    "dimension": "ディメンション",
+    "overworld": "オーバーワールド",
+    "nether": "ネザー",
+    "end": "ジ・エンド",
+    "players": "オンライン {{count}}",
+    "no_players": "オンラインのプレイヤーはいません",
+    "no_regions": "このワールドにはリージョンファイルがありません",
+    "rendering": "レンダリング中 {{count}}",
+    "zoom_in": "拡大",
+    "zoom_out": "縮小",
+    "reset_view": "表示をリセット",
+    "locate_player": "プレイヤーへ移動",
+    "follow_player": "プレイヤーを追従",
+    "rcon_disabled": "このサーバーでは RCON が無効です。server.properties の enable-rcon=true と rcon.password を設定して再起動してください。",
+    "rcon_unreachable": "RCON ポートに接続できません。サーバーが起動していない可能性があります。",
+    "rcon_unauthorized": "RCON のパスワードが正しくありません。server.properties の rcon.password を確認してください。"
   }
 }
