@@ -435,13 +435,20 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
             return Err(LegacyMigrationServiceError::NothingToMigrate);
         }
 
-        // 有坏行时保留旧文件：它们可能是用户需要手工修复的条目，归档会让
-        // 这些条目彻底失去重试机会。代价是下次启动仍会提示，这正是预期。
-        let legacy_file_archived = if unparsable > 0 {
+        // 仍有条目没搬过去时保留旧文件，否则它们会随归档永久消失、无法重试：
+        // - 无法解析的坏行，需要用户自行修复；
+        // - 目录暂时缺失 / 创建失败 / 内容非法，修复后重试即可成功。
+        //
+        // 「目录已有 sl.json」是终态，不算未完成，不应因此长期留着重启提示。
+        let retryable = skipped
+            .iter()
+            .any(|item| item.reason != LegacyMigrationSkipReason::AlreadyMigrated);
+        let legacy_file_archived = if unparsable > 0 || retryable {
             tracing::warn!(
                 target: "sealantern.application.legacy_migration",
                 unparsable,
-                "legacy server list kept on disk because some entries could not be parsed"
+                skipped = skipped.len(),
+                "legacy server list kept on disk because some entries were not migrated"
             );
             false
         } else {
@@ -644,6 +651,67 @@ mod tests {
             legacy_servers_path(root.path()).is_file(),
             "legacy file must stay on disk so the bad row can be fixed"
         );
+    }
+
+    #[tokio::test]
+    async fn skipped_entry_keeps_legacy_file_for_retry() {
+        let root = TempDir::new().unwrap();
+        let server_dir = root.path().join("srv").join("paper");
+        let missing_dir = root.path().join("srv").join("gone");
+        tokio::fs::create_dir_all(&server_dir).await.unwrap();
+        write_legacy(
+            root.path(),
+            &format!(
+                "[{},{}]",
+                legacy_entry("abc", "Paper", &server_dir),
+                legacy_entry("gone", "Gone", &missing_dir)
+            ),
+        )
+        .await;
+        let service = test_service(root.path()).await;
+
+        let report = service.migrate().await.expect("migrate");
+
+        assert_eq!(report.migrated.len(), 1);
+        assert_eq!(report.skipped.len(), 1);
+        assert!(
+            !report.legacy_file_archived,
+            "missing directory may reappear, so the entry must stay retryable"
+        );
+        assert!(legacy_servers_path(root.path()).is_file());
+    }
+
+    #[tokio::test]
+    async fn already_migrated_entry_still_allows_archiving() {
+        let root = TempDir::new().unwrap();
+        let done_dir = root.path().join("srv").join("done");
+        let server_dir = root.path().join("srv").join("paper");
+        for dir in [&done_dir, &server_dir] {
+            tokio::fs::create_dir_all(dir).await.unwrap();
+        }
+        tokio::fs::write(done_dir.join("sl.json"), "{}")
+            .await
+            .unwrap();
+        write_legacy(
+            root.path(),
+            &format!(
+                "[{},{}]",
+                legacy_entry("done", "Done", &done_dir),
+                legacy_entry("abc", "Paper", &server_dir)
+            ),
+        )
+        .await;
+        let service = test_service(root.path()).await;
+
+        let report = service.migrate().await.expect("migrate");
+
+        assert_eq!(report.migrated.len(), 1);
+        assert_eq!(report.skipped.len(), 1);
+        assert!(
+            report.legacy_file_archived,
+            "already-migrated entries are terminal and must not block archiving"
+        );
+        assert!(!legacy_servers_path(root.path()).exists());
     }
 
     #[tokio::test]
