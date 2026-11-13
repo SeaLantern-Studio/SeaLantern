@@ -26,7 +26,7 @@ use sealantern_contract::legacy_migration::{
 use sealantern_feature::config::instance::{
     DocumentStore, InstanceDocument, LEGACY_SERVERS_FILE_NAME, LegacyConfigError,
     LegacyServerInstance, LegacyServers, has_document, legacy_servers_candidates,
-    read_legacy_servers, register_extra_dir, trust_and_unignore,
+    read_legacy_servers, register_extra_dir, trust_and_unignore, unregister_extra_dir,
 };
 use sealantern_infra::platform::AppLayout;
 use uuid::Uuid;
@@ -169,9 +169,10 @@ impl CoreLegacyMigrationService {
             })?;
         let id = store.get().id.as_str().to_string();
 
+        let extra_dir = !is_managed_dir(directory, layout);
         let registration = async {
             let mut manager = self.settings.lock_manager().await?;
-            if !is_managed_dir(directory, layout) {
+            if extra_dir {
                 register_extra_dir(&mut manager, directory).await?;
             }
             trust_and_unignore(&mut manager, &id, directory).await?;
@@ -180,6 +181,11 @@ impl CoreLegacyMigrationService {
         .await;
 
         if let Err(error) = registration {
+            // 撤销「附加目录」登记：它可能已在上一行落盘，否则会留下一个没有
+            // 实例文档、却仍会被扫描的孤立目录。
+            if extra_dir {
+                self.rollback_extra_dir(directory).await;
+            }
             if let Err(rollback) = DocumentStore::remove(path.clone()).await {
                 tracing::warn!(
                     target: "sealantern.application.legacy_migration",
@@ -191,6 +197,33 @@ impl CoreLegacyMigrationService {
             return Err(LegacyMigrationError::Settings { source: error });
         }
         Ok(())
+    }
+
+    /// 尽力撤销附加目录登记，失败只告警。
+    ///
+    /// 回滚本身失败时保持「文档已删除、目录仍登记」——发现层会把这种目录当作
+    /// 没有文档的裸目录，用户可以重新导入或忽略，不会造成数据丢失。
+    async fn rollback_extra_dir(&self, directory: &Path) {
+        match self.settings.lock_manager().await {
+            Ok(mut manager) => {
+                if let Err(error) = unregister_extra_dir(&mut manager, directory).await {
+                    tracing::warn!(
+                        target: "sealantern.application.legacy_migration",
+                        dir = %directory.display(),
+                        error = %error,
+                        "failed to roll back extra server directory registration"
+                    );
+                }
+            }
+            Err(error) => {
+                tracing::warn!(
+                    target: "sealantern.application.legacy_migration",
+                    dir = %directory.display(),
+                    error = %error,
+                    "failed to lock settings while rolling back extra server directory"
+                );
+            }
+        }
     }
 
     /// 迁移成功后归档旧文件：重命名为 `<name>.migrated[-<ts>]`。
@@ -700,6 +733,31 @@ mod tests {
         let discovery = service.instance.discovery().await.expect("discovery");
         assert_eq!(discovery.trusted.len(), 1, "migrated instance must be visible");
         assert!(discovery.problems.is_empty(), "no duplicate-id problem should be left behind");
+    }
+
+    #[tokio::test]
+    async fn rollback_extra_dir_removes_registration() {
+        let root = TempDir::new().unwrap();
+        let server_dir = root.path().join("srv").join("paper");
+        tokio::fs::create_dir_all(&server_dir).await.unwrap();
+        let service = test_service(root.path()).await;
+        {
+            let mut manager = service.settings.lock_manager().await.unwrap();
+            register_extra_dir(&mut manager, &server_dir)
+                .await
+                .expect("register");
+        }
+
+        service.rollback_extra_dir(&server_dir).await;
+
+        let registry = service.settings.registry().await.expect("registry");
+        assert!(
+            !registry
+                .extra_server_dirs
+                .iter()
+                .any(|dir| dir == &server_dir),
+            "rollback must drop the registered extra directory"
+        );
     }
 
     #[tokio::test]
