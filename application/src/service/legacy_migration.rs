@@ -505,11 +505,23 @@ mod tests {
     }
 
     fn legacy_entry(id: &str, name: &str, dir: &Path) -> String {
-        format!(
-            r#"{{"id":"{id}","name":"{name}","core_type":"paper","core_version":"1.20.4","mc_version":"1.20.4","path":"{}","jar_path":"{}","startup_mode":"jar","java_path":"","max_memory":4096,"min_memory":1024,"jvm_args":[],"port":25565,"created_at":1700000000}}"#,
-            dir.display(),
-            dir.join("server.jar").display()
-        )
+        let entry = serde_json::json!({
+            "id": id,
+            "name": name,
+            "core_type": "paper",
+            "core_version": "1.20.4",
+            "mc_version": "1.20.4",
+            "path": dir,
+            "jar_path": dir.join("server.jar"),
+            "startup_mode": "jar",
+            "java_path": "",
+            "max_memory": 4096,
+            "min_memory": 1024,
+            "jvm_args": [],
+            "port": 25565,
+            "created_at": 1_700_000_000u64,
+        });
+        entry.to_string()
     }
 
     #[tokio::test]
