@@ -29,6 +29,11 @@ pub enum LegacyMigrationError {
         /// 底层文件系统错误。
         source: FsError,
     },
+    /// 枚举已有实例（含未信任目录与重复 id 问题）失败。
+    Discovery {
+        /// 底层实例服务错误。
+        source: sealantern_contract::InstanceServiceError,
+    },
 }
 
 impl fmt::Display for LegacyMigrationError {
@@ -43,6 +48,9 @@ impl fmt::Display for LegacyMigrationError {
             }
             Self::Settings { source } => write!(formatter, "settings access failed: {source}"),
             Self::Io { source } => write!(formatter, "legacy migration I/O failed: {source}"),
+            Self::Discovery { source } => {
+                write!(formatter, "failed to enumerate existing instances: {source}")
+            }
         }
     }
 }
@@ -53,6 +61,7 @@ impl std::error::Error for LegacyMigrationError {
             Self::DocumentWrite { source, .. } => Some(source),
             Self::Settings { source } => Some(source),
             Self::Io { source } => Some(source),
+            Self::Discovery { .. } => None,
         }
     }
 }
@@ -70,6 +79,7 @@ impl From<LegacyMigrationError> for LegacyMigrationServiceError {
             LegacyMigrationError::DocumentWrite { .. } => Self::MigrationFailed,
             LegacyMigrationError::Settings { .. } => Self::StorageFailed,
             LegacyMigrationError::Io { .. } => Self::StorageFailed,
+            LegacyMigrationError::Discovery { .. } => Self::OperationFailed,
         }
     }
 }

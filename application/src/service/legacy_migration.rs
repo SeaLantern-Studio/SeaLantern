@@ -123,26 +123,34 @@ impl CoreLegacyMigrationService {
             .to_string()
     }
 
-    /// 当前已被占用的实例 id，用于迁移时避免 id 冲突。
+    /// 当前磁盘上已被占用的实例 id，用于迁移时避免 id 冲突。
     ///
-    /// 只取受信任实例：未信任目录上的 `sl.json` 会被 `has_document` 判为
-    /// 「已迁移」而跳过，不会参与本条冲突判定。发现过程出错时按「无占用」
-    /// 继续——单条迁移失败由逐条结果报告，不应整体阻断。
-    async fn occupied_ids(&self) -> HashSet<String> {
-        match self.instance.list().await {
-            Ok(instances) => instances
-                .iter()
-                .map(|instance| instance.id.as_str().to_string())
-                .collect(),
-            Err(error) => {
-                tracing::warn!(
-                    target: "sealantern.application.legacy_migration",
-                    error = %error,
-                    "failed to list existing instances before migration"
-                );
-                HashSet::new()
+    /// 取**全部**已发现的文档 id（受信任 + 待处理 + 冲突组），而不只是受信任
+    /// 实例：迁移会写入受信任名单，若沿用某个未信任目录已占用的 id，发现层
+    /// 会把两份同 id 文档都移出列表——用户看到的是「迁移成功但服务器消失」。
+    ///
+    /// 发现失败时直接报错而不是退回空集合：无法枚举已有 id 就没法安全地分配
+    /// 新 id，静默继续只会制造覆盖或重复。
+    async fn occupied_ids(&self) -> Result<HashSet<String>, LegacyMigrationError> {
+        let discovery = self
+            .instance
+            .discovery()
+            .await
+            .map_err(|source| LegacyMigrationError::Discovery { source })?;
+        let mut occupied =
+            HashSet::with_capacity(discovery.trusted.len() + discovery.pending.len());
+        for instance in &discovery.trusted {
+            occupied.insert(instance.id.as_str().to_string());
+        }
+        for pending in &discovery.pending {
+            occupied.insert(pending.instance_id.clone());
+        }
+        for problem in &discovery.problems {
+            if let Some(id) = &problem.problem.id {
+                occupied.insert(id.clone());
             }
         }
+        Ok(occupied)
     }
 
     /// 写入一份实例文档并完成名单登记；失败时回滚文档。
@@ -317,7 +325,7 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
         let entries = servers.entries;
         let unparsable = servers.unparsable;
 
-        let mut occupied = self.occupied_ids().await;
+        let mut occupied = self.occupied_ids().await?;
         let mut migrated = Vec::new();
         let mut skipped = Vec::new();
 
@@ -515,6 +523,17 @@ mod tests {
             .expect("write legacy list");
     }
 
+    fn sl_json(id: &str, name: &str) -> String {
+        serde_json::json!({
+            "schema_version": 1,
+            "id": id,
+            "name": name,
+            "core": {"type": "paper", "version": "1.20.4"},
+            "startup": {"mode": "jar", "target": "server.jar", "port": 25565},
+        })
+        .to_string()
+    }
+
     fn legacy_entry(id: &str, name: &str, dir: &Path) -> String {
         let entry = serde_json::json!({
             "id": id,
@@ -651,6 +670,36 @@ mod tests {
             legacy_servers_path(root.path()).is_file(),
             "legacy file must stay on disk so the bad row can be fixed"
         );
+    }
+
+    #[tokio::test]
+    async fn duplicate_id_with_untrusted_instance_is_reassigned() {
+        let root = TempDir::new().unwrap();
+        let existing_dir = root.path().join("instances").join("existing");
+        let server_dir = root.path().join("srv").join("paper");
+        for dir in [&existing_dir, &server_dir] {
+            tokio::fs::create_dir_all(dir).await.unwrap();
+        }
+        // 未登记信任的目录：list() 看不到它，但迁移沿用它的 id 会让发现层把
+        // 两份同 id 文档一起移出列表。
+        tokio::fs::write(existing_dir.join("sl.json"), sl_json("abc", "Existing"))
+            .await
+            .unwrap();
+        write_legacy(root.path(), &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)))
+            .await;
+        let service = test_service(root.path()).await;
+
+        let report = service.migrate().await.expect("migrate");
+
+        assert_eq!(report.migrated.len(), 1);
+        assert_ne!(
+            report.migrated[0].instance_id, "abc",
+            "must not reuse an id already present on disk"
+        );
+
+        let discovery = service.instance.discovery().await.expect("discovery");
+        assert_eq!(discovery.trusted.len(), 1, "migrated instance must be visible");
+        assert!(discovery.problems.is_empty(), "no duplicate-id problem should be left behind");
     }
 
     #[tokio::test]
