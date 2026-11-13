@@ -159,20 +159,33 @@ pub async fn read_legacy_servers(
     if bytes.iter().all(u8::is_ascii_whitespace) {
         return Ok(Vec::new());
     }
-    if let Ok(servers) = serde_json::from_slice::<Vec<LegacyServerInstance>>(&bytes) {
-        return Ok(servers);
-    }
-    #[derive(Deserialize)]
-    struct Wrapped {
-        #[serde(default)]
-        servers: Vec<LegacyServerInstance>,
-    }
-    serde_json::from_slice::<Wrapped>(&bytes)
-        .map(|wrapped| wrapped.servers)
-        .map_err(|error| LegacyConfigError::Invalid {
+    let rows = legacy_rows(&bytes)
+        .map_err(|message| LegacyConfigError::Invalid { path: path.to_path_buf(), message })?;
+    serde_json::from_value::<Vec<LegacyServerInstance>>(serde_json::Value::Array(rows)).map_err(
+        |error| LegacyConfigError::Invalid {
             path: path.to_path_buf(),
             message: error.to_string(),
-        })
+        },
+    )
+}
+
+/// 从旧文件内容中取出服务器条目数组。
+///
+/// 兼容两种历史形态：裸数组（1.2.x 实际格式）与 `{ "servers": [...] }`
+/// 包装（个别补丁/第三方分支）。对象缺少 `servers` 键时必须报错：若按
+/// 默认值当成空数组，用户既看不到迁移提示，也不会知道文件格式不对。
+fn legacy_rows(bytes: &[u8]) -> Result<Vec<serde_json::Value>, String> {
+    let value: serde_json::Value =
+        serde_json::from_slice(bytes).map_err(|error| error.to_string())?;
+    match value {
+        serde_json::Value::Array(rows) => Ok(rows),
+        serde_json::Value::Object(mut object) => match object.remove("servers") {
+            Some(serde_json::Value::Array(rows)) => Ok(rows),
+            Some(_) => Err("`servers` must be an array".to_string()),
+            None => Err("missing `servers` field".to_string()),
+        },
+        _ => Err("expected an array of servers".to_string()),
+    }
 }
 
 /// 一个已映射到新文档模型的旧条目。
@@ -472,5 +485,25 @@ mod tests {
         let candidates = legacy_servers_candidates(config_dir);
 
         assert_eq!(candidates.len(), 1);
+    }
+
+    #[test]
+    fn wrapped_object_without_servers_field_is_invalid() {
+        let error = legacy_rows(br#"{"version":1}"#).expect_err("missing servers must be invalid");
+
+        assert!(error.contains("servers"), "unexpected message: {error}");
+    }
+
+    #[test]
+    fn wrapped_object_with_non_array_servers_is_invalid() {
+        let error =
+            legacy_rows(br#"{"servers":42}"#).expect_err("non-array servers must be invalid");
+
+        assert!(error.contains("servers"), "unexpected message: {error}");
+    }
+
+    #[test]
+    fn top_level_scalar_is_invalid() {
+        assert!(legacy_rows(b"42").is_err());
     }
 }
