@@ -303,12 +303,18 @@ impl LegacyServerInstance {
         } else {
             relative_startup_target(&directory, &self.jar_path)
         };
-        let custom_command = self
-            .custom_command
-            .as_deref()
-            .map(str::trim)
-            .filter(|command| !command.is_empty())
-            .map(str::to_string);
+        // 领域校验要求非 custom 模式的 `custom_command` 必须为空；旧文件里
+        // 常残留切换到 jar 模式前的自定义命令，直接带过去会让整个实例校验
+        // 失败并被跳过，因此只在 custom 模式下保留。
+        let custom_command = if mode == StartupMode::Custom {
+            self.custom_command
+                .as_deref()
+                .map(str::trim)
+                .filter(|command| !command.is_empty())
+                .map(str::to_string)
+        } else {
+            None
+        };
         let java_path = {
             let trimmed = self.java_path.trim();
             (!trimmed.is_empty()).then(|| PathBuf::from(trimmed))
@@ -417,6 +423,25 @@ mod tests {
         assert_eq!(mapped.document.startup.mode, StartupMode::Jar);
         assert_eq!(mapped.document.startup.memory_mib.max, 4096);
         assert_eq!(mapped.document.created_at_unix_secs, Some(1_700_000_000));
+        mapped
+            .document
+            .validate()
+            .expect("mapped document should validate");
+    }
+
+    #[test]
+    fn drops_custom_command_when_mode_is_not_custom() {
+        let dir = PathBuf::from("/srv/mc/paper");
+        let mut entry = legacy("abc", &dir, &dir.join("server.jar"));
+        entry.custom_command = Some("./stale-start.sh".to_string());
+
+        let mapped = entry.to_document().expect("legacy entry should map");
+
+        assert_eq!(mapped.document.startup.mode, StartupMode::Jar);
+        assert_eq!(
+            mapped.document.startup.custom_command, None,
+            "stale custom command would fail domain validation otherwise"
+        );
         mapped
             .document
             .validate()
