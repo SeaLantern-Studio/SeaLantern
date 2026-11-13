@@ -131,7 +131,9 @@ impl CoreLegacyMigrationService {
     ///
     /// 发现失败时直接报错而不是退回空集合：无法枚举已有 id 就没法安全地分配
     /// 新 id，静默继续只会制造覆盖或重复。
-    async fn occupied_ids(&self) -> Result<HashSet<String>, LegacyMigrationError> {
+    async fn occupied_ids(
+        &self,
+    ) -> Result<(HashSet<String>, HashSet<String>), LegacyMigrationError> {
         let discovery = self
             .instance
             .discovery()
@@ -139,9 +141,12 @@ impl CoreLegacyMigrationService {
             .map_err(|source| LegacyMigrationError::Discovery { source })?;
         let mut occupied =
             HashSet::with_capacity(discovery.trusted.len() + discovery.pending.len());
-        for instance in &discovery.trusted {
-            occupied.insert(instance.id.as_str().to_string());
-        }
+        let trusted: HashSet<String> = discovery
+            .trusted
+            .iter()
+            .map(|inst| inst.id.as_str().to_string())
+            .collect();
+        occupied.extend(trusted.iter().cloned());
         for pending in &discovery.pending {
             occupied.insert(pending.instance_id.clone());
         }
@@ -150,7 +155,7 @@ impl CoreLegacyMigrationService {
                 occupied.insert(id.clone());
             }
         }
-        Ok(occupied)
+        Ok((occupied, trusted))
     }
 
     /// 写入一份实例文档并完成名单登记；失败时回滚文档。
@@ -224,6 +229,40 @@ impl CoreLegacyMigrationService {
                 );
             }
         }
+    }
+
+    /// 目录已有 `sl.json` 时尝试补完登记（崩溃在写入与登记之间的恢复路径）。
+    ///
+    /// 正常路径下 `DocumentStore::create` 与名单登记之间没有等待点；但进程若
+    /// 在两者之间退出，重试时 `has_document` 会把它判为「已迁移」而跳过，于是
+    /// 文档存在却永远不受信任。这里读回文档并补齐附加目录与信任登记——两个
+    /// 原语都是幂等的，已在名单中的条目不会重复写入。
+    async fn finalize_registration(
+        &self,
+        layout: &AppLayout,
+        directory: &Path,
+    ) -> Result<MigratedLegacyInstance, LegacyMigrationError> {
+        let store = DocumentStore::load(DocumentStore::path_for(directory))
+            .await
+            .map_err(|source| LegacyMigrationError::DocumentWrite {
+                directory: directory.to_path_buf(),
+                source,
+            })?;
+        let document = store.get();
+        let id = document.id.as_str().to_string();
+        let extra_dir = !is_managed_dir(directory, layout);
+
+        let mut manager = self.settings.lock_manager().await?;
+        if extra_dir {
+            register_extra_dir(&mut manager, directory).await?;
+        }
+        trust_and_unignore(&mut manager, &id, directory).await?;
+
+        Ok(MigratedLegacyInstance {
+            instance_id: id,
+            name: document.name.clone(),
+            directory: directory.to_path_buf(),
+        })
     }
 
     /// 迁移成功后归档旧文件：重命名为 `<name>.migrated[-<ts>]`。
@@ -358,7 +397,7 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
         let entries = servers.entries;
         let unparsable = servers.unparsable;
 
-        let mut occupied = self.occupied_ids().await?;
+        let (mut occupied, trusted) = self.occupied_ids().await?;
         let mut migrated = Vec::new();
         let mut skipped = Vec::new();
 
@@ -388,11 +427,32 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
                 continue;
             }
             if has_document(&directory) {
-                skipped.push(SkippedLegacyInstance {
-                    name,
-                    directory,
-                    reason: LegacyMigrationSkipReason::AlreadyMigrated,
-                });
+                // 文档已在但未登记信任：多半是上次迁移写完文档就中断了，
+                // 补完登记即可恢复；已在受信任集合里的条目按「已迁移」跳过。
+                match self.finalize_registration(&layout, &directory).await {
+                    Ok(instance) if !trusted.contains(&instance.instance_id) => {
+                        occupied.insert(instance.instance_id.clone());
+                        migrated.push(instance);
+                    }
+                    Ok(_) => skipped.push(SkippedLegacyInstance {
+                        name,
+                        directory,
+                        reason: LegacyMigrationSkipReason::AlreadyMigrated,
+                    }),
+                    Err(error) => {
+                        tracing::warn!(
+                            target: "sealantern.application.legacy_migration",
+                            dir = %directory.display(),
+                            error = %error,
+                            "failed to complete registration for an existing instance document"
+                        );
+                        skipped.push(SkippedLegacyInstance {
+                            name,
+                            directory,
+                            reason: LegacyMigrationSkipReason::CreateFailed,
+                        });
+                    }
+                }
                 continue;
             }
 
@@ -735,6 +795,43 @@ mod tests {
         assert!(discovery.problems.is_empty(), "no duplicate-id problem should be left behind");
     }
 
+    async fn trust(service: &CoreLegacyMigrationService, id: &str) {
+        service
+            .settings
+            .lock_manager()
+            .await
+            .unwrap()
+            .update_registry(|registry| {
+                registry.trusted_instances.push(id.to_string());
+                true
+            })
+            .await
+            .expect("register trusted instance");
+    }
+
+    #[tokio::test]
+    async fn existing_document_without_trust_is_registered() {
+        let root = TempDir::new().unwrap();
+        let server_dir = root.path().join("srv").join("paper");
+        tokio::fs::create_dir_all(&server_dir).await.unwrap();
+        // 模拟上次迁移写完 sl.json 后进程退出：文档在、信任与附加目录都缺。
+        tokio::fs::write(server_dir.join("sl.json"), sl_json("abc", "Paper"))
+            .await
+            .unwrap();
+        write_legacy(root.path(), &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)))
+            .await;
+        let service = test_service(root.path()).await;
+
+        let report = service.migrate().await.expect("migrate");
+
+        assert_eq!(report.migrated.len(), 1, "interrupted migration must be resumed");
+        assert_eq!(report.migrated[0].instance_id, "abc");
+
+        let discovery = service.instance.discovery().await.expect("discovery");
+        assert_eq!(discovery.trusted.len(), 1);
+        assert_eq!(discovery.trusted[0].id.as_str(), "abc");
+    }
+
     #[tokio::test]
     async fn rollback_extra_dir_removes_registration() {
         let root = TempDir::new().unwrap();
@@ -796,7 +893,7 @@ mod tests {
         for dir in [&done_dir, &server_dir] {
             tokio::fs::create_dir_all(dir).await.unwrap();
         }
-        tokio::fs::write(done_dir.join("sl.json"), "{}")
+        tokio::fs::write(done_dir.join("sl.json"), sl_json("done", "Done"))
             .await
             .unwrap();
         write_legacy(
@@ -809,6 +906,8 @@ mod tests {
         )
         .await;
         let service = test_service(root.path()).await;
+        // 真正「已迁移」是「文档在 + 已受信任」；只有文档属于中断的迁移。
+        trust(&service, "done").await;
 
         let report = service.migrate().await.expect("migrate");
 
@@ -827,7 +926,7 @@ mod tests {
         let migrated_dir = root.path().join("srv").join("done");
         let missing_dir = root.path().join("srv").join("gone");
         tokio::fs::create_dir_all(&migrated_dir).await.unwrap();
-        tokio::fs::write(migrated_dir.join("sl.json"), "{}")
+        tokio::fs::write(migrated_dir.join("sl.json"), sl_json("done", "Done"))
             .await
             .unwrap();
         write_legacy(
@@ -840,6 +939,7 @@ mod tests {
         )
         .await;
         let service = test_service(root.path()).await;
+        trust(&service, "done").await;
 
         let error = service.migrate().await.expect_err("nothing migratable");
 
