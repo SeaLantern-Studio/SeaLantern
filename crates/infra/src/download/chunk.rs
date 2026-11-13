@@ -60,7 +60,7 @@ pub(super) async fn download_chunk(
             let mut local_downloaded = 0u64;
             while let Some(chunk) = response.chunk().await? {
                 if status.cancelled() {
-                    return Err(DownloadError::Cancelled("任务已取消".to_string()));
+                    return Err(DownloadError::Cancelled);
                 }
 
                 let len = chunk.len() as u64;
@@ -87,7 +87,7 @@ pub(super) async fn download_chunk(
                 Ok(ok) => Ok(ok),
                 Err(err) => {
                     if status.cancelled() {
-                        Err(DownloadError::Cancelled("任务已取消".to_string()))
+                        Err(DownloadError::Cancelled)
                     } else {
                         observability::chunk_failed(url, start, end, &err);
                         Err(err)
@@ -96,7 +96,7 @@ pub(super) async fn download_chunk(
             }
         },
         _ = status.cancel_token.cancelled() => {
-            Err(DownloadError::Cancelled("任务已取消".to_string()))
+            Err(DownloadError::Cancelled)
         }
     }
 }
@@ -111,14 +111,14 @@ fn validate_chunk_response(response: &reqwest::Response, start: u64) -> Result<(
     if start > 0 && response.status() != StatusCode::PARTIAL_CONTENT {
         return Err(DownloadError::Response(
             response.status().as_u16(),
-            "服务器未按 Range 返回 206".to_string(),
+            "server did not honor the Range request with 206".to_string(),
         ));
     }
 
     if !response.status().is_success() && response.status() != StatusCode::PARTIAL_CONTENT {
         return Err(DownloadError::Response(
             response.status().as_u16(),
-            format!("下载失败，状态码: {}", response.status()),
+            format!("download failed with status: {}", response.status()),
         ));
     }
 

@@ -679,7 +679,7 @@ mod tests {
         let database = SqliteDatabase::open_with_schema(&path, schema)
             .await
             .unwrap();
-        assert!(path.exists(), "数据库文件应在目标路径创建");
+        assert!(path.exists(), "database file should be created at the target path");
 
         let inserted = database
             .insert("INSERT INTO records (name) VALUES (?1)", [SqlValue::Text("first".to_owned())])

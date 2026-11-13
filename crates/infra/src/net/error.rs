@@ -50,18 +50,27 @@ pub enum NetError {
 impl fmt::Display for NetError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NetError::Config(msg) => write!(f, "配置错误: {}", msg),
-            NetError::Request(msg) => write!(f, "请求失败: {}", msg),
-            NetError::Response(code, body) => write!(f, "服务端返回 {}: {}", code, body),
-            NetError::Timeout => write!(f, "请求超时"),
-            NetError::Parse(msg) => write!(f, "解析失败: {}", msg),
-            NetError::Io(err) => write!(f, "IO 错误: {}", err),
-            NetError::Cancelled => write!(f, "请求已取消"),
+            NetError::Config(msg) => write!(f, "config error: {}", msg),
+            NetError::Request(msg) => write!(f, "request failed: {}", msg),
+            NetError::Response(code, body) => write!(f, "server returned {}: {}", code, body),
+            NetError::Timeout => write!(f, "request timed out"),
+            NetError::Parse(msg) => write!(f, "parse error: {}", msg),
+            NetError::Io(err) => write!(f, "I/O error: {}", err),
+            NetError::Cancelled => write!(f, "request cancelled"),
         }
     }
 }
 
-impl std::error::Error for NetError {}
+impl std::error::Error for NetError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        // Only `Io` wraps a lower-level error. The remaining variants carry
+        // already-classified text, so there is no further cause to expose.
+        match self {
+            NetError::Io(err) => Some(err),
+            _ => None,
+        }
+    }
+}
 
 impl From<std::io::Error> for NetError {
     fn from(err: std::io::Error) -> Self {
@@ -76,37 +85,37 @@ mod tests {
     #[test]
     fn display_config_error() {
         let err = NetError::Config("bad proxy".into());
-        assert_eq!(err.to_string(), "配置错误: bad proxy");
+        assert_eq!(err.to_string(), "config error: bad proxy");
     }
 
     #[test]
     fn display_request_error() {
         let err = NetError::Request("connection refused".into());
-        assert_eq!(err.to_string(), "请求失败: connection refused");
+        assert_eq!(err.to_string(), "request failed: connection refused");
     }
 
     #[test]
     fn display_response_error() {
         let err = NetError::Response(404, "Not Found".into());
-        assert_eq!(err.to_string(), "服务端返回 404: Not Found");
+        assert_eq!(err.to_string(), "server returned 404: Not Found");
     }
 
     #[test]
     fn display_timeout() {
         let err = NetError::Timeout;
-        assert_eq!(err.to_string(), "请求超时");
+        assert_eq!(err.to_string(), "request timed out");
     }
 
     #[test]
     fn display_parse_error() {
         let err = NetError::Parse("invalid json".into());
-        assert_eq!(err.to_string(), "解析失败: invalid json");
+        assert_eq!(err.to_string(), "parse error: invalid json");
     }
 
     #[test]
     fn display_cancelled() {
         let err = NetError::Cancelled;
-        assert_eq!(err.to_string(), "请求已取消");
+        assert_eq!(err.to_string(), "request cancelled");
     }
 
     #[test]
@@ -121,7 +130,22 @@ mod tests {
     fn error_trait_impl() {
         let err = NetError::Timeout;
         let err_ref: &dyn std::error::Error = &err;
-        assert_eq!(err_ref.to_string(), "请求超时");
+        assert_eq!(err_ref.to_string(), "request timed out");
+    }
+
+    #[test]
+    fn io_error_exposes_source() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let net_err = NetError::from(io_err);
+        let source = std::error::Error::source(&net_err);
+        assert!(source.is_some());
+    }
+
+    #[test]
+    fn classified_errors_have_no_source() {
+        assert!(std::error::Error::source(&NetError::Timeout).is_none());
+        assert!(std::error::Error::source(&NetError::Cancelled).is_none());
+        assert!(std::error::Error::source(&NetError::Config("x".into())).is_none());
     }
 
     #[test]

@@ -46,7 +46,7 @@ impl<'a> RequestBuilder<'a> {
     ) -> Result<Self, NetError> {
         let url_str = url
             .into_url()
-            .map_err(|e| NetError::Parse(format!("URL 格式无效: {}", e)))?
+            .map_err(|e| NetError::Parse(format!("invalid URL: {}", e)))?
             .to_string();
 
         Ok(Self {
@@ -80,7 +80,7 @@ impl<'a> RequestBuilder<'a> {
     /// 除非已通过 `.header()` 设置，否则自动添加 `Content-Type: application/json`。
     pub fn json<T: Serialize>(mut self, value: &T) -> Result<Self, NetError> {
         let body = serde_json::to_string(value)
-            .map_err(|e| NetError::Parse(format!("序列化 JSON 失败: {}", e)))?;
+            .map_err(|e| NetError::Parse(format!("failed to serialize JSON body: {}", e)))?;
         self.body = Some(body);
         self.content_type
             .get_or_insert_with(|| "application/json".into());
@@ -137,7 +137,7 @@ impl<'a> RequestBuilder<'a> {
                         observability::request_retry(
                             &self.url,
                             attempt,
-                            &format!("服务端返回 {status}"),
+                            &format!("server returned {status}"),
                         );
                         self.sleep(attempt).await;
                         continue;
@@ -168,7 +168,7 @@ impl<'a> RequestBuilder<'a> {
             }
         }
 
-        unreachable!("循环逻辑保证至少执行一次")
+        unreachable!("retry loop must execute at least once")
     }
 
     /// 指数退避等待。
@@ -201,7 +201,7 @@ fn convert_reqwest_error(err: reqwest::Error) -> NetError {
     if err.is_timeout() {
         NetError::Timeout
     } else if err.is_connect() {
-        NetError::Request(format!("连接失败: {}", err))
+        NetError::Request(format!("connection failed: {}", err))
     } else if err.is_status() {
         if let Some(status) = err.status() {
             NetError::Response(status.as_u16(), err.to_string())

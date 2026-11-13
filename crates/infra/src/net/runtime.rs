@@ -44,9 +44,11 @@ impl fmt::Display for NetworkCommitError {
         match self {
             Self::Conflict { expected_revision, actual_revision } => write!(
                 formatter,
-                "网络运行时状态冲突：预期世代 {expected_revision}，实际世代 {actual_revision}"
+                "network runtime state conflict: expected revision {expected_revision}, actual revision {actual_revision}"
             ),
-            Self::RuntimeUnavailable => formatter.write_str("全局网络运行时状态锁已污染"),
+            Self::RuntimeUnavailable => {
+                formatter.write_str("global network runtime state lock is poisoned")
+            }
         }
     }
 }
@@ -167,7 +169,7 @@ impl NetworkRuntime {
             .map_err(proxy_config_error)?;
         let controller_changed = controller_changed(&current.controller, &next_controller);
         let state_revision = if controller_changed {
-            next_revision(current.state_revision, "网络运行时状态世代已耗尽")?
+            next_revision(current.state_revision, "network runtime state revision exhausted")?
         } else {
             current.state_revision
         };
@@ -176,7 +178,8 @@ impl NetworkRuntime {
                 &ClientConfig::default(),
                 &update.current,
             )?;
-            let revision = next_revision(current.client_revision, "网络客户端世代已耗尽")?;
+            let revision =
+                next_revision(current.client_revision, "network client revision exhausted")?;
             (client, revision, true)
         } else {
             (current.client.clone(), current.client_revision, false)
@@ -285,7 +288,8 @@ fn commit_proxy_update(
                 client_revision: current.client_revision,
             });
         }
-        let state_revision = next_revision(current.state_revision, "网络运行时状态世代已耗尽")?;
+        let state_revision =
+            next_revision(current.state_revision, "network runtime state revision exhausted")?;
         current.controller = next_controller;
         current.state_revision = state_revision;
         return Ok(NetworkUpdate {
@@ -297,8 +301,10 @@ fn commit_proxy_update(
 
     let next_client =
         NetClient::from_config_with_effective_proxy(&ClientConfig::default(), &update.current)?;
-    let state_revision = next_revision(current.state_revision, "网络运行时状态世代已耗尽")?;
-    let client_revision = next_revision(current.client_revision, "网络客户端世代已耗尽")?;
+    let state_revision =
+        next_revision(current.state_revision, "network runtime state revision exhausted")?;
+    let client_revision =
+        next_revision(current.client_revision, "network client revision exhausted")?;
     current.controller = next_controller;
     current.client = next_client;
     current.state_revision = state_revision;
@@ -328,13 +334,13 @@ fn sanitized_proxy_endpoint(value: &str) -> Option<String> {
 
 fn proxy_config_error(error: ProxyConfigError) -> NetError {
     let message = match error {
-        ProxyConfigError::EmptyManualProxy => "手动代理地址不能为空",
+        ProxyConfigError::EmptyManualProxy => "manual proxy URL must not be empty",
     };
     NetError::Config(message.into())
 }
 
 fn runtime_lock_poisoned<T>(_error: std::sync::PoisonError<T>) -> NetError {
-    NetError::Config("全局网络运行时状态锁已污染".into())
+    NetError::Config("global network runtime state lock is poisoned".into())
 }
 
 fn next_revision(revision: u64, exhausted_message: &'static str) -> Result<u64, NetError> {
@@ -520,7 +526,7 @@ mod tests {
             )
             .unwrap_err();
 
-        assert_eq!(error.to_string(), "配置错误: 手动代理地址不能为空");
+        assert_eq!(error.to_string(), "config error: manual proxy URL must not be empty");
         let after = runtime_state(&runtime);
         assert_eq!(after.state_revision, before.state_revision);
         assert_eq!(after.client_revision, before.client_revision);

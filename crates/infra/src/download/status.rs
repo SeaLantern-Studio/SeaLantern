@@ -23,7 +23,7 @@ pub enum DownloadError {
     /// 网络层错误
     Net(NetError),
     /// 下载被主动取消
-    Cancelled(String),
+    Cancelled,
     /// 其他错误信息
     Message(String),
 }
@@ -31,17 +31,28 @@ pub enum DownloadError {
 impl std::fmt::Display for DownloadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DownloadError::Reqwest(e) => write!(f, "请求错误: {}", e),
-            DownloadError::Io(e) => write!(f, "IO 错误: {}", e),
-            DownloadError::Response(code, body) => write!(f, "服务端返回 {}: {}", code, body),
-            DownloadError::Net(e) => write!(f, "网络错误: {}", e),
-            DownloadError::Cancelled(msg) => write!(f, "下载取消: {}", msg),
+            DownloadError::Reqwest(e) => write!(f, "request error: {}", e),
+            DownloadError::Io(e) => write!(f, "I/O error: {}", e),
+            DownloadError::Response(code, body) => write!(f, "server returned {}: {}", code, body),
+            DownloadError::Net(e) => write!(f, "network error: {}", e),
+            DownloadError::Cancelled => write!(f, "download cancelled"),
             DownloadError::Message(msg) => write!(f, "{}", msg),
         }
     }
 }
 
-impl std::error::Error for DownloadError {}
+impl std::error::Error for DownloadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            DownloadError::Reqwest(err) => Some(err),
+            DownloadError::Io(err) => Some(err),
+            DownloadError::Net(err) => Some(err),
+            DownloadError::Response(..) | DownloadError::Cancelled | DownloadError::Message(_) => {
+                None
+            }
+        }
+    }
+}
 
 impl From<reqwest::Error> for DownloadError {
     fn from(err: reqwest::Error) -> Self {
@@ -163,7 +174,7 @@ impl DownloadStatus {
             },
             is_finished: self.completed.load(Ordering::Relaxed) || error.is_some() || is_cancelled,
             error: if is_cancelled {
-                Some("下载已取消".to_string())
+                Some("download cancelled by user".to_string())
             } else {
                 error
             },
@@ -199,7 +210,7 @@ mod tests {
         status.cancel();
         let snap = status.snapshot().await;
         assert!(snap.is_finished);
-        assert_eq!(snap.error.unwrap(), "下载已取消");
+        assert_eq!(snap.error.unwrap(), "download cancelled by user");
     }
 
     #[tokio::test]
@@ -212,7 +223,7 @@ mod tests {
         status.cancel();
         let snap_after = status.snapshot().await;
         assert!(snap_after.is_finished);
-        assert_eq!(snap_after.error.unwrap(), "下载已取消");
+        assert_eq!(snap_after.error.unwrap(), "download cancelled by user");
         assert_eq!(snap_after.downloaded, 300);
     }
 }
