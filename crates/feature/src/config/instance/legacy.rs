@@ -39,7 +39,9 @@ fn default_startup_mode() -> String {
 /// 字段名与旧序列化格式一致；`Option`/`default` 覆盖旧补丁的字段差异。
 #[derive(Debug, Clone, Deserialize)]
 pub struct LegacyServerInstance {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub name: String,
     #[serde(default)]
     pub core_type: String,
@@ -437,6 +439,17 @@ mod tests {
         entry.path = "  ".to_string();
 
         assert!(matches!(entry.to_document(), Err(LegacyMappingError::MissingDirectory)));
+    }
+
+    #[test]
+    fn missing_id_and_name_are_tolerated() {
+        let json = r#"[{"path":"/srv/mc/paper","jar_path":"/srv/mc/paper/server.jar"}]"#;
+
+        let entries: Vec<LegacyServerInstance> =
+            serde_json::from_str(json).expect("entry without id/name should still parse");
+
+        assert!(entries[0].id.is_empty());
+        assert!(entries[0].name.is_empty());
     }
 
     #[test]
