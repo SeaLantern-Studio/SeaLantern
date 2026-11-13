@@ -142,13 +142,20 @@ pub fn legacy_servers_candidates(config_dir: &Path) -> Vec<PathBuf> {
     candidates
 }
 
+/// 一次旧配置读取的结果。
+#[derive(Debug, Default)]
+pub struct LegacyServers {
+    /// 成功解析的条目。
+    pub entries: Vec<LegacyServerInstance>,
+    /// 结构损坏、无法映射的条目数量（不阻断其余条目）。
+    pub unparsable: usize,
+}
+
 /// 读取并解析旧配置；文件不存在时返回 [`LegacyConfigError::NotFound`]。
 ///
 /// 兼容两种历史形态：裸数组（1.2.x 实际格式）与 `{ "servers": [...] }`
 /// 包装（个别补丁/第三方分支），避免用户恰好是后者时看不到迁移提示。
-pub async fn read_legacy_servers(
-    path: &Path,
-) -> Result<Vec<LegacyServerInstance>, LegacyConfigError> {
+pub async fn read_legacy_servers(path: &Path) -> Result<LegacyServers, LegacyConfigError> {
     let bytes = match read_limited(path, LEGACY_READ_LIMIT).await {
         Ok(bytes) => bytes,
         Err(FsError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
@@ -157,16 +164,38 @@ pub async fn read_legacy_servers(
         Err(source) => return Err(LegacyConfigError::Storage { source }),
     };
     if bytes.iter().all(u8::is_ascii_whitespace) {
-        return Ok(Vec::new());
+        return Ok(LegacyServers::default());
     }
     let rows = legacy_rows(&bytes)
         .map_err(|message| LegacyConfigError::Invalid { path: path.to_path_buf(), message })?;
-    serde_json::from_value::<Vec<LegacyServerInstance>>(serde_json::Value::Array(rows)).map_err(
-        |error| LegacyConfigError::Invalid {
-            path: path.to_path_buf(),
-            message: error.to_string(),
-        },
-    )
+    Ok(parse_rows(rows, path))
+}
+
+/// 逐条解析旧条目，把无法映射的坏行计数而非让整份列表失败。
+///
+/// 旧文件常被手工编辑，个别条目字段类型错乱不应让其余服务器全部失去
+/// 迁移机会；坏行单独告警并计入 [`LegacyServers::unparsable`]，好行照常
+/// 返回。调用方据此避免在仍有坏行时归档旧文件，保留用户重试或手工修复
+/// 的机会。
+fn parse_rows(rows: Vec<serde_json::Value>, path: &Path) -> LegacyServers {
+    let mut entries = Vec::with_capacity(rows.len());
+    let mut unparsable = 0usize;
+    for (index, row) in rows.into_iter().enumerate() {
+        match serde_json::from_value::<LegacyServerInstance>(row) {
+            Ok(server) => entries.push(server),
+            Err(error) => {
+                unparsable += 1;
+                tracing::warn!(
+                    target: "sealantern.feature.legacy",
+                    path = %path.display(),
+                    index,
+                    error = %error,
+                    "skipping malformed legacy server entry"
+                );
+            }
+        }
+    }
+    LegacyServers { entries, unparsable }
 }
 
 /// 从旧文件内容中取出服务器条目数组。
@@ -505,5 +534,19 @@ mod tests {
     #[test]
     fn top_level_scalar_is_invalid() {
         assert!(legacy_rows(b"42").is_err());
+    }
+
+    #[test]
+    fn malformed_row_does_not_drop_valid_rows() {
+        let rows = vec![
+            serde_json::json!({"id": "ok", "path": "/srv/mc/paper"}),
+            serde_json::json!({"id": "bad", "path": 42}),
+        ];
+
+        let servers = parse_rows(rows, Path::new("/tmp/sea_lantern_servers.json"));
+
+        assert_eq!(servers.entries.len(), 1);
+        assert_eq!(servers.entries[0].id, "ok");
+        assert_eq!(servers.unparsable, 1);
     }
 }

@@ -25,8 +25,8 @@ use sealantern_contract::legacy_migration::{
 };
 use sealantern_feature::config::instance::{
     DocumentStore, InstanceDocument, LEGACY_SERVERS_FILE_NAME, LegacyConfigError,
-    LegacyServerInstance, has_document, legacy_servers_candidates, read_legacy_servers,
-    register_extra_dir, trust_and_unignore,
+    LegacyServerInstance, LegacyServers, has_document, legacy_servers_candidates,
+    read_legacy_servers, register_extra_dir, trust_and_unignore,
 };
 use sealantern_infra::platform::AppLayout;
 use uuid::Uuid;
@@ -69,20 +69,20 @@ impl CoreLegacyMigrationService {
     }
 
     /// 读取旧条目；文件不存在视为「没有旧数据」而不是错误。
-    async fn legacy_entries(&self) -> Result<Vec<LegacyServerInstance>, LegacyMigrationError> {
+    async fn legacy_entries(&self) -> Result<LegacyServers, LegacyMigrationError> {
         let Some(path) = self.resolve_legacy_path().await? else {
-            return Ok(Vec::new());
+            return Ok(LegacyServers::default());
         };
         match read_legacy_servers(&path).await {
-            Ok(entries) => Ok(entries),
-            Err(LegacyConfigError::NotFound { .. }) => Ok(Vec::new()),
+            Ok(servers) => Ok(servers),
+            Err(LegacyConfigError::NotFound { .. }) => Ok(LegacyServers::default()),
             Err(error @ LegacyConfigError::Invalid { .. }) => {
                 tracing::warn!(
                     target: "sealantern.application.legacy_migration",
                     error = %error,
                     "legacy server list could not be parsed"
                 );
-                Ok(Vec::new())
+                Ok(LegacyServers::default())
             }
             Err(LegacyConfigError::Storage { source }) => Err(LegacyMigrationError::Io { source }),
         }
@@ -232,7 +232,7 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
             .await
             .map_err(LegacyMigrationError::from)
             .map_err(LegacyMigrationServiceError::from)?;
-        let entries = self.legacy_entries().await?;
+        let entries = self.legacy_entries().await?.entries;
         if entries.is_empty() {
             return Ok(LegacyMigrationStatus::empty(dismissed));
         }
@@ -290,8 +290,8 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
         else {
             return Err(LegacyMigrationServiceError::NothingToMigrate);
         };
-        let entries = match read_legacy_servers(&legacy_path).await {
-            Ok(entries) => entries,
+        let servers = match read_legacy_servers(&legacy_path).await {
+            Ok(servers) => servers,
             Err(LegacyConfigError::NotFound { .. }) => {
                 return Err(LegacyMigrationServiceError::NothingToMigrate);
             }
@@ -307,9 +307,11 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
                 return Err(LegacyMigrationServiceError::from(LegacyMigrationError::Io { source }));
             }
         };
-        if entries.is_empty() {
+        if servers.entries.is_empty() {
             return Err(LegacyMigrationServiceError::NothingToMigrate);
         }
+        let entries = servers.entries;
+        let unparsable = servers.unparsable;
 
         let mut occupied = self.occupied_ids().await;
         let mut migrated = Vec::new();
@@ -429,7 +431,18 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
             return Err(LegacyMigrationServiceError::NothingToMigrate);
         }
 
-        let legacy_file_archived = self.archive_legacy_file(&legacy_path).await;
+        // 有坏行时保留旧文件：它们可能是用户需要手工修复的条目，归档会让
+        // 这些条目彻底失去重试机会。代价是下次启动仍会提示，这正是预期。
+        let legacy_file_archived = if unparsable > 0 {
+            tracing::warn!(
+                target: "sealantern.application.legacy_migration",
+                unparsable,
+                "legacy server list kept on disk because some entries could not be parsed"
+            );
+            false
+        } else {
+            self.archive_legacy_file(&legacy_path).await
+        };
 
         tracing::info!(
             target: "sealantern.application.legacy_migration",
@@ -592,6 +605,29 @@ mod tests {
 
         let status = service.status().await.expect("status after migrate");
         assert!(!status.available, "no prompt once migrated");
+    }
+
+    #[tokio::test]
+    async fn malformed_entry_keeps_legacy_file_for_retry() {
+        let root = TempDir::new().unwrap();
+        let server_dir = root.path().join("srv").join("paper");
+        tokio::fs::create_dir_all(&server_dir).await.unwrap();
+        let good = legacy_entry("abc", "Paper", &server_dir);
+        let body = format!("[{good},{}]", r#"{"id":"bad","path":42}"#);
+        write_legacy(root.path(), &body).await;
+        let service = test_service(root.path()).await;
+
+        let report = service.migrate().await.expect("migrate");
+
+        assert_eq!(report.migrated.len(), 1, "valid entry must still migrate");
+        assert!(
+            !report.legacy_file_archived,
+            "legacy file must be kept while unparsable rows remain"
+        );
+        assert!(
+            legacy_servers_path(root.path()).is_file(),
+            "legacy file must stay on disk so the bad row can be fixed"
+        );
     }
 
     #[tokio::test]
