@@ -254,18 +254,22 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
         // 「没有服务器」才提示：已有受信任实例说明列表不为空，旧文件只是历史
         // 残留（或用户主动保留的备份），不应再打扰。
         //
-        // 发现失败时按「没有已管理实例」继续：检测本身是只读辅助能力，
-        // 不应因某个目录不可读就让启动流程拿不到结果；真正的迁移失败会
-        // 在用户确认后由 `migrate` 逐条报告。
+        // 发现失败时无法判断是否已有受信任实例，此时不提示：把错误当成
+        // 「没有实例」会在一个已有服务器的环境里冒出迁移弹窗，误导用户重复
+        // 迁移。检测失败只记日志，启动流程照常拿到一个「不可用」的结果。
         let has_trusted = match self.instance.list().await {
             Ok(instances) => !instances.is_empty(),
             Err(error) => {
                 tracing::warn!(
                     target: "sealantern.application.legacy_migration",
                     error = %error,
-                    "failed to list instances while detecting legacy migration"
+                    "failed to list instances; suppressing legacy migration prompt"
                 );
-                false
+                return Ok(LegacyMigrationStatus {
+                    available: false,
+                    dismissed,
+                    entries: views,
+                });
             }
         };
 
