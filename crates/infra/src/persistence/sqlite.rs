@@ -1,3 +1,18 @@
+//! 通用 SQLite 访问与版本化迁移。
+//!
+//! [`SqliteDatabase`] 封装单连接、进程内读写协调、参数绑定与
+//! `BEGIN IMMEDIATE` 事务；[`Migration`] 提供按版本升序、带 SHA-256 校验的
+//! 静态 SQL 迁移清单。
+//!
+//! 设计约束：
+//!
+//! - 不定义任何业务表，SQL 与 schema 由调用方提供；
+//! - 运行时值必须经 [`SqlValue`] 绑定，**禁止**拼进 SQL 字符串；
+//! - 迁移 SQL 必须是 `&'static str`，并在单个事务内原子应用；
+//! - 跨进程并发依赖 SQLite 自身的 WAL / `busy_timeout`，本模块只保证进程内
+//!   串行化；
+//! - 连接的锁是非重入的：持有 `write` 闭包期间再次访问同一个数据库会死锁。
+
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
