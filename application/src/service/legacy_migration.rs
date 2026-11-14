@@ -213,10 +213,12 @@ impl CoreLegacyMigrationService {
         if extra_dir {
             register_extra_dir(&mut manager, directory)
                 .await
+                .map_err(crate::error::SettingsError::from)
                 .map_err(|source| LegacyMigrationError::Settings { source })?;
         }
         trust_and_unignore(&mut manager, id, directory)
             .await
+            .map_err(crate::error::SettingsError::from)
             .map_err(|source| LegacyMigrationError::Settings { source })?;
         Ok(())
     }
