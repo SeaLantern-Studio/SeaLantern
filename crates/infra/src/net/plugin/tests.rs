@@ -1,3 +1,9 @@
+//! 插件网络策略与安全边界的单元测试。
+//!
+//! 覆盖 origin 解析、私有地址判定、请求头白名单、资源上限与 DNS 结果校验。
+//! 用 `FixedResolver` / `ErrorResolver` 替代真实 DNS，使 SSRF 相关的断言
+//! 不依赖网络环境。
+
 use std::io::ErrorKind;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;

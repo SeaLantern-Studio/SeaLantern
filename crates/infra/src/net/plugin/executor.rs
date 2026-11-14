@@ -1,3 +1,16 @@
+//! 插件受控出站网络的执行器。
+//!
+//! 安全模型的核心是"**校验与连接作用于同一个 IP**"：
+//!
+//! 1. 解析 DNS 并逐个校验地址，任一落在私有/保留网段即整体拒绝；
+//! 2. 用解析结果构造带 `resolve_to_addrs` 的客户端，把域名钉死在已校验的
+//!    IP 上，避免校验后 DNS 被重新解析（DNS rebinding）；
+//! 3. 每跳重定向都重新解析并校验，且必须留在已批准的 origin 内；
+//! 4. 逐跳重建客户端并禁用连接池复用，防止跨跳复用已建立的连接。
+//!
+//! 资源上限（响应体大小、响应头数量、并发数、超时）由
+//! [`super::PluginNetworkLimits`] 提供，超出即拒绝而非截断。
+
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Instant;
