@@ -4,8 +4,8 @@
 //! `sea_lantern_servers.json`；更新后实例权威配置改为各服务器目录内的
 //! `sl.json`，旧文件不再被读取，导致升级后服务器列表「消失」。
 //!
-//! 本模块只描述检测与迁移结果，供宿主（Tauri / HTTP）转交给前端弹窗；
-//! 迁移本身不自动执行，必须由用户在界面上确认。
+//! 本模块只描述检测与迁移结果，供宿主（Tauri / HTTP）转交给前端；
+//! 迁移本身不自动执行，也不在启动时检测，必须由用户在设置页手动触发。
 
 use std::path::PathBuf;
 
@@ -15,10 +15,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct LegacyMigrationStatus {
-    /// 当前是否应当向用户提示迁移。
+    /// 设置页是否应提供「迁移旧版实例」入口。
     ///
-    /// 仅当存在旧配置、没有已受信任的实例、存在可迁移条目且用户尚未
-    /// 关闭提示时为 `true`。
+    /// 仅当存在可迁移条目且用户尚未关闭提示时为 `true`；与当前是否已有
+    /// 实例无关，因为迁移只由用户手动触发。
     pub available: bool,
     /// 用户是否已明确选择「不再提示」。
     pub dismissed: bool,

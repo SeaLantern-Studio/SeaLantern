@@ -5,7 +5,7 @@
 //! 受管实例（每个目录一份 `sl.json` + 设置注册表的信任/附加目录登记）。
 //!
 //! 设计的三个关键点：
-//! - **只读检测**：`status` 完全不写盘，启动流程可以放心调用；
+//! - **只读检测**：`status` 完全不写盘，供设置页在用户手动触发前预览；
 //! - **复用实例创建语义**：写文档后走与 `create` 相同的登记步骤（注册附加
 //!   目录、解除忽略、登记信任），失败则回滚已写文档；
 //! - **一次性提示**：迁移成功后旧文件被重命名归档；用户选择「不再提示」
@@ -174,21 +174,12 @@ impl CoreLegacyMigrationService {
             })?;
         let id = store.get().id.as_str().to_string();
 
-        let extra_dir = !is_managed_dir(directory, layout);
-        let registration = async {
-            let mut manager = self.settings.lock_manager().await?;
-            if extra_dir {
-                register_extra_dir(&mut manager, directory).await?;
-            }
-            trust_and_unignore(&mut manager, &id, directory).await?;
-            Ok::<(), crate::error::SettingsError>(())
-        }
-        .await;
+        let registration = self.register_in_registry(layout, directory, &id).await;
 
         if let Err(error) = registration {
             // 撤销「附加目录」登记：它可能已在上一行落盘，否则会留下一个没有
             // 实例文档、却仍会被扫描的孤立目录。
-            if extra_dir {
+            if !is_managed_dir(directory, layout) {
                 self.rollback_extra_dir(directory).await;
             }
             if let Err(rollback) = DocumentStore::remove(path.clone()).await {
@@ -201,6 +192,32 @@ impl CoreLegacyMigrationService {
             }
             return Err(LegacyMigrationError::Settings { source: error });
         }
+        Ok(())
+    }
+
+    /// 在设置名单中登记实例：受管目录外先登记附加目录，再登记信任并解除忽略。
+    ///
+    /// 两个原语都幂等，重复登记不会重复写入。
+    async fn register_in_registry(
+        &self,
+        layout: &AppLayout,
+        directory: &Path,
+        id: &str,
+    ) -> Result<(), LegacyMigrationError> {
+        let extra_dir = !is_managed_dir(directory, layout);
+        let mut manager = self
+            .settings
+            .lock_manager()
+            .await
+            .map_err(|source| LegacyMigrationError::Settings { source })?;
+        if extra_dir {
+            register_extra_dir(&mut manager, directory)
+                .await
+                .map_err(|source| LegacyMigrationError::Settings { source })?;
+        }
+        trust_and_unignore(&mut manager, id, directory)
+            .await
+            .map_err(|source| LegacyMigrationError::Settings { source })?;
         Ok(())
     }
 
@@ -250,13 +267,7 @@ impl CoreLegacyMigrationService {
             })?;
         let document = store.get();
         let id = document.id.as_str().to_string();
-        let extra_dir = !is_managed_dir(directory, layout);
-
-        let mut manager = self.settings.lock_manager().await?;
-        if extra_dir {
-            register_extra_dir(&mut manager, directory).await?;
-        }
-        trust_and_unignore(&mut manager, &id, directory).await?;
+        self.register_in_registry(layout, directory, &id).await?;
 
         Ok(MigratedLegacyInstance {
             instance_id: id,
@@ -269,7 +280,7 @@ impl CoreLegacyMigrationService {
     ///
     /// 归档而非删除，保留用户原始数据；若同名的归档文件已存在，追加时间戳
     /// 避免覆盖。归档失败不影响已完成的迁移——只在日志中告警并返回
-    /// `false`，下次启动会再次提示（旧文件仍在），用户可重试。
+    /// `false`，设置页仍会显示可迁移条目（旧文件仍在），用户可重试。
     async fn archive_legacy_file(&self, path: &Path) -> bool {
         if !tokio::fs::try_exists(path).await.unwrap_or(false) {
             return false;
@@ -331,30 +342,11 @@ impl LegacyMigrationService for CoreLegacyMigrationService {
             });
         }
 
-        // 「没有服务器」才提示：已有受信任实例说明列表不为空，旧文件只是历史
-        // 残留（或用户主动保留的备份），不应再打扰。
-        //
-        // 发现失败时无法判断是否已有受信任实例，此时不提示：把错误当成
-        // 「没有实例」会在一个已有服务器的环境里冒出迁移弹窗，误导用户重复
-        // 迁移。检测失败只记日志，启动流程照常拿到一个「不可用」的结果。
-        let has_trusted = match self.instance.list().await {
-            Ok(instances) => !instances.is_empty(),
-            Err(error) => {
-                tracing::warn!(
-                    target: "sealantern.application.legacy_migration",
-                    error = %error,
-                    "failed to list instances; suppressing legacy migration prompt"
-                );
-                return Ok(LegacyMigrationStatus {
-                    available: false,
-                    dismissed,
-                    entries: views,
-                });
-            }
-        };
-
+        // 迁移提示只由用户在设置页手动触发（设置项「旧版实例配置迁移」），
+        // 因此这里只报告「存在可迁移条目」这一事实，不再依据受信任实例数量
+        // 猜测是否该弹窗——设置页需要在已有服务器时也能看到并手动迁移旧配置。
         Ok(LegacyMigrationStatus {
-            available: !dismissed && !has_trusted && migratable > 0,
+            available: !dismissed && migratable > 0,
             dismissed,
             entries: views,
         })
@@ -992,7 +984,32 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn existing_trusted_instance_suppresses_prompt() {
+    async fn status_is_independent_of_trusted_instances() {
+        let root = TempDir::new().unwrap();
+        let server_dir = root.path().join("srv").join("paper");
+        tokio::fs::create_dir_all(&server_dir).await.unwrap();
+        write_legacy(root.path(), &format!("[{}]", legacy_entry("abc", "Paper", &server_dir)))
+            .await;
+        let service = test_service(root.path()).await;
+
+        // 故意把主实例目录弄成不可扫描的文件，模拟实例发现失败：
+        // 迁移入口只依赖旧配置本身，不应被实例枚举拖垮。
+        tokio::fs::remove_dir_all(root.path().join("instances"))
+            .await
+            .unwrap();
+        tokio::fs::write(root.path().join("instances"), b"not a directory")
+            .await
+            .unwrap();
+
+        let status = service.status().await.expect("status must not fail");
+
+        assert!(status.available);
+        assert_eq!(status.entries.len(), 1);
+    }
+
+    /// 迁移只在设置页由用户手动触发，所以已有实例时也必须照常报告可迁移条目。
+    #[tokio::test]
+    async fn existing_trusted_instance_does_not_hide_prompt() {
         let root = TempDir::new().unwrap();
         let managed_dir = root.path().join("instances").join("existing");
         tokio::fs::create_dir_all(&managed_dir).await.unwrap();
@@ -1022,7 +1039,7 @@ mod tests {
 
         let status = service.status().await.expect("status");
 
-        assert!(!status.available, "existing instances mean the list is not empty");
+        assert!(status.available, "manual trigger from settings must still offer the migration");
         assert_eq!(status.entries[0].state, LegacyMigrationEntryState::Migratable);
     }
 }

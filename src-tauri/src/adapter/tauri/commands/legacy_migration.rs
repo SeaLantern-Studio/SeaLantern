@@ -1,8 +1,8 @@
 //! 旧版实例配置迁移 Tauri 命令。
 //!
-//! 前端在启动后（`list_instances` 为空时）调用 `legacy_migration_status` 检测，
-//! 由弹窗决定是否调用 `migrate_legacy_config`；用户选择「不再提示」时调用
-//! `dismiss_legacy_migration`。
+//! 三条命令都只由设置页的用户操作触发，启动流程不会自动调用：
+//! 打开设置页时调用 `legacy_migration_status` 检测，用户点击迁移后调用
+//! `migrate_legacy_config`，选择「不再提示」时调用 `dismiss_legacy_migration`。
 //!
 //! 错误统一为接口契约错误 [`LegacyMigrationServiceError`]，可序列化回前端。
 
