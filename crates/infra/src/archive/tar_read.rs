@@ -1,3 +1,17 @@
+//! tar.gz 流式解压。
+//!
+//! tar 没有中央目录，无法像 `zip_read` 那样"先全量预检再写入"，
+//! 只能边读边校验。本模块用两条措施弥补：
+//!
+//! - **段级限流**：单个条目最多缓冲 `MAX_SEGMENT_BYTES`，避免恶意声明的
+//!   大小引发一次性大额分配；
+//! - **临时目录 + 原子发布**：先在目标同级临时目录解压，成功后经
+//!   `publish_new` 一次性发布，失败时不留半解压结果。
+//!
+//! 解压过程有意拒绝符号链接、硬链接与设备文件：创建链接在各平台的权限和
+//! 语义不兼容，调用方必须先显式选择策略。结束标记之后的尾随数据同样拒绝，
+//! 详见 `reject_trailing_data`。
+
 use std::cell::Cell;
 use std::fs::File;
 use std::io::{self, BufReader, Read, Write};
@@ -62,7 +76,7 @@ struct LimitBreach {
 /// 数据后重置段计数。所有字段都是 `Cell`，因为 [`Read`] 只提供 `&mut self`
 /// 而状态需要在被 `tar::Archive` 拿走所有权后仍可从外部访问。
 struct StreamLimits {
-    /// 本段已解压字节数，见 [`MAX_SEGMENT_BYTES`]。
+    /// 本段已解压字节数，见 `MAX_SEGMENT_BYTES`。
     segment: Cell<u64>,
     /// 全流已解压字节数，含 tar header 与块填充。
     total: Cell<u64>,
@@ -183,7 +197,7 @@ pub fn extract_tar_gz(
 ///
 /// tar 是不可回退的流，没有 ZIP 那样的中央目录，无法在写入前完成全量预检。
 /// 为了保持与 [`super::extract_zip`] 相同的「失败时目标目录从未出现」语义，
-/// 解压先写入同一父目录下的临时目录，全部条目成功后经 [`publish_new`] 以
+/// 解压先写入同一父目录下的临时目录，全部条目成功后经 `publish_new` 以
 /// create-new 语义移动到目标位置；任何一步失败都会删除临时目录。
 ///
 /// 因此所有条目名、重复路径、符号链接与字节上限都在流式读取过程中逐条校验，
@@ -278,7 +292,7 @@ fn remove_temporary_directory(path: &Path) {
 /// `destination` 仅用于错误消息展示，实际写入始终通过 `root` 目录句柄完成。
 ///
 /// gzip 解码器外层套 [`LimitedReader`]，使 tar 解析器的内部读取（header、块
-/// 填充、GNU/PAX 扩展头内容）与条目内容一并受限，见 [`MAX_SEGMENT_BYTES`]。
+/// 填充、GNU/PAX 扩展头内容）与条目内容一并受限，见 `MAX_SEGMENT_BYTES`。
 fn unpack_entries(
     root: &Dir,
     archive_path: &Path,
@@ -381,7 +395,7 @@ fn unpack_entries(
 /// 归档被拼接过：解压方只会看到前一段内容，而其他工具可能读出完全不同的结果。
 /// gzip 的 CRC 校验对此无效——追加的数据可以是另一个完整合法的 gzip 成员。
 ///
-/// 成片零字节按记录对齐填充接受，见 [`MAX_TRAILING_PADDING_BYTES`]。
+/// 成片零字节按记录对齐填充接受，见 `MAX_TRAILING_PADDING_BYTES`。
 ///
 /// 接受完整的读取栈而非泛型 reader：`GzDecoder` 在单成员模式下读完一个成员即
 /// 返回 EOF，因此这里读到的是同一个 gzip 成员内 tar 结束标记之后的字节。
@@ -544,14 +558,17 @@ fn validate_symbolic_link_target<R: Read>(
 ///
 /// header 声明的大小不可信，因此完全依据实际读取量累加。总字节与压缩比由
 /// [`StreamLimits`] 在解码器层统一约束，这里只补充 tar 层面才有的单条目上限，
-/// 并在每块之后重置段计数，使大文件不受 [`MAX_SEGMENT_BYTES`] 影响。
+/// 并在每块之后重置段计数，使大文件不受 `MAX_SEGMENT_BYTES` 影响。
 ///
-/// 读取结束后必须比对实际读取量与声明大小：tar crate 对「条目内容不足声明
-/// 大小」会在读取时用 `EntryIo::Pad(io::Take<io::Repeat>)` 静默补零，`read`
-/// 不报错——截断的归档会解压出尾部带一串零的文件，`entry_bytes` 等于声明
-/// 大小而非实际数据量，静默数据损坏。因此不能依赖 read 报错，必须显式比对：
-/// 实际读取量少于声明值时返回 [`ArchiveError::Tar`]。多读不可能（Data 阶段由
-/// `take(声明大小)` 限制），只查少读。
+/// 读取结束后必须比对实际读取量与声明大小：普通条目由 tar crate 的
+/// `Data(reader.take(声明大小))` 承载，流提前结束时 `read` 只返回 0 而不
+/// 报错——截断的归档会解压出尾部缺失的文件，`entry_bytes` 停在实测值上，
+/// 与 `declared` 的差值就是静默数据损坏。因此不能依赖 read 报错，必须显式
+/// 比对：实际读取量少于声明值时返回 [`ArchiveError::Tar`]。多读不可能
+/// （Data 阶段由 `take(声明大小)` 限制），只查少读。
+///
+/// 注：tar crate 的 `EntryIo::Pad(io::Repeat)` 零填充只出现在 GNU sparse
+/// 条目路径，普通截断条目不会自动补零，所以必须在这里显式检出。
 ///
 /// 声明大小取 [`Entry::size`] 而非 `header().size()`：后者只读 ustar 的 size
 /// 字段，PAX 格式在文件大于 8 GiB 时把真实大小放进扩展头的 `size=` 关键字、
@@ -858,10 +875,10 @@ mod tests {
         let root = crate::fs::test_dir("tar-truncated");
         let archive = root.join("truncated.tar.gz");
         let destination = root.join("destination");
-        // gzip 流在 tar 内容写完后、footer 写出前被截断。tar crate 对「条目
-        // 内容不足声明大小」会静默补零（见其 EntryIo::Pad 用 Repeat 补位），
-        // 因此在 tar 层检测不到截断；但 gzip 的 CRC32 与 ISIZE 校验会在 footer
-        // 缺失时暴露这一点，返回 Tar 错误而非 panic。
+        // gzip 流在 tar 内容写完后、footer 写出前被截断。tar 层看到的是
+        // 「条目内容不足声明大小」，它只返回 0 而不报错（见 copy_entry_with_limits
+        // 的说明），因此在 tar 层检测不到截断；但 gzip 的 CRC32 与 ISIZE 校验
+        // 会在 footer 缺失时暴露这一点，返回 Tar 错误而非 panic。
         let file = File::create(&archive).unwrap();
         let mut encoder = GzEncoder::new(file, Compression::default());
         let mut builder = Builder::new(&mut encoder);

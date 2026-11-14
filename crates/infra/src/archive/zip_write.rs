@@ -1,3 +1,14 @@
+//! ZIP 归档创建。
+//!
+//! 结构与 `tar_write` 对称：目录句柄遍历源目录、符号链接与特殊文件
+//! 拒绝、临时文件 + create-new 发布。差异集中在元数据规范化上——ZIP 没有
+//! 独立的 uid/gid/mtime 字段，条目时间戳取自 zip crate 的默认值，因此可复现性
+//! 依赖 `zip` 未启用 `time` feature；若依赖图中有其他 crate 打开了该 feature，
+//! 默认时间戳会变成当前时刻，同一内容将产出不同字节。
+//!
+//! 注意 ZIP 侧不需要 `ExactSizeReader`：条目大小在写入内容前就已写入本地头，
+//! 源文件在归档期间变长或变短都不会破坏归档结构。
+
 use std::fs::{self, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -22,7 +33,7 @@ pub fn create_zip(
 
 /// 使用显式压缩级别创建包含 source 目录内容的 ZIP 归档文件。
 ///
-/// 目标文件必须不存在。临时归档在目标同一目录中完成，然后经 [`publish_new`]
+/// 目标文件必须不存在。临时归档在目标同一目录中完成，然后经 `publish_new`
 /// 以 create-new 语义移动到最终位置，因此源文件读取或写入失败不会用部分结果
 /// 替换原有的归档文件，目标在写入期间才出现也不会被覆盖。
 pub fn create_zip_with_level(
@@ -72,7 +83,7 @@ fn create_zip_inner(
 
 /// 清理未能发布的临时归档。
 ///
-/// 仅在失败路径上调用：成功时临时文件已被 [`super::publish_new`] 移走，路径
+/// 仅在失败路径上调用：成功时临时文件已被 `publish_new` 移走，路径
 /// 不再存在。清理失败只记录日志，不覆盖调用方要返回的原始错误。
 fn remove_temporary_archive(path: &Path) {
     if let Err(error) = fs::remove_file(path)
