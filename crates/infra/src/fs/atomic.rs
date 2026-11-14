@@ -1,3 +1,15 @@
+//! 原子文件替换。
+//!
+//! 临时文件一律落在目标同目录，以保证重命名不跨文件系统——跨设备 rename 会
+//! 退化为复制，失去原子性。三个入口的分工：
+//!
+//! - [`write_atomic`]：异步入口，内部转到阻塞线程执行；
+//! - [`write_atomic_blocking`]：供已在阻塞上下文的调用方直接使用；
+//! - `write_atomic_in`：供已持有目录句柄的调用方使用，不经过 ambient 路径。
+//!
+//! 崩溃持久性存在差异：前两者走 `atomicwrites`，Unix 下会同步父目录；
+//! `write_atomic_in` 只同步文件本身，不保证目录项在断电后仍可见。
+
 use std::io::Write;
 use std::path::Path;
 
