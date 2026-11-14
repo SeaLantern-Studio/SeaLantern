@@ -8,7 +8,7 @@ use std::sync::Arc;
 use futures::StreamExt;
 use tokio::io::AsyncWriteExt;
 
-use crate::download::status::{DownloadError, DownloadStatus};
+use crate::download::status::{CANCELLED_MESSAGE, DownloadError, DownloadStatus};
 use crate::net::client::NetClient;
 use crate::observability;
 
@@ -60,7 +60,7 @@ pub async fn stream_download(
     while let Some(item) = stream.next().await {
         if status.cancelled() {
             let _ = tokio::fs::remove_file(output_path).await;
-            return Err(DownloadError::Cancelled);
+            return Err(DownloadError::Cancelled(CANCELLED_MESSAGE.to_string()));
         }
 
         let chunk = item?;

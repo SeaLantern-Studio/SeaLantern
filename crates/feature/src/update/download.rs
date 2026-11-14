@@ -416,8 +416,10 @@ fn is_worth_retrying_status(status: u16) -> bool {
 /// 判断网络错误是否值得换源重试。
 fn classify_net_error(error: NetError) -> AttemptOutcome {
     let retryable = match &error {
-        // 连接建立失败与超时属于来源不可达。
-        NetError::Request(_) | NetError::Timeout => true,
+        // 连接建立失败、传输层失败与超时属于来源不可达。
+        // `Transport` 承接的是 `reqwest` 无法更进一步分类的失败，其中绝大多数
+        // 是连接/DNS/TLS 层面问题，与原先归入 `Request` 时一样值得换源重试。
+        NetError::Request(_) | NetError::Transport(_) | NetError::Timeout => true,
         // 服务端返回的状态码交由统一判定处理。
         NetError::Response(status, _) => is_worth_retrying_status(*status),
         NetError::Config(_) | NetError::Parse(_) | NetError::Io(_) | NetError::Cancelled => false,

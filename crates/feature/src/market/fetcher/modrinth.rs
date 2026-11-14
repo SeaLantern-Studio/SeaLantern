@@ -416,7 +416,9 @@ mod tests {
     async fn provider_failure_propagates_without_network() {
         // 假 provider：每次请求前被调用并返回失败，验证请求不会发出网络调用。
         let fetcher = ModrinthFetcher::with_provider(Box::new(|| {
-            Err(sealantern_infra::net::NetError::Config("模拟获取客户端失败".into()))
+            Err(sealantern_infra::net::NetError::Config(
+                "simulated client acquisition failure".into(),
+            ))
         }));
         let error = fetcher.search("sodium", 1, 5).await.unwrap_err();
         assert!(matches!(error, MarketError::Config(_)));

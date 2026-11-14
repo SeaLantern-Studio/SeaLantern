@@ -6,8 +6,10 @@
 //! 依赖 `zip` 未启用 `time` feature；若依赖图中有其他 crate 打开了该 feature，
 //! 默认时间戳会变成当前时刻，同一内容将产出不同字节。
 //!
-//! 注意 ZIP 侧不需要 `ExactSizeReader`：条目大小在写入内容前就已写入本地头，
-//! 源文件在归档期间变长或变短都不会破坏归档结构。
+//! 注意 ZIP 侧不需要 `ExactSizeReader`：`start_file` 只写名称与选项，随后由
+//! `io::copy` 流式写入内容，真实大小在内容之后以 data descriptor 补齐。因此
+//! 源文件在归档期间变长或变短都不会破坏归档结构——这与 tar 必须预先声明
+//! 大小、变短即视为损坏形成对比。
 
 use std::fs::{self, OpenOptions};
 use std::io;

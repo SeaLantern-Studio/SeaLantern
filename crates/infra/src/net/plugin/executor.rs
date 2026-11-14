@@ -8,8 +8,13 @@
 //! 3. 每跳重定向都重新解析并校验，且必须留在已批准的 origin 内；
 //! 4. 逐跳重建客户端并禁用连接池复用，防止跨跳复用已建立的连接。
 //!
-//! 资源上限（响应体大小、响应头数量、并发数、超时）由
-//! [`super::PluginNetworkLimits`] 提供，超出即拒绝而非截断。
+//! 资源上限由 [`super::PluginNetworkLimits`] 提供：响应体大小、重定向次数与
+//! 三个超时均在此强制执行，超出即拒绝而非截断。
+//!
+//! 注意请求头数量与总字节的上限（`MAX_REQUEST_HEADERS` / `MAX_HEADER_BYTES`）
+//! 作用于**发出去的请求**，不限制响应头数量；本执行器不对外暴露响应头计数
+//! 上限。若调用方需要防范头部膨胀的响应，应在拿到 `reqwest::Response` 后
+//! 自行检查，或由上层配置反向代理限制。
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;

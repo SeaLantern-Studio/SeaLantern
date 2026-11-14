@@ -197,18 +197,19 @@ fn is_retryable(err: &reqwest::Error) -> bool {
 }
 
 /// 将 `reqwest::Error` 转换为 `NetError`。
+///
+/// 超时与状态码失败可以精确分类，转成对应变体；其余传输层失败保留原始
+/// `reqwest::Error`，放进 [`NetError::Transport`] 以保住错误链——压平成字符串
+/// 会让调用方失去下钻原因的能力。
 fn convert_reqwest_error(err: reqwest::Error) -> NetError {
     if err.is_timeout() {
         NetError::Timeout
-    } else if err.is_connect() {
-        NetError::Request(format!("connection failed: {}", err))
     } else if err.is_status() {
-        if let Some(status) = err.status() {
-            NetError::Response(status.as_u16(), err.to_string())
-        } else {
-            NetError::Request(err.to_string())
+        match err.status() {
+            Some(status) => NetError::Response(status.as_u16(), err.to_string()),
+            None => NetError::Transport(err),
         }
     } else {
-        NetError::Request(err.to_string())
+        NetError::Transport(err)
     }
 }

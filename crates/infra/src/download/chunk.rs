@@ -9,7 +9,7 @@ use reqwest::StatusCode;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt, BufWriter, SeekFrom};
 
-use crate::download::status::{DownloadError, DownloadStatus};
+use crate::download::status::{CANCELLED_MESSAGE, DownloadError, DownloadStatus};
 use crate::net::client::NetClient;
 use crate::observability;
 
@@ -60,7 +60,7 @@ pub(super) async fn download_chunk(
             let mut local_downloaded = 0u64;
             while let Some(chunk) = response.chunk().await? {
                 if status.cancelled() {
-                    return Err(DownloadError::Cancelled);
+                    return Err(DownloadError::Cancelled(CANCELLED_MESSAGE.to_string()));
                 }
 
                 let len = chunk.len() as u64;
@@ -87,7 +87,7 @@ pub(super) async fn download_chunk(
                 Ok(ok) => Ok(ok),
                 Err(err) => {
                     if status.cancelled() {
-                        Err(DownloadError::Cancelled)
+                        Err(DownloadError::Cancelled(CANCELLED_MESSAGE.to_string()))
                     } else {
                         observability::chunk_failed(url, start, end, &err);
                         Err(err)
@@ -96,7 +96,7 @@ pub(super) async fn download_chunk(
             }
         },
         _ = status.cancel_token.cancelled() => {
-            Err(DownloadError::Cancelled)
+            Err(DownloadError::Cancelled(CANCELLED_MESSAGE.to_string()))
         }
     }
 }
