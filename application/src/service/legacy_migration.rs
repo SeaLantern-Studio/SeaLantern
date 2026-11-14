@@ -190,7 +190,7 @@ impl CoreLegacyMigrationService {
                     "failed to roll back instance document after registration failure"
                 );
             }
-            return Err(LegacyMigrationError::Settings { source: error });
+            return Err(error);
         }
         Ok(())
     }
