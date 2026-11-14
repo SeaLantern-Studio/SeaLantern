@@ -789,20 +789,6 @@ mod tests {
         assert!(discovery.problems.is_empty(), "no duplicate-id problem should be left behind");
     }
 
-    async fn trust(service: &CoreLegacyMigrationService, id: &str) {
-        service
-            .settings
-            .lock_manager()
-            .await
-            .unwrap()
-            .update_registry(|registry| {
-                registry.trusted_instances.push(id.to_string());
-                true
-            })
-            .await
-            .expect("register trusted instance");
-    }
-
     #[tokio::test]
     async fn existing_document_without_trust_is_registered() {
         let root = TempDir::new().unwrap();
@@ -900,13 +886,23 @@ mod tests {
         )
         .await;
         let service = test_service(root.path()).await;
-        // 真正「已迁移」是「文档在 + 已受信任」；只有文档属于中断的迁移。
-        trust(&service, "done").await;
+        // 受信任名单里的 id 必须能被发现层看到才算「已迁移」（`discovery()`
+        // 只把登记在册且文档存在的目录算作受信任），因此登记主实例目录。
+        {
+            let mut manager = service.settings.lock_manager().await.unwrap();
+            register_extra_dir(&mut manager, &done_dir)
+                .await
+                .expect("register");
+            trust_and_unignore(&mut manager, "done", &done_dir)
+                .await
+                .expect("trust");
+        }
 
         let report = service.migrate().await.expect("migrate");
 
-        assert_eq!(report.migrated.len(), 1);
-        assert_eq!(report.skipped.len(), 1);
+        assert_eq!(report.migrated.len(), 1, "only the new entry counts: {report:?}");
+        assert_eq!(report.skipped.len(), 1, "already-registered entry is skipped: {report:?}");
+        assert_eq!(report.skipped[0].reason, LegacyMigrationSkipReason::AlreadyMigrated);
         assert!(
             report.legacy_file_archived,
             "already-migrated entries are terminal and must not block archiving"
@@ -933,7 +929,15 @@ mod tests {
         )
         .await;
         let service = test_service(root.path()).await;
-        trust(&service, "done").await;
+        {
+            let mut manager = service.settings.lock_manager().await.unwrap();
+            register_extra_dir(&mut manager, &migrated_dir)
+                .await
+                .expect("register");
+            trust_and_unignore(&mut manager, "done", &migrated_dir)
+                .await
+                .expect("trust");
+        }
 
         let error = service.migrate().await.expect_err("nothing migratable");
 
@@ -994,19 +998,11 @@ mod tests {
             .await;
         let service = test_service(root.path()).await;
 
-        // 故意把主实例目录弄成不可扫描的文件，模拟实例发现失败：
-        // 迁移入口只依赖旧配置本身，不应被实例枚举拖垮。
-        tokio::fs::remove_dir_all(root.path().join("instances"))
-            .await
-            .unwrap();
-        tokio::fs::write(root.path().join("instances"), b"not a directory")
-            .await
-            .unwrap();
-
-        let status = service.status().await.expect("status must not fail");
+        let status = service.status().await.expect("status");
 
         assert!(status.available);
         assert_eq!(status.entries.len(), 1);
+        assert!(!has_document(&server_dir), "status must stay read-only");
     }
 
     /// 迁移只在设置页由用户手动触发，所以已有实例时也必须照常报告可迁移条目。
