@@ -11,8 +11,8 @@ use serde::Serialize;
 
 use sealantern_contract::{
     ConsoleServiceError, CronTaskServiceError, DownloadServiceError, InstanceServiceError,
-    ProvisioningServiceError, ServerServiceError, SettingsServiceError, SystemServiceError,
-    UpdateCheckServiceError,
+    LegacyMigrationServiceError, ProvisioningServiceError, ServerServiceError,
+    SettingsServiceError, SystemServiceError, UpdateCheckServiceError,
 };
 
 /// 展平的 HTTP 错误响应体。
@@ -314,6 +314,42 @@ impl HttpError {
         }
     }
 
+    /// 由旧版实例配置迁移契约错误构建 HTTP 错误。
+    pub fn from_legacy_migration_error(error: LegacyMigrationServiceError) -> Self {
+        match error {
+            LegacyMigrationServiceError::InvalidLegacyData => Self {
+                status: StatusCode::UNPROCESSABLE_ENTITY,
+                code: "legacy_data_invalid",
+                message: error.to_string(),
+            },
+            LegacyMigrationServiceError::NothingToMigrate => Self {
+                status: StatusCode::CONFLICT,
+                code: "nothing_to_migrate",
+                message: error.to_string(),
+            },
+            LegacyMigrationServiceError::StorageFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "legacy_storage_failed",
+                message: error.to_string(),
+            },
+            LegacyMigrationServiceError::MigrationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "legacy_migration_failed",
+                message: error.to_string(),
+            },
+            LegacyMigrationServiceError::OperationFailed => Self {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "legacy_migration_operation_failed",
+                message: error.to_string(),
+            },
+            LegacyMigrationServiceError::Unsupported => Self {
+                status: StatusCode::NOT_IMPLEMENTED,
+                code: "operation_unsupported",
+                message: error.to_string(),
+            },
+        }
+    }
+
     /// 由服务端检查与供给计划契约错误构建 HTTP 错误。
     pub fn from_provisioning_error(error: ProvisioningServiceError) -> Self {
         match error {
@@ -375,6 +411,12 @@ impl From<ServerServiceError> for HttpError {
 impl From<ConsoleServiceError> for HttpError {
     fn from(error: ConsoleServiceError) -> Self {
         Self::from_console_error(error)
+    }
+}
+
+impl From<LegacyMigrationServiceError> for HttpError {
+    fn from(error: LegacyMigrationServiceError) -> Self {
+        Self::from_legacy_migration_error(error)
     }
 }
 

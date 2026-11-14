@@ -29,6 +29,9 @@ use adapter::tauri::commands::instance::{
     trust_instance, unignore_instance_dir, untrust_instance, update_instance_path,
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
+use adapter::tauri::commands::legacy_migration::{
+    dismiss_legacy_migration, legacy_migration_status, migrate_legacy_config,
+};
 use adapter::tauri::commands::logging::share_logs;
 use adapter::tauri::commands::online_tunnel::{
     OnlineTunnelEventForwarder, online_tunnel_host, online_tunnel_join, online_tunnel_status,
@@ -286,6 +289,10 @@ fn main() {
             unignore_instance_dir,
             untrust_instance,
             update_instance_path,
+            //旧版实例配置迁移（检测 / 执行 / 不再提示）
+            dismiss_legacy_migration,
+            legacy_migration_status,
+            migrate_legacy_config,
             //Java 运行时检测与校验
             java_detect,
             java_validate,
@@ -487,6 +494,9 @@ mod tests {
         "get_settings",
         "get_system_fonts",
         "import_settings",
+        "legacy_migration_status",
+        "migrate_legacy_config",
+        "dismiss_legacy_migration",
         "reset_settings",
         "settings_overview",
         "update_settings",

@@ -2,8 +2,8 @@
 //!
 //! 存放各类宿主能力的默认实现（如 [`CoreInstanceService`]、[`CoreSystemService`]、
 //! [`CoreServerService`]、[`CoreDownloadService`]、[`CoreCronTaskService`]、
-//! [`CoreJavaService`]、[`CoreServerCatalogService`]、[`CoreProvisioningService`]、
-//! [`CoreOnlineTunnelService`]、[`CoreUpdateInstallService`]），实现
+//! [`CoreJavaService`]、[`CoreLegacyMigrationService`]、[`CoreServerCatalogService`]、
+//! [`CoreProvisioningService`]、[`CoreOnlineTunnelService`]、[`CoreUpdateInstallService`]），实现
 //! `application::port` 的能力端口，由 `services` 装配层组装进应用服务容器。
 
 mod backup;
@@ -14,6 +14,7 @@ mod cron;
 mod download;
 mod instance;
 mod java;
+mod legacy_migration;
 mod log_recorder;
 mod network_settings;
 mod online_tunnel;
@@ -37,6 +38,7 @@ pub use cron::CoreCronTaskService;
 pub use download::CoreDownloadService;
 pub use instance::CoreInstanceService;
 pub use java::CoreJavaService;
+pub use legacy_migration::CoreLegacyMigrationService;
 pub use log_recorder::{
     LogEvent, LogRecorder, deregister_capture_sender, forward_to_capture_senders,
     register_capture_sender, subscribe_log_events,

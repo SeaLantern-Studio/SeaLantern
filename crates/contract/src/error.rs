@@ -133,6 +133,42 @@ impl std::fmt::Display for InstanceServiceError {
 
 impl std::error::Error for InstanceServiceError {}
 
+/// 旧版实例配置迁移失败的契约错误类别。
+///
+/// 与 [`InstanceServiceError`] 同一收敛风格：不携带主机路径等敏感细节。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LegacyMigrationServiceError {
+    /// 旧配置存在但无法解析（文件损坏或格式不认识）。
+    InvalidLegacyData,
+    /// 旧配置中的条目均不具备可迁移条件。
+    NothingToMigrate,
+    /// 布局 / 设置名单读写失败。
+    StorageFailed,
+    /// 迁移过程中写入实例文档失败。
+    MigrationFailed,
+    /// 未分类的内部操作失败。
+    OperationFailed,
+    /// 该能力尚未实现（占位）。
+    Unsupported,
+}
+
+impl std::fmt::Display for LegacyMigrationServiceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::InvalidLegacyData => "legacy server configuration is invalid",
+            Self::NothingToMigrate => "no legacy server can be migrated",
+            Self::StorageFailed => "settings storage failed",
+            Self::MigrationFailed => "legacy server migration failed",
+            Self::OperationFailed => "operation failed",
+            Self::Unsupported => "operation not supported",
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl std::error::Error for LegacyMigrationServiceError {}
+
 /// 服务器进程管理失败的契约错误类别。
 ///
 /// 分类风格与其他契约错误一致：不携带主机路径、进程细节等敏感信息，
@@ -682,6 +718,12 @@ mod tests {
             (
                 serde_json::to_string(&ServerConfigServiceError::InvalidInput),
                 "\"invalid_input\"",
+            ),
+            (
+                // 迁移契约的稳定对外标识：前端按此区分「无需迁移」与
+                // 「旧文件损坏」，故单列一条断言防回归。
+                serde_json::to_string(&LegacyMigrationServiceError::NothingToMigrate),
+                "\"nothing_to_migrate\"",
             ),
         ];
 
