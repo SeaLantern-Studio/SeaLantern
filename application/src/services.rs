@@ -14,8 +14,8 @@ use crate::plugin::{ApplicationPluginReadHost, CorePluginService, PluginServiceE
 use crate::port::OnlineTunnelService;
 use crate::service::{
     CoreBackupService, CoreConsoleService, CoreCronTaskService, CoreDownloadService,
-    CoreInstanceService, CoreJavaService, CoreOnlineTunnelService, CorePlayerService,
-    CoreProvisioningService, CoreServerCatalogService, CoreServerConfigService,
+    CoreInstanceService, CoreJavaService, CoreLegacyMigrationService, CoreOnlineTunnelService,
+    CorePlayerService, CoreProvisioningService, CoreServerCatalogService, CoreServerConfigService,
     CoreServerPluginService, CoreServerService, CoreServerStartupService, CoreSettingsService,
     CoreSystemService, CoreUpdateCheckService, CoreUpdateInstallService, ProxyMonitoringService,
 };
@@ -39,6 +39,8 @@ pub struct AppServicesInner {
     pub download: Arc<CoreDownloadService>,
     /// 服务器实例记录管理服务。
     pub instance: Arc<CoreInstanceService>,
+    /// 旧版实例配置迁移服务。
+    pub legacy_migration: Arc<CoreLegacyMigrationService>,
     /// Java 环境检测与校验服务。
     pub java: Arc<CoreJavaService>,
     /// 在线隧道服务。
@@ -104,6 +106,10 @@ impl AppServices {
                 server_plugin: Arc::new(CoreServerPluginService::new(instance.clone())),
                 server_startup: Arc::new(CoreServerStartupService::new(instance.clone())),
                 instance: instance.clone(),
+                legacy_migration: Arc::new(CoreLegacyMigrationService::new(
+                    instance.clone(),
+                    settings.clone(),
+                )),
                 java: Arc::new(CoreJavaService),
                 online_tunnel: Arc::new(CoreOnlineTunnelService::default()),
                 catalog: Arc::new(CoreServerCatalogService),
@@ -149,6 +155,11 @@ impl AppServices {
     /// 访问 Java 环境检测与校验服务（`Arc` 共享句柄，clone 廉价）。
     pub fn java(&self) -> &Arc<CoreJavaService> {
         &self.inner.java
+    }
+
+    /// 访问旧版实例配置迁移服务（`Arc` 共享句柄，clone 廉价）。
+    pub fn legacy_migration(&self) -> &Arc<CoreLegacyMigrationService> {
+        &self.inner.legacy_migration
     }
 
     /// 访问在线隧道服务（`Arc` 共享句柄，clone 廉价）。

@@ -272,6 +272,41 @@ impl SettingsManager {
         Ok(registry)
     }
 
+    /// 记录用户已关闭旧版实例配置迁移提示。
+    ///
+    /// 与 `update_registry` 同一套「锁内改磁盘最新值、按需写回」语义：只
+    /// 触碰该布尔标志，因此不会覆盖其他管理器对偏好或注册表的并发修改。
+    /// 幂等——已为 `true` 时不写回。
+    pub async fn update_legacy_migration_dismissed(
+        &mut self,
+        dismissed: bool,
+    ) -> Result<bool, SettingsError> {
+        if !dismissed {
+            return Ok(false);
+        }
+        let updated: Result<_, UpdatePersistedError<SettingsValidationError>> =
+            ConfigFile::try_update_persisted_if_changed(
+                &self.path,
+                AppSettings::default(),
+                false,
+                |settings| {
+                    if settings.legacy_migration_dismissed {
+                        return Ok(false);
+                    }
+                    settings.legacy_migration_dismissed = true;
+                    Ok(true)
+                },
+            )
+            .await;
+        let updated = match updated {
+            Ok(settings) => settings,
+            Err(UpdatePersistedError::Storage(error)) => return Err(error.into()),
+            Err(UpdatePersistedError::Update(error)) => return Err(error.into()),
+        };
+        self.inner.set(updated);
+        Ok(true)
+    }
+
     /// 更新持久化的 Java 检测结果。
     ///
     /// Java 信息通过设置文件统一保存，旧缓存缺失置信度字段时由 serde

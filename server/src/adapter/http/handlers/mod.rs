@@ -6,6 +6,7 @@ pub mod console;
 pub mod cron;
 pub mod download;
 pub mod instance;
+pub mod legacy_migration;
 pub mod provisioning;
 pub mod server;
 pub mod settings;
@@ -22,6 +23,9 @@ pub use instance::{
     create_instance, delete_instance, discover_instances, get_instance, ignore_instance_dir,
     import_existing_instance, list_instances, reassign_instance_id, rename_instance,
     trust_instance, unignore_instance_dir, untrust_instance, update_instance_path,
+};
+pub use legacy_migration::{
+    dismiss_legacy_migration, legacy_migration_status, migrate_legacy_config,
 };
 pub use provisioning::inspect_server;
 pub use server::{

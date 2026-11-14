@@ -147,6 +147,12 @@ pub struct AppSettings {
 
     /// 实例注册表：主资源目录、附加服务器目录与信任状态。
     pub registry: InstanceRegistrySection,
+
+    /// 用户已关闭旧版实例配置迁移提示（一次性弹窗的「不再提示」）。
+    ///
+    /// 纯新增的 `#[serde(default)]` 字段：旧配置缺该键时回落 `false`，
+    /// 不构成 `CURRENT_CONFIG_VERSION` 递增理由。
+    pub legacy_migration_dismissed: bool,
 }
 
 impl Default for AppSettings {
@@ -200,6 +206,7 @@ impl Default for AppSettings {
             plugin_allowed_commands: vec![],
             plugin_blocked_commands: vec![],
             registry: InstanceRegistrySection::default(),
+            legacy_migration_dismissed: false,
         }
     }
 }
