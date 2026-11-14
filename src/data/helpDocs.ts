@@ -633,7 +633,7 @@ Sea Lantern 基于 Tauri 2，要求 Windows 10（版本 1909 及以上）或 Win
      ***注意这里不是 sea-lantern，而是 sealantern***
    - 安装完成后即可在应用菜单中找到 Sea Lantern 并启动，或者是使用命令行：
      \`\`\`bash
-     sea-lantern
+     sealantern
      \`\`\`
 2. **更新 Sea Lantern**
    - AUR 包会随着官方版本更新而更新，使用 AUR 包管理器检查更新：
