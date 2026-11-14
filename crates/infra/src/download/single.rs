@@ -8,7 +8,7 @@ use std::sync::Arc;
 use futures::StreamExt;
 use tokio::io::AsyncWriteExt;
 
-use crate::download::status::{DownloadError, DownloadStatus};
+use crate::download::status::{CANCELLED_MESSAGE, DownloadError, DownloadStatus};
 use crate::net::client::NetClient;
 use crate::observability;
 
@@ -42,7 +42,7 @@ pub async fn stream_download(
     let response = client.get_reqwest_client().get(url).send().await?;
 
     if !response.status().is_success() {
-        let msg = format!("服务器返回 {}", response.status());
+        let msg = format!("server returned {}", response.status());
         observability::download_failed(url, &msg);
         return Err(DownloadError::Response(response.status().as_u16(), msg));
     }
@@ -60,7 +60,7 @@ pub async fn stream_download(
     while let Some(item) = stream.next().await {
         if status.cancelled() {
             let _ = tokio::fs::remove_file(output_path).await;
-            return Err(DownloadError::Cancelled("下载已取消".to_string()));
+            return Err(DownloadError::Cancelled(CANCELLED_MESSAGE.to_string()));
         }
 
         let chunk = item?;
@@ -102,7 +102,7 @@ pub async fn fetch_to_string(client: &NetClient, url: &str) -> Result<String, Do
     let response = client.get_reqwest_client().get(url).send().await?;
 
     if !response.status().is_success() {
-        let msg = format!("服务器返回 {}", response.status());
+        let msg = format!("server returned {}", response.status());
         observability::download_failed(url, &msg);
         return Err(DownloadError::Response(response.status().as_u16(), msg));
     }
@@ -135,7 +135,7 @@ pub async fn fetch_to_bytes(client: &NetClient, url: &str) -> Result<Vec<u8>, Do
     let response = client.get_reqwest_client().get(url).send().await?;
 
     if !response.status().is_success() {
-        let msg = format!("服务器返回 {}", response.status());
+        let msg = format!("server returned {}", response.status());
         observability::download_failed(url, &msg);
         return Err(DownloadError::Response(response.status().as_u16(), msg));
     }

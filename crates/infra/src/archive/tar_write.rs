@@ -1,3 +1,15 @@
+//! tar.gz 归档创建。
+//!
+//! 从目录内容写出可复现的归档：所有条目的 mode/uid/gid/mtime 都被归一化，
+//! 子项按名称排序后遍历，因此同一份源目录总是产出相同字节。
+//!
+//! 源目录经 `open_existing_directory` 打开为目录句柄，元数据读取与
+//! 文件打开作用于同一句柄，不存在中途被符号链接替换的窗口。符号链接与设备
+//! 文件被拒绝——归档一旦含这类条目，解压方就必须实现各平台不兼容的创建策略。
+//!
+//! 写出先落在同级临时文件，结束后经 `publish_new` 以 create-new
+//! 语义发布，绝不覆盖已存在的目标。
+
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -17,7 +29,7 @@ use super::{ArchiveError, CompressionLevel, open_existing_directory, parent_path
 /// 上产出不同的字节。固定为常见的 0644/0755 让归档可复现。
 const FILE_MODE: u32 = 0o644;
 
-/// 归档内目录条目的固定权限位，理由同 [`FILE_MODE`]。
+/// 归档内目录条目的固定权限位，理由同 `FILE_MODE`。
 const DIRECTORY_MODE: u32 = 0o755;
 
 /// 使用默认压缩级别创建包含 source 目录内容的 tar.gz 归档文件。
@@ -33,15 +45,15 @@ pub fn create_tar_gz(
 
 /// 使用显式压缩级别创建包含 source 目录内容的 tar.gz 归档文件。
 ///
-/// 目标文件必须不存在。临时归档在目标同一父目录中完成，然后经 [`publish_new`]
+/// 目标文件必须不存在。临时归档在目标同一父目录中完成，然后经 `publish_new`
 /// 以 create-new 语义移动到最终位置，因此源文件读取或写入失败不会用部分结果
 /// 替换原有的归档文件，目标在写入期间才出现也不会被覆盖。
 ///
-/// 条目元数据被规范化：权限固定为 [`FILE_MODE`] / [`DIRECTORY_MODE`]，mtime 与
+/// 条目元数据被规范化：权限固定为 `FILE_MODE` / `DIRECTORY_MODE`，mtime 与
 /// uid/gid 归零，子目录按名称排序遍历。同一份源目录内容与同一压缩级别因此产出
 /// 逐字节一致的归档，便于校验与去重。
 ///
-/// 符号链接、设备节点等特殊条目一律拒绝而非跟随，与 [`super::extract_tar_gz`]
+/// 符号链接、设备节点等特殊条目一律拒绝而非跟随，与 `extract_tar_gz`
 /// 的接受范围对称。
 pub fn create_tar_gz_with_level(
     source: impl AsRef<Path>,
@@ -119,9 +131,10 @@ fn reject_existing_destination(destination: &Path) -> Result<(), ArchiveError> {
     Ok(())
 }
 
-/// 广度遍历源目录并写入 tar 条目，整体经 gzip 压缩。
+/// 深度优先前序遍历源目录并写入 tar 条目，整体经 gzip 压缩。
 ///
-/// 子目录按名称排序后入栈，保证同一份源目录产出稳定的条目顺序。
+/// 子目录按名称排序后**逆序**压栈（栈是 LIFO，逆序压入才能正序弹出），
+/// 保证同一份源目录产出稳定的条目顺序。
 /// 所有元数据读取与文件打开都通过 `source_root` 目录句柄完成，校验与使用作用于
 /// 同一句柄，不存在中途被符号链接替换的窗口。
 fn write_archive(

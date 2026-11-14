@@ -11,6 +11,12 @@ use tokio_util::sync::CancellationToken;
 use crate::net::error::NetError;
 use crate::observability;
 
+/// 下载被主动取消时携带的默认说明。
+///
+/// `Cancelled` 保留字符串载荷以维持公开 API 兼容；各调用点都只需这一句恒定
+/// 说明，因此集中在此避免重复字面量。
+pub const CANCELLED_MESSAGE: &str = "download cancelled";
+
 /// 下载过程中可能发生的错误。
 #[derive(Debug)]
 pub enum DownloadError {
@@ -31,17 +37,28 @@ pub enum DownloadError {
 impl std::fmt::Display for DownloadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DownloadError::Reqwest(e) => write!(f, "请求错误: {}", e),
-            DownloadError::Io(e) => write!(f, "IO 错误: {}", e),
-            DownloadError::Response(code, body) => write!(f, "服务端返回 {}: {}", code, body),
-            DownloadError::Net(e) => write!(f, "网络错误: {}", e),
-            DownloadError::Cancelled(msg) => write!(f, "下载取消: {}", msg),
+            DownloadError::Reqwest(e) => write!(f, "request error: {}", e),
+            DownloadError::Io(e) => write!(f, "I/O error: {}", e),
+            DownloadError::Response(code, body) => write!(f, "server returned {}: {}", code, body),
+            DownloadError::Net(e) => write!(f, "network error: {}", e),
+            DownloadError::Cancelled(msg) => write!(f, "download cancelled: {}", msg),
             DownloadError::Message(msg) => write!(f, "{}", msg),
         }
     }
 }
 
-impl std::error::Error for DownloadError {}
+impl std::error::Error for DownloadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            DownloadError::Reqwest(err) => Some(err),
+            DownloadError::Io(err) => Some(err),
+            DownloadError::Net(err) => Some(err),
+            DownloadError::Response(..)
+            | DownloadError::Message(_)
+            | DownloadError::Cancelled(_) => None,
+        }
+    }
+}
 
 impl From<reqwest::Error> for DownloadError {
     fn from(err: reqwest::Error) -> Self {
@@ -71,7 +88,11 @@ pub struct DownloadSnapshot {
     pub progress_percentage: f64,
     /// 是否已完成（完成、出错或取消）
     pub is_finished: bool,
-    /// 错误信息（取消时包含取消消息）
+    /// 错误诊断文本，**固定为英文**，仅用于日志与排查。
+    ///
+    /// 不要把它直接展示给用户：宿主应按请求的 locale 自行本地化。当前它只是
+    /// 一个字符串，无法表达错误类别；若前端需要区分取消与真实失败并给出对应
+    /// 文案，应推动 `DownloadError` 暴露结构化类别，而不是匹配这里的文本。
     pub error: Option<String>,
 }
 
@@ -163,7 +184,7 @@ impl DownloadStatus {
             },
             is_finished: self.completed.load(Ordering::Relaxed) || error.is_some() || is_cancelled,
             error: if is_cancelled {
-                Some("下载已取消".to_string())
+                Some("download cancelled by user".to_string())
             } else {
                 error
             },
@@ -199,7 +220,7 @@ mod tests {
         status.cancel();
         let snap = status.snapshot().await;
         assert!(snap.is_finished);
-        assert_eq!(snap.error.unwrap(), "下载已取消");
+        assert_eq!(snap.error.unwrap(), "download cancelled by user");
     }
 
     #[tokio::test]
@@ -212,7 +233,7 @@ mod tests {
         status.cancel();
         let snap_after = status.snapshot().await;
         assert!(snap_after.is_finished);
-        assert_eq!(snap_after.error.unwrap(), "下载已取消");
+        assert_eq!(snap_after.error.unwrap(), "download cancelled by user");
         assert_eq!(snap_after.downloaded, 300);
     }
 }

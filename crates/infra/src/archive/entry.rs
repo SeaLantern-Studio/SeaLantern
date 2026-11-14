@@ -366,9 +366,9 @@ mod tests {
 
     #[test]
     fn accepts_paths_differing_beyond_ascii_case() {
-        // 仅 ASCII 大小写折叠，非 ASCII 字符不参与比较。
+        // 折叠只作用于 ASCII，"wörld" 的 ö 不会被折成 o，因此与 "world" 不冲突。
         assert!(register_all(&[("world", true), ("World", false)]).is_err());
-        assert!(register_all(&[("配置", false), ("config", false)]).is_ok());
+        assert!(register_all(&[("wörld", false), ("world", false)]).is_ok());
         assert!(register_all(&[("a_b", false), ("a-b", false)]).is_ok());
     }
 }

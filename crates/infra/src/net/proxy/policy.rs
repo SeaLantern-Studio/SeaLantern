@@ -1,3 +1,14 @@
+//! 代理策略解析。
+//!
+//! 把两种输入折叠成一个 [`EffectiveProxy`]：用户设置（[`ProxySettings`]）与
+//! 系统代理快照（[`SystemProxySnapshot`]）。优先级规则：
+//!
+//! - `Disabled`：强制直连，忽略系统代理；
+//! - `Manual`：使用用户填写的地址，忽略系统代理；
+//! - `Preserve` / 跟随系统：采用最近一次系统快照，后续系统变更仍会生效。
+//!
+//! 校验先于赋值，非法地址不会污染已有状态。
+
 use super::{ProxyConfigError, ProxyMode, ProxyRoutes, ProxySettings, SystemProxySnapshot};
 use crate::observability;
 

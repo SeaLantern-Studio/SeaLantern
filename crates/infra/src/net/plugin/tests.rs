@@ -1,3 +1,9 @@
+//! 插件网络策略与安全边界的单元测试。
+//!
+//! 覆盖 origin 解析、私有地址判定、请求头白名单、资源上限与 DNS 结果校验。
+//! 用 `FixedResolver` / `ErrorResolver` 替代真实 DNS，使 SSRF 相关的断言
+//! 不依赖网络环境。
+
 use std::io::ErrorKind;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
@@ -43,15 +49,15 @@ impl PluginDnsResolver for ErrorResolver {
 
 fn public_scope(origin: &str) -> PluginNetworkScope {
     PluginNetworkScope::new(
-        NetworkOrigin::parse(origin).expect("测试 origin 应有效"),
+        NetworkOrigin::parse(origin).expect("test origin should be valid"),
         PluginNetworkAddressPolicy::PublicOnly,
     )
-    .expect("测试作用域应有效")
+    .expect("test scope should be valid")
 }
 
 #[test]
 fn origin_is_normalized_and_rejects_non_origin_components() {
-    let origin = NetworkOrigin::parse("https://EXAMPLE.com:443").expect("origin 应有效");
+    let origin = NetworkOrigin::parse("https://EXAMPLE.com:443").expect("origin should be valid");
     assert_eq!(origin.scheme(), "https");
     assert_eq!(origin.host(), "example.com");
     assert_eq!(origin.port(), 443);
@@ -85,7 +91,8 @@ fn target_must_stay_inside_exact_origin() {
 fn public_scope_rejects_http_origin_during_construction() {
     assert_eq!(
         PluginNetworkScope::new(
-            NetworkOrigin::parse("http://api.example.com").expect("HTTP origin 本身应可解析"),
+            NetworkOrigin::parse("http://api.example.com")
+                .expect("HTTP origin should parse on its own"),
             PluginNetworkAddressPolicy::PublicOnly,
         ),
         Err(PluginNetworkError::SchemeNotAllowed)
@@ -114,11 +121,15 @@ fn public_policy_rejects_special_use_and_mapped_addresses() {
         "64:ff9b::7f00:1",
         "2001:db8::1",
     ] {
-        let address: IpAddr = address.parse().expect("测试 IP 应有效");
+        let address: IpAddr = address.parse().expect("test IP should parse");
         assert!(!is_public_ip(address), "{address}");
     }
-    assert!(is_public_ip("8.8.8.8".parse().expect("测试 IP 应有效")));
-    assert!(is_public_ip("2606:4700:4700::1111".parse().expect("测试 IP 应有效")));
+    assert!(is_public_ip("8.8.8.8".parse().expect("test IP should parse")));
+    assert!(is_public_ip(
+        "2606:4700:4700::1111"
+            .parse()
+            .expect("test IP should parse")
+    ));
 }
 
 #[test]
@@ -145,7 +156,7 @@ fn public_policy_accepts_addresses_adjacent_to_excluded_networks() {
         "2001:db7:ffff:ffff:ffff:ffff:ffff:ffff",
         "2001:db9::",
     ] {
-        let address: IpAddr = address.parse().expect("测试 IP 应有效");
+        let address: IpAddr = address.parse().expect("test IP should parse");
         assert!(is_public_ip(address), "{address}");
     }
 }
@@ -154,19 +165,24 @@ fn public_policy_accepts_addresses_adjacent_to_excluded_networks() {
 fn private_policy_requires_explicit_target_and_keeps_hard_denials() {
     let policy = PluginNetworkAddressPolicy::AuthenticatedOrPrivate {
         allowed_targets: vec![AllowedNetworkTarget::Network(
-            "192.168.1.0/24".parse().expect("测试网段应有效"),
-        )],
-    };
-    assert!(validate_address("192.168.1.20".parse().expect("测试 IP 应有效"), &policy).is_ok());
-    assert!(validate_address("192.168.2.20".parse().expect("测试 IP 应有效"), &policy).is_err());
-
-    let loopback_policy = PluginNetworkAddressPolicy::AuthenticatedOrPrivate {
-        allowed_targets: vec![AllowedNetworkTarget::Network(
-            "127.0.0.0/8".parse().expect("测试网段应有效"),
+            "192.168.1.0/24".parse().expect("test network should parse"),
         )],
     };
     assert!(
-        validate_address("127.0.0.1".parse().expect("测试 IP 应有效"), &loopback_policy).is_err()
+        validate_address("192.168.1.20".parse().expect("test IP should parse"), &policy).is_ok()
+    );
+    assert!(
+        validate_address("192.168.2.20".parse().expect("test IP should parse"), &policy).is_err()
+    );
+
+    let loopback_policy = PluginNetworkAddressPolicy::AuthenticatedOrPrivate {
+        allowed_targets: vec![AllowedNetworkTarget::Network(
+            "127.0.0.0/8".parse().expect("test network should parse"),
+        )],
+    };
+    assert!(
+        validate_address("127.0.0.1".parse().expect("test IP should parse"), &loopback_policy)
+            .is_err()
     );
 }
 
@@ -217,7 +233,7 @@ fn public_request_rejects_dedicated_credentials_before_transport() {
     let mut credentials = PluginNetworkCredentials::new();
     credentials
         .insert("authorization", "Bearer secret")
-        .expect("测试凭据应有效");
+        .expect("test credentials should be valid");
     let request = PluginNetworkRequest::new(PluginHttpMethod::Get, "https://api.example.com")
         .with_credentials(credentials);
 
@@ -230,7 +246,9 @@ fn public_request_rejects_dedicated_credentials_before_transport() {
 #[test]
 fn only_http_redirect_statuses_are_followed() {
     for status in [301, 302, 303, 307, 308] {
-        assert!(is_redirect(StatusCode::from_u16(status).expect("测试状态码应有效")));
+        assert!(is_redirect(
+            StatusCode::from_u16(status).expect("test status code should be valid")
+        ));
     }
     assert!(!is_redirect(StatusCode::NOT_MODIFIED));
     assert!(!is_redirect(StatusCode::MULTIPLE_CHOICES));
@@ -264,28 +282,29 @@ fn executor_rejects_zero_resource_limits() {
 fn exact_private_target_accepts_ipv4_mapped_equivalent() {
     let policy = PluginNetworkAddressPolicy::AuthenticatedOrPrivate {
         allowed_targets: vec![AllowedNetworkTarget::Exact(
-            "192.168.1.20".parse().expect("测试 IP 应有效"),
+            "192.168.1.20".parse().expect("test IP should parse"),
         )],
     };
     assert!(
-        validate_address("::ffff:192.168.1.20".parse().expect("测试 IP 应有效"), &policy).is_ok()
+        validate_address("::ffff:192.168.1.20".parse().expect("test IP should parse"), &policy)
+            .is_ok()
     );
 }
 
 #[tokio::test]
 async fn client_rejects_dns_answer_when_any_address_is_private() {
     let client = PluginNetworkClient::with_resolver(Arc::new(FixedResolver(vec![
-        "8.8.8.8".parse().expect("测试 IP 应有效"),
-        "192.168.1.20".parse().expect("测试 IP 应有效"),
+        "8.8.8.8".parse().expect("test IP should parse"),
+        "192.168.1.20".parse().expect("test IP should parse"),
     ])));
-    let target = Url::parse("https://api.example.com/data").expect("测试 URL 应有效");
+    let target = Url::parse("https://api.example.com/data").expect("test URL should parse");
 
     assert_eq!(
         client
             .resolve_and_validate(&target, &PluginNetworkAddressPolicy::PublicOnly)
             .await,
         Err(PluginNetworkError::AddressNotAllowed(
-            "192.168.1.20".parse().expect("测试 IP 应有效")
+            "192.168.1.20".parse().expect("test IP should parse")
         ))
     );
 }
@@ -293,7 +312,7 @@ async fn client_rejects_dns_answer_when_any_address_is_private() {
 #[tokio::test]
 async fn client_rejects_empty_dns_answer() {
     let client = PluginNetworkClient::with_resolver(Arc::new(FixedResolver(Vec::new())));
-    let target = Url::parse("https://api.example.com/data").expect("测试 URL 应有效");
+    let target = Url::parse("https://api.example.com/data").expect("test URL should parse");
 
     assert_eq!(
         client
@@ -309,7 +328,7 @@ async fn client_rejects_too_many_dns_addresses_before_address_validation() {
         .map(|suffix| IpAddr::V4(Ipv4Addr::new(9, 9, 0, suffix as u8)))
         .collect();
     let client = PluginNetworkClient::with_resolver(Arc::new(FixedResolver(addresses)));
-    let target = Url::parse("https://api.example.com/data").expect("测试 URL 应有效");
+    let target = Url::parse("https://api.example.com/data").expect("test URL should parse");
 
     assert_eq!(
         client
@@ -322,7 +341,7 @@ async fn client_rejects_too_many_dns_addresses_before_address_validation() {
 #[tokio::test]
 async fn client_propagates_dns_resolution_error_kind() {
     let client = PluginNetworkClient::with_resolver(Arc::new(ErrorResolver));
-    let target = Url::parse("https://api.example.com/data").expect("测试 URL 应有效");
+    let target = Url::parse("https://api.example.com/data").expect("test URL should parse");
 
     assert_eq!(
         client

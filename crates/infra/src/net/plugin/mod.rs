@@ -343,31 +343,53 @@ pub enum PluginNetworkError {
 impl fmt::Display for PluginNetworkError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidConfiguration => formatter.write_str("插件网络执行器配置无效"),
-            Self::InvalidOrigin => formatter.write_str("插件网络 origin 无效"),
-            Self::InvalidUrl => formatter.write_str("插件网络 URL 无效"),
-            Self::OriginMismatch => formatter.write_str("插件网络目标超出已批准 origin"),
-            Self::SchemeNotAllowed => formatter.write_str("插件网络协议不受允许"),
-            Self::CredentialsNotAllowed => formatter.write_str("插件网络 URL 不允许携带凭据"),
-            Self::ForbiddenHeader(name) => write!(formatter, "插件网络请求头不受允许: {name}"),
-            Self::InvalidHeaderName => formatter.write_str("插件网络请求头名称无效"),
-            Self::InvalidHeaderValue => formatter.write_str("插件网络请求头值无效"),
-            Self::RequestHeadersTooLarge => formatter.write_str("插件网络请求头超出资源限制"),
+            Self::InvalidConfiguration => {
+                formatter.write_str("plugin network executor configuration is invalid")
+            }
+            Self::InvalidOrigin => formatter.write_str("plugin network origin is invalid"),
+            Self::InvalidUrl => formatter.write_str("plugin network URL is invalid"),
+            Self::OriginMismatch => {
+                formatter.write_str("plugin network target is outside the approved origin")
+            }
+            Self::SchemeNotAllowed => formatter.write_str("plugin network scheme is not allowed"),
+            Self::CredentialsNotAllowed => {
+                formatter.write_str("plugin network URL must not contain credentials")
+            }
+            Self::ForbiddenHeader(name) => {
+                write!(formatter, "plugin network header is not allowed: {name}")
+            }
+            Self::InvalidHeaderName => formatter.write_str("plugin network header name is invalid"),
+            Self::InvalidHeaderValue => {
+                formatter.write_str("plugin network header value is invalid")
+            }
+            Self::RequestHeadersTooLarge => {
+                formatter.write_str("plugin network headers exceed the resource limit")
+            }
             Self::AddressNotAllowed(address) => {
-                write!(formatter, "插件网络目标地址不受允许: {address}")
+                write!(formatter, "plugin network address is not allowed: {address}")
             }
-            Self::EmptyDnsResult => formatter.write_str("插件网络 DNS 未返回地址"),
-            Self::TooManyDnsAddresses => formatter.write_str("插件网络 DNS 返回地址过多"),
+            Self::EmptyDnsResult => formatter.write_str("plugin network DNS returned no addresses"),
+            Self::TooManyDnsAddresses => {
+                formatter.write_str("plugin network DNS returned too many addresses")
+            }
             Self::DnsResolutionFailed(kind) => {
-                write!(formatter, "插件网络 DNS 解析失败: {kind:?}")
+                write!(formatter, "plugin network DNS resolution failed: {kind:?}")
             }
-            Self::RedirectMissingLocation => formatter.write_str("插件网络重定向缺少有效 Location"),
-            Self::RedirectLimitExceeded => formatter.write_str("插件网络重定向次数超限"),
-            Self::ResponseTooLarge => formatter.write_str("插件网络响应体超限"),
-            Self::ConcurrencyLimitExceeded => formatter.write_str("插件网络并发已达上限"),
-            Self::Timeout => formatter.write_str("插件网络请求超时"),
+            Self::RedirectMissingLocation => {
+                formatter.write_str("plugin network redirect is missing a valid Location header")
+            }
+            Self::RedirectLimitExceeded => {
+                formatter.write_str("plugin network redirect limit exceeded")
+            }
+            Self::ResponseTooLarge => {
+                formatter.write_str("plugin network response body exceeds the limit")
+            }
+            Self::ConcurrencyLimitExceeded => {
+                formatter.write_str("plugin network concurrency limit reached")
+            }
+            Self::Timeout => formatter.write_str("plugin network request timed out"),
             Self::TransportFailed { stage, kind } => {
-                write!(formatter, "插件网络传输失败: {stage:?}/{kind:?}")
+                write!(formatter, "plugin network transport failed: {stage:?}/{kind:?}")
             }
         }
     }

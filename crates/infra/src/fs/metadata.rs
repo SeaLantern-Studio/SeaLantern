@@ -1,3 +1,9 @@
+//! 不跟随符号链接的路径元数据查询。
+//!
+//! 全部基于 `symlink_metadata`：查询的是路径本身而非它指向的目标。因此对符号
+//! 链接会得到 `is_symlink = true` 且 `is_file` / `is_dir` 均为 `false`，供上层
+//! 在写入或删除前判断真实类型。
+
 use std::path::Path;
 use std::time::SystemTime;
 
