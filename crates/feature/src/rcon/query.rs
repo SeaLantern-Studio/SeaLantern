@@ -84,16 +84,30 @@ pub fn parse_rotations(lines: &[String]) -> Vec<(String, f32)> {
 
 /// 一行是否明显是「被切断的半条记录」，需要和下一行拼起来。
 ///
-/// 服务端把回显拆成多个包时，切点不一定落在行边界上，于是会出现两种半截：
+/// 服务端把回显拆成多个包时，切点不一定落在行边界上，于是会出现三种半截：
 /// - 断在数字里：有分隔符，但值以 `[` 开头却没有 `]` 收尾；
-/// - 断在玩家名里：整行没有分隔符，且不含空格（玩家名不含空格）。
+/// - 断在玩家名里：整行没有空格（玩家名不含空格）；
+/// - 断在分隔符里：名字后面那截只是 `SEPARATOR` 的前缀，
+///   例如 `Steve has the following entity da` + `ta: [...]`。
 ///
-/// 第二种判断要收紧到「不含空格」，否则像 `There are 0 of a max of 20 players
-/// online` 这种正常提示行会被当成半截记录，进而把后面那条真记录吞掉。
+/// 「断在名字里」那条要收紧到「不含空格」，否则像 `There are 0 of a max of 20
+/// players online` 这种正常提示行会被当成半截记录，进而把后面那条真记录吞掉。
+/// 「断在分隔符里」同理：要求名字后面至少还有一个字符，避免「以空格结尾的
+/// 普通提示行」被误判。
 fn needs_continuation(line: &str) -> bool {
     match split_line(line) {
         Some((_, value)) => value.starts_with('[') && !value.ends_with(']'),
-        None => !line.is_empty() && !line.contains(' '),
+        None => {
+            if line.is_empty() {
+                return false;
+            }
+            let Some((name, _)) = line.split_once(' ') else {
+                return true;
+            };
+            // 从空格开始的那截，是不是分隔符的前缀
+            let tail = &line[name.len()..];
+            tail.len() > 1 && SEPARATOR.starts_with(tail)
+        }
     }
 }
 
@@ -130,12 +144,19 @@ fn split_line(line: &str) -> Option<(&str, &str)> {
 }
 
 /// 解析 `[1.0d, 2.0d, 3.0d]` 这类数组，去掉 Minecraft 的类型后缀。
+///
+/// 非有限值（`NaNd` / `Infinityd`）一律判失败：坐标里出现 NaN 说明服务端数据
+/// 已经坏了，把它当成合法坐标只会把玩家画到画布外面。
 fn parse_number_list(value: &str) -> Option<Vec<f64>> {
     let inner = value.strip_prefix('[')?.strip_suffix(']')?;
     let mut numbers = Vec::new();
     for item in inner.split(',') {
         let item = item.trim().trim_end_matches(['d', 'f', 'b', 's', 'l']);
-        numbers.push(item.parse::<f64>().ok()?);
+        let number = item.parse::<f64>().ok()?;
+        if !number.is_finite() {
+            return None;
+        }
+        numbers.push(number);
     }
     (!numbers.is_empty()).then_some(numbers)
 }
@@ -251,6 +272,24 @@ mod tests {
         assert_eq!(parsed, vec![("Steve".to_string(), 90.0f32)]);
     }
 
+    /// 切点落在固定分隔符中间：前半段带空格，但拿不到分隔符，不能当成垃圾行扔掉。
+    #[test]
+    fn rejoins_record_split_inside_the_separator() {
+        let parsed = parse_positions(&lines(&[
+            "Steve has the following entity da",
+            "ta: [123.45d, 64.0d, -678.9d]",
+        ]));
+        assert_eq!(parsed, vec![("Steve".to_string(), [123.45, 64.0, -678.9])]);
+    }
+
+    /// 分隔符只发到「空格 + 一个字符」也要能认出来。
+    #[test]
+    fn rejoins_record_split_right_after_the_space() {
+        let parsed =
+            parse_rotations(&lines(&["Steve h", "as the following entity data: [90.0f, 0.0f]"]));
+        assert_eq!(parsed, vec![("Steve".to_string(), 90.0f32)]);
+    }
+
     /// 带空格的普通提示行不能被当成「半截记录」，否则会把后面那条真记录吞掉。
     #[test]
     fn notice_line_never_swallows_the_next_record() {
@@ -260,6 +299,25 @@ mod tests {
         ]));
         assert_eq!(parsed.len(), 1);
         assert_eq!(parsed[0].0, "Steve");
+    }
+
+    /// 非有限值不是合法坐标，服务端数据坏了就不该往地图上画。
+    #[test]
+    fn non_finite_numbers_are_rejected() {
+        assert!(
+            parse_positions(&lines(&["Steve has the following entity data: [NaNd, 64.0d, 1.0d]",]))
+                .is_empty()
+        );
+        assert!(
+            parse_positions(&lines(&[
+                "Steve has the following entity data: [1.0d, -Infinityd, 3.0d]",
+            ]))
+            .is_empty()
+        );
+        assert!(
+            parse_rotations(&lines(&["Steve has the following entity data: [NaNf, 0.0f]",]))
+                .is_empty()
+        );
     }
 
     #[test]
