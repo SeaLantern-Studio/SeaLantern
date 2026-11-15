@@ -75,11 +75,13 @@ use adapter::tauri::commands::update_install::{
 };
 use adapter::tauri::events::LogSenderState;
 use desktop::{
-    AutoLightweightState, DesktopAppearanceState, MainWindowState, apply_acrylic,
+    AutoLightweightState, DesktopAppearanceState, DesktopJellyState, MainWindowState,
+    PetWindowState, apply_acrylic, desktop_jelly_start, desktop_jelly_status, desktop_jelly_stop,
     desktop_open_folder, desktop_pick_archive_file, desktop_pick_folder, desktop_pick_image_file,
     desktop_pick_jar_file, desktop_pick_java_file, desktop_pick_save_file,
     desktop_pick_server_executable, desktop_pick_startup_file, hide_main_window,
-    restore_main_window, set_window_material, supports_liquid_glass, toggle_light_weight,
+    pet_frontend_ready, pet_hide, pet_open_main_window, pet_set_click_through, restore_main_window,
+    set_window_material, supports_liquid_glass, toggle_light_weight,
 };
 
 fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
@@ -119,11 +121,25 @@ fn app_handle_has_close_listener(app_handle: &AppHandle) -> bool {
 
 /// 启动桌面应用。
 fn main() {
+    // 异常退出后的恢复守护进程：恢复被隐藏的桌面图标后立即退出。
+    if desktop::desktop_jelly::run_restore_watcher_if_requested() {
+        return;
+    }
+
     // 初始化 tracing 日志（在 Tauri 构建之前）
     observability::init();
 
     let app = tauri::Builder::default()
         .on_window_event(|window, event| {
+            if window.label() == desktop::pet::PET_WINDOW_LABEL {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    if let Err(error) = desktop::pet::hide(window.app_handle()) {
+                        tracing::error!(%error, "failed to hide the desktop pet on close");
+                    }
+                }
+                return;
+            }
             if window.label() != "main" {
                 return;
             }
@@ -189,6 +205,8 @@ fn main() {
             }
         })
         .manage(MainWindowState::new())
+        .manage(PetWindowState::new())
+        .manage(DesktopJellyState::new())
         .manage(CloseRequestState::default())
         .manage(AutoLightweightState::new())
         .manage(DesktopAppearanceState::new())
@@ -223,6 +241,13 @@ fn main() {
             hide_main_window,
             restore_main_window,
             toggle_light_weight,
+            pet_frontend_ready,
+            pet_hide,
+            pet_open_main_window,
+            pet_set_click_through,
+            desktop_jelly_start,
+            desktop_jelly_stop,
+            desktop_jelly_status,
             frontend_ready,
             set_close_request_listener_ready,
             //服务器备份管理契约命令
@@ -407,6 +432,11 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         return Err(error.into());
     }
 
+    // 桌宠是锦上添花的能力，窗口创建失败不应阻断主应用启动。
+    if let Err(error) = desktop::pet::setup(app) {
+        tracing::error!(%error, "failed to create the desktop pet window; continuing");
+    }
+
     if let Err(error) = desktop::tray::setup(app) {
         shutdown_services(&services);
         return Err(error);
@@ -423,6 +453,10 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
 /// 应用退出时关闭后台异步服务。
 fn on_shutdown(app_handle: AppHandle) {
+    // 先恢复桌面图标，再关闭其他后台服务。
+    let desktop_jelly: tauri::State<'_, DesktopJellyState> = app_handle.state();
+    desktop_jelly.stop();
+
     let log_sender: tauri::State<'_, LogSenderState> = app_handle.state();
     tauri::async_runtime::block_on(async { log_sender.stop().await });
 
