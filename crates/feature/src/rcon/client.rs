@@ -55,6 +55,15 @@ const COMMAND_TIMEOUT: Duration = Duration::from_secs(15);
 /// 每次从 socket 读的块大小。
 const READ_CHUNK: usize = 8 * 1024;
 
+/// `buf` 的硬上限。
+///
+/// 正常路径下缓冲里最多留一个没拆完的帧（≤ `MAX_BODY`）：每轮读完都会先拆帧
+/// 再读下一块。能涨到这个量级只可能是一种情况 —— 对端在猛灌而这边还在连续读
+/// （`drain_ready` 要读到 `WouldBlock` 才停，中途不拆帧）。与其让内存跟着对端
+/// 的速度走，不如直接判超限。定成两倍 `MAX_RESPONSE_BYTES` 是为了给「一整条
+/// 回显还堆在缓冲里没拆」留出余量。
+const MAX_BUFFER_BYTES: usize = 2 * MAX_RESPONSE_BYTES;
+
 /// RCON 操作错误。
 #[derive(Debug)]
 pub enum RconError {
@@ -112,6 +121,9 @@ pub struct RconClient {
     /// `command()` 的 future，帧就只发了前半截，之后这条连接上再写什么都会被
     /// 服务端当成前一帧的尾巴。所以写入前置位、写完整帧后再清位；处于置位状态
     /// 时拒绝复用，让调用方重连。
+    ///
+    /// 帧解析失败时也会置位（见 [`Self::trip`]）：缓冲里那段坏字节没法重新对齐，
+    /// 留着复用只会一直失败。
     poisoned: bool,
 }
 
@@ -119,6 +131,10 @@ impl RconClient {
     /// 建立连接并完成认证。
     ///
     /// `timeout` 同时用于连接与认证，避免端口被防火墙吞包时长时间挂住。
+    ///
+    /// **只能连本机。** RCON 协议是明文，密码和回显都不加密；本项目里所有调用方
+    /// 都固定连 `127.0.0.1:<rcon.port>`。`addr` 之所以还是参数，只是为了测试能
+    /// 指定端口。真要远程管理，先把 RCON 挂到 SSH 隧道或 VPN 上，别把端口暴露出去。
     pub async fn connect(addr: &str, password: &str, timeout: Duration) -> Result<Self, RconError> {
         let stream = tokio::time::timeout(timeout, TcpStream::connect(addr))
             .await
@@ -185,6 +201,14 @@ impl RconClient {
                 // 就会启动静默窗口，真正的回显晚到就变成「空结果」。
                 if packet.id != id {
                     continue;
+                }
+                // 请求号对上还不够，类型必须真是命令回显。服务端发 2 是认证结果，
+                // 凑巧同号也不能当成命令输出
+                if packet.kind != TYPE_RESPONSE {
+                    return Err(RconError::Protocol(format!(
+                        "unexpected packet type {} for a command reply",
+                        packet.kind
+                    )));
                 }
                 matched = true;
                 // 单个包有 MAX_BODY 兜底，但包的数量没有上限：不在这里累计的话，
@@ -289,7 +313,7 @@ impl RconClient {
     async fn fill(&mut self) -> Result<usize, RconError> {
         let mut chunk = [0u8; READ_CHUNK];
         let read = self.stream.read(&mut chunk).await.map_err(RconError::Io)?;
-        self.buf.extend_from_slice(&chunk[..read]);
+        self.grow(&chunk[..read])?;
         Ok(read)
     }
 
@@ -305,7 +329,7 @@ impl RconClient {
             match self.stream.try_read(&mut chunk) {
                 Ok(0) => break,
                 Ok(read) => {
-                    self.buf.extend_from_slice(&chunk[..read]);
+                    self.grow(&chunk[..read])?;
                     got_any = true;
                 }
                 // 还有数据没读完就继续，读空了就停
@@ -316,7 +340,23 @@ impl RconClient {
         Ok(got_any)
     }
 
+    /// 把新读到的字节追加进缓冲，同时守住 [`MAX_BUFFER_BYTES`]。
+    ///
+    /// 检查放在追加**之前**：等追加完再看就晚了，一次 `drain_ready` 能把对端
+    /// 灌过来的数据全收进来。
+    fn grow(&mut self, bytes: &[u8]) -> Result<(), RconError> {
+        if self.buf.len() + bytes.len() > MAX_BUFFER_BYTES {
+            return Err(RconError::Protocol(format!(
+                "receive buffer exceeded {MAX_BUFFER_BYTES} bytes"
+            )));
+        }
+        self.buf.extend_from_slice(bytes);
+        Ok(())
+    }
+
     /// 从缓冲里拆出下一个完整包；不够一帧时返回 `None`，不消费任何字节。
+    ///
+    /// 长度或类型非法时报协议错误，并把连接标记为不可复用（见 [`Self::trip`]）。
     fn take_frame(&mut self) -> Result<Option<Packet>, RconError> {
         if self.buf.len() < 4 {
             return Ok(None);
@@ -324,7 +364,7 @@ impl RconClient {
         // 长度字段包含紧随其后的 8 字节（请求号 + 类型）
         let len = i32::from_le_bytes([self.buf[0], self.buf[1], self.buf[2], self.buf[3]]);
         if !(10..=MAX_BODY as i32).contains(&len) {
-            return Err(RconError::Protocol(format!("bad packet length {len}")));
+            return Err(self.trip(RconError::Protocol(format!("bad packet length {len}"))));
         }
         let total = 4 + len as usize;
         if self.buf.len() < total {
@@ -335,7 +375,7 @@ impl RconClient {
         let kind = i32::from_le_bytes([self.buf[8], self.buf[9], self.buf[10], self.buf[11]]);
         // 服务端只会发这两种：认证结果(2) 与命令回显(0)
         if kind != TYPE_RESPONSE && kind != TYPE_AUTH_RESPONSE {
-            return Err(RconError::Protocol(format!("unexpected packet type {kind}")));
+            return Err(self.trip(RconError::Protocol(format!("unexpected packet type {kind}"))));
         }
 
         // 负载尾部有两个 0x00，去掉
@@ -344,6 +384,16 @@ impl RconClient {
             .to_string();
         self.buf.drain(..total);
         Ok(Some(Packet { id, kind, body }))
+    }
+
+    /// 标记连接不可复用，并把错误原样返回。
+    ///
+    /// 帧解析失败之后缓冲里那段无法识别的字节还在，而 RCON 没有可用来重新同步
+    /// 的标记 —— 继续复用只会让之后每条命令都在同一个位置失败，而且失败前已经
+    /// 把命令写出去了。所以判定为不可恢复，逼调用方重连。
+    fn trip(&mut self, error: RconError) -> RconError {
+        self.poisoned = true;
+        error
     }
 
     /// 取下一个请求号，跳过 0 与负数（协议里没有特殊含义，但也没必要用）。
@@ -746,6 +796,13 @@ mod protocol_tests {
             "非法包类型要上抛，不能当成回显结束: {result:?}"
         );
 
+        // 坏字节还留在缓冲里，没法重新对齐，所以连接必须作废而不是继续复用
+        let again = client.command("x").await;
+        assert!(
+            matches!(again, Err(RconError::Protocol(_))),
+            "帧解析失败之后必须拒绝复用: {again:?}"
+        );
+
         server.await.unwrap();
     }
 
@@ -768,6 +825,37 @@ mod protocol_tests {
 
         let result = RconClient::connect(&addr.to_string(), "secret", Duration::from_secs(2)).await;
         assert!(matches!(result, Err(RconError::Unauthorized)), "同号的普通回显不能算认证成功");
+
+        server.await.unwrap();
+    }
+
+    /// 命令回显必须是类型 0。
+    ///
+    /// 类型 2 在服务端方向上表示认证结果，凑巧和当前请求号相同也不能当成命令
+    /// 输出 —— 旧实现只比 id，会把这种包吞进结果里。
+    #[tokio::test]
+    async fn command_rejects_auth_response_type() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let (auth_id, _, _) = read_frame(&mut stream).await;
+            write_frame(&mut stream, auth_id, TYPE_AUTH_RESPONSE, "").await;
+
+            let (exec_id, _, _) = read_frame(&mut stream).await;
+            write_frame(&mut stream, exec_id, TYPE_AUTH_RESPONSE, "not a command reply").await;
+        });
+
+        let mut client = RconClient::connect(&addr.to_string(), "secret", Duration::from_secs(2))
+            .await
+            .expect("认证应成功");
+        let result = client.command("list").await;
+
+        assert!(
+            matches!(result, Err(RconError::Protocol(_))),
+            "同号的认证结果类型不能当成命令回显: {result:?}"
+        );
 
         server.await.unwrap();
     }
@@ -837,6 +925,10 @@ mod protocol_tests {
     /// 读取被逐字节「滴」的时候，认证不能一直挂着。
     ///
     /// 旧实现对每次成功读取都重置整个超时，只要对端慢速滴包就永远不超时。
+    ///
+    /// 滴的必须是一个**合法长度头之后的负载**：直接滴 `0x00` 的话，凑满四个
+    /// 字节时长度字段正好是 0，解析器会立刻报协议错误 —— 那样这条用例在
+    /// 「超时被无限重置」的实现上也是绿的，测了个寂寞。
     #[tokio::test]
     async fn trickled_auth_frame_times_out() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -845,8 +937,12 @@ mod protocol_tests {
         let server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.unwrap();
             let _ = read_frame(&mut stream).await;
-            // 一个合法但永远发不完的帧头
-            for _ in 0..100 {
+            // 长度头声明 10 字节（8 字节头 + 2 个结尾 0），负载每次只给一个字节
+            if stream.write_all(&10i32.to_le_bytes()).await.is_err() {
+                return;
+            }
+            let _ = stream.flush().await;
+            for _ in 0..10 {
                 if stream.write_all(&[0u8]).await.is_err() {
                     return;
                 }
@@ -860,15 +956,24 @@ mod protocol_tests {
             RconClient::connect(&addr.to_string(), "secret", Duration::from_millis(300)).await;
         let elapsed = started.elapsed();
 
-        assert!(result.is_err(), "滴包不该让 connect 成功");
+        match &result {
+            Err(RconError::Timeout) => {}
+            Err(other) => panic!("应按总时长超时，实际报的是 {other}"),
+            Ok(_) => panic!("滴包不该让认证成功"),
+        }
         assert!(elapsed < Duration::from_secs(2), "必须按总时长超时，实际用了 {elapsed:?}");
 
         server.abort();
     }
 
-    /// 写入被取消（或写失败）之后连接不能继续复用。
+    /// 写失败之后连接不能继续复用。
+    ///
+    /// 真正的「写了一半被 drop」构造不出来：帧上限 1446 字节，`write_all` 往
+    /// 内核缓冲里一塞就完事，根本不会停在 await 点上。所以这里测的是同一个
+    /// 转换的另一半 —— 写报错之后 `poisoned` 应该留在置位状态，下一条命令
+    /// 直接被拒，而不是继续往一条坏连接上写。
     #[tokio::test]
-    async fn poisoned_client_refuses_reuse() {
+    async fn failed_write_poisons_the_client() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
@@ -876,21 +981,25 @@ mod protocol_tests {
             let (mut stream, _) = listener.accept().await.unwrap();
             let (auth_id, _, _) = read_frame(&mut stream).await;
             write_frame(&mut stream, auth_id, TYPE_AUTH_RESPONSE, "").await;
-            // 保持连接打开，让客户端有机会去写
+            // 认证完就挂着，让客户端有机会写
             tokio::time::sleep(Duration::from_millis(500)).await;
         });
 
         let mut client = RconClient::connect(&addr.to_string(), "secret", Duration::from_secs(2))
             .await
             .expect("认证应成功");
-        // 模拟「上一次写入被 drop 掉」留下的状态
-        client.poisoned = true;
+        // 本地把连接关掉：之后的写入必然失败
+        tokio::io::AsyncWriteExt::shutdown(&mut client.stream)
+            .await
+            .expect("关闭本地写端");
 
-        let result = client.command("list").await;
+        let first = client.command("list").await;
+        assert!(matches!(first, Err(RconError::Io(_))), "写不进已关闭的连接: {first:?}");
 
+        let second = client.command("list").await;
         assert!(
-            matches!(result, Err(RconError::Protocol(_))),
-            "处于毒化状态的连接必须拒绝复用: {result:?}"
+            matches!(second, Err(RconError::Protocol(_))),
+            "写失败之后必须拒绝复用: {second:?}"
         );
 
         server.abort();
