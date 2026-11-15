@@ -6,30 +6,38 @@ use tauri::{App, AppHandle, Manager, Wry};
 
 use super::auto_lightweight::AutoLightweightState;
 use super::lightweight;
+use super::pet::{self, PetWindowState};
 use super::window_state::{
     self as window_lifecycle, MAIN_WINDOW_LABEL, MainWindowMode, MainWindowState,
 };
 
 const SHOW_MENU_ID: &str = "tray-show";
+const PET_MENU_ID: &str = "tray-pet";
 const LIGHT_WEIGHT_MENU_ID: &str = "tray-light-weight";
 const QUIT_MENU_ID: &str = "tray-quit";
 
 struct TrayMenuState {
     _show: MenuItem<Wry>,
+    _pet: CheckMenuItem<Wry>,
     _light_weight: CheckMenuItem<Wry>,
     _quit: MenuItem<Wry>,
 }
 
 pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItem::with_id(app, SHOW_MENU_ID, "显示主窗口", true, None::<&str>)?;
+    let pet_visible = app.state::<PetWindowState>().is_visible();
+    let pet =
+        CheckMenuItem::with_id(app, PET_MENU_ID, "显示桌宠", true, pet_visible, None::<&str>)?;
     let light_weight =
         CheckMenuItem::with_id(app, LIGHT_WEIGHT_MENU_ID, "轻量模式", true, false, None::<&str>)?;
     let quit = MenuItem::with_id(app, QUIT_MENU_ID, "退出", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show, &light_weight, &quit])?;
+    let menu = Menu::with_items(app, &[&show, &pet, &light_weight, &quit])?;
     app.state::<MainWindowState>()
         .set_tray_item(light_weight.clone());
+    app.state::<PetWindowState>().set_tray_item(pet.clone());
     app.manage(TrayMenuState {
         _show: show,
+        _pet: pet,
         _light_weight: light_weight,
         _quit: quit,
     });
@@ -45,6 +53,11 @@ pub fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
             SHOW_MENU_ID => show_main_window(app),
+            PET_MENU_ID => {
+                if let Err(error) = pet::toggle(app) {
+                    tracing::error!(%error, "failed to toggle the desktop pet");
+                }
+            }
             LIGHT_WEIGHT_MENU_ID => {
                 if let Err(error) = toggle_light_weight_mode(app) {
                     tracing::error!(%error, "failed to toggle lightweight mode");

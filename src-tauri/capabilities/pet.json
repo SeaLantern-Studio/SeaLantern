@@ -1,0 +1,10 @@
+{
+  "identifier": "pet",
+  "description": "Sea Lantern desktop pet window",
+  "windows": ["pet"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-cursor-position"
+  ]
+}
