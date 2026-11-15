@@ -425,7 +425,14 @@ pub fn render_region_png(
         reason: format!("收尾 PNG 失败: {e}"),
     })?;
 
-    let file_bytes = std::fs::metadata(out_path).map(|m| m.len()).unwrap_or(0);
+    // 读不到输出文件的大小说明文件没落成（被删、权限变了、磁盘出问题），
+    // 这时候报成功等于给调用方一个 `bytes == 0` 的假摘要
+    let file_bytes = std::fs::metadata(out_path)
+        .map_err(|source| WorldMapError::Output {
+            path: out_path.display().to_string(),
+            source,
+        })?
+        .len();
 
     Ok(RenderInfo {
         pixels: REGION_PIXELS,
