@@ -7,6 +7,19 @@
 //!
 //! 一个 region 固定输出 512×512 像素（32 chunk × 16 方块）。
 //!
+//! ## 立体感怎么来的
+//!
+//! 俯视图没有透视，全靠明暗和颜色层次。这里做两件事：
+//!
+//! - **连续山体阴影**：光源固定在西北，按「本列高度 − 北邻/西邻高度」连续缩放
+//!   亮度。fastanvil 自带的 `TopShadeRenderer` 只有三档（比北邻高 / 相等 / 低），
+//!   一格台阶和十格悬崖会被压成同一种灰，所以这里自己采样、自己着色。
+//! - **水体按深度调色**：浅水偏青、透出海底，深水接近纯深蓝。原来整片海是一个
+//!   死蓝色，看不出浅滩和海沟的区别。
+//!
+//! 跨 chunk 的阴影靠两条边缘缓存（北边一块的最后一行、西边一块的最后一列），
+//! 否则每个 chunk 边界会出现一道直边。
+//!
 //! 只渲染 1.18+（`sections`）格式的 chunk。更早的 chunk 会被跳过并留空：
 //! fastanvil 0.32 的 pre-1.13 路径在 `init_default_block` 里对半砖数据值
 //! 用了 `unreachable!()`（`data_value & 0b1000` 只可能得 0 或 8，却去匹配 0/1），
@@ -17,7 +30,7 @@ use std::io::BufWriter;
 use std::path::Path;
 
 use fastanvil::biome::Biome;
-use fastanvil::{Block, Chunk, HeightMode, JavaChunk, Palette, Region, Rgba, TopShadeRenderer};
+use fastanvil::{Chunk, HeightMode, JavaChunk, Region, Rgba};
 
 use super::{WorldMapError, is_finished};
 
@@ -29,6 +42,12 @@ const CHUNKS_PER_SIDE: usize = 32;
 
 /// 水与海草等水体方块的统一色。
 const WATER: Rgba = [58, 102, 175, 255];
+
+/// 统计水深时最多往下看多少格。
+///
+/// 再深的海（深海沟能到 40 格以上）多算也没意义：水色到十几格就已经接近纯深蓝，
+/// 徒增每列几十次方块读取。
+const MAX_WATER_DEPTH: usize = 16;
 
 /// 无法识别时的兜底色。
 const UNKNOWN: Rgba = [120, 120, 120, 255];
@@ -54,13 +73,103 @@ pub struct RenderInfo {
     pub unfinished_chunks: usize,
 }
 
-/// 按地表方块上色、用群系给植被做色调的调色板。
-pub struct TerrainPalette;
+/// 一列地表的采样结果。
+struct SurfaceColumn {
+    /// 这一列在俯视图上的颜色。
+    colour: Rgba,
+    /// 地表高度（`surface_height`，最高的阻挡移动方块之上那一格）。
+    ///
+    /// 山体阴影靠它算坡向，所以必须整列都要，不能只留颜色。
+    height: isize,
+}
 
-impl Palette for TerrainPalette {
-    fn pick(&self, block: &Block, biome: Option<Biome>) -> Rgba {
-        block_colour(block.name(), biome)
+/// 采一列：取最高的阻挡移动方块，遇到水就往下一路数到海底。
+///
+/// 用 `surface_height` 而不是从世界顶端往下扫，是因为 `motion_blocking` 高度图
+/// 本身就把花草、火把这类不挡路的方块算作空气了 —— 否则每格草都会盖在地形上，
+/// 整张图变成一片绿色噪点。
+fn sample_column<C: Chunk + ?Sized>(chunk: &C, x: usize, z: usize, y_min: isize) -> SurfaceColumn {
+    let height = chunk.surface_height(x, z, HeightMode::Trust);
+    let mut y = (height - 1).max(y_min);
+
+    let Some(top) = chunk.block(x, y, z) else {
+        return SurfaceColumn { colour: [0, 0, 0, 0], height };
+    };
+
+    if !is_water_like(top.name()) {
+        return SurfaceColumn {
+            colour: block_colour(top.name(), chunk.biome(x, y, z)),
+            height,
+        };
     }
+
+    // 水面：往下数水深，顺便拿到海底的颜色
+    let mut depth = 1usize;
+    y -= 1;
+    while y >= y_min && depth < MAX_WATER_DEPTH {
+        match chunk.block(x, y, z) {
+            Some(block) if is_water_like(block.name()) => {
+                depth += 1;
+                y -= 1;
+            }
+            Some(block) => {
+                let floor = block_colour(block.name(), chunk.biome(x, y, z));
+                return SurfaceColumn {
+                    colour: water_colour(floor, depth),
+                    height,
+                };
+            }
+            None => break,
+        }
+    }
+
+    // 到底都没见到海底（深海，或高度图本身不可信）：按纯水色收场
+    SurfaceColumn {
+        colour: water_colour(WATER, depth),
+        height,
+    }
+}
+
+/// 按水深给水面调色：浅水偏青、能透出海底，深水接近纯深蓝。
+///
+/// 这是俯视图里最能拉开层次的一处：原来整片海是一个死蓝色，看不出哪里是浅滩
+/// 哪里是海沟。
+fn water_colour(floor: Rgba, depth: usize) -> Rgba {
+    const SHALLOW: [f32; 3] = [96.0, 158.0, 198.0];
+    const DEEP: [f32; 3] = [28.0, 58.0, 116.0];
+
+    let span = (MAX_WATER_DEPTH - 1).max(1) as f32;
+    let deepness = (depth.saturating_sub(1) as f32 / span).min(1.0);
+
+    let mut out = [0u8; 4];
+    for channel in 0..3 {
+        let water = SHALLOW[channel] + (DEEP[channel] - SHALLOW[channel]) * deepness;
+        // 水越浅，海底的颜色透出来越多
+        let see_floor = (1.0 - deepness) * 0.45;
+        let value = water * (1.0 - see_floor) + floor[channel] as f32 * see_floor;
+        out[channel] = value.clamp(0.0, 255.0) as u8;
+    }
+    out[3] = 255;
+    out
+}
+
+/// 按西北方向的光源给像素加减亮度。
+///
+/// 原来的实现只有三档（比北邻高 / 相等 / 低 → 255 / 220 / 180），一格高的台阶
+/// 和十格高的悬崖会被压成同一种灰，看起来就是一块块色斑。改成按高度差连续缩放，
+/// 坡面越陡越亮或越暗，山脊和沟壑才看得见。
+fn apply_shade(colour: Rgba, height: isize, north: isize, west: isize) -> Rgba {
+    if colour[3] == 0 {
+        return colour;
+    }
+    let slope = ((height - north) + (height - west)) as f32;
+    let factor = (1.0 + slope * 0.055).clamp(0.68, 1.30);
+    [
+        (colour[0] as f32 * factor).clamp(0.0, 255.0) as u8,
+        (colour[1] as f32 * factor).clamp(0.0, 255.0) as u8,
+        (colour[2] as f32 * factor).clamp(0.0, 255.0) as u8,
+        colour[3],
+    ]
 }
 
 /// 这些方块在画面上属于水体。
@@ -309,12 +418,11 @@ pub fn render_region_png(
     out_path: &Path,
 ) -> Result<RenderInfo, WorldMapError> {
     let mut region = open_region(region_dir, x, z)?;
-    let renderer = TopShadeRenderer::new(&TerrainPalette, HeightMode::Trust);
 
     let side = CHUNKS_PER_SIDE * 16;
     let mut pixels = vec![[0u8, 0u8, 0u8, 0u8]; side * side];
-    // 缓存上一行 chunk，供渲染器做跨 chunk 的北向阴影
-    let mut north_cache: [Option<JavaChunk>; CHUNKS_PER_SIDE] = Default::default();
+    // 每个 chunk 列记下「北边那块」最后一行的地表高度，跨 chunk 的阴影要靠它
+    let mut north_heights: [Option<[isize; 16]>; CHUNKS_PER_SIDE] = [None; CHUNKS_PER_SIDE];
 
     let mut rendered_chunks = 0usize;
     let mut unsupported_chunks = 0usize;
@@ -323,12 +431,15 @@ pub fn render_region_png(
     let mut first_corrupt: Option<String> = None;
 
     for cz in 0..CHUNKS_PER_SIDE {
-        for (cx, north_slot) in north_cache.iter_mut().enumerate() {
+        // 同一行里「西边那块」最右一列的地表高度
+        let mut west_heights: Option<[isize; 16]> = None;
+        for (cx, north_slot) in north_heights.iter_mut().enumerate() {
             let data = match region.read_chunk(cx, cz) {
                 Ok(Some(data)) => data,
                 // 位置表里没有这一项：区块根本不存在，不算损坏
                 Ok(None) => {
                     *north_slot = None;
+                    west_heights = None;
                     continue;
                 }
                 // 读都读不出来（扇区损坏、或服务端正在改这张位置表）：
@@ -340,6 +451,7 @@ pub fn render_region_png(
                         first_corrupt = Some(format!("({cx}, {cz}) 读取失败: {error}"));
                     }
                     *north_slot = None;
+                    west_heights = None;
                     continue;
                 }
             };
@@ -354,6 +466,7 @@ pub fn render_region_png(
                         first_corrupt = Some(format!("({cx}, {cz}): {error}"));
                     }
                     *north_slot = None;
+                    west_heights = None;
                     continue;
                 }
             };
@@ -362,25 +475,46 @@ pub fn render_region_png(
             if !matches!(chunk, JavaChunk::Post18(_)) {
                 unsupported_chunks += 1;
                 *north_slot = None;
+                west_heights = None;
                 continue;
             }
 
             if !is_finished(&chunk.status()) {
                 unfinished_chunks += 1;
                 *north_slot = None;
+                west_heights = None;
                 continue;
             }
 
-            let tile = renderer.render(&chunk, north_slot.as_ref());
-            *north_slot = Some(chunk);
-            rendered_chunks += 1;
-
+            let y_min = chunk.y_range().start;
+            let north_edge = *north_slot;
             let row_offset = cz * 16;
             let col_offset = cx * 16;
+            let mut heights = [[y_min; 16]; 16];
+
             for row in 0..16 {
-                let dest = (row_offset + row) * side + col_offset;
-                pixels[dest..dest + 16].copy_from_slice(&tile[row * 16..row * 16 + 16]);
+                for column in 0..16 {
+                    let sampled = sample_column(&chunk, column, row, y_min);
+                    // 北 / 西两个邻居的高度：chunk 边界上取自上一块的边缘
+                    let north = if row > 0 {
+                        heights[row - 1][column]
+                    } else {
+                        north_edge.map_or(sampled.height, |edge| edge[column])
+                    };
+                    let west = if column > 0 {
+                        heights[row][column - 1]
+                    } else {
+                        west_heights.map_or(sampled.height, |edge| edge[row])
+                    };
+                    heights[row][column] = sampled.height;
+                    pixels[(row_offset + row) * side + col_offset + column] =
+                        apply_shade(sampled.colour, sampled.height, north, west);
+                }
             }
+
+            *north_slot = Some(heights[15]);
+            west_heights = Some(std::array::from_fn(|row| heights[row][15]));
+            rendered_chunks += 1;
         }
     }
 
@@ -547,5 +681,42 @@ mod tests {
         assert_ne!(green, clay);
         // 水方块固定走水体色
         assert_eq!(block_colour("minecraft:water", None), WATER);
+    }
+
+    /// 平地不该被着色改动，否则整张图会整体偏亮或偏暗。
+    #[test]
+    fn flat_ground_keeps_its_colour() {
+        let base = [100u8, 120u8, 90u8, 255];
+        assert_eq!(apply_shade(base, 64, 64, 64), base);
+    }
+
+    /// 朝光的坡面变亮、背光的变暗，且方向由西北两侧共同决定。
+    #[test]
+    fn shading_follows_the_slope() {
+        let base = [100u8, 100u8, 100u8, 255];
+
+        let uphill = apply_shade(base, 70, 68, 68);
+        let downhill = apply_shade(base, 66, 68, 68);
+        assert!(uphill[0] > base[0], "比西北邻居高应该更亮: {uphill:?}");
+        assert!(downhill[0] < base[0], "比西北邻居低应该更暗: {downhill:?}");
+
+        // 只在一个方向上高起来也要有变化，但幅度小于两侧都高
+        let north_only = apply_shade(base, 70, 68, 70);
+        assert!(north_only[0] > base[0] && north_only[0] < uphill[0], "{north_only:?}");
+    }
+
+    /// 越深的水越暗，浅水还能透出海底。
+    #[test]
+    fn deeper_water_is_darker() {
+        let sand = [219u8, 207u8, 163u8, 255];
+        let shallow = water_colour(sand, 1);
+        let middle = water_colour(sand, MAX_WATER_DEPTH / 2);
+        let deep = water_colour(sand, MAX_WATER_DEPTH);
+
+        assert!(shallow[0] > middle[0] && middle[0] > deep[0], "{shallow:?} {middle:?} {deep:?}");
+        assert!(shallow[1] > middle[1] && middle[1] > deep[1]);
+        assert!(shallow[2] > middle[2] && middle[2] > deep[2]);
+        // 水深超上限时不能越界
+        assert_eq!(water_colour(sand, MAX_WATER_DEPTH * 4), deep);
     }
 }
