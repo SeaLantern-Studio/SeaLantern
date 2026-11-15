@@ -6,4 +6,6 @@
 
 mod models;
 
-pub use models::{BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerProfile};
+pub use models::{
+    BanEntryDto, OpEntryDto, PlayerEntryDto, PlayerPosition, PlayerPositions, PlayerProfile,
+};
