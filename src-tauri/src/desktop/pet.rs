@@ -9,9 +9,11 @@ use std::sync::{Mutex, MutexGuard};
 use tauri::menu::CheckMenuItem;
 use tauri::window::Color;
 use tauri::{
-    AppHandle, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Wry,
+    AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    Wry,
 };
 
+use super::desktop_jelly::DesktopJellyState;
 use super::tray;
 
 pub const PET_WINDOW_LABEL: &str = "pet";
@@ -112,11 +114,15 @@ fn position_bottom_right(window: &WebviewWindow<Wry>) -> Result<(), Box<dyn std:
 /// 显示桌宠。前端首帧就绪与托盘菜单都会走这里。
 pub fn show(app: &AppHandle) -> Result<(), String> {
     let state = app.state::<PetWindowState>();
-    let window = match app.get_webview_window(PET_WINDOW_LABEL) {
-        Some(window) => window,
-        None => create_window(app).map_err(|error| error.to_string())?,
+    let (window, created) = match app.get_webview_window(PET_WINDOW_LABEL) {
+        Some(window) => (window, false),
+        None => (create_window(app).map_err(|error| error.to_string())?, true),
     };
 
+    if created {
+        position_bottom_right(&window).map_err(|error| error.to_string())?;
+        let _ = window.set_ignore_cursor_events(true);
+    }
     window.show().map_err(|error| error.to_string())?;
     window
         .set_always_on_top(true)
@@ -126,6 +132,12 @@ pub fn show(app: &AppHandle) -> Result<(), String> {
 }
 
 pub fn hide(app: &AppHandle) -> Result<(), String> {
+    // 从托盘隐藏桌宠时，WebView 不一定有机会执行前端的退出逻辑；
+    // 先停掉桌面图标动画，再通知前端停止音频并退出通透模式。
+    if let Some(jelly) = app.try_state::<DesktopJellyState>() {
+        jelly.stop();
+    }
+    let _ = app.emit_to(PET_WINDOW_LABEL, "pet-exit-transparent", ());
     let state = app.state::<PetWindowState>();
     if let Some(window) = app.get_webview_window(PET_WINDOW_LABEL) {
         window.hide().map_err(|error| error.to_string())?;
@@ -135,7 +147,8 @@ pub fn hide(app: &AppHandle) -> Result<(), String> {
 }
 
 pub fn toggle(app: &AppHandle) -> Result<(), String> {
-    if app.state::<PetWindowState>().is_visible() {
+    let visible = app.state::<PetWindowState>().is_visible();
+    if visible && app.get_webview_window(PET_WINDOW_LABEL).is_some() {
         hide(app)
     } else {
         show(app)

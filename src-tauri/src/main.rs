@@ -131,6 +131,15 @@ fn main() {
 
     let app = tauri::Builder::default()
         .on_window_event(|window, event| {
+            if window.label() == desktop::pet::PET_WINDOW_LABEL {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    if let Err(error) = desktop::pet::hide(window.app_handle()) {
+                        tracing::error!(%error, "failed to hide the desktop pet on close");
+                    }
+                }
+                return;
+            }
             if window.label() != "main" {
                 return;
             }

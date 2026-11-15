@@ -43,7 +43,11 @@ test("眼睛弹簧会平滑追上目标，并在目标归零后回到中心", ()
   const center = { x: 0, y: 0 };
   const target = calculateEyeOffset({ x: 600, y: 200 }, center);
   const state = createEyeSpringState();
-  let motion = stepEyeSpring(state, target, 1 / 60);
+  const first = stepEyeSpring(state, target, 1 / 60);
+  const second = stepEyeSpring(state, target, 1 / 60);
+  assert.ok(first.x > 0 && first.x < target.x * 0.5, `首帧不能瞬移，实际 ${first.x}`);
+  assert.ok(second.x > first.x, "第二帧应继续向目标运动");
+  let motion = second;
   for (let i = 0; i < 30; i += 1) motion = stepEyeSpring(state, target, 1 / 60);
 
   assert.ok(motion.x > target.x * 0.7, "弹簧应快速接近目标");

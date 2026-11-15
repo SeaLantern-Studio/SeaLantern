@@ -28,7 +28,12 @@ impl DesktopJellyState {
     pub fn is_running(&self) -> bool {
         self.session
             .lock()
-            .map(|session| session.is_some())
+            .map(|session| {
+                session
+                    .as_ref()
+                    .and_then(|session| session.join.as_ref())
+                    .is_some_and(|join| !join.is_finished())
+            })
             .unwrap_or(false)
     }
 
@@ -73,24 +78,30 @@ impl DesktopJellyState {
                 Err(error)
             }
             Err(_) => {
+                // 初始化线程会检查 stop 标志；不要在超时路径无限 join。
                 stop.store(true, Ordering::Release);
-                let _ = join.join();
+                let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
+                while !join.is_finished() && std::time::Instant::now() < deadline {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                if join.is_finished() {
+                    let _ = join.join();
+                }
                 Err("桌面弹弹弹启动超时，请确认桌面图标处于显示状态".to_owned())
             }
         }
     }
 
     pub fn stop(&self) {
-        let session = self
-            .session
-            .lock()
-            .ok()
-            .and_then(|mut session| session.take());
-        if let Some(mut session) = session {
-            session.stop.store(true, Ordering::Release);
-            if let Some(join) = session.join.take() {
-                let _ = join.join();
-            }
+        let Ok(mut guard) = self.session.lock() else {
+            return;
+        };
+        let Some(mut session) = guard.take() else {
+            return;
+        };
+        session.stop.store(true, Ordering::Release);
+        if let Some(join) = session.join.take() {
+            let _ = join.join();
         }
     }
 }
@@ -148,7 +159,7 @@ mod platform {
 mod platform {
     use super::*;
 
-    use std::collections::HashMap;
+    use std::collections::{HashMap, VecDeque};
     use std::ffi::{OsString, c_void};
     use std::os::windows::process::CommandExt;
     use std::path::{Path, PathBuf};
@@ -163,9 +174,9 @@ mod platform {
         WPARAM,
     };
     use windows_sys::Win32::Graphics::Gdi::{
-        AC_SRC_ALPHA, BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BLENDFUNCTION, CreateCompatibleDC,
-        CreateDIBSection, DIB_RGB_COLORS, DeleteDC, DeleteObject, GetDC, HBITMAP, HDC, HGDIOBJ,
-        MapWindowPoints, ReleaseDC, SelectObject,
+        AC_SRC_ALPHA, BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BLENDFUNCTION,
+        CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS, DeleteDC, DeleteObject, GetDC,
+        GetObjectW, HBITMAP, HDC, HGDIOBJ, MapWindowPoints, ReleaseDC, SelectObject,
     };
     use windows_sys::Win32::System::Com::CoTaskMemFree;
     use windows_sys::Win32::System::Diagnostics::Debug::{ReadProcessMemory, WriteProcessMemory};
@@ -181,17 +192,19 @@ mod platform {
         LVM_GETITEMRECT, LVM_GETITEMTEXTW, LVM_GETITEMW, LVSIL_NORMAL,
     };
     use windows_sys::Win32::UI::Shell::{
-        FOLDERID_Desktop, FOLDERID_PublicDesktop, SHGetKnownFolderPath, ShellExecuteW,
+        FOLDERID_Desktop, FOLDERID_PublicDesktop, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON,
+        SHGetFileInfoW, SHGetKnownFolderPath, ShellExecuteW,
     };
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        CS_DBLCLKS, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, EnumWindows,
-        FindWindowExW, GWL_STYLE, GWLP_USERDATA, GetIconInfo, GetParent, GetWindowLongPtrW,
-        GetWindowRect, GetWindowThreadProcessId, HWND_BOTTOM, ICONINFO, IDC_ARROW, IsWindow,
-        IsWindowVisible, LoadCursorW, MSG, PM_REMOVE, PeekMessageW, RegisterClassW, SW_HIDE,
-        SW_SHOW, SW_SHOWNOACTIVATE, SendMessageTimeoutW, SetParent, SetWindowLongPtrW,
-        SetWindowPos, ShowWindow, TranslateMessage, ULW_ALPHA, UpdateLayeredWindow, WM_ERASEBKGND,
-        WM_LBUTTONDBLCLK, WNDCLASSW, WS_CHILD, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
-        WS_POPUP,
+        AppendMenuW, CS_DBLCLKS, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
+        DestroyWindow, DispatchMessageW, EnumWindows, FindWindowExW, GWL_STYLE, GWLP_USERDATA,
+        GetCursorPos, GetIconInfo, GetParent, GetWindowLongPtrW, GetWindowRect,
+        GetWindowThreadProcessId, HWND_BOTTOM, ICONINFO, IDC_ARROW, IsWindow, IsWindowVisible,
+        LoadCursorW, MF_STRING, MSG, PM_REMOVE, PeekMessageW, RegisterClassW, SW_HIDE, SW_SHOW,
+        SW_SHOWNOACTIVATE, SendMessageTimeoutW, SetParent, SetWindowLongPtrW, SetWindowPos,
+        ShowWindow, TPM_NONOTIFY, TPM_RETURNCMD, TrackPopupMenu, TranslateMessage, ULW_ALPHA,
+        UpdateLayeredWindow, WM_ERASEBKGND, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_RBUTTONUP,
+        WNDCLASSW, WS_CHILD, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_POPUP,
     };
 
     const CLASS_NAME: &str = "SeaLanternDesktopJellyLayer";
@@ -239,6 +252,7 @@ mod platform {
         rect: RectI,
         icon: RgbaImage,
         label: Option<(RgbaImage, i32, i32)>,
+        cache: Option<(u32, u32, RgbaImage)>,
     }
 
     impl LayerItem {
@@ -259,6 +273,8 @@ mod platform {
         pixels: *mut u32,
         items: Vec<LayerItem>,
         hits: Vec<RectI>,
+        selected: Option<usize>,
+        phase: f64,
     }
 
     impl Layer {
@@ -316,6 +332,7 @@ mod platform {
                         rect: item.rect,
                         icon: item.icon,
                         label,
+                        cache: None,
                     });
                 }
 
@@ -331,6 +348,8 @@ mod platform {
                     pixels: pixels as *mut u32,
                     hits: vec![RectI { left: 0, top: 0, right: 0, bottom: 0 }; items.len()],
                     items,
+                    selected: None,
+                    phase: 0.0,
                 });
 
                 let class = wide(CLASS_NAME);
@@ -428,18 +447,15 @@ mod platform {
         }
 
         fn render(&mut self, phase: f64) -> Result<(), String> {
+            self.phase = phase;
             unsafe {
                 std::ptr::write_bytes(self.pixels, 0, (self.width * self.height) as usize);
-            }
-            for item in &self.items {
-                if let Some((label, x, y)) = &item.label {
-                    draw_rgba(self.pixels, self.width, self.height, label, *x, *y);
-                }
             }
             let wave = (phase * std::f64::consts::TAU).cos();
             let sy = 1.0 + STRENGTH * wave;
             let sx = 1.0 - STRENGTH * 0.72 * wave;
-            for (i, item) in self.items.iter_mut().enumerate() {
+
+            for (i, item) in self.items.iter().enumerate() {
                 let size = item.size();
                 let w = ((size as f64 * sx).round() as i32).max(1);
                 let h = ((size as f64 * sy).round() as i32).max(1);
@@ -451,9 +467,53 @@ mod platform {
                     right: x + w,
                     bottom: y + h + 24,
                 };
-                let resized =
-                    image::imageops::resize(&item.icon, w as u32, h as u32, FilterType::Triangle);
-                draw_rgba(self.pixels, self.width, self.height, &resized, x, y);
+            }
+
+            for item in &self.items {
+                if let Some((label, x, y)) = &item.label {
+                    draw_rgba(self.pixels, self.width, self.height, label, *x, *y);
+                }
+            }
+            if let Some(index) = self.selected
+                && let Some(hit) = self.hits.get(index)
+            {
+                draw_rect_alpha(
+                    self.pixels,
+                    self.width,
+                    self.height,
+                    RectI {
+                        left: hit.left - 4,
+                        top: hit.top - 4,
+                        right: hit.right + 4,
+                        bottom: hit.bottom + 4,
+                    },
+                    [14, 165, 233, 58],
+                );
+            }
+
+            for (i, item) in self.items.iter_mut().enumerate() {
+                let hit = self.hits[i];
+                let w = hit.right - hit.left;
+                let h = hit.bottom - hit.top - 24;
+                let cache_hit = item
+                    .cache
+                    .as_ref()
+                    .is_some_and(|(cw, ch, _)| *cw == w as u32 && *ch == h as u32);
+                if !cache_hit {
+                    item.cache = Some((
+                        w as u32,
+                        h as u32,
+                        image::imageops::resize(
+                            &item.icon,
+                            w.max(1) as u32,
+                            h.max(1) as u32,
+                            FilterType::Triangle,
+                        ),
+                    ));
+                }
+                if let Some((_, _, resized)) = &item.cache {
+                    draw_rgba(self.pixels, self.width, self.height, resized, hit.left, hit.top);
+                }
             }
 
             let size = SIZE { cx: self.width, cy: self.height };
@@ -485,6 +545,49 @@ mod platform {
             Ok(())
         }
 
+        fn hit_index_at(&self, x: i32, y: i32) -> Option<usize> {
+            self.hits.iter().position(|hit| hit.contains(x, y))
+        }
+
+        fn show_context_menu(&mut self, index: usize) {
+            let Some(path) = self.items.get(index).and_then(|item| item.path.clone()) else {
+                return;
+            };
+            let open_label = wide("打开");
+            let reveal_label = wide("打开文件所在位置");
+            unsafe {
+                let menu = CreatePopupMenu();
+                if menu.is_null() {
+                    return;
+                }
+                AppendMenuW(menu, MF_STRING, 1, open_label.as_ptr());
+                if !path.starts_with("shell:") {
+                    AppendMenuW(menu, MF_STRING, 2, reveal_label.as_ptr());
+                }
+                let mut point = POINT { x: 0, y: 0 };
+                GetCursorPos(&mut point);
+                let command = TrackPopupMenu(
+                    menu,
+                    TPM_RETURNCMD | TPM_NONOTIFY,
+                    point.x,
+                    point.y,
+                    0,
+                    self.hwnd,
+                    null(),
+                );
+                DestroyMenu(menu);
+                match command {
+                    1 => open_path(&path),
+                    2 => reveal_path(&path),
+                    _ => {}
+                }
+            }
+        }
+
+        fn select_and_render(&mut self, index: Option<usize>) {
+            self.selected = index;
+            let _ = self.render(self.phase);
+        }
         fn open_at(&self, x: i32, y: i32) {
             for (index, hit) in self.hits.iter().enumerate() {
                 if !hit.contains(x, y) {
@@ -528,13 +631,33 @@ mod platform {
         wparam: WPARAM,
         lparam: LPARAM,
     ) -> LRESULT {
+        let (x, y) = (
+            (lparam as u32 & 0xffff) as u16 as i16 as i32,
+            ((lparam as u32 >> 16) & 0xffff) as u16 as i16 as i32,
+        );
+        let pointer = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) } as *mut Layer;
         match message {
             WM_ERASEBKGND => 1,
-            WM_LBUTTONDBLCLK => {
-                let pointer = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) } as *const Layer;
+            WM_LBUTTONDOWN => {
                 if !pointer.is_null() {
-                    let x = (lparam as u32 & 0xffff) as u16 as i16 as i32;
-                    let y = ((lparam as u32 >> 16) & 0xffff) as u16 as i16 as i32;
+                    let layer = unsafe { &mut *pointer };
+                    let index = layer.hit_index_at(x, y);
+                    layer.select_and_render(index);
+                }
+                0
+            }
+            WM_RBUTTONUP => {
+                if !pointer.is_null() {
+                    let layer = unsafe { &mut *pointer };
+                    if let Some(index) = layer.hit_index_at(x, y) {
+                        layer.select_and_render(Some(index));
+                        layer.show_context_menu(index);
+                    }
+                }
+                0
+            }
+            WM_LBUTTONDBLCLK => {
+                if !pointer.is_null() {
                     unsafe { (*pointer).open_at(x, y) };
                 }
                 0
@@ -549,6 +672,9 @@ mod platform {
             "未找到 Windows 桌面图标窗口。请使用 Windows 10/11 资源管理器桌面，并先显示桌面图标。"
                 .to_owned()
         })?;
+        if stop.load(Ordering::Acquire) {
+            return Err("桌面弹弹弹启动已取消".to_owned());
+        }
         if unsafe { IsWindowVisible(list) } == 0 {
             return Err(
                 "桌面图标当前处于隐藏状态，请先在桌面右键 → 查看 → 显示桌面图标。".to_owned()
@@ -558,62 +684,85 @@ mod platform {
         if host.is_null() {
             return Err("无法获取桌面图标宿主窗口".to_owned());
         }
-        tracing::info!(?list, ?host, "desktop jelly: reading desktop items");
-        let sources = read_desktop_items(list)?;
-        tracing::info!(count = sources.len(), "desktop jelly: desktop items loaded");
-        if sources.is_empty() {
-            return Err("桌面没有可显示的图标".to_owned());
-        }
 
-        ensure_window_class()?;
-        let font = load_font();
-        tracing::info!(font = font.is_some(), "desktop jelly: window class ready");
-        let groups = split_groups(sources);
-        tracing::info!(groups = groups.len(), "desktop jelly: groups prepared");
-        let mut layers = Vec::with_capacity(groups.len());
-        for group in groups {
-            let bounds = union_bounds(&group);
-            layers.push(Layer::create(host, bounds, group, font.as_ref())?);
-        }
-        tracing::info!(layers = layers.len(), "desktop jelly: layers created");
-
-        let watcher = spawn_restore_watcher(list);
-        tracing::info!(watcher = watcher.is_some(), "desktop jelly: restore watcher ready");
-        for layer in &mut layers {
-            unsafe { layer.show()? };
-        }
-        tracing::info!("desktop jelly: layers shown");
-        unsafe {
-            ShowWindow(list, SW_HIDE);
-        }
-        tracing::info!("desktop jelly: original icon list hidden");
-        let _ = ready.send(Ok(()));
-
-        let started = Instant::now();
-        let mut next_frame = Instant::now();
-        let mut message = MSG::default();
-        while !stop.load(Ordering::Acquire) {
-            unsafe {
-                while PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE) != 0 {
-                    TranslateMessage(&message);
-                    DispatchMessageW(&message);
-                }
+        let mut layers = Vec::new();
+        let mut watcher: Option<std::process::Child> = None;
+        let result = (|| -> Result<(), String> {
+            tracing::info!(?list, ?host, "desktop jelly: reading desktop items");
+            let sources = read_desktop_items(list, &stop)?;
+            if stop.load(Ordering::Acquire) {
+                return Err("桌面弹弹弹启动已取消".to_owned());
             }
-            let now = Instant::now();
-            if now >= next_frame {
-                let phase = started.elapsed().as_secs_f64() * SPEED_CYCLES_PER_SECOND;
-                for layer in &mut layers {
-                    layer.render(phase)?;
-                }
-                next_frame += FRAME_INTERVAL;
-                if next_frame < now {
-                    next_frame = now + FRAME_INTERVAL;
-                }
+            tracing::info!(count = sources.len(), "desktop jelly: desktop items loaded");
+            if sources.is_empty() {
+                return Err("桌面没有可显示的图标".to_owned());
             }
-            std::thread::sleep(Duration::from_millis(1));
-        }
+            let icon_count = sources.len();
 
-        drop(watcher);
+            ensure_window_class()?;
+            let font = load_font();
+            tracing::info!(font = font.is_some(), "desktop jelly: window class ready");
+            let groups = split_groups(sources);
+            tracing::info!(groups = groups.len(), "desktop jelly: groups prepared");
+            for group in groups {
+                if stop.load(Ordering::Acquire) {
+                    return Err("桌面弹弹弹启动已取消".to_owned());
+                }
+                let bounds = union_bounds(&group);
+                layers.push(Layer::create(host, bounds, group, font.as_ref())?);
+            }
+            tracing::info!(layers = layers.len(), "desktop jelly: layers created");
+
+            // 没有恢复守护进程时绝不隐藏 Explorer 图标列表。
+            watcher = spawn_restore_watcher(list);
+            if watcher.is_none() {
+                return Err("无法创建桌面图标恢复守护进程，已取消启动".to_owned());
+            }
+            tracing::info!("desktop jelly: restore watcher ready");
+            for layer in &mut layers {
+                unsafe { layer.show()? };
+            }
+            tracing::info!("desktop jelly: layers shown");
+            unsafe { ShowWindow(list, SW_HIDE) };
+            tracing::info!("desktop jelly: original icon list hidden");
+
+            if ready.send(Ok(())).is_err() {
+                return Err("桌面弹弹弹启动调用方已取消".to_owned());
+            }
+
+            let frame_interval = if icon_count > 500 {
+                Duration::from_millis(66)
+            } else if icon_count > 150 {
+                Duration::from_millis(33)
+            } else {
+                FRAME_INTERVAL
+            };
+            let started = Instant::now();
+            let mut next_frame = Instant::now();
+            let mut message = MSG::default();
+            while !stop.load(Ordering::Acquire) {
+                unsafe {
+                    while PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE) != 0 {
+                        TranslateMessage(&message);
+                        DispatchMessageW(&message);
+                    }
+                }
+                let now = Instant::now();
+                if now >= next_frame {
+                    let phase = started.elapsed().as_secs_f64() * SPEED_CYCLES_PER_SECOND;
+                    for layer in &mut layers {
+                        layer.render(phase)?;
+                    }
+                    next_frame += frame_interval;
+                    if next_frame < now {
+                        next_frame = now + frame_interval;
+                    }
+                }
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            Ok(())
+        })();
+
         for layer in &mut layers {
             if !layer.hwnd.is_null() {
                 unsafe { SetWindowLongPtrW(layer.hwnd, GWLP_USERDATA, 0) };
@@ -625,7 +774,11 @@ mod platform {
                 ShowWindow(list, SW_SHOW);
             }
         }
-        Ok(())
+        if let Some(mut child) = watcher {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        result
     }
 
     fn ensure_window_class() -> Result<(), String> {
@@ -786,6 +939,42 @@ mod platform {
         }
     }
 
+    fn draw_rect_alpha(
+        canvas: *mut u32,
+        canvas_width: i32,
+        canvas_height: i32,
+        rect: RectI,
+        color: [u8; 4],
+    ) {
+        let alpha = color[3] as u32;
+        if alpha == 0 {
+            return;
+        }
+        let src_r = color[0] as u32 * alpha / 255;
+        let src_g = color[1] as u32 * alpha / 255;
+        let src_b = color[2] as u32 * alpha / 255;
+        for y in rect.top.max(0)..rect.bottom.min(canvas_height) {
+            for x in rect.left.max(0)..rect.right.min(canvas_width) {
+                let index = (y * canvas_width + x) as usize;
+                unsafe {
+                    let dst = *canvas.add(index);
+                    let dst_a = (dst >> 24) & 0xff;
+                    let dst_r = (dst >> 16) & 0xff;
+                    let dst_g = (dst >> 8) & 0xff;
+                    let dst_b = dst & 0xff;
+                    let out_a = alpha + dst_a * (255 - alpha) / 255;
+                    if out_a == 0 {
+                        continue;
+                    }
+                    let out_r = src_r + dst_r * (255 - alpha) / 255;
+                    let out_g = src_g + dst_g * (255 - alpha) / 255;
+                    let out_b = src_b + dst_b * (255 - alpha) / 255;
+                    *canvas.add(index) = (out_a << 24) | (out_r << 16) | (out_g << 8) | out_b;
+                }
+            }
+        }
+    }
+
     fn sprite_bounds(item: &SourceItem) -> RectI {
         let size = item.rect.height().clamp(16, 256);
         let width = 160.max((size as f64 * 1.468).ceil() as i32 + 8);
@@ -866,7 +1055,7 @@ mod platform {
         if result.is_null() { None } else { Some(result) }
     }
 
-    fn read_desktop_items(list: HWND) -> Result<Vec<SourceItem>, String> {
+    fn read_desktop_items(list: HWND, stop: &AtomicBool) -> Result<Vec<SourceItem>, String> {
         let mut pid: u32 = 0;
         unsafe { GetWindowThreadProcessId(list, &mut pid) };
         if pid == 0 {
@@ -902,10 +1091,13 @@ mod platform {
             if image_list == 0 {
                 return Err("无法读取桌面图标图像列表".to_owned());
             }
-            let paths = desktop_paths();
+            let mut paths = desktop_paths();
             tracing::info!(paths = paths.len(), "desktop jelly: desktop paths collected");
             let mut result = Vec::with_capacity(count as usize);
             for index in 0..count {
+                if stop.load(Ordering::Acquire) {
+                    return Err("桌面弹弹弹启动已取消".to_owned());
+                }
                 let mut item = LVITEMW::default();
                 item.mask = LVIF_IMAGE;
                 item.iItem = index;
@@ -946,17 +1138,16 @@ mod platform {
                     right: point.x + raw.width(),
                     bottom: point.y + raw.height(),
                 };
-                let icon = icon_from_image_list(image_list, icon_index, rect.height())
+                let resolved_path = paths
+                    .get_mut(&name.to_lowercase())
+                    .and_then(|queue| queue.pop_front())
+                    .or_else(|| special_path(&name));
+                let icon = resolved_path
+                    .as_deref()
+                    .and_then(|path| icon_from_path(path, rect.height()))
+                    .or_else(|| icon_from_image_list(image_list, icon_index, rect.height()))
                     .unwrap_or_else(generic_icon);
-                result.push(SourceItem {
-                    path: paths
-                        .get(&name.to_lowercase())
-                        .cloned()
-                        .or_else(|| special_path(&name)),
-                    name,
-                    rect,
-                    icon,
-                });
+                result.push(SourceItem { path: resolved_path, name, rect, icon });
             }
             Ok(result)
         })();
@@ -1054,6 +1245,32 @@ mod platform {
         String::from_utf16_lossy(&units)
     }
 
+    fn icon_from_path(path: &str, size: i32) -> Option<RgbaImage> {
+        if path.starts_with("shell:") {
+            return None;
+        }
+        let path = wide(path);
+        let mut info = SHFILEINFOW::default();
+        let flags = SHGFI_ICON | SHGFI_LARGEICON;
+        let ok = unsafe {
+            SHGetFileInfoW(
+                path.as_ptr(),
+                0,
+                &mut info,
+                std::mem::size_of::<SHFILEINFOW>() as u32,
+                flags,
+            )
+        };
+        if ok == 0 || info.hIcon.is_null() {
+            return None;
+        }
+        let result = icon_to_rgba(info.hIcon, size);
+        unsafe {
+            windows_sys::Win32::UI::WindowsAndMessaging::DestroyIcon(info.hIcon);
+        }
+        result
+    }
+
     fn icon_from_image_list(image_list: isize, index: i32, size: i32) -> Option<RgbaImage> {
         if index < 0 {
             return None;
@@ -1083,13 +1300,27 @@ mod platform {
             if dc.is_null() {
                 return None;
             }
-            let mut color = vec![0u8; (size * size * 4) as usize];
-            let mut mask = vec![0u8; (size * size * 4) as usize];
+            let mut width = size;
+            let mut height = size;
+            if !info.hbmColor.is_null() {
+                let mut bitmap = BITMAP::default();
+                if GetObjectW(
+                    info.hbmColor,
+                    std::mem::size_of::<BITMAP>() as i32,
+                    &mut bitmap as *mut BITMAP as *mut c_void,
+                ) > 0
+                {
+                    width = bitmap.bmWidth.max(1);
+                    height = bitmap.bmHeight.max(1);
+                }
+            }
+            let mut color = vec![0u8; (width * height * 4) as usize];
+            let mut mask = vec![0u8; (width * height * 4) as usize];
             let mut bitmap_info = BITMAPINFO::default();
             bitmap_info.bmiHeader = BITMAPINFOHEADER {
                 biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
-                biWidth: size,
-                biHeight: -size,
+                biWidth: width,
+                biHeight: -height,
                 biPlanes: 1,
                 biBitCount: 32,
                 biCompression: BI_RGB,
@@ -1100,7 +1331,7 @@ mod platform {
                     dc,
                     info.hbmColor,
                     0,
-                    size as u32,
+                    height as u32,
                     color.as_mut_ptr() as *mut c_void,
                     &mut bitmap_info,
                     DIB_RGB_COLORS,
@@ -1113,7 +1344,7 @@ mod platform {
                     dc,
                     info.hbmMask,
                     0,
-                    size as u32,
+                    height as u32,
                     mask.as_mut_ptr() as *mut c_void,
                     &mut bitmap_info,
                     DIB_RGB_COLORS,
@@ -1132,8 +1363,8 @@ mod platform {
                 return None;
             }
             let has_alpha = color.chunks_exact(4).any(|pixel| pixel[3] != 0);
-            let mut rgba = vec![0u8; (size * size * 4) as usize];
-            for i in 0..(size * size) as usize {
+            let mut rgba = vec![0u8; (width * height * 4) as usize];
+            for i in 0..(width * height) as usize {
                 let b = color[i * 4];
                 let g = color[i * 4 + 1];
                 let r = color[i * 4 + 2];
@@ -1151,7 +1382,7 @@ mod platform {
                 rgba[i * 4 + 2] = b;
                 rgba[i * 4 + 3] = alpha;
             }
-            RgbaImage::from_raw(size as u32, size as u32, rgba)
+            RgbaImage::from_raw(width as u32, height as u32, rgba)
         }
     }
 
@@ -1165,7 +1396,7 @@ mod platform {
         image
     }
 
-    fn desktop_paths() -> HashMap<String, String> {
+    fn desktop_paths() -> HashMap<String, VecDeque<String>> {
         let mut result = HashMap::new();
         for folder in [FOLDERID_Desktop, FOLDERID_PublicDesktop] {
             if let Some(path) = known_folder(&folder) {
@@ -1192,7 +1423,7 @@ mod platform {
         }
     }
 
-    fn collect_desktop_paths(folder: &Path, output: &mut HashMap<String, String>) {
+    fn collect_desktop_paths(folder: &Path, output: &mut HashMap<String, VecDeque<String>>) {
         let Ok(entries) = std::fs::read_dir(folder) else {
             return;
         };
@@ -1214,8 +1445,15 @@ mod platform {
             } else {
                 file_name.to_owned()
             };
-            output.insert(display_name.to_lowercase(), path.to_string_lossy().into_owned());
-            output.insert(file_name.to_lowercase(), path.to_string_lossy().into_owned());
+            let path_text = path.to_string_lossy().into_owned();
+            output
+                .entry(display_name.to_lowercase())
+                .or_default()
+                .push_back(path_text.clone());
+            output
+                .entry(file_name.to_lowercase())
+                .or_default()
+                .push_back(path_text);
         }
     }
 
@@ -1243,6 +1481,16 @@ mod platform {
         unsafe {
             ShellExecuteW(null_mut(), operation.as_ptr(), path.as_ptr(), null(), null(), SW_SHOW);
         }
+    }
+
+    fn reveal_path(path: &str) {
+        if path.starts_with("shell:") {
+            open_path(path);
+            return;
+        }
+        let _ = std::process::Command::new("explorer.exe")
+            .arg(format!("/select,{path}"))
+            .spawn();
     }
 
     fn spawn_restore_watcher(list: HWND) -> Option<std::process::Child> {

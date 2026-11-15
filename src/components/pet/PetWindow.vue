@@ -114,7 +114,10 @@ let cursorTimer: ReturnType<typeof setTimeout> | null = null;
 let statusTimer: ReturnType<typeof setInterval> | null = null;
 let disposed = false;
 let cursorPolling = false;
+let exitTransparentUnlisten: (() => void) | null = null;
 let clickThroughActive: boolean | null = null;
+let clickThroughDesired: boolean | null = null;
+let clickThroughQueue: Promise<void> = Promise.resolve();
 let physicsFrame: number | null = null;
 let lastPhysicsTime = 0;
 let danceStartedAt = 0;
@@ -126,14 +129,23 @@ let windowGeometry = {
   ready: false,
 };
 
-async function setClickThrough(ignore: boolean) {
-  if (clickThroughActive === ignore) return;
-  clickThroughActive = ignore;
-  try {
-    await petApi.setClickThrough(ignore);
-  } catch (error) {
-    console.debug("桌宠切换鼠标穿透失败:", error);
-  }
+function setClickThrough(ignore: boolean) {
+  clickThroughDesired = ignore;
+  clickThroughQueue = clickThroughQueue.then(async () => {
+    while (clickThroughDesired !== null) {
+      const target = clickThroughDesired;
+      clickThroughDesired = null;
+      if (clickThroughActive === target) continue;
+      try {
+        await petApi.setClickThrough(target);
+        clickThroughActive = target;
+      } catch (error) {
+        // 保留旧缓存值，让下一次鼠标轮询可以重试。
+        console.debug("桌宠切换鼠标穿透失败:", error);
+        break;
+      }
+    }
+  });
 }
 
 /** 点击、换表情、鼓点等交互统一走这套弹簧冲量。 */
@@ -398,6 +410,10 @@ function handleKeydown(event: KeyboardEvent) {
   if (transparentMode.value) exitTransparentMode();
 }
 
+function handleVisibilityChange() {
+  if (document.hidden && transparentMode.value) exitTransparentMode(false);
+}
+
 function updateEyeFromLocalPointer(event: PointerEvent) {
   const block = petBlockRef.value;
   if (!block) return;
@@ -455,17 +471,26 @@ async function pollGlobalCursor() {
       },
     );
 
-    if (menuOpen.value || bubbleKind.value) {
-      void setClickThrough(false);
-    } else {
-      const padding = 14;
-      const interactive =
-        cursorX >= rect.left - padding &&
-        cursorX <= rect.right + padding &&
-        cursorY >= rect.top - padding &&
-        cursorY <= rect.bottom + padding;
-      void setClickThrough(!interactive);
-    }
+    const padding = 10;
+    const interactiveSelectors = [
+      ".pet-block",
+      ".pet-nameplate",
+      ".pet-menu",
+      ".pet-submenu",
+      ".pet-bubble",
+    ];
+    const interactive = interactiveSelectors.some((selector) =>
+      [...document.querySelectorAll<HTMLElement>(selector)].some((element) => {
+        const area = element.getBoundingClientRect();
+        return (
+          cursorX >= area.left - padding &&
+          cursorX <= area.right + padding &&
+          cursorY >= area.top - padding &&
+          cursorY <= area.bottom + padding
+        );
+      }),
+    );
+    void setClickThrough(!interactive);
   } catch (error) {
     // 窗口刚创建或权限尚未生效时忽略这一帧，下一帧继续。
     console.debug("桌宠读取全局鼠标位置失败:", error);
@@ -486,6 +511,14 @@ onMounted(async () => {
   document.addEventListener("keydown", handleKeydown);
   document.addEventListener("pointermove", updateEyeFromLocalPointer);
   document.addEventListener("pointerleave", resetEyeTarget);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  if (!isPreview) {
+    const { listen } = await import("@tauri-apps/api/event");
+    exitTransparentUnlisten = await listen("pet-exit-transparent", () => {
+      if (transparentMode.value) exitTransparentMode(false);
+    });
+  }
 
   await nextTick();
   try {
@@ -527,6 +560,8 @@ onBeforeUnmount(() => {
   document.removeEventListener("keydown", handleKeydown);
   document.removeEventListener("pointermove", updateEyeFromLocalPointer);
   document.removeEventListener("pointerleave", resetEyeTarget);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  exitTransparentUnlisten?.();
 });
 </script>
 

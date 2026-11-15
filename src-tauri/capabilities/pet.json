@@ -5,6 +5,10 @@
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
-    "core:window:allow-cursor-position"
+    "core:window:allow-cursor-position",
+    "core:window:allow-inner-position",
+    "core:window:allow-outer-position",
+    "core:window:allow-scale-factor",
+    "core:window:allow-set-ignore-cursor-events"
   ]
 }

@@ -8,7 +8,7 @@ const petEntry = await readFile(new URL("../src/pet/main.ts", import.meta.url), 
 test("桌宠使用静态海晶灯贴图，不再播放序列帧", () => {
   assert.match(
     css,
-    /\.sea-texture\s*\{[\s\S]*?background-size:\s*100% 100%;[\s\S]*?background-position:\s*center;/,
+    /\.sea-texture\s*\{[\s\S]*?background-image:\s*var\(--sea-texture\);[\s\S]*?background-size:\s*100% 100%;[\s\S]*?background-position:\s*center;/,
   );
   assert.doesNotMatch(css, /lantern-frames|background-position-y/);
 });
@@ -58,4 +58,51 @@ test("通透模式由 Rust 接管桌面图标层并遵循原版参数", async ()
   assert.match(desktopJelly, /SetParent/);
   assert.match(desktopJelly, /ShowWindow\(list, SW_HIDE\)/);
   assert.match(desktopJelly, /ShowWindow\(list, SW_SHOW\)/);
+});
+
+test("桌面图标动画具备异常恢复和右键菜单处理", async () => {
+  const jelly = await readFile(
+    new URL("../src-tauri/src/desktop/desktop_jelly.rs", import.meta.url),
+    "utf8",
+  );
+  assert.match(jelly, /watcher\.is_none\(\)/);
+  assert.match(jelly, /child\.kill\(\)/);
+  assert.match(jelly, /child\.wait\(\)/);
+  assert.match(jelly, /layer\.render\(phase\)\?;/);
+  assert.match(jelly, /WM_RBUTTONUP/);
+  assert.match(jelly, /TrackPopupMenu/);
+  assert.match(jelly, /frame_interval/);
+});
+
+test("桌宠窗口拥有鼠标定位与穿透所需权限", async () => {
+  const capability = JSON.parse(
+    await readFile(new URL("../src-tauri/capabilities/pet.json", import.meta.url), "utf8"),
+  );
+  for (const permission of [
+    "core:window:allow-outer-position",
+    "core:window:allow-scale-factor",
+    "core:window:allow-set-ignore-cursor-events",
+  ]) {
+    assert.ok(capability.permissions.includes(permission), `缺少权限 ${permission}`);
+  }
+});
+
+test("鼠标穿透请求串行化，失败后允许轮询重试", async () => {
+  const vue = await readFile(
+    new URL("../src/components/pet/PetWindow.vue", import.meta.url),
+    "utf8",
+  );
+  assert.match(vue, /clickThroughDesired/);
+  assert.match(vue, /while \(clickThroughDesired !== null\)/);
+  assert.match(vue, /clickThroughActive = target/);
+  assert.match(vue, /\.pet-menu/);
+  assert.match(vue, /\.pet-submenu/);
+  assert.match(vue, /pet-exit-transparent/);
+});
+
+test("托盘隐藏桌宠时同时停止桌面动画并通知前端", async () => {
+  const pet = await readFile(new URL("../src-tauri/src/desktop/pet.rs", import.meta.url), "utf8");
+  assert.match(pet, /try_state::<DesktopJellyState>/);
+  assert.match(pet, /pet-exit-transparent/);
+  assert.match(pet, /get_webview_window\(PET_WINDOW_LABEL\)\.is_some\(\)/);
 });
