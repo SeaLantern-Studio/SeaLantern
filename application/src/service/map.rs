@@ -910,7 +910,14 @@ fn read_level_name(server_dir: &Path) -> Result<String, WorldMapServiceError> {
 /// 按路径组件判断，而不是「不含分隔符」：Windows 上 `D:..` 既没有斜杠也不是
 /// `..`，但它带着盘符前缀和父目录组件，`join` 上去会切到别的盘并往上跳。
 /// 只认「恰好一个普通组件」能一次挡掉前缀、根、`..` 和分隔符。
+///
+/// 两个平台的路径分隔符都单独拒一遍：反斜杠在类 Unix 上是合法文件名字符，
+/// 组件判断会放它过去 —— 而 `level-name` 是 Minecraft 的配置，世界名里出现
+/// 分隔符只可能是写坏了（在 Windows 上写坏、拿到类 Unix 上跑最容易踩）。
 fn is_plain_level_name(name: &str) -> bool {
+    if name.contains(['/', '\\']) {
+        return false;
+    }
     let mut components = Path::new(name).components();
     matches!(components.next(), Some(std::path::Component::Normal(_)))
         && components.next().is_none()
