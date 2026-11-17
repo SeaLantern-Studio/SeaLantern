@@ -35,7 +35,7 @@ fn main() {
     }
 
     let mut ranked: Vec<([u8; 3], usize)> = histogram.into_iter().collect();
-    ranked.sort_by(|a, b| b.1.cmp(&a.1));
+    ranked.sort_by_key(|entry| std::cmp::Reverse(entry.1));
 
     println!("{path}: {total} 个不透明像素，{} 种颜色", ranked.len());
     for (colour, count) in ranked.iter().take(top) {

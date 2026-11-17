@@ -24,7 +24,7 @@ fn main() {
     let inputs: Vec<PathBuf> = args.map(PathBuf::from).collect();
     assert!(inputs.len() >= 2, "至少要两张图");
 
-    let images: Vec<Image> = inputs.iter().map(|path| load(path)).collect();
+    let images: Vec<Image> = inputs.iter().map(load).collect();
 
     // 非透明像素的并集
     let mut left = usize::MAX;

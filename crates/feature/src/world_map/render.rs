@@ -350,10 +350,10 @@ fn texture_name(block: &str) -> Option<&str> {
         "_trapdoor",
         "_door",
     ] {
-        if let Some(base) = block.strip_suffix(suffix) {
-            if let Some(texture) = texture_name_of_base(base) {
-                return Some(texture);
-            }
+        if let Some(base) = block.strip_suffix(suffix)
+            && let Some(texture) = texture_name_of_base(base)
+        {
+            return Some(texture);
         }
     }
 

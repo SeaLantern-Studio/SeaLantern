@@ -1753,8 +1753,7 @@ mod tests {
             encoder.set_color(png::ColorType::Rgba);
             encoder.set_depth(png::BitDepth::Eight);
             let mut writer = encoder.write_header().expect("写 PNG 头");
-            let pixels: Vec<u8> = std::iter::repeat([0u8, 0, 255, 255])
-                .take(16 * 16)
+            let pixels: Vec<u8> = std::iter::repeat_n([0u8, 0, 255, 255], 16 * 16)
                 .flatten()
                 .collect();
             writer.write_image_data(&pixels).expect("写图像数据");
