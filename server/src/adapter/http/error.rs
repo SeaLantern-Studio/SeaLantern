@@ -393,6 +393,12 @@ impl HttpError {
                 code: "map_rcon_unauthorized",
                 message: error.to_string(),
             },
+            // 配置冲突，不是服务器的问题：409 让前端提示「去改 rcon.port」
+            PlayerPositionServiceError::RconPortConflict => Self {
+                status: StatusCode::CONFLICT,
+                code: "map_rcon_port_conflict",
+                message: error.to_string(),
+            },
             PlayerPositionServiceError::MalformedResponse => Self {
                 status: StatusCode::BAD_GATEWAY,
                 code: "map_rcon_malformed_response",

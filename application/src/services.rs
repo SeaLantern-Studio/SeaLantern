@@ -118,8 +118,8 @@ impl AppServices {
                 update: Arc::new(CoreUpdateCheckService::new()),
                 update_install: Arc::new(CoreUpdateInstallService),
                 world_map: Arc::new(CoreWorldMapService::new(instance.clone())),
-                player: Arc::new(CorePlayerService::new(instance.clone(), server)),
-                player_position: Arc::new(CorePlayerPositionService::new(instance)),
+                player: Arc::new(CorePlayerService::new(instance.clone(), server.clone())),
+                player_position: Arc::new(CorePlayerPositionService::new(instance, server.clone())),
                 plugin: tokio::sync::OnceCell::new(),
             }),
         }

@@ -106,6 +106,17 @@ pub async fn main() {
             std::process::exit(1);
         }
     };
+    if !is_loopback(addr) {
+        // 这套 REST API 没有鉴权：地图图片、玩家实时坐标、`POST /command`
+        // 谁连上谁能用。绑到非回环地址是用户自己选的（`SEALANTERN_SERVER_ADDR`
+        // 或 `SEALANTERN_SERVER_BIND_PUBLIC=1`），但得让人知道后果
+        tracing::warn!(
+            %addr,
+            "listening on a non-loopback address; the REST API has no authentication, \
+             including world map images and live player coordinates — put it behind an \
+             authenticated proxy before exposing it"
+        );
+    }
     tracing::info!(%addr, "server listening");
 
     let serve_result = axum::serve(listener, app)
@@ -121,6 +132,19 @@ pub async fn main() {
         std::process::exit(1);
     }
     tracing::info!("server shut down gracefully");
+}
+
+/// 监听地址是不是只对本机可见。
+///
+/// 只有回环地址算「本机」：`0.0.0.0`、`::`、局域网 IP 都意味着别的机器连得上。
+fn is_loopback(addr: SocketAddr) -> bool {
+    match addr {
+        SocketAddr::V4(v4) => v4.ip().is_loopback(),
+        SocketAddr::V6(v6) => {
+            // IPv4-mapped（`::ffff:127.0.0.1`）也要按 IPv4 判
+            v6.ip().is_loopback() || v6.ip().to_ipv4_mapped().is_some_and(|v4| v4.is_loopback())
+        }
+    }
 }
 
 /// 等待终止信号（Ctrl+C 或 SIGTERM），返回时触发优雅关闭。
@@ -148,4 +172,19 @@ async fn shutdown_signal() {
     }
 
     tracing::info!("shutdown signal received");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_loopback_addresses_are_treated_as_local() {
+        for local in ["127.0.0.1:3000", "[::1]:3000", "[::ffff:127.0.0.1]:3000"] {
+            assert!(is_loopback(local.parse().expect("地址")), "{local}");
+        }
+        for exposed in ["0.0.0.0:3000", "[::]:3000", "192.168.1.10:3000"] {
+            assert!(!is_loopback(exposed.parse().expect("地址")), "{exposed}");
+        }
+    }
 }

@@ -16,16 +16,17 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 
+use sealantern_contract::server::ServerState;
 use sealantern_contract::{Dimension, PlayerPosition, PlayerPositionServiceError, PlayerPositions};
 use sealantern_core::instance::InstanceId;
 use sealantern_feature::config::ServerPropertiesManager;
 use sealantern_feature::rcon::{
-    RconClient, RconError, build_positions_command, build_rotation_command, parse_positions,
-    parse_rotations,
+    RconClient, RconError, build_positions_command, build_rotation_command, is_no_target_response,
+    parse_positions, parse_rotations,
 };
 
-use crate::port::{InstanceService, PlayerPositionService};
-use crate::service::CoreInstanceService;
+use crate::port::{InstanceService, PlayerPositionService, ServerService};
+use crate::service::{CoreInstanceService, CoreServerService};
 
 /// 建立 TCP 连接并完成认证的上限。
 ///
@@ -66,13 +67,86 @@ pub(crate) async fn flush_world(server_dir: PathBuf) -> Result<(), PlayerPositio
 /// 玩家实时位置服务。
 pub struct CorePlayerPositionService {
     instance: Arc<CoreInstanceService>,
+    /// 只用来判断「占着同一个 RCON 端口的那个实例是不是正在运行」。
+    server: Arc<CoreServerService>,
 }
 
 impl CorePlayerPositionService {
-    /// 用实例服务句柄构造。
-    pub fn new(instance: Arc<CoreInstanceService>) -> Self {
-        Self { instance }
+    /// 用实例服务与服务器进程服务句柄构造。
+    pub fn new(instance: Arc<CoreInstanceService>, server: Arc<CoreServerService>) -> Self {
+        Self { instance, server }
     }
+}
+
+/// 同一个 RCON 端口是不是被**另一个正在运行的实例**占着。
+///
+/// 端口是各实例自己在 `server.properties` 里配的，默认都是 25575。多开时
+/// 谁先起来谁占着端口，此时向另一个实例发查询，连上的是别人家的服务器 ——
+/// 密码一样的话，拿到的玩家坐标就是别的服的，`save-all` 刷的也是别人的世界。
+///
+/// 判据必须是「对方正在运行」：两个实例配了同一个端口、但对方停着，那是
+/// 完全正常的场景（复制服务器目录时最容易出现），端口空着，我们的服务器
+/// 才占得上，没理由报错。
+async fn port_owner(
+    instance: &CoreInstanceService,
+    server: &CoreServerService,
+    own: &InstanceId,
+    port: u16,
+) -> Option<String> {
+    let instances = match instance.list().await {
+        Ok(instances) => instances,
+        // 列不出实例就不做判断：宁可照常查询，也不要因为读一次注册表失败
+        // 就让整个地图的玩家图层挂掉
+        Err(error) => {
+            tracing::debug!(
+                target: "sealantern.application.player_position",
+                error = %error,
+                "读取实例列表失败，跳过 RCON 端口冲突检查"
+            );
+            return None;
+        }
+    };
+
+    // 先把这个实例的所有候选收集齐，再统一判断 —— 判定逻辑抽成纯函数，
+    // 才能不装配真实进程就测到「同端口但对方停着不算冲突」这条
+    let mut candidates: Vec<(String, u16, bool)> = Vec::new();
+    for other in instances {
+        if other.id == *own {
+            continue;
+        }
+        let directory = other.directory.clone();
+        let settings = tokio::task::spawn_blocking(move || read_rcon_settings(&directory))
+            .await
+            .ok()
+            .and_then(Result::ok);
+        let Some(settings) = settings else {
+            continue;
+        };
+        let running = server
+            .status(&other.id)
+            .await
+            .map(|snapshot| {
+                matches!(
+                    snapshot.state,
+                    ServerState::Starting | ServerState::Running | ServerState::Stopping
+                )
+            })
+            .unwrap_or(false);
+        candidates.push((other.name, settings.port, running));
+    }
+
+    conflicting_owner(port, candidates).map(|(name, _)| name)
+}
+
+/// 从「候选实例: (名字, 端口, 是否运行中)」里挑出真正会抢走查询的那个。
+///
+/// 只认「端口相同且正在运行」。对方停着的时候端口是空的，我们自己的服务器
+/// 才能绑上去，这时候报冲突纯属添堵。
+fn conflicting_owner(port: u16, candidates: Vec<(String, u16, bool)>) -> Option<(String, u16)> {
+    candidates
+        .into_iter()
+        .find(|(_, candidate_port, running)| *candidate_port == port && *running)
+        .map(|(name, candidate_port, _)| (name, candidate_port))
 }
 
 #[async_trait]
@@ -104,6 +178,18 @@ impl PlayerPositionService for CorePlayerPositionService {
             .await
             .map_err(|_| PlayerPositionServiceError::OperationFailed)??;
 
+        // 端口冲突时连过去看到的是别人的服，宁可报错也不返回错的数据
+        if let Some(owner) = port_owner(&self.instance, &self.server, &id, settings.port).await {
+            tracing::error!(
+                target: "sealantern.application.player_position",
+                instance_id,
+                port = settings.port,
+                owner = %owner,
+                "RCON 端口被另一个正在运行的实例占用，拒绝查询"
+            );
+            return Err(PlayerPositionServiceError::RconPortConflict);
+        }
+
         let addr = format!("127.0.0.1:{}", settings.port);
         let mut client = RconClient::connect(&addr, &settings.password, CONNECT_TIMEOUT)
             .await
@@ -122,8 +208,13 @@ impl PlayerPositionService for CorePlayerPositionService {
         let positions = parse_positions(&positions_lines);
 
         // 命令有回显却一条都解析不出来，说明服务端输出格式和预期不一致，
-        // 不能当成「没人在线」悄悄返回空列表
-        if positions.is_empty() && !positions_lines.is_empty() {
+        // 不能当成「没人在线」悄悄返回空列表。但「选择器没匹配到目标」是个例外：
+        // 玩家都在主世界时查下界，服务端回的就是 `No player was found`，
+        // 这是空列表，不是格式错误
+        if positions.is_empty()
+            && !positions_lines.is_empty()
+            && !is_no_target_response(&positions_lines)
+        {
             tracing::warn!(
                 target: "sealantern.application.player_position",
                 instance_id,
@@ -299,6 +390,25 @@ mod tests {
             flush_world(dir.path().to_path_buf()).await,
             Err(PlayerPositionServiceError::RconDisabled)
         );
+    }
+
+    /// 端口撞了要看对方在不在跑：在跑就会连到别人家，停着只是配置重复。
+    #[test]
+    fn conflicting_owner_only_counts_running_instances() {
+        let candidates = vec![
+            ("停着的服".to_string(), 25575u16, false),
+            ("在跑的服".to_string(), 25575u16, true),
+            ("端口不同的服".to_string(), 25576u16, true),
+        ];
+
+        assert_eq!(
+            conflicting_owner(25575, candidates.clone()),
+            Some(("在跑的服".to_string(), 25575))
+        );
+        // 所有人都停着 → 端口是空的，不算冲突
+        assert_eq!(conflicting_owner(25575, vec![("停着的服".to_string(), 25575u16, false)]), None);
+        // 端口都没撞上
+        assert_eq!(conflicting_owner(25577, candidates), None);
     }
 
     #[test]
