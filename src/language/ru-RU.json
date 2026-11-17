@@ -1437,6 +1437,7 @@
     "follow_player": "Следовать за игроком",
     "rcon_disabled": "RCON отключён на этом сервере. Установите enable-rcon=true и rcon.password в server.properties и перезапустите сервер.",
     "rcon_unreachable": "Порт RCON недоступен — возможно, сервер не запущен.",
+    "rcon_port_conflict": "Другой запущенный экземпляр использует тот же порт RCON. Задайте этому экземпляру другой rcon.port.",
     "rcon_unauthorized": "Неверный пароль RCON. Проверьте rcon.password в server.properties."
   }
 }

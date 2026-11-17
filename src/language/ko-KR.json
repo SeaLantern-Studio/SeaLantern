@@ -1437,6 +1437,7 @@
     "follow_player": "플레이어 따라가기",
     "rcon_disabled": "이 서버에서 RCON이 비활성화되어 있습니다. server.properties에서 enable-rcon=true와 rcon.password를 설정한 뒤 재시작하세요.",
     "rcon_unreachable": "RCON 포트에 연결할 수 없습니다. 서버가 실행 중이 아닐 수 있습니다.",
+    "rcon_port_conflict": "다른 실행 중인 인스턴스가 같은 RCON 포트를 사용하고 있습니다. 이 인스턴스에는 다른 rcon.port를 지정하세요.",
     "rcon_unauthorized": "RCON 비밀번호가 올바르지 않습니다. server.properties의 rcon.password를 확인하세요."
   }
 }

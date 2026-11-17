@@ -1436,6 +1436,7 @@
       "follow_player": "跟随玩家",
       "rcon_disabled": "服务器没有启用 RCON。在 server.properties 里设置 enable-rcon=true 与 rcon.password，然后重启服务器。",
       "rcon_unreachable": "连不上 RCON 端口，服务器可能没有运行。",
+      "rcon_port_conflict": "另一个正在运行的实例占用了同一个 RCON 端口，请给这个实例换一个 rcon.port。",
       "rcon_unauthorized": "RCON 密码不正确，检查 server.properties 里的 rcon.password。"
     }
   }

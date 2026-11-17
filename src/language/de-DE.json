@@ -1437,6 +1437,7 @@
     "follow_player": "Spieler folgen",
     "rcon_disabled": "RCON ist auf diesem Server deaktiviert. Setze enable-rcon=true und rcon.password in server.properties und starte den Server neu.",
     "rcon_unreachable": "RCON-Port nicht erreichbar – der Server läuft möglicherweise nicht.",
+    "rcon_port_conflict": "Eine andere laufende Instanz nutzt denselben RCON-Port. Gib dieser Instanz einen anderen rcon.port.",
     "rcon_unauthorized": "Das RCON-Passwort ist falsch. Prüfe rcon.password in server.properties."
   }
 }

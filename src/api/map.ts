@@ -31,7 +31,8 @@ export interface WorldMapRegion {
   region_x: number;
   region_z: number;
   bytes: number;
-  modified_at_unix_secs: number;
+  /** `.mca` 最后修改时间（Unix 毫秒） */
+  modified_at_unix_millis: number;
 }
 
 /** 世界里所有可渲染的 region，`regions` 已按 (x, z) 升序 */

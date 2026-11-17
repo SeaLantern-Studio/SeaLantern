@@ -1437,6 +1437,7 @@
     "follow_player": "プレイヤーを追従",
     "rcon_disabled": "このサーバーでは RCON が無効です。server.properties の enable-rcon=true と rcon.password を設定して再起動してください。",
     "rcon_unreachable": "RCON ポートに接続できません。サーバーが起動していない可能性があります。",
+    "rcon_port_conflict": "別の実行中のインスタンスが同じ RCON ポートを使用しています。このインスタンスには別の rcon.port を設定してください。",
     "rcon_unauthorized": "RCON のパスワードが正しくありません。server.properties の rcon.password を確認してください。"
   }
 }

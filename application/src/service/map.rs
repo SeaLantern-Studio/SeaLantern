@@ -32,7 +32,9 @@ use sealantern_contract::{
 };
 use sealantern_core::instance::InstanceId;
 use sealantern_feature::config::ServerPropertiesManager;
-use sealantern_feature::world_map::{REGION_PIXELS, RenderInfo, WorldMapError, render_region_png};
+use sealantern_feature::world_map::{
+    REGION_PIXELS, RenderInfo, TexturePalette, WorldMapError, render_region_png_with,
+};
 use sealantern_infra::platform::get_app_data_dir;
 
 use crate::port::{InstanceService, WorldMapService};
@@ -119,6 +121,10 @@ pub struct CoreWorldMapService {
     written_since_prune: AtomicU64,
     /// 渲染并发上限（见 [`RENDER_CONCURRENCY`]）。
     render_slots: Arc<Semaphore>,
+    /// 当前使用的贴图颜色表。默认只有内置表，装了资源包就换成带覆盖的。
+    ///
+    /// 用 `Arc` 包着是为了渲染时能 clone 一份带进 `spawn_blocking`，不用持锁渲染。
+    palette: Mutex<Arc<TexturePalette>>,
 }
 
 /// 一次落盘尝试的结果。
@@ -158,15 +164,45 @@ impl CoreWorldMapService {
             last_prune: Mutex::new(None),
             written_since_prune: AtomicU64::new(0),
             render_slots: Arc::new(Semaphore::new(RENDER_CONCURRENCY)),
+            palette: Mutex::new(Arc::new(TexturePalette::builtin())),
         }
+    }
+
+    /// 换用资源包里的贴图配色，传 `None` 恢复内置表。
+    ///
+    /// 返回实际覆盖的贴图张数 —— 为 0 通常意味着这个包不换方块贴图
+    /// （只改模型、音效或 GUI），对地图没影响。
+    ///
+    /// 换完会清空地图缓存：命中判据看的是源 `.mca` 的指纹，换贴图不会改动存档，
+    /// 不清的话地图会一直停在旧配色上。
+    pub fn set_resource_pack(
+        &self,
+        path: Option<&Path>,
+    ) -> Result<usize, sealantern_feature::world_map::ResourcePackError> {
+        let palette = match path {
+            Some(path) => TexturePalette::from_resource_pack(path)?,
+            None => TexturePalette::builtin(),
+        };
+        let overridden = palette.overridden();
+
+        *self.palette.lock().expect("palette 锁") = Arc::new(palette);
+        self.clear_cache();
+
+        tracing::info!(
+            target: "sealantern.application.world_map",
+            overridden,
+            path = path.map(|path| path.display().to_string()).unwrap_or_default(),
+            "世界地图贴图配色已切换"
+        );
+        Ok(overridden)
     }
 
     /// 清空整个地图缓存目录。
     ///
     /// 删的是可再生的派生数据，最多让下一次打开地图重渲染一遍。正在渲染的
     /// region 可能撞上删除（临时文件写不进去），那种情况渲染会失败并记日志，
-    /// 下次请求重来即可。
-    pub fn clear_cache(&self) {
+    /// 下次请求重来即可 —— 比拿着旧配色的缓存给用户看要好。
+    fn clear_cache(&self) {
         match std::fs::remove_dir_all(&self.cache_root) {
             Ok(()) => tracing::debug!(
                 target: "sealantern.application.world_map",
@@ -445,6 +481,9 @@ impl CoreWorldMapService {
         // 临时名带进程号：桌面端和 Web 端可能同时渲染同一块 region，
         // 共用一个 `.part` 名字会互相踩。
         let tmp_png = png_path.with_extension(format!("{}.png.part", std::process::id()));
+        // 渲染期间用户可能换资源包，先把当前这份表 clone 出来，整块 region 用同一份
+        let palette = Arc::clone(&self.palette.lock().expect("palette 锁"));
+
         let mut rendered = None;
         let mut png: Vec<u8> = Vec::new();
         let mut stamp = None;
@@ -461,8 +500,16 @@ impl CoreWorldMapService {
                 .acquire_owned()
                 .await
                 .map_err(|_| WorldMapServiceError::OperationFailed)?;
+            let render_palette = Arc::clone(&palette);
             let result = tokio::task::spawn_blocking(move || {
-                render_atomically(&render_dir, region_x, region_z, &render_tmp, &render_out)
+                render_atomically(
+                    &render_dir,
+                    region_x,
+                    region_z,
+                    &render_tmp,
+                    &render_out,
+                    &render_palette,
+                )
             })
             .await;
             drop(slot);
@@ -737,6 +784,7 @@ fn render_atomically(
     z: isize,
     tmp: &Path,
     out: &Path,
+    palette: &TexturePalette,
 ) -> Result<RenderInfo, WorldMapError> {
     if let Some(parent) = out.parent() {
         std::fs::create_dir_all(parent).map_err(|source| WorldMapError::Output {
@@ -745,7 +793,7 @@ fn render_atomically(
         })?;
     }
 
-    let rendered = match render_region_png(region_dir, x, z, tmp) {
+    let rendered = match render_region_png_with(region_dir, x, z, tmp, palette) {
         Ok(rendered) => rendered,
         Err(error) => {
             // 渲染中途失败会留下半截文件，清掉，避免下次被当成完整缓存
@@ -1670,6 +1718,56 @@ mod tests {
         assert!(Arc::ptr_eq(&same_a, &same_b), "同一 region 必须复用同一把锁");
         assert!(!Arc::ptr_eq(&same_a, &other_region), "不同 region 不应互相阻塞");
         assert!(!Arc::ptr_eq(&same_a, &other_dimension), "不同维度不应互相阻塞");
+    }
+
+    /// 换贴图配色必须把旧缓存清掉，否则地图永远停在旧配色。
+    #[tokio::test]
+    async fn switching_resource_pack_clears_the_cache() {
+        let dir = tempfile::tempdir().expect("临时目录");
+        let (instance, server) = test_services(dir.path()).await;
+        let cache_root = dir.path().join("cache");
+
+        let stale = cache_root.join("i/world/overworld/r.0.0.png");
+        fs::create_dir_all(stale.parent().expect("父目录")).expect("建缓存目录");
+        fs::write(&stale, b"stale png").expect("写入假缓存");
+
+        let service = CoreWorldMapService::with_cache_root(instance, server, cache_root.clone());
+        let overridden = service.set_resource_pack(None).expect("恢复内置表");
+
+        assert_eq!(overridden, 0, "内置表没有覆盖任何贴图");
+        assert!(!stale.exists(), "换配色后旧缓存必须失效");
+    }
+
+    /// 目录形式的资源包能被加载，覆盖张数如实返回。
+    #[tokio::test]
+    async fn resource_pack_directory_is_loaded() {
+        let dir = tempfile::tempdir().expect("临时目录");
+        let (instance, server) = test_services(dir.path()).await;
+
+        let textures = dir.path().join("pack/assets/minecraft/textures/block");
+        fs::create_dir_all(&textures).expect("建贴图目录");
+        // 一张 16×16 的纯蓝 PNG
+        let mut png_bytes = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut png_bytes, 16, 16);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            let mut writer = encoder.write_header().expect("写 PNG 头");
+            let pixels: Vec<u8> = std::iter::repeat([0u8, 0, 255, 255])
+                .take(16 * 16)
+                .flatten()
+                .collect();
+            writer.write_image_data(&pixels).expect("写图像数据");
+        }
+        fs::write(textures.join("stone.png"), png_bytes).expect("写贴图");
+
+        let service =
+            CoreWorldMapService::with_cache_root(instance, server, dir.path().join("cache"));
+        let overridden = service
+            .set_resource_pack(Some(&dir.path().join("pack")))
+            .expect("加载资源包");
+
+        assert_eq!(overridden, 1, "只该覆盖 stone 一张");
     }
 
     /// 节流必须真的省掉那次 RCON 往返，而不只是不更新时间戳。

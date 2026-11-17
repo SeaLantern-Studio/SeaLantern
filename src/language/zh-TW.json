@@ -1437,6 +1437,7 @@
     "follow_player": "跟隨玩家",
     "rcon_disabled": "伺服器沒有啟用 RCON。在 server.properties 設定 enable-rcon=true 與 rcon.password，然後重新啟動。",
     "rcon_unreachable": "連不上 RCON 連接埠，伺服器可能沒有執行。",
+    "rcon_port_conflict": "另一個正在執行的實例佔用了相同的 RCON 連接埠，請給這個實例換一個 rcon.port。",
     "rcon_unauthorized": "RCON 密碼不正確，請檢查 server.properties 的 rcon.password。"
   }
 }

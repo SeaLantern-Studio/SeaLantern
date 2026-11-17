@@ -242,9 +242,9 @@ async function refreshRegions(resetCamera: boolean) {
     for (const region of list.regions) {
       const key = `${region.region_x}/${region.region_z}`;
       const tile = tiles.value[key];
-      if (tile && region.modified_at_unix_secs > 0 && tile.mtime > 0) {
+      if (tile && region.modified_at_unix_millis > 0 && tile.mtime > 0) {
         // tile.mtime 是客户端取图时间；源文件比它新就说明地形改过
-        if (region.modified_at_unix_secs * 1000 > tile.mtime) changed.push(key);
+        if (region.modified_at_unix_millis > tile.mtime) changed.push(key);
       }
     }
     for (const key of changed) revokeTile(key);
@@ -360,6 +360,7 @@ function onPointerUp(event: PointerEvent) {
 function classifyPlayerError(raw: string): string {
   const text = raw.toLowerCase();
   if (text.includes("rcon_disabled") || text.includes("not enabled")) return "disabled";
+  if (text.includes("port_conflict")) return "conflict";
   if (text.includes("unauthorized") || text.includes("authentication")) return "unauthorized";
   if (text.includes("unreachable") || text.includes("connect") || text.includes("timed out")) {
     return "unreachable";
@@ -601,6 +602,9 @@ onBeforeUnmount(() => {
       </template>
       <template v-else-if="playerErrorKind === 'unauthorized'">
         {{ i18n.t("world_map.rcon_unauthorized") }}
+      </template>
+      <template v-else-if="playerErrorKind === 'conflict'">
+        {{ i18n.t("world_map.rcon_port_conflict") }}
       </template>
       <template v-else>{{ playerErrorText }}</template>
     </p>

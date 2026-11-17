@@ -32,6 +32,8 @@ use std::path::Path;
 use fastanvil::biome::Biome;
 use fastanvil::{Chunk, HeightMode, JavaChunk, Region, Rgba};
 
+use super::biome_colors::biome_colours;
+use super::palette::TexturePalette;
 use super::{WorldMapError, is_finished};
 
 /// 一个 region 的边长（方块数）。
@@ -88,7 +90,13 @@ struct SurfaceColumn {
 /// 用 `surface_height` 而不是从世界顶端往下扫，是因为 `motion_blocking` 高度图
 /// 本身就把花草、火把这类不挡路的方块算作空气了 —— 否则每格草都会盖在地形上，
 /// 整张图变成一片绿色噪点。
-fn sample_column<C: Chunk + ?Sized>(chunk: &C, x: usize, z: usize, y_min: isize) -> SurfaceColumn {
+fn sample_column<C: Chunk + ?Sized>(
+    chunk: &C,
+    x: usize,
+    z: usize,
+    y_min: isize,
+    palette: &TexturePalette,
+) -> SurfaceColumn {
     let height = chunk.surface_height(x, z, HeightMode::Trust);
     let mut y = (height - 1).max(y_min);
 
@@ -96,9 +104,13 @@ fn sample_column<C: Chunk + ?Sized>(chunk: &C, x: usize, z: usize, y_min: isize)
         return SurfaceColumn { colour: [0, 0, 0, 0], height };
     };
 
+    // 地表这一格的群系决定整列的着色：水面和海底的群系偶尔会不一样（河海交界），
+    // 取水面上看到的那一层
+    let biome = chunk.biome(x, y, z);
+
     if !is_water_like(top.name()) {
         return SurfaceColumn {
-            colour: block_colour(top.name(), chunk.biome(x, y, z)),
+            colour: block_colour(top.name(), biome, palette),
             height,
         };
     }
@@ -113,9 +125,9 @@ fn sample_column<C: Chunk + ?Sized>(chunk: &C, x: usize, z: usize, y_min: isize)
                 y -= 1;
             }
             Some(block) => {
-                let floor = block_colour(block.name(), chunk.biome(x, y, z));
+                let floor = block_colour(block.name(), biome, palette);
                 return SurfaceColumn {
-                    colour: water_colour(floor, depth),
+                    colour: water_colour(floor, depth, biome),
                     height,
                 };
             }
@@ -125,27 +137,32 @@ fn sample_column<C: Chunk + ?Sized>(chunk: &C, x: usize, z: usize, y_min: isize)
 
     // 到底都没见到海底（深海，或高度图本身不可信）：按纯水色收场
     SurfaceColumn {
-        colour: water_colour(WATER, depth),
+        colour: water_colour(WATER, depth, biome),
         height,
     }
 }
 
 /// 按水深给水面调色：浅水偏青、能透出海底，深水接近纯深蓝。
 ///
-/// 这是俯视图里最能拉开层次的一处：原来整片海是一个死蓝色，看不出哪里是浅滩
-/// 哪里是海沟。
-fn water_colour(floor: Rgba, depth: usize) -> Rgba {
-    const SHALLOW: [f32; 3] = [96.0, 158.0, 198.0];
-    const DEEP: [f32; 3] = [28.0, 58.0, 116.0];
+/// 基准色是该群系自己的水色（沼泽偏绿、暖水偏青、冻洋偏灰蓝），不是写死的一个蓝 ——
+/// 原来整片海是同一个颜色，看不出浅滩和海沟，也看不出沼泽和海洋的区别。
+fn water_colour(floor: Rgba, depth: usize, biome: Option<Biome>) -> Rgba {
+    let base = biome_colours(biome).water;
+
+    // 浅水在群系水色上加亮，深水统一压暗。两个方向都用同一个系数，这样沼泽那种
+    //「偏绿的水」压暗后还是绿的，不会因为蓝通道被特殊照顾而反超
+    let shallow = base.map(|channel| (channel as f32 * 1.08 + 14.0).min(255.0));
+    let deep = base.map(|channel| channel as f32 * 0.45);
 
     let span = (MAX_WATER_DEPTH - 1).max(1) as f32;
     let deepness = (depth.saturating_sub(1) as f32 / span).min(1.0);
 
     let mut out = [0u8; 4];
     for channel in 0..3 {
-        let water = SHALLOW[channel] + (DEEP[channel] - SHALLOW[channel]) * deepness;
-        // 水越浅，海底的颜色透出来越多
-        let see_floor = (1.0 - deepness) * 0.45;
+        let water = shallow[channel] + (deep[channel] - shallow[channel]) * deepness;
+        // 水越浅，海底的颜色透出来越多。比例不能太高，否则浅滩会被海底的
+        // 沙色、石色冲淡成灰白，看着像干涸的河床
+        let see_floor = (1.0 - deepness) * 0.30;
         let value = water * (1.0 - see_floor) + floor[channel] as f32 * see_floor;
         out[channel] = value.clamp(0.0, 255.0) as u8;
     }
@@ -265,13 +282,208 @@ fn vegetation_tint(biome: Option<Biome>) -> Rgba {
 }
 
 /// 方块名到颜色的映射。
-fn block_colour(name: &str, biome: Option<Biome>) -> Rgba {
+///
+/// 先查贴图平均色（见 [`texture_colour`]），对不上再退回手写调色板。手写表留着是
+/// 为了两类情况：模组方块不在原版贴图表里；以及 `*_stairs`、`*_wall` 这类衍生方块
+/// 的贴图名推不出来时，至少还有个像样的颜色，不会掉进灰色兜底。
+fn block_colour(name: &str, biome: Option<Biome>, palette: &TexturePalette) -> Rgba {
     if is_water_like(name) {
         return WATER;
     }
 
     let short = name.strip_prefix("minecraft:").unwrap_or(name);
 
+    if let Some(colour) = texture_colour(short, biome, palette) {
+        return colour;
+    }
+
+    legacy_block_colour(short, biome)
+}
+
+/// 按贴图平均色 + 群系染色求一个方块的颜色。
+///
+/// 这是和 Minecraft 自带地图拉开差距的地方：自带地图每种方块只有 4 档明暗，
+/// 这里直接用 1.21 官方贴图的平均色，沙子是米黄、恶地是橙红、雪是近乎纯白，
+/// 一千多个方块不用一条条手写。
+fn texture_colour(block: &str, biome: Option<Biome>, palette: &TexturePalette) -> Option<Rgba> {
+    let tint = biome_colours(biome);
+
+    // 草方块和草状植物：贴图是灰度的，颜色全由群系决定
+    if is_grass_like(block) {
+        let base = palette.lookup("grass_block_top")?;
+        // 群系定义里有显式 grass_color 就用它（恶地、沼泽这类），否则按气候分档
+        let colour = tint.grass.unwrap_or_else(|| climate_tint(biome).0);
+        return Some(apply_tint(colour, base));
+    }
+
+    // 树叶：同上，但用 foliage 色
+    if is_foliage_like(block) {
+        let base = palette
+            .lookup(block)
+            .or_else(|| palette.lookup("oak_leaves"))?;
+        // 樱花、苍白橡树这类树叶贴图本身就有颜色，再染一遍会变成脏绿
+        if !is_greyscale(base) {
+            return Some(base);
+        }
+        let colour = tint.foliage.unwrap_or_else(|| climate_tint(biome).1);
+        return Some(apply_tint(colour, base));
+    }
+
+    let texture = texture_name(block)?;
+    palette.lookup(texture)
+}
+
+/// 把方块名翻成贴图名。
+///
+/// 顺序是有讲究的：台阶、楼梯要先剥后缀（它们的贴图名和方块名对不上），
+/// 原木、砂岩这类要看顶面，最后才试同名贴图。
+fn texture_name(block: &str) -> Option<&str> {
+    // 台阶、楼梯、墙、栅栏这类是基础材质的变形，贴图要往基础材质上找
+    for suffix in [
+        "_stairs",
+        "_slab",
+        "_wall",
+        "_fence_gate",
+        "_fence",
+        "_pressure_plate",
+        "_button",
+        "_trapdoor",
+        "_door",
+    ] {
+        if let Some(base) = block.strip_suffix(suffix) {
+            if let Some(texture) = texture_name_of_base(base) {
+                return Some(texture);
+            }
+        }
+    }
+
+    texture_name_of_base(block)
+}
+
+/// 基础材质本身（`stone`、`oak_planks`）对应的贴图名。
+fn texture_name_of_base(base: &str) -> Option<&str> {
+    // 名字和贴图对不上的几个，直接列表
+    let direct = match base {
+        "grass_block" => "grass_block_top",
+        "dirt_path" => "dirt_path_top",
+        "mycelium" => "mycelium_top",
+        "podzol" => "podzol_top",
+        "crimson_nylium" => "crimson_nylium",
+        "warped_nylium" => "warped_nylium",
+        "farmland" => "farmland",
+        "snow_block" => "snow",
+        "short_grass" => "short_grass",
+        "tall_grass" => "tall_grass",
+        // 木材名单独出现时按木板算（`oak_stairs` 剥完是 `oak`）
+        "oak" => "oak_planks",
+        "spruce" => "spruce_planks",
+        "birch" => "birch_planks",
+        "jungle" => "jungle_planks",
+        "acacia" => "acacia_planks",
+        "dark_oak" => "dark_oak_planks",
+        "mangrove" => "mangrove_planks",
+        "cherry" => "cherry_planks",
+        "bamboo" => "bamboo_planks",
+        "crimson" => "crimson_planks",
+        "warped" => "warped_planks",
+        "pale_oak" => "pale_oak_planks",
+        _ => "",
+    };
+    if !direct.is_empty() {
+        return Some(direct);
+    }
+
+    // 具体贴图存在与否由调用方查表决定，这里只给出候选顺序
+    Some(base)
+}
+
+/// 这张贴图是不是灰度图。
+///
+/// 灰度贴图（草、树叶、水）的颜色在游戏里由群系决定，贴图只提供明暗纹理；
+/// 直接拿平均色当结果会得到一片灰，必须先染色。彩色贴图（樱花树叶、
+/// 各色陶瓦）本来就有自己的颜色，不能染。
+fn is_greyscale(texture: Rgba) -> bool {
+    let max = texture[0].max(texture[1]).max(texture[2]);
+    let min = texture[0].min(texture[1]).min(texture[2]);
+    max - min < 24
+}
+
+/// 用群系色给灰度贴图上色，保留贴图的明暗纹理。
+///
+/// 系数按「平均亮度 150」归一化 —— 草方块顶面平均 147、橡树树叶 151，都在这个
+/// 数附近，除下来系数接近 1，结果基本就是群系色本身，只带一点贴图的明暗起伏。
+fn apply_tint(tint: [u8; 3], base: Rgba) -> Rgba {
+    let luma = (base[0] as u32 * 30 + base[1] as u32 * 59 + base[2] as u32 * 11) / 100;
+    let factor = (luma as f32 / 150.0).clamp(0.82, 1.18);
+    [
+        (tint[0] as f32 * factor).clamp(0.0, 255.0) as u8,
+        (tint[1] as f32 * factor).clamp(0.0, 255.0) as u8,
+        (tint[2] as f32 * factor).clamp(0.0, 255.0) as u8,
+        255,
+    ]
+}
+
+/// 草方块、草、蕨这类吃 grass 染色的方块。
+fn is_grass_like(block: &str) -> bool {
+    matches!(
+        block,
+        "grass_block" | "short_grass" | "grass" | "tall_grass" | "fern" | "large_fern"
+    )
+}
+
+/// 吃 foliage 染色的方块。
+fn is_foliage_like(block: &str) -> bool {
+    block.ends_with("_leaves") || block == "vine"
+}
+
+/// 气候档位到植被色的对照。
+///
+/// 数据取自原版各群系的实际草地色和树叶色（wiki 的 biome color 表），第一列温度、
+/// 第二列降雨，用来找最近的档位。
+///
+/// 为什么不用官方的 `grass.png` 色图：那张图的坐标语义在 1.13 之后就没有可靠的
+/// 公开定义了。按「(1 − 温度, 1 − 降雨)」去查，平原/沙漠/丛林都能对上，但森林
+/// （温度 0.7、降雨 0.8）会落进右上的空白区，压回对角线后取到的是边界浅绿，
+/// 于是整片森林渲染成 `#91B386` 这种饱和度只有 25% 的灰绿 —— 一眼就不像游戏里
+/// 的草地。宁愿用分档的固定色，也不要一个对不上号的颜色计算。
+const CLIMATE_TINTS: &[(f32, f32, [u8; 3], [u8; 3])] = &[
+    // 温度, 降雨, 草色, 叶色
+    (0.00, 0.50, [0x80, 0xB4, 0x97], [0x60, 0xA1, 0x7B]), // 雪原、冰刺
+    (0.25, 0.80, [0x86, 0xB7, 0x83], [0x68, 0xA4, 0x64]), // 针叶林
+    (0.30, 0.30, [0x8A, 0xB6, 0x89], [0x6D, 0xA3, 0x6B]), // 山地、风袭丘陵
+    (0.70, 0.30, [0x91, 0xBD, 0x59], [0x77, 0xAB, 0x2F]), // 平原、草甸
+    (0.70, 0.80, [0x79, 0xC0, 0x5A], [0x59, 0xAE, 0x30]), // 森林、桦木林
+    (0.95, 0.90, [0x59, 0xC9, 0x3C], [0x30, 0xBB, 0x0B]), // 丛林
+    (1.50, 0.00, [0xBF, 0xB7, 0x55], [0xAE, 0xA4, 0x2A]), // 沙漠、恶地
+    (0.80, 0.90, [0x6A, 0x70, 0x39], [0x4F, 0x5A, 0x27]), // 沼泽
+];
+
+/// 按温度和降雨找最接近的气候档位，返回草色和叶色。
+///
+/// 温度权重更高：同一个温度带里降雨只让颜色偏深一点，而跨温度带是整个色系
+/// 变化（雪原白绿 → 沙漠黄褐）。
+fn climate_tint(biome: Option<Biome>) -> ([u8; 3], [u8; 3]) {
+    let Some(climate) = biome.map(|biome| biome.climate()) else {
+        // 群系缺失时按温带草原处理，这是最不会出错的中间值
+        return ([0x91, 0xBD, 0x59], [0x77, 0xAB, 0x2F]);
+    };
+    let (temperature, rainfall) = (climate.temperature as f32, climate.rainfall as f32);
+
+    let mut best = CLIMATE_TINTS[0];
+    let mut best_distance = f32::MAX;
+    for entry in CLIMATE_TINTS {
+        let (t, r) = (entry.0, entry.1);
+        let distance = (temperature - t).powi(2) * 2.0 + (rainfall - r).powi(2);
+        if distance < best_distance {
+            best_distance = distance;
+            best = *entry;
+        }
+    }
+    (best.2, best.3)
+}
+
+/// 手写调色板，贴图查不到时的兜底。
+fn legacy_block_colour(short: &str, biome: Option<Biome>) -> Rgba {
     // 草方块和树叶：底色 + 群系色调
     if short == "grass_block" || short == "grass" {
         return vegetation_tint(biome);
@@ -417,6 +629,20 @@ pub fn render_region_png(
     z: isize,
     out_path: &Path,
 ) -> Result<RenderInfo, WorldMapError> {
+    render_region_png_with(region_dir, x, z, out_path, &TexturePalette::builtin())
+}
+
+/// 同 [`render_region_png`]，但可以指定贴图颜色表。
+///
+/// 传 [`TexturePalette::from_resource_pack`] 出来的表，用户装了什么材质包，
+/// 地图就跟着变。不传就用内置表。
+pub fn render_region_png_with(
+    region_dir: &Path,
+    x: isize,
+    z: isize,
+    out_path: &Path,
+    palette: &TexturePalette,
+) -> Result<RenderInfo, WorldMapError> {
     let mut region = open_region(region_dir, x, z)?;
 
     let side = CHUNKS_PER_SIDE * 16;
@@ -494,7 +720,7 @@ pub fn render_region_png(
 
             for row in 0..16 {
                 for column in 0..16 {
-                    let sampled = sample_column(&chunk, column, row, y_min);
+                    let sampled = sample_column(&chunk, column, row, y_min, palette);
                     // 北 / 西两个邻居的高度：chunk 边界上取自上一块的边缘
                     let north = if row > 0 {
                         heights[row - 1][column]
@@ -671,16 +897,16 @@ mod tests {
     /// 不同方块要产出不同颜色，避免像纯群系配色那样整张图一个色。
     #[test]
     fn block_colours_are_distinct() {
-        let green = block_colour("minecraft:green_terracotta", None);
-        let lime = block_colour("minecraft:lime_terracotta", None);
-        let clay = block_colour("minecraft:clay", None);
-        let stone = block_colour("minecraft:stone", None);
+        let green = block_colour("minecraft:green_terracotta", None, &palette());
+        let lime = block_colour("minecraft:lime_terracotta", None, &palette());
+        let clay = block_colour("minecraft:clay", None, &palette());
+        let stone = block_colour("minecraft:stone", None, &palette());
 
         assert_ne!(green, lime);
         assert_ne!(clay, stone);
         assert_ne!(green, clay);
         // 水方块固定走水体色
-        assert_eq!(block_colour("minecraft:water", None), WATER);
+        assert_eq!(block_colour("minecraft:water", None, &palette()), WATER);
     }
 
     /// 平地不该被着色改动，否则整张图会整体偏亮或偏暗。
@@ -688,6 +914,11 @@ mod tests {
     fn flat_ground_keeps_its_colour() {
         let base = [100u8, 120u8, 90u8, 255];
         assert_eq!(apply_shade(base, 64, 64, 64), base);
+    }
+
+    /// 测试统一用内置表，不依赖外部资源包。
+    fn palette() -> TexturePalette {
+        TexturePalette::builtin()
     }
 
     /// 朝光的坡面变亮、背光的变暗，且方向由西北两侧共同决定。
@@ -709,14 +940,62 @@ mod tests {
     #[test]
     fn deeper_water_is_darker() {
         let sand = [219u8, 207u8, 163u8, 255];
-        let shallow = water_colour(sand, 1);
-        let middle = water_colour(sand, MAX_WATER_DEPTH / 2);
-        let deep = water_colour(sand, MAX_WATER_DEPTH);
+        let shallow = water_colour(sand, 1, None);
+        let middle = water_colour(sand, MAX_WATER_DEPTH / 2, None);
+        let deep = water_colour(sand, MAX_WATER_DEPTH, None);
 
         assert!(shallow[0] > middle[0] && middle[0] > deep[0], "{shallow:?} {middle:?} {deep:?}");
         assert!(shallow[1] > middle[1] && middle[1] > deep[1]);
         assert!(shallow[2] > middle[2] && middle[2] > deep[2]);
         // 水深超上限时不能越界
-        assert_eq!(water_colour(sand, MAX_WATER_DEPTH * 4), deep);
+        assert_eq!(water_colour(sand, MAX_WATER_DEPTH * 4, None), deep);
+    }
+
+    /// 水色要跟着群系走：沼泽偏绿、暖水偏青，不是全图一个蓝。
+    #[test]
+    fn water_colour_follows_the_biome() {
+        let floor = [100u8, 100u8, 100u8, 255];
+        let ocean = water_colour(floor, MAX_WATER_DEPTH, Some(Biome::Ocean));
+        let swamp = water_colour(floor, MAX_WATER_DEPTH, Some(Biome::Swamp));
+        let warm = water_colour(floor, MAX_WATER_DEPTH, Some(Biome::WarmOcean));
+
+        assert!(swamp[1] > swamp[2], "沼泽水应该偏绿: {swamp:?}");
+        assert!(warm[2] > ocean[2], "暖水应该比普通海更亮: {warm:?} {ocean:?}");
+    }
+
+    /// 贴图色表能查到具体方块：沙子是米黄，不是灰。
+    #[test]
+    fn texture_colours_are_looked_up() {
+        let sand = palette().lookup("sand").expect("沙子的贴图色应该在表里");
+        assert!(sand[0] > 200 && sand[1] > 190, "沙应该是米黄: {sand:?}");
+        assert!(sand[0] > sand[2], "米黄的红通道要高于蓝: {sand:?}");
+
+        let snow = palette().lookup("snow").expect("雪的贴图色应该在表里");
+        assert!(snow[0] > 240 && snow[1] > 240 && snow[2] > 240, "{snow:?}");
+
+        assert!(palette().lookup("no_such_block_at_all").is_none());
+    }
+
+    /// 草方块的颜色来自群系：平原偏绿，沙漠偏黄。
+    #[test]
+    fn grass_follows_the_biome() {
+        let plains = block_colour("minecraft:grass_block", Some(Biome::Plains), &palette());
+        let desert = block_colour("minecraft:grass_block", Some(Biome::Desert), &palette());
+
+        assert!(plains[1] > plains[0], "平原草应该偏绿: {plains:?}");
+        assert!(desert[0] > desert[2], "沙漠草应该偏黄褐: {desert:?}");
+        assert!(desert[0] > plains[0], "沙漠草的黄要压过平原的绿: {desert:?} {plains:?}");
+    }
+
+    /// 衍生方块要借基础材质的贴图，连手写表都没有的才允许是灰。
+    #[test]
+    fn unknown_texture_falls_back_to_the_palette() {
+        let stairs = block_colour("minecraft:oak_stairs", None, &palette());
+        let planks = block_colour("minecraft:oak_planks", None, &palette());
+        assert_eq!(stairs, planks, "橡木台阶该和木板同色: {stairs:?} {planks:?}");
+        assert_ne!(stairs, UNKNOWN, "橡木台阶不该掉进灰色兜底: {stairs:?}");
+
+        // 模组方块在贴图表和手写表里都没有，这时才允许是灰
+        assert_eq!(block_colour("minecraft:some_modded_block", None, &palette()), UNKNOWN);
     }
 }
