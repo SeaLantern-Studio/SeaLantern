@@ -24,7 +24,13 @@ pub trait WorldMapService: Send + Sync {
 
     /// 列出世界里全部可渲染的 region 文件。
     ///
-    /// 只做目录扫描，不解析 region 内容，因此可以随时调用。
+    /// 除目录扫描外，还有一项**会改服务端状态**的副作用：按节流（约 30 秒一次）
+    /// 让运行中的服务器执行 `save-all flush`，把内存里的区块刷进 `.mca`。
+    /// 清单里的 `modified_at_unix_millis` 是前端判断「哪块地形变了」的唯一依据，
+    /// 不先落盘就永远不会变。
+    ///
+    /// 因此调用方不要以远高于节流窗口的频率轮询；只想看某一块图时用
+    /// [`render`](Self::render)，那条路径的落盘节流是一样的，但至少会带回图片。
     async fn regions(
         &self,
         instance_id: &str,

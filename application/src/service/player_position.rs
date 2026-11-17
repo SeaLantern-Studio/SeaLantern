@@ -10,7 +10,7 @@
 //! 服务器重启后句柄失效、并发请求争抢同一 socket 这些麻烦事。按秒级轮询的
 //! 频率算，每次新建连接的代价完全可以忽略。
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -40,6 +40,25 @@ pub(crate) struct RconSettings {
     pub(crate) password: String,
 }
 
+/// 一个已经确认「连过去就是本实例」的 RCON 端点。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RconTarget {
+    /// `127.0.0.1:<port>`。
+    pub(crate) addr: String,
+    pub(crate) password: String,
+}
+
+/// 端口归属的判定结果。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum RconEndpoint {
+    /// 端口归本实例，或者是空的（本实例的服务器没在跑，连过去会立刻被拒）。
+    Own(RconTarget),
+    /// 被另一个**正在运行**的实例占着。
+    OccupiedBy(String),
+    /// 判断不了：实例列表读不出来。
+    Unknown,
+}
+
 /// 让服务器把内存里的区块刷进 `.mca`。
 ///
 /// 地图只读磁盘，而服务端把改过的区块攒在内存里等自动保存。不主动落盘的话，
@@ -47,13 +66,8 @@ pub(crate) struct RconSettings {
 /// 地图上却没有」最直接的成因。
 ///
 /// 服务器没运行、没开 RCON、密码不对，都按失败返回，由调用方决定要不要忽略。
-pub(crate) async fn flush_world(server_dir: PathBuf) -> Result<(), PlayerPositionServiceError> {
-    let settings = tokio::task::spawn_blocking(move || read_rcon_settings(&server_dir))
-        .await
-        .map_err(|_| PlayerPositionServiceError::OperationFailed)??;
-
-    let addr = format!("127.0.0.1:{}", settings.port);
-    let mut client = RconClient::connect(&addr, &settings.password, CONNECT_TIMEOUT)
+pub(crate) async fn flush_world(target: &RconTarget) -> Result<(), PlayerPositionServiceError> {
+    let mut client = RconClient::connect(&target.addr, &target.password, CONNECT_TIMEOUT)
         .await
         .map_err(|error| to_service_error(&error))?;
     client
@@ -78,6 +92,46 @@ impl CorePlayerPositionService {
     }
 }
 
+/// 确认这个 RCON 端点归本实例所有，并把连接参数准备好。
+///
+/// RCON 协议本身没有身份握手：连上之后能问到的都是「某个服务器」的事实，
+/// 没法证明它是哪个实例。所以只能在连接**之前**判：这个端口是不是被另一个
+/// 正在运行的实例占着（多开时默认端口全都是 25575，谁先起谁占）。
+///
+/// 判定分三档，调用方按自己的代价决定怎么处置：[`RconEndpoint::Own`] 直接连，
+/// [`RconEndpoint::OccupiedBy`] 一定不能连（连过去看到的是别人的服），
+/// [`RconEndpoint::Unknown`]（列实例失败）留给调用方 —— 只读的查询可以冒险，
+/// 会改服务端状态的命令不该冒险。
+pub(crate) async fn own_rcon_endpoint(
+    instance: &CoreInstanceService,
+    server: &CoreServerService,
+    own: &InstanceId,
+    server_dir: &Path,
+) -> Result<RconEndpoint, PlayerPositionServiceError> {
+    let directory = server_dir.to_path_buf();
+    let settings = tokio::task::spawn_blocking(move || read_rcon_settings(&directory))
+        .await
+        .map_err(|_| PlayerPositionServiceError::OperationFailed)??;
+
+    let target = RconTarget {
+        addr: format!("127.0.0.1:{}", settings.port),
+        password: settings.password,
+    };
+
+    match port_owner(instance, server, own, settings.port).await {
+        PortOwner::Own => Ok(RconEndpoint::Own(target)),
+        PortOwner::Other(name) => Ok(RconEndpoint::OccupiedBy(name)),
+        PortOwner::Unknown => Ok(RconEndpoint::Unknown),
+    }
+}
+
+/// 端口归属：本实例 / 别的运行中实例 / 查不出来。
+enum PortOwner {
+    Own,
+    Other(String),
+    Unknown,
+}
+
 /// 同一个 RCON 端口是不是被**另一个正在运行的实例**占着。
 ///
 /// 端口是各实例自己在 `server.properties` 里配的，默认都是 25575。多开时
@@ -92,18 +146,16 @@ async fn port_owner(
     server: &CoreServerService,
     own: &InstanceId,
     port: u16,
-) -> Option<String> {
+) -> PortOwner {
     let instances = match instance.list().await {
         Ok(instances) => instances,
-        // 列不出实例就不做判断：宁可照常查询，也不要因为读一次注册表失败
-        // 就让整个地图的玩家图层挂掉
         Err(error) => {
             tracing::debug!(
                 target: "sealantern.application.player_position",
                 error = %error,
-                "读取实例列表失败，跳过 RCON 端口冲突检查"
+                "读取实例列表失败，RCON 端口归属不明"
             );
-            return None;
+            return PortOwner::Unknown;
         }
     };
 
@@ -135,7 +187,10 @@ async fn port_owner(
         candidates.push((other.name, settings.port, running));
     }
 
-    conflicting_owner(port, candidates).map(|(name, _)| name)
+    match conflicting_owner(port, candidates) {
+        Some((name, _)) => PortOwner::Other(name),
+        None => PortOwner::Own,
+    }
 }
 
 /// 从「候选实例: (名字, 端口, 是否运行中)」里挑出真正会抢走查询的那个。
@@ -174,24 +229,32 @@ impl PlayerPositionService for CorePlayerPositionService {
             .ok_or(PlayerPositionServiceError::InstanceNotFound)?;
 
         let directory = instance.directory.clone();
-        let settings = tokio::task::spawn_blocking(move || read_rcon_settings(&directory))
-            .await
-            .map_err(|_| PlayerPositionServiceError::OperationFailed)??;
 
-        // 端口冲突时连过去看到的是别人的服，宁可报错也不返回错的数据
-        if let Some(owner) = port_owner(&self.instance, &self.server, &id, settings.port).await {
-            tracing::error!(
-                target: "sealantern.application.player_position",
-                instance_id,
-                port = settings.port,
-                owner = %owner,
-                "RCON 端口被另一个正在运行的实例占用，拒绝查询"
-            );
-            return Err(PlayerPositionServiceError::RconPortConflict);
-        }
+        // 端口冲突时连过去看到的是别人的服，宁可报错也不返回错的数据。
+        // 查不出归属时同样不查：这条路径返回的是「某个服务器的玩家坐标」，
+        // 而 RCON 没有办法在连上之后证明对方是谁
+        let target = match own_rcon_endpoint(&self.instance, &self.server, &id, &directory).await? {
+            RconEndpoint::Own(target) => target,
+            RconEndpoint::OccupiedBy(owner) => {
+                tracing::error!(
+                    target: "sealantern.application.player_position",
+                    instance_id,
+                    owner = %owner,
+                    "RCON 端口被另一个正在运行的实例占用，拒绝查询"
+                );
+                return Err(PlayerPositionServiceError::RconPortConflict);
+            }
+            RconEndpoint::Unknown => {
+                tracing::warn!(
+                    target: "sealantern.application.player_position",
+                    instance_id,
+                    "读不出实例列表，无法确认 RCON 端点归属，拒绝查询"
+                );
+                return Err(PlayerPositionServiceError::OperationFailed);
+            }
+        };
 
-        let addr = format!("127.0.0.1:{}", settings.port);
-        let mut client = RconClient::connect(&addr, &settings.password, CONNECT_TIMEOUT)
+        let mut client = RconClient::connect(&target.addr, &target.password, CONNECT_TIMEOUT)
             .await
             .map_err(|error| {
                 log_rcon_failure(instance_id, "连接 RCON 失败", &error);
@@ -384,12 +447,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn flush_world_needs_rcon_config() {
-        let dir = tempfile::tempdir().expect("临时目录");
-        assert_eq!(
-            flush_world(dir.path().to_path_buf()).await,
-            Err(PlayerPositionServiceError::RconDisabled)
-        );
+    async fn flush_world_reports_unreachable_when_nothing_listens() {
+        // 回环上空着的端口：连接立刻被拒，不算超时
+        let target = RconTarget {
+            addr: "127.0.0.1:1".to_string(),
+            password: "p".to_string(),
+        };
+        assert_eq!(flush_world(&target).await, Err(PlayerPositionServiceError::RconUnreachable));
     }
 
     /// 端口撞了要看对方在不在跑：在跑就会连到别人家，停着只是配置重复。

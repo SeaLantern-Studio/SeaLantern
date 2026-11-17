@@ -117,7 +117,7 @@ impl AppServices {
                 proxy_monitoring: Arc::new(ProxyMonitoringService::new()),
                 update: Arc::new(CoreUpdateCheckService::new()),
                 update_install: Arc::new(CoreUpdateInstallService),
-                world_map: Arc::new(CoreWorldMapService::new(instance.clone())),
+                world_map: Arc::new(CoreWorldMapService::new(instance.clone(), server.clone())),
                 player: Arc::new(CorePlayerService::new(instance.clone(), server.clone())),
                 player_position: Arc::new(CorePlayerPositionService::new(instance, server.clone())),
                 plugin: tokio::sync::OnceCell::new(),
