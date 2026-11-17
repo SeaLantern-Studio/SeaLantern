@@ -989,7 +989,7 @@ fn prune_cache(root: &Path, budget: u64, now: SystemTime) -> std::io::Result<u64
     }
 
     // 最旧的先走，删到预算以内就停
-    keep.sort_by(|a, b| a.2.cmp(&b.2));
+    keep.sort_by_key(|entry| entry.2);
     for (path, bytes, _) in keep {
         if total <= budget {
             break;
