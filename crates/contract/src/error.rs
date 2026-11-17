@@ -642,6 +642,11 @@ pub enum PlayerPositionServiceError {
     RconUnreachable,
     /// RCON 认证失败（密码不对）。
     RconUnauthorized,
+    /// 同一个 RCON 端口被另一个正在运行的实例占着。
+    ///
+    /// 与 [`Self::RconUnreachable`] 分开报：那个是「连不上」，这个是「连上了
+    /// 但那是别人的服务器」。处置方式也不同 —— 去改 `rcon.port`，而不是去启动服务器。
+    RconPortConflict,
     /// 命令有返回但解析不出任何玩家位置。
     MalformedResponse,
     /// 未分类的内部操作失败。
@@ -655,6 +660,7 @@ impl std::fmt::Display for PlayerPositionServiceError {
             Self::RconDisabled => "rcon is not enabled for this server",
             Self::RconUnreachable => "rcon port is unreachable",
             Self::RconUnauthorized => "rcon authentication failed",
+            Self::RconPortConflict => "rcon port is used by another running instance",
             Self::MalformedResponse => "rcon response could not be parsed",
             Self::OperationFailed => "player position operation failed",
         };

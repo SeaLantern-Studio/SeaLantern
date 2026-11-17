@@ -85,8 +85,11 @@ pub struct WorldMapRegion {
     pub region_z: isize,
     /// `.mca` 文件大小（字节）。
     pub bytes: u64,
-    /// `.mca` 最后修改时间（Unix 秒）；读不到时为 0。
-    pub modified_at_unix_secs: u64,
+    /// `.mca` 最后修改时间（Unix 毫秒）；读不到时为 0。
+    ///
+    /// 精确到毫秒而不是秒：服务端一次连续存盘完全可能把同一块 region 写两次
+    /// 而落在同一秒里，秒级时间戳看不出变化，调用方就会一直贴着旧图不重拉。
+    pub modified_at_unix_millis: u64,
 }
 
 /// 某个实例的世界里所有可渲染的 region。

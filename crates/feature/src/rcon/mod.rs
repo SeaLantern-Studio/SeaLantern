@@ -19,5 +19,6 @@ mod query;
 
 pub use client::{RconClient, RconError};
 pub use query::{
-    build_positions_command, build_rotation_command, parse_positions, parse_rotations,
+    build_positions_command, build_rotation_command, is_no_target_response, parse_positions,
+    parse_rotations,
 };
