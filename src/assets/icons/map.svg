@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="si si-map" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <style>    /* 地图：悬停时两片折页向外展开一点，像把地图摊开 */
+    .si-map .fold-l, .si-map .fold-r { transform-box: fill-box; }
+    .si-map .fold-l { animation: sl-map-unfold-l .9s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    .si-map .fold-r { animation: sl-map-unfold-r .9s ease-in-out infinite; animation-play-state: var(--sl-anim-play, paused); }
+    @keyframes sl-map-unfold-l { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-.9px); } }
+    @keyframes sl-map-unfold-r { 0%,100% { transform: translateX(0); } 50% { transform: translateX(.9px); } }
+    .si-map:hover { --sl-anim-play: running; }
+  </style>
+  <path d="M14.1 4.6a2 2 0 0 0 1.8 0l3.7-1.8A1 1 0 0 1 21 3.6v12.8a1 1 0 0 1-.6.9l-4.5 2.3a2 2 0 0 1-1.8 0l-4.2-2.1a2 2 0 0 0-1.8 0l-3.7 1.8A1 1 0 0 1 3 18.4V5.6a1 1 0 0 1 .6-.9l4.5-2.3a2 2 0 0 1 1.8 0z"/>
+  <path class="fold-l" d="M9 3.6v12.8"/>
+  <path class="fold-r" d="M15 4.8v12.8"/>
+</svg>

@@ -109,6 +109,13 @@ const routes = [
     component: () => import("@views/DevTestView.vue"),
     meta: { titleKey: "common.dev_test", icon: "beaker" },
   },
+  // 世界地图：可平移缩放的俯视图 + 在线玩家位置
+  {
+    path: "/world-map",
+    name: "world-map",
+    component: () => import("@views/WorldMapView.vue"),
+    meta: { titleKey: "common.world_map", icon: "map" },
+  },
   // 404 兜底:无效路径统一回到首页
   {
     path: "/:pathMatch(.*)*",

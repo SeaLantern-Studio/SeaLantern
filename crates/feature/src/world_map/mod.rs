@@ -26,9 +26,13 @@ use std::path::Path;
 
 use fastanvil::{Chunk, HeightMode, JavaChunk, Region};
 
+mod biome_colors;
+mod palette;
 mod render;
+mod texture_colors;
 
-pub use render::{REGION_PIXELS, RenderInfo, render_region_png};
+pub use palette::{ResourcePackError, TexturePalette, average_texture_colour};
+pub use render::{REGION_PIXELS, RenderInfo, render_region_png, render_region_png_with};
 
 /// region 文件探查结果。
 #[derive(Debug, Clone, PartialEq, Eq)]
