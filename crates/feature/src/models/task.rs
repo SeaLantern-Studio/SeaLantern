@@ -78,6 +78,7 @@ mod tests {
                 progress_percentage: 50.0,
                 is_finished: false,
                 error: None,
+                error_kind: None,
             },
         );
 
@@ -101,6 +102,7 @@ mod tests {
                 progress_percentage: 0.0,
                 is_finished: true,
                 error: Some("connection reset".to_string()),
+                error_kind: Some(sealantern_infra::download::DownloadErrorKind::Network),
             },
         );
 

@@ -13,4 +13,4 @@ pub(crate) mod tasks;
 
 pub use manager::DownloadManager;
 pub use single::{fetch_to_bytes, fetch_to_string, stream_download};
-pub use status::{DownloadError, DownloadSnapshot, DownloadStatus};
+pub use status::{DownloadError, DownloadErrorKind, DownloadSnapshot, DownloadStatus};

@@ -112,7 +112,10 @@ pub(super) fn spawn_task_monitor(
                     // chunk_failed() 已经在 error 级别记录了此错误；
                     // 此处仅传播到 DownloadStatus，避免重复日志。
                     if !status.cancelled() {
-                        status.set_error(err.to_string()).await;
+                        // 带上类别一起写入，宿主才能区分取消、网络与服务端错误。
+                        status
+                            .set_error_with_kind(err.to_string(), err.kind())
+                            .await;
                     }
                 }
                 Err(err) => {
