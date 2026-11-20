@@ -104,12 +104,28 @@ impl DownloadError {
     pub fn kind(&self) -> DownloadErrorKind {
         match self {
             DownloadError::Cancelled(_) => DownloadErrorKind::Cancelled,
-            DownloadError::Reqwest(_) | DownloadError::Net(_) => DownloadErrorKind::Network,
+            DownloadError::Reqwest(_) => DownloadErrorKind::Network,
+            DownloadError::Net(error) => match error {
+                NetError::Response(..) => DownloadErrorKind::Server,
+                NetError::Io(_) => DownloadErrorKind::Io,
+                NetError::Cancelled => DownloadErrorKind::Cancelled,
+                NetError::Config(_) | NetError::Parse(_) => DownloadErrorKind::Other,
+                NetError::Request(_) | NetError::Transport(_) | NetError::Timeout => {
+                    DownloadErrorKind::Network
+                }
+            },
             DownloadError::Response(..) => DownloadErrorKind::Server,
             DownloadError::Io(_) => DownloadErrorKind::Io,
             DownloadError::Message(_) => DownloadErrorKind::Other,
         }
     }
+}
+
+/// 错误类别与诊断文本的成对状态。
+#[derive(Clone)]
+pub(super) struct DownloadFailure {
+    kind: DownloadErrorKind,
+    message: String,
 }
 
 /// 下载进度的实时快照，用于传递给前端。
@@ -147,10 +163,8 @@ pub struct DownloadStatus {
     pub(super) downloaded: AtomicU64,
     /// 是否已下载完成（下载主体结束后置位，与 total_size 无关）
     pub(super) completed: AtomicBool,
-    /// 错误信息
-    pub(super) error_message: RwLock<Option<String>>,
-    /// 错误类别（与 `error_message` 同源写入，保证二者一致）
-    pub(super) error_kind: RwLock<Option<DownloadErrorKind>>,
+    /// 错误类别与诊断文本，使用同一把锁保证二者始终成对。
+    pub(super) error: RwLock<Option<DownloadFailure>>,
     /// 取消令牌
     pub(super) cancel_token: CancellationToken,
 }
@@ -166,8 +180,7 @@ impl DownloadStatus {
             total_size,
             downloaded: AtomicU64::new(0),
             completed: AtomicBool::new(false),
-            error_message: RwLock::new(None),
-            error_kind: RwLock::new(None),
+            error: RwLock::new(None),
             cancel_token: CancellationToken::new(),
         }
     }
@@ -210,12 +223,7 @@ impl DownloadStatus {
     /// - `kind`: 错误类别
     pub async fn set_error_with_kind(&self, msg: String, kind: DownloadErrorKind) {
         observability::download_error(&msg);
-        // 两把锁始终按「类别 → 文本」的固定顺序获取，读取方 ``snapshot``
-        // 也按同一顺序获取，因此不会出现「有文本无类别」的中间态。
-        let mut kind_guard = self.error_kind.write().await;
-        let mut msg_guard = self.error_message.write().await;
-        *kind_guard = Some(kind);
-        *msg_guard = Some(msg);
+        *self.error.write().await = Some(DownloadFailure { kind, message: msg });
     }
 
     /// 获取当前进度快照。
@@ -224,11 +232,9 @@ impl DownloadStatus {
     /// 确保前端可以通过 `is_finished` 检测到已取消的状态。
     pub async fn snapshot(&self) -> DownloadSnapshot {
         let downloaded = self.downloaded.load(Ordering::Relaxed);
-        // 与 ``set_error_with_kind`` 保持同一加锁顺序，读到的一定是成对结果。
-        let error_kind = *self.error_kind.read().await;
-        let error = self.error_message.read().await.clone();
+        let failure = self.error.read().await.clone();
 
-        let is_cancelled = self.cancelled() && error.is_none();
+        let is_cancelled = self.cancelled() && failure.is_none();
 
         DownloadSnapshot {
             downloaded,
@@ -243,17 +249,19 @@ impl DownloadStatus {
                     0.0
                 }
             },
-            is_finished: self.completed.load(Ordering::Relaxed) || error.is_some() || is_cancelled,
+            is_finished: self.completed.load(Ordering::Relaxed)
+                || failure.is_some()
+                || is_cancelled,
             error: if is_cancelled {
                 Some(CANCELLED_MESSAGE.to_string())
             } else {
-                error
+                failure.as_ref().map(|failure| failure.message.clone())
             },
             // 取消状态即使没有显式错误文本也带类别，宿主因此能统一按类别取文案。
             error_kind: if is_cancelled {
                 Some(DownloadErrorKind::Cancelled)
             } else {
-                error_kind
+                failure.map(|failure| failure.kind)
             },
         }
     }
@@ -287,7 +295,7 @@ mod tests {
         status.cancel();
         let snap = status.snapshot().await;
         assert!(snap.is_finished);
-        assert_eq!(snap.error.unwrap(), CANCELLED_MESSAGE);
+        assert_eq!(snap.error.as_deref(), Some("download cancelled"));
         assert_eq!(snap.error_kind, Some(DownloadErrorKind::Cancelled));
     }
 
@@ -332,8 +340,26 @@ mod tests {
         assert_eq!(DownloadError::Io(std::io::Error::other("disk")).kind(), DownloadErrorKind::Io);
         assert_eq!(
             DownloadError::Net(NetError::Config("bad proxy".to_string())).kind(),
+            DownloadErrorKind::Other
+        );
+        assert_eq!(
+            DownloadError::Net(NetError::Parse("invalid json".to_string())).kind(),
+            DownloadErrorKind::Other
+        );
+        assert_eq!(
+            DownloadError::Net(NetError::Response(404, "missing".to_string())).kind(),
+            DownloadErrorKind::Server
+        );
+        assert_eq!(
+            DownloadError::Net(NetError::Io(std::io::Error::other("disk"))).kind(),
+            DownloadErrorKind::Io
+        );
+        assert_eq!(DownloadError::Net(NetError::Cancelled).kind(), DownloadErrorKind::Cancelled);
+        assert_eq!(
+            DownloadError::Net(NetError::Request("connection reset".to_string())).kind(),
             DownloadErrorKind::Network
         );
+        assert_eq!(DownloadError::Net(NetError::Timeout).kind(), DownloadErrorKind::Network);
     }
 
     #[tokio::test]
@@ -346,7 +372,7 @@ mod tests {
         status.cancel();
         let snap_after = status.snapshot().await;
         assert!(snap_after.is_finished);
-        assert_eq!(snap_after.error.unwrap(), CANCELLED_MESSAGE);
+        assert_eq!(snap_after.error.as_deref(), Some("download cancelled"));
         assert_eq!(snap_after.error_kind, Some(DownloadErrorKind::Cancelled));
         assert_eq!(snap_after.downloaded, 300);
     }
