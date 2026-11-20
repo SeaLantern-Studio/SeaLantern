@@ -1,3 +1,16 @@
+//! 配置文件持久化原语。
+//!
+//! 按文件扩展名选择 JSON/TOML/YAML，提供加载、原子替换、备份，以及
+//! "锁内加载-修改-写回"的 [`ConfigFile`] API。设计约束：
+//!
+//! - 写操作同时持有进程内写锁与跨进程 `.lock` 文件锁；
+//! - 更新回调在锁内执行，**禁止**在其中做 IO 或长耗时操作，否则会阻塞同进程
+//!   的其他访问者；
+//! - 读取受 `CONFIG_READ_LIMIT` 限制，写入依赖 `write_atomic`；
+//! - [`ConfigFile::save`] 写的是内存快照，不重新读盘——共享文件的并发修改
+//!   必须走 `update_persisted*` 系列，否则会覆盖其他进程的更新；
+//! - 备份是独立副本，不承诺自动回滚，也没有保留期策略。
+
 use std::convert::Infallible;
 use std::path::{Path, PathBuf};
 

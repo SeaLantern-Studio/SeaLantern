@@ -1,3 +1,12 @@
+//! 基于目录句柄的有界字节缓存。
+//!
+//! 缓存键统一经 [`SafeRelativePath`] 校验，读写都相对已打开的根目录句柄进行，
+//! 因此符号链接与路径拼接无法逃逸根目录。读取受 [`DataLimit`] 限制，
+//! [`FileCache::get_fresh`] 额外按文件修改时间判断新鲜度。
+//!
+//! 写入走 [`write_atomic_in`]，覆盖是原子但"最后写入者获胜"；清空只删除根目录
+//! 的直接子项，非事务性，可能部分成功。
+
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

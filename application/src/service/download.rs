@@ -127,7 +127,9 @@ mod tests {
     async fn provider_failure_propagates_without_network() {
         // 假 provider：每次创建任务前被调用并返回失败，验证不会发出网络请求。
         let service = CoreDownloadService::with_provider(Box::new(|| {
-            Err(sealantern_infra::net::NetError::Config("模拟获取客户端失败".into()))
+            Err(sealantern_infra::net::NetError::Config(
+                "simulated client acquisition failure".into(),
+            ))
         }));
         let request = DownloadRequest {
             url: "https://example.com/file.zip".to_owned(),
