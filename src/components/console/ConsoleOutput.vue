@@ -107,6 +107,7 @@ defineExpose({ doScroll, appendLines, clear, getAllPlainText });
     :placeholder="i18n.t('console.waiting_for_output')"
     :history="history"
     :completion-md="completionMd"
+    selection-color="color-mix(in srgb, var(--sl-primary) 26%, transparent)"
     height="100%"
     @command="(text: string) => emit('command', text)"
   />
