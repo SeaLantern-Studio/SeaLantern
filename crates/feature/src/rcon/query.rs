@@ -47,6 +47,35 @@ pub fn build_rotation_command(dimension: Dimension) -> String {
 /// 回显里名字与数据之间的固定分隔。
 const SEPARATOR: &str = " has the following entity data: ";
 
+/// 选择器一条都没匹配到时服务端会回的话。
+///
+/// `execute as @a` 在没有玩家在线时不是「静默无事」——原版会回一句
+/// `No player was found`（`@e` 家族回 `No entity was found`，基岩版是
+/// `No targets matched selector`）。这是命令**成功执行**的结果：一个合法
+/// 的选择器，只是集合为空。上层必须把它和「回显格式看不懂」分开处理，
+/// 否则玩家全在主世界时去查下界，前端拿到的是报错而不是空列表。
+const NO_TARGET_NOTICES: &[&str] =
+    &["No entity was found", "No player was found", "No targets matched selector"];
+
+/// 这批回显是不是「选择器没匹配到目标」。
+///
+/// 判定收得比较紧：所有非空行都得是这类提示，混进来一行别的就当作
+/// 无法解析。真实记录行里带着 [`SEPARATOR`]，跟这几句话不会撞上。
+pub fn is_no_target_response(lines: &[String]) -> bool {
+    let mut seen = false;
+    for line in lines
+        .iter()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+    {
+        seen = true;
+        if !NO_TARGET_NOTICES.iter().any(|notice| line.contains(notice)) {
+            return false;
+        }
+    }
+    seen
+}
+
 /// 从 `execute ... run data get entity @s Pos` 的回显里解析玩家坐标。
 ///
 /// 返回按玩家名升序、(名字, [x, y, z]) 的列表；解析不出的行直接跳过。
@@ -323,5 +352,36 @@ mod tests {
     #[test]
     fn rotation_with_missing_value_is_skipped() {
         assert!(parse_rotations(&lines(&["Steve has the following entity data: []"])).is_empty());
+    }
+
+    /// 没有目标不是错误：这是命令跑成功、集合为空。
+    #[test]
+    fn recognises_no_target_notices() {
+        for notice in ["No player was found", "No entity was found", "No targets matched selector"]
+        {
+            assert!(is_no_target_response(&lines(&[notice])), "notice={notice}");
+            // 前后带空行、重复几遍也算同一个意思
+            assert!(is_no_target_response(&lines(&["", notice, ""])), "notice={notice}");
+            assert!(is_no_target_response(&lines(&[notice, notice])), "notice={notice}");
+        }
+    }
+
+    #[test]
+    fn empty_output_is_not_a_no_target_notice() {
+        // 空回显走的是另一条路（本来就是空列表），不该被这里认领
+        assert!(!is_no_target_response(&[]));
+        assert!(!is_no_target_response(&lines(&["", "  "])));
+    }
+
+    /// 混进一行看不懂的东西就不能当成空列表 —— 那才是真的格式不对。
+    #[test]
+    fn mixed_output_is_not_a_no_target_notice() {
+        assert!(!is_no_target_response(&lines(&[
+            "No player was found",
+            "Something else entirely",
+        ])));
+        assert!(!is_no_target_response(&lines(&[
+            "Steve has the following entity data: [1.0d, 2.0d, 3.0d]",
+        ])));
     }
 }

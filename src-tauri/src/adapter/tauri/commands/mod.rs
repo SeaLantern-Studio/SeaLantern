@@ -11,6 +11,7 @@ pub mod download;
 pub mod instance;
 pub mod java;
 pub mod logging;
+pub mod map;
 pub mod online_tunnel;
 pub mod player;
 pub mod plugin;
