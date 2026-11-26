@@ -30,6 +30,9 @@ use adapter::tauri::commands::instance::{
 };
 use adapter::tauri::commands::java::{java_detect, java_validate};
 use adapter::tauri::commands::logging::share_logs;
+use adapter::tauri::commands::map::{
+    get_map_player_positions, get_world_map_info, list_world_map_regions, render_world_map,
+};
 use adapter::tauri::commands::online_tunnel::{
     OnlineTunnelEventForwarder, online_tunnel_host, online_tunnel_join, online_tunnel_status,
     online_tunnel_stop,
@@ -263,6 +266,11 @@ fn main() {
             catalog_versions,
             //服务器控制台日志契约命令
             get_server_logs,
+            //世界地图渲染契约命令
+            get_map_player_positions,
+            get_world_map_info,
+            list_world_map_regions,
+            render_world_map,
             //系统资源能力（由adapter/tauri/commands接入application）
             get_default_run_path,
             get_server_resource_usage,
@@ -493,6 +501,10 @@ mod tests {
         "update_settings_partial",
         "check_update",
         "lookup_player",
+        "get_map_player_positions",
+        "get_world_map_info",
+        "list_world_map_regions",
+        "render_world_map",
     ];
 
     #[test]
@@ -505,8 +517,53 @@ mod tests {
             .split_once("])\n        .setup")
             .expect("Tauri handler must close before setup");
 
+        let registered = registered_command_names(handler);
         for command in SNAKE_CASE_SERVICE_COMMANDS {
-            assert!(handler.contains(command), "snake_case command {command} must be registered");
+            // 必须逐字相同：`contains` 会让 `render_world_map_v2` 也算注册了
+            assert!(
+                registered.iter().any(|name| name == command),
+                "snake_case command {command} must be registered, got {registered:?}"
+            );
         }
+    }
+
+    /// 只差一个后缀的处理器不算注册了本体。
+    #[test]
+    fn renamed_commands_do_not_pass_registration_check() {
+        let handler = "\n            //地图\n            commands::map::render_world_map_v2,\n            commands::other::,\n";
+        let names = registered_command_names(handler);
+
+        assert_eq!(names, vec!["render_world_map_v2".to_string()]);
+        assert!(!names.iter().any(|name| name == "render_world_map"));
+    }
+
+    /// 把 `generate_handler![...]` 里那一串拆成命令名。
+    ///
+    /// 列表项是 `a::b::command_name` 这种路径，注释用 `//` 开头。取每一项的
+    /// 最后一段作为命令名，注释整行丢掉 —— 前端 invoke 用的就是这个标识符。
+    fn registered_command_names(handler: &str) -> Vec<String> {
+        handler
+            .lines()
+            .map(|line| line.split("//").next().unwrap_or("").trim())
+            .filter(|line| !line.is_empty())
+            .flat_map(|line| line.split(','))
+            .map(str::trim)
+            .filter(|item| !item.is_empty())
+            .filter_map(|item| {
+                item.rsplit("::")
+                    .next()
+                    .map(|name| name.trim().to_string())
+                    .filter(|name| is_identifier(name))
+            })
+            .collect()
+    }
+
+    /// 是不是一个合法的 Rust 标识符（足够挡住被截断的尾巴和多余符号）。
+    fn is_identifier(value: &str) -> bool {
+        let mut chars = value.chars();
+        let Some(first) = chars.next() else {
+            return false;
+        };
+        (first.is_alphabetic() || first == '_') && chars.all(|ch| ch.is_alphanumeric() || ch == '_')
     }
 }
