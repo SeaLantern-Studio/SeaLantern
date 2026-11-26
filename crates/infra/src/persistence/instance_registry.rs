@@ -1,3 +1,13 @@
+//! 实例注册表的 SQLite 适配层。
+//!
+//! 表 `instance_registry` 只保存实例 ID 与调用方序列化后的不透明 payload，
+//! 以避免 infra 依赖 core/contract 的领域模型。ID 在写入与查询前统一 trim
+//! 并拒绝空值；所有写操作走 `SqliteDatabase` 的 IMMEDIATE 事务。
+//!
+//! 注意：本模块当前在上层没有消费者，且 `contract` 的 `InstanceRegistrySection`
+//! 与 `feature` 的实例发现逻辑已经承担了相近职责。启用前必须先确定唯一数据源，
+//! 否则会引入第三套实例状态。
+
 use std::fmt;
 
 use rusqlite::params;

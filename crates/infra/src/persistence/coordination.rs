@@ -1,3 +1,13 @@
+//! 进程内按资源路径的异步读写协调。
+//!
+//! 用弱引用注册表把同一路径映射到同一个 `tokio::sync::RwLock`，供配置文档与
+//! SQLite 句柄在单进程内串行化访问。资源键依赖 `canonicalize`，因此父目录应
+//! 先存在以获得稳定键。
+//!
+//! 范围边界很重要：本模块**不提供跨进程互斥**。配置文件需要额外叠加
+//! `FileLock`，SQLite 依赖自身的 WAL 与 `busy_timeout`。拿到
+//! [`ProcessResourceLock`] 并不代表对磁盘文件的独占访问。
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, Weak};

@@ -1,3 +1,12 @@
+//! 有界读取。
+//!
+//! [`DataLimit`] 统一表达字节上限；[`read_limited`] 最多读取 `limit + 1` 字节，
+//! 这样才能区分"恰好等于上限"（成功）与"超过上限"（[`FsError::DataLimitExceeded`]）
+//! ——只读 `limit` 字节无法判断文件是否被截断。
+//!
+//! [`read_string_limited`] 额外要求内容是合法 UTF-8，失败时返回
+//! [`FsError::Encoding`] 而不是笼统的解析错误。
+
 use std::path::Path;
 
 use tokio::io::AsyncReadExt;

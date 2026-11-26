@@ -147,7 +147,7 @@ impl NetClient {
 
         let inner = builder.build().map_err(|_| {
             observability::http_client_build_failed();
-            NetError::Config("无法创建 HTTP 客户端".into())
+            NetError::Config("failed to build HTTP client".into())
         })?;
 
         Ok(Self { inner, retry_policy: config.retry_policy })
@@ -218,7 +218,7 @@ impl NetClient {
         if !resp.status().is_success() && resp.status() != reqwest::StatusCode::PARTIAL_CONTENT {
             return Err(NetError::Response(
                 resp.status().as_u16(),
-                format!("探测请求失败，状态码: {}", resp.status()),
+                format!("probe request failed with status: {}", resp.status()),
             ));
         }
 
@@ -227,8 +227,9 @@ impl NetClient {
         let total_size = if supports_range {
             parse_content_range(resp.headers())?
         } else {
-            resp.content_length()
-                .ok_or_else(|| NetError::Parse("服务器未返回 Content-Length".into()))?
+            resp.content_length().ok_or_else(|| {
+                NetError::Parse("server response is missing Content-Length".into())
+            })?
         };
 
         Ok(RemoteFileInfo { total_size, supports_range })
@@ -251,13 +252,15 @@ fn parse_content_range(headers: &reqwest::header::HeaderMap) -> Result<u64, NetE
     let value = headers
         .get(reqwest::header::CONTENT_RANGE)
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| NetError::Parse("服务器返回 206 但缺少 Content-Range 头部".into()))?;
+        .ok_or_else(|| {
+            NetError::Parse("server returned 206 without a Content-Range header".into())
+        })?;
 
     let total = value
         .rsplit('/')
         .next()
         .and_then(|s| s.trim().parse::<u64>().ok())
-        .ok_or_else(|| NetError::Parse(format!("Content-Range 格式无法解析: {}", value)))?;
+        .ok_or_else(|| NetError::Parse(format!("unable to parse Content-Range: {}", value)))?;
 
     Ok(total)
 }
@@ -312,7 +315,7 @@ impl NetBlockingClient {
 
         let inner = builder.build().map_err(|_| {
             observability::http_client_build_failed();
-            NetError::Config("无法创建阻塞 HTTP 客户端".into())
+            NetError::Config("failed to build blocking HTTP client".into())
         })?;
 
         Ok(Self { inner, retry_policy: config.retry_policy })
@@ -352,7 +355,7 @@ fn no_proxy(routes: &crate::net::proxy::ProxyRoutes) -> Option<reqwest::NoProxy>
 
 fn proxy_config_error(scope: &str) -> NetError {
     observability::proxy_config_invalid(scope);
-    NetError::Config(format!("{scope} 代理配置无效"))
+    NetError::Config(format!("{scope} proxy configuration is invalid"))
 }
 
 fn configured_proxy_routes(
